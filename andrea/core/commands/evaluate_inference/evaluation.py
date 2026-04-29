@@ -160,7 +160,7 @@ def evaluate_inference(
             "ground_truth_manifest": str(ground_truth_manifest_path),
         },
         "derived_inputs": {
-            "merged_network_normalized": str(merged_network_path),
+            "merged_network_raw": str(merged_network_path),
         },
         "inference_run": {
             "run_id": run_report.get("run_id"),
@@ -215,10 +215,10 @@ def _resolve_merged_network_path_from_run_report(
     outputs = run_report.get("outputs")
     if not isinstance(outputs, dict):
         raise ValueError("Run report must contain an object at outputs")
-    raw_path = outputs.get("merged_network_normalized")
+    raw_path = outputs.get("merged_network_raw")
     if not isinstance(raw_path, str) or not raw_path.strip():
         raise ValueError(
-            "Run report outputs.merged_network_normalized is required for evaluation"
+            "Run report outputs.merged_network_raw is required for evaluation"
         )
     path = Path(raw_path)
     if path.is_absolute():
@@ -744,26 +744,6 @@ def _write_plots(
                     "path": str(heatmap_path),
                 }
             )
-
-            valid_rows = [row for row in rows if _metric_value(row, metric) is not None]
-            contexts = _sorted_unique(row.get("context") for row in valid_rows)
-            tools = _sorted_unique(row.get("tool_id") for row in valid_rows)
-            if valid_rows and len(contexts) <= 16 and len(tools) <= 12:
-                bars_path = plots_dir / f"{metric}_{level}_grouped_bars.svg"
-                _write_grouped_bars_svg(
-                    path=bars_path,
-                    rows=valid_rows,
-                    metric=metric,
-                    level=level,
-                )
-                outputs.append(
-                    {
-                        "kind": "grouped_bars",
-                        "metric": metric,
-                        "level": level,
-                        "path": str(bars_path),
-                    }
-                )
     return outputs
 
 
@@ -774,29 +754,43 @@ def _write_heatmap_svg(
     metric: str,
     level: str,
 ) -> None:
-    contexts = _sorted_unique(row.get("context") for row in rows)
-    tools = _sorted_unique(row.get("tool_id") for row in rows)
-    values = {
-        (str(row.get("tool_id")), str(row.get("context"))): _metric_value(row, metric)
-        for row in rows
+    values = _metric_values_by_tool_context(rows=rows, metric=metric)
+    global_values = {
+        tool: value
+        for (tool, context), value in values.items()
+        if context == "global" and value is not None
     }
-    statuses = {
-        (str(row.get("tool_id")), str(row.get("context"))): str(row.get("status", ""))
-        for row in rows
+    group_values = {
+        (tool, context): value
+        for (tool, context), value in values.items()
+        if context.startswith("group:") and value is not None
     }
-    reasons = {
-        (str(row.get("tool_id")), str(row.get("context"))): str(row.get("reason") or "")
-        for row in rows
-    }
+    global_tools = sorted(
+        global_values,
+        key=lambda tool: (-float(global_values[tool]), tool.lower()),
+    )
+    group_tools = _sorted_unique(tool for tool, _context in group_values)
+    group_contexts = _sorted_unique(context for _tool, context in group_values)
 
+    top = 112
+    left = 24
+    global_label_w = 112
+    global_bar_w = 180
+    global_panel_w = global_label_w + global_bar_w + 34
+    gap = 42
+    heat_label_w = max(
+        130, min(270, 18 + max((len(tool) for tool in group_tools), default=0) * 8)
+    )
     cell_w = 74
     cell_h = 34
-    left = max(150, min(320, 18 + max((len(tool) for tool in tools), default=0) * 8))
-    top = 96
-    right = 34
-    bottom = 82
-    width = left + (cell_w * len(contexts)) + right
-    height = top + (cell_h * len(tools)) + bottom
+    heatmap_x = left + global_panel_w + gap + heat_label_w
+    global_rows_h = max(1, len(global_tools)) * 30
+    global_axis_h = 44
+    group_rows_h = max(1, len(group_tools)) * cell_h
+    plot_h = max(global_rows_h + global_axis_h, group_rows_h, 90)
+    legend_y = top + plot_h + 44
+    width = heatmap_x + (cell_w * max(1, len(group_contexts))) + 34
+    height = legend_y + 28
 
     parts = [_svg_header(width, height)]
     parts.append(
@@ -806,29 +800,172 @@ def _write_heatmap_svg(
         _svg_text(
             24,
             58,
-            "Grey cells are not applicable or unavailable.",
+            "Global context is shown as bars; group contexts are shown as a heatmap.",
             size=12,
             fill="#475569",
         )
     )
-    for col_idx, context in enumerate(contexts):
-        x = left + (col_idx * cell_w) + (cell_w / 2)
+
+    _append_global_bar_panel(
+        parts=parts,
+        x=left,
+        y=top,
+        label_w=global_label_w,
+        bar_w=global_bar_w,
+        tools=global_tools,
+        values=global_values,
+        metric=metric,
+        level=level,
+    )
+    _append_group_heatmap_panel(
+        parts=parts,
+        x=left + global_panel_w + gap,
+        heatmap_x=heatmap_x,
+        y=top,
+        cell_w=cell_w,
+        cell_h=cell_h,
+        label_w=heat_label_w,
+        tools=group_tools,
+        contexts=group_contexts,
+        values=group_values,
+        metric=metric,
+        level=level,
+    )
+    _append_heat_legend(parts=parts, x=left, y=legend_y)
+    parts.append("</svg>\n")
+    path.write_text("\n".join(parts), encoding="utf-8")
+
+
+def _append_global_bar_panel(
+    *,
+    parts: list[str],
+    x: float,
+    y: float,
+    label_w: float,
+    bar_w: float,
+    tools: list[str],
+    values: dict[str, float],
+    metric: str,
+    level: str,
+) -> None:
+    parts.append(_svg_text(x, y - 28, "Global", size=14, weight="700"))
+    parts.append(
+        _svg_text(x, y - 10, "Tools with global outputs", size=11, fill="#64748b")
+    )
+    axis_x = x + label_w
+    axis_y = y + (max(1, len(tools)) * 30) + 12
+    parts.append(
+        f'<line x1="{axis_x:.1f}" y1="{axis_y:.1f}" x2="{axis_x + bar_w:.1f}" '
+        f'y2="{axis_y:.1f}" stroke="#cbd5e1" stroke-width="1" />'
+    )
+    for tick in (0.0, 0.5, 1.0):
+        tick_x = axis_x + (tick * bar_w)
+        parts.append(
+            f'<line x1="{tick_x:.1f}" y1="{y:.1f}" x2="{tick_x:.1f}" '
+            f'y2="{axis_y:.1f}" stroke="#e2e8f0" stroke-width="1" />'
+        )
+        parts.append(
+            _svg_text(
+                tick_x,
+                axis_y + 16,
+                f"{tick:.1f}",
+                size=10,
+                anchor="middle",
+                fill="#64748b",
+            )
+        )
+
+    if not tools:
         parts.append(
             _svg_text(
                 x,
-                top - 16,
-                _short_label(context, 13),
+                y + 28,
+                "No applicable global values",
+                size=12,
+                fill="#64748b",
+            )
+        )
+        return
+
+    for idx, tool in enumerate(tools):
+        value = values[tool]
+        row_y = y + (idx * 30)
+        bar_h = 18
+        parts.append(
+            _svg_text(
+                x + label_w - 8,
+                row_y + 15,
+                _short_label(tool, 18),
+                size=11,
+                anchor="end",
+                fill="#0f172a",
+            )
+        )
+        title = f"{tool} | global | {metric}/{level} = {value:.4f}"
+        parts.append(
+            f'<rect x="{axis_x:.1f}" y="{row_y + 2:.1f}" '
+            f'width="{bar_w:.1f}" height="{bar_h}" fill="#f1f5f9" rx="2" />'
+        )
+        parts.append(
+            f'<rect x="{axis_x:.1f}" y="{row_y + 2:.1f}" '
+            f'width="{bar_w * value:.1f}" height="{bar_h}" fill="{_heat_color(value)}" rx="2">'
+            f"<title>{html.escape(title)}</title></rect>"
+        )
+        parts.append(
+            _svg_text(
+                axis_x + (bar_w * value) + 6,
+                row_y + 16,
+                f"{value:.2f}",
+                size=10,
+                fill="#334155",
+            )
+        )
+
+
+def _append_group_heatmap_panel(
+    *,
+    parts: list[str],
+    x: float,
+    heatmap_x: float,
+    y: float,
+    cell_w: float,
+    cell_h: float,
+    label_w: float,
+    tools: list[str],
+    contexts: list[str],
+    values: dict[tuple[str, str], float],
+    metric: str,
+    level: str,
+) -> None:
+    parts.append(_svg_text(x, y - 28, "Groups", size=14, weight="700"))
+    parts.append(
+        _svg_text(x, y - 10, "Tools with per-group outputs", size=11, fill="#64748b")
+    )
+    if not tools or not contexts:
+        parts.append(
+            _svg_text(x, y + 28, "No applicable group values", size=12, fill="#64748b")
+        )
+        return
+
+    for col_idx, context in enumerate(contexts):
+        col_x = heatmap_x + (col_idx * cell_w) + (cell_w / 2)
+        parts.append(
+            _svg_text(
+                col_x,
+                y - 16,
+                _short_label(context.removeprefix("group:"), 13),
                 size=11,
                 anchor="middle",
                 fill="#334155",
             )
         )
+
     for row_idx, tool in enumerate(tools):
-        y = top + (row_idx * cell_h)
+        row_y = y + (row_idx * cell_h)
         parts.append(
             _svg_text(
-                left - 10,
-                y + 22,
+                heatmap_x - 10,
+                row_y + 22,
                 _short_label(tool, 32),
                 size=12,
                 anchor="end",
@@ -836,165 +973,56 @@ def _write_heatmap_svg(
             )
         )
         for col_idx, context in enumerate(contexts):
-            x = left + (col_idx * cell_w)
             value = values.get((tool, context))
-            status = statuses.get((tool, context), "")
-            reason = reasons.get((tool, context), "")
+            col_x = heatmap_x + (col_idx * cell_w)
             fill = _heat_color(value) if value is not None else "#e5e7eb"
-            title = f"{tool} | {context} | {metric}/{level}"
-            if value is not None:
-                title += f" = {value:.4f}"
-            elif reason:
-                title += f" | {reason}"
-            elif status:
-                title += f" | {status}"
+            if value is None:
+                title = f"{tool} | {context} | {metric}/{level} unavailable"
+            else:
+                title = f"{tool} | {context} | {metric}/{level} = {value:.4f}"
             parts.append(
-                f'<rect x="{x:.1f}" y="{y:.1f}" width="{cell_w - 2}" height="{cell_h - 2}" '
+                f'<rect x="{col_x:.1f}" y="{row_y:.1f}" width="{cell_w - 2}" height="{cell_h - 2}" '
                 f'rx="2" fill="{fill}" stroke="#ffffff" stroke-width="1">'
                 f"<title>{html.escape(title)}</title></rect>"
             )
             if value is not None:
                 parts.append(
                     _svg_text(
-                        x + (cell_w / 2) - 1,
-                        y + 21,
+                        col_x + (cell_w / 2) - 1,
+                        row_y + 21,
                         f"{value:.2f}",
                         size=11,
                         anchor="middle",
                         fill=_contrast_color(value),
                     )
                 )
-            else:
-                parts.append(
-                    _svg_text(
-                        x + (cell_w / 2) - 1,
-                        y + 21,
-                        "NA",
-                        size=10,
-                        anchor="middle",
-                        fill="#64748b",
-                    )
-                )
 
-    legend_x = left
-    legend_y = height - 42
-    parts.append(_svg_text(legend_x, legend_y - 10, "0", size=11, fill="#475569"))
+
+def _append_heat_legend(parts: list[str], *, x: float, y: float) -> None:
+    parts.append(_svg_text(x, y - 10, "0", size=11, fill="#475569"))
     for idx in range(80):
         value = idx / 79
         parts.append(
-            f'<rect x="{legend_x + 18 + idx * 2:.1f}" y="{legend_y - 20}" '
+            f'<rect x="{x + 18 + idx * 2:.1f}" y="{y - 20}" '
             f'width="2" height="12" fill="{_heat_color(value)}" />'
         )
-    parts.append(_svg_text(legend_x + 184, legend_y - 10, "1", size=11, fill="#475569"))
+    parts.append(_svg_text(x + 184, y - 10, "1", size=11, fill="#475569"))
     parts.append(
-        f'<rect x="{legend_x + 218}" y="{legend_y - 20}" width="18" height="12" '
+        f'<rect x="{x + 218}" y="{y - 20}" width="18" height="12" '
         'fill="#e5e7eb" stroke="#cbd5e1" />'
     )
-    parts.append(
-        _svg_text(legend_x + 242, legend_y - 10, "NA", size=11, fill="#475569")
-    )
-    parts.append("</svg>\n")
-    path.write_text("\n".join(parts), encoding="utf-8")
+    parts.append(_svg_text(x + 242, y - 10, "missing", size=11, fill="#475569"))
 
 
-def _write_grouped_bars_svg(
+def _metric_values_by_tool_context(
     *,
-    path: Path,
     rows: list[dict[str, Any]],
     metric: str,
-    level: str,
-) -> None:
-    contexts = _sorted_unique(row.get("context") for row in rows)
-    tools = _sorted_unique(row.get("tool_id") for row in rows)
-    values = {
+) -> dict[tuple[str, str], Optional[float]]:
+    return {
         (str(row.get("tool_id")), str(row.get("context"))): _metric_value(row, metric)
         for row in rows
     }
-    palette = _tool_palette(tools)
-    left = 76
-    top = 76
-    plot_w = max(520, 92 * len(contexts))
-    plot_h = 320
-    legend_h = 28 * math.ceil(max(1, len(tools)) / 3)
-    bottom = 108 + legend_h
-    width = left + plot_w + 34
-    height = top + plot_h + bottom
-    baseline = top + plot_h
-    group_w = plot_w / max(1, len(contexts))
-    slot_w = min(22, (group_w * 0.76) / max(1, len(tools)))
-
-    parts = [_svg_header(width, height)]
-    parts.append(
-        _svg_text(24, 34, f"{_metric_label(metric)} - {level}", size=18, weight="700")
-    )
-    parts.append(
-        _svg_text(24, 58, "Grouped by evaluation context.", size=12, fill="#475569")
-    )
-
-    for tick in range(6):
-        value = tick / 5
-        y = baseline - (value * plot_h)
-        parts.append(
-            f'<line x1="{left}" y1="{y:.1f}" x2="{left + plot_w}" y2="{y:.1f}" '
-            'stroke="#e2e8f0" stroke-width="1" />'
-        )
-        parts.append(
-            _svg_text(
-                left - 10, y + 4, f"{value:.1f}", size=11, anchor="end", fill="#64748b"
-            )
-        )
-    parts.append(
-        f'<line x1="{left}" y1="{baseline}" x2="{left + plot_w}" y2="{baseline}" '
-        'stroke="#334155" stroke-width="1" />'
-    )
-    parts.append(
-        f'<line x1="{left}" y1="{top}" x2="{left}" y2="{baseline}" '
-        'stroke="#334155" stroke-width="1" />'
-    )
-
-    for context_idx, context in enumerate(contexts):
-        group_x = left + (context_idx * group_w)
-        bars_w = slot_w * len(tools)
-        start_x = group_x + ((group_w - bars_w) / 2)
-        for tool_idx, tool in enumerate(tools):
-            value = values.get((tool, context))
-            if value is None:
-                continue
-            bar_h = max(0.0, min(1.0, value)) * plot_h
-            x = start_x + (tool_idx * slot_w)
-            y = baseline - bar_h
-            title = f"{tool} | {context} | {metric}/{level} = {value:.4f}"
-            parts.append(
-                f'<rect x="{x:.1f}" y="{y:.1f}" width="{max(2, slot_w - 2):.1f}" '
-                f'height="{bar_h:.1f}" fill="{palette[tool]}" rx="2">'
-                f"<title>{html.escape(title)}</title></rect>"
-            )
-        parts.append(
-            _svg_text(
-                group_x + (group_w / 2),
-                baseline + 22,
-                _short_label(context, 12),
-                size=11,
-                anchor="middle",
-                fill="#334155",
-            )
-        )
-
-    legend_x = left
-    legend_y = baseline + 56
-    for idx, tool in enumerate(tools):
-        col = idx % 3
-        row = idx // 3
-        x = legend_x + (col * 220)
-        y = legend_y + (row * 24)
-        parts.append(
-            f'<rect x="{x}" y="{y - 11}" width="12" height="12" fill="{palette[tool]}" rx="2" />'
-        )
-        parts.append(
-            _svg_text(x + 18, y, _short_label(tool, 24), size=12, fill="#334155")
-        )
-    parts.append("</svg>\n")
-    path.write_text("\n".join(parts), encoding="utf-8")
 
 
 def _metric_value(row: dict[str, Any], metric: str) -> Optional[float]:
@@ -1062,24 +1090,6 @@ def _interpolate_stops(
 
 def _contrast_color(value: float) -> str:
     return "#ffffff" if value >= 0.62 else "#0f172a"
-
-
-def _tool_palette(tools: list[str]) -> dict[str, str]:
-    colors = [
-        "#1f77b4",
-        "#ff7f0e",
-        "#2ca02c",
-        "#d62728",
-        "#9467bd",
-        "#8c564b",
-        "#e377c2",
-        "#7f7f7f",
-        "#bcbd22",
-        "#17becf",
-        "#4c78a8",
-        "#f58518",
-    ]
-    return {tool: colors[idx % len(colors)] for idx, tool in enumerate(tools)}
 
 
 def _svg_header(width: float, height: float) -> str:

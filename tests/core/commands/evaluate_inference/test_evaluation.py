@@ -54,7 +54,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            inferred_path = base / "merged_network_normalized.csv"
+            inferred_path = base / "merged_network_raw.csv"
             self._write_csv(
                 inferred_path,
                 [
@@ -110,7 +110,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 json.dumps(
                     {
                         "outputs": {
-                            "merged_network_normalized": str(inferred_path),
+                            "merged_network_raw": str(inferred_path),
                         },
                         "tools": {
                             "catalog_tool_ids": {
@@ -191,7 +191,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            inferred_path = base / "merged_network_normalized.csv"
+            inferred_path = base / "merged_network_raw.csv"
             self._write_csv(
                 inferred_path,
                 [
@@ -211,7 +211,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 json.dumps(
                     {
                         "outputs": {
-                            "merged_network_normalized": str(inferred_path),
+                            "merged_network_raw": str(inferred_path),
                         },
                         "tools": {
                             "catalog_tool_ids": {

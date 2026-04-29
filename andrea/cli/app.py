@@ -97,7 +97,7 @@ def evaluate_inference_command(
         exists=True,
         file_okay=True,
         dir_okay=False,
-        help="Path to run_report.json. The normalized merged network is read from this report.",
+        help="Path to run_report.json. The raw merged network is read from this report.",
     ),
     ground_truth_manifest: Path = typer.Option(
         ...,
@@ -113,7 +113,7 @@ def evaluate_inference_command(
     plots: bool = typer.Option(
         True,
         "--plots/--no-plots",
-        help="Write SVG heatmaps and grouped bar plots.",
+        help="Write SVG evaluation heatmaps.",
     ),
 ):
     """Evaluate inferred GRNs against benchmark ground truth."""
