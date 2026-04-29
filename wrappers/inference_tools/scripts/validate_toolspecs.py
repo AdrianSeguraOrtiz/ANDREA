@@ -187,6 +187,13 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                         idx=idx, param=param_name
                     )
                 )
+            execution_name = rule.get("execution")
+            if isinstance(execution_name, str) and execution_name != "mode":
+                errors.append(
+                    "extra_inputs.conditional_required[{idx}] references unknown execution field '{field}'.".format(
+                        idx=idx, field=execution_name
+                    )
+                )
 
     return errors
 

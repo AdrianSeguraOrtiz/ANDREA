@@ -62,13 +62,15 @@ def _load_logical_runs_from_plan(
             raise ValueError(f"plan.json.runs[{idx}] must be an object")
         run_id = str(raw_run.get("run_id", "")).strip()
         tool_id = str(raw_run.get("tool_id", "")).strip()
-        execution_scope = str(raw_run.get("execution_scope", "")).strip()
+        execution_mode = str(raw_run.get("execution_mode", "")).strip()
+        execution_capabilities = raw_run.get("execution_capabilities", [])
         execution = raw_run.get("execution", {})
         physical_tasks = raw_run.get("physical_tasks", [])
         if (
             not run_id
             or not tool_id
-            or execution_scope not in {"global", "group"}
+            or execution_mode not in {"global", "group_native", "group_emulated"}
+            or not isinstance(execution_capabilities, list)
             or not isinstance(execution, dict)
             or not isinstance(physical_tasks, list)
             or not physical_tasks
@@ -77,7 +79,12 @@ def _load_logical_runs_from_plan(
         logical_runs[run_id] = {
             "run_id": run_id,
             "tool_id": tool_id,
-            "execution_scope": execution_scope,
+            "execution_mode": execution_mode,
+            "execution_capabilities": [
+                str(item).strip()
+                for item in execution_capabilities
+                if isinstance(item, str) and str(item).strip()
+            ],
             "execution": execution,
             "physical_tasks": physical_tasks,
         }
@@ -282,7 +289,8 @@ def _finalize_grouped_logical_run(
     logical_payload = {
         **asdict(logical_result),
         "execution": logical_spec["execution"],
-        "execution_scope": logical_spec["execution_scope"],
+        "execution_mode": logical_spec["execution_mode"],
+        "execution_capabilities": logical_spec["execution_capabilities"],
         "physical_tasks_total": len(logical_spec["physical_tasks"]),
         "child_results": child_payload,
     }
@@ -414,8 +422,7 @@ def run_infer_network_plan(
     required_group_labels = {
         str(physical.get("group_label", "")).strip()
         for logical_spec in logical_runs.values()
-        if logical_spec["execution_scope"] == "global"
-        and str(logical_spec["execution"].get("group_mode", "")).strip() == "per_group"
+        if logical_spec["execution_mode"] == "group_emulated"
         for physical in logical_spec["physical_tasks"]
         if physical.get("group_label") is not None
     }
@@ -424,7 +431,7 @@ def run_infer_network_plan(
         groups_path = dataset.extras.get("groups")
         if groups_path is None:
             raise ValueError(
-                "Execution requires groups.tsv because at least one run uses execution.group_mode=per_group."
+                "Execution requires groups.tsv because at least one run uses execution.mode=group_emulated."
             )
         group_expression_sources = _prepare_group_expression_sources(
             run_dir=run_dir,
@@ -447,9 +454,7 @@ def run_infer_network_plan(
                 )
             expression_source = shared_expression
             if (
-                logical_spec["execution_scope"] == "global"
-                and str(logical_spec["execution"].get("group_mode", "")).strip()
-                == "per_group"
+                logical_spec["execution_mode"] == "group_emulated"
                 and physical.get("group_label") is not None
             ):
                 expression_source = group_expression_sources[
@@ -461,6 +466,7 @@ def run_infer_network_plan(
                 run_id=logical_run_id,
                 output_dir=str(physical.get("output_dir", "")),
                 resolved_params=resolved_params,
+                resolved_execution=logical_spec["execution"],
                 shared_expression=shared_expression,
                 shared_extras=shared_extras,
                 expression_source=expression_source,
@@ -519,7 +525,8 @@ def run_infer_network_plan(
             logical_results_payload[logical_run_id] = {
                 **asdict(result),
                 "execution": logical_spec["execution"],
-                "execution_scope": logical_spec["execution_scope"],
+                "execution_mode": logical_spec["execution_mode"],
+                "execution_capabilities": logical_spec["execution_capabilities"],
                 "physical_tasks_total": 1,
                 "child_results": {},
             }

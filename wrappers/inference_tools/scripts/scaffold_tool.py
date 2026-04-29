@@ -151,6 +151,7 @@ def toolspec_template(tool_id: str) -> str:
         "method_keywords": ["todo_keyword"],
         "implementation_url": "https://example.org/TODO",
         "docker_image": f"TODO/{tool_id}:latest",
+        "execution_capabilities": ["global"],
         "accepts": ["samples"],
         "assumes": "generic",
         "extra_inputs": {

@@ -391,6 +391,19 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
   - if the wrapper intentionally targets a convenience wrapper instead of the bare algorithm, document the consequence for params and output semantics
   - if the upstream package offers both a score-preserving low-level interface and a convenience wrapper that only rescales the same scores, prefer the score-preserving interface so raw `network.csv` remains comparable with other tools
 
+- `execution_capabilities`
+  - look in:
+    - upstream examples and public workflow constructors
+    - whether the method natively supports one whole-dataset run, grouped/multitask runs, or neither
+  - supported values:
+    - `global`: the wrapper can run one network on the whole expression matrix
+    - `group_native`: the upstream public interface natively consumes group/task metadata and returns group/task networks from one run
+    - `group_emulated`: ANDREA can emulate grouped execution by partitioning the expression matrix and running a global-mode wrapper once per group
+  - rule:
+    - use `execution_capabilities` instead of the removed `execution_scope`
+    - keep algorithm choices as normal params when they are variants inside one execution capability
+    - record whether grouped output context is produced by the wrapper (`group_native`) or by the orchestrator (`group_emulated`)
+
 ### Dynamic defaults
 
 If an upstream default depends on the dataset or runtime state, do not silently replace it with an arbitrary constant.

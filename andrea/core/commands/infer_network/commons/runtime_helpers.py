@@ -225,6 +225,7 @@ def _prepare_tool_runtime_io(
     run_id: str,
     output_dir: str,
     resolved_params: dict[str, Any],
+    resolved_execution: dict[str, Any],
     shared_expression: Path,
     shared_extras: dict[str, Path],
     expression_source: Optional[Path] = None,
@@ -242,6 +243,7 @@ def _prepare_tool_runtime_io(
 
     params_file = io_dir / "params.json"
     _write_json(params_file, resolved_params)
+    _write_json(io_dir / "execution.json", resolved_execution)
 
     for extra_path in shared_extras.values():
         dest = extra_dir / extra_path.name

@@ -40,7 +40,14 @@ DEFAULT_CATALOG_TOOLS_ROOT = CATALOG_ROOT / "tools"
 DEFAULT_TOOL_SOURCES_ROOT = INFERENCE_TOOLS_ROOT / "tools"
 
 REQUIRED_NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-ALLOWED_CONFIG_ROOT_KEYS = {"extra_files", "require_progress", "checks"}
+ALLOWED_CONFIG_ROOT_KEYS = {
+    "name",
+    "extra_files",
+    "execution",
+    "require_progress",
+    "checks",
+    "variants",
+}
 ALLOWED_CONFIG_CHECK_KEYS = {
     "require_cluster_context",
     "require_group_context",
@@ -51,7 +58,9 @@ ALLOWED_CONFIG_CHECK_KEYS = {
 
 @dataclass(frozen=True)
 class SmokeConfig:
+    name: str
     extra_files: list[str]
+    execution: dict[str, object]
     require_progress: bool
     require_cluster_context: bool
     require_group_context: bool
@@ -74,7 +83,9 @@ class SmokeIOPaths:
 
 
 DEFAULT_CONFIG = SmokeConfig(
+    name="default",
     extra_files=[],
+    execution={},
     require_progress=True,
     require_cluster_context=False,
     require_group_context=False,
@@ -314,6 +325,10 @@ def prepare_smoke_io(
     with (io_dir / "params.json").open("w", encoding="utf-8") as fh:
         json.dump(resolved_params, fh, indent=2, ensure_ascii=True)
         fh.write("\n")
+    if config.execution:
+        with (io_dir / "execution.json").open("w", encoding="utf-8") as fh:
+            json.dump(config.execution, fh, indent=2, ensure_ascii=True)
+            fh.write("\n")
 
     for extra_name in config.extra_files:
         src = resolve_path(
@@ -374,13 +389,12 @@ def resolve_path(
     )
 
 
-def load_config(*, tool_id: str, configs_dir: Path) -> SmokeConfig:
-    config_path = configs_dir / f"{tool_id}.json"
-    if not config_path.exists():
-        return DEFAULT_CONFIG
-
-    with config_path.open("r", encoding="utf-8") as fh:
-        raw = json.load(fh)
+def _parse_smoke_config_payload(
+    *,
+    raw: dict[str, object],
+    config_path: Path,
+    default_name: str,
+) -> SmokeConfig:
     if not isinstance(raw, dict):
         raise ValueError(f"Invalid config in {config_path}: expected JSON object.")
 
@@ -414,7 +428,29 @@ def load_config(*, tool_id: str, configs_dir: Path) -> SmokeConfig:
             f"Invalid config in {config_path}: 'extra_files' must be list[str]."
         )
 
+    execution = raw.get("execution", {})
+    if execution is None:
+        execution = {}
+    if not isinstance(execution, dict):
+        raise ValueError(
+            f"Invalid config in {config_path}: 'execution' must be an object."
+        )
+    unknown_execution = sorted(set(execution.keys()).difference({"mode"}))
+    if unknown_execution:
+        raise ValueError(
+            f"Invalid config in {config_path}: unknown execution keys {unknown_execution}."
+        )
+    if "mode" in execution and execution["mode"] not in {
+        "global",
+        "group_native",
+        "group_emulated",
+    }:
+        raise ValueError(
+            f"Invalid config in {config_path}: execution.mode is unsupported."
+        )
+
     require_progress = bool(raw.get("require_progress", True))
+    name = str(raw.get("name", default_name)).strip() or default_name
 
     require_cluster_context = bool(checks.get("require_cluster_context", False))
     require_group_context = bool(checks.get("require_group_context", False))
@@ -424,13 +460,58 @@ def load_config(*, tool_id: str, configs_dir: Path) -> SmokeConfig:
     forbid_self_loops = bool(checks.get("forbid_self_loops", False))
 
     return SmokeConfig(
+        name=name,
         extra_files=extra_files,
+        execution=dict(execution),
         require_progress=require_progress,
         require_cluster_context=require_cluster_context,
         require_group_context=require_group_context,
         require_unique_unordered_pairs=require_unique_unordered_pairs,
         forbid_self_loops=forbid_self_loops,
     )
+
+
+def load_configs(*, tool_id: str, configs_dir: Path) -> list[SmokeConfig]:
+    config_path = configs_dir / f"{tool_id}.json"
+    if not config_path.exists():
+        return [DEFAULT_CONFIG]
+
+    with config_path.open("r", encoding="utf-8") as fh:
+        raw = json.load(fh)
+    if not isinstance(raw, dict):
+        raise ValueError(f"Invalid config in {config_path}: expected JSON object.")
+
+    variants = raw.get("variants")
+    if variants is None:
+        return [
+            _parse_smoke_config_payload(
+                raw=raw,
+                config_path=config_path,
+                default_name="default",
+            )
+        ]
+
+    if not isinstance(variants, list) or not variants:
+        raise ValueError(
+            f"Invalid config in {config_path}: 'variants' must be a non-empty array."
+        )
+
+    base = {key: value for key, value in raw.items() if key != "variants"}
+    parsed: list[SmokeConfig] = []
+    for idx, variant in enumerate(variants, start=1):
+        if not isinstance(variant, dict):
+            raise ValueError(
+                f"Invalid config in {config_path}: variants[{idx}] must be an object."
+            )
+        merged = {**base, **variant}
+        parsed.append(
+            _parse_smoke_config_payload(
+                raw=merged,
+                config_path=config_path,
+                default_name=f"variant_{idx}",
+            )
+        )
+    return parsed
 
 
 def load_aux_artifacts(catalog_tool_dir: Path) -> list[AuxArtifactSpec]:
@@ -816,68 +897,72 @@ def run_tool_smoketest(
     show_output_lines: int,
 ) -> int:
     started_at = time.perf_counter()
-    config = load_config(tool_id=tool_id, configs_dir=smoketest_configs_dir)
+    configs = load_configs(tool_id=tool_id, configs_dir=smoketest_configs_dir)
     aux_artifacts = load_aux_artifacts(catalog_tool_dir)
-    tmp_ctx, io_paths = prepare_smoke_io(
-        tool_id=tool_id,
-        catalog_tools_root=catalog_tools_root,
-        fixtures_dir=fixtures_dir,
-        param_overrides_dir=param_overrides_dir,
-        config=config,
-    )
 
-    try:
-        if skip_image_build:
-            print(
-                f"[1/5] Skipping Docker image build (SKIP_IMAGE_BUILD=1): {image_tag}"
-            )
-        else:
-            build_image(
-                tool_id=tool_id,
-                image_tag=image_tag,
-                catalog_tools_root=catalog_tools_root,
-                tool_sources_root=tool_sources_root,
-                timeout_s=remaining_timeout(started_at, timeout_s),
-            )
-
-        print("[2/5] Running wrapper in container (detached)")
-        exit_code, saw_progress, logs = run_container_lifecycle(
+    if skip_image_build:
+        print(f"[1/5] Skipping Docker image build (SKIP_IMAGE_BUILD=1): {image_tag}")
+    else:
+        build_image(
+            tool_id=tool_id,
             image_tag=image_tag,
-            io_dir=io_paths.io_dir,
-            threads=threads,
-            progress_file=io_paths.progress_file,
-            poll_interval_s=poll_interval_s,
-            started_at=started_at,
-            timeout_s=timeout_s,
+            catalog_tools_root=catalog_tools_root,
+            tool_sources_root=tool_sources_root,
+            timeout_s=remaining_timeout(started_at, timeout_s),
         )
 
-        if logs:
-            print("[container logs]")
-            print(logs)
-
-        if exit_code != 0:
-            raise RuntimeError(
-                f"Smoke test failed: container exited with code {exit_code}."
+    for config in configs:
+        print(f"[variant] {config.name}")
+        tmp_ctx, io_paths = prepare_smoke_io(
+            tool_id=tool_id,
+            catalog_tools_root=catalog_tools_root,
+            fixtures_dir=fixtures_dir,
+            param_overrides_dir=param_overrides_dir,
+            config=config,
+        )
+        try:
+            print("[2/5] Running wrapper in container (detached)")
+            exit_code, saw_progress, logs = run_container_lifecycle(
+                image_tag=image_tag,
+                io_dir=io_paths.io_dir,
+                threads=threads,
+                progress_file=io_paths.progress_file,
+                poll_interval_s=poll_interval_s,
+                started_at=started_at,
+                timeout_s=timeout_s,
             )
 
-        if config.require_progress and not saw_progress:
-            raise RuntimeError("Smoke test failed: progress.json was never observed.")
+            if logs:
+                print("[container logs]")
+                print(logs)
 
-        if io_paths.progress_file.exists():
-            validate_progress(io_paths.progress_file)
+            if exit_code != 0:
+                raise RuntimeError(
+                    f"Smoke test failed: container exited with code {exit_code}."
+                )
 
-        print("[4/5] Validating output file")
-        row_count = validate_network(io_paths.out_dir / "network.csv", config)
-        print(f"Validated network.csv with {row_count} rows")
-        aux_count = validate_aux_artifacts(io_paths.out_dir, aux_artifacts)
-        if aux_count > 0:
-            print(f"Validated {aux_count} auxiliary artifact(s)")
-    finally:
-        try:
-            if show_output:
-                print_output_files(io_paths.out_dir, show_output_lines, aux_artifacts)
+            if config.require_progress and not saw_progress:
+                raise RuntimeError("Smoke test failed: progress.json was never observed.")
+
+            if io_paths.progress_file.exists():
+                validate_progress(io_paths.progress_file)
+
+            print("[4/5] Validating output file")
+            row_count = validate_network(io_paths.out_dir / "network.csv", config)
+            print(f"Validated network.csv with {row_count} rows")
+            aux_count = validate_aux_artifacts(io_paths.out_dir, aux_artifacts)
+            if aux_count > 0:
+                print(f"Validated {aux_count} auxiliary artifact(s)")
         finally:
-            tmp_ctx.cleanup()
+            try:
+                if show_output:
+                    print_output_files(
+                        io_paths.out_dir,
+                        show_output_lines,
+                        aux_artifacts,
+                    )
+            finally:
+                tmp_ctx.cleanup()
 
     print("[5/5] Smoke test passed")
     return 0

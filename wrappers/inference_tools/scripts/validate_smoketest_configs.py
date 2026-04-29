@@ -159,20 +159,28 @@ def semantic_errors_for_config(
         errors.append("Smoketest config root must be a JSON object.")
         return errors
 
-    extra_files = instance.get("extra_files", [])
-    if not isinstance(extra_files, list):
-        return errors
+    payloads: list[tuple[str, Any]] = [("root", instance)]
+    variants = instance.get("variants")
+    if isinstance(variants, list):
+        payloads.extend((f"variants[{idx}]", item) for idx, item in enumerate(variants))
 
-    for extra_name in extra_files:
-        if not isinstance(extra_name, str):
+    for label, payload in payloads:
+        if not isinstance(payload, dict):
             continue
-        resolved = resolve_fixture_path(fixtures_dir, tool_id, extra_name)
-        if resolved is None:
-            errors.append(
-                "extra_files entry does not resolve to an existing fixture: "
-                f"{extra_name!r} (looked in {fixtures_dir / tool_id / extra_name} "
-                f"and {fixtures_dir / extra_name})"
-            )
+        extra_files = payload.get("extra_files", instance.get("extra_files", []))
+        if not isinstance(extra_files, list):
+            continue
+
+        for extra_name in extra_files:
+            if not isinstance(extra_name, str):
+                continue
+            resolved = resolve_fixture_path(fixtures_dir, tool_id, extra_name)
+            if resolved is None:
+                errors.append(
+                    f"{label}.extra_files entry does not resolve to an existing fixture: "
+                    f"{extra_name!r} (looked in {fixtures_dir / tool_id / extra_name} "
+                    f"and {fixtures_dir / extra_name})"
+                )
 
     return errors
 

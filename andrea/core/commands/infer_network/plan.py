@@ -38,10 +38,10 @@ from .commons.shared import (
     _task_eta_note,
     _write_json,
 )
-from .commons.tools import _load_toolspec, _parse_execution_scope
+from .commons.tools import _load_toolspec, _parse_execution_capabilities
 from .preflight import preflight_infer_network
 
-PLAN_SCHEMA_VERSION = "1.2"
+PLAN_SCHEMA_VERSION = "1.3"
 
 
 def plan_infer_network(
@@ -180,7 +180,7 @@ def plan_infer_network(
         )
 
     catalog_toolspec_by_run: dict[str, dict[str, Any]] = {}
-    execution_scope_by_run: dict[str, str] = {}
+    execution_capabilities_by_run: dict[str, list[str]] = {}
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids.get(run_id, "").strip()
         if not catalog_tool_id:
@@ -189,7 +189,7 @@ def plan_infer_network(
             )
         toolspec = _load_toolspec(tools_root, catalog_tool_id)
         catalog_toolspec_by_run[run_id] = toolspec
-        execution_scope_by_run[run_id] = _parse_execution_scope(
+        execution_capabilities_by_run[run_id] = _parse_execution_capabilities(
             tool_id=run_id,
             toolspec=toolspec,
         )
@@ -197,18 +197,15 @@ def plan_infer_network(
     group_order: list[str] = []
     group_to_columns: dict[str, list[str]] = {}
     needs_group_partition = any(
-        execution_scope_by_run.get(run_id) == "global"
-        and str(
-            resolved_execution_by_tool.get(run_id, {}).get("group_mode", "")
-        ).strip()
-        == "per_group"
+        str(resolved_execution_by_tool.get(run_id, {}).get("mode", "")).strip()
+        == "group_emulated"
         for run_id in selected_tools
     )
     if needs_group_partition:
         groups_path = dataset.extras.get("groups")
         if groups_path is None:
             raise ValueError(
-                "Planning requires groups.tsv because at least one run uses execution.group_mode=per_group."
+                "Planning requires groups.tsv because at least one run uses execution.mode=group_emulated."
             )
         _expression_genes, expression_columns = _read_expression_axes(
             dataset.expression_matrix_path
@@ -223,11 +220,13 @@ def plan_infer_network(
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids[run_id]
         toolspec = catalog_toolspec_by_run[run_id]
-        execution_scope = execution_scope_by_run[run_id]
+        execution_capabilities = execution_capabilities_by_run[run_id]
         resolved_execution = resolved_execution_by_tool.get(run_id, {})
-        group_mode = str(resolved_execution.get("group_mode", "")).strip()
-        if not group_mode:
-            group_mode = "per_group" if execution_scope == "group" else "global"
+        execution_mode = str(resolved_execution.get("mode", "")).strip()
+        if not execution_mode:
+            execution_mode = (
+                "global" if "global" in execution_capabilities else execution_capabilities[0]
+            )
 
         cost_profile, cost_warnings = _load_tool_cost_profile(
             tools_root=tools_root,
@@ -236,7 +235,7 @@ def plan_infer_network(
         warnings.extend(cost_warnings)
 
         physical_tasks: list[dict[str, Any]] = []
-        if execution_scope == "global" and group_mode == "per_group":
+        if execution_mode == "group_emulated":
             for idx, group_label in enumerate(group_order, start=1):
                 group_slug = _slugify_token(group_label)
                 physical_task_id = f"{run_id}__group_{idx:02d}_{group_slug}"
@@ -298,7 +297,8 @@ def plan_infer_network(
         logical_run_specs[run_id] = {
             "run_id": run_id,
             "tool_id": catalog_tool_id,
-            "execution_scope": execution_scope,
+            "execution_capabilities": execution_capabilities,
+            "execution_mode": execution_mode,
             "execution": resolved_execution,
             "physical_tasks": physical_tasks,
         }
@@ -441,7 +441,8 @@ def plan_infer_network(
             {
                 "run_id": run_id,
                 "tool_id": logical_spec["tool_id"],
-                "execution_scope": logical_spec["execution_scope"],
+                "execution_capabilities": logical_spec["execution_capabilities"],
+                "execution_mode": logical_spec["execution_mode"],
                 "execution": logical_spec["execution"],
                 "physical_tasks_total": len(physical_tasks_payload),
                 "eta_start_seconds": logical_eta_start,

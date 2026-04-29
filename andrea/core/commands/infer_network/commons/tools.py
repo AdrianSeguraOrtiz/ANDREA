@@ -13,6 +13,13 @@ from andrea.core.shared.param_validation import (
 
 from .shared import DatasetContext, SchemaConstraints, _load_json_object
 
+EXECUTION_CAPABILITIES = {"global", "group_native", "group_emulated"}
+GROUP_EXECUTION_MODES = {"group_native", "group_emulated"}
+LEGACY_GROUP_MODE_TO_MODE = {
+    "global": "global",
+    "per_group": "group_emulated",
+}
+
 
 def _parse_extra_inputs_spec(
     *,
@@ -62,6 +69,7 @@ def _parse_extra_inputs_spec(
 
         input_key = str(raw_rule.get("input", "")).strip()
         param_name = str(raw_rule.get("param", "")).strip()
+        execution_name = str(raw_rule.get("execution", "")).strip()
         op = str(raw_rule.get("op", "")).strip()
         message = str(raw_rule.get("message", "")).strip()
         value = raw_rule.get("value")
@@ -71,9 +79,14 @@ def _parse_extra_inputs_spec(
                 f"toolspec.extra_inputs.conditional_required[{idx}].input is required"
             )
             continue
-        if not param_name:
+        if bool(param_name) == bool(execution_name):
             errors.append(
-                f"toolspec.extra_inputs.conditional_required[{idx}].param is required"
+                f"toolspec.extra_inputs.conditional_required[{idx}] must define exactly one of param or execution"
+            )
+            continue
+        if execution_name and execution_name != "mode":
+            errors.append(
+                f"toolspec.extra_inputs.conditional_required[{idx}].execution must be 'mode'"
             )
             continue
         if op not in {"eq", "ne", "gt", "gte", "lt", "lte"}:
@@ -86,21 +99,23 @@ def _parse_extra_inputs_spec(
                 f"toolspec.extra_inputs.conditional_required[{idx}].message is required"
             )
             continue
-        if known_params is not None and param_name not in known_params:
+        if param_name and known_params is not None and param_name not in known_params:
             errors.append(
                 f"toolspec.extra_inputs.conditional_required[{idx}] references unknown parameter '{param_name}'"
             )
             continue
 
-        conditional_required.append(
-            {
-                "input": input_key,
-                "param": param_name,
-                "op": op,
-                "value": value,
-                "message": message,
-            }
-        )
+        parsed_rule = {
+            "input": input_key,
+            "op": op,
+            "value": value,
+            "message": message,
+        }
+        if param_name:
+            parsed_rule["param"] = param_name
+        else:
+            parsed_rule["execution"] = execution_name
+        conditional_required.append(parsed_rule)
 
     return required_extras, optional_extras, conditional_required, errors
 
@@ -179,13 +194,35 @@ def _load_toolspec(tools_root: Path, tool_id: str) -> dict[str, Any]:
     return _load_json_object(toolspec_path, f"toolspec[{tool_id}]")
 
 
-def _parse_execution_scope(*, tool_id: str, toolspec: dict[str, Any]) -> str:
-    execution_scope = str(toolspec.get("execution_scope", "")).strip()
-    if execution_scope not in {"global", "group"}:
+def _parse_execution_capabilities(
+    *, tool_id: str, toolspec: dict[str, Any]
+) -> list[str]:
+    raw = toolspec.get("execution_capabilities")
+    if not isinstance(raw, list) or not raw:
         raise ValueError(
-            f"[{tool_id}] toolspec.execution_scope must be one of: global, group"
+            f"[{tool_id}] toolspec.execution_capabilities must be a non-empty array"
         )
-    return execution_scope
+    capabilities: list[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            raise ValueError(
+                f"[{tool_id}] toolspec.execution_capabilities entries must be strings"
+            )
+        mode = item.strip()
+        if mode not in EXECUTION_CAPABILITIES:
+            raise ValueError(
+                f"[{tool_id}] toolspec.execution_capabilities contains unsupported mode: {mode!r}"
+            )
+        if mode not in capabilities:
+            capabilities.append(mode)
+    return capabilities
+
+
+def _default_execution_mode(capabilities: list[str]) -> str:
+    for mode in ("global", "group_native", "group_emulated"):
+        if mode in capabilities:
+            return mode
+    return capabilities[0]
 
 
 def _resolve_run_execution(
@@ -198,29 +235,54 @@ def _resolve_run_execution(
 ) -> tuple[bool, dict[str, Any], list[str]]:
     errors: list[str] = []
     try:
-        execution_scope = _parse_execution_scope(tool_id=run_id, toolspec=toolspec)
+        capabilities = _parse_execution_capabilities(
+            tool_id=run_id, toolspec=toolspec
+        )
     except ValueError as exc:
         errors.append(str(exc))
-        execution_scope = "global"
+        capabilities = ["global"]
 
-    unknown_keys = sorted(set(user_execution.keys()).difference({"group_mode"}))
+    unknown_keys = sorted(set(user_execution.keys()).difference({"mode", "group_mode"}))
     for key in unknown_keys:
         warnings.append(f"[{run_id}] unknown execution key ignored: {key}")
 
-    group_mode_raw = user_execution.get("group_mode")
-    if group_mode_raw is None:
-        group_mode = "per_group" if execution_scope == "group" else "global"
-    elif not isinstance(group_mode_raw, str):
-        errors.append("execution.group_mode must be string when provided")
-        group_mode = "global"
+    mode_raw = user_execution.get("mode")
+    legacy_group_mode_raw = user_execution.get("group_mode")
+    if mode_raw is not None:
+        if not isinstance(mode_raw, str):
+            errors.append("execution.mode must be string when provided")
+            mode = _default_execution_mode(capabilities)
+        else:
+            mode = mode_raw.strip()
+            if mode not in EXECUTION_CAPABILITIES:
+                errors.append(
+                    "execution.mode must be one of: global, group_native, group_emulated"
+                )
+    elif legacy_group_mode_raw is not None:
+        if not isinstance(legacy_group_mode_raw, str):
+            errors.append("execution.group_mode must be string when provided")
+            mode = _default_execution_mode(capabilities)
+        else:
+            legacy_group_mode = legacy_group_mode_raw.strip()
+            mode = LEGACY_GROUP_MODE_TO_MODE.get(legacy_group_mode, "")
+            if not mode:
+                errors.append("execution.group_mode must be one of: global, per_group")
+            elif (
+                legacy_group_mode == "per_group"
+                and mode not in capabilities
+                and "group_native" in capabilities
+            ):
+                mode = "group_native"
+            if mode:
+                warnings.append(
+                    f"[{run_id}] execution.group_mode is deprecated; use execution.mode={mode!r}."
+                )
     else:
-        group_mode = group_mode_raw.strip()
-        if group_mode not in {"global", "per_group"}:
-            errors.append("execution.group_mode must be one of: global, per_group")
+        mode = _default_execution_mode(capabilities)
 
-    if execution_scope == "group" and group_mode == "global":
+    if mode and mode not in capabilities:
         errors.append(
-            "execution.group_mode=global is not allowed because toolspec.execution_scope=group"
+            f"execution.mode={mode!r} is not supported by this tool; supported modes: {capabilities}"
         )
 
     if errors:
@@ -233,7 +295,7 @@ def _resolve_run_execution(
         )
         return False, {}, errors
 
-    return True, {"group_mode": group_mode}, []
+    return True, {"mode": mode}, []
 
 
 def _check_tool_compatibility(
@@ -249,7 +311,7 @@ def _check_tool_compatibility(
     pending_conditions: list[str] = []
 
     try:
-        _parse_execution_scope(tool_id=tool_id, toolspec=toolspec)
+        _parse_execution_capabilities(tool_id=tool_id, toolspec=toolspec)
     except ValueError as exc:
         errors.append(str(exc))
 
@@ -381,15 +443,24 @@ def _resolve_tool_params(
 def _conditional_rule_matches(
     *,
     resolved_params: dict[str, Any],
+    resolved_execution: dict[str, Any],
     rule: dict[str, Any],
 ) -> bool:
     param_name = str(rule.get("param", "")).strip()
+    execution_name = str(rule.get("execution", "")).strip()
     op = str(rule.get("op", "")).strip()
     expected = rule.get("value")
 
-    if param_name not in resolved_params:
+    if param_name:
+        if param_name not in resolved_params:
+            return False
+        actual = resolved_params.get(param_name)
+    elif execution_name:
+        if execution_name not in resolved_execution:
+            return False
+        actual = resolved_execution.get(execution_name)
+    else:
         return False
-    actual = resolved_params.get(param_name)
 
     if op == "eq":
         return actual == expected
@@ -438,17 +509,21 @@ def _collect_requirement_issues(
         return [f"invalid toolspec extra-input rules: {msg}" for msg in extra_errors]
 
     issues: list[str] = []
-    group_mode = str(resolved_execution.get("group_mode", "")).strip()
-    if group_mode == "per_group" and dataset.extras.get("groups") is None:
-        issues.append("groups is required when execution.group_mode=per_group.")
+    execution_mode = str(resolved_execution.get("mode", "")).strip()
+    if execution_mode in GROUP_EXECUTION_MODES and dataset.extras.get("groups") is None:
+        issues.append(f"groups is required when execution.mode={execution_mode}.")
     for rule in conditional_required:
         input_key = str(rule.get("input", "")).strip()
         message = str(rule.get("message", "")).strip()
         if dataset.extras.get(input_key) is not None:
             continue
-        if _conditional_rule_matches(resolved_params=resolved_params, rule=rule):
+        if _conditional_rule_matches(
+            resolved_params=resolved_params,
+            resolved_execution=resolved_execution,
+            rule=rule,
+        ):
             issues.append(message)
-    return issues
+    return list(dict.fromkeys(issues))
 
 
 def _scan_catalog_compatibility(

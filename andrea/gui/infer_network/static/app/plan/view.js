@@ -53,7 +53,7 @@ export function renderPlan(plan) {
     runsTable.className = "wave-table";
     runsTable.innerHTML =
       "<thead><tr>" +
-      "<th>run_id</th><th>tool_id</th><th>mode</th><th>scope</th><th>physical_tasks</th><th>eta_s</th>" +
+      "<th>run_id</th><th>tool_id</th><th>mode</th><th>capabilities</th><th>physical_tasks</th><th>eta_s</th>" +
       "</tr></thead>";
     const runsBody = document.createElement("tbody");
     for (const run of logicalRuns) {
@@ -61,8 +61,8 @@ export function renderPlan(plan) {
       const cells = [
         run.run_id || "-",
         run.tool_id || "-",
-        run?.execution?.group_mode || "-",
-        run.execution_scope || "-",
+        run.execution_mode || run?.execution?.mode || "-",
+        Array.isArray(run.execution_capabilities) ? run.execution_capabilities.join(", ") : "-",
         run.physical_tasks_total ?? "-",
         run.eta_seconds ?? "-",
       ];
@@ -187,7 +187,7 @@ export function renderPlanInlinePreview(plan, virtualPath) {
     runsTable.className = "wave-table";
     runsTable.innerHTML =
       "<thead><tr>" +
-      "<th>run_id</th><th>tool_id</th><th>mode</th><th>scope</th><th>physical_tasks</th><th>eta_s</th>" +
+      "<th>run_id</th><th>tool_id</th><th>mode</th><th>capabilities</th><th>physical_tasks</th><th>eta_s</th>" +
       "</tr></thead>";
     const runsBody = document.createElement("tbody");
     for (const run of logicalRuns) {
@@ -195,8 +195,8 @@ export function renderPlanInlinePreview(plan, virtualPath) {
       const cells = [
         run.run_id || "-",
         run.tool_id || "-",
-        run?.execution?.group_mode || "-",
-        run.execution_scope || "-",
+        run.execution_mode || run?.execution?.mode || "-",
+        Array.isArray(run.execution_capabilities) ? run.execution_capabilities.join(", ") : "-",
         run.physical_tasks_total ?? "-",
         run.eta_seconds ?? "-",
       ];

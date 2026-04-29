@@ -52,8 +52,10 @@ function matchesCondition(actual, op, expected) {
   return false;
 }
 
-export function conditionalRuleMatches(params, rule) {
-  const actual = valueAtPath(params, rule?.param);
+export function conditionalRuleMatches(params, rule, execution = {}) {
+  const sourcePath = rule?.execution ? String(rule.execution) : String(rule?.param || "");
+  const sourcePayload = rule?.execution ? execution : params;
+  const actual = valueAtPath(sourcePayload, sourcePath);
   return matchesCondition(actual, String(rule?.op || "").trim(), rule?.value);
 }
 

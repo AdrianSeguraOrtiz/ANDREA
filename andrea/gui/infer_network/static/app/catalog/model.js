@@ -15,7 +15,13 @@ export function listAvailableTools() {
 }
 
 export function defaultGroupModeForTool(tool) {
-  return String(tool?.execution_scope || "").trim() === "group" ? "per_group" : "global";
+  const capabilities = Array.isArray(tool?.execution_capabilities)
+    ? tool.execution_capabilities.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  if (capabilities.includes("global")) {
+    return "global";
+  }
+  return capabilities[0] || "global";
 }
 
 export function toolMessages(entry) {
@@ -60,6 +66,9 @@ export function toolSpecInfoPayload(tool) {
   const firstAuthor = String(tool?.first_author || "").trim();
   const outputs = tool?.outputs && typeof tool.outputs === "object" ? tool.outputs : {};
   const progress = tool?.progress && typeof tool.progress === "object" ? tool.progress : {};
+  const capabilities = Array.isArray(tool?.execution_capabilities)
+    ? tool.execution_capabilities.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
   const conditionalSummary = conditionalExtras
     .map((item) => String(item?.message || "").trim())
     .filter(Boolean);
@@ -73,7 +82,7 @@ export function toolSpecInfoPayload(tool) {
     description: "",
     fields: [
       { label: "Tool ID", value: tool?.tool_id || "-" },
-      { label: "Execution Scope", value: tool?.execution_scope || "-" },
+      { label: "Execution Capabilities", value: capabilities.length ? capabilities.join(", ") : "-" },
       { label: "Assumes", value: tool?.assumes || "-" },
       { label: "Accepts", value: accepts.length ? accepts.join(", ") : "-" },
       { label: "Required extras", value: requiredExtras.length ? requiredExtras.join(", ") : "none" },

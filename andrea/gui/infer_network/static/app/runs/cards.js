@@ -30,6 +30,22 @@ function notifyRunsChanged() {
   }
 }
 
+function toolExecutionCapabilities(tool) {
+  return Array.isArray(tool?.execution_capabilities)
+    ? tool.execution_capabilities.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+}
+
+function executionModeLabel(mode) {
+  if (mode === "group_native") {
+    return "Group native";
+  }
+  if (mode === "group_emulated") {
+    return "Group emulated";
+  }
+  return "Global";
+}
+
 export function buildRunId(toolId) {
   const cards = Array.from(document.querySelectorAll(".run-card"));
   const prefixes = cards
@@ -126,17 +142,21 @@ function validateRunCard(card) {
       if (providedExtras.has(inputKey)) {
         continue;
       }
-      if (conditionalRuleMatches(params, rule)) {
+      const execution = {
+        mode: String(card.querySelector(".execution-group-mode")?.value || "").trim(),
+      };
+      if (conditionalRuleMatches(params, rule, execution)) {
         messages.push(message);
       }
     }
 
-    const groupMode = String(card.querySelector(".execution-group-mode")?.value || "").trim();
-    if (String(tool.execution_scope || "").trim() === "group" && groupMode !== "per_group") {
-      messages.push("This tool executes per group natively.");
+    const executionMode = String(card.querySelector(".execution-group-mode")?.value || "").trim();
+    const capabilities = toolExecutionCapabilities(tool);
+    if (capabilities.length && !capabilities.includes(executionMode)) {
+      messages.push(`This tool does not support execution mode: ${executionMode}`);
     }
-    if (groupMode === "per_group" && !providedExtras.has("groups")) {
-      messages.push("Per-group execution requires groups.tsv.");
+    if ((executionMode === "group_native" || executionMode === "group_emulated") && !providedExtras.has("groups")) {
+      messages.push(`${executionModeLabel(executionMode)} execution requires groups.tsv.`);
     }
   }
 
@@ -195,32 +215,33 @@ export function addRunCard(initial = {}) {
   }
   toolInput.value = tool.tool_id;
   toolNameEl.textContent = tool.name;
-  const executionScope = String(tool.execution_scope || "").trim();
-  const initialGroupMode = String(initial?.execution?.group_mode || "").trim();
-  const selectedGroupMode = initialGroupMode || defaultGroupModeForToolFn?.(tool) || "global";
+  const capabilities = toolExecutionCapabilities(tool);
+  const initialExecutionMode = String(initial?.execution?.mode || "").trim();
+  const legacyGroupMode = String(initial?.execution?.group_mode || "").trim();
+  const legacyExecutionMode =
+    legacyGroupMode === "per_group" ? "group_emulated" : legacyGroupMode === "global" ? "global" : "";
+  const selectedExecutionMode =
+    initialExecutionMode || legacyExecutionMode || defaultGroupModeForToolFn?.(tool) || "global";
 
   executionModeInput.innerHTML = "";
-  const modeOptions =
-    executionScope === "group"
-      ? [{ value: "per_group", label: "Per group" }]
-      : [
-          { value: "global", label: "Global" },
-          { value: "per_group", label: "Per group" },
-        ];
+  const modeOptions = (capabilities.length ? capabilities : ["global"]).map((mode) => ({
+    value: mode,
+    label: executionModeLabel(mode),
+  }));
   for (const optionMeta of modeOptions) {
     const option = document.createElement("option");
     option.value = optionMeta.value;
     option.textContent = optionMeta.label;
     executionModeInput.appendChild(option);
   }
-  executionModeInput.value = modeOptions.some((item) => item.value === selectedGroupMode)
-    ? selectedGroupMode
+  executionModeInput.value = modeOptions.some((item) => item.value === selectedExecutionMode)
+    ? selectedExecutionMode
     : modeOptions[0].value;
-  executionModeInput.disabled = executionScope === "group";
+  executionModeInput.disabled = modeOptions.length <= 1;
   executionModeInput.title =
-    executionScope === "group"
-      ? "This tool executes by group natively."
-      : "Choose whether to run the tool once globally or once per group.";
+    modeOptions.length <= 1
+      ? "This tool has a single execution mode."
+      : "Choose whether to run the tool globally, by native group support, or by orchestrator-emulated groups.";
 
   runIdInput.value = initial.run_id || buildRunId(tool.tool_id);
   renderRunParamsForm(node, tool, initial.params || null);
@@ -297,7 +318,7 @@ export function collectRuns() {
       tool_id: toolId,
       params,
       execution: {
-        group_mode: card.querySelector(".execution-group-mode").value,
+        mode: card.querySelector(".execution-group-mode").value,
       },
     });
   });

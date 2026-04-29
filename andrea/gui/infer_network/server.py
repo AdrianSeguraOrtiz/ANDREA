@@ -121,7 +121,11 @@ def _load_tools_bootstrap() -> dict[str, Any]:
             {
                 "tool_id": tool_id,
                 "name": str(toolspec.get("name", tool_id)),
-                "execution_scope": str(toolspec.get("execution_scope", "")),
+                "execution_capabilities": [
+                    str(x)
+                    for x in toolspec.get("execution_capabilities", [])
+                    if isinstance(x, str)
+                ],
                 "assumes": str(toolspec.get("assumes", "")),
                 "accepts": [
                     x for x in toolspec.get("accepts", []) if isinstance(x, str)
