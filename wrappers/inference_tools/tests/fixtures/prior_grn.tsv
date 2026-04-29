@@ -1,0 +1,6 @@
+source	target	score
+G1	G2	1.0
+G1	G4	0.8
+G3	G2	0.7
+G3	G5	0.9
+G5	G1	0.6

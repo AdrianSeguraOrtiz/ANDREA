@@ -34,6 +34,12 @@
         "python_runtime_contract"
       ]
     },
+    "inferelator3": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ]
+    },
     "tigress": {
       "runtime": "r",
       "bundles": []

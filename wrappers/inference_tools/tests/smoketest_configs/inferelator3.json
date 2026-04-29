@@ -1,0 +1,25 @@
+{
+  "extra_files": ["tf_list.txt", "prior_grn.tsv"],
+  "variants": [
+    {
+      "name": "global",
+      "execution": {
+        "mode": "global"
+      },
+      "checks": {
+        "forbid_self_loops": true
+      }
+    },
+    {
+      "name": "group_native",
+      "extra_files": ["tf_list.txt", "prior_grn.tsv", "groups.tsv"],
+      "execution": {
+        "mode": "group_native"
+      },
+      "checks": {
+        "forbid_self_loops": true,
+        "require_group_context": true
+      }
+    }
+  ]
+}

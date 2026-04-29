@@ -232,6 +232,12 @@
           "pattern": ".*\\.txt$",
           "description": "Optional TF list text file path. Detailed content validation is defined in input_specs/tf_list.json."
         },
+        "prior_grn": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional global prior GRN TSV path. Detailed content validation is defined in input_specs/prior_grn.json."
+        },
         "prior_grn_by_group": {
           "type": ["string", "null"],
           "minLength": 1,

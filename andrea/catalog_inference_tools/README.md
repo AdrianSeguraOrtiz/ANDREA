@@ -26,6 +26,7 @@ andrea/catalog_inference_tools/
     groups.json
     lineage_tree.json
     tf_list.json
+    prior_grn.json
     prior_grn_by_group.json
   tools/
     <tool_id>/
@@ -45,6 +46,10 @@ Each tool container is executed with:
   --output-dir /io/out \
   --threads 8
 ```
+
+When a plan is executed by the ANDREA orchestrator, `/io/execution.json` is also
+mounted next to `params.json` and contains the selected `execution.mode`
+(`global`, `group_native`, or `group_emulated`). Existing wrappers may ignore it.
 
 Expected outputs:
 - `/io/out/network.csv`
