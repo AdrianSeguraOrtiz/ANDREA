@@ -7,12 +7,21 @@ license = "MIT"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "typer[all]>=0.23.1,<0.24.0",
+    "typer>=0.23.1,<0.24.0",
+    "docker>=7.1.0,<8.0.0",
+    "jsonschema>=4.25.0,<5.0.0",
+    "pandas>=2.3.0,<3.0.0",
+    "ortools>=9.10,<10.0",
+    "fastapi>=0.115.0,<0.116.0",
+    "uvicorn>=0.34.0,<0.35.0",
+    "python-multipart>=0.0.20,<0.0.21",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.0,<9.0.0",
+    "aiofiles>=24.1.0,<25.0.0",
+    "httpx>=0.28.0,<0.29.0",
     "black>=24.0.0,<25.0.0",
     "isort>=5.13.0,<6.0.0",
 ]
@@ -25,6 +34,37 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["andrea*"]
+
+[tool.setuptools.package-data]
+"andrea.catalog_inference_tools" = [
+    "schemas/*",
+    "schemas/**/*",
+    "input_specs/*",
+    "input_specs/**/*",
+    "tools/*",
+    "tools/**/*",
+]
+"andrea.gui.common" = [
+    "static/*",
+    "static/**/*",
+]
+"andrea.gui.infer_network" = [
+    "static/*",
+    "static/**/*",
+]
+"andrea.catalog_simulation_data_tools" = [
+    "schemas/*",
+    "schemas/**/*",
+    "simulators/*",
+    "simulators/**/*",
+]
+"andrea.gui.generate_data" = [
+    "static/*",
+    "static/**/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [build-system]
 requires = ["setuptools>=69.0.0", "wheel"]

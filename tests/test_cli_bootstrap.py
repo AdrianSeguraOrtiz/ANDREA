@@ -18,6 +18,7 @@ class AndreaCliBootstrapTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("infer-network", result.output)
         self.assertIn("generate-data", result.output)
+        self.assertIn("evaluate-inference", result.output)
         self.assertIn("gui", result.output)
 
     def test_version_flag_prints_package_version(self) -> None:
@@ -28,12 +29,18 @@ class AndreaCliBootstrapTests(unittest.TestCase):
     def test_infer_network_namespace_is_bootstrapped(self) -> None:
         result = self.runner.invoke(app, ["infer-network", "--help"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Inference workflows", result.output)
+        self.assertIn("preflight", result.output)
+        self.assertIn("plan", result.output)
+        self.assertIn("run", result.output)
+        self.assertIn("execute", result.output)
 
     def test_generate_data_namespace_is_bootstrapped(self) -> None:
         result = self.runner.invoke(app, ["generate-data", "--help"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Simulation and benchmark generation workflows", result.output)
+        self.assertIn("preflight", result.output)
+        self.assertIn("plan", result.output)
+        self.assertIn("run", result.output)
+        self.assertIn("execute", result.output)
 
     def test_gui_namespace_is_bootstrapped(self) -> None:
         result = self.runner.invoke(app, ["gui", "--help"])

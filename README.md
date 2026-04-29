@@ -44,8 +44,8 @@ andrea gui --help
 ## Migration Order
 
 1. Bootstrap ANDREA as an installable project.
-2. Port the `infer-network-v2` slice first.
-3. Port the `generate-v2` slice second.
+2. Port the `infer-network` slice first.
+3. Port the `generate-data` slice second.
 4. Reduce `GENECI` to the consensus scope.
 
 The neutral planning documents for the split live outside both repositories
