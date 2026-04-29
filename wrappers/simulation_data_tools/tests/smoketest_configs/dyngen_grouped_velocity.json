@@ -1,0 +1,30 @@
+{
+  "simulator_id": "dyngen",
+  "request": {
+    "profile": "scrna_grouped",
+    "seed": 19,
+    "effective_extras": ["groups", "tf_list"],
+    "input_files": {},
+    "params": {
+      "backbone_template": "bifurcating_loop",
+      "simulation_params": {
+        "num_simulations": 4,
+        "compute_rna_velocity": true,
+        "store_reaction_propensities": true,
+        "kinetics_noise_kind": "none"
+      }
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "extras/tf_list.txt",
+    "truth/global_network.csv",
+    "truth/legacy/global_gs.csv",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/model.rds",
+    "provenance/raw/dataset.rds"
+  ]
+}

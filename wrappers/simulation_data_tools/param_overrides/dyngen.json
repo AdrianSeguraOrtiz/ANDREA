@@ -1,0 +1,13 @@
+{
+  "num_cells": 10,
+  "num_tfs": 3,
+  "num_targets": 4,
+  "num_hks": 2,
+  "simulation_params": {
+    "compute_dimred": false
+  },
+  "experiment_params": {
+    "map_reference_cpm": false,
+    "map_reference_ls": false
+  }
+}

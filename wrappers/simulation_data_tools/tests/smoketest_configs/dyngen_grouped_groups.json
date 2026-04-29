@@ -1,0 +1,24 @@
+{
+  "simulator_id": "dyngen",
+  "request": {
+    "profile": "scrna_grouped",
+    "seed": 13,
+    "effective_extras": ["groups"],
+    "input_files": {},
+    "params": {
+      "backbone_template": "bifurcating",
+      "distance_metric": "pearson"
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "truth/global_network.csv",
+    "truth/legacy/global_gs.csv",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/model.rds",
+    "provenance/raw/dataset.rds"
+  ]
+}
