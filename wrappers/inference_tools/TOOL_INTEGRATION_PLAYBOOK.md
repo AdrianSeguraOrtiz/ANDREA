@@ -403,6 +403,7 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
     - use `execution_capabilities` instead of the removed `execution_scope`
     - keep algorithm choices as normal params when they are variants inside one execution capability
     - record whether grouped output context is produced by the wrapper (`group_native`) or by the orchestrator (`group_emulated`)
+    - if `group_emulated` is exposed, declare `groups` in `extra_inputs.optional` and add an `extra_inputs.conditional_required` rule requiring `groups` when `execution.mode == "group_emulated"`
 
 ### Dynamic defaults
 
@@ -463,6 +464,7 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - whether they are always required, mode-dependent, or optional
   - rule:
     - if a file is needed only when certain parameter values are used, model it in `conditional_required`
+    - if a file is needed only for a selected execution mode, model it in `conditional_required` with `execution: "mode"` and a value from `execution_capabilities`
     - if the semantic content does not match an existing normalized input, propose a new `input_spec`
 
 ### Output semantics

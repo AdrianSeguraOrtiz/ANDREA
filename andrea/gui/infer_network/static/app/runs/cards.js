@@ -155,9 +155,6 @@ function validateRunCard(card) {
     if (capabilities.length && !capabilities.includes(executionMode)) {
       messages.push(`This tool does not support execution mode: ${executionMode}`);
     }
-    if ((executionMode === "group_native" || executionMode === "group_emulated") && !providedExtras.has("groups")) {
-      messages.push(`${executionModeLabel(executionMode)} execution requires groups.tsv.`);
-    }
   }
 
   const uniqueMessages = [...new Set(messages.filter(Boolean))];

@@ -160,6 +160,11 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     if not isinstance(params, dict):
         params = {}
 
+    execution_capabilities = instance.get("execution_capabilities", [])
+    execution_modes = {
+        x for x in execution_capabilities if isinstance(x, str) and x.strip()
+    }
+
     extra_inputs = instance.get("extra_inputs", {})
     if not isinstance(extra_inputs, dict):
         return errors
@@ -180,6 +185,13 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
         for idx, rule in enumerate(conditional, start=1):
             if not isinstance(rule, dict):
                 continue
+            input_name = rule.get("input")
+            if isinstance(input_name, str) and input_name not in required_set | optional_set:
+                errors.append(
+                    "extra_inputs.conditional_required[{idx}] input '{input}' must also be listed in extra_inputs.optional or extra_inputs.required.".format(
+                        idx=idx, input=input_name
+                    )
+                )
             param_name = rule.get("param")
             if isinstance(param_name, str) and param_name not in params:
                 errors.append(
@@ -194,6 +206,40 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                         idx=idx, field=execution_name
                     )
                 )
+            if isinstance(execution_name, str) and execution_name == "mode":
+                op = rule.get("op")
+                if op not in {"eq", "ne"}:
+                    errors.append(
+                        "extra_inputs.conditional_required[{idx}] execution.mode rules must use op 'eq' or 'ne'.".format(
+                            idx=idx
+                        )
+                    )
+                value = rule.get("value")
+                if not isinstance(value, str) or value not in execution_modes:
+                    errors.append(
+                        "extra_inputs.conditional_required[{idx}] execution.mode value must be one of this tool's execution_capabilities: {modes}.".format(
+                            idx=idx, modes=sorted(execution_modes)
+                        )
+                    )
+
+    if "group_emulated" in execution_modes:
+        has_group_emulated_rule = False
+        if isinstance(conditional, list):
+            for rule in conditional:
+                if not isinstance(rule, dict):
+                    continue
+                if (
+                    rule.get("input") == "groups"
+                    and rule.get("execution") == "mode"
+                    and rule.get("op") == "eq"
+                    and rule.get("value") == "group_emulated"
+                ):
+                    has_group_emulated_rule = True
+                    break
+        if not has_group_emulated_rule:
+            errors.append(
+                "tools with execution_capabilities including 'group_emulated' must declare extra_inputs.conditional_required for groups when execution.mode == 'group_emulated'."
+            )
 
     return errors
 

@@ -70,9 +70,9 @@ Rationale: workflow choice is an execution capability, while the concrete multit
 
 Conditional input behavior:
 
-- Core requirement rule: any selected `group_native` or `group_emulated` execution requires `groups.tsv`.
-- ToolSpec rule: `groups` is conditionally required when `execution.mode == "group_native"` so the GUI can surface the native multitask requirement directly.
-- GUI rule evaluation now supports both parameter-backed and execution-backed conditional requirements.
+- ToolSpec rule: `groups` is conditionally required when `execution.mode == "group_native"` so Inferelator can create native multitask tasks from metadata.
+- ToolSpec rule: `groups` is conditionally required when `execution.mode == "group_emulated"` because ANDREA partitions the dataset by group before running the global wrapper path.
+- GUI/core/CLI requirement checks consume the ToolSpec `conditional_required` rules; `plan.py` and `run.py` retain defensive checks before materializing group partitions.
 
 Not exposed:
 

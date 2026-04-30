@@ -45,6 +45,13 @@
         "op": "eq",
         "value": "group_native",
         "message": "groups is required when execution.mode=group_native so Inferelator can create native multitask group tasks from metadata."
+      },
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool."
       }
     ]
   },

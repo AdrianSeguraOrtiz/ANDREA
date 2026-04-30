@@ -28,7 +28,17 @@
   "extra_inputs": {
     "required": [],
     "optional": [
+      "groups",
       "tf_list"
+    ],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool."
+      }
     ]
   },
   "outputs": {

@@ -212,15 +212,17 @@ For each field below:
 
 - chosen value:
   - `required`: `[]`
-  - `optional`: `[]`
-  - `conditional_required`: `[]`
+  - `optional`: `["groups"]`
+  - `conditional_required`: `groups` when `execution.mode == "group_emulated"`
 - evidence:
   - `wrappers/inference_tools/tools/clr/repo/man/clr.Rd:6-18`
   - `wrappers/inference_tools/tools/clr/repo/man/build.mim.Rd:5-23`
   - `wrappers/inference_tools/tools/clr/repo/man/minet.Rd:6-25`
+  - `andrea/core/commands/infer_network/plan.py` and `run.py` partition expression by `groups.tsv` before running global wrappers in `group_emulated` mode
 - rationale:
   - upstream CLR/minet consumes only the dataset plus scalar parameters
-  - there is no documented support for TF lists, priors, groups, lineage trees or other auxiliary artefacts
+  - `groups` is not consumed by CLR/minet; it is only required by ANDREA when `group_emulated` execution is selected
+  - there is no documented support for TF lists, priors, lineage trees or other auxiliary artefacts
   - the original CLR paper uses known transcription factors for evaluation/biological interpretation, but that restriction is not part of the `minet` CLR API
 - uncertainty:
   - low

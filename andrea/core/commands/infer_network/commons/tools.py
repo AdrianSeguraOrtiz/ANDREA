@@ -14,7 +14,6 @@ from andrea.core.shared.param_validation import (
 from .shared import DatasetContext, SchemaConstraints, _load_json_object
 
 EXECUTION_CAPABILITIES = {"global", "group_native", "group_emulated"}
-GROUP_EXECUTION_MODES = {"group_native", "group_emulated"}
 LEGACY_GROUP_MODE_TO_MODE = {
     "global": "global",
     "per_group": "group_emulated",
@@ -509,9 +508,6 @@ def _collect_requirement_issues(
         return [f"invalid toolspec extra-input rules: {msg}" for msg in extra_errors]
 
     issues: list[str] = []
-    execution_mode = str(resolved_execution.get("mode", "")).strip()
-    if execution_mode in GROUP_EXECUTION_MODES and dataset.extras.get("groups") is None:
-        issues.append(f"groups is required when execution.mode={execution_mode}.")
     for rule in conditional_required:
         input_key = str(rule.get("input", "")).strip()
         message = str(rule.get("message", "")).strip()

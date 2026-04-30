@@ -28,8 +28,18 @@
   "assumes": "generic",
   "extra_inputs": {
     "required": [],
-    "optional": [],
-    "conditional_required": []
+    "optional": [
+      "groups"
+    ],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool."
+      }
+    ]
   },
   "outputs": {
     "directed": false,
