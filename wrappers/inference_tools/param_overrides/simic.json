@@ -1,0 +1,9 @@
+{
+  "lambda1": 0.0,
+  "lambda2": 0.0,
+  "num_TFs": 3,
+  "num_target_genes": 4,
+  "max_rcd_iter": 2000,
+  "random_seed": 1,
+  "wauc_adj_r2_threshold": 0.0
+}

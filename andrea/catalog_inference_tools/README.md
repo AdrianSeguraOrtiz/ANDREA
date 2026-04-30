@@ -24,6 +24,7 @@ andrea/catalog_inference_tools/
   input_specs/
     expression_matrix.json
     groups.json
+    cell_phenotypes.json
     lineage_tree.json
     tf_list.json
     prior_grn.json

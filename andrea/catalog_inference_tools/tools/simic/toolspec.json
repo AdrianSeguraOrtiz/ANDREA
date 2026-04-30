@@ -1,0 +1,177 @@
+{
+  "schema_version": "1.0",
+  "id": "simic",
+  "name": "SimiC",
+  "publication": [
+    "https://doi.org/10.1038/s42003-022-03319-7"
+  ],
+  "first_author": "Jianhao Peng",
+  "year": 2022,
+  "method_summary": "SimiC infers single-cell gene regulatory dynamics by jointly fitting one directed, weighted incidence matrix per ordered cell phenotype with a fused LASSO objective. The method uses driver genes such as TFs, target gene expression, cell state labels and an optional similarity constraint between consecutive states, then supports regulon activity and weighted AUC analysis from the inferred weights.",
+  "method_keywords": [
+    "single_cell",
+    "fused_lasso",
+    "regularized_regression",
+    "cell_phenotype",
+    "regulon_activity",
+    "directed"
+  ],
+  "implementation_url": "https://github.com/jianhao2016/SimiC/tree/fa47e69e5c793bce1500dc35283e112cd8f51992",
+  "docker_image": "adriansegura99/inference-tools_simic:1.0.0",
+  "execution_capabilities": [
+    "group_native"
+  ],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [
+      "cell_phenotypes",
+      "tf_list"
+    ],
+    "optional": [],
+    "conditional_required": []
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "The selected public function runs random coordinate descent internally but does not expose a stable per-iteration callback or log stream when called by the documented workflow; the wrapper should report coarse phase status in progress.json."
+  },
+  "params": {
+    "similarity": {
+      "type": "bool",
+      "required": false,
+      "default": true,
+      "description": "Whether to apply SimiC's similarity constraint between consecutive ordered cell phenotypes."
+    },
+    "lambda1": {
+      "type": "float",
+      "required": false,
+      "default": 0.01,
+      "min": 0,
+      "description": "L1 sparsity regularization weight used by simicLASSO_op when cross_val=false."
+    },
+    "lambda2": {
+      "type": "float",
+      "required": false,
+      "default": 0.00001,
+      "min": 0,
+      "description": "Similarity regularization weight used by simicLASSO_op when similarity=true and cross_val=false."
+    },
+    "cross_val": {
+      "type": "bool",
+      "required": false,
+      "default": false,
+      "description": "If true, SimiC selects lambda1 and lambda2 by five-fold cross-validation over the upstream grid {1e-1, 1e-2, 1e-3, 1e-4, 1e-5} before fitting the final GRNs."
+    },
+    "num_TFs": {
+      "type": "int",
+      "required": false,
+      "default": -1,
+      "min": -1,
+      "description": "Number of top-MAD TFs to retain from tf_list. Use -1 to retain all TFs present in the expression matrix."
+    },
+    "num_target_genes": {
+      "type": "int",
+      "required": false,
+      "default": -1,
+      "min": -1,
+      "description": "Number of top-variance non-TF target genes to retain. Use -1 to retain all non-TF expression genes."
+    },
+    "normalization_factor": {
+      "type": "float",
+      "required": false,
+      "default": 1.0,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "Multiplier applied after upstream row normalization of the expression matrix; maps to simicLASSO_op parameter _NF."
+    },
+    "max_rcd_iter": {
+      "type": "int",
+      "required": false,
+      "default": 500000,
+      "min": 1,
+      "description": "Maximum number of random coordinate descent updates used by simicLASSO_op for the final fit."
+    },
+    "num_rep": {
+      "type": "int",
+      "required": false,
+      "default": 1,
+      "min": 1,
+      "description": "Number of repeated final SimiC fits used for reported fit metrics; the upstream saved weight dictionary is the last final fit."
+    },
+    "random_seed": {
+      "type": "union",
+      "required": false,
+      "default": null,
+      "description": "Optional wrapper seed for numpy.random and random before calling SimiC. Use null to preserve upstream runtime-dependent random behavior.",
+      "oneOf": [
+        {
+          "type": "int",
+          "required": false,
+          "default": 42,
+          "description": "Deterministic seed."
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null for upstream runtime-dependent random state."
+        }
+      ]
+    },
+    "wauc_percent_of_target": {
+      "type": "float",
+      "required": false,
+      "default": 1.0,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "description": "Fraction of retained targets used by the upstream weighted AUC post-processing step."
+    },
+    "wauc_sort_by": {
+      "type": "enum",
+      "required": false,
+      "default": "expression",
+      "enum": [
+        "expression",
+        "weight",
+        "adj_r2"
+      ],
+      "description": "Ordering criterion for weighted AUC calculation in simiclasso.weighted_AUC_mat.main_fn."
+    },
+    "wauc_adj_r2_threshold": {
+      "type": "float",
+      "required": false,
+      "default": 0.7,
+      "min": 0,
+      "max": 1,
+      "description": "Adjusted R2 threshold used by weighted AUC post-processing to filter targets with poor fit."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "simic.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined stdout/stderr log from the SimiC run."
+    },
+    {
+      "path_pattern": "raw/simic_weights.pickle",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw SimiC weight dictionary produced by simicLASSO_op, including per-state incidence matrices and fit diagnostics."
+    },
+    {
+      "path_pattern": "raw/simic_wauc_matrices.pickle",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw weighted AUC matrices produced by simiclasso.weighted_AUC_mat.main_fn for regulon activity analysis."
+    }
+  ]
+}

@@ -317,6 +317,7 @@
             "type": "string",
             "enum": [
               "groups",
+              "cell_phenotypes",
               "lineage_tree",
               "tf_list",
               "prior_grn",
@@ -333,6 +334,7 @@
             "type": "string",
             "enum": [
               "groups",
+              "cell_phenotypes",
               "lineage_tree",
               "tf_list",
               "prior_grn",
@@ -380,6 +382,7 @@
                 "type": "string",
                 "enum": [
                   "groups",
+                  "cell_phenotypes",
                   "lineage_tree",
                   "tf_list",
                   "prior_grn",

@@ -80,6 +80,7 @@ def _load_tools_bootstrap() -> dict[str, Any]:
 
     extra_examples = {
         "groups": "sample\tcluster\nS1\tA\nS2\tB",
+        "cell_phenotypes": "cell\tphenotype\torder\ncell_1\tIP\t0\ncell_2\tIP\t0\ncell_3\tD12\t1",
         "lineage_tree": "child\tparent\tgain_rate\tloss_rate\nC2\tC1\t0.2\t0.1",
         "tf_list": "SOX2\nMYC\nTP53",
         "prior_grn_by_group": "group\tsource\ttarget\tscore\nA\tG1\tG2\t0.82\nB\tG1\tG3\t0.41",

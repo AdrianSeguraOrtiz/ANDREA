@@ -94,7 +94,7 @@ function validateTabularContent(
     if (missing.length) {
       throw new Error(`missing required column(s): ${missing.join(", ")}`);
     }
-    if (spec.firstColumnRole === "gene_id") {
+    if (spec.firstColumnRole === "gene_id" || spec.firstColumnRole === "expression_column_id") {
       const firstHeader = String(header[0] || "").trim().toLowerCase();
       if (!firstHeader) {
         throw new Error("first column header cannot be empty");
@@ -117,7 +117,7 @@ function validateTabularContent(
     if (cols.length !== expectedCols) {
       throw new Error(`inconsistent number of columns at line ${idx + 1}`);
     }
-    if (spec.firstColumnRole === "gene_id") {
+    if (spec.firstColumnRole === "gene_id" || spec.firstColumnRole === "expression_column_id") {
       const firstValue = String(cols[0] || "").trim();
       if (!firstValue) {
         throw new Error(emptyFirstValueMessage(idx + 1));

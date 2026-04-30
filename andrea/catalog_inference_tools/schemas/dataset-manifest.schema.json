@@ -220,6 +220,12 @@
           "pattern": ".*\\.tsv$",
           "description": "Optional groups TSV path. Detailed content validation is defined in input_specs/groups.json."
         },
+        "cell_phenotypes": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional ordered cell phenotype TSV path. Detailed content validation is defined in input_specs/cell_phenotypes.json."
+        },
         "lineage_tree": {
           "type": ["string", "null"],
           "minLength": 1,

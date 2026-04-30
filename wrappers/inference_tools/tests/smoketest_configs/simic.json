@@ -1,0 +1,10 @@
+{
+  "extra_files": ["cell_phenotypes.tsv", "tf_list.txt"],
+  "execution": {
+    "mode": "group_native"
+  },
+  "checks": {
+    "forbid_self_loops": true,
+    "require_group_context": true
+  }
+}

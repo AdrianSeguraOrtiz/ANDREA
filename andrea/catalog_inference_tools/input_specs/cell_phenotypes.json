@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "key": "cell_phenotypes",
+  "file_kind": "tsv",
+  "description": "Ordered cell phenotype TSV: first column maps expression cell identifiers to a phenotype/state label, and order gives the integer phenotype order used by methods that model transitions between phenotypes.",
+  "example": "cell\tphenotype\torder\ncell_1\tIP\t0\ncell_2\tIP\t0\ncell_3\tD12\t1",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 3,
+  "first_column_role": "expression_column_id",
+  "required_columns": [
+    "phenotype",
+    "order"
+  ],
+  "unique_first_column": true,
+  "column_types": {
+    "phenotype": "string",
+    "order": "int"
+  },
+  "cross_checks": [
+    {
+      "kind": "first_column_subset_expression_columns"
+    },
+    {
+      "kind": "row_count_matches_expression_columns"
+    }
+  ]
+}

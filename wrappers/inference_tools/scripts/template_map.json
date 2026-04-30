@@ -40,6 +40,12 @@
         "python_runtime_contract"
       ]
     },
+    "simic": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ]
+    },
     "tigress": {
       "runtime": "r",
       "bundles": []
