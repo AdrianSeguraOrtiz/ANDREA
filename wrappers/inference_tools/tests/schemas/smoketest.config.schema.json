@@ -35,6 +35,11 @@
       },
       "default": {}
     },
+    "param_overrides": {
+      "description": "Optional parameter overrides merged onto ToolSpec defaults and shared dev overrides for this smoketest variant.",
+      "type": "object",
+      "default": {}
+    },
     "require_progress": {
       "description": "Whether the smoketest must observe progress.json during execution.",
       "type": "boolean",
@@ -99,6 +104,9 @@
                 ]
               }
             }
+          },
+          "param_overrides": {
+            "type": "object"
           },
           "require_progress": {
             "type": "boolean"

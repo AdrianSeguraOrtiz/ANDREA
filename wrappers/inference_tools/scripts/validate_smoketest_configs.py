@@ -141,16 +141,43 @@ def resolve_fixture_path(
     return None
 
 
+def unknown_param_override_paths(
+    override: dict[str, Any],
+    params_schema: dict[str, Any],
+    prefix: str = "",
+) -> list[str]:
+    unknown: list[str] = []
+    for key, value in override.items():
+        if key not in params_schema:
+            unknown.append(f"{prefix}{key}")
+            continue
+        param_def = params_schema.get(key)
+        if not isinstance(param_def, dict):
+            continue
+        if param_def.get("type") != "object" or not isinstance(value, dict):
+            continue
+        properties = param_def.get("properties", {})
+        if isinstance(properties, dict):
+            unknown.extend(
+                unknown_param_override_paths(
+                    value,
+                    properties,
+                    prefix=f"{prefix}{key}.",
+                )
+            )
+    return unknown
+
+
 def semantic_errors_for_config(
     *,
     tool_id: str,
     config_path: Path,
     instance: Any,
-    catalog_tool_ids: set[str],
+    catalog_tool_dirs: dict[str, Path],
     fixtures_dir: Path,
 ) -> list[str]:
     errors: list[str] = []
-    if tool_id not in catalog_tool_ids:
+    if tool_id not in catalog_tool_dirs:
         errors.append(
             f"Config filename '{config_path.name}' does not match any catalog tool id."
         )
@@ -158,6 +185,14 @@ def semantic_errors_for_config(
     if not isinstance(instance, dict):
         errors.append("Smoketest config root must be a JSON object.")
         return errors
+
+    params_schema: dict[str, Any] = {}
+    tool_dir = catalog_tool_dirs.get(tool_id)
+    if tool_dir is not None:
+        toolspec = load_json(tool_dir / "toolspec.json")
+        raw_params = toolspec.get("params", {})
+        if isinstance(raw_params, dict):
+            params_schema = raw_params
 
     payloads: list[tuple[str, Any]] = [("root", instance)]
     variants = instance.get("variants")
@@ -182,6 +217,20 @@ def semantic_errors_for_config(
                     f"and {fixtures_dir / extra_name})"
                 )
 
+        param_overrides = payload.get("param_overrides", {})
+        if param_overrides is None:
+            param_overrides = {}
+        if isinstance(param_overrides, dict):
+            unknown_params = unknown_param_override_paths(
+                param_overrides,
+                params_schema,
+            )
+            if unknown_params:
+                errors.append(
+                    f"{label}.param_overrides contains unknown parameter keys: "
+                    f"{unknown_params}"
+                )
+
     return errors
 
 
@@ -199,7 +248,7 @@ def run(
     )
     if not catalog_tools:
         raise RuntimeError(f"No catalog tools found under: {catalog_tools_root}")
-    catalog_tool_ids = {tool_id for tool_id, _ in catalog_tools}
+    catalog_tool_dirs = {tool_id: tool_dir for tool_id, tool_dir in catalog_tools}
 
     all_configs = discover_config_files(configs_root)
     if not all_configs:
@@ -220,7 +269,7 @@ def run(
                 tool_id=tool_id,
                 config_path=config_path,
                 instance=instance,
-                catalog_tool_ids=catalog_tool_ids,
+                catalog_tool_dirs=catalog_tool_dirs,
                 fixtures_dir=fixtures_dir,
             )
         except RuntimeError as exc:

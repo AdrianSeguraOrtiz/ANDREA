@@ -44,6 +44,7 @@ ALLOWED_CONFIG_ROOT_KEYS = {
     "name",
     "extra_files",
     "execution",
+    "param_overrides",
     "require_progress",
     "checks",
     "variants",
@@ -61,6 +62,7 @@ class SmokeConfig:
     name: str
     extra_files: list[str]
     execution: dict[str, object]
+    param_overrides: dict[str, object]
     require_progress: bool
     require_cluster_context: bool
     require_group_context: bool
@@ -86,6 +88,7 @@ DEFAULT_CONFIG = SmokeConfig(
     name="default",
     extra_files=[],
     execution={},
+    param_overrides={},
     require_progress=True,
     require_cluster_context=False,
     require_group_context=False,
@@ -315,6 +318,7 @@ def prepare_smoke_io(
         catalog_tools_root=catalog_tools_root,
         param_overrides_dir=param_overrides_dir,
     )
+    resolved_params = deep_merge_dicts(resolved_params, config.param_overrides)
 
     expression_src = resolve_path(
         fixtures_dir,
@@ -343,6 +347,19 @@ def prepare_smoke_io(
         out_dir=out_dir,
         progress_file=out_dir / "progress.json",
     )
+
+
+def deep_merge_dicts(
+    base: dict[str, object], override: dict[str, object]
+) -> dict[str, object]:
+    merged = dict(base)
+    for key, value in override.items():
+        base_value = merged.get(key)
+        if isinstance(base_value, dict) and isinstance(value, dict):
+            merged[key] = deep_merge_dicts(base_value, value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def run_container_lifecycle(
@@ -449,6 +466,14 @@ def _parse_smoke_config_payload(
             f"Invalid config in {config_path}: execution.mode is unsupported."
         )
 
+    param_overrides = raw.get("param_overrides", {})
+    if param_overrides is None:
+        param_overrides = {}
+    if not isinstance(param_overrides, dict):
+        raise ValueError(
+            f"Invalid config in {config_path}: 'param_overrides' must be an object."
+        )
+
     require_progress = bool(raw.get("require_progress", True))
     name = str(raw.get("name", default_name)).strip() or default_name
 
@@ -463,6 +488,7 @@ def _parse_smoke_config_payload(
         name=name,
         extra_files=extra_files,
         execution=dict(execution),
+        param_overrides=dict(param_overrides),
         require_progress=require_progress,
         require_cluster_context=require_cluster_context,
         require_group_context=require_group_context,
@@ -504,6 +530,15 @@ def load_configs(*, tool_id: str, configs_dir: Path) -> list[SmokeConfig]:
                 f"Invalid config in {config_path}: variants[{idx}] must be an object."
             )
         merged = {**base, **variant}
+        base_param_overrides = base.get("param_overrides", {})
+        variant_param_overrides = variant.get("param_overrides", {})
+        if isinstance(base_param_overrides, dict) and isinstance(
+            variant_param_overrides, dict
+        ):
+            merged["param_overrides"] = deep_merge_dicts(
+                base_param_overrides,
+                variant_param_overrides,
+            )
         parsed.append(
             _parse_smoke_config_payload(
                 raw=merged,
