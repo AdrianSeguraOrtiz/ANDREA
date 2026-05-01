@@ -53,6 +53,10 @@
     "clr": {
       "runtime": "r",
       "bundles": []
+    },
+    "infercsn": {
+      "runtime": "r",
+      "bundles": []
     }
   }
 }

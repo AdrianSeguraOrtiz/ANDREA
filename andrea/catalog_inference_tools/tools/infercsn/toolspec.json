@@ -1,0 +1,192 @@
+{
+  "schema_version": "1.0",
+  "id": "infercsn",
+  "name": "inferCSN",
+  "publication": [
+    "https://doi.org/10.1038/s41540-025-00564-4"
+  ],
+  "first_author": "Xiong Li",
+  "year": 2025,
+  "method_summary": "inferCSN infers cell type and cell state specific gene regulatory networks from scRNA-seq data by combining pseudotime/state information with sparse regression models. The CRAN implementation selected here exposes the sparse-regression network inference core, fitting target genes from candidate regulators with L0/L0L1/L0L2 regularization and optionally filtering the inferred network with reciprocal-weight or pseudotime transfer-entropy sifting.",
+  "method_keywords": [
+    "single_cell",
+    "sparse_regression",
+    "l0_regularization",
+    "pseudotime",
+    "transfer_entropy",
+    "cell_state",
+    "directed"
+  ],
+  "implementation_url": "https://CRAN.R-project.org/package=inferCSN",
+  "docker_image": "adriansegura99/inference-tools_infercsn:1.0.0",
+  "execution_capabilities": [
+    "group_emulated"
+  ],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [
+      "groups"
+    ],
+    "optional": [
+      "pseudotime",
+      "tf_list"
+    ],
+    "conditional_required": [
+      {
+        "input": "pseudotime",
+        "param": "sift_method",
+        "op": "eq",
+        "value": "entropy",
+        "message": "pseudotime is required when sift_method=entropy because inferCSN network_sift() needs pseudotime-ordered cell metadata."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "inferCSN iterates over target genes internally, and network_sift(method=entropy) iterates over gene pairs, but the selected public entrypoints do not expose stable callbacks or parseable progress counters; the wrapper should report coarse lifecycle states in progress.json."
+  },
+  "params": {
+    "penalty": {
+      "type": "enum",
+      "required": false,
+      "default": "L0",
+      "enum": [
+        "L0",
+        "L0L1",
+        "L0L2"
+      ],
+      "description": "Sparse regression penalty passed to inferCSN(). Upstream documents L0, L0L1 and L0L2, with L0 as the default."
+    },
+    "cross_validation": {
+      "type": "bool",
+      "required": false,
+      "default": false,
+      "description": "Whether inferCSN should use L0Learn cross-validation when fitting each target-gene sparse regression model."
+    },
+    "seed": {
+      "type": "int",
+      "required": false,
+      "default": 1,
+      "description": "Random seed used by inferCSN for cross-validation and subsampling."
+    },
+    "n_folds": {
+      "type": "int",
+      "required": false,
+      "default": 5,
+      "min": 2,
+      "description": "Number of folds passed to L0Learn cross-validation when cross_validation=true."
+    },
+    "subsampling_method": {
+      "type": "enum",
+      "required": false,
+      "default": "sample",
+      "enum": [
+        "sample",
+        "meta_cells",
+        "pseudobulk"
+      ],
+      "description": "Upstream subsampling strategy used before sparse regression when subsampling_ratio < 1."
+    },
+    "subsampling_ratio": {
+      "type": "float",
+      "required": false,
+      "default": 1.0,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "description": "Fraction of cells used by inferCSN subsampling. A value of 1 preserves the full input matrix and skips subsampling."
+    },
+    "r_squared_threshold": {
+      "type": "float",
+      "required": false,
+      "default": 0.0,
+      "min": 0,
+      "max": 1,
+      "description": "Minimum model R2 required before retaining normalized target-gene coefficients; targets with R2 at or below this threshold yield zero coefficients that are omitted from network.csv."
+    },
+    "sift_method": {
+      "type": "enum",
+      "required": false,
+      "default": "none",
+      "enum": [
+        "none",
+        "max",
+        "entropy"
+      ],
+      "description": "Optional post-inference network_sift mode. none preserves the inferCSN() table; max keeps the stronger reciprocal direction; entropy filters with pseudotime transfer entropy and requires pseudotime.tsv."
+    },
+    "entropy_method": {
+      "type": "enum",
+      "required": false,
+      "default": "Shannon",
+      "enum": [
+        "Shannon",
+        "Renyi"
+      ],
+      "description": "Entropy estimator passed to network_sift() when sift_method=entropy."
+    },
+    "effective_entropy": {
+      "type": "bool",
+      "required": false,
+      "default": false,
+      "description": "Whether network_sift() should use effective transfer entropy when sift_method=entropy."
+    },
+    "shuffles": {
+      "type": "int",
+      "required": false,
+      "default": 100,
+      "min": 0,
+      "description": "Number of shuffles passed to network_sift() for effective transfer entropy. Upstream resets this to 0 when effective_entropy=false and to at least 10 when effective_entropy=true."
+    },
+    "entropy_nboot": {
+      "type": "int",
+      "required": false,
+      "default": 300,
+      "min": 0,
+      "description": "Number of bootstrap replications passed to network_sift() for transfer-entropy p values."
+    },
+    "lag_value": {
+      "type": "int",
+      "required": false,
+      "default": 1,
+      "min": 1,
+      "description": "Markov lag order used by network_sift() transfer entropy when sift_method=entropy."
+    },
+    "entropy_p_value": {
+      "type": "float",
+      "required": false,
+      "default": 0.05,
+      "min": 0,
+      "max": 1,
+      "description": "P value threshold used by network_sift() to filter transfer-entropy edges when entropy_nboot > 1."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "infercsn.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined stdout/stderr log from the inferCSN run."
+    },
+    {
+      "path_pattern": "raw/infercsn_inferred_network.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw regulator-target-weight table returned by inferCSN() before optional network_sift() filtering."
+    },
+    {
+      "path_pattern": "raw/infercsn_network.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Final upstream regulator-target-weight table after applying the selected sift_method and before conversion to ANDREA network.csv."
+    }
+  ]
+}

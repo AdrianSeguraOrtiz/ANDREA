@@ -1,0 +1,32 @@
+{
+  "extra_files": ["groups.tsv", "tf_list.txt"],
+  "execution": {
+    "mode": "group_emulated"
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "raw",
+      "param_overrides": {
+        "sift_method": "none"
+      }
+    },
+    {
+      "name": "max_sift",
+      "param_overrides": {
+        "sift_method": "max"
+      }
+    },
+    {
+      "name": "entropy_sift",
+      "extra_files": ["groups.tsv", "tf_list.txt", "pseudotime.tsv"],
+      "param_overrides": {
+        "sift_method": "entropy",
+        "shuffles": 0,
+        "entropy_nboot": 0
+      }
+    }
+  ]
+}
