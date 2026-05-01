@@ -223,7 +223,7 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                     )
 
     if "group_emulated" in execution_modes:
-        has_group_emulated_rule = False
+        has_group_emulated_requirement = "groups" in required_set
         if isinstance(conditional, list):
             for rule in conditional:
                 if not isinstance(rule, dict):
@@ -234,11 +234,11 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                     and rule.get("op") == "eq"
                     and rule.get("value") == "group_emulated"
                 ):
-                    has_group_emulated_rule = True
+                    has_group_emulated_requirement = True
                     break
-        if not has_group_emulated_rule:
+        if not has_group_emulated_requirement:
             errors.append(
-                "tools with execution_capabilities including 'group_emulated' must declare extra_inputs.conditional_required for groups when execution.mode == 'group_emulated'."
+                "tools with execution_capabilities including 'group_emulated' must either require groups directly or declare extra_inputs.conditional_required for groups when execution.mode == 'group_emulated'."
             )
 
     return errors

@@ -319,6 +319,7 @@
               "groups",
               "cell_phenotypes",
               "lineage_tree",
+              "pseudotime",
               "tf_list",
               "prior_grn",
               "prior_grn_by_group"
@@ -336,6 +337,7 @@
               "groups",
               "cell_phenotypes",
               "lineage_tree",
+              "pseudotime",
               "tf_list",
               "prior_grn",
               "prior_grn_by_group"
@@ -384,6 +386,7 @@
                   "groups",
                   "cell_phenotypes",
                   "lineage_tree",
+                  "pseudotime",
                   "tf_list",
                   "prior_grn",
                   "prior_grn_by_group"

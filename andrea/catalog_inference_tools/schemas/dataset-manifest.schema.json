@@ -232,6 +232,12 @@
           "pattern": ".*\\.tsv$",
           "description": "Optional lineage tree TSV path. Detailed content validation is defined in input_specs/lineage_tree.json."
         },
+        "pseudotime": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional pseudotime TSV path. Detailed content validation is defined in input_specs/pseudotime.json."
+        },
         "tf_list": {
           "type": ["string", "null"],
           "minLength": 1,

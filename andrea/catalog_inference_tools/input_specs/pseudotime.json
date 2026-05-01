@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "key": "pseudotime",
+  "file_kind": "tsv",
+  "description": "Pseudotime TSV: first column maps expression cell identifiers to a numeric pseudotime value.",
+  "example": "cell\tpseudotime\ncell_1\t0.0\ncell_2\t0.4\ncell_3\t1.0",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 2,
+  "first_column_role": "expression_column_id",
+  "required_columns": [
+    "pseudotime"
+  ],
+  "unique_first_column": true,
+  "column_types": {
+    "pseudotime": "float"
+  },
+  "cross_checks": [
+    {
+      "kind": "first_column_subset_expression_columns"
+    },
+    {
+      "kind": "row_count_matches_expression_columns"
+    }
+  ]
+}
