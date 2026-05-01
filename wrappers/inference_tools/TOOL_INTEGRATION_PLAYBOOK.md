@@ -39,6 +39,8 @@ The goal of an integration is to produce:
    - package manager / official library first
    - upstream public repo pinned to tag/commit if no package exists
    - never depend on an unpinned floating source if avoidable
+7. Audit all relevant upstream public modes before choosing the wrapper contract.
+8. Treat execution capabilities as dataset-routing semantics, not as algorithm-variant names.
 
 ## Official End-to-End Procedure
 
@@ -149,6 +151,7 @@ Context:
 
 Requirements:
 - Review the upstream repo and the local papers
+- Audit all relevant upstream public execution modes/entrypoints before choosing the wrapper contract
 - Produce or update [integration_decisions.md](wrappers/inference_tools/tools/<tool_id>/integration_decisions.md)
 - Draft [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
 - Reuse existing normalized inputs when their semantic content matches
@@ -157,6 +160,7 @@ Requirements:
 - In [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json), store publication DOIs as full canonical URLs (`https://doi.org/...`) and store `first_author` as the full author name
 - Populate `year`, `method_summary` and `method_keywords` with explicit evidence from the primary paper/repo, not with wrapper-level wording
 - Explicitly decide and document which upstream public entrypoint the integration mirrors
+- Explicitly document any upstream public modes/entrypoints that are not exposed by the wrapper and why
 - If any upstream default is data-dependent or runtime-dependent, document the exact rule and how the ToolSpec preserves it
 - Determine whether the wrapper should preserve raw method scores directly or whether the chosen upstream public interface already defines the score scale
 - For every non-trivial field in [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json), record:
@@ -168,11 +172,12 @@ Requirements:
 - If optional manual clarifications are provided, treat them as authoritative context for locating the target implementation and installation route unless stronger primary evidence clearly disproves them
 
 Focus especially on:
-1. input semantics and conditional required inputs
-2. parameter mapping and defaults
-3. output semantics and how they should map to raw `network.csv`
-4. installation source preference: package first, pinned upstream source second
-5. explicit evidence for `accepts`, `assumes`, `extra_inputs`, `outputs`, `progress`, `params` and `artifacts_aux`
+1. upstream execution modes/entrypoints and whether each maps to `global`, `group_native`, `group_emulated`, a parameter choice, or is intentionally excluded
+2. input semantics and conditional required inputs by execution mode and by parameter value
+3. parameter mapping and defaults
+4. output semantics and how they should map to raw `network.csv`
+5. installation source preference: package first, pinned upstream source second; inspect the installable package/version when it differs from the local repo snapshot
+6. explicit evidence for `accepts`, `assumes`, `extra_inputs`, `outputs`, `progress`, `params` and `artifacts_aux`
 ```
 
 ### Step 6. Review the Phase 1 outputs
@@ -180,6 +185,9 @@ Focus especially on:
 Manual action:
 - inspect [integration_decisions.md](tools/<tool_id>/integration_decisions.md)
 - inspect [toolspec.json](../../andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
+- check that all relevant upstream public modes/entrypoints were audited, including excluded ones
+- check that proposed normalized inputs are semantically correct, not just file-shape compatible
+- check that execution capabilities and conditional input rules are represented in the ToolSpec rather than only in GUI/core behavior
 - decide whether the proposed contract is acceptable before any wrapper code is written
 
 Do not continue to Phase 2 until the contract looks correct.
@@ -385,11 +393,21 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
   - whether the method exists as:
     - a low-level algorithm primitive
     - a higher-level convenience pipeline that includes preprocessing/postprocessing
+    - multiple public workflows or functions for global, grouped, multitask, pseudotime, time-lagged, or condition-specific inference
 - rule:
+  - audit all relevant public upstream entrypoints before choosing the wrapper contract; do not stop at the first entrypoint that can produce a network
   - choose the narrowest public upstream interface that cleanly matches ANDREA inputs
   - record the decision explicitly in `integration_decisions.md`
+  - include a short mode/entrypoint matrix in `integration_decisions.md` with:
+    - upstream function/CLI/workflow name
+    - required inputs
+    - output shape and whether it produces one network, multiple native group/task networks, or a post-filtered network
+    - mapped ANDREA execution capability or parameter
+    - whether it is exposed by the wrapper
+    - rationale for exposing or excluding it
   - if the wrapper intentionally targets a convenience wrapper instead of the bare algorithm, document the consequence for params and output semantics
   - if the upstream package offers both a score-preserving low-level interface and a convenience wrapper that only rescales the same scores, prefer the score-preserving interface so raw `network.csv` remains comparable with other tools
+  - if the official installable package/version differs from the local repo snapshot, inspect the installable package/version and base the runtime contract on that version
 
 - `execution_capabilities`
   - look in:
@@ -398,12 +416,18 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
   - supported values:
     - `global`: the wrapper can run one network on the whole expression matrix
     - `group_native`: the upstream public interface natively consumes group/task metadata and returns group/task networks from one run
-    - `group_emulated`: ANDREA can emulate grouped execution by partitioning the expression matrix and running a global-mode wrapper once per group
+    - `group_emulated`: ANDREA can emulate grouped execution by partitioning the expression matrix and running the tool once per group/subset
   - rule:
     - use `execution_capabilities` instead of the removed `execution_scope`
+    - use `global` only when it is methodologically valid to infer one network from the whole expression matrix, not merely because the upstream code can technically accept any matrix
+    - if the method is designed for one condition, cell type, cell state, trajectory segment, or subgroup at a time, expose `group_emulated` when ANDREA should partition the full dataset and run the method independently per group
+    - use `group_native` only when the upstream public interface itself consumes group/task metadata and returns group/task networks from one run
     - keep algorithm choices as normal params when they are variants inside one execution capability
+    - examples of parameter choices, not execution capabilities, include regression model families, penalties, score filters, feature-selection strategy, and post-processing mode when they do not change how ANDREA partitions or routes the dataset
     - record whether grouped output context is produced by the wrapper (`group_native`) or by the orchestrator (`group_emulated`)
-    - if `group_emulated` is exposed, declare `groups` in `extra_inputs.optional` and add an `extra_inputs.conditional_required` rule requiring `groups` when `execution.mode == "group_emulated"`
+    - if `group_emulated` is exposed alongside other execution modes, declare `groups` in `extra_inputs.optional` and add an `extra_inputs.conditional_required` rule requiring `groups` when `execution.mode == "group_emulated"`
+    - if `group_emulated` is the only exposed execution mode, declaring `groups` in `extra_inputs.required` is acceptable and usually clearer
+    - document excluded upstream modes/entrypoints explicitly; the reason may be unsupported normalized inputs, incompatible output semantics, deprecated API, unavailable runtime dependency, or a deliberate scope decision
 
 ### Dynamic defaults
 
@@ -463,9 +487,18 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - files beyond expression matrix
     - whether they are always required, mode-dependent, or optional
   - rule:
+    - create an input requirement matrix in `integration_decisions.md` before finalizing the ToolSpec:
+      - always required inputs
+      - inputs required only for an `execution.mode`
+      - inputs required only for a parameter value
+      - genuinely optional inputs
+      - upstream inputs intentionally not exposed
     - if a file is needed only when certain parameter values are used, model it in `conditional_required`
     - if a file is needed only for a selected execution mode, model it in `conditional_required` with `execution: "mode"` and a value from `execution_capabilities`
+    - if an execution capability is the only supported mode and the input is therefore always required for that tool, declaring it in `extra_inputs.required` is acceptable and often clearer than a conditional rule
+    - do not rely on GUI-only or orchestrator-only hardcoding as the source of a required input rule; express the rule in the ToolSpec whenever the catalog can represent it
     - if the semantic content does not match an existing normalized input, propose a new `input_spec`
+    - document why each reused normalized input matches semantically, not just structurally
 
 ### Output semantics
 
@@ -569,9 +602,12 @@ Notes:
 
 Before considering a tool integrated, confirm:
 - local paper PDFs were extracted to text and reviewed
+- all relevant upstream public modes/entrypoints were audited before the wrapper contract was chosen
+- exposed and excluded upstream modes/entrypoints are documented with rationale
 - `toolspec.json` matches the real upstream interface
 - every non-trivial `toolspec` field has explicit evidence in `integration_decisions.md`
 - conditional inputs are modeled in the catalog when needed
+- required inputs are modeled by always-required, execution-mode-required, or parameter-required rules as appropriate
 - no normalized input is being reused with the wrong semantics
 - the wrapper does not rely on the local `repo/`
 - the `Dockerfile` uses a stable public source
