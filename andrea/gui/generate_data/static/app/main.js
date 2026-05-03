@@ -497,46 +497,127 @@ function simulatorInfoPayload(simulator) {
     ? simulator.profile_capabilities
     : {};
   const publications = Array.isArray(simulator.publication) ? simulator.publication : [];
+  const keywords = Array.isArray(simulator.simulation_keywords) ? simulator.simulation_keywords : [];
   const rawInputs = simulator.simulator_inputs && typeof simulator.simulator_inputs === "object"
     ? simulator.simulator_inputs
     : {};
-  const inputIds = [
-    ...(Array.isArray(rawInputs.required) ? rawInputs.required : []),
-    ...(Array.isArray(rawInputs.optional) ? rawInputs.optional : []),
-    ...(Array.isArray(rawInputs.conditional_required) ? rawInputs.conditional_required : []),
-  ]
-    .map((item) => String(item?.id || item?.input || "").trim())
+  const params = simulator?.params_schema && typeof simulator.params_schema === "object" ? simulator.params_schema : {};
+  const profileIds = Object.keys(profileCapabilities);
+  const requiredInputs = (Array.isArray(rawInputs.required) ? rawInputs.required : [])
+    .map((item) => simulatorInputSummary(item))
+    .filter(Boolean);
+  const optionalInputs = (Array.isArray(rawInputs.optional) ? rawInputs.optional : [])
+    .map((item) => simulatorInputSummary(item))
+    .filter(Boolean);
+  const conditionalInputs = (Array.isArray(rawInputs.conditional_required) ? rawInputs.conditional_required : [])
+    .map((item) => conditionalSimulatorInputDetail(item))
     .filter(Boolean);
   return buildInfoTooltip({
-    title: simulator.name,
-    description: simulator.simulation_summary || "",
-    fields: [
-      { label: "Simulator ID", value: simulator.simulator_id || "-" },
+    title: simulator.name || simulator.simulator_id || "Simulator Info",
+    description: String(simulator.simulation_summary || "").trim(),
+    chips: [
+      { label: "id", value: simulator.simulator_id || "-" },
+      { label: "year", value: simulator.year ? String(simulator.year) : "-" },
+      { label: "profiles", value: profileIds.length ? String(profileIds.length) : "0" },
+    ],
+    sections: [
       {
-        label: "Supported profiles",
-        value: Object.keys(profileCapabilities).length ? Object.keys(profileCapabilities).join(", ") : "-",
+        title: "Overview",
+        open: true,
+        fields: [
+          { label: "Schema version", value: simulator.schema_version || "-" },
+          {
+            label: "Publication(s)",
+            links: publications.length
+              ? publications.map((item) => ({ label: String(item || "").trim(), url: String(item || "").trim() }))
+              : [{ label: "-", url: "" }],
+          },
+          { label: "First author", value: simulator.first_author || "-" },
+          { label: "Publication year", value: simulator.year ? String(simulator.year) : "-" },
+          { label: "Keywords", value: keywords.length ? keywords.join(", ") : "-" },
+          {
+            label: "Implementation",
+            link: {
+              label: String(simulator.implementation_url || "-"),
+              url: String(simulator.implementation_url || ""),
+            },
+            value: simulator.implementation_url || "-",
+          },
+          { label: "Docker image", value: simulator.docker_image || "-" },
+          { label: "Notes", value: simulatorNotesSummary(simulator.notes) },
+        ],
       },
-      { label: "Simulator inputs", value: inputIds.length ? [...new Set(inputIds)].join(", ") : "none" },
-      { label: "Keywords", value: (simulator.simulation_keywords || []).join(", ") || "-" },
       {
-        label: "Implementation",
-        link: {
-          label: String(simulator.implementation_url || "-"),
-          url: String(simulator.implementation_url || ""),
-        },
-        value: simulator.implementation_url || "-",
+        title: "Simulator Inputs",
+        open: true,
+        fields: [
+          { label: "Required", value: requiredInputs.length ? requiredInputs.join("\n") : "none" },
+          { label: "Optional", value: optionalInputs.length ? optionalInputs.join("\n") : "none" },
+        ],
+        conditionsLabel: "Conditional required inputs",
+        conditions: conditionalInputs,
       },
-      { label: "Docker image", value: simulator.docker_image || "-" },
-      { label: "First author", value: simulator.first_author || "-" },
       {
-        label: "Publication(s)",
-        links: publications.length
-          ? publications.map((item) => ({ label: String(item || "").trim(), url: String(item || "").trim() }))
-          : [{ label: "-", url: "" }],
+        title: "Parameters",
+        open: false,
+        text: Object.keys(params).length ? "" : "No parameters declared.",
+        params,
       },
     ],
+    raw: simulator.spec || null,
     example: "",
   });
+}
+
+function simulatorNotesSummary(notes) {
+  if (Array.isArray(notes)) {
+    return notes.map((item) => String(item || "").trim()).filter(Boolean).join("\n") || "none";
+  }
+  return String(notes || "").trim() || "none";
+}
+
+function simulatorInputSummary(item) {
+  if (typeof item === "string") {
+    return item;
+  }
+  if (!item || typeof item !== "object") {
+    return "";
+  }
+  const id = String(item.id || item.input || "").trim();
+  const description = String(item.description || item.message || "").trim();
+  return [id, description].filter(Boolean).join(": ");
+}
+
+function conditionalSimulatorInputDetail(rule) {
+  if (!rule || typeof rule !== "object") {
+    return null;
+  }
+  const input = String(rule.input || rule.id || "").trim();
+  const message = String(rule.message || rule.description || "").trim();
+  const op = String(rule.op || "").trim();
+  const value = rule.value === undefined ? "" : JSON.stringify(rule.value);
+  const left = rule.param
+    ? `param.${String(rule.param).trim()}`
+    : rule.profile
+      ? `profile.${String(rule.profile).trim()}`
+      : "";
+  const condition = left && op ? `${left} ${formatConditionalOperator(op)} ${value}` : "";
+  return input || condition || message
+    ? { input, condition, message }
+    : null;
+}
+
+function formatConditionalOperator(op) {
+  const normalized = String(op || "").trim();
+  const labels = {
+    eq: "==",
+    ne: "!=",
+    neq: "!=",
+    in: "in",
+    not_in: "not in",
+    exists: "exists",
+  };
+  return labels[normalized] || normalized;
 }
 
 function profileDerivations(capability) {
@@ -564,6 +645,118 @@ function artifactDisplayLabel(artifact) {
   return truthLabels[artifact] || artifact;
 }
 
+function artifactHasDetail(item, derivation) {
+  if (derivation) {
+    return true;
+  }
+  return Boolean(
+    String(item.kind || "").trim()
+    || String(item.description || "").trim()
+    || String(item.notes || "").trim()
+    || (Array.isArray(item.formats) && item.formats.length)
+  );
+}
+
+function appendArtifactDetailContent(detailBox, item, artifact, derivation) {
+  detailBox.hidden = false;
+  detailBox.dataset.artifact = artifact;
+  detailBox.innerHTML = "";
+
+  const title = document.createElement("div");
+  title.className = "simulator-derivation-head";
+  const titleText = document.createElement("strong");
+  titleText.textContent = `${String(item.label || artifactDisplayLabel(artifact))} details`;
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "simulator-derivation-close";
+  closeBtn.textContent = "x";
+  closeBtn.addEventListener("click", () => {
+    detailBox.hidden = true;
+    detailBox.innerHTML = "";
+    detailBox.dataset.artifact = "";
+  });
+  title.appendChild(titleText);
+  title.appendChild(closeBtn);
+  detailBox.appendChild(title);
+
+  const description = String(item.description || "").trim();
+  if (description) {
+    const desc = document.createElement("p");
+    desc.className = "simulator-derivation-method";
+    desc.textContent = description;
+    detailBox.appendChild(desc);
+  }
+
+  const metadata = [
+    ["Kind", String(item.kind || "").trim()],
+    ["Formats", Array.isArray(item.formats) && item.formats.length ? item.formats.join(", ") : ""],
+    ["Notes", String(item.notes || "").trim()],
+  ].filter(([, value]) => value);
+  for (const [label, value] of metadata) {
+    const block = document.createElement("div");
+    block.className = "simulator-derivation-block";
+    const blockTitle = document.createElement("strong");
+    blockTitle.textContent = label;
+    const blockValue = document.createElement("div");
+    blockValue.className = "simulator-derivation-impl";
+    blockValue.textContent = value;
+    block.appendChild(blockTitle);
+    block.appendChild(blockValue);
+    detailBox.appendChild(block);
+  }
+
+  if (!derivation) {
+    return;
+  }
+
+  const methodText = String(derivation.method || "").trim();
+  if (methodText) {
+    const method = document.createElement("p");
+    method.className = "simulator-derivation-method";
+    method.textContent = methodText;
+    detailBox.appendChild(method);
+  }
+
+  const sections = [
+    ["Source artifacts", Array.isArray(derivation.source_artifacts) ? derivation.source_artifacts : []],
+    ["Assumptions", Array.isArray(derivation.assumptions) ? derivation.assumptions : []],
+    ["Limitations", Array.isArray(derivation.limitations) ? derivation.limitations : []],
+  ];
+  for (const [label, values] of sections) {
+    const block = document.createElement("div");
+    block.className = "simulator-derivation-block";
+    const blockTitle = document.createElement("strong");
+    blockTitle.textContent = label;
+    block.appendChild(blockTitle);
+    const list = document.createElement("ul");
+    list.className = "simulator-derivation-list";
+    if (values.length) {
+      for (const value of values) {
+        const li = document.createElement("li");
+        li.textContent = String(value);
+        list.appendChild(li);
+      }
+    } else {
+      const li = document.createElement("li");
+      li.textContent = "-";
+      list.appendChild(li);
+    }
+    block.appendChild(list);
+    detailBox.appendChild(block);
+  }
+
+  const impl = document.createElement("div");
+  impl.className = "simulator-derivation-block";
+  const implTitle = document.createElement("strong");
+  implTitle.textContent = "Implemented in";
+  const implValue = document.createElement("div");
+  implValue.className = "simulator-derivation-impl";
+  implValue.textContent = String(derivation.implemented_in || "-");
+  impl.appendChild(implTitle);
+  impl.appendChild(implValue);
+  detailBox.appendChild(impl);
+}
+
 function appendArtifactChipRow(host, items, { derivations, simulator, profileId }) {
   if (!items.length) {
     const empty = document.createElement("span");
@@ -583,12 +776,12 @@ function appendArtifactChipRow(host, items, { derivations, simulator, profileId 
     text.textContent = String(item.label || artifactDisplayLabel(artifact));
     chip.appendChild(text);
     const derivation = derivations.get(artifact);
-    if (item.mode === "derivable" && derivation) {
+    if (artifactHasDetail(item, derivation)) {
       const infoBtn = document.createElement("button");
       infoBtn.type = "button";
       infoBtn.className = "artifact-chip-info";
       infoBtn.textContent = "i";
-      infoBtn.title = `How ${artifact} is derived`;
+      infoBtn.title = `Details for ${artifact}`;
       infoBtn.addEventListener("click", (event) => {
         event.stopPropagation();
         const detailBox = host.closest(".simulator-capability-card")?.querySelector(".simulator-derivation-detail");
@@ -602,70 +795,7 @@ function appendArtifactChipRow(host, items, { derivations, simulator, profileId 
           detailBox.dataset.artifact = "";
           return;
         }
-        detailBox.hidden = false;
-        detailBox.dataset.artifact = artifact;
-        detailBox.innerHTML = "";
-
-        const title = document.createElement("div");
-        title.className = "simulator-derivation-head";
-        const titleText = document.createElement("strong");
-        titleText.textContent = `${artifactDisplayLabel(artifact)} derivation`;
-        const closeBtn = document.createElement("button");
-        closeBtn.type = "button";
-        closeBtn.className = "simulator-derivation-close";
-        closeBtn.textContent = "x";
-        closeBtn.addEventListener("click", () => {
-          detailBox.hidden = true;
-          detailBox.innerHTML = "";
-          detailBox.dataset.artifact = "";
-        });
-        title.appendChild(titleText);
-        title.appendChild(closeBtn);
-        detailBox.appendChild(title);
-
-        const method = document.createElement("p");
-        method.className = "simulator-derivation-method";
-        method.textContent = String(derivation.method || "").trim();
-        detailBox.appendChild(method);
-
-        const sections = [
-          ["Source artifacts", Array.isArray(derivation.source_artifacts) ? derivation.source_artifacts : []],
-          ["Assumptions", Array.isArray(derivation.assumptions) ? derivation.assumptions : []],
-          ["Limitations", Array.isArray(derivation.limitations) ? derivation.limitations : []],
-        ];
-        for (const [label, values] of sections) {
-          const block = document.createElement("div");
-          block.className = "simulator-derivation-block";
-          const blockTitle = document.createElement("strong");
-          blockTitle.textContent = label;
-          block.appendChild(blockTitle);
-          const list = document.createElement("ul");
-          list.className = "simulator-derivation-list";
-          if (values.length) {
-            for (const value of values) {
-              const li = document.createElement("li");
-              li.textContent = String(value);
-              list.appendChild(li);
-            }
-          } else {
-            const li = document.createElement("li");
-            li.textContent = "-";
-            list.appendChild(li);
-          }
-          block.appendChild(list);
-          detailBox.appendChild(block);
-        }
-
-        const impl = document.createElement("div");
-        impl.className = "simulator-derivation-block";
-        const implTitle = document.createElement("strong");
-        implTitle.textContent = "Implemented in";
-        const implValue = document.createElement("div");
-        implValue.className = "simulator-derivation-impl";
-        implValue.textContent = String(derivation.implemented_in || "-");
-        impl.appendChild(implTitle);
-        impl.appendChild(implValue);
-        detailBox.appendChild(impl);
+        appendArtifactDetailContent(detailBox, item, artifact, derivation);
       });
       chip.appendChild(infoBtn);
     }
@@ -682,11 +812,15 @@ function appendCapabilitySection(host, simulator) {
     return;
   }
 
-  const section = document.createElement("section");
-  section.className = "info-section";
-  const title = document.createElement("h5");
+  const section = document.createElement("details");
+  section.className = "info-details simulator-capability-details";
+  section.open = true;
+  const title = document.createElement("summary");
   title.textContent = "Profile Capabilities";
   section.appendChild(title);
+
+  const body = document.createElement("div");
+  body.className = "info-details-body";
 
   const cards = document.createElement("div");
   cards.className = "simulator-capability-list";
@@ -702,6 +836,14 @@ function appendCapabilitySection(host, simulator) {
     profileTitle.textContent = profileId;
     header.appendChild(profileTitle);
     card.appendChild(header);
+
+    const notes = String(capability.notes || "").trim();
+    if (notes) {
+      const notesNode = document.createElement("p");
+      notesNode.className = "simulator-capability-notes";
+      notesNode.textContent = notes;
+      card.appendChild(notesNode);
+    }
 
     const extrasRow = document.createElement("div");
     extrasRow.className = "simulator-capability-row";
@@ -735,6 +877,10 @@ function appendCapabilitySection(host, simulator) {
       nativeOutputs.map((item) => ({
         artifact: String(item?.id || "").trim(),
         label: String(item?.id || "").trim(),
+        kind: String(item?.kind || "").trim(),
+        description: String(item?.description || "").trim(),
+        formats: Array.isArray(item?.formats) ? item.formats : [],
+        notes: String(item?.notes || "").trim(),
         mode: "native",
       })),
       { derivations, simulator, profileId }
@@ -757,6 +903,30 @@ function appendCapabilitySection(host, simulator) {
     truthRow.appendChild(truthWrap);
     card.appendChild(truthRow);
 
+    const auxArtifacts = Array.isArray(capability.artifacts_aux) ? capability.artifacts_aux : [];
+    const auxRow = document.createElement("div");
+    auxRow.className = "simulator-capability-row";
+    const auxLabel = document.createElement("strong");
+    auxLabel.textContent = "Auxiliary artifacts";
+    const auxWrap = document.createElement("div");
+    auxWrap.className = "artifact-chip-row";
+    appendArtifactChipRow(
+      auxWrap,
+      auxArtifacts.map((item) => ({
+        artifact: String(item?.id || item?.path_pattern || "").trim(),
+        label: String(item?.id || item?.path_pattern || "").trim(),
+        kind: String(item?.kind || "").trim(),
+        description: String(item?.description || "").trim(),
+        formats: Array.isArray(item?.formats) ? item.formats : [],
+        notes: String(item?.notes || "").trim(),
+        mode: "native",
+      })),
+      { derivations, simulator, profileId }
+    );
+    auxRow.appendChild(auxLabel);
+    auxRow.appendChild(auxWrap);
+    card.appendChild(auxRow);
+
     const detailBox = document.createElement("div");
     detailBox.className = "simulator-derivation-detail";
     detailBox.hidden = true;
@@ -765,8 +935,13 @@ function appendCapabilitySection(host, simulator) {
 
     cards.appendChild(card);
   }
-  section.appendChild(cards);
-  host.appendChild(section);
+  body.appendChild(cards);
+  section.appendChild(body);
+  const rawSection = Array.from(host.children).find((child) => (
+    child.classList?.contains("info-details")
+    && child.querySelector("summary")?.textContent === "Raw Spec"
+  ));
+  host.insertBefore(section, rawSection || null);
 }
 
 function showSimulatorInfo(simulator) {

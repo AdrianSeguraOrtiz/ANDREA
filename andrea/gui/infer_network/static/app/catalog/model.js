@@ -66,11 +66,14 @@ export function toolSpecInfoPayload(tool) {
   const firstAuthor = String(tool?.first_author || "").trim();
   const outputs = tool?.outputs && typeof tool.outputs === "object" ? tool.outputs : {};
   const progress = tool?.progress && typeof tool.progress === "object" ? tool.progress : {};
+  const params = tool?.params_schema && typeof tool.params_schema === "object" ? tool.params_schema : {};
+  const artifactsAux = Array.isArray(tool?.artifacts_aux) ? tool.artifacts_aux : [];
+  const keywords = Array.isArray(tool?.method_keywords) ? tool.method_keywords : [];
   const capabilities = Array.isArray(tool?.execution_capabilities)
     ? tool.execution_capabilities.map((item) => String(item || "").trim()).filter(Boolean)
     : [];
-  const conditionalSummary = conditionalExtras
-    .map((item) => String(item?.message || "").trim())
+  const conditionalRequirements = conditionalExtras
+    .map((item) => conditionalExtraDetail(item))
     .filter(Boolean);
 
   const publicationLinks = publication.map((item) => ({
@@ -79,40 +82,104 @@ export function toolSpecInfoPayload(tool) {
   }));
   return {
     title: tool?.name || tool?.tool_id || "Tool Info",
-    description: "",
-    fields: [
-      { label: "Tool ID", value: tool?.tool_id || "-" },
-      { label: "Execution Capabilities", value: capabilities.length ? capabilities.join(", ") : "-" },
-      { label: "Assumes", value: tool?.assumes || "-" },
-      { label: "Accepts", value: accepts.length ? accepts.join(", ") : "-" },
-      { label: "Required extras", value: requiredExtras.length ? requiredExtras.join(", ") : "none" },
-      { label: "Optional extras", value: optionalExtras.length ? optionalExtras.join(", ") : "none" },
-      { label: "Conditional extras", value: conditionalSummary.length ? conditionalSummary.join(" | ") : "none" },
+    description: String(tool?.method_summary || "").trim(),
+    chips: [
+      { label: "id", value: tool?.tool_id || "-" },
+      { label: "year", value: tool?.year ? String(tool.year) : "-" },
+      { label: "assumes", value: tool?.assumes || "-" },
+      ...capabilities.map((mode) => ({ label: "mode", value: mode, tone: "mode" })),
+    ],
+    sections: [
       {
-        label: "Outputs",
-        value: `directed=${String(outputs.directed ?? "-")}, sign=${outputs.sign ?? "-"}, evidence=${outputs.evidence ?? "-"}`,
+        title: "Overview",
+        open: true,
+        fields: [
+          { label: "Schema version", value: tool?.schema_version || "-" },
+          {
+            label: "Publication(s)",
+            links: publicationLinks.length ? publicationLinks : [{ label: "-", url: "" }],
+          },
+          { label: "First author", value: firstAuthor || "-" },
+          { label: "Publication year", value: tool?.year ? String(tool.year) : "-" },
+          { label: "Keywords", value: keywords.length ? keywords.join(", ") : "-" },
+          {
+            label: "Implementation",
+            link: {
+              label: String(tool?.implementation_url || "-"),
+              url: String(tool?.implementation_url || ""),
+            },
+            value: tool?.implementation_url || "-",
+          },
+          { label: "Docker image", value: tool?.docker_image || "-" },
+        ],
       },
       {
-        label: "Progress",
-        value: `${progress.kind || "-"}${progress.note ? ` (${String(progress.note)})` : ""}`,
+        title: "Execution and Inputs",
+        open: true,
+        fields: [
+          { label: "Execution capabilities", value: capabilities.length ? capabilities.join(", ") : "-" },
+          { label: "Accepts", value: accepts.length ? accepts.join(", ") : "-" },
+          { label: "Required extra inputs", value: requiredExtras.length ? requiredExtras.join(", ") : "none" },
+          { label: "Optional extra inputs", value: optionalExtras.length ? optionalExtras.join(", ") : "none" },
+        ],
+        conditionsLabel: "Conditional required inputs",
+        conditions: conditionalRequirements,
       },
       {
-        label: "Implementation",
-        link: {
-          label: String(tool?.implementation_url || "-"),
-          url: String(tool?.implementation_url || ""),
-        },
-        value: tool?.implementation_url || "-",
+        title: "Outputs and Artifacts",
+        open: true,
+        fields: [
+          { label: "Directed", value: String(outputs.directed ?? "-") },
+          { label: "Sign", value: outputs.sign ?? "-" },
+          { label: "Evidence", value: outputs.evidence ?? "-" },
+          { label: "Progress reporting", value: progress.kind || "-" },
+          { label: "Progress details", value: progress.note ? String(progress.note) : "-" },
+        ],
+        artifactsLabel: "Auxiliary artifacts",
+        artifacts: artifactsAux,
       },
-      { label: "Docker image", value: tool?.docker_image || "-" },
-      { label: "First author", value: firstAuthor || "-" },
       {
-        label: "Publication(s)",
-        links: publicationLinks.length ? publicationLinks : [{ label: "-", url: "" }],
+        title: "Parameters",
+        open: false,
+        text: Object.keys(params).length ? "" : "No parameters declared.",
+        params,
       },
     ],
+    raw: tool?.spec || null,
     example: "",
   };
+}
+
+function conditionalExtraDetail(rule) {
+  if (!rule || typeof rule !== "object") {
+    return null;
+  }
+  const input = String(rule.input || "").trim();
+  const message = String(rule.message || "").trim();
+  const op = String(rule.op || "").trim();
+  const value = rule.value === undefined ? "" : JSON.stringify(rule.value);
+  const left = rule.param
+    ? `param.${String(rule.param).trim()}`
+    : rule.execution
+      ? `execution.${String(rule.execution).trim()}`
+      : "";
+  const condition = left && op ? `${left} ${formatConditionalOperator(op)} ${value}` : "";
+  return input || condition || message
+    ? { input, condition, message }
+    : null;
+}
+
+function formatConditionalOperator(op) {
+  const normalized = String(op || "").trim();
+  const labels = {
+    eq: "==",
+    ne: "!=",
+    neq: "!=",
+    in: "in",
+    not_in: "not in",
+    exists: "exists",
+  };
+  return labels[normalized] || normalized;
 }
 
 export function populateToolIssueSelect() {

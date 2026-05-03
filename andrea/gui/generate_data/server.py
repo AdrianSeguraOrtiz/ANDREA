@@ -207,6 +207,7 @@ def _load_generate_bootstrap() -> dict[str, Any]:
             {
                 "simulator_id": simulator_id,
                 "id": simulator_id,
+                "schema_version": spec.get("schema_version"),
                 "name": spec["name"],
                 "publication": spec.get("publication", []),
                 "first_author": spec.get("first_author"),
@@ -217,7 +218,9 @@ def _load_generate_bootstrap() -> dict[str, Any]:
                 "docker_image": spec.get("docker_image"),
                 "simulator_inputs": spec.get("simulator_inputs", {}),
                 "profile_capabilities": spec.get("profile_capabilities", {}),
+                "notes": spec.get("notes"),
                 "params_schema": spec.get("params", {}),
+                "spec": spec,
             }
         )
     return {

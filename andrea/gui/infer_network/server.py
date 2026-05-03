@@ -123,9 +123,16 @@ def _load_tools_bootstrap() -> dict[str, Any]:
             {
                 "tool_id": tool_id,
                 "name": str(toolspec.get("name", tool_id)),
+                "schema_version": str(toolspec.get("schema_version", "")),
                 "execution_capabilities": [
                     str(x)
                     for x in toolspec.get("execution_capabilities", [])
+                    if isinstance(x, str)
+                ],
+                "method_summary": str(toolspec.get("method_summary", "")),
+                "method_keywords": [
+                    x
+                    for x in toolspec.get("method_keywords", [])
                     if isinstance(x, str)
                 ],
                 "assumes": str(toolspec.get("assumes", "")),
@@ -149,12 +156,15 @@ def _load_tools_bootstrap() -> dict[str, Any]:
                     )
                 ),
                 "first_author": str(toolspec.get("first_author", "")),
+                "year": toolspec.get("year"),
                 "implementation_url": str(toolspec.get("implementation_url", "")),
                 "docker_image": str(toolspec.get("docker_image", "")),
                 "outputs": toolspec.get("outputs", {}),
                 "progress": toolspec.get("progress", {}),
+                "artifacts_aux": toolspec.get("artifacts_aux", []),
                 "params_schema": params_schema,
                 "default_params": defaults,
+                "spec": toolspec,
             }
         )
 
