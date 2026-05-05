@@ -28,6 +28,14 @@ DEFAULT_CATALOG_TOOLS_ROOT = CATALOG_ROOT / "tools"
 DEFAULT_TOOL_SOURCES_ROOT = INFERENCE_TOOLS_ROOT / "tools"
 DEFAULT_TEMPLATE_MAP = Path(__file__).resolve().parent / "template_map.json"
 TEMPLATES_ROOT = Path(__file__).resolve().parent / "templates"
+CONTEXT_IGNORE_PATTERNS = (
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+    "papers",
+    "repo",
+)
 
 RUNTIME_ENTRYPOINTS = {
     "python": ("python", "/app/run_tool.py"),
@@ -165,14 +173,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="append",
         default=[],
         help="Tool id to build (repeatable). If omitted, builds all mapped tools.",
-    )
-    parser.add_argument(
-        "--tag-pattern",
-        default=None,
-        help=(
-            "Fallback image tag pattern when toolspec.docker_image is missing. "
-            "Supports {tool_id}. Ignored for tools with --image-tag override."
-        ),
     )
     parser.add_argument(
         "--image-tag",
@@ -357,17 +357,14 @@ def resolve_image_tag(
     *,
     tool_id: str,
     toolspec_tag: str | None,
-    tag_pattern: str | None,
     tag_overrides: dict[str, str],
 ) -> str:
     if tool_id in tag_overrides:
         return tag_overrides[tool_id]
     if toolspec_tag:
         return toolspec_tag
-    if tag_pattern:
-        return tag_pattern.format(tool_id=tool_id)
     raise RuntimeError(
-        f"[{tool_id}] toolspec.docker_image is missing; provide --tag-pattern or --image-tag."
+        f"[{tool_id}] toolspec.docker_image is missing; provide --image-tag for this build."
     )
 
 
@@ -392,7 +389,11 @@ def prepare_context(
     template_relpaths: list[str],
     context_dir: Path,
 ) -> None:
-    shutil.copytree(tool_source_dir, context_dir)
+    shutil.copytree(
+        tool_source_dir,
+        context_dir,
+        ignore=shutil.ignore_patterns(*CONTEXT_IGNORE_PATTERNS),
+    )
 
     script_name = runtime_script_name(runtime)
     runtime_script_path = context_dir / script_name
@@ -469,7 +470,6 @@ def run(argv: Sequence[str] | None = None) -> int:
             image_tag = resolve_image_tag(
                 tool_id=tool_id,
                 toolspec_tag=toolspec_image_tags[tool_id],
-                tag_pattern=args.tag_pattern,
                 tag_overrides=tag_overrides,
             )
             print(
@@ -486,7 +486,6 @@ def run(argv: Sequence[str] | None = None) -> int:
             image_tag = resolve_image_tag(
                 tool_id=tool_id,
                 toolspec_tag=toolspec_image_tags[tool_id],
-                tag_pattern=args.tag_pattern,
                 tag_overrides=tag_overrides,
             )
 

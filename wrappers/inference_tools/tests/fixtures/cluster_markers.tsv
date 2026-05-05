@@ -1,0 +1,15 @@
+geneID	p_val	avg_logFC	pct.1	pct.2	p_val_adj	cluster	gene
+G2	0.0001	1.20	1.00	0.10	0.0001	cluster_root	G2
+G4	0.0001	1.15	1.00	0.10	0.0001	cluster_root	G4
+G6	0.0001	1.10	1.00	0.10	0.0001	cluster_root	G6
+G8	0.0001	1.05	1.00	0.10	0.0001	cluster_root	G8
+G1	0.0002	0.90	1.00	0.20	0.0002	cluster_root	G1
+G3	0.0002	0.85	1.00	0.20	0.0002	cluster_root	G3
+G5	0.0002	0.80	1.00	0.20	0.0002	cluster_root	G5
+G2	0.0001	1.20	1.00	0.10	0.0001	cluster_child	G2
+G4	0.0001	1.15	1.00	0.10	0.0001	cluster_child	G4
+G6	0.0001	1.10	1.00	0.10	0.0001	cluster_child	G6
+G8	0.0001	1.05	1.00	0.10	0.0001	cluster_child	G8
+G1	0.0002	0.90	1.00	0.20	0.0002	cluster_child	G1
+G3	0.0002	0.85	1.00	0.20	0.0002	cluster_child	G3
+G5	0.0002	0.80	1.00	0.20	0.0002	cluster_child	G5

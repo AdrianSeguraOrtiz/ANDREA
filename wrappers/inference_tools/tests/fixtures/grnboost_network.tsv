@@ -1,0 +1,13 @@
+source	target	score
+G1	G2	10.0
+G1	G4	9.5
+G1	G6	9.0
+G1	G8	8.5
+G3	G2	8.0
+G3	G4	7.5
+G3	G6	7.0
+G3	G8	6.5
+G5	G2	6.0
+G5	G4	5.5
+G5	G6	5.0
+G5	G8	4.5

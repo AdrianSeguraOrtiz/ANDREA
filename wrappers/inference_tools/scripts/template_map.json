@@ -57,6 +57,12 @@
     "infercsn": {
       "runtime": "r",
       "bundles": []
+    },
+    "miniex3": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ]
     }
   }
 }

@@ -1,0 +1,314 @@
+{
+  "schema_version": "1.0",
+  "id": "miniex3",
+  "name": "MINI-EX v3",
+  "publication": [
+    "https://doi.org/10.1016/j.molp.2022.10.016",
+    "https://doi.org/10.1007/978-1-0716-4972-5_12"
+  ],
+  "first_author": "Camilla Ferrari",
+  "year": 2022,
+  "method_summary": "MINI-EX infers plant cell-type-specific GRNs from scRNA-seq by first building a GRNBoost2 expression network, then filtering regulons with TF motif enrichment and cluster-specific target/TF expression. It prioritizes retained regulons using network centrality, median coexpression, TF/TG cluster specificity and optional GO-term-guided Borda ranking.",
+  "method_keywords": [
+    "single_cell",
+    "cell_type_specific",
+    "grnboost2",
+    "motif_enrichment",
+    "borda_ranking",
+    "plant"
+  ],
+  "implementation_url": "https://github.com/VIB-PSB/MINI-EX/tree/3f220a68e8057fe4d33665e956a3f3bbe41ff4c8",
+  "docker_image": "adriansegura99/inference-tools_miniex3:1.0.0",
+  "execution_capabilities": [
+    "group_native"
+  ],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [
+      {
+        "input": "groups",
+        "usage": "Wrapper converts groups.tsv to MINI-EX cellsToClusters input, mapping expression cell barcodes to cluster IDs used for cluster-specific regulon filtering and output contexts."
+      },
+      {
+        "input": "cluster_markers",
+        "usage": "Wrapper preserves Seurat-style cluster_markers.tsv as MINI-EX allMarkers input; MINI-EX uses marker genes and adjusted p-values for cluster enrichment filtering and ranking."
+      },
+      {
+        "input": "cluster_identities",
+        "usage": "Wrapper converts cluster_identities.tsv to MINI-EX clustersToIdentities input, mapping cluster IDs to biological labels; optional normalized order values are validated but omitted from the upstream file because MINI-EX v3.2 downstream scripts read this input as two columns."
+      },
+      {
+        "input": "tf_list",
+        "usage": "Wrapper converts tf_list.txt to MINI-EX's TF list used by the GRNBoost2 step to restrict candidate regulators before MINI-EX ranking and filtering."
+      }
+    ],
+    "optional": [
+      {
+        "input": "terms_of_interest",
+        "usage": "Optional GO or keyword list passed to MINI-EX termsOfInterest; when present, MINI-EX can use term-guided ranking of enriched regulators."
+      },
+      {
+        "input": "enrichment_background",
+        "usage": "Optional gene universe passed to MINI-EX enrichmentBackground; when absent, the wrapper leaves it null so upstream defaults to expressed genes."
+      },
+      {
+        "input": "grnboost_network",
+        "usage": "Optional precomputed GRNBoost2 network converted to MINI-EX grnboostOut format; when provided, the workflow skips de novo GRNBoost2 inference."
+      }
+    ],
+    "conditional_required": []
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "task_partitions",
+    "note": "The public Nextflow workflow exposes named processes and GRNBoost2 subjobs, but not a stable target-gene callback; the wrapper should report coarse process/task-partition progress in progress.json."
+  },
+  "params": {
+    "reference_species": {
+      "type": "enum",
+      "required": false,
+      "default": "ath",
+      "enum": [
+        "ath",
+        "osa",
+        "sly",
+        "zma_v4",
+        "zma_v5",
+        "none"
+      ],
+      "description": "Built-in MINI-EX species annotation set used for motif, alias and GO files. Use none only with doMotifAnalysis=false; then GO-guided ranking is unavailable."
+    },
+    "doMotifAnalysis": {
+      "type": "bool",
+      "required": false,
+      "default": true,
+      "description": "Whether to run MINI-EX step 2 motif enrichment filtering. Upstream recommends true when motif data are available and allows false for unsupported species."
+    },
+    "motifFilter": {
+      "type": "enum",
+      "required": false,
+      "default": "TF-F_motifs",
+      "enum": [
+        "TF-F_motifs",
+        "TF_motifs"
+      ],
+      "description": "Motif filtering strictness for step 2: TF-F_motifs keeps TF-family motif-supported regulons, while TF_motifs keeps only direct TF motif-supported regulons."
+    },
+    "topMarkers": {
+      "type": "int",
+      "required": false,
+      "default": 700,
+      "min": 0,
+      "description": "Number of upregulated marker genes per cluster used for cluster enrichment filtering in step 3a."
+    },
+    "expressionFilter": {
+      "type": "int",
+      "required": false,
+      "default": 10,
+      "min": 0,
+      "max": 100,
+      "description": "Minimum percentage of cells in a cluster that must express a TF for the regulon to be retained in step 3b."
+    },
+    "topRegulons": {
+      "type": "int",
+      "required": false,
+      "default": 150,
+      "min": 0,
+      "description": "Number of top regulons per cluster shown in MINI-EX output figures; upstream documents this as visualization-only and not affecting GRNs or ranking."
+    },
+    "grnboostSubjobs": {
+      "type": "int",
+      "required": false,
+      "default": 20,
+      "min": 1,
+      "max": 1000000,
+      "description": "Number of independent subjobs used when MINI-EX runs GRNBoost2 de novo. Ignored when grnboost_network is provided."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "miniex.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined stdout/stderr log from the MINI-EX Nextflow run."
+    },
+    {
+      "path_pattern": "raw/miniex.config",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Generated Nextflow config used for the wrapper run."
+    },
+    {
+      "path_pattern": "raw/grnboost2",
+      "kind": "dir",
+      "require_non_empty": true,
+      "description": "Upstream GRNBoost2 output directory, either generated by MINI-EX or converted from the provided grnboost_network input."
+    },
+    {
+      "path_pattern": "raw/regulons",
+      "kind": "dir",
+      "require_non_empty": true,
+      "description": "Upstream MINI-EX regulon outputs, including edge table, regulons, TF info and ranked regulon metadata."
+    },
+    {
+      "path_pattern": "raw/figures",
+      "kind": "dir",
+      "require_non_empty": false,
+      "description": "Upstream MINI-EX visualization outputs when generated for the run."
+    },
+    {
+      "path_pattern": "raw/go_enrichment",
+      "kind": "dir",
+      "require_non_empty": false,
+      "description": "Upstream GO enrichment outputs when GO annotations and terms of interest are active."
+    }
+  ],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "plant"
+    ],
+    "supported_species": [
+      3702,
+      4530,
+      4081,
+      4577
+    ]
+  },
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "not_in",
+          "value_from": "taxonomic_scope.supported_species"
+        },
+        {
+          "field": "param.doMotifAnalysis",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "action": "block",
+      "message": "MINI-EX motif analysis is only supported for the declared supported plant species; set doMotifAnalysis=false for unsupported plant taxa."
+    },
+    {
+      "conditions": [
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "not_in",
+          "value_from": "taxonomic_scope.supported_species"
+        },
+        {
+          "field": "param.doMotifAnalysis",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "action": "warn",
+      "message": "MINI-EX will run without motif analysis for an unsupported plant taxon; motif and GO-guided evidence will be unavailable."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.reference_species",
+          "op": "eq",
+          "value": "none"
+        },
+        {
+          "field": "param.doMotifAnalysis",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "action": "block",
+      "message": "reference_species=none cannot be used with doMotifAnalysis=true because no motif reference is available."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.reference_species",
+          "op": "eq",
+          "value": "ath"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 3702
+        }
+      ],
+      "action": "block",
+      "message": "reference_species=ath requires dataset.organism.ncbi_taxon_id=3702."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.reference_species",
+          "op": "eq",
+          "value": "osa"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 4530
+        }
+      ],
+      "action": "block",
+      "message": "reference_species=osa requires dataset.organism.ncbi_taxon_id=4530."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.reference_species",
+          "op": "eq",
+          "value": "sly"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 4081
+        }
+      ],
+      "action": "block",
+      "message": "reference_species=sly requires dataset.organism.ncbi_taxon_id=4081."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.reference_species",
+          "op": "eq",
+          "value": "zma_v4"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 4577
+        }
+      ],
+      "action": "block",
+      "message": "reference_species=zma_v4 requires dataset.organism.ncbi_taxon_id=4577."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.reference_species",
+          "op": "eq",
+          "value": "zma_v5"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 4577
+        }
+      ],
+      "action": "block",
+      "message": "reference_species=zma_v5 requires dataset.organism.ncbi_taxon_id=4577."
+    }
+  ]
+}

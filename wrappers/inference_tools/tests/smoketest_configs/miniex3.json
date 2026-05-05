@@ -1,0 +1,25 @@
+{
+  "extra_files": [
+    "groups.tsv",
+    "cluster_markers.tsv",
+    "cluster_identities.tsv",
+    "tf_list.txt",
+    "grnboost_network.tsv",
+    "enrichment_background.txt"
+  ],
+  "execution": {
+    "mode": "group_native"
+  },
+  "param_overrides": {
+    "reference_species": "none",
+    "doMotifAnalysis": false,
+    "topMarkers": 10,
+    "expressionFilter": 0,
+    "topRegulons": 6,
+    "grnboostSubjobs": 1
+  },
+  "checks": {
+    "forbid_self_loops": true,
+    "require_group_context": true
+  }
+}

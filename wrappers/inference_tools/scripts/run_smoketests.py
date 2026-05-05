@@ -50,7 +50,6 @@ ALLOWED_CONFIG_ROOT_KEYS = {
     "variants",
 }
 ALLOWED_CONFIG_CHECK_KEYS = {
-    "require_cluster_context",
     "require_group_context",
     "require_unique_unordered_pairs",
     "forbid_self_loops",
@@ -64,7 +63,6 @@ class SmokeConfig:
     execution: dict[str, object]
     param_overrides: dict[str, object]
     require_progress: bool
-    require_cluster_context: bool
     require_group_context: bool
     require_unique_unordered_pairs: bool
     forbid_self_loops: bool
@@ -90,7 +88,6 @@ DEFAULT_CONFIG = SmokeConfig(
     execution={},
     param_overrides={},
     require_progress=True,
-    require_cluster_context=False,
     require_group_context=False,
     require_unique_unordered_pairs=False,
     forbid_self_loops=False,
@@ -477,7 +474,6 @@ def _parse_smoke_config_payload(
     require_progress = bool(raw.get("require_progress", True))
     name = str(raw.get("name", default_name)).strip() or default_name
 
-    require_cluster_context = bool(checks.get("require_cluster_context", False))
     require_group_context = bool(checks.get("require_group_context", False))
     require_unique_unordered_pairs = bool(
         checks.get("require_unique_unordered_pairs", False)
@@ -490,7 +486,6 @@ def _parse_smoke_config_payload(
         execution=dict(execution),
         param_overrides=dict(param_overrides),
         require_progress=require_progress,
-        require_cluster_context=require_cluster_context,
         require_group_context=require_group_context,
         require_unique_unordered_pairs=require_unique_unordered_pairs,
         forbid_self_loops=forbid_self_loops,
@@ -765,10 +760,6 @@ def validate_network(path: Path, config: SmokeConfig) -> int:
         rows = list(reader)
         if not rows:
             raise RuntimeError("network.csv has header but no rows.")
-
-    if config.require_cluster_context:
-        if not any(str(row.get("context", "")).startswith("cluster:") for row in rows):
-            raise RuntimeError("Expected at least one row with context='cluster:*'.")
 
     if config.require_group_context:
         if not any(str(row.get("context", "")).startswith("group:") for row in rows):
