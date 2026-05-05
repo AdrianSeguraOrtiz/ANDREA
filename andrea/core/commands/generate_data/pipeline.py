@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 import shutil
-import sys
 import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -12,14 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from rich import print
-from rich.progress import (
-    BarColumn,
-    Progress,
-    TaskProgressColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
+from andrea.core.shared.progress import progress_snapshot as _progress_snapshot
 
 from .backends.registry import run_simulator_backend
 from .catalog import _load_simulator_catalog
@@ -62,32 +54,6 @@ _STEP_PERCENT = {
 }
 
 
-def _short_progress_message(message: str, *, max_len: int = 64) -> str:
-    compact = " ".join(message.strip().split())
-    if len(compact) <= max_len:
-        return compact
-    return f"{compact[: max_len - 3]}..."
-
-
-def _progress_snapshot(payload: dict[str, Any]) -> tuple[int, str, str, str]:
-    status = str(payload.get("status", "running"))
-    phase = str(payload.get("phase") or payload.get("step") or "unknown")
-    message = str(payload.get("message", ""))
-    raw_percent = payload.get("percent")
-    if raw_percent is None:
-        percent = _STEP_PERCENT.get(phase, 0)
-    else:
-        percent = int(raw_percent)
-    if status == "completed":
-        percent = 100
-        status = "completed"
-    elif status == "done":
-        status = "running"
-    elif status == "failed":
-        percent = 100
-    return max(0, min(100, percent)), status, phase, message
-
-
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -97,7 +63,10 @@ def _normalized_progress_event(
     task: dict[str, Any],
     payload: dict[str, Any],
 ) -> dict[str, Any]:
-    percent, status, phase, message = _progress_snapshot(payload)
+    percent, status, phase, message = _progress_snapshot(
+        payload,
+        phase_percent=_STEP_PERCENT,
+    )
     return {
         "task_id": str(task["task_id"]),
         "run_id": str(task["run_id"]),
@@ -142,9 +111,6 @@ class _GenerateProgress:
         self._tasks = tasks
         self._max_parallel_tasks = max_parallel_tasks
         self._enabled = enabled
-        self._live = bool(enabled and sys.stdout.isatty())
-        self._progress: Progress | None = None
-        self._task_ids: dict[str, int] = {}
         self._last_snapshots: dict[str, tuple[int, str, str, str]] = {}
         self._lock = threading.Lock()
 
@@ -155,36 +121,10 @@ class _GenerateProgress:
             f"generate-data: starting {len(self._tasks)} simulator task(s), "
             f"max_parallel_tasks={self._max_parallel_tasks}"
         )
-        if not self._live:
-            return self
-
-        self._progress = Progress(
-            TextColumn("{task.fields[task]:<32}"),
-            BarColumn(bar_width=24),
-            TaskProgressColumn(),
-            TextColumn("{task.fields[status]:<9}"),
-            TextColumn("{task.fields[phase]:<18}"),
-            TextColumn("{task.fields[msg]}"),
-            TimeElapsedColumn(),
-            transient=False,
-        )
-        self._progress.start()
-        for task in self._tasks:
-            task_id = str(task["task_id"])
-            self._task_ids[task_id] = self._progress.add_task(
-                "",
-                total=100,
-                completed=0,
-                task=task_id,
-                status="queued",
-                phase="queued",
-                msg=str(task["simulator_id"]),
-            )
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        if self._progress is not None:
-            self._progress.stop()
+        return None
 
     def callback_for(self, task_id: str) -> Callable[[dict[str, Any]], None] | None:
         if not self._enabled:
@@ -198,7 +138,10 @@ class _GenerateProgress:
     def update(self, task_id: str, payload: dict[str, Any]) -> None:
         if not self._enabled:
             return
-        percent, status, phase, message = _progress_snapshot(payload)
+        percent, status, phase, message = _progress_snapshot(
+            payload,
+            phase_percent=_STEP_PERCENT,
+        )
         previous = self._last_snapshots.get(task_id)
         if previous is not None:
             percent = max(percent, previous[0])
@@ -207,31 +150,10 @@ class _GenerateProgress:
             if snapshot == self._last_snapshots.get(task_id):
                 return
             self._last_snapshots[task_id] = snapshot
-            if self._progress is not None:
-                rich_task_id = self._task_ids.get(task_id)
-                if rich_task_id is None:
-                    rich_task_id = self._progress.add_task(
-                        "",
-                        total=100,
-                        completed=0,
-                        task=task_id,
-                        status="running",
-                        phase="unknown",
-                        msg="",
-                    )
-                    self._task_ids[task_id] = rich_task_id
-                self._progress.update(
-                    rich_task_id,
-                    completed=percent,
-                    status=status,
-                    phase=phase,
-                    msg=_short_progress_message(message),
-                )
-            else:
-                print(
-                    f"simulator {task_id} progress: "
-                    f"{percent}% | {status} | {phase} | {message}"
-                )
+            print(
+                f"simulator {task_id} progress: "
+                f"{percent}% | {status} | {phase} | {message}"
+            )
 
 
 def _run_simulator(
@@ -309,7 +231,6 @@ def _ground_truth_manifest_payload(
         "profile": request.profile,
         "outputs": {
             "global_network": truth.get("global_network"),
-            "legacy_binary_matrix": truth.get("legacy_binary_matrix"),
             "group_networks": (
                 [
                     {
@@ -342,7 +263,6 @@ def _simulator_run_payload(
         "profile": request.profile,
         "seed": seed,
         "inputs": request.inputs,
-        "input_files": request.input_files,
         "simulator_params": request.simulator_params,
         "native_outputs": request.native_outputs,
         "requested_extras": request.requested_extras,
@@ -402,15 +322,14 @@ def _copy_dataset_from_stage(
     )
 
 
-def _freeze_benchmark_input_files(
+def _freeze_benchmark_inputs(
     *,
     resolved: ResolvedSimulationPlan,
     benchmark_root: Path,
-) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], dict[str, str]]:
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     scenario_inputs: dict[str, dict[str, Any]] = {}
     root_inputs: dict[str, dict[str, Any]] = {}
-    root_input_files: dict[str, str] = {}
-    for input_id, source_path in sorted(resolved.resolved_input_files.items()):
+    for input_id, source_path in sorted(resolved.resolved_input_paths.items()):
         raw_meta = dict(resolved.inputs.get(input_id, {}))
         raw_name = Path(str(raw_meta.get("path") or source_path.name)).name
         filename = raw_name or source_path.name or input_id
@@ -425,8 +344,7 @@ def _freeze_benchmark_input_files(
 
         scenario_inputs[input_id] = scenario_meta
         root_inputs[input_id] = root_meta
-        root_input_files[input_id] = root_rel_path.as_posix()
-    return scenario_inputs, root_inputs, root_input_files
+    return scenario_inputs, root_inputs
 
 
 def _frozen_scenario_payload(
@@ -488,12 +406,10 @@ def _frozen_plan_payload(
     *,
     resolved: ResolvedSimulationPlan,
     root_inputs: dict[str, dict[str, Any]],
-    root_input_files: dict[str, str],
     max_parallel_tasks: int,
 ) -> dict[str, Any]:
     payload = copy.deepcopy(resolved.plan_payload)
     payload["inputs"] = root_inputs
-    payload["input_files"] = root_input_files
     payload["execution"] = {"max_parallel_tasks": int(max_parallel_tasks)}
     return payload
 
@@ -508,7 +424,7 @@ def _write_frozen_benchmark_request_assets(
     benchmark_input_dir = benchmark_root / "input"
     benchmark_input_dir.mkdir(parents=True, exist_ok=True)
 
-    scenario_inputs, root_inputs, root_input_files = _freeze_benchmark_input_files(
+    scenario_inputs, root_inputs = _freeze_benchmark_inputs(
         resolved=resolved,
         benchmark_root=benchmark_root,
     )
@@ -537,7 +453,6 @@ def _write_frozen_benchmark_request_assets(
     plan_payload = _frozen_plan_payload(
         resolved=resolved,
         root_inputs=root_inputs,
-        root_input_files=root_input_files,
         max_parallel_tasks=max_parallel_tasks,
     )
     _validate_json_instance(
@@ -558,7 +473,6 @@ def _write_frozen_benchmark_request_assets(
         "plan_path": plan_path,
         "preflight_report_path": preflight_path,
         "inputs": root_inputs,
-        "input_files": root_input_files,
     }
 
 
@@ -571,7 +485,6 @@ def validate_generate_data_plan(plan_path: Path) -> dict[str, Any]:
         "requested_extras": resolved.requested_extras,
         "effective_extras": resolved.effective_extras,
         "inputs": resolved.inputs,
-        "input_files": resolved.input_files,
         "runs": [
             {
                 "run_id": run.run_id,
@@ -697,7 +610,7 @@ def _execute_simulation_task(
         progress_callback(
             {
                 "status": "running",
-                "step": "package_dataset",
+                "phase": "package_dataset",
                 "message": "Copying normalized dataset package",
             }
         )
@@ -713,7 +626,7 @@ def _execute_simulation_task(
         progress_callback(
             {
                 "status": "completed",
-                "step": "done",
+                "phase": "done",
                 "message": "Dataset package written",
             }
         )
@@ -766,10 +679,6 @@ def _execute_simulation_task(
         ),
         "global_network": _relative_posix(
             dataset_dir / "truth" / "global_network.csv",
-            benchmark_root,
-        ),
-        "legacy_binary_matrix": _relative_posix(
-            dataset_dir / "truth" / "legacy" / "global_gs.csv",
             benchmark_root,
         ),
         "group_networks_dir": (
@@ -834,7 +743,7 @@ def run_generate_data(
                             task=task,
                             payload={
                                 "status": "pending",
-                                "step": "queued",
+                                "phase": "queued",
                                 "percent": 0,
                                 "message": "Queued",
                             },
@@ -872,7 +781,7 @@ def run_generate_data(
                             str(task["task_id"]),
                             {
                                 "status": "failed",
-                                "step": "failed",
+                                "phase": "failed",
                                 "message": str(exc),
                             },
                         )
@@ -902,7 +811,6 @@ def run_generate_data(
         "effective_extras": resolved.effective_extras,
         "base_seed": resolved.base_seed,
         "inputs": frozen_assets["inputs"],
-        "input_files": frozen_assets["input_files"],
         "runs": [
             {
                 "run_id": run.run_id,

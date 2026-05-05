@@ -10,7 +10,6 @@ from unittest.mock import patch
 
 from jsonschema import Draft202012Validator
 
-from andrea.core.commands.generate_data.catalog import _load_simulator_catalog
 from andrea.core.commands.generate_data.pipeline import (
     _copy_dataset_from_stage,
     run_generate_data,
@@ -35,6 +34,22 @@ def _has_docker_runtime() -> bool:
     return result.returncode == 0
 
 
+def _issue_messages(entry: dict[str, object], severity: str | None = None) -> list[str]:
+    issues = entry.get("issues", [])
+    if not isinstance(issues, list):
+        return []
+    messages: list[str] = []
+    for issue in issues:
+        if not isinstance(issue, dict):
+            continue
+        if severity is not None and issue.get("severity") != severity:
+            continue
+        message = issue.get("message")
+        if isinstance(message, str):
+            messages.append(message)
+    return messages
+
+
 class GenerateDataDyngenTests(unittest.TestCase):
     def _write_scenario_request(
         self,
@@ -50,11 +65,11 @@ class GenerateDataDyngenTests(unittest.TestCase):
             "schema_version": "1.0",
             "id": request_id,
             "profile": profile,
+            "organism": organism
+            or {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
             "requested_extras": requested_extras,
             "inputs": inputs or {},
         }
-        if organism is not None:
-            payload["organism"] = organism
         request_path = base / "scenario.json"
         request_path.write_text(
             json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
@@ -82,7 +97,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
             "schema_version": "1.0",
             "id": request_id,
             "profile": profile,
-            "organism": organism or {"kind": "synthetic", "tax_id": None},
+            "organism": organism
+            or {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
             "requested_extras": requested_extras,
             "effective_extras": sorted(
                 set(requested_extras).union(
@@ -90,7 +106,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 )
             ),
             "inputs": {},
-            "input_files": {},
             "base_seed": base_seed,
             "runs": [
                 {
@@ -148,33 +163,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
         )
         return tools_params_path
 
-    def test_catalog_loads_only_completed_dyngen_simulator(self) -> None:
-        schemas, catalog = _load_simulator_catalog()
-        self.assertEqual(sorted(catalog.keys()), ["dyngen"])
-        self.assertIn("simulatorspec", schemas)
-        self.assertIn("scenario_request", schemas)
-        self.assertIn("simulator_runs", schemas)
-        self.assertIn("preflight_report", schemas)
-        self.assertEqual(
-            catalog["dyngen"]["docker_image"],
-            "adriansegura99/simulator_dyngen:1.0.0",
-        )
-        self.assertEqual(
-            sorted(catalog["dyngen"]["profile_capabilities"]),
-            ["scrna_global", "scrna_grouped"],
-        )
-        for param_name in (
-            "num_tfs",
-            "distance_metric",
-            "tf_network_params",
-            "feature_network_params",
-            "gold_standard_params",
-            "simulation_params",
-            "experiment_params",
-        ):
-            self.assertIn(param_name, catalog["dyngen"]["params"])
-
-    def test_dataset_manifest_schema_accepts_old_and_synthetic_organisms(self) -> None:
+    def test_dataset_manifest_schema_requires_strict_taxonomic_organism(self) -> None:
         schema_path = (
             Path(__file__).resolve().parents[4]
             / "andrea"
@@ -199,7 +188,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                         "column_kind": "samples",
                         "expression_profile": "bulk",
                     },
-                    "organism": {"tax_id": 9606},
+                    "organism": {"taxonomic_group": "animal", "ncbi_taxon_id": 9606},
                 },
                 "expression_matrix": "expression.tsv",
             },
@@ -218,7 +207,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                         "column_kind": "cells",
                         "expression_profile": "scrna",
                     },
-                    "organism": {"kind": "synthetic", "tax_id": None},
+                    "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                 },
                 "expression_matrix": "expression.tsv",
             },
@@ -244,7 +233,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertIn("groups", report["eligible"][0]["derived_extras_used"])
         self.assertIn("lineage_tree", report["eligible"][0]["derived_extras_used"])
         self.assertIn("group_networks", report["eligible"][0]["derived_extras_used"])
-        self.assertEqual(report["eligible"][0]["warnings"], [])
+        self.assertEqual(report["eligible"][0]["issues"], [])
 
     def test_preflight_blocks_dyngen_when_docker_is_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -255,14 +244,11 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 requested_extras=["lineage_tree"],
             )
             with patch(
-                "andrea.core.commands.generate_data.selection.subprocess.run"
-            ) as mock_run:
-                mock_run.return_value = subprocess.CompletedProcess(
-                    args=["docker", "info"],
-                    returncode=1,
-                    stdout="",
-                    stderr="Cannot connect to the Docker daemon",
-                )
+                "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                side_effect=RuntimeError(
+                    "docker daemon is not available: Cannot connect to the Docker daemon"
+                ),
+            ):
                 report = preflight_generate_data_scenario(scenario_path)
 
         self.assertEqual(report["catalog_summary"]["blocked"], 1)
@@ -270,7 +256,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertTrue(
             any(
                 "docker daemon is not available" in reason
-                for reason in report["blocked"][0]["blocking_reasons"]
+                for reason in _issue_messages(report["blocked"][0], "block")
             )
         )
 
@@ -292,8 +278,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(report["blocked"][0]["simulator_id"], "dyngen")
         self.assertTrue(
             any(
-                "unknown input_files" in reason
-                for reason in report["blocked"][0]["blocking_reasons"]
+                "unknown inputs" in reason
+                for reason in _issue_messages(report["blocked"][0], "block")
             )
         )
 
@@ -381,7 +367,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "schema_version": "1.0",
                 "id": "multi_sim",
                 "profile": "scrna_global",
-                "organism": {"kind": "synthetic", "tax_id": None},
+                "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                 "requested_extras": [],
                 "effective_extras": [],
                 "inputs": {},
@@ -523,17 +509,12 @@ class GenerateDataDyngenTests(unittest.TestCase):
             stage_dir = base / "stage"
             dataset_dir = base / "dataset"
             (stage_dir / "truth" / "group_networks").mkdir(parents=True, exist_ok=True)
-            (stage_dir / "truth" / "legacy").mkdir(parents=True, exist_ok=True)
             (stage_dir / "provenance").mkdir(parents=True, exist_ok=True)
             (stage_dir / "expression.tsv").write_text(
                 "gene\tC1\nG1\t1\n", encoding="utf-8"
             )
             (stage_dir / "truth" / "global_network.csv").write_text(
                 "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
-                encoding="utf-8",
-            )
-            (stage_dir / "truth" / "legacy" / "global_gs.csv").write_text(
-                ",G1,G2\nG1,0,1\nG2,0,0\n",
                 encoding="utf-8",
             )
             (stage_dir / "truth" / "group_networks" / "group_a.csv").write_text(
@@ -562,7 +543,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             base = Path(tmp)
             stage_dir = base / "stage"
             dataset_dir = base / "dataset"
-            (stage_dir / "truth" / "legacy").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
             (stage_dir / "native").mkdir(parents=True, exist_ok=True)
             (stage_dir / "provenance").mkdir(parents=True, exist_ok=True)
             (stage_dir / "expression.tsv").write_text(
@@ -570,10 +551,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             (stage_dir / "truth" / "global_network.csv").write_text(
                 "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
-                encoding="utf-8",
-            )
-            (stage_dir / "truth" / "legacy" / "global_gs.csv").write_text(
-                ",G1,G2\nG1,0,1\nG2,0,0\n",
                 encoding="utf-8",
             )
             (stage_dir / "native" / "rna_velocity.tsv").write_text(
@@ -615,7 +592,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             def fake_run_simulator(**kwargs):  # noqa: ANN003
                 stage_dir = kwargs["stage_dir"]
                 stage_dir.mkdir(parents=True, exist_ok=True)
-                (stage_dir / "truth" / "legacy").mkdir(parents=True, exist_ok=True)
+                (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
                 (stage_dir / "native").mkdir(parents=True, exist_ok=True)
                 (stage_dir / "provenance" / "raw").mkdir(parents=True, exist_ok=True)
                 (stage_dir / "expression.tsv").write_text(
@@ -628,10 +605,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 )
                 (stage_dir / "truth" / "global_network.csv").write_text(
                     "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
-                    encoding="utf-8",
-                )
-                (stage_dir / "truth" / "legacy" / "global_gs.csv").write_text(
-                    ",G1,G2\nG1,0,1\nG2,0,0\n",
                     encoding="utf-8",
                 )
                 manifest_path = stage_dir / "simulator-output-manifest.json"
@@ -655,7 +628,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
                             },
                             "truth": {
                                 "global_network": "truth/global_network.csv",
-                                "legacy_binary_matrix": "truth/legacy/global_gs.csv",
                                 "group_networks": [],
                             },
                             "provenance": {"raw_dir": "provenance/raw"},
@@ -673,10 +645,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "scenario": {
                     "id": "dyngen_repro",
                     "profile": "scrna_global",
-                    "organism": {"kind": "synthetic", "tax_id": None},
+                    "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                     "requested_extras": [],
                     "effective_extras": [],
-                    "input_files": {},
                     "inputs": {},
                     "base_seed": 100,
                 },
@@ -730,7 +701,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 frozen_runs["runs"][0]["native_outputs"],
                 ["rna_velocity"],
             )
-            self.assertEqual(benchmark_manifest["input_files"], {})
             self.assertEqual(benchmark_manifest["inputs"], {})
 
     @unittest.skipUnless(
@@ -868,7 +838,14 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "dyngen_stage2__dyngen_lineage__r01",
             )
             self.assertIn("scmtni__01", report["runs"]["selected"])
-            self.assertNotIn("scmtni__01", report["runs"]["requirement_issues"])
+            scmtni_issues = report["runs"].get("issues", {}).get("scmtni__01", [])
+            self.assertFalse(
+                any(
+                    isinstance(issue, dict)
+                    and issue.get("code") == "conditional_required"
+                    for issue in scmtni_issues
+                )
+            )
 
 
 if __name__ == "__main__":

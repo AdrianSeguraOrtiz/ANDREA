@@ -5,6 +5,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+from andrea.core.commands.infer_network.commons.shared import ToolExecutionResult
+
 from ._helpers import InferNetworkCoreTestCase
 
 
@@ -50,7 +52,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             ):
                 out = {}
                 for task in wave.tasks:
-                    out[task.tool_id] = self.mod.ToolExecutionResult(
+                    out[task.tool_id] = ToolExecutionResult(
                         tool_id=task.tool_id,
                         status="completed",
                         exit_code=0,
@@ -171,7 +173,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         status = "failed"
                         error = "synthetic test failure"
                         exit_code = 1
-                    out[task.tool_id] = self.mod.ToolExecutionResult(
+                    out[task.tool_id] = ToolExecutionResult(
                         tool_id=task.tool_id,
                         status=status,
                         exit_code=exit_code,

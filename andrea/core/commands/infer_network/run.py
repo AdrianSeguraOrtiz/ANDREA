@@ -15,7 +15,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from rich import print
+from andrea.core.shared.issues import issue_messages, make_issue
 
 from .commons.artifacts import _load_plan_waves, _verify_input_fingerprints
 from .commons.catalog import _load_schema_constraints, _resolve_catalog_paths
@@ -46,7 +46,11 @@ from .commons.shared import (
     _slugify_token,
     _write_json,
 )
-from .commons.tools import _collect_requirement_issues, _load_toolspec
+from .commons.tools import (
+    _collect_compatibility_rule_issues,
+    _collect_conditional_input_issues,
+    _load_toolspec,
+)
 
 
 def _load_logical_runs_from_plan(
@@ -62,15 +66,15 @@ def _load_logical_runs_from_plan(
             raise ValueError(f"plan.json.runs[{idx}] must be an object")
         run_id = str(raw_run.get("run_id", "")).strip()
         tool_id = str(raw_run.get("tool_id", "")).strip()
-        execution_mode = str(raw_run.get("execution_mode", "")).strip()
-        execution_capabilities = raw_run.get("execution_capabilities", [])
         execution = raw_run.get("execution", {})
+        execution_mode = (
+            str(execution.get("mode", "")).strip() if isinstance(execution, dict) else ""
+        )
         physical_tasks = raw_run.get("physical_tasks", [])
         if (
             not run_id
             or not tool_id
             or execution_mode not in {"global", "group_native", "group_emulated"}
-            or not isinstance(execution_capabilities, list)
             or not isinstance(execution, dict)
             or not isinstance(physical_tasks, list)
             or not physical_tasks
@@ -79,12 +83,6 @@ def _load_logical_runs_from_plan(
         logical_runs[run_id] = {
             "run_id": run_id,
             "tool_id": tool_id,
-            "execution_mode": execution_mode,
-            "execution_capabilities": [
-                str(item).strip()
-                for item in execution_capabilities
-                if isinstance(item, str) and str(item).strip()
-            ],
             "execution": execution,
             "physical_tasks": physical_tasks,
         }
@@ -289,8 +287,6 @@ def _finalize_grouped_logical_run(
     logical_payload = {
         **asdict(logical_result),
         "execution": logical_spec["execution"],
-        "execution_mode": logical_spec["execution_mode"],
-        "execution_capabilities": logical_spec["execution_capabilities"],
         "physical_tasks_total": len(logical_spec["physical_tasks"]),
         "child_results": child_payload,
     }
@@ -373,7 +369,9 @@ def run_infer_network_plan(
             f"resolved_params[{run_id}]",
         )
 
-    requirement_issues: dict[str, list[str]] = {}
+    conditional_input_errors: dict[str, list[str]] = {}
+    compatibility_blocks: dict[str, list[str]] = {}
+    compatibility_warnings: list[str] = []
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids.get(run_id, "").strip()
         if not catalog_tool_id:
@@ -381,7 +379,22 @@ def run_infer_network_plan(
                 f"preflight report is missing catalog mapping for run '{run_id}'"
             )
         toolspec = _load_toolspec(tools_root, catalog_tool_id)
-        issues = _collect_requirement_issues(
+        rule_blocks, rule_warnings, rule_errors = _collect_compatibility_rule_issues(
+            tool_id=run_id,
+            toolspec=toolspec,
+            dataset=dataset,
+            resolved_params=resolved_params_by_tool[run_id],
+            resolved_execution=resolved_execution_by_tool.get(run_id, {}),
+            warning_prefix=run_id,
+        )
+        if rule_errors:
+            compatibility_blocks[run_id] = [
+                f"invalid compatibility rule: {message}" for message in rule_errors
+            ]
+        elif rule_blocks:
+            compatibility_blocks[run_id] = rule_blocks
+        compatibility_warnings.extend(rule_warnings)
+        issues = _collect_conditional_input_issues(
             tool_id=run_id,
             toolspec=toolspec,
             dataset=dataset,
@@ -389,19 +402,32 @@ def run_infer_network_plan(
             resolved_execution=resolved_execution_by_tool.get(run_id, {}),
         )
         if issues:
-            requirement_issues[run_id] = issues
+            conditional_input_errors[run_id] = issues
 
-    if requirement_issues:
+    if compatibility_blocks:
         error_lines: list[str] = []
-        for run_id in sorted(requirement_issues):
-            for message in requirement_issues[run_id]:
+        for run_id in sorted(compatibility_blocks):
+            for message in compatibility_blocks[run_id]:
+                error_lines.append(f"[{run_id}] {message}")
+        raise ValueError(
+            "Execution blocked by tool compatibility rules:\n" + "\n".join(error_lines)
+        )
+
+    if conditional_input_errors:
+        error_lines: list[str] = []
+        for run_id in sorted(conditional_input_errors):
+            for message in conditional_input_errors[run_id]:
                 error_lines.append(f"[{run_id}] {message}")
         raise ValueError(
             "Execution blocked by missing conditional inputs:\n"
             + "\n".join(error_lines)
         )
 
-    warnings = [str(w) for w in run_report.get("warnings", []) if isinstance(w, str)]
+    report_issues = [
+        issue for issue in run_report.get("issues", []) if isinstance(issue, dict)
+    ]
+    warnings = issue_messages(report_issues, severity="warn")
+    warnings.extend(compatibility_warnings)
     runtime_warnings: list[str] = []
     physical_results: dict[str, ToolExecutionResult] = {}
     merged_raw_path = None
@@ -422,7 +448,7 @@ def run_infer_network_plan(
     required_group_labels = {
         str(physical.get("group_label", "")).strip()
         for logical_spec in logical_runs.values()
-        if logical_spec["execution_mode"] == "group_emulated"
+        if str(logical_spec["execution"].get("mode", "")).strip() == "group_emulated"
         for physical in logical_spec["physical_tasks"]
         if physical.get("group_label") is not None
     }
@@ -454,7 +480,8 @@ def run_infer_network_plan(
                 )
             expression_source = shared_expression
             if (
-                logical_spec["execution_mode"] == "group_emulated"
+                str(logical_spec["execution"].get("mode", "")).strip()
+                == "group_emulated"
                 and physical.get("group_label") is not None
             ):
                 expression_source = group_expression_sources[
@@ -525,8 +552,6 @@ def run_infer_network_plan(
             logical_results_payload[logical_run_id] = {
                 **asdict(result),
                 "execution": logical_spec["execution"],
-                "execution_mode": logical_spec["execution_mode"],
-                "execution_capabilities": logical_spec["execution_capabilities"],
                 "physical_tasks_total": 1,
                 "child_results": {},
             }
@@ -643,7 +668,19 @@ def run_infer_network_plan(
         ),
         "rows_per_tool": per_tool_rows,
     }
-    run_report["warnings"] = warnings
+    seen_warning_messages = set(issue_messages(report_issues, severity="warn"))
+    for message in warnings:
+        if message in seen_warning_messages:
+            continue
+        seen_warning_messages.add(message)
+        report_issues.append(
+            make_issue(
+                severity="warn",
+                code="runtime_warning",
+                message=message,
+            )
+        )
+    run_report["issues"] = report_issues
     execution_info = run_report.get("execution", {})
     if not isinstance(execution_info, dict):
         execution_info = {}
@@ -666,7 +703,7 @@ def run_infer_network_plan(
     run_report["execution"] = execution_info
     _write_json(report_path, run_report)
 
-    print(f"[bold green]infer-network execution completed[/bold green]: {run_dir}")
+    print(f"infer-network execution completed: {run_dir}")
     print(f"  selected tools: {len(selected_tools)}")
     print(f"  skipped tools: {len(skipped_tools)}")
     print(f"  completed tools: {len(completed_tools)}")
@@ -690,8 +727,9 @@ def run_infer_network_plan(
             "  merged normalized cytoscape preset:"
             f" {merged_norm_cytoscape_script_path}"
         )
-    if warnings:
-        print(f"  warnings: {len(warnings)} (see run_report.json)")
+    warning_count = len(issue_messages(report_issues, severity="warn"))
+    if warning_count:
+        print(f"  warnings: {warning_count} (see run_report.json)")
 
     if not completed_tools:
         raise ValueError(

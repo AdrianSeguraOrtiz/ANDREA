@@ -2,32 +2,26 @@
 
 from __future__ import annotations
 
-import shutil
-import subprocess
 from typing import Any
+
+from andrea.core.shared.container_runtime import ensure_docker_cli
+from andrea.core.shared.issues import make_issue
 
 from .catalog import _load_simulator_catalog, get_profile_capability
 from .request import (
     _resolve_simulator_params,
     _supported_requested_artifacts,
-    validate_simulator_input_files,
+    validate_simulator_inputs,
 )
 from .scenario import validate_scenario_request
 from .shared import ResolvedScenarioRequest, _validate_json_instance
 
 
 def _evaluate_runtime_requirements(_simulator_id: str) -> list[str]:
-    if shutil.which("docker") is None:
-        return ["missing runtime command: docker"]
-    result = subprocess.run(
-        ["docker", "info"],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        details = (result.stderr or result.stdout or "").strip()
-        return [f"docker daemon is not available: {details}"]
+    try:
+        ensure_docker_cli(check_daemon=True)
+    except RuntimeError as exc:
+        return [str(exc)]
     return []
 
 
@@ -38,16 +32,21 @@ def evaluate_simulator_for_scenario(
     scenario: ResolvedScenarioRequest,
 ) -> dict[str, Any]:
     profile_capability = get_profile_capability(spec, scenario.profile)
-    blocking_reasons: list[str] = []
-    warnings: list[str] = []
+    issues: list[dict[str, Any]] = []
 
     if profile_capability is None:
-        blocking_reasons.append(f"profile '{scenario.profile}' is not supported")
+        issues.append(
+            make_issue(
+                severity="block",
+                code="unsupported_profile",
+                message=f"profile '{scenario.profile}' is not supported",
+                simulator_id=simulator_id,
+            )
+        )
         native = set()
         derivable = set()
         truth_outputs = {
             "global_network": "none",
-            "legacy_binary_matrix": "none",
             "group_networks": "none",
         }
         supported_effective_extras: list[str] = []
@@ -66,25 +65,44 @@ def evaluate_simulator_for_scenario(
             set(scenario.effective_extras).difference(native.union(derivable))
         )
         if unsupported_requested:
-            blocking_reasons.append(
-                "unsupported extras for this profile: "
-                + ", ".join(unsupported_requested)
+            issues.append(
+                make_issue(
+                    severity="block",
+                    code="unsupported_extras",
+                    message="unsupported extras for this profile: "
+                    + ", ".join(unsupported_requested),
+                    simulator_id=simulator_id,
+                )
             )
-        blocking_reasons.extend(
-            validate_simulator_input_files(
+        issues.extend(
+            make_issue(
+                severity="block",
+                code="invalid_inputs",
+                message=message,
+                simulator_id=simulator_id,
+            )
+            for message in validate_simulator_inputs(
                 simulator_id=simulator_id,
                 simulator_spec=spec,
                 profile=scenario.profile,
                 requested_extras=scenario.requested_extras,
                 simulator_params=resolved_params,
-                input_files=scenario.input_files,
+                input_ids=set(scenario.inputs),
             )
         )
-        blocking_reasons.extend(_evaluate_runtime_requirements(simulator_id))
+        issues.extend(
+            make_issue(
+                severity="block",
+                code="runtime_unavailable",
+                message=message,
+                simulator_id=simulator_id,
+            )
+            for message in _evaluate_runtime_requirements(simulator_id)
+        )
 
-    if blocking_reasons:
+    if any(issue["severity"] == "block" for issue in issues):
         status = "blocked"
-    elif warnings:
+    elif any(issue["severity"] == "warn" for issue in issues):
         status = "warning"
     else:
         status = "eligible"
@@ -97,13 +115,12 @@ def evaluate_simulator_for_scenario(
         "requested_profile": scenario.profile,
         "requested_extras": list(scenario.requested_extras),
         "effective_extras": list(scenario.effective_extras),
-        "input_files_used": sorted(scenario.input_files),
+        "inputs_used": sorted(scenario.inputs),
         "native_extras_used": native_used,
         "derived_extras_used": derived_used,
         "truth_outputs": truth_outputs,
         "status": status,
-        "warnings": warnings,
-        "blocking_reasons": blocking_reasons,
+        "issues": issues,
     }
 
 
@@ -131,7 +148,6 @@ def preflight_generate_data_scenario(scenario_path: Path) -> dict[str, Any]:
             "organism": scenario.organism,
             "requested_extras": scenario.requested_extras,
             "effective_extras": scenario.effective_extras,
-            "input_files": scenario.input_files,
             "inputs": scenario.inputs,
             "base_seed": scenario.base_seed,
         },

@@ -37,6 +37,7 @@ from andrea.core.commands.infer_network import (
 from andrea.core.commands.infer_network import (
     run_infer_network_plan as core_run_infer_network_plan,
 )
+from andrea.core.shared.issues import issue_messages
 
 
 def _version_callback(value: bool) -> None:
@@ -183,23 +184,32 @@ def infer_network_preflight(
         blocked = len(report.get("catalog", {}).get("blocked", []))
         selected = len(report.get("runs", {}).get("selected", []))
         skipped = len(report.get("runs", {}).get("skipped", {}))
-        requirement_issues = report.get("runs", {}).get("requirement_issues", {})
-        requirement_issue_runs = (
-            len(requirement_issues) if isinstance(requirement_issues, dict) else 0
-        )
+        run_issues = report.get("runs", {}).get("issues", {})
+        conditional_issue_runs = 0
+        if isinstance(run_issues, dict):
+            conditional_issue_runs = sum(
+                1
+                for issues in run_issues.values()
+                if isinstance(issues, list)
+                and any(
+                    isinstance(issue, dict)
+                    and issue.get("code") == "conditional_required"
+                    for issue in issues
+                )
+            )
         print("[bold green]infer-network preflight completed[/bold green]")
         print(f"  eligible tools: {eligible}")
         print(f"  warning tools: {warning}")
         print(f"  blocked tools: {blocked}")
         print(f"  selected runs: {selected}")
         print(f"  skipped runs: {skipped}")
-        print(f"  runs with conditional input issues: {requirement_issue_runs}")
-        if isinstance(requirement_issues, dict):
-            for run_id in sorted(requirement_issues):
-                messages = requirement_issues.get(run_id, [])
-                if not isinstance(messages, list):
+        print(f"  runs with conditional input issues: {conditional_issue_runs}")
+        if isinstance(run_issues, dict):
+            for run_id in sorted(run_issues):
+                issues = run_issues.get(run_id, [])
+                if not isinstance(issues, list):
                     continue
-                for message in messages:
+                for message in issue_messages(issues):
                     print(f"    - {escape(f'[{run_id}] {message}')}")
 
 
@@ -385,7 +395,7 @@ def generate_data_preflight(
     print(
         f"  effective extras: {', '.join(report['scenario']['effective_extras']) or '(none)'}"
     )
-    print(f"  input files: {', '.join(report['scenario']['input_files']) or '(none)'}")
+    print(f"  inputs: {', '.join(report['scenario']['inputs']) or '(none)'}")
     print(
         f"  catalog summary: total={summary['total']} "
         f"eligible={summary['eligible']} warning={summary['warning']} blocked={summary['blocked']}"
@@ -397,11 +407,10 @@ def generate_data_preflight(
         print(f"  {bucket}:")
         for entry in entries:
             suffix = ""
-            reasons = (
-                entry["blocking_reasons"] if bucket == "blocked" else entry["warnings"]
-            )
-            if reasons:
-                suffix = " - " + "; ".join(reasons)
+            severity = "block" if bucket == "blocked" else "warn"
+            messages = issue_messages(entry.get("issues", []), severity=severity)
+            if messages:
+                suffix = " - " + "; ".join(messages)
             print(f"    - {entry['simulator_id']}{suffix}")
 
 

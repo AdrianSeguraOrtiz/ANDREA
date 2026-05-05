@@ -69,9 +69,21 @@ def _load_schema_constraints(schemas_dir: Path) -> SchemaConstraints:
     raw_expression_profiles = spec_expr_props.get("expression_profile", {}).get(
         "enum", []
     )
+    raw_taxonomic_groups = (
+        dataset_manifest_schema.get("properties", {})
+        .get("dataset", {})
+        .get("properties", {})
+        .get("spec", {})
+        .get("properties", {})
+        .get("organism", {})
+        .get("properties", {})
+        .get("taxonomic_group", {})
+        .get("enum", [])
+    )
 
     column_kinds = {x for x in raw_column_kinds if isinstance(x, str)}
     expression_profiles = {x for x in raw_expression_profiles if isinstance(x, str)}
+    taxonomic_groups = {x for x in raw_taxonomic_groups if isinstance(x, str)}
     if not column_kinds:
         raise ValueError(
             "dataset-manifest.schema: dataset.spec.expression.column_kind.enum is missing or empty"
@@ -79,6 +91,10 @@ def _load_schema_constraints(schemas_dir: Path) -> SchemaConstraints:
     if not expression_profiles:
         raise ValueError(
             "dataset-manifest.schema: dataset.spec.expression.expression_profile.enum is missing or empty"
+        )
+    if not taxonomic_groups:
+        raise ValueError(
+            "dataset-manifest.schema: dataset.spec.organism.taxonomic_group.enum is missing or empty"
         )
 
     raw_assumptions = (
@@ -111,6 +127,7 @@ def _load_schema_constraints(schemas_dir: Path) -> SchemaConstraints:
     return SchemaConstraints(
         column_kinds=column_kinds,
         expression_profiles=expression_profiles,
+        taxonomic_groups=taxonomic_groups,
         assumptions=assumptions,
         extra_input_keys=extra_input_keys,
         extra_input_filenames=extra_input_filenames,

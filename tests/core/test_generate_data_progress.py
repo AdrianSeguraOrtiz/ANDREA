@@ -24,12 +24,11 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
                 profile="scrna_global",
                 run_id="dyngen_cfg",
                 simulator_id="dyngen",
-                organism={"kind": "synthetic", "tax_id": None},
+                organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                 requested_extras=[],
                 effective_extras=[],
                 inputs={},
-                input_files={},
-                resolved_input_files={},
+                resolved_input_paths={},
                 simulator_params={},
                 native_outputs=[],
                 replicates=1,
@@ -49,12 +48,11 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
             resolved = ResolvedSimulationPlan(
                 request_id="bench",
                 profile="scrna_global",
-                organism={"kind": "synthetic", "tax_id": None},
+                organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                 requested_extras=[],
                 effective_extras=[],
                 inputs={},
-                input_files={},
-                resolved_input_files={},
+                resolved_input_paths={},
                 base_seed=11,
                 notes=None,
                 simulator_runs=[run],
@@ -68,7 +66,7 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
                 kwargs["progress_callback"](
                     {
                         "status": "running",
-                        "step": "run_simulator",
+                        "phase": "run_simulator",
                         "percent": 42,
                         "message": "halfway",
                     }
@@ -93,7 +91,6 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
                         "tf_list": None,
                         "prior_grn_by_group": None,
                         "global_network": "datasets/bench__dyngen_cfg__r01/truth/global_network.csv",
-                        "legacy_binary_matrix": "datasets/bench__dyngen_cfg__r01/truth/legacy/global_gs.csv",
                         "group_networks_dir": None,
                     },
                 )

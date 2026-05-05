@@ -76,9 +76,15 @@ def _build_simulation_plan_payload(
             scenario=scenario,
         )
         if entry["status"] == "blocked":
+            block_messages = [
+                str(issue.get("message", "")).strip()
+                for issue in entry.get("issues", [])
+                if issue.get("severity") == "block"
+                and str(issue.get("message", "")).strip()
+            ]
             raise ValueError(
                 f"Simulator run '{run_id}' is blocked for scenario '{scenario.request_id}': "
-                + "; ".join(entry["blocking_reasons"])
+                + "; ".join(block_messages)
             )
         resolved_params = _resolve_simulator_params(
             simulator_id=simulator_id,
@@ -149,11 +155,7 @@ def _build_simulation_plan_payload(
         "effective_extras": list(scenario.effective_extras),
         "inputs": {
             key: {**scenario.inputs[key], "path": str(path)}
-            for key, path in sorted(scenario.resolved_input_files.items())
-        },
-        "input_files": {
-            key: str(path)
-            for key, path in sorted(scenario.resolved_input_files.items())
+            for key, path in sorted(scenario.resolved_input_paths.items())
         },
         "runs": resolved_runs,
         "tasks": tasks,

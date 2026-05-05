@@ -13,6 +13,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from andrea.core.shared.json_io import load_json_object as _load_json_object
+from andrea.core.shared.issues import issue_messages
+
 MERGED_NETWORK_REQUIRED_COLUMNS = [
     "source",
     "target",
@@ -167,7 +170,7 @@ def evaluate_inference(
             "status": run_report.get("status"),
             "dataset": run_report.get("dataset"),
             "execution": run_report.get("execution"),
-            "warnings": run_report.get("warnings", []),
+            "warnings": issue_messages(run_report.get("issues", []), severity="warn"),
         },
         "ground_truth": {
             "dataset_id": manifest.get("dataset_id"),
@@ -191,20 +194,6 @@ def evaluate_inference(
         json.dumps(report, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
     )
     return report
-
-
-def _load_json_object(path: Path, label: str) -> dict[str, Any]:
-    if not path.exists() or not path.is_file():
-        raise ValueError(f"{label} file not found: {path}")
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"{label} is malformed JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
-        ) from exc
-    if not isinstance(payload, dict):
-        raise ValueError(f"{label} must be a JSON object: {path}")
-    return payload
 
 
 def _resolve_merged_network_path_from_run_report(

@@ -3,25 +3,22 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-from jsonschema import Draft202012Validator
+from andrea.core.shared.catalog_contracts import TAXONOMIC_GROUPS
+from andrea.core.shared.json_io import (
+    load_json_object as _load_json_object,
+    validate_json_instance as _validate_json_instance,
+    write_json as _write_json,
+)
 
 DEFAULT_OUTPUT_DIR = Path("./benchmarks")
 CATALOG_ROOT = Path(__file__).resolve().parents[3] / "catalog_simulation_data_tools"
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCHEMA_VERSION = "1.0"
-KNOWN_EXTRAS = {
-    "groups",
-    "lineage_tree",
-    "tf_list",
-    "prior_grn_by_group",
-    "group_networks",
-}
 MAX_SEED_32BIT = 2_147_483_646
 
 
@@ -77,8 +74,7 @@ class ResolvedSimulatorRun:
     requested_extras: list[str]
     effective_extras: list[str]
     inputs: dict[str, dict[str, Any]]
-    input_files: dict[str, str]
-    resolved_input_files: dict[str, Path]
+    resolved_input_paths: dict[str, Path]
     simulator_params: dict[str, Any]
     native_outputs: list[str]
     replicates: int
@@ -96,8 +92,7 @@ class ResolvedSimulationPlan:
     requested_extras: list[str]
     effective_extras: list[str]
     inputs: dict[str, dict[str, Any]]
-    input_files: dict[str, str]
-    resolved_input_files: dict[str, Path]
+    resolved_input_paths: dict[str, Path]
     base_seed: Optional[int]
     notes: Optional[str]
     simulator_runs: list[ResolvedSimulatorRun]
@@ -114,33 +109,10 @@ class ResolvedScenarioRequest:
     requested_extras: list[str]
     effective_extras: list[str]
     inputs: dict[str, dict[str, Any]]
-    input_files: dict[str, str]
-    resolved_input_files: dict[str, Path]
+    resolved_input_paths: dict[str, Path]
     base_seed: Optional[int]
     notes: Optional[str]
     request_payload: dict[str, Any]
-
-
-def _load_json_object(path: Path, label: str) -> dict[str, Any]:
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except FileNotFoundError as exc:
-        raise ValueError(f"{label} file not found: {path}") from exc
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"{label} is malformed JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
-        ) from exc
-    if not isinstance(data, dict):
-        raise ValueError(f"{label} must be a JSON object: {path}")
-    return data
-
-
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
-    )
 
 
 def _copy_tree(src: Path, dst: Path) -> None:
@@ -158,25 +130,6 @@ def _ensure_clean_dir(path: Path) -> None:
     if path.exists():
         shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
-
-
-def _validate_json_instance(
-    *,
-    instance: dict[str, Any],
-    schema: dict[str, Any],
-    label: str,
-) -> None:
-    validator = Draft202012Validator(schema)
-    errors = sorted(validator.iter_errors(instance), key=lambda err: list(err.path))
-    if not errors:
-        return
-    first = errors[0]
-    dotted = ".".join(str(x) for x in first.absolute_path)
-    if dotted:
-        raise ValueError(
-            f"{label} failed schema validation at {dotted}: {first.message}"
-        )
-    raise ValueError(f"{label} failed schema validation: {first.message}")
 
 
 def _relative_posix(path: Path, start: Path) -> str:

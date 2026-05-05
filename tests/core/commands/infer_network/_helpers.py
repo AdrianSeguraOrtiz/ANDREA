@@ -32,6 +32,7 @@ class InferNetworkCoreTestCase(unittest.TestCase):
         columns: int = 2,
         column_kind: str = "samples",
         expression_profile: str = "mixed",
+        organism: dict[str, Any] | None = None,
         extras: dict[str, Any] | None = None,
     ) -> Path:
         manifest = {
@@ -48,7 +49,11 @@ class InferNetworkCoreTestCase(unittest.TestCase):
                         "column_kind": column_kind,
                         "expression_profile": expression_profile,
                     },
-                    "organism": {"tax_id": 9606},
+                    "organism": organism
+                    or {
+                        "taxonomic_group": "animal",
+                        "ncbi_taxon_id": 9606,
+                    },
                 },
                 "expression_matrix": expression_matrix,
             },

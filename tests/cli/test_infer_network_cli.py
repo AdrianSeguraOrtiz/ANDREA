@@ -16,13 +16,12 @@ class InferNetworkCliTests(unittest.TestCase):
     def setUp(self) -> None:
         self.runner = CliRunner()
 
-    def test_help_shows_group_subcommands_and_no_plan_only(self) -> None:
+    def test_help_shows_group_subcommands(self) -> None:
         result = self.runner.invoke(app, ["infer-network", "--help"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("plan", result.output)
         self.assertIn("run", result.output)
         self.assertIn("execute", result.output)
-        self.assertNotIn("plan-only", result.output)
 
     def test_plan_subcommand_calls_core_plan(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

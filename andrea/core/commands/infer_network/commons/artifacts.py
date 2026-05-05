@@ -22,6 +22,10 @@ def _serialize_dataset_context(dataset: DatasetContext) -> dict[str, Any]:
         "dataset_id": dataset.dataset_id,
         "column_kind": dataset.column_kind,
         "expression_profile": dataset.expression_profile,
+        "organism": {
+            "taxonomic_group": dataset.taxonomic_group,
+            "ncbi_taxon_id": dataset.ncbi_taxon_id,
+        },
         "genes": dataset.genes,
         "columns": dataset.columns,
         "expression_matrix_path": str(dataset.expression_matrix_path.resolve()),
@@ -33,6 +37,15 @@ def _serialize_dataset_context(dataset: DatasetContext) -> dict[str, Any]:
 
 
 def _deserialize_dataset_context(payload: dict[str, Any]) -> DatasetContext:
+    organism = payload.get("organism")
+    if not isinstance(organism, dict) or set(organism) != {
+        "taxonomic_group",
+        "ncbi_taxon_id",
+    }:
+        raise ValueError(
+            "preflight_report.dataset.organism must contain exactly taxonomic_group and ncbi_taxon_id"
+        )
+
     extras_raw = payload.get("extras", {})
     extras: dict[str, Optional[Path]] = {}
     if isinstance(extras_raw, dict):
@@ -46,6 +59,12 @@ def _deserialize_dataset_context(payload: dict[str, Any]) -> DatasetContext:
         dataset_id=str(payload.get("dataset_id", "")),
         column_kind=str(payload.get("column_kind", "")),
         expression_profile=str(payload.get("expression_profile", "")),
+        taxonomic_group=str(organism.get("taxonomic_group", "")),
+        ncbi_taxon_id=(
+            int(organism["ncbi_taxon_id"])
+            if organism.get("ncbi_taxon_id") is not None
+            else None
+        ),
         genes=int(payload.get("genes", 0)),
         columns=int(payload.get("columns", 0)),
         expression_matrix_path=Path(

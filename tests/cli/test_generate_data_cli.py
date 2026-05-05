@@ -39,7 +39,6 @@ class GenerateDataCliTests(unittest.TestCase):
                         "requested_extras": ["lineage_tree"],
                         "effective_extras": ["groups", "lineage_tree"],
                         "inputs": {},
-                        "input_files": {},
                     },
                     "catalog_summary": {
                         "total": 3,
@@ -51,7 +50,13 @@ class GenerateDataCliTests(unittest.TestCase):
                     "warning": [
                         {
                             "simulator_id": "dyngen",
-                            "warnings": ["derived extras required: lineage_tree"],
+                            "issues": [
+                                {
+                                    "severity": "warn",
+                                    "code": "derived_extra",
+                                    "message": "derived extras required: lineage_tree",
+                                }
+                            ],
                         }
                     ],
                     "blocked": [],

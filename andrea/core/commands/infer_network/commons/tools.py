@@ -6,18 +6,20 @@ import copy
 from pathlib import Path
 from typing import Any
 
+from andrea.core.shared.issues import make_issue
 from andrea.core.shared.param_validation import ParamValidationError
 from andrea.core.shared.param_validation import (
     validate_param_value as _validate_param_value,
 )
 
 from .shared import DatasetContext, SchemaConstraints, _load_json_object
+from .tool_rule_eval import (
+    COMPATIBILITY_OPS,
+    _collect_compatibility_rule_issues,
+    _compare_values,
+)
 
 EXECUTION_CAPABILITIES = {"global", "group_native", "group_emulated"}
-LEGACY_GROUP_MODE_TO_MODE = {
-    "global": "global",
-    "per_group": "group_emulated",
-}
 
 
 def _parse_extra_inputs_spec(
@@ -39,15 +41,37 @@ def _parse_extra_inputs_spec(
     opt = extra_inputs.get("optional", [])
     cond = extra_inputs.get("conditional_required", [])
 
-    if isinstance(req, list):
-        required_extras = [x for x in req if isinstance(x, str)]
-    else:
-        errors.append("toolspec.extra_inputs.required must be an array")
+    def parse_usage_entries(raw: Any, field: str) -> list[str]:
+        parsed: list[str] = []
+        if not isinstance(raw, list):
+            errors.append(f"toolspec.extra_inputs.{field} must be an array")
+            return parsed
+        seen: set[str] = set()
+        for idx, item in enumerate(raw, start=1):
+            if not isinstance(item, dict):
+                errors.append(
+                    f"toolspec.extra_inputs.{field}[{idx}] must be an object with input and usage"
+                )
+                continue
+            input_key = str(item.get("input", "")).strip()
+            usage = str(item.get("usage", "")).strip()
+            if not input_key:
+                errors.append(f"toolspec.extra_inputs.{field}[{idx}].input is required")
+                continue
+            if not usage:
+                errors.append(f"toolspec.extra_inputs.{field}[{idx}].usage is required")
+                continue
+            if input_key in seen:
+                errors.append(
+                    f"toolspec.extra_inputs.{field} contains duplicate input: {input_key}"
+                )
+                continue
+            seen.add(input_key)
+            parsed.append(input_key)
+        return parsed
 
-    if isinstance(opt, list):
-        optional_extras = [x for x in opt if isinstance(x, str)]
-    else:
-        errors.append("toolspec.extra_inputs.optional must be an array")
+    required_extras = parse_usage_entries(req, "required")
+    optional_extras = parse_usage_entries(opt, "optional")
 
     overlap = sorted(set(required_extras).intersection(optional_extras))
     if overlap:
@@ -70,6 +94,7 @@ def _parse_extra_inputs_spec(
         param_name = str(raw_rule.get("param", "")).strip()
         execution_name = str(raw_rule.get("execution", "")).strip()
         op = str(raw_rule.get("op", "")).strip()
+        usage = str(raw_rule.get("usage", "")).strip()
         message = str(raw_rule.get("message", "")).strip()
         value = raw_rule.get("value")
 
@@ -88,9 +113,14 @@ def _parse_extra_inputs_spec(
                 f"toolspec.extra_inputs.conditional_required[{idx}].execution must be 'mode'"
             )
             continue
-        if op not in {"eq", "ne", "gt", "gte", "lt", "lte"}:
+        if op not in COMPATIBILITY_OPS:
             errors.append(
                 f"toolspec.extra_inputs.conditional_required[{idx}].op is invalid"
+            )
+            continue
+        if not usage:
+            errors.append(
+                f"toolspec.extra_inputs.conditional_required[{idx}].usage is required"
             )
             continue
         if not message:
@@ -108,6 +138,7 @@ def _parse_extra_inputs_spec(
             "input": input_key,
             "op": op,
             "value": value,
+            "usage": usage,
             "message": message,
         }
         if param_name:
@@ -234,19 +265,16 @@ def _resolve_run_execution(
 ) -> tuple[bool, dict[str, Any], list[str]]:
     errors: list[str] = []
     try:
-        capabilities = _parse_execution_capabilities(
-            tool_id=run_id, toolspec=toolspec
-        )
+        capabilities = _parse_execution_capabilities(tool_id=run_id, toolspec=toolspec)
     except ValueError as exc:
         errors.append(str(exc))
         capabilities = ["global"]
 
-    unknown_keys = sorted(set(user_execution.keys()).difference({"mode", "group_mode"}))
+    unknown_keys = sorted(set(user_execution.keys()).difference({"mode"}))
     for key in unknown_keys:
-        warnings.append(f"[{run_id}] unknown execution key ignored: {key}")
+        errors.append(f"unknown execution key: {key}")
 
     mode_raw = user_execution.get("mode")
-    legacy_group_mode_raw = user_execution.get("group_mode")
     if mode_raw is not None:
         if not isinstance(mode_raw, str):
             errors.append("execution.mode must be string when provided")
@@ -256,25 +284,6 @@ def _resolve_run_execution(
             if mode not in EXECUTION_CAPABILITIES:
                 errors.append(
                     "execution.mode must be one of: global, group_native, group_emulated"
-                )
-    elif legacy_group_mode_raw is not None:
-        if not isinstance(legacy_group_mode_raw, str):
-            errors.append("execution.group_mode must be string when provided")
-            mode = _default_execution_mode(capabilities)
-        else:
-            legacy_group_mode = legacy_group_mode_raw.strip()
-            mode = LEGACY_GROUP_MODE_TO_MODE.get(legacy_group_mode, "")
-            if not mode:
-                errors.append("execution.group_mode must be one of: global, per_group")
-            elif (
-                legacy_group_mode == "per_group"
-                and mode not in capabilities
-                and "group_native" in capabilities
-            ):
-                mode = "group_native"
-            if mode:
-                warnings.append(
-                    f"[{run_id}] execution.group_mode is deprecated; use execution.mode={mode!r}."
                 )
     else:
         mode = _default_execution_mode(capabilities)
@@ -305,9 +314,10 @@ def _check_tool_compatibility(
     constraints: SchemaConstraints,
     strict: bool,
     warnings: list[str],
+    warning_prefix: str | None = None,
 ) -> tuple[bool, list[str], list[str]]:
     errors: list[str] = []
-    pending_conditions: list[str] = []
+    conditional_messages: list[str] = []
 
     try:
         _parse_execution_capabilities(tool_id=tool_id, toolspec=toolspec)
@@ -341,6 +351,32 @@ def _check_tool_compatibility(
                 f"tool assumes bulk_specific but dataset expression_profile is '{dataset.expression_profile}'"
             )
 
+    taxonomic_scope = toolspec.get("taxonomic_scope")
+    if not isinstance(taxonomic_scope, dict):
+        errors.append("invalid toolspec.taxonomic_scope")
+    else:
+        allowed_groups = taxonomic_scope.get("allowed_groups")
+        if (
+            not isinstance(allowed_groups, list)
+            or not allowed_groups
+            or not all(isinstance(x, str) for x in allowed_groups)
+        ):
+            errors.append("invalid toolspec.taxonomic_scope.allowed_groups")
+        else:
+            unknown_groups = sorted(
+                set(allowed_groups).difference(constraints.taxonomic_groups)
+            )
+            if unknown_groups:
+                errors.append(
+                    "toolspec.taxonomic_scope.allowed_groups contains unsupported values: "
+                    f"{unknown_groups}"
+                )
+            elif dataset.taxonomic_group not in set(allowed_groups):
+                allowed_label = ", ".join(allowed_groups)
+                errors.append(
+                    f"dataset taxonomic_group '{dataset.taxonomic_group}' is not accepted by tool; accepted groups: {allowed_label}"
+                )
+
     toolspec_params = toolspec.get("params", {})
     known_params = (
         set(toolspec_params.keys()) if isinstance(toolspec_params, dict) else None
@@ -367,22 +403,24 @@ def _check_tool_compatibility(
         if extra_key in conditional_inputs:
             continue
         if dataset.extras.get(extra_key) is None:
-            warnings.append(f"[{tool_id}] optional extra not provided: {extra_key}")
+            message = f"optional extra not provided: {extra_key}"
+            warnings.append(
+                f"[{warning_prefix}] {message}" if warning_prefix else message
+            )
 
     for rule in conditional_required:
         input_key = str(rule.get("input", "")).strip()
         message = str(rule.get("message", "")).strip()
         if input_key and dataset.extras.get(input_key) is None and message:
-            pending_conditions.append(message)
+            conditional_messages.append(message)
 
     if errors:
         message = "; ".join(errors)
         if strict:
             raise ValueError(f"[{tool_id}] incompatible with dataset: {message}")
-        warnings.append(f"[{tool_id}] skipped due to incompatibility: {message}")
         return False, errors, []
 
-    return True, [], pending_conditions
+    return True, [], conditional_messages
 
 
 def _resolve_tool_params(
@@ -461,33 +499,10 @@ def _conditional_rule_matches(
     else:
         return False
 
-    if op == "eq":
-        return actual == expected
-    if op == "ne":
-        return actual != expected
-
-    if (
-        isinstance(actual, bool)
-        or isinstance(expected, bool)
-        or not isinstance(actual, (int, float))
-        or not isinstance(expected, (int, float))
-    ):
-        return False
-
-    actual_num = float(actual)
-    expected_num = float(expected)
-    if op == "gt":
-        return actual_num > expected_num
-    if op == "gte":
-        return actual_num >= expected_num
-    if op == "lt":
-        return actual_num < expected_num
-    if op == "lte":
-        return actual_num <= expected_num
-    return False
+    return _compare_values(actual=actual, op=op, expected=expected)
 
 
-def _collect_requirement_issues(
+def _collect_conditional_input_issues(
     *,
     tool_id: str,
     toolspec: dict[str, Any],
@@ -538,14 +553,20 @@ def _scan_catalog_compatibility(
                 {
                     "tool_id": tool_id,
                     "status": "blocked",
-                    "reasons": [f"invalid toolspec: {exc}"],
-                    "warnings": [],
+                    "issues": [
+                        make_issue(
+                            severity="block",
+                            code="invalid_toolspec",
+                            message=f"invalid toolspec: {exc}",
+                            tool_id=tool_id,
+                        )
+                    ],
                 }
             )
             continue
 
         local_warnings: list[str] = []
-        compatible, reasons, pending_conditions = _check_tool_compatibility(
+        compatible, block_messages, _conditional_messages = _check_tool_compatibility(
             tool_id=tool_id,
             toolspec=toolspec,
             dataset=dataset,
@@ -553,20 +574,100 @@ def _scan_catalog_compatibility(
             strict=False,
             warnings=local_warnings,
         )
+        conditional_messages: list[str] = []
+        if compatible:
+            toolspec_params = toolspec.get("params", {})
+            if not isinstance(toolspec_params, dict):
+                compatible = False
+                block_messages = ["toolspec.params must be an object"]
+            else:
+                params_ok, resolved_params, param_errors = _resolve_tool_params(
+                    tool_id=tool_id,
+                    user_params={},
+                    toolspec_params=toolspec_params,
+                    strict=False,
+                    warnings=local_warnings,
+                )
+                execution_ok, resolved_execution, execution_errors = (
+                    _resolve_run_execution(
+                        run_id=tool_id,
+                        toolspec=toolspec,
+                        user_execution={},
+                        strict=False,
+                        warnings=local_warnings,
+                    )
+                )
+                if not params_ok or not execution_ok:
+                    compatible = False
+                    block_messages = param_errors + execution_errors
+                else:
+                    rule_blocks, rule_warnings, rule_errors = (
+                        _collect_compatibility_rule_issues(
+                            tool_id=tool_id,
+                            toolspec=toolspec,
+                            dataset=dataset,
+                            resolved_params=resolved_params,
+                            resolved_execution=resolved_execution,
+                            catalog_scan=True,
+                        )
+                    )
+                    if rule_errors:
+                        compatible = False
+                        block_messages = [
+                            f"invalid compatibility rule: {msg}" for msg in rule_errors
+                        ]
+                    elif rule_blocks:
+                        compatible = False
+                        block_messages = rule_blocks
+                    else:
+                        local_warnings.extend(rule_warnings)
+                        conditional_messages = _collect_conditional_input_issues(
+                            tool_id=tool_id,
+                            toolspec=toolspec,
+                            dataset=dataset,
+                            resolved_params=resolved_params,
+                            resolved_execution=resolved_execution,
+                        )
 
         status = "eligible"
         if not compatible:
             status = "blocked"
-        elif local_warnings or pending_conditions:
+        elif local_warnings or conditional_messages:
             status = "warning"
 
         entries.append(
             {
                 "tool_id": tool_id,
                 "status": status,
-                "reasons": reasons,
-                "warnings": local_warnings,
-                "pending_conditions": pending_conditions,
+                "issues": [
+                    *[
+                        make_issue(
+                            severity="block",
+                            code="compatibility",
+                            message=message,
+                            tool_id=tool_id,
+                        )
+                        for message in block_messages
+                    ],
+                    *[
+                        make_issue(
+                            severity="warn",
+                            code="catalog_warning",
+                            message=message,
+                            tool_id=tool_id,
+                        )
+                        for message in local_warnings
+                    ],
+                    *[
+                        make_issue(
+                            severity="warn",
+                            code="conditional_required",
+                            message=message,
+                            tool_id=tool_id,
+                        )
+                        for message in conditional_messages
+                    ],
+                ],
             }
         )
 

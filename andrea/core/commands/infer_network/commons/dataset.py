@@ -74,6 +74,18 @@ def _parse_dataset_context(
         raise ValueError(
             "dataset-manifest.dataset.spec must include object field: expression"
         )
+    organism = spec.get("organism")
+    if not isinstance(organism, dict):
+        raise ValueError(
+            "dataset-manifest.dataset.spec must include object field: organism"
+        )
+    organism_keys = set(organism)
+    expected_organism_keys = {"taxonomic_group", "ncbi_taxon_id"}
+    if organism_keys != expected_organism_keys:
+        raise ValueError(
+            "dataset-manifest.dataset.spec.organism must contain exactly "
+            "taxonomic_group and ncbi_taxon_id"
+        )
 
     dataset_id = str(spec.get("id", "")).strip()
     if not dataset_id:
@@ -91,6 +103,32 @@ def _parse_dataset_context(
         raise ValueError(
             "dataset-manifest.dataset.spec.expression.expression_profile must be one of "
             f"{sorted(constraints.expression_profiles)}"
+        )
+
+    taxonomic_group = str(organism.get("taxonomic_group", "")).strip()
+    if taxonomic_group not in constraints.taxonomic_groups:
+        raise ValueError(
+            "dataset-manifest.dataset.spec.organism.taxonomic_group must be one of "
+            f"{sorted(constraints.taxonomic_groups)}"
+        )
+    ncbi_taxon_id_raw = organism.get("ncbi_taxon_id")
+    if ncbi_taxon_id_raw is None:
+        ncbi_taxon_id = None
+    elif isinstance(ncbi_taxon_id_raw, int) and not isinstance(ncbi_taxon_id_raw, bool):
+        ncbi_taxon_id = int(ncbi_taxon_id_raw)
+    else:
+        raise ValueError(
+            "dataset-manifest.dataset.spec.organism.ncbi_taxon_id must be integer or null"
+        )
+    if taxonomic_group not in {"synthetic", "unknown"} and (
+        ncbi_taxon_id is None or ncbi_taxon_id < 1
+    ):
+        raise ValueError(
+            "dataset-manifest.dataset.spec.organism.ncbi_taxon_id must be integer >= 1 for biological taxonomic groups"
+        )
+    if ncbi_taxon_id is not None and ncbi_taxon_id < 1:
+        raise ValueError(
+            "dataset-manifest.dataset.spec.organism.ncbi_taxon_id must be integer >= 1 or null"
         )
 
     try:
@@ -137,6 +175,8 @@ def _parse_dataset_context(
         dataset_id=dataset_id,
         column_kind=column_kind,
         expression_profile=expression_profile,
+        taxonomic_group=taxonomic_group,
+        ncbi_taxon_id=ncbi_taxon_id,
         genes=genes_observed,
         columns=cols_observed,
         expression_matrix_path=expression_path,

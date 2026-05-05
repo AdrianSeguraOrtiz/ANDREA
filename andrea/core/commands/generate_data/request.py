@@ -10,13 +10,14 @@ from andrea.core.shared.param_validation import (
     ParamValidationError,
     validate_param_value,
 )
+from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
 
 from .catalog import _load_simulator_catalog, get_profile_capability
 from .shared import (
-    KNOWN_EXTRAS,
     PROFILE_SPECS,
     ResolvedSimulationPlan,
     ResolvedSimulatorRun,
+    TAXONOMIC_GROUPS,
     _load_json_object,
     _validate_json_instance,
 )
@@ -32,12 +33,12 @@ def _supported_requested_artifacts(
         native.update(
             key
             for key, mode in truth_outputs.items()
-            if key in KNOWN_EXTRAS and mode == "native"
+            if key in SIMULATION_EXTRA_IDS and mode == "native"
         )
         derivable.update(
             key
             for key, mode in truth_outputs.items()
-            if key in KNOWN_EXTRAS and mode == "derivable"
+            if key in SIMULATION_EXTRA_IDS and mode == "derivable"
         )
     return native, derivable
 
@@ -138,25 +139,22 @@ def _resolve_simulator_params(
     return resolved
 
 
-def _resolve_input_files(
+def _resolve_inputs(
     raw_inputs: Any,
     *,
     base_dir: Path,
-) -> tuple[dict[str, dict[str, Any]], dict[str, str], dict[str, Path]]:
+) -> tuple[dict[str, dict[str, Any]], dict[str, Path]]:
     if raw_inputs is None:
-        return {}, {}, {}
+        return {}, {}
     if not isinstance(raw_inputs, dict):
         raise ValueError("inputs must be an object mapping input id to input metadata")
 
     inputs: dict[str, dict[str, Any]] = {}
-    input_files: dict[str, str] = {}
     resolved: dict[str, Path] = {}
     for input_id, raw_input in raw_inputs.items():
         if not isinstance(input_id, str) or not input_id:
             raise ValueError("inputs keys must be non-empty strings")
-        if isinstance(raw_input, str):
-            input_payload: dict[str, Any] = {"path": raw_input}
-        elif isinstance(raw_input, dict):
+        if isinstance(raw_input, dict):
             input_payload = dict(raw_input)
         else:
             raise ValueError(f"inputs.{input_id} must be an object with a path")
@@ -172,9 +170,8 @@ def _resolve_input_files(
             raise ValueError(f"inputs.{input_id}.path does not exist: {path}")
         input_payload["path"] = raw_path
         inputs[input_id] = input_payload
-        input_files[input_id] = raw_path
         resolved[input_id] = path
-    return inputs, input_files, resolved
+    return inputs, resolved
 
 
 def _param_lookup(params: dict[str, Any], path: str) -> Any:
@@ -215,14 +212,14 @@ def _conditional_input_matches(
     return False
 
 
-def validate_simulator_input_files(
+def validate_simulator_inputs(
     *,
     simulator_id: str,
     simulator_spec: dict[str, Any],
     profile: str,
     requested_extras: list[str],
     simulator_params: dict[str, Any],
-    input_files: dict[str, str],
+    input_ids: set[str],
 ) -> list[str]:
     simulator_inputs = simulator_spec.get("simulator_inputs", {})
     required = simulator_inputs.get("required", [])
@@ -241,16 +238,16 @@ def validate_simulator_input_files(
     )
 
     errors: list[str] = []
-    unknown_inputs = sorted(set(input_files).difference(declared_ids))
+    unknown_inputs = sorted(set(input_ids).difference(declared_ids))
     if unknown_inputs:
         errors.append(
-            f"unknown input_files for simulator '{simulator_id}': {', '.join(unknown_inputs)}"
+            f"unknown inputs for simulator '{simulator_id}': {', '.join(unknown_inputs)}"
         )
 
     for item in required:
         if isinstance(item, dict):
             input_id = str(item.get("id", ""))
-            if input_id and input_id not in input_files:
+            if input_id and input_id not in input_ids:
                 errors.append(f"missing required input file '{input_id}'")
 
     requested_extra_set = set(requested_extras)
@@ -267,7 +264,7 @@ def validate_simulator_input_files(
                 requested_extras=requested_extra_set,
                 simulator_params=simulator_params,
             )
-            and input_id not in input_files
+            and input_id not in input_ids
         ):
             errors.append(
                 str(
@@ -281,20 +278,29 @@ def validate_simulator_input_files(
 
 
 def _validate_organism(payload: dict[str, Any]) -> None:
-    kind = str(payload.get("kind", "biological")).strip() or "biological"
-    tax_id = payload.get("tax_id")
-    if kind == "biological":
-        if not isinstance(tax_id, int) or tax_id < 1:
-            raise ValueError(
-                "organism.tax_id must be integer >= 1 when organism.kind=biological"
-            )
-    elif kind in {"synthetic", "unknown"}:
-        if tax_id is not None and (not isinstance(tax_id, int) or tax_id < 1):
-            raise ValueError(
-                "organism.tax_id must be null or integer >= 1 when organism.kind is synthetic/unknown"
-            )
-    else:
-        raise ValueError("organism.kind must be one of: biological, synthetic, unknown")
+    organism_keys = set(payload)
+    expected_organism_keys = {"taxonomic_group", "ncbi_taxon_id"}
+    if organism_keys != expected_organism_keys:
+        raise ValueError(
+            "organism must contain exactly taxonomic_group and ncbi_taxon_id"
+        )
+    taxonomic_group = str(payload.get("taxonomic_group", "")).strip()
+    if taxonomic_group not in TAXONOMIC_GROUPS:
+        raise ValueError(
+            "organism.taxonomic_group must be one of: "
+            + ", ".join(sorted(TAXONOMIC_GROUPS))
+        )
+    ncbi_taxon_id = payload.get("ncbi_taxon_id")
+    if ncbi_taxon_id is not None and (
+        not isinstance(ncbi_taxon_id, int)
+        or isinstance(ncbi_taxon_id, bool)
+        or ncbi_taxon_id < 1
+    ):
+        raise ValueError("organism.ncbi_taxon_id must be null or integer >= 1")
+    if taxonomic_group not in {"synthetic", "unknown"} and ncbi_taxon_id is None:
+        raise ValueError(
+            "organism.ncbi_taxon_id must be integer >= 1 for biological taxonomic groups"
+        )
 
 
 def _validate_common_plan_fields(
@@ -307,14 +313,14 @@ def _validate_common_plan_fields(
         raise ValueError(f"Unknown benchmark profile: {profile}")
 
     requested_extras = list(payload.get("requested_extras", []))
-    if any(extra not in KNOWN_EXTRAS for extra in requested_extras):
-        unsupported = sorted(set(requested_extras).difference(KNOWN_EXTRAS))
+    if any(extra not in SIMULATION_EXTRA_IDS for extra in requested_extras):
+        unsupported = sorted(set(requested_extras).difference(SIMULATION_EXTRA_IDS))
         raise ValueError(f"Unknown requested_extras: {unsupported}")
 
     profile_required = set(PROFILE_SPECS[profile].required_extras)
     effective_extras = sorted(set(requested_extras).union(profile_required))
 
-    organism = payload.get("organism", {"kind": "synthetic", "tax_id": None})
+    organism = payload.get("organism")
     if not isinstance(organism, dict):
         raise ValueError(f"{label}.organism must be an object")
     _validate_organism(organism)
@@ -337,8 +343,7 @@ def _resolve_simulator_run(
     requested_extras: list[str],
     effective_extras: list[str],
     inputs: dict[str, dict[str, Any]],
-    input_files: dict[str, str],
-    resolved_input_files: dict[str, Path],
+    resolved_input_paths: dict[str, Path],
     run_payload: dict[str, Any],
     notes: str | None,
     catalog: dict[str, dict[str, Any]],
@@ -389,17 +394,17 @@ def _resolve_simulator_run(
         label=f"simulation-plan.runs[{run_id}]",
     )
 
-    input_errors = validate_simulator_input_files(
+    input_errors = validate_simulator_inputs(
         simulator_id=simulator_id,
         simulator_spec=simulator_spec,
         profile=profile,
         requested_extras=requested_extras,
         simulator_params=resolved_params,
-        input_files=input_files,
+        input_ids=set(inputs),
     )
     if input_errors:
         raise ValueError(
-            f"[{simulator_id}] invalid input_files: {'; '.join(input_errors)}"
+            f"[{simulator_id}] invalid inputs: {'; '.join(input_errors)}"
         )
 
     simulator_seed_base = run_payload.get("base_seed")
@@ -440,8 +445,7 @@ def _resolve_simulator_run(
         requested_extras=requested_extras,
         effective_extras=effective_extras,
         inputs=inputs,
-        input_files=input_files,
-        resolved_input_files=resolved_input_files,
+        resolved_input_paths=resolved_input_paths,
         simulator_params=resolved_params,
         native_outputs=native_outputs,
         replicates=replicates,
@@ -467,8 +471,8 @@ def validate_simulation_plan_payload(
     profile, organism, requested_extras, effective_extras, base_seed = (
         _validate_common_plan_fields(plan_payload, label="simulation-plan")
     )
-    raw_inputs = plan_payload.get("inputs", plan_payload.get("input_files", {}))
-    inputs, input_files, resolved_input_files = _resolve_input_files(
+    raw_inputs = plan_payload.get("inputs", {})
+    inputs, resolved_input_paths = _resolve_inputs(
         raw_inputs,
         base_dir=base_dir or Path.cwd(),
     )
@@ -483,8 +487,7 @@ def validate_simulation_plan_payload(
             requested_extras=requested_extras,
             effective_extras=effective_extras,
             inputs=inputs,
-            input_files=input_files,
-            resolved_input_files=resolved_input_files,
+            resolved_input_paths=resolved_input_paths,
             run_payload=run_payload,
             notes=plan_payload.get("notes"),
             catalog=catalog,
@@ -570,8 +573,7 @@ def validate_simulation_plan_payload(
         requested_extras=requested_extras,
         effective_extras=effective_extras,
         inputs=inputs,
-        input_files=input_files,
-        resolved_input_files=resolved_input_files,
+        resolved_input_paths=resolved_input_paths,
         base_seed=base_seed,
         notes=plan_payload.get("notes"),
         simulator_runs=simulator_runs,

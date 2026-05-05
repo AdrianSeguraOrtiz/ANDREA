@@ -2,28 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
+
+from andrea.core.shared.json_io import load_json_object
 
 DEFAULT_INPUT_SPECS_DIR = (
     Path(__file__).resolve().parents[2] / "catalog_inference_tools" / "input_specs"
 )
-
-
-def _load_json_object(path: Path, label: str) -> dict[str, Any]:
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except FileNotFoundError as exc:
-        raise ValueError(f"{label} file not found: {path}") from exc
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"{label} is malformed JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
-        ) from exc
-    if not isinstance(data, dict):
-        raise ValueError(f"{label} must be a JSON object: {path}")
-    return data
 
 
 def load_input_specs(
@@ -35,7 +21,7 @@ def load_input_specs(
 
     specs: dict[str, dict[str, Any]] = {}
     for spec_path in sorted(input_specs_dir.glob("*.json")):
-        spec = _load_json_object(spec_path, f"input-spec[{spec_path.name}]")
+        spec = load_json_object(spec_path, f"input-spec[{spec_path.name}]")
         key = str(spec.get("key", "")).strip()
         if not key:
             raise ValueError(f"input spec is missing key: {spec_path}")

@@ -47,7 +47,6 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "profile": "scrna_grouped",
                         "outputs": {
                             "global_network": "truth/global_network.csv",
-                            "legacy_binary_matrix": None,
                             "group_networks": [],
                         },
                     }
@@ -184,7 +183,6 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "profile": "scrna_grouped",
                         "outputs": {
                             "global_network": "truth/global_network.csv",
-                            "legacy_binary_matrix": None,
                             "group_networks": [],
                         },
                     }

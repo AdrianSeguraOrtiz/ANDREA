@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from rich import print
+from andrea.core.shared.issues import issue_messages, make_issue
 
 from .commons.artifacts import (
     _build_input_fingerprints,
@@ -84,9 +84,7 @@ def plan_infer_network(
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
 
-    warnings = [
-        str(w) for w in preflight_report.get("warnings", []) if isinstance(w, str)
-    ]
+    warnings = issue_messages(preflight_report.get("issues", []), severity="warn")
     runs_payload = preflight_report.get("runs", {})
     if not isinstance(runs_payload, dict):
         raise ValueError("preflight_report.runs is invalid")
@@ -106,11 +104,16 @@ def plan_infer_network(
         for k, v in runs_payload.get("resolved_execution", {}).items()
         if isinstance(k, str) and isinstance(v, dict)
     }
-    requirement_issues = {
-        str(k): [str(x) for x in v if isinstance(x, str)]
-        for k, v in runs_payload.get("requirement_issues", {}).items()
+    run_issues = {
+        str(k): [item for item in v if isinstance(item, dict)]
+        for k, v in runs_payload.get("issues", {}).items()
         if isinstance(k, str) and isinstance(v, list)
     }
+    for run_id, issues_for_run in sorted(run_issues.items()):
+        warnings.extend(
+            f"[{run_id}] {message}"
+            for message in issue_messages(issues_for_run, severity="warn")
+        )
     skipped_tools = {
         str(k): str(v)
         for k, v in runs_payload.get("skipped", {}).items()
@@ -128,11 +131,9 @@ def plan_infer_network(
         if not isinstance(dataset_payload, dict):
             raise ValueError("refreshed preflight report has invalid dataset payload")
         dataset = _deserialize_dataset_context(dataset_payload)
-        warnings = [
-            str(w)
-            for w in refreshed_preflight.get("warnings", [])
-            if isinstance(w, str)
-        ]
+        warnings = issue_messages(
+            refreshed_preflight.get("issues", []), severity="warn"
+        )
         runs_payload = refreshed_preflight.get("runs", {})
         if not isinstance(runs_payload, dict):
             raise ValueError("refreshed preflight report has invalid runs payload")
@@ -154,11 +155,16 @@ def plan_infer_network(
             for k, v in runs_payload.get("resolved_execution", {}).items()
             if isinstance(k, str) and isinstance(v, dict)
         }
-        requirement_issues = {
-            str(k): [str(x) for x in v if isinstance(x, str)]
-            for k, v in runs_payload.get("requirement_issues", {}).items()
+        run_issues = {
+            str(k): [item for item in v if isinstance(item, dict)]
+            for k, v in runs_payload.get("issues", {}).items()
             if isinstance(k, str) and isinstance(v, list)
         }
+        for run_id, issues_for_run in sorted(run_issues.items()):
+            warnings.extend(
+                f"[{run_id}] {message}"
+                for message in issue_messages(issues_for_run, severity="warn")
+            )
         skipped_tools = {
             str(k): str(v)
             for k, v in runs_payload.get("skipped", {}).items()
@@ -170,17 +176,27 @@ def plan_infer_network(
                 "Check tools_params.json and dataset/tool compatibility."
             )
 
-    if requirement_issues:
+    blocking_run_issues = {
+        run_id: [
+            str(issue.get("message", "")).strip()
+            for issue in issues
+            if issue.get("severity") == "block" and str(issue.get("message", "")).strip()
+        ]
+        for run_id, issues in run_issues.items()
+    }
+    blocking_run_issues = {
+        run_id: messages for run_id, messages in blocking_run_issues.items() if messages
+    }
+    if blocking_run_issues:
         error_lines: list[str] = []
-        for run_id in sorted(requirement_issues):
-            for message in requirement_issues[run_id]:
+        for run_id in sorted(blocking_run_issues):
+            for message in blocking_run_issues[run_id]:
                 error_lines.append(f"[{run_id}] {message}")
         raise ValueError(
-            "Planning blocked by missing conditional inputs:\n" + "\n".join(error_lines)
+            "Planning blocked by preflight issues:\n" + "\n".join(error_lines)
         )
 
     catalog_toolspec_by_run: dict[str, dict[str, Any]] = {}
-    execution_capabilities_by_run: dict[str, list[str]] = {}
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids.get(run_id, "").strip()
         if not catalog_tool_id:
@@ -189,10 +205,6 @@ def plan_infer_network(
             )
         toolspec = _load_toolspec(tools_root, catalog_tool_id)
         catalog_toolspec_by_run[run_id] = toolspec
-        execution_capabilities_by_run[run_id] = _parse_execution_capabilities(
-            tool_id=run_id,
-            toolspec=toolspec,
-        )
 
     group_order: list[str] = []
     group_to_columns: dict[str, list[str]] = {}
@@ -220,12 +232,17 @@ def plan_infer_network(
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids[run_id]
         toolspec = catalog_toolspec_by_run[run_id]
-        execution_capabilities = execution_capabilities_by_run[run_id]
+        execution_capabilities = _parse_execution_capabilities(
+            tool_id=run_id,
+            toolspec=toolspec,
+        )
         resolved_execution = resolved_execution_by_tool.get(run_id, {})
         execution_mode = str(resolved_execution.get("mode", "")).strip()
         if not execution_mode:
             execution_mode = (
-                "global" if "global" in execution_capabilities else execution_capabilities[0]
+                "global"
+                if "global" in execution_capabilities
+                else execution_capabilities[0]
             )
 
         cost_profile, cost_warnings = _load_tool_cost_profile(
@@ -245,6 +262,8 @@ def plan_infer_network(
                     dataset_id=dataset.dataset_id,
                     column_kind=dataset.column_kind,
                     expression_profile=dataset.expression_profile,
+                    taxonomic_group=dataset.taxonomic_group,
+                    ncbi_taxon_id=dataset.ncbi_taxon_id,
                     genes=dataset.genes,
                     columns=len(group_columns),
                     expression_matrix_path=dataset.expression_matrix_path,
@@ -297,9 +316,7 @@ def plan_infer_network(
         logical_run_specs[run_id] = {
             "run_id": run_id,
             "tool_id": catalog_tool_id,
-            "execution_capabilities": execution_capabilities,
-            "execution_mode": execution_mode,
-            "execution": resolved_execution,
+            "execution": {**resolved_execution, "mode": execution_mode},
             "physical_tasks": physical_tasks,
         }
 
@@ -326,9 +343,9 @@ def plan_infer_network(
 
     _selected_modes, waves, total_eta = planning_result
     if planner_mode == "auto":
-        print(f"[cyan]planner[/cyan]: auto -> {planner_used}")
+        print(f"planner: auto -> {planner_used}")
     else:
-        print(f"[cyan]planner[/cyan]: requested={planner_mode}, used={planner_used}")
+        print(f"planner: requested={planner_mode}, used={planner_used}")
 
     run_id = (
         f"{dataset.dataset_id}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
@@ -441,8 +458,6 @@ def plan_infer_network(
             {
                 "run_id": run_id,
                 "tool_id": logical_spec["tool_id"],
-                "execution_capabilities": logical_spec["execution_capabilities"],
-                "execution_mode": logical_spec["execution_mode"],
                 "execution": logical_spec["execution"],
                 "physical_tasks_total": len(physical_tasks_payload),
                 "eta_start_seconds": logical_eta_start,
@@ -514,7 +529,14 @@ def plan_infer_network(
             "merged_network_normalized": None,
             "rows_per_tool": {},
         },
-        "warnings": warnings,
+        "issues": [
+            make_issue(
+                severity="warn",
+                code="planning_warning",
+                message=message,
+            )
+            for message in dict.fromkeys(warnings)
+        ],
         "execution": {
             "elapsed_seconds": 0.0,
             "planner_requested": planner_mode,
@@ -534,7 +556,7 @@ def plan_infer_network(
     }
     _write_json(run_dir / "run_report.json", report_payload)
 
-    print(f"[bold green]infer-network planning completed[/bold green]: {run_dir}")
+    print(f"infer-network planning completed: {run_dir}")
     print(f"  selected tools: {len(selected_tools)}")
     print(f"  skipped tools: {len(skipped_tools)}")
     print(f"  waves: {len(waves)}")

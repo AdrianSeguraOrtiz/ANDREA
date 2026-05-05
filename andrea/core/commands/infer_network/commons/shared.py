@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
 from andrea.core.shared.input_specs import DEFAULT_INPUT_SPECS_DIR
+from andrea.core.shared.json_io import (
+    load_json_object as _load_json_object,
+    write_json as _write_json,
+)
 from andrea.core.shared.param_validation import ParamValidationError
 
 DEFAULT_OUTPUT_DIR = Path("./inferred_networks")
@@ -23,6 +26,8 @@ class DatasetContext:
     dataset_id: str
     column_kind: str
     expression_profile: str
+    taxonomic_group: str
+    ncbi_taxon_id: Optional[int]
     genes: int
     columns: int
     expression_matrix_path: Path
@@ -33,6 +38,7 @@ class DatasetContext:
 class SchemaConstraints:
     column_kinds: set[str]
     expression_profiles: set[str]
+    taxonomic_groups: set[str]
     assumptions: set[str]
     extra_input_keys: set[str]
     extra_input_filenames: dict[str, str]
@@ -92,21 +98,6 @@ class RunningTool:
     last_snapshot: Optional[tuple[int, str, str, str]] = None
 
 
-def _load_json_object(path: Path, label: str) -> dict[str, Any]:
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except FileNotFoundError as exc:
-        raise ValueError(f"{label} file not found: {path}") from exc
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"{label} is malformed JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
-        ) from exc
-    if not isinstance(data, dict):
-        raise ValueError(f"{label} must be a JSON object: {path}")
-    return data
-
-
 def _resolve_path(base_dir: Path, raw_path: str) -> Path:
     path = Path(raw_path)
     if not path.is_absolute():
@@ -126,13 +117,6 @@ def _detect_host_ram_gb() -> float:
                     kib = int(parts[1])
                     return kib / (1024 * 1024)
     return 8.0
-
-
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(payload, fh, indent=2, ensure_ascii=True)
-        fh.write("\n")
 
 
 def _write_text(path: Path, text: str) -> None:

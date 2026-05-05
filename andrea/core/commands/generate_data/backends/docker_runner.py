@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import tempfile
 import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
+
+from andrea.core.shared.container_runtime import (
+    docker_image_exists as _docker_image_exists,
+    ensure_docker_cli as _shared_ensure_docker_cli,
+    pull_docker_image,
+    run_cmd as _run_cmd,
+)
 
 from ..shared import REPO_ROOT, ResolvedSimulatorRun, _write_json
 
@@ -19,27 +25,8 @@ _PULLED_IMAGES: set[str] = set()
 _IMAGE_LOCK = threading.Lock()
 
 
-def _run_cmd(cmd: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        cmd,
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-
-
 def _ensure_docker_cli() -> None:
-    if shutil.which("docker") is None:
-        raise RuntimeError("Docker CLI is not available in PATH")
-    result = _run_cmd(["docker", "info"])
-    if result.returncode != 0:
-        details = (result.stderr or result.stdout or "").strip()
-        raise RuntimeError(f"Docker daemon is not available. Details: {details}")
-
-
-def _docker_image_exists(image: str) -> bool:
-    result = _run_cmd(["docker", "image", "inspect", image])
-    return result.returncode == 0
+    _shared_ensure_docker_cli(check_daemon=True)
 
 
 def _resolve_wrapper_dir(simulator_id: str) -> Path:
@@ -81,10 +68,7 @@ def _build_local_image(*, simulator_id: str, image: str) -> str:
 def _pull_image(*, image: str) -> str:
     if image in _PULLED_IMAGES and _docker_image_exists(image):
         return "pulled"
-    result = _run_cmd(["docker", "pull", image])
-    if result.returncode != 0:
-        details = (result.stderr or result.stdout or "").strip()
-        raise RuntimeError(f"Failed to pull docker image '{image}': {details}")
+    pull_docker_image(image)
     _PULLED_IMAGES.add(image)
     return "pulled"
 
@@ -140,7 +124,7 @@ def run_docker_simulator(
         progress_callback(
             {
                 "status": "running",
-                "step": "prepare_image",
+                "phase": "prepare_image",
                 "message": f"Preparing Docker image {image}",
             }
         )
@@ -158,14 +142,14 @@ def run_docker_simulator(
         inputs_dir = Path(tmp) / "inputs"
         request_dir.mkdir(parents=True, exist_ok=True)
         inputs_dir.mkdir(parents=True, exist_ok=True)
-        container_input_files: dict[str, str] = {}
-        for input_id, source_path in request.resolved_input_files.items():
+        mounted_inputs: dict[str, str] = {}
+        for input_id, source_path in request.resolved_input_paths.items():
             staged_path = inputs_dir / input_id
             if source_path.is_dir():
                 shutil.copytree(source_path, staged_path)
             else:
                 shutil.copy2(source_path, staged_path)
-            container_input_files[input_id] = f"/work/inputs/{input_id}"
+            mounted_inputs[input_id] = f"/work/inputs/{input_id}"
 
         request_payload = {
             "schema_version": "1.0",
@@ -176,7 +160,7 @@ def run_docker_simulator(
             "effective_extras": list(request.effective_extras),
             "native_outputs": list(request.native_outputs),
             "inputs": request.inputs,
-            "input_files": container_input_files,
+            "mounted_inputs": mounted_inputs,
             "params": dict(request.simulator_params),
             "output_dir_in_container": "/work/out",
         }
@@ -216,7 +200,7 @@ def run_docker_simulator(
                 progress_callback(
                     {
                         "status": "running",
-                        "step": "container_started",
+                        "phase": "container_started",
                         "message": f"Container started for {task_label}",
                     }
                 )

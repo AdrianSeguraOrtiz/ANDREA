@@ -5,10 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
+
 from .catalog import _load_simulator_catalog
-from .request import _resolve_input_files, _validate_organism
+from .request import _resolve_inputs, _validate_organism
 from .shared import (
-    KNOWN_EXTRAS,
     PROFILE_SPECS,
     ResolvedScenarioRequest,
     _load_json_object,
@@ -34,11 +35,11 @@ def validate_scenario_request_payload(
         raise ValueError(f"Unknown benchmark profile: {profile}")
 
     requested_extras = list(payload.get("requested_extras", []))
-    if any(extra not in KNOWN_EXTRAS for extra in requested_extras):
-        unsupported = sorted(set(requested_extras).difference(KNOWN_EXTRAS))
+    if any(extra not in SIMULATION_EXTRA_IDS for extra in requested_extras):
+        unsupported = sorted(set(requested_extras).difference(SIMULATION_EXTRA_IDS))
         raise ValueError(f"Unknown requested_extras: {unsupported}")
 
-    organism = payload.get("organism", {"kind": "synthetic", "tax_id": None})
+    organism = payload.get("organism")
     if not isinstance(organism, dict):
         raise ValueError("scenario-request.organism must be an object")
     _validate_organism(organism)
@@ -58,8 +59,8 @@ def validate_scenario_request_payload(
     effective_extras = sorted(
         set(requested_extras).union(PROFILE_SPECS[profile].required_extras)
     )
-    raw_inputs = payload.get("inputs", payload.get("input_files", {}))
-    inputs, input_files, resolved_input_files = _resolve_input_files(
+    raw_inputs = payload.get("inputs", {})
+    inputs, resolved_input_paths = _resolve_inputs(
         raw_inputs,
         base_dir=base_dir or Path.cwd(),
     )
@@ -71,8 +72,7 @@ def validate_scenario_request_payload(
         requested_extras=requested_extras,
         effective_extras=effective_extras,
         inputs=inputs,
-        input_files=input_files,
-        resolved_input_files=resolved_input_files,
+        resolved_input_paths=resolved_input_paths,
         base_seed=int(base_seed),
         notes=payload.get("notes"),
         request_payload=payload,
