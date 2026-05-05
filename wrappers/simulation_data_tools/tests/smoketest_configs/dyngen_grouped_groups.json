@@ -4,7 +4,7 @@
     "profile": "scrna_grouped",
     "seed": 13,
     "effective_extras": ["groups"],
-    "input_files": {},
+    "inputs": {},
     "params": {
       "backbone_template": "bifurcating",
       "distance_metric": "pearson"
@@ -15,7 +15,6 @@
     "expression.tsv",
     "extras/groups.tsv",
     "truth/global_network.csv",
-    "truth/legacy/global_gs.csv",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/model.rds",

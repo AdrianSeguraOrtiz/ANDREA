@@ -4,7 +4,7 @@
     "profile": "scrna_global",
     "seed": 11,
     "effective_extras": ["tf_list"],
-    "input_files": {},
+    "inputs": {},
     "params": {
       "backbone_template": "cycle_simple",
       "distance_metric": "spearman",
@@ -25,7 +25,6 @@
     "expression.tsv",
     "extras/tf_list.txt",
     "truth/global_network.csv",
-    "truth/legacy/global_gs.csv",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/model.rds",

@@ -43,7 +43,7 @@ The ToolSpec now declares:
 - `execution.mode=group_emulated`: ANDREA partitions expression by `groups.tsv`; each physical child run uses the same global wrapper path, and the orchestrator rewrites child output context to `group:<label>`.
 - `execution.mode=group_native`: one upstream multitask Inferelator run. The wrapper passes full expression plus `groups.tsv` as metadata and exports per-task upstream networks as `context=group:<label>`.
 
-Compatibility note: `execution.group_mode` is accepted only as a deprecated input alias by the core resolver. New plans, GUI requests and ToolSpecs use `execution.mode` and `execution_capabilities`.
+Execution requests use only `execution.mode`; the removed `execution.group_mode` alias is intentionally unsupported.
 
 ## Upstream Entrypoints
 

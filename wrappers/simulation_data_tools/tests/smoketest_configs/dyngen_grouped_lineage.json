@@ -4,7 +4,7 @@
     "profile": "scrna_grouped",
     "seed": 17,
     "effective_extras": ["groups", "lineage_tree", "tf_list"],
-    "input_files": {},
+    "inputs": {},
     "params": {
       "backbone_template": "bifurcating",
       "simulation_params": {
@@ -21,7 +21,6 @@
     "extras/lineage_tree.tsv",
     "extras/tf_list.txt",
     "truth/global_network.csv",
-    "truth/legacy/global_gs.csv",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/model.rds",

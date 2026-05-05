@@ -42,7 +42,7 @@ request_path <- normalizePath(parsed[["request"]], mustWork = TRUE)
 output_dir <- normalizePath(parsed[["output-dir"]], mustWork = FALSE)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(output_dir, "extras"), recursive = TRUE, showWarnings = FALSE)
-dir.create(file.path(output_dir, "truth", "legacy"), recursive = TRUE, showWarnings = FALSE)
+dir.create(file.path(output_dir, "truth"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(output_dir, "provenance", "raw"), recursive = TRUE, showWarnings = FALSE)
 
 progress_path <- file.path(output_dir, "progress.json")
@@ -60,12 +60,12 @@ write_json_atomic <- function(path, value) {
   }
 }
 
-write_progress <- function(status, step, message = NULL, details = list()) {
+write_progress <- function(status, phase, message = NULL, details = list()) {
   payload <- c(
     list(
       schema_version = "1.0",
       status = status,
-      step = step,
+      phase = phase,
       updated_at = format(Sys.time(), tz = "UTC", usetz = TRUE)
     ),
     if (!is.null(message)) list(message = message) else list(),
@@ -619,22 +619,6 @@ write_global_truth <- function(model, output_dir) {
     quote = TRUE
   )
 
-  feature_ids <- as.character(model$feature_info$feature_id)
-  legacy <- matrix(
-    0L,
-    nrow = length(feature_ids),
-    ncol = length(feature_ids),
-    dimnames = list(feature_ids, feature_ids)
-  )
-  for (idx in seq_len(nrow(truth_df))) {
-    legacy[truth_df$source[[idx]], truth_df$target[[idx]]] <- 1L
-  }
-  write.csv(
-    legacy,
-    file = file.path(output_dir, "truth", "legacy", "global_gs.csv"),
-    row.names = TRUE,
-    quote = TRUE
-  )
 }
 
 write_manifest <- function(request, params, dataset, output_dir, group_networks = list(), native_outputs = structure(list(), names = character())) {
@@ -664,7 +648,6 @@ write_manifest <- function(request, params, dataset, output_dir, group_networks 
     native_outputs = if (length(native_outputs) > 0) native_outputs else structure(list(), names = character()),
     truth = list(
       global_network = "truth/global_network.csv",
-      legacy_binary_matrix = "truth/legacy/global_gs.csv",
       group_networks = group_networks
     ),
     provenance = list(

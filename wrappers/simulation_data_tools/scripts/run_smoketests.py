@@ -142,15 +142,15 @@ def _assert_required_files(
             )
 
 
-def _stage_input_files(
+def _stage_inputs(
     *,
     config_path: Path,
     config: dict[str, Any],
     inputs_dir: Path,
 ) -> dict[str, str]:
-    container_input_files: dict[str, str] = {}
-    raw_input_files = dict(config["request"].get("input_files", {}))
-    for input_id, raw_path in raw_input_files.items():
+    mounted_inputs: dict[str, str] = {}
+    raw_inputs = dict(config["request"].get("inputs", {}))
+    for input_id, raw_path in raw_inputs.items():
         source_path = Path(str(raw_path)).expanduser()
         if not source_path.is_absolute():
             source_path = (config_path.parent / source_path).resolve()
@@ -164,8 +164,8 @@ def _stage_input_files(
         else:
             staged_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_path, staged_path)
-        container_input_files[input_id] = f"/work/inputs/{input_id}"
-    return container_input_files
+        mounted_inputs[input_id] = f"/work/inputs/{input_id}"
+    return mounted_inputs
 
 
 def _run_one_config(
@@ -186,7 +186,7 @@ def _run_one_config(
         inputs_dir.mkdir(parents=True, exist_ok=True)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        container_input_files = _stage_input_files(
+        mounted_inputs = _stage_inputs(
             config_path=config_path,
             config=config,
             inputs_dir=inputs_dir,
@@ -197,7 +197,7 @@ def _run_one_config(
             "profile": config["request"]["profile"],
             "seed": int(config["request"].get("seed", 1)),
             "effective_extras": list(config["request"]["effective_extras"]),
-            "input_files": container_input_files,
+            "mounted_inputs": mounted_inputs,
             "params": params,
             "output_dir_in_container": "/work/out",
         }

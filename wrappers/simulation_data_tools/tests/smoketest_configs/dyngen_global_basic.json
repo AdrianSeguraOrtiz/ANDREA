@@ -4,7 +4,7 @@
     "profile": "scrna_global",
     "seed": 7,
     "effective_extras": [],
-    "input_files": {},
+    "inputs": {},
     "params": {
       "backbone_template": "linear",
       "distance_metric": "pearson"
@@ -14,7 +14,6 @@
   "required_files": [
     "expression.tsv",
     "truth/global_network.csv",
-    "truth/legacy/global_gs.csv",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/model.rds",
