@@ -170,14 +170,10 @@
       "additionalProperties": false,
       "required": [
         "global_network",
-        "legacy_binary_matrix",
         "group_networks"
       ],
       "properties": {
         "global_network": {
-          "$ref": "#/$defs/truth_output_mode"
-        },
-        "legacy_binary_matrix": {
           "$ref": "#/$defs/truth_output_mode"
         },
         "group_networks": {
@@ -193,7 +189,6 @@
         "tf_list",
         "prior_grn_by_group",
         "global_network",
-        "legacy_binary_matrix",
         "group_networks"
       ]
     },

@@ -27,7 +27,6 @@
       "derivable_extras": ["tf_list"],
       "truth_outputs": {
         "global_network": "native",
-        "legacy_binary_matrix": "derivable",
         "group_networks": "none"
       },
       "native_outputs": [
@@ -75,18 +74,6 @@
             "The exported TF list reflects dyngen's simulated regulator classes, not an external organism-specific TF catalogue."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
-        },
-        {
-          "artifact": "legacy_binary_matrix",
-          "source_artifacts": ["truth/global_network.csv", "feature_info"],
-          "method": "Convert the normalized directed global truth edge list into a square binary adjacency matrix over all simulated feature identifiers.",
-          "assumptions": [
-            "A non-zero entry means the directed source-target edge exists in dyngen's native feature network truth."
-          ],
-          "limitations": [
-            "The legacy matrix intentionally discards edge weights, signs and context labels."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         }
       ],
       "artifacts_aux": [
@@ -103,7 +90,6 @@
       "derivable_extras": ["groups", "lineage_tree", "tf_list"],
       "truth_outputs": {
         "global_network": "native",
-        "legacy_binary_matrix": "derivable",
         "group_networks": "derivable"
       },
       "native_outputs": [
@@ -198,18 +184,6 @@
             "Group truth networks are wrapper-derived summaries, not dyngen-native files.",
             "The active-edge set depends on the fixed 0.1 threshold and on the hard group assignment used in groups.tsv.",
             "Opposing signed effects across cells can yield an ambiguous sign even when the mean absolute activity is high."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
-        },
-        {
-          "artifact": "legacy_binary_matrix",
-          "source_artifacts": ["truth/global_network.csv", "feature_info"],
-          "method": "Convert the normalized directed global truth edge list into a square binary adjacency matrix over all simulated feature identifiers.",
-          "assumptions": [
-            "A non-zero entry means the directed source-target edge exists in dyngen's native feature network truth."
-          ],
-          "limitations": [
-            "The legacy matrix intentionally discards edge weights, signs and context labels."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         }

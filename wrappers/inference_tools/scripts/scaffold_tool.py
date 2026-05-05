@@ -152,6 +152,21 @@ def toolspec_template(tool_id: str) -> str:
         "implementation_url": "https://example.org/TODO",
         "docker_image": f"TODO/{tool_id}:latest",
         "execution_capabilities": ["global"],
+        "taxonomic_scope": {
+            "allowed_groups": [
+                "animal",
+                "plant",
+                "fungi",
+                "bacteria",
+                "archaea",
+                "protist",
+                "viral",
+                "synthetic",
+                "unknown",
+            ],
+            "supported_species": [],
+        },
+        "compatibility_rules": [],
         "accepts": ["samples"],
         "assumes": "generic",
         "extra_inputs": {
@@ -247,6 +262,14 @@ TODO
 
 TODO
 
+### `taxonomic_scope`
+
+TODO
+
+### `compatibility_rules`
+
+TODO
+
 ### `assumes`
 
 TODO
@@ -280,6 +303,12 @@ TODO
 ### Optional or conditional inputs
 
 TODO
+
+- `optional`: inputs that are not required by the selected configuration but
+  enrich or modify inference when provided.
+- `conditional_required`: inputs required only by a parameter value or
+  `execution.mode`. Do not duplicate an input here in `optional` unless it is
+  genuinely optional in another valid configuration.
 
 ### Parameters and defaults
 

@@ -18,7 +18,10 @@
   ],
   "implementation_url": "https://bioconductor.org/packages/minet/",
   "docker_image": "adriansegura99/inference-tools_clr:1.0.0",
-  "execution_capabilities": ["global", "group_emulated"],
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
   "accepts": [
     "samples",
     "cells",
@@ -28,16 +31,15 @@
   "assumes": "generic",
   "extra_inputs": {
     "required": [],
-    "optional": [
-      "groups"
-    ],
+    "optional": [],
     "conditional_required": [
       {
         "input": "groups",
         "execution": "mode",
         "op": "eq",
         "value": "group_emulated",
-        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool."
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool.",
+        "usage": "ANDREA uses groups.tsv to create one CLR child run per group; each child runs minet::build.mim plus minet::clr on that group's expression matrix."
       }
     ]
   },
@@ -100,5 +102,20 @@
       ]
     }
   },
-  "artifacts_aux": []
+  "artifacts_aux": [],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": []
 }

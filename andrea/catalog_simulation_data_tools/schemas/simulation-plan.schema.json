@@ -38,7 +38,38 @@
       ]
     },
     "organism": {
-      "type": "object"
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taxonomic_group", "ncbi_taxon_id"],
+      "properties": {
+        "taxonomic_group": {
+          "type": "string",
+          "enum": ["animal", "plant", "fungi", "bacteria", "archaea", "protist", "viral", "synthetic", "unknown"]
+        },
+        "ncbi_taxon_id": {
+          "anyOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "taxonomic_group": {
+                "enum": ["animal", "plant", "fungi", "bacteria", "archaea", "protist", "viral"]
+              }
+            },
+            "required": ["taxonomic_group"]
+          },
+          "then": {
+            "properties": {
+              "ncbi_taxon_id": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      ]
     },
     "requested_extras": {
       "type": "array",
@@ -66,11 +97,6 @@
           "path": { "type": "string", "minLength": 1 }
         }
       }
-    },
-    "input_files": {
-      "deprecated": true,
-      "type": "object",
-      "additionalProperties": { "type": "string" }
     },
     "runs": {
       "type": "array",

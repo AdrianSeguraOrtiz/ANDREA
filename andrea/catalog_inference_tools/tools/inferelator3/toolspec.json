@@ -32,26 +32,32 @@
   "assumes": "generic",
   "extra_inputs": {
     "required": [
-      "tf_list",
-      "prior_grn"
+      {
+        "input": "tf_list",
+        "usage": "Wrapper writes tf_list.txt as Inferelator's tf_names_file and uses the same regulator set to validate and shape the prior GRN matrix columns."
+      },
+      {
+        "input": "prior_grn",
+        "usage": "Wrapper converts normalized long prior_grn.tsv into Inferelator's genes-by-TFs priors file consumed by the workflow before regression."
+      }
     ],
-    "optional": [
-      "groups"
-    ],
+    "optional": [],
     "conditional_required": [
       {
         "input": "groups",
         "execution": "mode",
         "op": "eq",
         "value": "group_native",
-        "message": "groups is required when execution.mode=group_native so Inferelator can create native multitask group tasks from metadata."
+        "message": "groups is required when execution.mode=group_native so Inferelator can create native multitask group tasks from metadata.",
+        "usage": "Wrapper converts groups.tsv into Inferelator metadata with cluster task labels so the single-cell multitask workflow creates native tasks from the full expression matrix."
       },
       {
         "input": "groups",
         "execution": "mode",
         "op": "eq",
         "value": "group_emulated",
-        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool."
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool.",
+        "usage": "ANDREA uses groups.tsv to create one single-group Inferelator child run per group; each child follows the global BBSR workflow."
       }
     ]
   },
@@ -148,5 +154,20 @@
       "require_non_empty": true,
       "description": "Upstream AnnData model artifact containing priors, coefficients, network and scores."
     }
-  ]
+  ],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": []
 }

@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "key": "enrichment_background",
+  "file_kind": "txt_list",
+  "description": "Enrichment background gene list: one gene identifier per line, used as a user-provided background universe for enrichment analyses.",
+  "example": "G1\nG2\nG3",
+  "min_rows": 1,
+  "cross_checks": []
+}

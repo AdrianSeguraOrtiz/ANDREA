@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "key": "cluster_identities",
+  "file_kind": "tsv",
+  "description": "Cluster identity TSV: maps cluster IDs to human-readable cluster annotations, with an optional integer order column for methods that display or rank clusters along a known ordering.",
+  "example": "cluster\tannotation\torder\nA\tcortex\t1\nB\tendodermis\t2",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 2,
+  "first_column_role": "none",
+  "required_columns": [
+    "cluster",
+    "annotation"
+  ],
+  "unique_first_column": true,
+  "column_types": {
+    "cluster": "string",
+    "annotation": "string",
+    "order": "int"
+  },
+  "cross_checks": [
+    {
+      "kind": "column_subset_extra_column",
+      "column": "cluster",
+      "other_input": "groups",
+      "other_column": "cluster"
+    }
+  ]
+}

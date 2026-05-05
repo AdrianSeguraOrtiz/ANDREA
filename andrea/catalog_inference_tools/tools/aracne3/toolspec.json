@@ -18,7 +18,10 @@
   ],
   "implementation_url": "https://github.com/califano-lab/ARACNe3",
   "docker_image": "adriansegura99/inference-tools_aracne3:1.0.0",
-  "execution_capabilities": ["global", "group_emulated"],
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
   "accepts": [
     "samples",
     "cells",
@@ -28,18 +31,20 @@
   "assumes": "generic",
   "extra_inputs": {
     "required": [
-      "tf_list"
+      {
+        "input": "tf_list",
+        "usage": "Wrapper passes tf_list.txt to ARACNe3 with the -r regulator option, so ARACNe3 computes MI/DPI edges only from those candidate regulators to expression targets."
+      }
     ],
-    "optional": [
-      "groups"
-    ],
+    "optional": [],
     "conditional_required": [
       {
         "input": "groups",
         "execution": "mode",
         "op": "eq",
         "value": "group_emulated",
-        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool."
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool.",
+        "usage": "ANDREA uses groups.tsv to create one ARACNe3 child run per group and then labels merged edges with the corresponding group context."
       }
     ]
   },
@@ -172,5 +177,20 @@
       "require_non_empty": true,
       "description": "Top-level ARACNe3 log file emitted by the binary."
     }
-  ]
+  ],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": []
 }

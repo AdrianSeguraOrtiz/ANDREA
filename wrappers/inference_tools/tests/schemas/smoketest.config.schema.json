@@ -49,11 +49,6 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "require_cluster_context": {
-          "description": "Deprecated alias for require_group_context.",
-          "type": "boolean",
-          "default": false
-        },
         "require_group_context": {
           "description": "Whether network.csv must include at least one row with context starting with 'group:'.",
           "type": "boolean",
@@ -115,9 +110,6 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "require_cluster_context": {
-                "type": "boolean"
-              },
               "require_group_context": {
                 "type": "boolean"
               },

@@ -84,7 +84,6 @@ Truth output modes are:
 
 Use these modes for:
 - `global_network`
-- `legacy_binary_matrix`
 - `group_networks`
 
 Be explicit about whether a truth output comes directly from the simulator or is derived by the wrapper from simulator-native state.
@@ -248,7 +247,6 @@ Requirements:
 - Produce:
   - `expression.tsv`
   - `truth/global_network.csv`
-  - `truth/legacy/global_gs.csv`
   - optional `extras/`
   - `simulator-output-manifest.json`
 - Add smoke-test configs under [wrappers/simulation_data_tools/tests/smoketest_configs/](wrappers/simulation_data_tools/tests/smoketest_configs/)
@@ -339,7 +337,7 @@ The input request has this shape:
   "profile": "scrna_grouped",
   "seed": 1,
   "effective_extras": ["groups", "tf_list"],
-  "input_files": {},
+  "mounted_inputs": {},
   "params": {},
   "output_dir_in_container": "/work/out"
 }
@@ -347,7 +345,7 @@ The input request has this shape:
 
 Rules:
 - `effective_extras` includes profile-required extras plus user-requested extras.
-- `input_files` maps simulator input ids to read-only paths under `/work/inputs/`.
+- `mounted_inputs` maps simulator input ids to read-only paths under `/work/inputs/`.
 - `params` contains values already schema-validated by `generate-data`.
 - The wrapper should still validate assumptions that depend on simulator internals.
 - Exit nonzero on failure.
@@ -361,8 +359,6 @@ expression.tsv
 extras/
 truth/
   global_network.csv
-  legacy/
-    global_gs.csv
 provenance/
   raw/
 simulator-output-manifest.json
@@ -389,7 +385,7 @@ Every wrapper should emit `progress.json` with at least:
 {
   "schema_version": "1.0",
   "status": "running",
-  "step": "run_simulator",
+  "phase": "run_simulator",
   "updated_at": "2026-04-21 12:00:00 UTC",
   "message": "Running upstream simulator."
 }
@@ -509,7 +505,6 @@ Rules:
 
 For each profile, set:
 - `global_network`
-- `legacy_binary_matrix`
 - `group_networks`
 
 Rules:
@@ -652,15 +647,6 @@ Rules:
 - every file must correspond to a group in `groups.tsv`
 - include in `ground-truth-manifest.json` as `{group, path}`
 
-### `truth/legacy/global_gs.csv`
-
-Legacy binary adjacency matrix for existing evaluation compatibility.
-
-Rules:
-- derive from `truth/global_network.csv`
-- include all genes present in expression where practical
-- use `1` for present edge and `0` otherwise
-
 ## Smoke-Test Requirements
 
 Every completed simulator must have one or more configs under:
@@ -757,6 +743,6 @@ Before considering a simulator integrated, confirm:
 - `progress.json` is written
 - `simulator-output-manifest.json` validates
 - generated `dataset-manifest.json` passes `infer-network preflight`
-- truth outputs and legacy matrix are consistent
+- truth outputs are consistent
 - provenance contains enough raw simulator state to debug or audit the run
 - no incomplete simulator appears in `andrea/catalog_simulation_data_tools/simulators/`

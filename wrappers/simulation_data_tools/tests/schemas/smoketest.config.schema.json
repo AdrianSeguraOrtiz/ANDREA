@@ -21,7 +21,7 @@
       "required": [
         "profile",
         "effective_extras",
-        "input_files",
+        "inputs",
         "params"
       ],
       "properties": {
@@ -41,7 +41,7 @@
           },
           "uniqueItems": true
         },
-        "input_files": {
+        "inputs": {
           "type": "object",
           "default": {},
           "additionalProperties": {

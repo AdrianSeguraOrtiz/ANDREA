@@ -17,6 +17,8 @@
     "implementation_url",
     "docker_image",
     "execution_capabilities",
+    "taxonomic_scope",
+    "compatibility_rules",
     "accepts",
     "assumes",
     "extra_inputs",
@@ -26,6 +28,131 @@
     "params"
   ],
   "$defs": {
+    "input_key": {
+      "type": "string",
+      "enum": [
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "cluster_markers",
+        "enrichment_background",
+        "grnboost_network",
+        "lineage_tree",
+        "pseudotime",
+        "terms_of_interest",
+        "tf_list",
+        "prior_grn",
+        "prior_grn_by_group"
+      ]
+    },
+    "taxonomic_group": {
+      "type": "string",
+      "enum": [
+        "animal",
+        "plant",
+        "fungi",
+        "bacteria",
+        "archaea",
+        "protist",
+        "viral",
+        "synthetic",
+        "unknown"
+      ]
+    },
+    "extra_input_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input",
+        "usage"
+      ],
+      "properties": {
+        "input": {
+          "$ref": "#/$defs/input_key"
+        },
+        "usage": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "op"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "value"
+          ],
+          "not": {
+            "required": [
+              "value_from"
+            ]
+          }
+        },
+        {
+          "required": [
+            "value_from"
+          ],
+          "not": {
+            "required": [
+              "value"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "field": {
+          "type": "string",
+          "pattern": "^(dataset\\.organism\\.(taxonomic_group|ncbi_taxon_id)|param\\.[a-zA-Z_][a-zA-Z0-9_]*|execution\\.mode)$"
+        },
+        "op": {
+          "type": "string",
+          "enum": [
+            "eq",
+            "ne",
+            "in",
+            "not_in",
+            "gt",
+            "gte",
+            "lt",
+            "lte"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "value_from": {
+          "type": "string",
+          "enum": [
+            "taxonomic_scope.supported_species"
+          ]
+        }
+      }
+    },
     "param_def": {
       "type": "object",
       "additionalProperties": false,
@@ -276,6 +403,69 @@
       },
       "description": "Execution modes supported by the tool wrapper: global, native grouped inference, and/or orchestrator-emulated grouped inference."
     },
+    "taxonomic_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_groups",
+        "supported_species"
+      ],
+      "properties": {
+        "allowed_groups": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/taxonomic_group"
+          },
+          "description": "Broad taxonomic groups accepted by this tool before parameter-specific compatibility rules are evaluated."
+        },
+        "supported_species": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Optional NCBI Taxonomy IDs with explicit species-level support. Empty means no species-level restriction is declared."
+        }
+      }
+    },
+    "compatibility_rules": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "conditions",
+          "action",
+          "message"
+        ],
+        "properties": {
+          "conditions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/condition"
+            },
+            "description": "AND-combined conditions evaluated against dataset, resolved params and resolved execution."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "block",
+              "warn"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "description": "General compatibility rules evaluated after dataset, parameter defaults/overrides, and execution mode are known."
+    },
     "accepts": {
       "type": "array",
       "minItems": 1,
@@ -312,38 +502,18 @@
         "required": {
           "type": "array",
           "minItems": 0,
-          "uniqueItems": true,
           "items": {
-            "type": "string",
-            "enum": [
-              "groups",
-              "cell_phenotypes",
-              "lineage_tree",
-              "pseudotime",
-              "tf_list",
-              "prior_grn",
-              "prior_grn_by_group"
-            ]
+            "$ref": "#/$defs/extra_input_usage"
           },
           "description": "Extra artefacts that MUST be provided for the tool to run."
         },
         "optional": {
           "type": "array",
           "minItems": 0,
-          "uniqueItems": true,
           "items": {
-            "type": "string",
-            "enum": [
-              "groups",
-              "cell_phenotypes",
-              "lineage_tree",
-              "pseudotime",
-              "tf_list",
-              "prior_grn",
-              "prior_grn_by_group"
-            ]
+            "$ref": "#/$defs/extra_input_usage"
           },
-          "description": "Extra artefacts that MAY be provided to improve/enable certain modes."
+          "description": "Extra artefacts that MAY be provided to enrich or modify inference without being required by the selected configuration."
         },
         "conditional_required": {
           "type": "array",
@@ -355,6 +525,7 @@
               "input",
               "op",
               "value",
+              "usage",
               "message"
             ],
             "oneOf": [
@@ -381,16 +552,7 @@
             ],
             "properties": {
               "input": {
-                "type": "string",
-                "enum": [
-                  "groups",
-                  "cell_phenotypes",
-                  "lineage_tree",
-                  "pseudotime",
-                  "tf_list",
-                  "prior_grn",
-                  "prior_grn_by_group"
-                ]
+                "$ref": "#/$defs/input_key"
               },
               "param": {
                 "type": "string",
@@ -408,6 +570,8 @@
                 "enum": [
                   "eq",
                   "ne",
+                  "in",
+                  "not_in",
                   "gt",
                   "gte",
                   "lt",
@@ -434,6 +598,10 @@
                 ]
               },
               "message": {
+                "type": "string",
+                "minLength": 1
+              },
+              "usage": {
                 "type": "string",
                 "minLength": 1
               }

@@ -100,10 +100,10 @@ def semantic_errors(
             )
 
     unknown_inputs = sorted(
-        set(request.get("input_files", {})).difference(declared_input_ids(spec))
+        set(request.get("inputs", {})).difference(declared_input_ids(spec))
     )
     if unknown_inputs:
-        errors.append(f"request.input_files contains unknown ids: {unknown_inputs}")
+        errors.append(f"request.inputs contains unknown ids: {unknown_inputs}")
 
     try:
         resolve_smoketest_params(

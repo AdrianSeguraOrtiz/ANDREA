@@ -75,10 +75,9 @@
     "truth": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["global_network", "legacy_binary_matrix", "group_networks"],
+      "required": ["global_network", "group_networks"],
       "properties": {
         "global_network": { "type": ["string", "null"], "pattern": ".*\\.csv$" },
-        "legacy_binary_matrix": { "type": ["string", "null"], "pattern": ".*\\.csv$" },
         "group_networks": {
           "type": "array",
           "items": {

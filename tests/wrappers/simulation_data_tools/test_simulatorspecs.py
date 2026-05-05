@@ -29,8 +29,8 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
         cls.spec_paths = sorted(SIMULATORS_DIR.glob("*/simulatorspec.json"))
         cls.specs = {path.parent.name: _load_json(path) for path in cls.spec_paths}
 
-    def test_catalog_contains_only_completed_dyngen_spec(self) -> None:
-        self.assertEqual(set(self.specs), {"dyngen"})
+    def test_catalog_contains_dyngen_spec(self) -> None:
+        self.assertIn("dyngen", self.specs)
 
     def test_all_simulator_specs_validate(self) -> None:
         for simulator_id, spec in self.specs.items():

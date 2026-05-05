@@ -28,11 +28,16 @@
   "assumes": "scrna_specific",
   "extra_inputs": {
     "required": [
-      "groups"
+      {
+        "input": "groups",
+        "usage": "Required because inferCSN is exposed only as execution.mode=group_emulated: ANDREA partitions the full expression matrix by groups.tsv and each physical inferCSN run receives one group's cells."
+      }
     ],
     "optional": [
-      "pseudotime",
-      "tf_list"
+      {
+        "input": "tf_list",
+        "usage": "Wrapper validates tf_list.txt against expression genes and passes it as inferCSN regulators; if absent, the wrapper omits regulators to preserve inferCSN's all-gene default."
+      }
     ],
     "conditional_required": [
       {
@@ -40,7 +45,8 @@
         "param": "sift_method",
         "op": "eq",
         "value": "entropy",
-        "message": "pseudotime is required when sift_method=entropy because inferCSN network_sift() needs pseudotime-ordered cell metadata."
+        "message": "pseudotime is required when sift_method=entropy because inferCSN network_sift() needs pseudotime-ordered cell metadata.",
+        "usage": "Required for sift_method=entropy because wrapper calls inferCSN network_sift() with pseudotime-ordered metadata for the current group."
       }
     ]
   },
@@ -188,5 +194,20 @@
       "require_non_empty": true,
       "description": "Final upstream regulator-target-weight table after applying the selected sift_method and before conversion to ANDREA network.csv."
     }
-  ]
+  ],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": []
 }

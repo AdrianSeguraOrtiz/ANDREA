@@ -133,7 +133,6 @@ def wrapper_template(wrapper: str) -> str:
 The wrapper must read --request and --output-dir, then write:
 - expression.tsv
 - truth/global_network.csv
-- truth/legacy/global_gs.csv
 - simulator-output-manifest.json
 - progress.json
 """
@@ -186,19 +185,9 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
                 "derivable_extras": [],
                 "truth_outputs": {
                     "global_network": "native",
-                    "legacy_binary_matrix": "derivable",
                     "group_networks": "none",
                 },
-                "derivations": [
-                    {
-                        "artifact": "legacy_binary_matrix",
-                        "source_artifacts": ["truth/global_network.csv"],
-                        "method": "TODO: describe how this derived artifact is computed.",
-                        "assumptions": ["TODO: describe derivation assumptions."],
-                        "limitations": ["TODO: describe information loss or caveats."],
-                        "implemented_in": f"wrappers/simulation_data_tools/simulators/{simulator_id}/run_simulator",
-                    }
-                ],
+                "derivations": [],
                 "artifacts_aux": [],
                 "notes": "TODO: replace with the real supported profile capabilities.",
             }
@@ -215,14 +204,13 @@ def smoketest_payload(simulator_id: str) -> dict[str, object]:
             "profile": "scrna_global",
             "seed": 1,
             "effective_extras": [],
-            "input_files": {},
+            "inputs": {},
             "params": {},
         },
         "expect_progress": True,
         "required_files": [
             "expression.tsv",
             "truth/global_network.csv",
-            "truth/legacy/global_gs.csv",
             "simulator-output-manifest.json",
             "progress.json",
         ],

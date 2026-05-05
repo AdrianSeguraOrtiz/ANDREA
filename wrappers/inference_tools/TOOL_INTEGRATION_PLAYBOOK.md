@@ -425,7 +425,7 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
     - keep algorithm choices as normal params when they are variants inside one execution capability
     - examples of parameter choices, not execution capabilities, include regression model families, penalties, score filters, feature-selection strategy, and post-processing mode when they do not change how ANDREA partitions or routes the dataset
     - record whether grouped output context is produced by the wrapper (`group_native`) or by the orchestrator (`group_emulated`)
-    - if `group_emulated` is exposed alongside other execution modes, declare `groups` in `extra_inputs.optional` and add an `extra_inputs.conditional_required` rule requiring `groups` when `execution.mode == "group_emulated"`
+    - if `group_emulated` is exposed alongside other execution modes and `groups` is only used for that mode, declare `groups` only in `extra_inputs.conditional_required`; do not also mark it optional unless providing it outside the required condition changes the upstream inference
     - if `group_emulated` is the only exposed execution mode, declaring `groups` in `extra_inputs.required` is acceptable and usually clearer
     - document excluded upstream modes/entrypoints explicitly; the reason may be unsupported normalized inputs, incompatible output semantics, deprecated API, unavailable runtime dependency, or a deliberate scope decision
 
@@ -461,6 +461,8 @@ If an upstream default depends on the dataset or runtime state, do not silently 
   - rule:
     - decide from method semantics, not only file shape
 - `assumes`
+- `taxonomic_scope`
+- `compatibility_rules`
   - look in:
     - paper abstract, introduction and methods
     - repo README
@@ -471,6 +473,11 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - use `scrna_specific` only when the method materially depends on single-cell structure
     - use `bulk_specific` only when it is explicitly designed for bulk/cohort data
     - otherwise use `generic`
+    - declare `taxonomic_scope.allowed_groups` for every tool; use all catalog groups only when there is no primary evidence for a taxonomic restriction
+    - declare `taxonomic_scope.supported_species` as NCBI taxonomy IDs when species-level resources, motif databases, or aliases are explicitly limited
+    - use `compatibility_rules` for compatibility that depends on dataset organism, resolved params, and/or `execution.mode`
+    - `compatibility_rules.conditions` are AND-combined; use `action: "block"` for impossible/invalid combinations and `action: "warn"` for supported but degraded combinations
+    - if a parameter disables the restricted feature, encode the allowed degraded path as a warning rule instead of globally blocking the whole tool
 
 ### Extra inputs
 
@@ -487,6 +494,8 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - files beyond expression matrix
     - whether they are always required, mode-dependent, or optional
   - rule:
+    - encode `extra_inputs.required` and `extra_inputs.optional` as objects with `input` and `usage`; strings are invalid
+    - include `usage` on every `conditional_required` rule so the GUI can explain why the file is needed for that tool and condition
     - create an input requirement matrix in `integration_decisions.md` before finalizing the ToolSpec:
       - always required inputs
       - inputs required only for an `execution.mode`
@@ -495,6 +504,8 @@ If an upstream default depends on the dataset or runtime state, do not silently 
       - upstream inputs intentionally not exposed
     - if a file is needed only when certain parameter values are used, model it in `conditional_required`
     - if a file is needed only for a selected execution mode, model it in `conditional_required` with `execution: "mode"` and a value from `execution_capabilities`
+    - reserve `extra_inputs.optional` for inputs that are not required by the selected configuration but still enrich or modify inference when provided
+    - an input may appear in both `optional` and `conditional_required` only when it is genuinely optional in some valid configurations and required in others; use different `usage` text if the behavior differs
     - if an execution capability is the only supported mode and the input is therefore always required for that tool, declaring it in `extra_inputs.required` is acceptable and often clearer than a conditional rule
     - do not rely on GUI-only or orchestrator-only hardcoding as the source of a required input rule; express the rule in the ToolSpec whenever the catalog can represent it
     - if the semantic content does not match an existing normalized input, propose a new `input_spec`

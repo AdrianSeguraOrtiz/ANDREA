@@ -30,6 +30,24 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CATALOG_ROOT = REPO_ROOT / "andrea" / "catalog_inference_tools"
 DEFAULT_SCHEMA_PATH = CATALOG_ROOT / "schemas" / "toolspec.schema.json"
 DEFAULT_CATALOG_TOOLS_ROOT = CATALOG_ROOT / "tools"
+TAXONOMIC_GROUPS = {
+    "animal",
+    "plant",
+    "fungi",
+    "bacteria",
+    "archaea",
+    "protist",
+    "viral",
+    "synthetic",
+    "unknown",
+}
+COMPATIBILITY_FIELDS = {
+    "dataset.organism.taxonomic_group",
+    "dataset.organism.ncbi_taxon_id",
+    "execution.mode",
+}
+COMPATIBILITY_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
+COMPATIBILITY_ACTIONS = {"block", "warn"}
 
 
 @dataclass(frozen=True)
@@ -145,6 +163,39 @@ def validate_one_toolspec(
     return validate_instance(validator, instance)
 
 
+def _extra_input_set(*, raw_items: Any, field_name: str, errors: list[str]) -> set[str]:
+    if not isinstance(raw_items, list):
+        errors.append(f"extra_inputs.{field_name} must be an array.")
+        return set()
+    out: set[str] = set()
+    for idx, item in enumerate(raw_items, start=1):
+        if not isinstance(item, dict):
+            errors.append(
+                f"extra_inputs.{field_name}[{idx}] must be an object with input and usage; strings are not allowed."
+            )
+            continue
+        input_name = item.get("input")
+        usage = item.get("usage")
+        if not isinstance(input_name, str) or not input_name.strip():
+            errors.append(f"extra_inputs.{field_name}[{idx}].input is required.")
+            continue
+        if not isinstance(usage, str) or not usage.strip():
+            errors.append(f"extra_inputs.{field_name}[{idx}].usage is required.")
+        if input_name in out:
+            errors.append(
+                f"extra_inputs.{field_name} contains duplicate input '{input_name}'."
+            )
+        out.add(input_name)
+    return out
+
+
+def _condition_param_name(condition: dict[str, Any]) -> str | None:
+    field = condition.get("field")
+    if isinstance(field, str) and field.startswith("param."):
+        return field.removeprefix("param.")
+    return None
+
+
 def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(instance, dict):
@@ -165,6 +216,32 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
         x for x in execution_capabilities if isinstance(x, str) and x.strip()
     }
 
+    taxonomic_scope = instance.get("taxonomic_scope")
+    if not isinstance(taxonomic_scope, dict):
+        errors.append("taxonomic_scope is required and must be an object.")
+    else:
+        allowed_groups = taxonomic_scope.get("allowed_groups", [])
+        if not isinstance(allowed_groups, list) or not allowed_groups:
+            errors.append("taxonomic_scope.allowed_groups must be a non-empty array.")
+        else:
+            invalid_groups = sorted(
+                str(item)
+                for item in allowed_groups
+                if not isinstance(item, str) or item not in TAXONOMIC_GROUPS
+            )
+            if invalid_groups:
+                errors.append(
+                    f"taxonomic_scope.allowed_groups contains unsupported values: {invalid_groups}."
+                )
+        supported_species = taxonomic_scope.get("supported_species", [])
+        if not isinstance(supported_species, list) or any(
+            not isinstance(item, int) or isinstance(item, bool) or item < 1
+            for item in supported_species
+        ):
+            errors.append(
+                "taxonomic_scope.supported_species must contain only positive integer NCBI taxonomy ids."
+            )
+
     extra_inputs = instance.get("extra_inputs", {})
     if not isinstance(extra_inputs, dict):
         return errors
@@ -173,8 +250,12 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     optional = extra_inputs.get("optional", [])
     conditional = extra_inputs.get("conditional_required", [])
 
-    required_set = {x for x in required if isinstance(x, str)}
-    optional_set = {x for x in optional if isinstance(x, str)}
+    required_set = _extra_input_set(
+        raw_items=required, field_name="required", errors=errors
+    )
+    optional_set = _extra_input_set(
+        raw_items=optional, field_name="optional", errors=errors
+    )
     overlap = sorted(required_set.intersection(optional_set))
     if overlap:
         errors.append(
@@ -185,11 +266,11 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
         for idx, rule in enumerate(conditional, start=1):
             if not isinstance(rule, dict):
                 continue
-            input_name = rule.get("input")
-            if isinstance(input_name, str) and input_name not in required_set | optional_set:
+            usage = rule.get("usage")
+            if not isinstance(usage, str) or not usage.strip():
                 errors.append(
-                    "extra_inputs.conditional_required[{idx}] input '{input}' must also be listed in extra_inputs.optional or extra_inputs.required.".format(
-                        idx=idx, input=input_name
+                    "extra_inputs.conditional_required[{idx}].usage is required.".format(
+                        idx=idx
                     )
                 )
             param_name = rule.get("param")
@@ -221,6 +302,86 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                             idx=idx, modes=sorted(execution_modes)
                         )
                     )
+
+    compatibility_rules = instance.get("compatibility_rules", [])
+    if not isinstance(compatibility_rules, list):
+        errors.append("compatibility_rules must be an array.")
+    else:
+        for rule_idx, rule in enumerate(compatibility_rules, start=1):
+            if not isinstance(rule, dict):
+                errors.append(f"compatibility_rules[{rule_idx}] must be an object.")
+                continue
+            action = rule.get("action")
+            if action not in COMPATIBILITY_ACTIONS:
+                errors.append(
+                    f"compatibility_rules[{rule_idx}].action must be one of {sorted(COMPATIBILITY_ACTIONS)}."
+                )
+            message = rule.get("message")
+            if not isinstance(message, str) or not message.strip():
+                errors.append(f"compatibility_rules[{rule_idx}].message is required.")
+            conditions = rule.get("conditions", [])
+            if not isinstance(conditions, list) or not conditions:
+                errors.append(
+                    f"compatibility_rules[{rule_idx}].conditions must be a non-empty array."
+                )
+                continue
+            for cond_idx, condition in enumerate(conditions, start=1):
+                if not isinstance(condition, dict):
+                    errors.append(
+                        f"compatibility_rules[{rule_idx}].conditions[{cond_idx}] must be an object."
+                    )
+                    continue
+                field = condition.get("field")
+                if not isinstance(field, str) or not field.strip():
+                    errors.append(
+                        f"compatibility_rules[{rule_idx}].conditions[{cond_idx}].field is required."
+                    )
+                elif field not in COMPATIBILITY_FIELDS and not field.startswith(
+                    "param."
+                ):
+                    errors.append(
+                        f"compatibility_rules[{rule_idx}].conditions[{cond_idx}] references unsupported field '{field}'."
+                    )
+                param_name = _condition_param_name(condition)
+                if param_name is not None and param_name not in params:
+                    errors.append(
+                        f"compatibility_rules[{rule_idx}].conditions[{cond_idx}] references unknown parameter '{param_name}'."
+                    )
+                op = condition.get("op")
+                if op not in COMPATIBILITY_OPS:
+                    errors.append(
+                        f"compatibility_rules[{rule_idx}].conditions[{cond_idx}].op is invalid."
+                    )
+                has_value = "value" in condition
+                has_value_from = "value_from" in condition
+                if has_value == has_value_from:
+                    errors.append(
+                        f"compatibility_rules[{rule_idx}].conditions[{cond_idx}] must define exactly one of value or value_from."
+                    )
+                if (
+                    has_value_from
+                    and condition.get("value_from")
+                    != "taxonomic_scope.supported_species"
+                ):
+                    errors.append(
+                        f"compatibility_rules[{rule_idx}].conditions[{cond_idx}].value_from is unsupported."
+                    )
+                if field == "execution.mode" and has_value:
+                    value = condition.get("value")
+                    values = value if isinstance(value, list) else [value]
+                    invalid_modes = [
+                        item
+                        for item in values
+                        if not isinstance(item, str) or item not in execution_modes
+                    ]
+                    if invalid_modes:
+                        errors.append(
+                            "compatibility_rules[{rule_idx}].conditions[{cond_idx}] execution.mode value(s) must be in this tool's execution_capabilities: {modes}.".format(
+                                rule_idx=rule_idx,
+                                cond_idx=cond_idx,
+                                modes=sorted(execution_modes),
+                            )
+                        )
 
     if "group_emulated" in execution_modes:
         has_group_emulated_requirement = "groups" in required_set

@@ -9,6 +9,7 @@
     "schema_version",
     "id",
     "profile",
+    "organism",
     "requested_extras"
   ],
   "properties": {
@@ -34,23 +35,36 @@
     "organism": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["taxonomic_group", "ncbi_taxon_id"],
       "properties": {
-        "kind": {
+        "taxonomic_group": {
           "type": "string",
-          "enum": ["biological", "synthetic", "unknown"],
-          "default": "synthetic"
+          "enum": ["animal", "plant", "fungi", "bacteria", "archaea", "protist", "viral", "synthetic", "unknown"]
         },
-        "tax_id": {
+        "ncbi_taxon_id": {
           "anyOf": [
             { "type": "integer", "minimum": 1 },
             { "type": "null" }
           ]
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "taxonomic_group": {
+                "enum": ["animal", "plant", "fungi", "bacteria", "archaea", "protist", "viral"]
+              }
+            },
+            "required": ["taxonomic_group"]
+          },
+          "then": {
+            "properties": {
+              "ncbi_taxon_id": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      ]
     },
     "inputs": {
       "type": "object",
@@ -74,7 +88,38 @@
             "minLength": 1
           },
           "organism": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["taxonomic_group", "ncbi_taxon_id"],
+            "properties": {
+              "taxonomic_group": {
+                "type": "string",
+                "enum": ["animal", "plant", "fungi", "bacteria", "archaea", "protist", "viral", "synthetic", "unknown"]
+              },
+              "ncbi_taxon_id": {
+                "anyOf": [
+                  { "type": "integer", "minimum": 1 },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "taxonomic_group": {
+                      "enum": ["animal", "plant", "fungi", "bacteria", "archaea", "protist", "viral"]
+                    }
+                  },
+                  "required": ["taxonomic_group"]
+                },
+                "then": {
+                  "properties": {
+                    "ncbi_taxon_id": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              }
+            ]
           },
           "description": {
             "type": "string",
@@ -89,20 +134,6 @@
       "items": {
         "type": "string",
         "enum": ["groups", "lineage_tree", "tf_list", "prior_grn_by_group", "group_networks"]
-      }
-    },
-    "input_files": {
-      "deprecated": true,
-      "type": "object",
-      "default": {},
-      "propertyNames": {
-        "type": "string",
-        "minLength": 1,
-        "pattern": "^[a-z][a-z0-9_]*$"
-      },
-      "additionalProperties": {
-        "type": "string",
-        "minLength": 1
       }
     },
     "base_seed": {

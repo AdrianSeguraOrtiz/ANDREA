@@ -27,8 +27,14 @@
   "assumes": "scrna_specific",
   "extra_inputs": {
     "required": [
-      "cell_phenotypes",
-      "tf_list"
+      {
+        "input": "cell_phenotypes",
+        "usage": "Wrapper converts ordered cell_phenotypes.tsv into SimiC phenotype assignments, preserving the order column so state-specific models use the intended phenotype adjacency."
+      },
+      {
+        "input": "tf_list",
+        "usage": "Wrapper validates tf_list.txt against expression genes and serializes it to the pickle list consumed by SimiC's simicLASSO_op driver-gene argument."
+      }
     ],
     "optional": [],
     "conditional_required": []
@@ -59,7 +65,7 @@
     "lambda2": {
       "type": "float",
       "required": false,
-      "default": 0.00001,
+      "default": 1e-05,
       "min": 0,
       "description": "Similarity regularization weight used by simicLASSO_op when similarity=true and cross_val=false."
     },
@@ -173,5 +179,20 @@
       "require_non_empty": true,
       "description": "Raw weighted AUC matrices produced by simiclasso.weighted_AUC_mat.main_fn for regulon activity analysis."
     }
-  ]
+  ],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": []
 }

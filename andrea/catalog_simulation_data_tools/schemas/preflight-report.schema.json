@@ -23,13 +23,12 @@
         "requested_profile",
         "requested_extras",
         "effective_extras",
-        "input_files_used",
+        "inputs_used",
         "native_extras_used",
         "derived_extras_used",
         "truth_outputs",
         "status",
-        "warnings",
-        "blocking_reasons"
+        "issues"
       ],
       "properties": {
         "simulator_id": { "type": "string", "minLength": 1 },
@@ -43,7 +42,7 @@
           "type": "array",
           "items": { "type": "string" }
         },
-        "input_files_used": {
+        "inputs_used": {
           "type": "array",
           "items": { "type": "string" }
         },
@@ -58,13 +57,9 @@
         "truth_outputs": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["global_network", "legacy_binary_matrix", "group_networks"],
+          "required": ["global_network", "group_networks"],
           "properties": {
             "global_network": {
-              "type": "string",
-              "enum": ["none", "native", "derivable"]
-            },
-            "legacy_binary_matrix": {
               "type": "string",
               "enum": ["none", "native", "derivable"]
             },
@@ -78,13 +73,21 @@
           "type": "string",
           "enum": ["eligible", "warning", "blocked"]
         },
-        "warnings": {
+        "issues": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "blocking_reasons": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["severity", "code", "message"],
+            "properties": {
+              "severity": {
+                "type": "string",
+                "enum": ["block", "warn", "info"]
+              },
+              "code": { "type": "string", "minLength": 1 },
+              "message": { "type": "string", "minLength": 1 }
+            }
+          }
         }
       }
     }
@@ -103,7 +106,6 @@
         "organism",
         "requested_extras",
         "effective_extras",
-        "input_files",
         "inputs",
         "base_seed"
       ],
@@ -118,10 +120,6 @@
         "effective_extras": {
           "type": "array",
           "items": { "type": "string" }
-        },
-        "input_files": {
-          "type": "object",
-          "additionalProperties": { "type": "string" }
         },
         "inputs": {
           "type": "object"

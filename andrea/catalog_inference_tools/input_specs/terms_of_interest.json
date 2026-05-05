@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "key": "terms_of_interest",
+  "file_kind": "txt_list",
+  "description": "Terms of interest list: one ontology term, ontology ID or plain-language keyword per line, used by methods that prioritize regulators against expected functions or biological themes.",
+  "example": "root\nGO:0009819\nvascular",
+  "min_rows": 1,
+  "cross_checks": []
+}

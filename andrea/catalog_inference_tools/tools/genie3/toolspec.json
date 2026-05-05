@@ -17,7 +17,10 @@
   ],
   "implementation_url": "https://github.com/tmoerman/arboreto",
   "docker_image": "adriansegura99/inference-tools_genie3:1.0.0",
-  "execution_capabilities": ["global", "group_emulated"],
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
   "accepts": [
     "samples",
     "cells",
@@ -28,8 +31,10 @@
   "extra_inputs": {
     "required": [],
     "optional": [
-      "groups",
-      "tf_list"
+      {
+        "input": "tf_list",
+        "usage": "Wrapper passes tf_list.txt to arboreto as tf_names, restricting GENIE3 candidate regulators; if absent, the wrapper passes 'all' so every expressed gene can regulate targets."
+      }
     ],
     "conditional_required": [
       {
@@ -37,7 +42,8 @@
         "execution": "mode",
         "op": "eq",
         "value": "group_emulated",
-        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool."
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool.",
+        "usage": "ANDREA uses groups.tsv to create one GENIE3 child run per group; each child calls arboreto on that group's expression matrix."
       }
     ]
   },
@@ -158,5 +164,20 @@
       ]
     }
   },
-  "artifacts_aux": []
+  "artifacts_aux": [],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": []
 }
