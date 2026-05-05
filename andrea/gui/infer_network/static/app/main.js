@@ -4,7 +4,7 @@ import { state } from "./core/state.js";
 import { buildToolIssueReportUrl, buildToolRequestIssueUrl, defaultGroupModeForTool, listAvailableTools, populateToolIssueSelect, toolById } from "./catalog/model.js";
 import { initCatalogView, updateToolEligibilityView } from "./catalog/view.js";
 import { applyDatasetDefaults, handleExpressionSelected, initExpressionDropzone, syncExpressionHelpTooltip } from "./dataset/expression.js";
-import { addOptionalExtraRow, getExtraRows, initExtras, listProvidedExtraKeys, updateExtrasEmptyState } from "./dataset/extras.js";
+import { closeExtraInputModal, getExtraRows, initExtras, listProvidedExtraKeys, openExtraInputModal, updateExtrasEmptyState } from "./dataset/extras.js";
 import { renderRuntimeProgress, renderExecutionAlerts } from "./runtime/view.js";
 import { fetchFiles, resetFilesView } from "./files/explorer.js";
 import { freezeActions, startPolling, syncActionButtons, updateResultsExplorerVisibility } from "./jobs/controller.js";
@@ -22,10 +22,20 @@ function buildDatasetConfig() {
   if (!datasetId) {
     throw new Error("dataset_id is required.");
   }
-  const organismTaxIdRaw = $("organism-tax-id").value.trim();
-  const organismTaxId = Number(organismTaxIdRaw);
-  if (!organismTaxIdRaw || !Number.isInteger(organismTaxId) || organismTaxId < 1) {
-    throw new Error("organism.tax_id must be a positive integer.");
+  const taxonomicGroup = $("taxonomic-group").value.trim();
+  const organismTaxIdRaw = $("organism-ncbi-taxon-id").value.trim();
+  const organismTaxId = organismTaxIdRaw ? Number(organismTaxIdRaw) : null;
+  if (!taxonomicGroup) {
+    throw new Error("organism.taxonomic_group is required.");
+  }
+  if (
+    organismTaxIdRaw &&
+    (!Number.isInteger(organismTaxId) || organismTaxId < 1)
+  ) {
+    throw new Error("organism.ncbi_taxon_id must be a positive integer or empty for synthetic/unknown datasets.");
+  }
+  if (!["synthetic", "unknown"].includes(taxonomicGroup) && organismTaxId === null) {
+    throw new Error("organism.ncbi_taxon_id is required for biological taxonomic groups.");
   }
 
   return {
@@ -34,7 +44,8 @@ function buildDatasetConfig() {
       column_kind: $("column-kind").value,
       expression_profile: $("expression-profile").value,
       organism: {
-        tax_id: organismTaxId,
+        taxonomic_group: taxonomicGroup,
+        ncbi_taxon_id: organismTaxId,
       },
     },
     options: buildOptions(),
@@ -74,9 +85,14 @@ function buildPreflightFormData(config) {
       throw new Error(`Optional input '${key}' is duplicated.`);
     }
     seenExtraKeys.add(key);
-    if (input.files && input.files[0]) {
-      formData.append(`extra__${key}`, input.files[0]);
+    if (!input.files || !input.files[0]) {
+      throw new Error(`Additional input '${key}' needs a file. Upload a valid file or remove it.`);
     }
+    const status = row.querySelector(".extra-file-status");
+    if (status?.classList.contains("err")) {
+      throw new Error(`Additional input '${key}' is not valid yet. Fix it or remove it.`);
+    }
+    formData.append(`extra__${key}`, input.files[0]);
   });
 
   return formData;
@@ -206,6 +222,9 @@ async function bootstrap() {
   state.bootstrap = await fetchBootstrapData();
   fillSelect("column-kind", state.bootstrap.column_kinds);
   fillSelect("expression-profile", state.bootstrap.expression_profiles);
+  fillSelect("taxonomic-group", state.bootstrap.taxonomic_groups);
+  $("taxonomic-group").value = state.bootstrap.taxonomic_groups.includes("animal") ? "animal" : state.bootstrap.taxonomic_groups[0];
+  $("organism-ncbi-taxon-id").value = "9606";
   applyDatasetDefaults();
   populateToolIssueSelect();
   syncExpressionHelpTooltip();
@@ -279,7 +298,13 @@ function bindEvents() {
       showInfoTooltip(payload);
     }
   });
-  $("add-optional-input-btn").addEventListener("click", () => addOptionalExtraRow());
+  $("add-optional-input-btn").addEventListener("click", () => openExtraInputModal());
+  $("extra-input-modal-close").addEventListener("click", () => closeExtraInputModal());
+  $("extra-input-modal").addEventListener("click", (event) => {
+    if (event.target && event.target.id === "extra-input-modal") {
+      closeExtraInputModal();
+    }
+  });
   $("add-all-tools-btn").addEventListener("click", () => {
     try {
       const existingToolIds = new Set(
@@ -446,6 +471,7 @@ function bindEvents() {
       closeParamsModal();
       closeModal("tool-request-modal");
       closeModal("tool-issue-modal");
+      closeExtraInputModal();
       closeReproducibilityStepsModal();
     }
   });

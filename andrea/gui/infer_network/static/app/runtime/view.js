@@ -30,8 +30,11 @@ export function renderExecutionAlerts(job = null, runReport = null) {
   const executionWarnings = [];
   const preExecutionWarnings = [];
   const rawWarnings =
-    runReport && Array.isArray(runReport.warnings)
-      ? runReport.warnings.map((x) => String(x)).filter(Boolean)
+    runReport && Array.isArray(runReport.issues)
+      ? runReport.issues
+          .filter((issue) => String(issue?.severity || "") === "warn")
+          .map((issue) => String(issue?.message || "").trim())
+          .filter(Boolean)
       : [];
   const errorSignatures = new Set();
 

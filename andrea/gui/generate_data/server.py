@@ -26,7 +26,8 @@ from andrea.core.commands.generate_data import (
     run_generate_data,
 )
 from andrea.core.commands.generate_data.catalog import _load_simulator_catalog
-from andrea.core.commands.generate_data.shared import KNOWN_EXTRAS, PROFILE_SPECS
+from andrea.core.commands.generate_data.shared import PROFILE_SPECS
+from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
 from andrea.core.shared.input_specs import load_input_specs
 from andrea.gui.common.server_files import (
     MAX_TABLE_PREVIEW_ROWS,
@@ -152,19 +153,19 @@ def _load_generate_bootstrap() -> dict[str, Any]:
                 extras_by_profile[profile_id].update(
                     str(x)
                     for x in capability.get("native_extras", [])
-                    if isinstance(x, str) and x in KNOWN_EXTRAS
+                    if isinstance(x, str) and x in SIMULATION_EXTRA_IDS
                 )
                 extras_by_profile[profile_id].update(
                     str(x)
                     for x in capability.get("derivable_extras", [])
-                    if isinstance(x, str) and x in KNOWN_EXTRAS
+                    if isinstance(x, str) and x in SIMULATION_EXTRA_IDS
                 )
                 truth_outputs = capability.get("truth_outputs", {})
                 if isinstance(truth_outputs, dict):
                     extras_by_profile[profile_id].update(
                         key
                         for key, mode in truth_outputs.items()
-                        if key in KNOWN_EXTRAS and mode in {"native", "derivable"}
+                        if key in SIMULATION_EXTRA_IDS and mode in {"native", "derivable"}
                     )
         raw_inputs = spec.get("simulator_inputs", {})
         if isinstance(raw_inputs, dict):
@@ -307,7 +308,9 @@ def _scenario_payload_from_config(
         "schema_version": "1.0",
         "id": str(scenario.get("id", "")).strip(),
         "profile": str(scenario.get("profile", "")).strip(),
-        "organism": scenario.get("organism", {"kind": "synthetic", "tax_id": None}),
+        "organism": scenario.get(
+            "organism", {"taxonomic_group": "synthetic", "ncbi_taxon_id": None}
+        ),
         "requested_extras": list(scenario.get("requested_extras", [])),
     }
     if scenario.get("base_seed") not in (None, ""):
@@ -822,7 +825,6 @@ def _bundle_sources(
                     dataset_dir / "ground-truth-manifest.json",
                     dataset_dir / "expression.tsv",
                     dataset_dir / "truth" / "global_network.csv",
-                    dataset_dir / "truth" / "legacy" / "global_gs.csv",
                     dataset_dir / "provenance" / "simulator-output-manifest.json",
                     dataset_dir / "provenance" / "simulator-run.json",
                     dataset_dir / "provenance" / "progress.json",
@@ -906,7 +908,7 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             "title": "Truth artifact",
             "summary": "Public simulated ground truth for benchmark evaluation.",
             "tips": [
-                "Use normalized edge-list truth for evaluation and legacy matrix where older evaluators require it."
+                "Use the normalized edge-list truth artifacts for evaluation."
             ],
         }
     if basename == "simulator-output-manifest.json":

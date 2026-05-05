@@ -39,8 +39,12 @@
               <select id="expression-profile"></select>
             </label>
             <label>
-              Organism Tax ID
-              <input id="organism-tax-id" type="number" min="1" step="1" value="9606" />
+              Taxonomic Group
+              <select id="taxonomic-group"></select>
+            </label>
+            <label>
+              NCBI Taxon ID
+              <input id="organism-ncbi-taxon-id" type="number" min="1" step="1" value="9606" />
             </label>
           </div>
           <div class="input-row full">
@@ -358,6 +362,13 @@
         <div id="params-modal-form" class="run-params-form"></div>
       </div>
     </div>
+    <div id="extra-input-modal" class="info-popover hidden" role="dialog" aria-modal="true" aria-labelledby="extra-input-modal-title">
+      <div class="info-popover-card extra-input-modal-card">
+        <button id="extra-input-modal-close" class="info-popover-close" type="button" aria-label="Close input selector">×</button>
+        <h4 id="extra-input-modal-title">Additional Inputs</h4>
+        <div id="extra-input-modal-body" class="extra-input-modal-body"></div>
+      </div>
+    </div>
     <div id="repro-steps-modal" class="info-popover hidden" role="dialog" aria-modal="true" aria-labelledby="repro-steps-modal-title">
       <div class="info-popover-card repro-steps-modal-card">
         <button id="repro-steps-modal-close" class="info-popover-close" type="button" aria-label="Close reproducibility steps">×</button>
@@ -400,15 +411,16 @@
     <template id="extra-template">
       <article class="extra-row">
         <div class="extra-left">
-          <label>
-            Optional input
-            <select class="extra-key"></select>
-          </label>
+          <input class="extra-key" type="hidden" />
+          <div class="extra-key-label"></div>
+          <div class="extra-key-description"></div>
         </div>
         <div class="extra-file-wrap">
-          <div class="extra-file-row">
+          <label class="extra-file-picker">
             <input class="extra-file" type="file" accept=".tsv,.txt,.csv,.log" />
-          </div>
+            <span class="extra-file-button">Choose file</span>
+            <span class="extra-file-picker-name">No file selected</span>
+          </label>
           <div class="extra-file-meta">
             <div class="extra-file-name">No file selected</div>
             <div class="extra-file-status file-status">Optional input not provided</div>
@@ -437,6 +449,6 @@
       </article>
     </template>
 
-    <script type="module" src="/static/app/main.js?v=20260423a"></script>
+    <script type="module" src="/static/app/main.js?v=20260505a"></script>
   </body>
 </html>

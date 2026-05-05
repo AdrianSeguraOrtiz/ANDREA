@@ -1,5 +1,61 @@
 import { $ } from "../core/dom.js";
 
+function appendMetricCard(parent, { label, value, detail = "", tone = "" }) {
+  const card = document.createElement("article");
+  card.className = `preflight-kpi${tone ? ` ${tone}` : ""}`;
+  const strong = document.createElement("strong");
+  strong.textContent = label;
+  const span = document.createElement("span");
+  span.textContent = String(value ?? "-");
+  card.append(strong, span);
+  if (detail) {
+    const small = document.createElement("small");
+    small.textContent = detail;
+    card.appendChild(small);
+  }
+  parent.appendChild(card);
+}
+
+function countInputValidation(preflightReport) {
+  const validation = preflightReport?.input_validation || {};
+  const exprValidation = validation.expression_matrix || {};
+  const extrasValidation = validation.extras || {};
+  const counts = { ok: 0, missing: 0, warning: 0, error: 0, unknown: 0 };
+  const increment = (statusRaw) => {
+    const status = String(statusRaw || "unknown").trim().toLowerCase();
+    if (status === "ok") {
+      counts.ok += 1;
+    } else if (status === "missing") {
+      counts.missing += 1;
+    } else if (status === "warning") {
+      counts.warning += 1;
+    } else if (status === "error" || status === "err" || status === "invalid") {
+      counts.error += 1;
+    } else {
+      counts.unknown += 1;
+    }
+  };
+  increment(exprValidation.status);
+  for (const item of Object.values(extrasValidation)) {
+    increment(item?.status);
+  }
+  return counts;
+}
+
+function appendSummaryBand(parent, title, cards) {
+  const section = document.createElement("section");
+  section.className = "preflight-summary-section";
+  const heading = document.createElement("h4");
+  heading.textContent = title;
+  const grid = document.createElement("div");
+  grid.className = "preflight-grid";
+  for (const card of cards) {
+    appendMetricCard(grid, card);
+  }
+  section.append(heading, grid);
+  parent.appendChild(section);
+}
+
 export function updatePreflightSummary(preflightReport = null) {
   const viewEl = $("preflight-report-view");
   if (!viewEl) {
@@ -11,78 +67,44 @@ export function updatePreflightSummary(preflightReport = null) {
   }
   viewEl.innerHTML = "";
 
-  const kpiGrid = document.createElement("div");
-  kpiGrid.className = "preflight-grid";
-  const kpis = [
+  const dataset = preflightReport?.dataset || {};
+  const organism = dataset.organism && typeof dataset.organism === "object" ? dataset.organism : {};
+  const taxonomicGroup = String(organism.taxonomic_group || "-");
+  const taxonRaw = organism.ncbi_taxon_id;
+  const taxonId = taxonRaw === null || taxonRaw === undefined
+    ? "-"
+    : String(taxonRaw);
+  appendSummaryBand(viewEl, "Dataset", [
     { label: "Dataset", value: String(preflightReport?.dataset?.dataset_id || "-") },
-    { label: "Expression", value: `${preflightReport?.dataset?.genes ?? "-"} × ${preflightReport?.dataset?.columns ?? "-"}` },
-  ];
-  for (const item of kpis) {
-    const card = document.createElement("article");
-    card.className = "preflight-kpi";
-    const strong = document.createElement("strong");
-    strong.textContent = item.label;
-    const span = document.createElement("span");
-    span.textContent = item.value;
-    card.appendChild(strong);
-    card.appendChild(span);
-    kpiGrid.appendChild(card);
-  }
-  viewEl.appendChild(kpiGrid);
+    {
+      label: "Expression",
+      value: `${preflightReport?.dataset?.genes ?? "-"} × ${preflightReport?.dataset?.columns ?? "-"}`,
+      detail: "genes × columns",
+    },
+    { label: "Organism", value: taxonomicGroup, detail: `NCBI taxon ${taxonId}` },
+  ]);
 
-  const validation = preflightReport.input_validation || {};
-  const exprValidation = validation.expression_matrix || {};
-  const extrasValidation = validation.extras || {};
-  const validationList = document.createElement("section");
-  validationList.className = "preflight-list";
-  validationList.innerHTML = "<h4>Input Validation</h4>";
-  const exprErrors = Array.isArray(exprValidation.errors) ? exprValidation.errors : [];
-  const exprWarnings = Array.isArray(exprValidation.warnings) ? exprValidation.warnings : [];
-  const exprDetail = exprErrors[0] || exprWarnings[0] || "";
-  const exprLine = document.createElement("div");
-  exprLine.className = "preflight-list-line";
-  exprLine.textContent = `expression_matrix: ${exprValidation.status || "unknown"}${
-    exprDetail ? ` (${exprDetail})` : ""
-  }`;
-  validationList.appendChild(exprLine);
-  const extraKeys = Object.keys(extrasValidation).sort();
-  for (const key of extraKeys) {
-    const item = extrasValidation[key] || {};
-    const status = item.status || "unknown";
-    const errors = Array.isArray(item.errors) ? item.errors : [];
-    const warns = Array.isArray(item.warnings) ? item.warnings : [];
-    const detail = errors[0] || warns[0] || "";
-    const line = document.createElement("div");
-    line.className = "preflight-list-line";
-    line.textContent = `${key}: ${status}${detail ? ` (${detail})` : ""}`;
-    validationList.appendChild(line);
-  }
-  viewEl.appendChild(validationList);
+  const inputCounts = countInputValidation(preflightReport);
+  appendSummaryBand(viewEl, "Input Validation", [
+    { label: "Valid", value: inputCounts.ok, tone: "ok" },
+    { label: "Missing", value: inputCounts.missing, tone: inputCounts.missing ? "warning" : "" },
+    { label: "Warnings", value: inputCounts.warning, tone: inputCounts.warning ? "warning" : "" },
+    { label: "Errors", value: inputCounts.error, tone: inputCounts.error ? "blocked" : "" },
+  ]);
 
-  const warningsList = document.createElement("section");
-  warningsList.className = "preflight-list";
-  warningsList.innerHTML = "<h4>Warnings</h4>";
-  const warnings = Array.isArray(preflightReport.warnings) ? preflightReport.warnings : [];
-  if (!warnings.length) {
-    const line = document.createElement("div");
-    line.className = "preflight-list-line";
-    line.textContent = "No warnings.";
-    warningsList.appendChild(line);
-  } else {
-    for (const warningText of warnings.slice(0, 8)) {
-      const line = document.createElement("div");
-      line.className = "preflight-list-line";
-      line.textContent = `• ${String(warningText)}`;
-      warningsList.appendChild(line);
-    }
-    if (warnings.length > 8) {
-      const line = document.createElement("div");
-      line.className = "preflight-list-line";
-      line.textContent = `... ${warnings.length - 8} more`;
-      warningsList.appendChild(line);
-    }
-  }
-  viewEl.appendChild(warningsList);
+  const warningIssues = Array.isArray(preflightReport.issues)
+    ? preflightReport.issues.filter((issue) => String(issue?.severity || "") === "warn")
+    : [];
+  const catalog = preflightReport.catalog || {};
+  const eligible = Array.isArray(catalog.eligible) ? catalog.eligible.length : 0;
+  const warning = Array.isArray(catalog.warning) ? catalog.warning.length : 0;
+  const blocked = Array.isArray(catalog.blocked) ? catalog.blocked.length : 0;
+  appendSummaryBand(viewEl, "Tool Eligibility Preview", [
+    { label: "Accepted", value: eligible, tone: "ok" },
+    { label: "Warning", value: warning, tone: warning ? "warning" : "" },
+    { label: "Blocked", value: blocked, tone: blocked ? "blocked" : "" },
+    { label: "Preflight warnings", value: warningIssues.length, tone: warningIssues.length ? "warning" : "" },
+  ]);
 
   const rawDetails = document.createElement("details");
   rawDetails.className = "preflight-list";

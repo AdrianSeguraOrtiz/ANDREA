@@ -326,20 +326,22 @@
             <summary>Organism metadata</summary>
             <div class="grid three">
               <label>
-                Organism Kind
-                <select class="organism-kind">
+                Taxonomic Group
+                <select class="taxonomic-group">
+                  <option value="animal">animal</option>
+                  <option value="plant">plant</option>
+                  <option value="fungi">fungi</option>
+                  <option value="bacteria">bacteria</option>
+                  <option value="archaea">archaea</option>
+                  <option value="protist">protist</option>
+                  <option value="viral">viral</option>
                   <option value="synthetic" selected>synthetic</option>
                   <option value="unknown">unknown</option>
-                  <option value="biological">biological</option>
                 </select>
               </label>
               <label>
-                Tax ID
-                <input class="organism-tax-id" type="number" min="1" step="1" placeholder="null for synthetic" />
-              </label>
-              <label>
-                Organism Name
-                <input class="organism-name" type="text" placeholder="Required when providing an input GRN" />
+                NCBI Taxon ID
+                <input class="organism-ncbi-taxon-id" type="number" min="1" step="1" placeholder="null for synthetic/unknown" />
               </label>
             </div>
           </details>

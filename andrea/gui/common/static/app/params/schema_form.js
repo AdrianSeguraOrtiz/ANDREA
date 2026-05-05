@@ -27,6 +27,12 @@ function matchesCondition(actual, op, expected) {
   if (op === "ne") {
     return actual !== expected;
   }
+  if (op === "in") {
+    return Array.isArray(expected) && expected.includes(actual);
+  }
+  if (op === "not_in") {
+    return Array.isArray(expected) && !expected.includes(actual);
+  }
   if (
     typeof actual === "boolean" ||
     typeof expected === "boolean" ||

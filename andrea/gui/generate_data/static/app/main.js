@@ -347,9 +347,8 @@ function addInputRow() {
   };
   select.addEventListener("change", updateDescription);
   node.querySelector(".input-file").addEventListener("change", resetScenarioDerivedState);
-  node.querySelector(".organism-kind")?.addEventListener("change", resetScenarioDerivedState);
-  node.querySelector(".organism-tax-id")?.addEventListener("input", resetScenarioDerivedState);
-  node.querySelector(".organism-name")?.addEventListener("input", resetScenarioDerivedState);
+  node.querySelector(".taxonomic-group")?.addEventListener("change", resetScenarioDerivedState);
+  node.querySelector(".organism-ncbi-taxon-id")?.addEventListener("input", resetScenarioDerivedState);
   node.querySelector(".remove-input").addEventListener("click", () => {
     node.remove();
     updateInputsEmptyState();
@@ -391,17 +390,12 @@ function updateOrganismRequirement(row = null) {
 }
 
 function rowOrganismPayload(row) {
-  const kind = row.querySelector(".organism-kind")?.value || "synthetic";
-  const taxIdRaw = row.querySelector(".organism-tax-id")?.value.trim() || "";
-  const name = row.querySelector(".organism-name")?.value.trim() || "";
-  const organism = {
-    kind,
-    tax_id: taxIdRaw ? Number.parseInt(taxIdRaw, 10) : null,
+  const taxonomicGroup = row.querySelector(".taxonomic-group")?.value || "synthetic";
+  const taxIdRaw = row.querySelector(".organism-ncbi-taxon-id")?.value.trim() || "";
+  return {
+    taxonomic_group: taxonomicGroup,
+    ncbi_taxon_id: taxIdRaw ? Number.parseInt(taxIdRaw, 10) : null,
   };
-  if (name) {
-    organism.name = name;
-  }
-  return organism;
 }
 
 function validateScenarioForm() {
@@ -422,11 +416,8 @@ function validateScenarioForm() {
     }
     if (rowRequiresOrganism(row)) {
       const organism = rowOrganismPayload(row);
-      if (!organism.name && !organism.tax_id) {
-        throw new Error(`Organism name or tax_id is required for ${label}.`);
-      }
-      if (organism.kind === "biological" && !organism.tax_id) {
-        throw new Error(`Tax ID is required when organism kind is biological for ${label}.`);
+      if (!["synthetic", "unknown"].includes(organism.taxonomic_group) && !organism.ncbi_taxon_id) {
+        throw new Error(`NCBI Taxon ID is required for ${label} when taxonomic group is biological.`);
       }
     }
   }
@@ -436,7 +427,7 @@ function collectScenarioConfig() {
   const organismRow = selectedInputRows().find((row) => rowRequiresOrganism(row)) || null;
   const organism = organismRow
     ? rowOrganismPayload(organismRow)
-    : { kind: "synthetic", tax_id: null };
+    : { taxonomic_group: "synthetic", ncbi_taxon_id: null };
   const scenario = {
     id: $("benchmark-id").value.trim(),
     profile: $("profile").value,
@@ -639,7 +630,6 @@ function artifactDisplayLabel(artifact) {
   }
   const truthLabels = {
     global_network: "global_network.csv",
-    legacy_binary_matrix: "legacy_binary_matrix",
     group_networks: "group_networks/*.csv",
   };
   return truthLabels[artifact] || artifact;
@@ -1065,8 +1055,28 @@ function renderPreflightSummary(report) {
   ].join("\n");
 }
 
-function simulatorMessages(entry) {
-  return [...(entry.warnings || []), ...(entry.blocking_reasons || [])].filter(Boolean);
+function simulatorIssues(entry, severity = null) {
+  return (entry.issues || [])
+    .filter((issue) => !severity || issue?.severity === severity)
+    .map((issue) => ({
+      severity: String(issue?.severity || "").trim(),
+      code: String(issue?.code || "").trim(),
+      message: String(issue?.message || "").trim(),
+    }))
+    .filter((issue) => issue.message);
+}
+
+function simulatorIssueDescription(entry) {
+  const blocks = simulatorIssues(entry, "block");
+  const warnings = simulatorIssues(entry, "warn");
+  const parts = [];
+  if (blocks.length) {
+    parts.push(["Blocking issues", ...blocks.map((issue) => `- ${issue.message}`)].join("\n"));
+  }
+  if (warnings.length) {
+    parts.push(["Warnings", ...warnings.map((issue) => `- ${issue.message}`)].join("\n"));
+  }
+  return parts.join("\n\n");
 }
 
 function renderSimulatorList(containerId, entries, kind) {
@@ -1111,16 +1121,16 @@ function renderSimulatorList(containerId, entries, kind) {
       });
       actions.appendChild(addBtn);
     }
-    const messages = simulatorMessages(entry);
-    if (messages.length) {
+    const issues = simulatorIssues(entry);
+    if (issues.length) {
       const detailsBtn = document.createElement("button");
       detailsBtn.type = "button";
       detailsBtn.className = "secondary";
-      detailsBtn.textContent = kind === "blocked" ? "Why Blocked" : "View Details";
+      detailsBtn.textContent = kind === "blocked" ? "Why Blocked" : "Why Warned";
       detailsBtn.addEventListener("click", () =>
         showInfoTooltip({
-          title: simulator.name,
-          description: messages.join("\n"),
+          title: `${simulator.name} · ${kind === "blocked" ? "Why blocked" : "Why warned"}`,
+          description: simulatorIssueDescription(entry),
           example: "",
         })
       );

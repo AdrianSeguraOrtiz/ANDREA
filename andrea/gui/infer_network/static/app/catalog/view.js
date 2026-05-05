@@ -3,7 +3,7 @@ import { state } from "../core/state.js";
 import { pushToast } from "../ui/toasts.js";
 import { showInfoTooltip } from "../ui/popovers.js";
 import { updatePreflightSummary } from "../preflight/view.js";
-import { toolById, toolMessages, toolSpecInfoPayload } from "./model.js";
+import { toolById, toolIssuePayload, toolSpecInfoPayload } from "./model.js";
 
 let onAddRunFn = null;
 
@@ -61,22 +61,9 @@ function renderToolCatalogList(containerId, entries, kind) {
 
     const infoBtn = document.createElement("button");
     infoBtn.type = "button";
-    infoBtn.textContent = kind === "blocked" ? "Why Blocked" : "View Details";
-    const messages = toolMessages(entry);
+    infoBtn.textContent = kind === "blocked" ? "Why Blocked" : "Why Warned";
     infoBtn.addEventListener("click", () => {
-      const detailLines =
-        kind === "blocked" && toolId
-          ? messages.map((message) =>
-              String(message || "").startsWith(`[${toolId}]`)
-                ? String(message)
-                : `[${toolId}] ${String(message)}`
-            )
-          : messages;
-      showInfoTooltip({
-        title: tool.name,
-        description: detailLines.length ? detailLines.join("\n") : "No additional details.",
-        example: "",
-      });
+      showInfoTooltip(toolIssuePayload(tool, entry, kind));
     });
 
     if (kind === "blocked") {

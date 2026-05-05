@@ -24,37 +24,73 @@ export function defaultGroupModeForTool(tool) {
   return capabilities[0] || "global";
 }
 
-export function toolMessages(entry) {
-  const toolId = String(entry?.tool_id || "").trim();
-  const reasons = Array.isArray(entry?.reasons) ? entry.reasons : [];
-  const warnings = Array.isArray(entry?.warnings) ? entry.warnings : [];
-  const pendingConditions = Array.isArray(entry?.pending_conditions) ? entry.pending_conditions : [];
+function normalizeIssues(items, severity = null) {
   const out = [];
   const seen = new Set();
-  const prefix = toolId ? `[${toolId}] skipped due to incompatibility:` : "";
-  const rawMessages = [...reasons, ...warnings, ...pendingConditions];
+  const rawIssues = Array.isArray(items) ? items : [];
 
-  for (const raw of rawMessages) {
-    const text = String(raw || "").trim();
-    if (!text) {
+  for (const raw of rawIssues) {
+    const itemSeverity = String(raw?.severity || "").trim();
+    if (severity && itemSeverity !== severity) {
       continue;
     }
-    const expanded = prefix && text.startsWith(prefix)
-      ? text
-          .slice(prefix.length)
-          .split(";")
-          .map((item) => item.trim())
-          .filter(Boolean)
-      : [text];
-    for (const message of expanded) {
-      if (seen.has(message)) {
-        continue;
-      }
-      seen.add(message);
-      out.push(message);
+    const message = String(raw?.message || "").trim();
+    if (!message) {
+      continue;
     }
+    const key = `${itemSeverity}:${message}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push({
+      severity: itemSeverity,
+      code: String(raw?.code || "").trim(),
+      message,
+    });
   }
   return out;
+}
+
+export function toolIssuePayload(tool, entry, kind) {
+  const blockIssues = normalizeIssues(entry?.issues, "block");
+  const warningIssues = normalizeIssues(entry?.issues, "warn");
+  const conditionalIssues = warningIssues.filter((issue) => issue.code === "conditional_required");
+  const otherWarnings = warningIssues.filter((issue) => issue.code !== "conditional_required");
+  const isBlocked = kind === "blocked";
+  const sections = [];
+  const messageSection = (title, items, emptyText, open = true) => ({
+    title,
+    open,
+    ...(items.length ? { items: items.map((issue) => issue.message) } : { text: emptyText }),
+  });
+  if (isBlocked || blockIssues.length) {
+    sections.push(messageSection("Blocking Reasons", blockIssues, "No blocking reason was reported."));
+  }
+  sections.push(
+    messageSection(
+      isBlocked ? "Warnings Also Reported" : "Warnings",
+      otherWarnings,
+      "No warnings were reported."
+    )
+  );
+  if (conditionalIssues.length) {
+    sections.push(messageSection("Pending Conditional Inputs", conditionalIssues, ""));
+  }
+  return {
+    title: `${tool?.name || entry?.tool_id || "Tool"} · ${isBlocked ? "Why blocked" : "Why warned"}`,
+    description: isBlocked
+      ? "This tool cannot be selected until the blocking conditions are resolved."
+      : "This tool can be selected, but the catalog reported warnings for the current dataset or configuration.",
+    chips: [
+      { label: "tool", value: String(entry?.tool_id || tool?.tool_id || "-") },
+      { label: "blocking", value: String(blockIssues.length), tone: blockIssues.length ? "blocked" : "" },
+      { label: "warnings", value: String(otherWarnings.length), tone: otherWarnings.length ? "warning" : "" },
+      { label: "conditional", value: String(conditionalIssues.length), tone: conditionalIssues.length ? "warning" : "" },
+    ],
+    sections,
+    raw: entry || null,
+  };
 }
 
 export function toolSpecInfoPayload(tool) {
@@ -69,11 +105,16 @@ export function toolSpecInfoPayload(tool) {
   const params = tool?.params_schema && typeof tool.params_schema === "object" ? tool.params_schema : {};
   const artifactsAux = Array.isArray(tool?.artifacts_aux) ? tool.artifacts_aux : [];
   const keywords = Array.isArray(tool?.method_keywords) ? tool.method_keywords : [];
+  const taxonomicScope = tool?.taxonomic_scope && typeof tool.taxonomic_scope === "object" ? tool.taxonomic_scope : {};
+  const compatibilityRules = Array.isArray(tool?.compatibility_rules) ? tool.compatibility_rules : [];
   const capabilities = Array.isArray(tool?.execution_capabilities)
     ? tool.execution_capabilities.map((item) => String(item || "").trim()).filter(Boolean)
     : [];
   const conditionalRequirements = conditionalExtras
     .map((item) => conditionalExtraDetail(item))
+    .filter(Boolean);
+  const compatibilityRuleDetails = compatibilityRules
+    .map((item) => compatibilityRuleDetail(item))
     .filter(Boolean);
 
   const publicationLinks = publication.map((item) => ({
@@ -119,11 +160,30 @@ export function toolSpecInfoPayload(tool) {
         fields: [
           { label: "Execution capabilities", value: capabilities.length ? capabilities.join(", ") : "-" },
           { label: "Accepts", value: accepts.length ? accepts.join(", ") : "-" },
+          {
+            label: "Taxonomic groups",
+            value: Array.isArray(taxonomicScope.allowed_groups) && taxonomicScope.allowed_groups.length
+              ? taxonomicScope.allowed_groups.join(", ")
+              : "-",
+          },
+          {
+            label: "Supported species",
+            value: Array.isArray(taxonomicScope.supported_species) && taxonomicScope.supported_species.length
+              ? taxonomicScope.supported_species.join(", ")
+              : "not restricted by species",
+          },
           { label: "Required extra inputs", value: requiredExtras.length ? requiredExtras.join(", ") : "none" },
           { label: "Optional extra inputs", value: optionalExtras.length ? optionalExtras.join(", ") : "none" },
         ],
         conditionsLabel: "Conditional required inputs",
         conditions: conditionalRequirements,
+      },
+      {
+        title: "Compatibility Rules",
+        open: compatibilityRuleDetails.length > 0,
+        text: compatibilityRuleDetails.length ? "" : "No parameter-specific compatibility rules declared.",
+        conditionsLabel: "Dataset, parameter and execution rules",
+        conditions: compatibilityRuleDetails,
       },
       {
         title: "Outputs and Artifacts",
@@ -165,8 +225,38 @@ function conditionalExtraDetail(rule) {
       : "";
   const condition = left && op ? `${left} ${formatConditionalOperator(op)} ${value}` : "";
   return input || condition || message
-    ? { input, condition, message }
+    ? { input, condition, message: [String(rule.usage || "").trim(), message].filter(Boolean).join(" ") }
     : null;
+}
+
+function compatibilityRuleDetail(rule) {
+  if (!rule || typeof rule !== "object") {
+    return null;
+  }
+  const conditions = Array.isArray(rule.conditions)
+    ? rule.conditions.map((item) => compatibilityConditionText(item)).filter(Boolean)
+    : [];
+  const action = String(rule.action || "").trim();
+  const message = String(rule.message || "").trim();
+  return conditions.length || action || message
+    ? {
+        input: action ? `action: ${action}` : "",
+        condition: conditions.join(" AND "),
+        message,
+      }
+    : null;
+}
+
+function compatibilityConditionText(condition) {
+  if (!condition || typeof condition !== "object") {
+    return "";
+  }
+  const field = String(condition.field || "").trim();
+  const op = formatConditionalOperator(condition.op);
+  const value = condition.value_from
+    ? `$${String(condition.value_from).trim()}`
+    : JSON.stringify(condition.value);
+  return field && op ? `${field} ${op} ${value}` : "";
 }
 
 function formatConditionalOperator(op) {

@@ -23,13 +23,17 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from andrea.core.commands.infer_network import (
-    _inspect_expression_tsv,
-    _load_input_specs,
-    _load_schema_constraints,
-    _resolve_catalog_paths,
     plan_infer_network,
     preflight_infer_network,
     run_infer_network_plan,
+)
+from andrea.core.commands.infer_network.commons.catalog import (
+    _load_schema_constraints,
+    _resolve_catalog_paths,
+)
+from andrea.core.commands.infer_network.commons.dataset import (
+    _inspect_expression_tsv,
+    _load_input_specs,
 )
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -88,6 +92,21 @@ def _load_tools_bootstrap() -> dict[str, Any]:
     }
 
     tools: list[dict[str, Any]] = []
+    extra_usage_by_input: dict[str, dict[str, list[dict[str, Any]]]] = {}
+
+    def _parse_extra_usage_entries(raw_items: Any) -> list[dict[str, str]]:
+        if not isinstance(raw_items, list):
+            return []
+        entries: list[dict[str, str]] = []
+        for item in raw_items:
+            if not isinstance(item, dict):
+                continue
+            input_key = str(item.get("input", "")).strip()
+            item_usage = str(item.get("usage", "")).strip()
+            if input_key:
+                entries.append({"input": input_key, "usage": item_usage})
+        return entries
+
     for toolspec_path in sorted(tools_root.glob("*/toolspec.json")):
         tool_dir = toolspec_path.parent
         tool_id = tool_dir.name
@@ -110,14 +129,51 @@ def _load_tools_bootstrap() -> dict[str, Any]:
             req = extra_inputs.get("required", [])
             opt = extra_inputs.get("optional", [])
             cond = extra_inputs.get("conditional_required", [])
-            if isinstance(req, list):
-                required_extras = [x for x in req if isinstance(x, str)]
-            if isinstance(opt, list):
-                optional_extras = [x for x in opt if isinstance(x, str)]
+            required_entries = _parse_extra_usage_entries(req)
+            optional_entries = _parse_extra_usage_entries(opt)
+            required_extras = [item["input"] for item in required_entries]
+            optional_extras = [item["input"] for item in optional_entries]
             if isinstance(cond, list):
                 conditional_required_extras = [
                     item for item in cond if isinstance(item, dict)
                 ]
+            for relation, entries in (
+                ("required", required_entries),
+                ("optional", optional_entries),
+            ):
+                for entry in entries:
+                    input_key = entry["input"]
+                    usage_bucket = extra_usage_by_input.setdefault(
+                        input_key,
+                        {"required": [], "optional": [], "conditional": []},
+                    )
+                    usage_bucket[relation].append(
+                        {
+                            "tool_id": tool_id,
+                            "name": str(toolspec.get("name", tool_id)),
+                            "usage": entry["usage"],
+                        }
+                    )
+            for rule in conditional_required_extras:
+                input_key = str(rule.get("input", "")).strip()
+                if not input_key:
+                    continue
+                usage_bucket = extra_usage_by_input.setdefault(
+                    input_key,
+                    {"required": [], "optional": [], "conditional": []},
+                )
+                usage_bucket["conditional"].append(
+                    {
+                        "tool_id": tool_id,
+                        "name": str(toolspec.get("name", tool_id)),
+                        "usage": str(rule.get("usage", "")).strip(),
+                        "condition": {
+                            key: rule.get(key)
+                            for key in ("param", "execution", "op", "value", "message")
+                            if key in rule
+                        },
+                    }
+                )
 
         tools.append(
             {
@@ -129,11 +185,11 @@ def _load_tools_bootstrap() -> dict[str, Any]:
                     for x in toolspec.get("execution_capabilities", [])
                     if isinstance(x, str)
                 ],
+                "taxonomic_scope": toolspec.get("taxonomic_scope", {}),
+                "compatibility_rules": toolspec.get("compatibility_rules", []),
                 "method_summary": str(toolspec.get("method_summary", "")),
                 "method_keywords": [
-                    x
-                    for x in toolspec.get("method_keywords", [])
-                    if isinstance(x, str)
+                    x for x in toolspec.get("method_keywords", []) if isinstance(x, str)
                 ],
                 "assumes": str(toolspec.get("assumes", "")),
                 "accepts": [
@@ -171,6 +227,7 @@ def _load_tools_bootstrap() -> dict[str, Any]:
     return {
         "column_kinds": sorted(constraints.column_kinds),
         "expression_profiles": sorted(constraints.expression_profiles),
+        "taxonomic_groups": sorted(constraints.taxonomic_groups),
         "dataset_input_help": {
             "expression_matrix": {
                 "description": str(expr_spec.get("description", "")),
@@ -256,6 +313,9 @@ def _load_tools_bootstrap() -> dict[str, Any]:
                 "data_numeric_min_fraction": float(
                     input_specs.get(key, {}).get("data_numeric_min_fraction", 1.0)
                     or 1.0
+                ),
+                "used_by": extra_usage_by_input.get(
+                    key, {"required": [], "optional": [], "conditional": []}
                 ),
             }
             for key in sorted(constraints.extra_input_keys)
@@ -399,12 +459,34 @@ def _build_dataset_manifest_file(
             f"{bootstrap['expression_profiles']}"
         )
 
-    organism_cfg = dataset_cfg.get("organism", {"tax_id": 9606})
+    organism_cfg = dataset_cfg.get("organism")
     if not isinstance(organism_cfg, dict):
         raise ValueError("config.dataset.organism must be an object")
-    organism_tax_id = _safe_int(organism_cfg.get("tax_id"), default=0)
-    if organism_tax_id < 1:
-        raise ValueError("config.dataset.organism.tax_id must be an integer >= 1")
+    organism_keys = set(organism_cfg)
+    expected_organism_keys = {"taxonomic_group", "ncbi_taxon_id"}
+    if organism_keys != expected_organism_keys:
+        raise ValueError(
+            "config.dataset.organism must contain exactly taxonomic_group and ncbi_taxon_id"
+        )
+    taxonomic_group = str(organism_cfg.get("taxonomic_group", "")).strip()
+    if taxonomic_group not in set(bootstrap["taxonomic_groups"]):
+        raise ValueError(
+            "config.dataset.organism.taxonomic_group must be one of "
+            f"{bootstrap['taxonomic_groups']}"
+        )
+    ncbi_taxon_id_raw = organism_cfg.get("ncbi_taxon_id")
+    if ncbi_taxon_id_raw is None:
+        ncbi_taxon_id = None
+    else:
+        ncbi_taxon_id = _safe_int(ncbi_taxon_id_raw, default=0)
+        if ncbi_taxon_id < 1:
+            raise ValueError(
+                "config.dataset.organism.ncbi_taxon_id must be an integer >= 1 or null"
+            )
+    if taxonomic_group not in {"synthetic", "unknown"} and ncbi_taxon_id is None:
+        raise ValueError(
+            "config.dataset.organism.ncbi_taxon_id must be provided for biological taxonomic groups"
+        )
 
     expression_upload = form.get("expression_file")
     if expression_upload is None or not getattr(expression_upload, "filename", ""):
@@ -454,7 +536,10 @@ def _build_dataset_manifest_file(
                     "genes": genes,
                     "columns": columns,
                 },
-                "organism": {"tax_id": organism_tax_id},
+                "organism": {
+                    "taxonomic_group": taxonomic_group,
+                    "ncbi_taxon_id": ncbi_taxon_id,
+                },
             },
             "expression_matrix": str(Path("inputs") / "expression.tsv"),
         },

@@ -46,6 +46,99 @@ function executionModeLabel(mode) {
   return "Global";
 }
 
+function currentDatasetOrganism() {
+  const taxonomicGroup = String(document.getElementById("taxonomic-group")?.value || "").trim();
+  const taxonRaw = String(document.getElementById("organism-ncbi-taxon-id")?.value || "").trim();
+  const parsedTaxon = taxonRaw ? Number.parseInt(taxonRaw, 10) : null;
+  return {
+    taxonomic_group: taxonomicGroup,
+    ncbi_taxon_id: Number.isInteger(parsedTaxon) ? parsedTaxon : null,
+  };
+}
+
+function conditionValue(rule, condition) {
+  if (condition?.value_from === "taxonomic_scope.supported_species") {
+    return Array.isArray(rule?.taxonomic_scope?.supported_species)
+      ? rule.taxonomic_scope.supported_species
+      : [];
+  }
+  return condition?.value;
+}
+
+function conditionActualValue({ field, params, execution, organism }) {
+  if (field === "dataset.organism.taxonomic_group") {
+    return organism.taxonomic_group;
+  }
+  if (field === "dataset.organism.ncbi_taxon_id") {
+    return organism.ncbi_taxon_id;
+  }
+  if (field === "execution.mode") {
+    return execution.mode;
+  }
+  if (String(field || "").startsWith("param.")) {
+    return params[String(field).slice("param.".length)];
+  }
+  return undefined;
+}
+
+function compareCompatibilityValue(actual, op, expected) {
+  if (op === "eq") {
+    return actual === expected;
+  }
+  if (op === "ne") {
+    return actual !== expected;
+  }
+  if (op === "in") {
+    return Array.isArray(expected) && expected.includes(actual);
+  }
+  if (op === "not_in") {
+    return Array.isArray(expected) && !expected.includes(actual);
+  }
+  if (
+    typeof actual === "boolean" ||
+    typeof expected === "boolean" ||
+    Number.isNaN(Number(actual)) ||
+    Number.isNaN(Number(expected))
+  ) {
+    return false;
+  }
+  const actualNum = Number(actual);
+  const expectedNum = Number(expected);
+  if (op === "gt") {
+    return actualNum > expectedNum;
+  }
+  if (op === "gte") {
+    return actualNum >= expectedNum;
+  }
+  if (op === "lt") {
+    return actualNum < expectedNum;
+  }
+  if (op === "lte") {
+    return actualNum <= expectedNum;
+  }
+  return false;
+}
+
+function compatibilityRuleMatches(rule, params, execution, organism, tool) {
+  const conditions = Array.isArray(rule?.conditions) ? rule.conditions : [];
+  if (!conditions.length) {
+    return false;
+  }
+  for (const condition of conditions) {
+    const actual = conditionActualValue({
+      field: String(condition?.field || "").trim(),
+      params,
+      execution,
+      organism,
+    });
+    const expected = conditionValue(tool, condition);
+    if (!compareCompatibilityValue(actual, String(condition?.op || "").trim(), expected)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function buildRunId(toolId) {
   const cards = Array.from(document.querySelectorAll(".run-card"));
   const prefixes = cards
@@ -123,6 +216,14 @@ function validateRunCard(card) {
   }
 
   if (tool) {
+    const organism = currentDatasetOrganism();
+    const allowedGroups = Array.isArray(tool.taxonomic_scope?.allowed_groups)
+      ? tool.taxonomic_scope.allowed_groups
+      : [];
+    if (allowedGroups.length && !allowedGroups.includes(organism.taxonomic_group)) {
+      messages.push(`Dataset taxonomic group '${organism.taxonomic_group}' is not supported by ${tool.name}.`);
+    }
+
     const providedExtras = listProvidedExtraKeysFn ? listProvidedExtraKeysFn() : new Set();
     const missingRequired = (Array.isArray(tool.required_extras) ? tool.required_extras : [])
       .filter((key) => !providedExtras.has(String(key)));
@@ -151,6 +252,17 @@ function validateRunCard(card) {
     }
 
     const executionMode = String(card.querySelector(".execution-group-mode")?.value || "").trim();
+    const execution = { mode: executionMode };
+    const compatibilityRules = Array.isArray(tool.compatibility_rules) ? tool.compatibility_rules : [];
+    for (const rule of compatibilityRules) {
+      if (String(rule?.action || "").trim() !== "block") {
+        continue;
+      }
+      if (compatibilityRuleMatches(rule, params, execution, organism, tool)) {
+        messages.push(String(rule?.message || "Tool compatibility rule blocks this run.").trim());
+      }
+    }
+
     const capabilities = toolExecutionCapabilities(tool);
     if (capabilities.length && !capabilities.includes(executionMode)) {
       messages.push(`This tool does not support execution mode: ${executionMode}`);
@@ -214,11 +326,8 @@ export function addRunCard(initial = {}) {
   toolNameEl.textContent = tool.name;
   const capabilities = toolExecutionCapabilities(tool);
   const initialExecutionMode = String(initial?.execution?.mode || "").trim();
-  const legacyGroupMode = String(initial?.execution?.group_mode || "").trim();
-  const legacyExecutionMode =
-    legacyGroupMode === "per_group" ? "group_emulated" : legacyGroupMode === "global" ? "global" : "";
   const selectedExecutionMode =
-    initialExecutionMode || legacyExecutionMode || defaultGroupModeForToolFn?.(tool) || "global";
+    initialExecutionMode || defaultGroupModeForToolFn?.(tool) || "global";
 
   executionModeInput.innerHTML = "";
   const modeOptions = (capabilities.length ? capabilities : ["global"]).map((mode) => ({

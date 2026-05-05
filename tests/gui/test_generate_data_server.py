@@ -74,7 +74,6 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                         "organism": payload["organism"],
                         "requested_extras": payload["requested_extras"],
                         "effective_extras": ["groups", "lineage_tree"],
-                        "input_files": {},
                         "inputs": {},
                         "base_seed": payload.get("base_seed", 100),
                     },
@@ -91,17 +90,15 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                             "requested_profile": "scrna_grouped",
                             "requested_extras": ["lineage_tree"],
                             "effective_extras": ["groups", "lineage_tree"],
-                            "input_files_used": [],
+                            "inputs_used": [],
                             "native_extras_used": [],
                             "derived_extras_used": ["groups", "lineage_tree"],
                             "truth_outputs": {
                                 "global_network": "native",
-                                "legacy_binary_matrix": "derivable",
                                 "group_networks": "derivable",
                             },
                             "status": "eligible",
-                            "warnings": [],
-                            "blocking_reasons": [],
+                            "issues": [],
                         }
                     ],
                     "warning": [],
@@ -120,7 +117,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     "schema_version": "1.0",
                     "id": "gui_generate_test",
                     "profile": "scrna_grouped",
-                    "organism": {"kind": "synthetic", "tax_id": None},
+                    "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                     "requested_extras": ["lineage_tree"],
                     "effective_extras": ["groups", "lineage_tree"],
                     "inputs": {},
@@ -185,7 +182,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     benchmark_root / "datasets" / "gui_generate_test__dyngen_a__r01"
                 )
                 input_dir.mkdir(parents=True, exist_ok=True)
-                (dataset_dir / "truth" / "legacy").mkdir(parents=True, exist_ok=True)
+                (dataset_dir / "truth").mkdir(parents=True, exist_ok=True)
                 (dataset_dir / "extras").mkdir(parents=True, exist_ok=True)
                 (dataset_dir / "provenance").mkdir(parents=True, exist_ok=True)
                 (input_dir / "scenario-request.json").write_text(
@@ -195,7 +192,10 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                             "id": "gui_generate_test",
                             "profile": "scrna_grouped",
                             "requested_extras": ["lineage_tree"],
-                            "organism": {"kind": "synthetic", "tax_id": None},
+                            "organism": {
+                                "taxonomic_group": "synthetic",
+                                "ncbi_taxon_id": None,
+                            },
                             "base_seed": 100,
                         },
                         indent=2,
@@ -231,10 +231,12 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                             "scenario": {
                                 "id": "gui_generate_test",
                                 "profile": "scrna_grouped",
-                                "organism": {"kind": "synthetic", "tax_id": None},
+                                "organism": {
+                                    "taxonomic_group": "synthetic",
+                                    "ncbi_taxon_id": None,
+                                },
                                 "requested_extras": ["lineage_tree"],
                                 "effective_extras": ["groups", "lineage_tree"],
-                                "input_files": {},
                                 "inputs": {},
                                 "base_seed": 100,
                             },
@@ -260,7 +262,10 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                             "schema_version": "1.0",
                             "id": "gui_generate_test",
                             "profile": "scrna_grouped",
-                            "organism": {"kind": "synthetic", "tax_id": None},
+                            "organism": {
+                                "taxonomic_group": "synthetic",
+                                "ncbi_taxon_id": None,
+                            },
                             "requested_extras": ["lineage_tree"],
                             "effective_extras": ["groups", "lineage_tree"],
                             "inputs": {},
@@ -322,9 +327,6 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
                     encoding="utf-8",
                 )
-                (dataset_dir / "truth" / "legacy" / "global_gs.csv").write_text(
-                    ",G1,G2\nG1,0,1\nG2,0,0\n", encoding="utf-8"
-                )
                 (
                     dataset_dir / "provenance" / "simulator-output-manifest.json"
                 ).write_text('{"schema_version":"1.0"}\n', encoding="utf-8")
@@ -364,8 +366,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                                     "profile": "scrna_grouped",
                                     "requested_extras": ["lineage_tree"],
                                     "organism": {
-                                        "kind": "synthetic",
-                                        "tax_id": None,
+                                        "taxonomic_group": "synthetic",
+                                        "ncbi_taxon_id": None,
                                     },
                                     "base_seed": 100,
                                 },

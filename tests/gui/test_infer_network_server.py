@@ -52,8 +52,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                             {
                                 "tool_id": "aracne3",
                                 "status": "eligible",
-                                "reasons": [],
-                                "warnings": [],
+                                "issues": [],
                             }
                         ],
                         "warning": [],
@@ -66,7 +65,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                         "resolved_params": {},
                         "skipped": {},
                     },
-                    "warnings": [],
+                    "issues": [],
                     "inputs": {
                         "dataset_manifest_path": str(dataset_manifest_path),
                         "tools_params_path": (
@@ -120,7 +119,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                                 "tools_failed": 0,
                                 "elapsed_seconds": 0.0,
                             },
-                            "warnings": [],
+                            "issues": [],
                             "outputs": {
                                 "merged_network_raw": None,
                                 "merged_network_normalized": None,
@@ -171,6 +170,10 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                                     "id": "gui_dataset",
                                     "column_kind": "samples",
                                     "expression_profile": "mixed",
+                                    "organism": {
+                                        "taxonomic_group": "animal",
+                                        "ncbi_taxon_id": 9606,
+                                    },
                                 },
                                 "options": {"output_dir": str(tmp_root / "out")},
                             }
@@ -274,7 +277,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                         "resolved_params": {},
                         "skipped": {},
                     },
-                    "warnings": [],
+                    "issues": [],
                     "inputs": {
                         "dataset_manifest_path": str(dataset_manifest_path),
                         "tools_params_path": (
@@ -304,6 +307,10 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                                     "id": "gui_dataset",
                                     "column_kind": "samples",
                                     "expression_profile": "mixed",
+                                    "organism": {
+                                        "taxonomic_group": "animal",
+                                        "ncbi_taxon_id": 9606,
+                                    },
                                 },
                                 "options": {"output_dir": str(tmp_root / "out")},
                             }
