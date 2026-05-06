@@ -193,7 +193,7 @@ inferCSN is described as a cell type and cell state specific GRN method for scRN
 - Rationale:
   - Directed because each row is regulator -> target.
   - Signed because the selected CRAN path preserves coefficient sign.
-  - Association because the exported score remains the sparse-regression `weight`. Entropy mode uses pseudotime transfer entropy as an optional edge filter but does not replace the exported score with an entropy score.
+  - Association because the exported score remains the sparse-regression `weight` magnitude. Entropy mode uses pseudotime transfer entropy as an optional edge filter but does not replace the exported score with an entropy score.
 - Confidence / ambiguity: Medium-high. If the schema later supports parameter-dependent evidence, `sift_method="entropy"` could be annotated as adding pseudotime-filtered evidence.
 
 ### `progress`
@@ -291,11 +291,12 @@ inferCSN is described as a cell type and cell state specific GRN method for scRN
 - ANDREA mapping:
   - `source` = upstream `regulator`
   - `target` = upstream `target`
-  - `score` = final upstream `weight`
-  - `sign` = derived from the sign of `weight` if the current network.csv contract uses a sign column
+  - `score` = absolute magnitude of final upstream `weight`
+  - `sign` = derived from the sign of `weight`
   - execution context/group = provided by ANDREA orchestration for `group_emulated`.
 - Score policy:
-  - Preserve raw upstream final `weight` directly. Do not apply ANDREA-specific normalization.
+  - Preserve raw upstream final `weight` magnitude directly. Do not apply ANDREA-specific normalization.
+  - Because the ANDREA `network.csv` contract stores direction only in `sign`, signed upstream coefficients are converted to `score=abs(weight)`.
   - The selected upstream interface defines the score scale: per-target sparse-regression coefficients normalized by `thisutils::normalization(method = "unit_vector")`, with optional post-filtering by `network_sift()`.
   - Zero-score edges are not written. Upstream `network_format()` already removes exact zero weights; the wrapper keeps the same invariant defensively.
 
@@ -340,7 +341,7 @@ inferCSN is described as a cell type and cell state specific GRN method for scRN
   - Writes `infercsn.log`.
   - Writes `raw/infercsn_inferred_network.tsv` before optional sifting.
   - Writes `raw/infercsn_network.tsv` after the selected `sift_method`.
-  - Writes `network.csv` with `source=regulator`, `target=target`, signed raw `score=weight`, `sign` from weight sign, `evidence=association`, and physical-run `context=global`.
+  - Writes `network.csv` with `source=regulator`, `target=target`, raw magnitude `score=abs(weight)`, `sign` from weight sign, `evidence=association`, and physical-run `context=global`.
   - Filters exact zero scores and self-loops defensively.
 
 ## Smoketest
@@ -361,7 +362,7 @@ inferCSN is described as a cell type and cell state specific GRN method for scRN
 ## Known Limitations
 
 - The paper's full pseudotime/window/reference-network workflow is broader than CRAN `inferCSN()` 1.2.0. This integration mirrors the public CRAN inference and post-filtering functions rather than reconstructing unpublished glue around paper figures.
-- `sift_method="entropy"` adds pseudotime-based filtering, but the static ToolSpec `outputs.evidence` field remains `association` because the exported score is still the sparse-regression `weight`.
+- `sift_method="entropy"` adds pseudotime-based filtering, but the static ToolSpec `outputs.evidence` field remains `association` because the exported score is still the sparse-regression `weight` magnitude.
 - CRAN 1.2.0 `network_sift(method="entropy")` has a column-name bug in its internal call to `weight_sift()`. The wrapper keeps the documented transfer-entropy behavior with a local compatibility fix rather than silently disabling the entropy mode.
 - `global` is intentionally not exposed. Users who already have a single homogeneous cell population should provide a `groups.tsv` with one group so the execution still follows the grouped contract.
 - `targets` is not exposed. The wrapper will infer all target genes, matching upstream defaults.

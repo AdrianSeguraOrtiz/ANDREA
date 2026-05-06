@@ -15,6 +15,7 @@ from typing import Any, Iterable, Optional
 
 from andrea.core.shared.json_io import load_json_object as _load_json_object
 from andrea.core.shared.issues import issue_messages
+from andrea.core.shared.paths import report_path
 
 MERGED_NETWORK_REQUIRED_COLUMNS = [
     "source",
@@ -27,7 +28,7 @@ MERGED_NETWORK_REQUIRED_COLUMNS = [
 ]
 TRUTH_NETWORK_REQUIRED_COLUMNS = ["source", "target"]
 EVALUATION_LEVELS = ["topology", "directed", "signed"]
-METRIC_COLUMNS = ["auroc", "aupr", "f1_score"]
+METRIC_COLUMNS = ["auroc", "aupr", "f1_at_truth_count", "epr_at_truth_count"]
 VALID_SIGNS = {"+", "-"}
 CATALOG_TOOLS_ROOT = (
     Path(__file__).resolve().parents[3] / "catalog_inference_tools" / "tools"
@@ -129,7 +130,6 @@ def evaluate_inference(
                 "catalog_tool_id": tool_capabilities[tool_id].catalog_tool_id,
                 "context": context,
                 "truth_context": truth.context,
-                "truth_path": str(truth.path),
                 "status": "evaluated",
                 "reason": None,
             }
@@ -152,18 +152,24 @@ def evaluate_inference(
     _write_csv(metrics_csv_path, metrics)
     _write_csv(pairings_csv_path, pairings)
     plot_outputs = (
-        _write_plots(evaluation_dir / "plots", metrics) if generate_plots else []
+        _write_plots(evaluation_dir / "plots", metrics, base_dir=output_root)
+        if generate_plots
+        else []
     )
 
     report = {
         "schema_version": "1.0",
         "created_at": created_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "inputs": {
-            "run_report": str(run_report_path),
-            "ground_truth_manifest": str(ground_truth_manifest_path),
-        },
-        "derived_inputs": {
-            "merged_network_raw": str(merged_network_path),
+            "inference_run_id": run_report.get("run_id"),
+            "inference_dataset_id": (
+                run_report.get("dataset", {}).get("id")
+                if isinstance(run_report.get("dataset"), dict)
+                else None
+            ),
+            "ground_truth_dataset_id": manifest.get("dataset_id"),
+            "ground_truth_simulator_id": manifest.get("simulator_id"),
+            "merged_network": "merged_network_raw",
         },
         "inference_run": {
             "run_id": run_report.get("run_id"),
@@ -179,12 +185,16 @@ def evaluate_inference(
             "contexts": sorted(truth_networks.keys()),
         },
         "outputs": {
-            "output_root": str(output_root),
-            "evaluation_dir": str(evaluation_dir),
-            "metrics_csv": str(metrics_csv_path),
-            "pairings_csv": str(pairings_csv_path),
-            "evaluation_report": str(report_json_path),
-            "plots_dir": str(evaluation_dir / "plots") if generate_plots else None,
+            "output_root": ".",
+            "evaluation_dir": report_path(evaluation_dir, base_dir=output_root),
+            "metrics_csv": report_path(metrics_csv_path, base_dir=output_root),
+            "pairings_csv": report_path(pairings_csv_path, base_dir=output_root),
+            "evaluation_report": report_path(report_json_path, base_dir=output_root),
+            "plots_dir": (
+                report_path(evaluation_dir / "plots", base_dir=output_root)
+                if generate_plots
+                else None
+            ),
             "plots": plot_outputs,
         },
         "pairings": pairings,
@@ -269,6 +279,11 @@ def _load_inferred_rows(path: Path) -> list[NetworkRow]:
                 raise ValueError(
                     f"Inferred network CSV has non-finite score at line {line_number}: "
                     f"{row.get('score')!r}"
+                )
+            if score <= 0.0:
+                raise ValueError(
+                    f"Inferred network CSV has non-positive score at line {line_number}: "
+                    f"{row.get('score')!r}; score must be a positive magnitude and sign must be stored in the sign column"
                 )
             rows.append(
                 NetworkRow(
@@ -356,6 +371,16 @@ def _load_truth_network(*, path: Path, context: str) -> TruthNetwork:
                     f"Ground-truth network CSV has invalid score at line {line_number}: "
                     f"{raw_score!r}"
                 ) from exc
+            if not math.isfinite(score):
+                raise ValueError(
+                    f"Ground-truth network CSV has non-finite score at line {line_number}: "
+                    f"{raw_score!r}"
+                )
+            if score < 0.0:
+                raise ValueError(
+                    f"Ground-truth network CSV has negative score at line {line_number}: "
+                    f"{raw_score!r}; score must be a non-negative truth label or magnitude"
+                )
             rows.append(
                 NetworkRow(
                     source=str(row["source"]).strip(),
@@ -489,10 +514,11 @@ def _evaluate_pairing(
 
     y_true = [1 if key in truth_keys else 0 for key in candidates]
     y_score = [float(prediction_scores.get(key, 0.0)) for key in candidates]
-    tp = len(truth_keys & predicted_keys)
-    fp = len(predicted_keys - truth_keys)
-    fn = len(truth_keys - predicted_keys)
-    f1_score = _f1_score(tp=tp, fp=fp, fn=fn)
+    top_k_stats = _top_truth_count_stats(
+        prediction_scores=prediction_scores,
+        truth_keys=truth_keys,
+        n_candidates=len(candidates),
+    )
 
     auroc = _auroc(y_true, y_score)
     aupr = _average_precision(y_true, y_score)
@@ -512,13 +538,14 @@ def _evaluate_pairing(
         "reason": reason,
         "auroc": auroc,
         "aupr": aupr,
-        "f1_score": f1_score,
+        "f1_at_truth_count": top_k_stats["f1_at_truth_count"],
+        "epr_at_truth_count": top_k_stats["epr_at_truth_count"],
         "n_candidates": len(candidates),
         "n_truth_edges": len(truth_keys),
         "n_predicted_edges": len(predicted_keys),
-        "tp": tp,
-        "fp": fp,
-        "fn": fn,
+        "tp_at_truth_count": top_k_stats["tp_at_truth_count"],
+        "fp_at_truth_count": top_k_stats["fp_at_truth_count"],
+        "fn_at_truth_count": top_k_stats["fn_at_truth_count"],
         "truth_directed": truth.directed,
         "truth_signed": truth.signed,
         "prediction_directed": capabilities.directed,
@@ -573,13 +600,14 @@ def _empty_metric_row(
         "reason": reason,
         "auroc": None,
         "aupr": None,
-        "f1_score": None,
+        "f1_at_truth_count": None,
+        "epr_at_truth_count": None,
         "n_candidates": 0,
         "n_truth_edges": 0,
         "n_predicted_edges": 0,
-        "tp": 0,
-        "fp": 0,
-        "fn": 0,
+        "tp_at_truth_count": 0,
+        "fp_at_truth_count": 0,
+        "fn_at_truth_count": 0,
         "truth_directed": None,
         "truth_signed": None,
         "prediction_directed": capabilities.directed,
@@ -594,8 +622,10 @@ def _aggregate_rows(
     for row in rows:
         if level == "signed" and row.sign not in VALID_SIGNS:
             continue
+        score = float(row.score)
+        if score <= 0.0:
+            continue
         key = _edge_key(row.source, row.target, row.sign, level=level)
-        score = abs(float(row.score))
         if key not in scores or score > scores[key]:
             scores[key] = score
     return scores
@@ -622,17 +652,21 @@ def _candidate_keys(
     sorted_nodes = sorted(nodes)
     if level == "topology":
         for idx, source in enumerate(sorted_nodes):
-            for target in sorted_nodes[idx:]:
+            for target in sorted_nodes[idx + 1 :]:
                 candidates.add((source, target))
         return candidates
     if level == "directed":
         for source in sorted_nodes:
             for target in sorted_nodes:
+                if source == target:
+                    continue
                 candidates.add((source, target))
         return candidates
     if level == "signed":
         for source in sorted_nodes:
             for target in sorted_nodes:
+                if source == target:
+                    continue
                 for sign in sorted(VALID_SIGNS):
                     candidates.add((source, target, sign))
         return candidates
@@ -650,11 +684,46 @@ def _collect_nodes(*row_groups: Iterable[NetworkRow]) -> set[str]:
     return nodes
 
 
-def _f1_score(*, tp: int, fp: int, fn: int) -> Optional[float]:
+def _top_truth_count_stats(
+    *,
+    prediction_scores: dict[tuple[str, ...], float],
+    truth_keys: set[tuple[str, ...]],
+    n_candidates: int,
+) -> dict[str, Any]:
+    k = len(truth_keys)
+    if k == 0:
+        return {
+            "f1_at_truth_count": None,
+            "epr_at_truth_count": None,
+            "tp_at_truth_count": 0,
+            "fp_at_truth_count": 0,
+            "fn_at_truth_count": 0,
+        }
+
+    ranked_predictions = sorted(
+        prediction_scores,
+        key=lambda key: (-float(prediction_scores[key]), key),
+    )
+    top_keys = set(ranked_predictions[:k])
+    tp = len(top_keys & truth_keys)
+    fp = k - tp
+    fn = k - tp
     denominator = (2 * tp) + fp + fn
-    if denominator == 0:
-        return None
-    return (2 * tp) / denominator
+    f1 = None if denominator == 0 else (2 * tp) / denominator
+    early_precision = tp / k
+    random_precision = k / n_candidates if n_candidates > 0 else None
+    epr = (
+        None
+        if random_precision is None or random_precision == 0
+        else early_precision / random_precision
+    )
+    return {
+        "f1_at_truth_count": f1,
+        "epr_at_truth_count": epr,
+        "tp_at_truth_count": tp,
+        "fp_at_truth_count": fp,
+        "fn_at_truth_count": fn,
+    }
 
 
 def _auroc(y_true: list[int], y_score: list[float]) -> Optional[float]:
@@ -713,7 +782,10 @@ def _average_precision(y_true: list[int], y_score: list[float]) -> Optional[floa
 
 
 def _write_plots(
-    plots_dir: Path, metrics: list[dict[str, Any]]
+    plots_dir: Path,
+    metrics: list[dict[str, Any]],
+    *,
+    base_dir: Path,
 ) -> list[dict[str, Any]]:
     plots_dir.mkdir(parents=True, exist_ok=True)
     outputs: list[dict[str, Any]] = []
@@ -730,7 +802,7 @@ def _write_plots(
                     "kind": "heatmap",
                     "metric": metric,
                     "level": level,
-                    "path": str(heatmap_path),
+                    "path": report_path(heatmap_path, base_dir=base_dir),
                 }
             )
     return outputs
@@ -744,6 +816,7 @@ def _write_heatmap_svg(
     level: str,
 ) -> None:
     values = _metric_values_by_tool_context(rows=rows, metric=metric)
+    scale_max = _plot_scale_max(values.values(), metric=metric)
     global_values = {
         tool: value
         for (tool, context), value in values.items()
@@ -803,6 +876,7 @@ def _write_heatmap_svg(
         bar_w=global_bar_w,
         tools=global_tools,
         values=global_values,
+        scale_max=scale_max,
         metric=metric,
         level=level,
     )
@@ -817,10 +891,11 @@ def _write_heatmap_svg(
         tools=group_tools,
         contexts=group_contexts,
         values=group_values,
+        scale_max=scale_max,
         metric=metric,
         level=level,
     )
-    _append_heat_legend(parts=parts, x=left, y=legend_y)
+    _append_heat_legend(parts=parts, x=left, y=legend_y, scale_max=scale_max)
     parts.append("</svg>\n")
     path.write_text("\n".join(parts), encoding="utf-8")
 
@@ -834,6 +909,7 @@ def _append_global_bar_panel(
     bar_w: float,
     tools: list[str],
     values: dict[str, float],
+    scale_max: float,
     metric: str,
     level: str,
 ) -> None:
@@ -857,7 +933,7 @@ def _append_global_bar_panel(
             _svg_text(
                 tick_x,
                 axis_y + 16,
-                f"{tick:.1f}",
+                _format_plot_value(tick * scale_max),
                 size=10,
                 anchor="middle",
                 fill="#64748b",
@@ -878,6 +954,7 @@ def _append_global_bar_panel(
 
     for idx, tool in enumerate(tools):
         value = values[tool]
+        scaled_value = _scale_plot_value(value, scale_max=scale_max)
         row_y = y + (idx * 30)
         bar_h = 18
         parts.append(
@@ -897,14 +974,14 @@ def _append_global_bar_panel(
         )
         parts.append(
             f'<rect x="{axis_x:.1f}" y="{row_y + 2:.1f}" '
-            f'width="{bar_w * value:.1f}" height="{bar_h}" fill="{_heat_color(value)}" rx="2">'
+            f'width="{bar_w * scaled_value:.1f}" height="{bar_h}" fill="{_heat_color(scaled_value)}" rx="2">'
             f"<title>{html.escape(title)}</title></rect>"
         )
         parts.append(
             _svg_text(
-                axis_x + (bar_w * value) + 6,
+                axis_x + (bar_w * scaled_value) + 6,
                 row_y + 16,
-                f"{value:.2f}",
+                _format_plot_value(value),
                 size=10,
                 fill="#334155",
             )
@@ -923,6 +1000,7 @@ def _append_group_heatmap_panel(
     tools: list[str],
     contexts: list[str],
     values: dict[tuple[str, str], float],
+    scale_max: float,
     metric: str,
     level: str,
 ) -> None:
@@ -964,7 +1042,12 @@ def _append_group_heatmap_panel(
         for col_idx, context in enumerate(contexts):
             value = values.get((tool, context))
             col_x = heatmap_x + (col_idx * cell_w)
-            fill = _heat_color(value) if value is not None else "#e5e7eb"
+            scaled_value = (
+                _scale_plot_value(value, scale_max=scale_max)
+                if value is not None
+                else None
+            )
+            fill = _heat_color(scaled_value) if scaled_value is not None else "#e5e7eb"
             if value is None:
                 title = f"{tool} | {context} | {metric}/{level} unavailable"
             else:
@@ -979,15 +1062,21 @@ def _append_group_heatmap_panel(
                     _svg_text(
                         col_x + (cell_w / 2) - 1,
                         row_y + 21,
-                        f"{value:.2f}",
+                        _format_plot_value(value),
                         size=11,
                         anchor="middle",
-                        fill=_contrast_color(value),
+                        fill=_contrast_color(scaled_value),
                     )
                 )
 
 
-def _append_heat_legend(parts: list[str], *, x: float, y: float) -> None:
+def _append_heat_legend(
+    parts: list[str],
+    *,
+    x: float,
+    y: float,
+    scale_max: float,
+) -> None:
     parts.append(_svg_text(x, y - 10, "0", size=11, fill="#475569"))
     for idx in range(80):
         value = idx / 79
@@ -995,7 +1084,11 @@ def _append_heat_legend(parts: list[str], *, x: float, y: float) -> None:
             f'<rect x="{x + 18 + idx * 2:.1f}" y="{y - 20}" '
             f'width="2" height="12" fill="{_heat_color(value)}" />'
         )
-    parts.append(_svg_text(x + 184, y - 10, "1", size=11, fill="#475569"))
+    parts.append(
+        _svg_text(
+            x + 184, y - 10, _format_plot_value(scale_max), size=11, fill="#475569"
+        )
+    )
     parts.append(
         f'<rect x="{x + 218}" y="{y - 20}" width="18" height="12" '
         'fill="#e5e7eb" stroke="#cbd5e1" />'
@@ -1024,7 +1117,32 @@ def _metric_value(row: dict[str, Any], metric: str) -> Optional[float]:
         return None
     if not math.isfinite(numeric):
         return None
-    return max(0.0, min(1.0, numeric))
+    return max(0.0, numeric)
+
+
+def _plot_scale_max(values: Iterable[Optional[float]], *, metric: str) -> float:
+    if metric == "epr_at_truth_count":
+        finite_values = [
+            float(value)
+            for value in values
+            if value is not None and math.isfinite(float(value))
+        ]
+        return max(1.0, max(finite_values, default=1.0))
+    return 1.0
+
+
+def _scale_plot_value(value: float, *, scale_max: float) -> float:
+    if scale_max <= 0:
+        return 0.0
+    return max(0.0, min(1.0, float(value) / scale_max))
+
+
+def _format_plot_value(value: float) -> str:
+    if abs(value) >= 100:
+        return f"{value:.0f}"
+    if abs(value) >= 10:
+        return f"{value:.1f}"
+    return f"{value:.2f}"
 
 
 def _sorted_unique(values: Iterable[Any]) -> list[str]:
@@ -1110,7 +1228,8 @@ def _metric_label(metric: str) -> str:
     return {
         "auroc": "AUROC",
         "aupr": "AUPR",
-        "f1_score": "F1-score",
+        "f1_at_truth_count": "F1@truth-count",
+        "epr_at_truth_count": "EPR@truth-count",
     }.get(metric, metric)
 
 

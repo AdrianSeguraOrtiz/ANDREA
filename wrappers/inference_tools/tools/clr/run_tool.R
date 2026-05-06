@@ -150,6 +150,30 @@ read_expression_tsv <- function(expr_path) {
   obs_x_genes
 }
 
+filter_variable_genes <- function(expression_data) {
+  keep <- apply(expression_data, 2L, function(values) {
+    sd_value <- stats::sd(values)
+    is.finite(sd_value) && sd_value > 0
+  })
+  dropped <- colnames(expression_data)[!keep]
+  if (length(dropped) > 0L) {
+    message(sprintf("Filtered %d zero-variance gene(s) before CLR inference.", length(dropped)))
+  }
+  expression_data[, keep, drop = FALSE]
+}
+
+empty_network <- function() {
+  data.frame(
+    source = character(),
+    target = character(),
+    score = numeric(),
+    sign = character(),
+    evidence = character(),
+    context = character(),
+    stringsAsFactors = FALSE
+  )
+}
+
 infer_clr <- function(expression_data, params) {
   mim_args <- list(
     dataset = expression_data,
@@ -182,7 +206,7 @@ build_network <- function(score_matrix) {
   genes <- rownames(score_matrix)
   n_genes <- length(genes)
   if (n_genes < 2L) {
-    stop("CLR requires at least 2 genes to build a non-empty network.", call. = FALSE)
+    return(empty_network())
   }
 
   rows <- list()
@@ -215,7 +239,7 @@ build_network <- function(score_matrix) {
   }
 
   if (!length(rows)) {
-    stop("CLR produced no non-zero interactions for this dataset.", call. = FALSE)
+    return(empty_network())
   }
   out <- do.call(rbind, rows)
   out[order(out$score, decreasing = TRUE), , drop = FALSE]
@@ -249,6 +273,13 @@ main <- function() {
 
     write_progress(progress_path, "running", 10L, "load_input", "Loading expression matrix")
     expression_data <- read_expression_tsv(input_path)
+    expression_data <- filter_variable_genes(expression_data)
+    if (ncol(expression_data) < 2L) {
+      write_progress(progress_path, "running", 90L, "write_output", "Writing empty network.csv")
+      write.csv(empty_network(), file.path(output_dir, "network.csv"), row.names = FALSE)
+      write_progress(progress_path, "completed", 100L, "done", "CLR completed with no variable gene pairs")
+      return(invisible(NULL))
+    }
 
     write_progress(
       progress_path,

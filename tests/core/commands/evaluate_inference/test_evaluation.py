@@ -8,9 +8,104 @@ from pathlib import Path
 from unittest.mock import patch
 
 from andrea.core.commands.evaluate_inference import evaluate_inference
+from andrea.core.commands.evaluate_inference.evaluation import (
+    NetworkRow,
+    _aggregate_rows,
+    _metric_value,
+    _plot_scale_max,
+    _top_truth_count_stats,
+)
 
 
 class EvaluateInferenceCoreTests(unittest.TestCase):
+    def test_aggregates_signed_prediction_scores_without_negating_by_sign(self) -> None:
+        rows = [
+            NetworkRow(
+                source="A",
+                target="B",
+                score=0.9,
+                sign="-",
+                context="global",
+                tool_id="signed_tool",
+            ),
+            NetworkRow(
+                source="A",
+                target="B",
+                score=0.2,
+                sign="+",
+                context="global",
+                tool_id="signed_tool",
+            ),
+        ]
+
+        self.assertEqual(
+            _aggregate_rows(rows, level="directed"),
+            {("A", "B"): 0.9},
+        )
+        self.assertEqual(
+            _aggregate_rows(rows, level="signed"),
+            {("A", "B", "-"): 0.9, ("A", "B", "+"): 0.2},
+        )
+
+    def test_zero_truth_scores_do_not_create_positive_edges(self) -> None:
+        rows = [
+            NetworkRow(
+                source="A",
+                target="B",
+                score=1.0,
+                sign="+",
+                context="global",
+            ),
+            NetworkRow(
+                source="A",
+                target="C",
+                score=0.0,
+                sign="+",
+                context="global",
+            ),
+        ]
+
+        self.assertEqual(
+            _aggregate_rows(rows, level="directed"),
+            {("A", "B"): 1.0},
+        )
+        self.assertEqual(
+            _aggregate_rows(rows, level="signed"),
+            {("A", "B", "+"): 1.0},
+        )
+
+    def test_truth_count_metrics_use_top_ranked_predictions(self) -> None:
+        stats = _top_truth_count_stats(
+            prediction_scores={
+                ("A", "B"): 0.9,
+                ("C", "D"): 0.8,
+                ("B", "C"): 0.7,
+            },
+            truth_keys={("A", "B"), ("B", "C")},
+            n_candidates=4,
+        )
+
+        self.assertAlmostEqual(stats["f1_at_truth_count"] or 0.0, 0.5)
+        self.assertAlmostEqual(stats["epr_at_truth_count"] or 0.0, 1.0)
+        self.assertEqual(
+            (
+                stats["tp_at_truth_count"],
+                stats["fp_at_truth_count"],
+                stats["fn_at_truth_count"],
+            ),
+            (1, 1, 1),
+        )
+
+    def test_epr_plot_values_are_not_clamped_to_unit_interval(self) -> None:
+        self.assertEqual(
+            _metric_value({"epr_at_truth_count": 6.0}, "epr_at_truth_count"),
+            6.0,
+        )
+        self.assertEqual(
+            _plot_scale_max([0.5, 6.0], metric="epr_at_truth_count"),
+            6.0,
+        )
+
     def test_evaluates_topology_directed_and_signed_levels(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -32,6 +127,14 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "target": "C",
                         "score": "1",
                         "sign": "-",
+                        "evidence": "simulated_truth",
+                        "context": "global",
+                    },
+                    {
+                        "source": "A",
+                        "target": "C",
+                        "score": "0",
+                        "sign": "+",
                         "evidence": "simulated_truth",
                         "context": "global",
                     },
@@ -109,7 +212,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 json.dumps(
                     {
                         "outputs": {
-                            "merged_network_raw": str(inferred_path),
+                            "merged_network_raw": inferred_path.name,
                         },
                         "tools": {
                             "catalog_tool_ids": {
@@ -132,28 +235,62 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                     ground_truth_manifest_path=manifest_path,
                     output_dir=base / "evaluation",
                 )
-            evaluation_dir = Path(report["outputs"]["evaluation_dir"])
-            metrics_csv_exists = Path(report["outputs"]["metrics_csv"]).exists()
-            pairings_csv_exists = Path(report["outputs"]["pairings_csv"]).exists()
-            report_json_exists = Path(report["outputs"]["evaluation_report"]).exists()
-            plot_paths = [Path(entry["path"]) for entry in report["outputs"]["plots"]]
+            output_root = base / "evaluation"
+            evaluation_dir = output_root / report["outputs"]["evaluation_dir"]
+            metrics_csv_exists = (
+                output_root / report["outputs"]["metrics_csv"]
+            ).exists()
+            pairings_csv_exists = (
+                output_root / report["outputs"]["pairings_csv"]
+            ).exists()
+            report_json_exists = (
+                output_root / report["outputs"]["evaluation_report"]
+            ).exists()
+            plot_paths = [
+                output_root / entry["path"] for entry in report["outputs"]["plots"]
+            ]
             plot_paths_exist = all(path.exists() for path in plot_paths)
 
         metrics = {(row["tool_id"], row["level"]): row for row in report["metrics"]}
         self.assertEqual(metrics[("genie3__01", "topology")]["status"], "ok")
-        self.assertAlmostEqual(metrics[("genie3__01", "topology")]["f1_score"], 1.0)
+        self.assertAlmostEqual(
+            metrics[("genie3__01", "topology")]["f1_at_truth_count"], 1.0
+        )
+        self.assertAlmostEqual(
+            metrics[("genie3__01", "topology")]["epr_at_truth_count"], 1.5
+        )
         self.assertEqual(metrics[("genie3__01", "directed")]["status"], "ok")
-        self.assertAlmostEqual(metrics[("genie3__01", "directed")]["f1_score"], 0.5)
+        self.assertAlmostEqual(
+            metrics[("genie3__01", "directed")]["f1_at_truth_count"], 0.5
+        )
+        self.assertAlmostEqual(
+            metrics[("genie3__01", "directed")]["epr_at_truth_count"], 1.5
+        )
         self.assertEqual(metrics[("genie3__01", "signed")]["status"], "not_applicable")
         self.assertEqual(metrics[("signed_tool", "signed")]["status"], "ok")
-        self.assertAlmostEqual(metrics[("signed_tool", "signed")]["f1_score"], 0.8)
-        self.assertEqual(evaluation_dir.parent, Path(report["outputs"]["output_root"]))
+        self.assertAlmostEqual(
+            metrics[("signed_tool", "signed")]["f1_at_truth_count"], 1.0
+        )
+        self.assertAlmostEqual(
+            metrics[("signed_tool", "signed")]["epr_at_truth_count"], 6.0
+        )
+        self.assertEqual(Path(report["outputs"]["output_root"]), Path("."))
+        self.assertEqual(evaluation_dir.parent, output_root)
         self.assertTrue(evaluation_dir.name.startswith("evaluation_"))
         self.assertTrue(metrics_csv_exists)
         self.assertTrue(pairings_csv_exists)
         self.assertTrue(report_json_exists)
         self.assertTrue(plot_paths)
         self.assertTrue(plot_paths_exist)
+        self.assertEqual(report["inputs"]["inference_dataset_id"], None)
+        self.assertEqual(report["inputs"]["ground_truth_dataset_id"], "toy")
+        self.assertEqual(report["inputs"]["ground_truth_simulator_id"], "toy_sim")
+        self.assertEqual(report["inputs"]["merged_network"], "merged_network_raw")
+        self.assertNotIn("run_report", report["inputs"])
+        self.assertNotIn("ground_truth_manifest", report["inputs"])
+        self.assertNotIn("derived_inputs", report)
+        for pairing in report["pairings"]:
+            self.assertNotIn("truth_path", pairing)
 
     def test_skips_prediction_context_without_matching_truth(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -209,7 +346,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 json.dumps(
                     {
                         "outputs": {
-                            "merged_network_raw": str(inferred_path),
+                            "merged_network_raw": inferred_path.name,
                         },
                         "tools": {
                             "catalog_tool_ids": {

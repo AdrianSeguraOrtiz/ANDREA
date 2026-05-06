@@ -195,10 +195,10 @@ SimiC is a single-cell GRN inference framework for ordered cell phenotypes. It j
 - Evidence:
   - Paper describes a driver/TF by target incidence matrix; `Wi,j` is the influence of driver i on target j (`s42003-022-03319-7.txt:129-145`, `2700-2715`).
   - Paper says weights indicate strength and direction, including promotion or repression (`s42003-022-03319-7.txt:141-145`, `2636-2644`, `2811-2813`).
-  - Source saves signed `weight_dic` matrices (`clus_regression.py:623-632`); weighted AUC uses absolute weights for activity scoring (`weighted_AUC_mat.py:117-118`) but this is post-processing, not the raw network score.
+  - Source saves signed `weight_dic` matrices (`clus_regression.py:623-632`); weighted AUC uses absolute weights for activity scoring (`weighted_AUC_mat.py:117-118`) but this is post-processing, not the raw network score source.
 - Rationale:
   - Edges are directed from TF/driver source to target gene.
-  - The raw coefficient sign should become `+` or `-` in `network.csv`.
+  - The raw coefficient magnitude should become `score` in `network.csv`; the coefficient sign should become `+` or `-`.
   - Evidence is model-based association/regression, not perturbational causality.
 - Confidence: high.
 
@@ -313,8 +313,8 @@ SimiC is a single-cell GRN inference framework for ordered cell phenotypes. It j
   - write one directed row per nonzero coefficient:
     - `source`: TF/driver gene
     - `target`: target gene
-    - `score`: raw signed SimiC coefficient from the incidence matrix, without ANDREA-specific normalization
-    - `sign`: `+` when score > 0, `-` when score < 0
+    - `score`: absolute magnitude of the raw SimiC coefficient from the incidence matrix, without ANDREA-specific normalization
+    - `sign`: `+` when the raw coefficient > 0, `-` when the raw coefficient < 0
     - `evidence`: `association`
     - `context`: `group:<original_group_label>`
 - Do not use weighted AUC values as edge scores. The paper defines SimiC's GRN output as incidence matrices and the weighted AUC as regulon activity post-processing.
@@ -365,7 +365,7 @@ Upstream Dockerfile decision:
 - Output behavior:
   - `raw/simic_weights.pickle` is produced by `simicLASSO_op`
   - `raw/simic_wauc_matrices.pickle` is produced by `weighted_AUC_mat.main_fn`
-  - `network.csv` uses raw signed incidence-matrix coefficients from `weight_dic`, excludes exact zero coefficients, writes `+`/`-` sign, and sets `context=group:<phenotype>`
+  - `network.csv` uses raw incidence-matrix coefficient magnitudes from `weight_dic`, excludes exact zero coefficients, writes `+`/`-` sign from the raw coefficient direction, and sets `context=group:<phenotype>`
   - `progress.json` reports coarse lifecycle states because the selected upstream public function has no stable progress callback
 - Compatibility note:
   - The wrapper patches SimiC's imported `r2_score` call to pass `sample_weight` as a keyword, preserving upstream behavior on modern scikit-learn where that argument is keyword-only.

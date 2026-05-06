@@ -162,7 +162,7 @@ Requirements:
 - Explicitly decide and document which upstream public entrypoint the integration mirrors
 - Explicitly document any upstream public modes/entrypoints that are not exposed by the wrapper and why
 - If any upstream default is data-dependent or runtime-dependent, document the exact rule and how the ToolSpec preserves it
-- Determine whether the wrapper should preserve raw method scores directly or whether the chosen upstream public interface already defines the score scale
+- Determine whether the wrapper should preserve raw method score magnitudes directly or whether the chosen upstream public interface already defines the score scale; if the upstream score is a signed coefficient, document how the wrapper separates `abs(coefficient)` into `score` and coefficient direction into `sign`
 - For every non-trivial field in [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json), record:
   - chosen value
   - evidence path(s)
@@ -175,7 +175,7 @@ Focus especially on:
 1. upstream execution modes/entrypoints and whether each maps to `global`, `group_native`, `group_emulated`, a parameter choice, or is intentionally excluded
 2. input semantics and conditional required inputs by execution mode and by parameter value
 3. parameter mapping and defaults
-4. output semantics and how they should map to raw `network.csv`
+4. output semantics and how they should map to raw `network.csv` with positive `score` magnitudes and direction stored only in `sign`
 5. installation source preference: package first, pinned upstream source second; inspect the installable package/version when it differs from the local repo snapshot
 6. explicit evidence for `accepts`, `assumes`, `extra_inputs`, `outputs`, `progress`, `params` and `artifacts_aux`
 ```
@@ -212,9 +212,9 @@ Requirements:
 - Install runtime dependencies with the package manager of the same interpreter/runtime that will execute the wrapper
 - If the runtime build pipeline requires [template_map.json](wrappers/inference_tools/scripts/template_map.json), register `<tool_id>` there with the correct runtime and template bundles
 - Preserve data-dependent or runtime-dependent upstream defaults; if the ToolSpec uses a sentinel such as `null` to mean "defer to upstream default", implement that by omitting the argument rather than hard-coding a replacement value
-- Make the wrapper produce raw `network.csv` scores for the chosen upstream interface and `progress.json`
+- Make the wrapper produce raw positive `network.csv` score magnitudes for the chosen upstream interface and `progress.json`
 - Do not apply ANDREA-specific score normalization in the wrapper; downstream normalization is handled later by [merge.py](andrea/core/commands/infer_network/commons/merge.py)
-- Do not write rows with `score == 0` to `network.csv`; if the upstream method produces a dense matrix, filter zero-score edges in the wrapper before export
+- Do not write rows with `score <= 0` to `network.csv`; if the upstream method produces a dense matrix, filter zero-magnitude edges in the wrapper before export
 - For undirected methods, export one row per unordered pair and exclude self-loops unless stronger primary evidence clearly requires another edge convention
 - Add or update [smoketest config](wrappers/inference_tools/tests/smoketest_configs/<tool_id>.json) and any needed fixtures under [tests/fixtures/](wrappers/inference_tools/tests/fixtures/)
 - Build the image and run the smoketest during this phase; if it fails, fix the implementation and repeat until it passes
@@ -406,7 +406,7 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
     - whether it is exposed by the wrapper
     - rationale for exposing or excluding it
   - if the wrapper intentionally targets a convenience wrapper instead of the bare algorithm, document the consequence for params and output semantics
-  - if the upstream package offers both a score-preserving low-level interface and a convenience wrapper that only rescales the same scores, prefer the score-preserving interface so raw `network.csv` remains comparable with other tools
+  - if the upstream package offers both a score-preserving low-level interface and a convenience wrapper that only rescales the same scores, prefer the score-preserving interface so raw `network.csv` score magnitudes remain comparable with other tools
   - if the official installable package/version differs from the local repo snapshot, inspect the installable package/version and base the runtime contract on that version
 
 - `execution_capabilities`
@@ -526,10 +526,15 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - whether evidence is association, causal, or pseudotime-directed
   - also determine:
     - whether the chosen upstream interface returns raw method scores or already-normalized scores
+    - whether raw scores are signed coefficients or non-negative confidence/importance values
+    - when scores are signed coefficients, whether the upstream source defines edge confidence/ranking by absolute coefficient magnitude
   - rule:
-    - `network.csv` should preserve the direct scores of the chosen upstream interface
+    - `network.csv` `score` is a positive raw magnitude/strength value; it may be greater than `1`
+    - when the upstream score is a signed coefficient, write `score = abs(coefficient)` and encode the coefficient direction only in `sign` as `+` or `-`
+    - never encode direction by making `score` negative
+    - downstream normalized networks and `evaluate-inference` rank by the positive `score`, with sign handled separately by the `sign` column
     - do not add an extra ANDREA-specific score normalization layer in the wrapper; downstream normalization is handled later by `infer_network`
-    - exact zero-score edges should be omitted from `network.csv`; zero means "no retained interaction", not a useful stored edge
+    - exact zero-magnitude edges should be omitted from `network.csv`; zero means "no retained interaction", not a useful stored edge
 
 ### Progress
 

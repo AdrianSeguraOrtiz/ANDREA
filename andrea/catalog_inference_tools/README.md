@@ -64,6 +64,10 @@ Expected outputs:
 - `evidence`
 - `context`
 
+`score` is always a positive raw magnitude/strength value. If an upstream
+method returns signed coefficients, wrappers must write `abs(coefficient)` to
+`score` and store direction only in `sign` (`+` or `-`).
+
 ## Schemas
 
 - `schemas/toolspec.schema.json`: ToolSpec contract.

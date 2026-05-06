@@ -256,6 +256,18 @@ read_expression_tsv <- function(expr_path) {
   cells_x_genes
 }
 
+filter_variable_genes <- function(expr) {
+  keep <- apply(expr, 2L, function(values) {
+    sd_value <- stats::sd(values)
+    is.finite(sd_value) && sd_value > 0
+  })
+  dropped <- colnames(expr)[!keep]
+  if (length(dropped) > 0L) {
+    message(sprintf("Filtered %d zero-variance gene(s) before inferCSN inference.", length(dropped)))
+  }
+  expr[, keep, drop = FALSE]
+}
+
 load_tf_list <- function(extra_dir, genes) {
   tf_path <- file.path(extra_dir, "tf_list.txt")
   if (!file.exists(tf_path)) {
@@ -283,6 +295,18 @@ load_tf_list <- function(extra_dir, genes) {
     stop("tf_list.txt must contain at least 2 regulators for inferCSN.", call. = FALSE)
   }
   tfs
+}
+
+empty_network <- function() {
+  data.frame(
+    source = character(),
+    target = character(),
+    score = numeric(),
+    sign = character(),
+    evidence = character(),
+    context = character(),
+    stringsAsFactors = FALSE
+  )
 }
 
 require_groups_for_emulated_run <- function(extra_dir) {
@@ -492,7 +516,7 @@ network_to_andrea <- function(network_table) {
   }
 
   if (!nrow(table)) {
-    stop("inferCSN produced no interactions.", call. = FALSE)
+    return(empty_network())
   }
 
   weights <- suppressWarnings(as.numeric(table$weight))
@@ -500,13 +524,14 @@ network_to_andrea <- function(network_table) {
   table <- table[keep, , drop = FALSE]
   weights <- weights[keep]
   if (!nrow(table)) {
-    stop("inferCSN produced no non-zero interactions.", call. = FALSE)
+    return(empty_network())
   }
 
+  magnitudes <- abs(weights)
   out <- data.frame(
     source = as.character(table$regulator),
     target = as.character(table$target),
-    score = weights,
+    score = magnitudes,
     sign = ifelse(weights > 0, "+", "-"),
     evidence = "association",
     context = "global",
@@ -514,10 +539,10 @@ network_to_andrea <- function(network_table) {
   )
   out <- out[out$source != out$target, , drop = FALSE]
   if (!nrow(out)) {
-    stop("inferCSN produced no non-self interactions.", call. = FALSE)
+    return(empty_network())
   }
 
-  out[order(abs(out$score), decreasing = TRUE), , drop = FALSE]
+  out[order(out$score, decreasing = TRUE), , drop = FALSE]
 }
 
 main <- function() {
@@ -556,8 +581,32 @@ main <- function() {
     write_progress(progress_path, "running", 10L, "load_input", "Loading expression and extra inputs")
     expr <- read_expression_tsv(input_path)
     regulators <- load_tf_list(extra_dir, colnames(expr))
+    expr <- filter_variable_genes(expr)
+    if (!is.null(regulators)) {
+      dropped_regulators <- setdiff(regulators, colnames(expr))
+      if (length(dropped_regulators) > 0L) {
+        message(sprintf("Filtered %d zero-variance regulator(s) before inferCSN inference.", length(dropped_regulators)))
+      }
+      regulators <- intersect(regulators, colnames(expr))
+    }
     append_log(log_path, sprintf("Loaded expression matrix: %d cells x %d genes", nrow(expr), ncol(expr)))
     append_log(log_path, sprintf("Regulators: %s", if (is.null(regulators)) "all genes" else length(regulators)))
+    if (ncol(expr) < 2L || (!is.null(regulators) && length(regulators) < 2L)) {
+      write_progress(progress_path, "running", 92L, "write_output", "Writing empty network.csv")
+      network_df <- empty_network()
+      write.csv(network_df, file.path(output_dir, "network.csv"), row.names = FALSE)
+      append_log(log_path, "Wrote empty network.csv because fewer than 2 variable genes or regulators remain")
+      write_progress(
+        progress_path,
+        "completed",
+        100L,
+        "done",
+        "inferCSN completed with insufficient variable genes or regulators",
+        completed = 0L,
+        total = 0L
+      )
+      return(invisible(NULL))
+    }
 
     write_progress(progress_path, "running", 30L, "inference", "Running inferCSN sparse regression")
     inferred <- run_infercsn(expr, regulators, params, threads)

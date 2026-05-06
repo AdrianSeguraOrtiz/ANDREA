@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -764,6 +765,24 @@ def validate_network(path: Path, config: SmokeConfig) -> int:
     if config.require_group_context:
         if not any(str(row.get("context", "")).startswith("group:") for row in rows):
             raise RuntimeError("Expected at least one row with context='group:*'.")
+
+    for idx, row in enumerate(rows, start=2):
+        raw_score = row.get("score")
+        try:
+            score = float(str(raw_score))
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(
+                f"network.csv line {idx} has invalid numeric score: {raw_score!r}"
+            ) from exc
+        if not math.isfinite(score):
+            raise RuntimeError(
+                f"network.csv line {idx} has non-finite score: {raw_score!r}"
+            )
+        if score <= 0.0:
+            raise RuntimeError(
+                f"network.csv line {idx} has non-positive score: {raw_score!r}. "
+                "Scores must be positive magnitudes; store effect direction in sign."
+            )
 
     if config.forbid_self_loops:
         for row in rows:

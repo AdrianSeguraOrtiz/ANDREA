@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import math
 from pathlib import Path
 from typing import Any, Optional
 
@@ -36,9 +37,15 @@ def _read_network_rows(path: Path, tool_id: str) -> list[dict[str, Any]]:
                 raise ValueError(
                     f"[{tool_id}] invalid numeric score at network.csv line {idx}: {row.get('score')!r}"
                 ) from exc
-
-            if score == 0.0:
-                continue
+            if not math.isfinite(score):
+                raise ValueError(
+                    f"[{tool_id}] non-finite score at network.csv line {idx}: {row.get('score')!r}"
+                )
+            if score <= 0.0:
+                raise ValueError(
+                    f"[{tool_id}] non-positive score at network.csv line {idx}: {row.get('score')!r}; "
+                    "network.csv score must be a positive magnitude and sign must be stored in the sign column"
+                )
 
             rows.append(
                 {

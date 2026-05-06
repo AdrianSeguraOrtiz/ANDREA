@@ -507,21 +507,22 @@ def _convert_weights_to_network(
         coefficient_matrix = matrix[: len(tf_ids), : len(target_ids)]
         for source_idx, source in enumerate(tf_ids):
             for target_idx, target in enumerate(target_ids):
-                score = float(coefficient_matrix[source_idx, target_idx])
-                if not math.isfinite(score):
+                coefficient = float(coefficient_matrix[source_idx, target_idx])
+                if not math.isfinite(coefficient):
                     raise ValueError(
                         f"SimiC produced non-finite coefficient for {source}->{target} in {phenotype}."
                     )
-                if score == 0.0:
+                if coefficient == 0.0:
                     continue
                 if str(source) == str(target):
                     continue
+                score = abs(coefficient)
                 rows.append(
                     {
                         "source": str(source),
                         "target": str(target),
                         "score": repr(score),
-                        "sign": "+" if score > 0 else "-",
+                        "sign": "+" if coefficient > 0 else "-",
                         "evidence": "association",
                         "context": f"group:{phenotype}",
                     }
@@ -529,6 +530,8 @@ def _convert_weights_to_network(
 
     if not rows:
         raise ValueError("SimiC produced no non-zero network coefficients.")
+
+    rows.sort(key=lambda row: float(row["score"]), reverse=True)
 
     with network_csv_path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(

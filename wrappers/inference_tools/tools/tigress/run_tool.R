@@ -160,6 +160,30 @@ read_expression_tsv <- function(expr_path) {
   obs_x_genes
 }
 
+filter_variable_genes <- function(expression_data) {
+  keep <- apply(expression_data, 2L, function(values) {
+    sd_value <- stats::sd(values)
+    is.finite(sd_value) && sd_value > 0
+  })
+  dropped <- colnames(expression_data)[!keep]
+  if (length(dropped) > 0L) {
+    message(sprintf("Filtered %d zero-variance gene(s) before TIGRESS inference.", length(dropped)))
+  }
+  expression_data[, keep, drop = FALSE]
+}
+
+empty_network <- function() {
+  data.frame(
+    source = character(),
+    target = character(),
+    score = numeric(),
+    sign = character(),
+    evidence = character(),
+    context = character(),
+    stringsAsFactors = FALSE
+  )
+}
+
 # Upstream TIGRESS can index past the available LARS steps on small/collinear datasets.
 # Retry with fewer steps so the wrapper remains usable instead of failing outright.
 run_tigress_with_fallback <- function(expression_data, tf_names, params) {
@@ -212,7 +236,7 @@ build_network <- function(score_matrix, limit) {
   edge_df$score <- as.numeric(edge_df$score)
   edge_df <- edge_df[is.finite(edge_df$score) & edge_df$score != 0, , drop = FALSE]
   if (!nrow(edge_df)) {
-    stop("TIGRESS produced no non-zero interactions for this dataset.", call. = FALSE)
+    return(empty_network())
   }
   edge_df <- edge_df[order(edge_df$score, decreasing = TRUE), , drop = FALSE]
 
@@ -263,8 +287,30 @@ main <- function() {
     write_progress(progress_path, "running", 5L, "load_input", "Loading expression and extra inputs")
     expression_data <- read_expression_tsv(input_path)
     tf_names <- load_tf_list(extra_dir)
+    expression_data <- filter_variable_genes(expression_data)
     if (is.null(tf_names)) {
       tf_names <- colnames(expression_data)
+    } else {
+      dropped_tfs <- setdiff(tf_names, colnames(expression_data))
+      if (length(dropped_tfs) > 0L) {
+        message(sprintf("Filtered %d zero-variance TF(s) before TIGRESS inference.", length(dropped_tfs)))
+      }
+      tf_names <- intersect(tf_names, colnames(expression_data))
+    }
+    if (ncol(expression_data) < 2L || length(tf_names) < 1L) {
+      write_progress(progress_path, "running", 96L, "write_output", "Writing empty network.csv")
+      out_df <- empty_network()
+      write.csv(out_df, file.path(output_dir, "network.csv"), row.names = FALSE)
+      write_progress(
+        progress_path,
+        "completed",
+        100L,
+        "done",
+        "TIGRESS completed with insufficient variable genes or TFs",
+        completed = 0L,
+        total = 0L
+      )
+      return(invisible(NULL))
     }
 
     write_progress(
