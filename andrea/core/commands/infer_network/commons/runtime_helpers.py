@@ -9,6 +9,16 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from rich import print
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TaskID,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
+
 from andrea.core.shared.container_runtime import (
     docker_image_exists as _docker_image_exists,
     ensure_docker_cli as _shared_ensure_docker_cli,
@@ -26,6 +36,68 @@ from .shared import (
     _write_json,
     _write_text,
 )
+
+
+def _clip_progress_text(value: str, *, max_length: int = 72) -> str:
+    text = " ".join(str(value).split())
+    if len(text) <= max_length:
+        return text
+    return text[: max_length - 1].rstrip() + "..."
+
+
+class _WaveProgress:
+    def __init__(self, wave: PlanWave) -> None:
+        self._wave = wave
+        self._progress: Progress | None = None
+        self._progress_tasks: dict[str, TaskID] = {}
+
+    def __enter__(self) -> "_WaveProgress":
+        self._progress = Progress(
+            TextColumn("[bold]{task.fields[tool_id]}[/bold]"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TextColumn("{task.fields[status]}"),
+            TextColumn("{task.fields[phase]}"),
+            TextColumn("{task.fields[message]}"),
+            TimeElapsedColumn(),
+            transient=False,
+        )
+        self._progress.start()
+        for task in self._wave.tasks:
+            self._progress_tasks[task.tool_id] = self._progress.add_task(
+                "",
+                total=100,
+                completed=0,
+                tool_id=task.tool_id,
+                status="queued",
+                phase="queued",
+                message="Queued",
+            )
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        if self._progress is not None:
+            self._progress.stop()
+            self._progress = None
+
+    def update(
+        self,
+        tool_id: str,
+        *,
+        percent: int,
+        status: str,
+        phase: str,
+        message: str,
+    ) -> None:
+        if self._progress is None or tool_id not in self._progress_tasks:
+            return
+        self._progress.update(
+            self._progress_tasks[tool_id],
+            completed=max(0, min(100, int(percent))),
+            status=status,
+            phase=phase,
+            message=_clip_progress_text(message),
+        )
 
 
 def _tail_lines(text: str, max_lines: int = 40) -> str:
@@ -241,136 +313,160 @@ def _run_wave(
     running: dict[str, RunningTool] = {}
 
     print(
-        f"wave {wave.index}: starting {len(wave.tasks)} tool(s), "
+        f"[bold cyan]wave {wave.index}[/bold cyan]: starting {len(wave.tasks)} tool(s), "
         f"planned cores={wave.threads_used}, planned ram={wave.ram_gb_used}GB"
     )
 
-    for task in wave.tasks:
-        tool_io = runtime_io_by_tool[task.tool_id]
-        logs_path = tool_io.tool_dir / "container.log"
-        try:
-            image_source = _ensure_docker_image(
-                image=task.image, pulled_images=pulled_images
-            )
-            if image_source == "pulled":
-                warnings.append(
-                    f"[{task.tool_id}] docker image was not local and was pulled: {task.image}"
+    with _WaveProgress(wave) as progress:
+        for task in wave.tasks:
+            tool_io = runtime_io_by_tool[task.tool_id]
+            logs_path = tool_io.tool_dir / "container.log"
+            try:
+                progress.update(
+                    task.tool_id,
+                    percent=1,
+                    status="running",
+                    phase="prepare_image",
+                    message=task.image,
+                )
+                image_source = _ensure_docker_image(
+                    image=task.image, pulled_images=pulled_images
+                )
+                if image_source == "pulled":
+                    warnings.append(
+                        f"[{task.tool_id}] docker image was not local and was pulled: {task.image}"
+                    )
+
+                container_id = _docker_run_detached(
+                    image=task.image,
+                    io_dir=tool_io.io_dir,
+                    threads=task.threads,
+                    ram_gb=task.ram_gb,
+                )
+                running[task.tool_id] = RunningTool(
+                    tool_id=task.tool_id,
+                    container_id=container_id,
+                    started_at=time.perf_counter(),
+                    progress_file=tool_io.progress_file,
                 )
 
-            container_id = _docker_run_detached(
-                image=task.image,
-                io_dir=tool_io.io_dir,
-                threads=task.threads,
-                ram_gb=task.ram_gb,
-            )
-            running[task.tool_id] = RunningTool(
-                tool_id=task.tool_id,
-                container_id=container_id,
-                started_at=time.perf_counter(),
-                progress_file=tool_io.progress_file,
-            )
-
-            print(
-                f"tool {task.tool_id}: container started "
-                f"(threads={task.threads}, ram={task.ram_gb}GB)"
-            )
-        except Exception as exc:  # noqa: BLE001
-            error = str(exc)
-            _write_text(logs_path, f"{error}\n")
-            warnings.append(f"[{task.tool_id}] failed before execution: {error}")
-            results[task.tool_id] = ToolExecutionResult(
-                tool_id=task.tool_id,
-                status="failed",
-                exit_code=127,
-                duration_seconds=0.0,
-                network_path=None,
-                progress_path=None,
-                logs_path=str(logs_path.resolve()),
-                error=error,
-            )
-
-    while running:
-        for tool_id in list(running.keys()):
-            state = running[tool_id]
-            tool_io = runtime_io_by_tool[tool_id]
-
-            if state.progress_file.exists():
-                try:
-                    snapshot = _parse_progress_snapshot(state.progress_file)
-                except Exception:  # noqa: BLE001
-                    snapshot = None
-                if snapshot is not None and snapshot != state.last_snapshot:
-                    percent, status, phase, message = snapshot
-                    percent = max(0, min(100, int(percent)))
-                    print(
-                        f"tool {tool_id} progress: {percent}% | {status} | {phase} | {message}"
-                    )
-                    state.last_snapshot = snapshot
-
-            status = _docker_inspect_status(state.container_id)
-            if status not in {"exited", "dead"}:
-                continue
-
-            logs_path = tool_io.tool_dir / "container.log"
-            exit_code = -1
-            logs = ""
-            error: Optional[str] = None
-            network_path: Optional[str] = None
-
-            try:
-                exit_code = _docker_wait_exit_code(state.container_id)
-                logs = _docker_logs(state.container_id)
-                _write_text(logs_path, f"{logs}\n" if logs else "")
+                progress.update(
+                    task.tool_id,
+                    percent=3,
+                    status="running",
+                    phase="container_started",
+                    message=f"threads={task.threads}, ram={task.ram_gb}GB",
+                )
             except Exception as exc:  # noqa: BLE001
-                error = f"Failed while collecting container outputs: {exc}"
+                error = str(exc)
                 _write_text(logs_path, f"{error}\n")
-            finally:
-                _docker_rm(state.container_id)
+                warnings.append(f"[{task.tool_id}] failed before execution: {error}")
+                progress.update(
+                    task.tool_id,
+                    percent=100,
+                    status="failed",
+                    phase="failed",
+                    message=error,
+                )
+                results[task.tool_id] = ToolExecutionResult(
+                    tool_id=task.tool_id,
+                    status="failed",
+                    exit_code=127,
+                    duration_seconds=0.0,
+                    network_path=None,
+                    progress_path=None,
+                    logs_path=str(logs_path.resolve()),
+                    error=error,
+                )
 
-            duration = round(time.perf_counter() - state.started_at, 3)
-            network_file = tool_io.out_dir / "network.csv"
+        while running:
+            for tool_id in list(running.keys()):
+                state = running[tool_id]
+                tool_io = runtime_io_by_tool[tool_id]
 
-            if error is None and exit_code == 0 and network_file.exists():
-                network_path = str(network_file.resolve())
-                final_status = "completed"
-            else:
-                final_status = "failed"
-                if error is None:
-                    if exit_code != 0:
-                        error = (
-                            f"Container exited with non-zero status ({exit_code})."
+                if state.progress_file.exists():
+                    try:
+                        snapshot = _parse_progress_snapshot(state.progress_file)
+                    except Exception:  # noqa: BLE001
+                        snapshot = None
+                    if snapshot is not None and snapshot != state.last_snapshot:
+                        percent, status, phase, message = snapshot
+                        progress.update(
+                            tool_id,
+                            percent=max(0, min(100, int(percent))),
+                            status=status,
+                            phase=phase,
+                            message=message,
                         )
-                    else:
-                        error = "Container exited successfully but network.csv is missing."
-                if logs:
-                    logs_tail = _tail_lines(logs, max_lines=20)
-                    if logs_tail:
-                        error = f"{error}\nContainer logs tail:\n{logs_tail}"
-                warnings.append(f"[{tool_id}] execution failed: {error}")
+                        state.last_snapshot = snapshot
 
-            results[tool_id] = ToolExecutionResult(
-                tool_id=tool_id,
-                status=final_status,
-                exit_code=exit_code,
-                duration_seconds=duration,
-                network_path=network_path,
-                progress_path=(
-                    str(tool_io.progress_file.resolve())
-                    if tool_io.progress_file.exists()
-                    else None
-                ),
-                logs_path=str(logs_path.resolve()),
-                error=error,
-            )
+                status = _docker_inspect_status(state.container_id)
+                if status not in {"exited", "dead"}:
+                    continue
 
-            if final_status == "completed":
-                print(f"tool {tool_id}: completed in {duration:.2f}s")
-            else:
-                print(f"tool {tool_id}: failed in {duration:.2f}s")
+                logs_path = tool_io.tool_dir / "container.log"
+                exit_code = -1
+                logs = ""
+                error: Optional[str] = None
+                network_path: Optional[str] = None
 
-            del running[tool_id]
+                try:
+                    exit_code = _docker_wait_exit_code(state.container_id)
+                    logs = _docker_logs(state.container_id)
+                    _write_text(logs_path, f"{logs}\n" if logs else "")
+                except Exception as exc:  # noqa: BLE001
+                    error = f"Failed while collecting container outputs: {exc}"
+                    _write_text(logs_path, f"{error}\n")
+                finally:
+                    _docker_rm(state.container_id)
 
-        if running:
-            time.sleep(max(0.05, float(poll_interval_s)))
+                duration = round(time.perf_counter() - state.started_at, 3)
+                network_file = tool_io.out_dir / "network.csv"
+
+                if error is None and exit_code == 0 and network_file.exists():
+                    network_path = str(network_file.resolve())
+                    final_status = "completed"
+                else:
+                    final_status = "failed"
+                    if error is None:
+                        if exit_code != 0:
+                            error = (
+                                f"Container exited with non-zero status ({exit_code})."
+                            )
+                        else:
+                            error = "Container exited successfully but network.csv is missing."
+                    if logs:
+                        logs_tail = _tail_lines(logs, max_lines=20)
+                        if logs_tail:
+                            error = f"{error}\nContainer logs tail:\n{logs_tail}"
+                    warnings.append(f"[{tool_id}] execution failed: {error}")
+
+                results[tool_id] = ToolExecutionResult(
+                    tool_id=tool_id,
+                    status=final_status,
+                    exit_code=exit_code,
+                    duration_seconds=duration,
+                    network_path=network_path,
+                    progress_path=(
+                        str(tool_io.progress_file.resolve())
+                        if tool_io.progress_file.exists()
+                        else None
+                    ),
+                    logs_path=str(logs_path.resolve()),
+                    error=error,
+                )
+
+                progress.update(
+                    tool_id,
+                    percent=100,
+                    status=final_status,
+                    phase="done" if final_status == "completed" else "failed",
+                    message=f"{duration:.2f}s",
+                )
+
+                del running[tool_id]
+
+            if running:
+                time.sleep(max(0.05, float(poll_interval_s)))
 
     return results

@@ -11,6 +11,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from rich import print
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TaskID,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
+
 from andrea.core.shared.progress import progress_snapshot as _progress_snapshot
 
 from .backends.registry import run_simulator_backend
@@ -52,6 +62,13 @@ _STEP_PERCENT = {
     "done": 95,
     "failed": 100,
 }
+
+
+def _clip_progress_text(value: str, *, max_length: int = 72) -> str:
+    text = " ".join(str(value).split())
+    if len(text) <= max_length:
+        return text
+    return text[: max_length - 1].rstrip() + "..."
 
 
 def _utc_now() -> str:
@@ -113,17 +130,45 @@ class _GenerateProgress:
         self._enabled = enabled
         self._last_snapshots: dict[str, tuple[int, str, str, str]] = {}
         self._lock = threading.Lock()
+        self._progress: Progress | None = None
+        self._progress_tasks: dict[str, TaskID] = {}
 
     def __enter__(self) -> "_GenerateProgress":
         if not self._enabled:
             return self
         print(
-            f"generate-data: starting {len(self._tasks)} simulator task(s), "
+            "[bold cyan]generate-data[/bold cyan]: "
+            f"starting {len(self._tasks)} simulator task(s), "
             f"max_parallel_tasks={self._max_parallel_tasks}"
         )
+        self._progress = Progress(
+            TextColumn("[bold]{task.fields[task_id]}[/bold]"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TextColumn("{task.fields[status]}"),
+            TextColumn("{task.fields[phase]}"),
+            TextColumn("{task.fields[message]}"),
+            TimeElapsedColumn(),
+            transient=False,
+        )
+        self._progress.start()
+        for task in self._tasks:
+            task_id = str(task["task_id"])
+            self._progress_tasks[task_id] = self._progress.add_task(
+                "",
+                total=100,
+                completed=0,
+                task_id=task_id,
+                status="queued",
+                phase="queued",
+                message="Queued",
+            )
         return self
 
     def __exit__(self, *_exc: object) -> None:
+        if self._progress is not None:
+            self._progress.stop()
+            self._progress = None
         return None
 
     def callback_for(self, task_id: str) -> Callable[[dict[str, Any]], None] | None:
@@ -150,9 +195,14 @@ class _GenerateProgress:
             if snapshot == self._last_snapshots.get(task_id):
                 return
             self._last_snapshots[task_id] = snapshot
-            print(
-                f"simulator {task_id} progress: "
-                f"{percent}% | {status} | {phase} | {message}"
+            if self._progress is None or task_id not in self._progress_tasks:
+                return
+            self._progress.update(
+                self._progress_tasks[task_id],
+                completed=percent,
+                status=status,
+                phase=phase,
+                message=_clip_progress_text(message),
             )
 
 
