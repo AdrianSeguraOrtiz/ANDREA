@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ANDREA evaluate-inference</title>
+    <link rel="stylesheet" href="/evaluation-view-assets/view.css?v=20260506a" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260506a" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Evaluate Inference</h1>
+          <p>Compare an inferred network run against generated ground truth.</p>
+        </div>
+        <a id="download-link" class="button secondary hidden" href="#">Download ZIP</a>
+      </header>
+
+      <section class="panel upload-panel">
+        <form id="upload-form">
+          <div class="upload-grid">
+            <label class="file-card" for="inference-zip">
+              <span class="file-title">Inference output ZIP</span>
+              <span class="file-name" id="inference-file-name">No file selected</span>
+              <input id="inference-zip" name="inference_zip" type="file" accept=".zip" required />
+            </label>
+            <label class="file-card" for="truth-zip">
+              <span class="file-title">Ground truth ZIP</span>
+              <span class="file-name" id="truth-file-name">No file selected</span>
+              <input id="truth-zip" name="truth_zip" type="file" accept=".zip" required />
+            </label>
+          </div>
+          <div class="actions">
+            <button id="run-button" type="submit">Run evaluation</button>
+            <span id="status-pill" class="status-pill idle">Idle</span>
+          </div>
+        </form>
+      </section>
+
+      <section id="selection-panel" class="panel hidden">
+        <div class="section-head">
+          <h2>Select Inputs</h2>
+          <span class="muted">Multiple candidates were detected.</span>
+        </div>
+        <div class="selection-grid">
+          <label>
+            <span>Run report</span>
+            <select id="run-report-select"></select>
+          </label>
+          <label>
+            <span>Ground truth manifest</span>
+            <select id="truth-manifest-select"></select>
+          </label>
+        </div>
+        <div class="actions">
+          <button id="selection-run-button" type="button">Run selected pair</button>
+        </div>
+      </section>
+
+      <section id="error-panel" class="panel error-panel hidden">
+        <h2>Execution Error</h2>
+        <pre id="error-text"></pre>
+      </section>
+
+      <section id="result-panel" class="result-panel hidden">
+        <div class="panel result-head">
+          <div>
+            <h2>Evaluation Results</h2>
+            <span id="result-summary" class="muted"></span>
+          </div>
+          <details>
+            <summary>Raw evaluation_report.json</summary>
+            <pre id="raw-report"></pre>
+          </details>
+        </div>
+        <div id="evaluation-view"></div>
+      </section>
+    </main>
+
+    <script src="/evaluation-view-assets/view.js?v=20260506a"></script>
+    <script src="/static/app/main.js?v=20260506a"></script>
+  </body>
+</html>

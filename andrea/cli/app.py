@@ -578,6 +578,33 @@ def gui_generate_data(
     run_server(host=host, port=port, open_browser=open_browser)
 
 
+@gui_app.command("evaluate-inference")
+def gui_evaluate_inference(
+    host: str = typer.Option(
+        "127.0.0.1",
+        help="Host address for the local GUI server.",
+    ),
+    port: int = typer.Option(
+        8767,
+        min=1,
+        max=65535,
+        help="Port for the local GUI server.",
+    ),
+    open_browser: bool = typer.Option(
+        False,
+        "--open-browser/--no-open-browser",
+        help=(
+            "Automatically open the GUI in your default browser. "
+            "Disabled by default to avoid SSH/remote session confusion."
+        ),
+    ),
+):
+    """Launch the local graphical interface for evaluate-inference."""
+    from andrea.gui.evaluate_inference.server import run_server
+
+    run_server(host=host, port=port, open_browser=open_browser)
+
+
 @gui_app.callback()
 def gui_root() -> None:
     """GUI namespace bootstrap."""

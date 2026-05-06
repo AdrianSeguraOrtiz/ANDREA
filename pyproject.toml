@@ -63,6 +63,10 @@ include = ["andrea*"]
     "static/*",
     "static/**/*",
 ]
+"andrea.gui.evaluate_inference" = [
+    "static/*",
+    "static/**/*",
+]
 "andrea.core.commands.evaluate_inference.view_assets" = [
     "*.html",
     "*.css",

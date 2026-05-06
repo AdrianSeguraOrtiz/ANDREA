@@ -46,6 +46,12 @@ class AndreaCliBootstrapTests(unittest.TestCase):
         result = self.runner.invoke(app, ["gui", "--help"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Graphical interfaces", result.output)
+        self.assertIn("evaluate-inference", result.output)
+
+    def test_evaluate_inference_gui_command_is_bootstrapped(self) -> None:
+        result = self.runner.invoke(app, ["gui", "evaluate-inference", "--help"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("Launch the local graphical interface", result.output)
 
 
 if __name__ == "__main__":
