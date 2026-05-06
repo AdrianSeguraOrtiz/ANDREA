@@ -63,6 +63,11 @@ include = ["andrea*"]
     "static/*",
     "static/**/*",
 ]
+"andrea.core.commands.evaluate_inference.view_assets" = [
+    "*.html",
+    "*.css",
+    "*.js",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

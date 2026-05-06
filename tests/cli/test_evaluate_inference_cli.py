@@ -33,6 +33,7 @@ class EvaluateInferenceCliTests(unittest.TestCase):
                     "evaluation_dir": str(output_dir / "evaluation_toy"),
                     "evaluation_report": str(output_dir / "evaluation_report.json"),
                     "metrics_csv": str(output_dir / "metrics.csv"),
+                    "evaluation_view": str(output_dir / "evaluation_view.html"),
                 },
             }
             with patch.object(
@@ -50,7 +51,7 @@ class EvaluateInferenceCliTests(unittest.TestCase):
                         str(truth_manifest),
                         "--output-dir",
                         str(output_dir),
-                        "--no-plots",
+                        "--no-view",
                     ],
                 )
 
@@ -60,7 +61,7 @@ class EvaluateInferenceCliTests(unittest.TestCase):
         self.assertEqual(kwargs["ground_truth_manifest_path"], truth_manifest)
         self.assertEqual(kwargs["run_report_path"], run_report)
         self.assertEqual(kwargs["output_dir"], output_dir)
-        self.assertFalse(kwargs["generate_plots"])
+        self.assertFalse(kwargs["generate_view"])
         self.assertIn("inference evaluation completed", result.output)
 
 

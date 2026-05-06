@@ -10,6 +10,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from importlib import resources
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -33,6 +34,7 @@ VALID_SIGNS = {"+", "-"}
 CATALOG_TOOLS_ROOT = (
     Path(__file__).resolve().parents[3] / "catalog_inference_tools" / "tools"
 )
+VIEW_ASSETS_PACKAGE = "andrea.core.commands.evaluate_inference.view_assets"
 
 
 @dataclass(frozen=True)
@@ -66,7 +68,7 @@ def evaluate_inference(
     run_report_path: Path,
     ground_truth_manifest_path: Path,
     output_dir: Path,
-    generate_plots: bool = True,
+    generate_view: bool = True,
 ) -> dict[str, Any]:
     """Evaluate merged inferred networks against a ground-truth manifest."""
     run_report_path = run_report_path.resolve()
@@ -148,14 +150,10 @@ def evaluate_inference(
     metrics_csv_path = evaluation_dir / "metrics.csv"
     pairings_csv_path = evaluation_dir / "pairings.csv"
     report_json_path = evaluation_dir / "evaluation_report.json"
+    view_html_path = evaluation_dir / "evaluation_view.html"
 
     _write_csv(metrics_csv_path, metrics)
     _write_csv(pairings_csv_path, pairings)
-    plot_outputs = (
-        _write_plots(evaluation_dir / "plots", metrics, base_dir=output_root)
-        if generate_plots
-        else []
-    )
 
     report = {
         "schema_version": "1.0",
@@ -190,12 +188,11 @@ def evaluate_inference(
             "metrics_csv": report_path(metrics_csv_path, base_dir=output_root),
             "pairings_csv": report_path(pairings_csv_path, base_dir=output_root),
             "evaluation_report": report_path(report_json_path, base_dir=output_root),
-            "plots_dir": (
-                report_path(evaluation_dir / "plots", base_dir=output_root)
-                if generate_plots
+            "evaluation_view": (
+                report_path(view_html_path, base_dir=output_root)
+                if generate_view
                 else None
             ),
-            "plots": plot_outputs,
         },
         "pairings": pairings,
         "metrics": metrics,
@@ -203,6 +200,8 @@ def evaluate_inference(
     report_json_path.write_text(
         json.dumps(report, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
     )
+    if generate_view:
+        _write_evaluation_view(view_html_path, report)
     return report
 
 
@@ -781,462 +780,31 @@ def _average_precision(y_true: list[int], y_score: list[float]) -> Optional[floa
     return ap
 
 
-def _write_plots(
-    plots_dir: Path,
-    metrics: list[dict[str, Any]],
-    *,
-    base_dir: Path,
-) -> list[dict[str, Any]]:
-    plots_dir.mkdir(parents=True, exist_ok=True)
-    outputs: list[dict[str, Any]] = []
-    for metric in METRIC_COLUMNS:
-        for level in EVALUATION_LEVELS:
-            rows = [row for row in metrics if row.get("level") == level]
-            if not rows:
-                continue
-
-            heatmap_path = plots_dir / f"{metric}_{level}_heatmap.svg"
-            _write_heatmap_svg(path=heatmap_path, rows=rows, metric=metric, level=level)
-            outputs.append(
-                {
-                    "kind": "heatmap",
-                    "metric": metric,
-                    "level": level,
-                    "path": report_path(heatmap_path, base_dir=base_dir),
-                }
-            )
-    return outputs
+def _write_evaluation_view(path: Path, report: dict[str, Any]) -> None:
+    path.write_text(_evaluation_view_html(report), encoding="utf-8")
 
 
-def _write_heatmap_svg(
-    *,
-    path: Path,
-    rows: list[dict[str, Any]],
-    metric: str,
-    level: str,
-) -> None:
-    values = _metric_values_by_tool_context(rows=rows, metric=metric)
-    scale_max = _plot_scale_max(values.values(), metric=metric)
-    global_values = {
-        tool: value
-        for (tool, context), value in values.items()
-        if context == "global" and value is not None
-    }
-    group_values = {
-        (tool, context): value
-        for (tool, context), value in values.items()
-        if context.startswith("group:") and value is not None
-    }
-    global_tools = sorted(
-        global_values,
-        key=lambda tool: (-float(global_values[tool]), tool.lower()),
-    )
-    group_tools = _sorted_unique(tool for tool, _context in group_values)
-    group_contexts = _sorted_unique(context for _tool, context in group_values)
-
-    top = 112
-    left = 24
-    global_label_w = 112
-    global_bar_w = 180
-    global_panel_w = global_label_w + global_bar_w + 34
-    gap = 42
-    heat_label_w = max(
-        130, min(270, 18 + max((len(tool) for tool in group_tools), default=0) * 8)
-    )
-    cell_w = 74
-    cell_h = 34
-    heatmap_x = left + global_panel_w + gap + heat_label_w
-    global_rows_h = max(1, len(global_tools)) * 30
-    global_axis_h = 44
-    group_rows_h = max(1, len(group_tools)) * cell_h
-    plot_h = max(global_rows_h + global_axis_h, group_rows_h, 90)
-    legend_y = top + plot_h + 44
-    width = heatmap_x + (cell_w * max(1, len(group_contexts))) + 34
-    height = legend_y + 28
-
-    parts = [_svg_header(width, height)]
-    parts.append(
-        _svg_text(24, 34, f"{_metric_label(metric)} - {level}", size=18, weight="700")
-    )
-    parts.append(
-        _svg_text(
-            24,
-            58,
-            "Global context is shown as bars; group contexts are shown as a heatmap.",
-            size=12,
-            fill="#475569",
-        )
-    )
-
-    _append_global_bar_panel(
-        parts=parts,
-        x=left,
-        y=top,
-        label_w=global_label_w,
-        bar_w=global_bar_w,
-        tools=global_tools,
-        values=global_values,
-        scale_max=scale_max,
-        metric=metric,
-        level=level,
-    )
-    _append_group_heatmap_panel(
-        parts=parts,
-        x=left + global_panel_w + gap,
-        heatmap_x=heatmap_x,
-        y=top,
-        cell_w=cell_w,
-        cell_h=cell_h,
-        label_w=heat_label_w,
-        tools=group_tools,
-        contexts=group_contexts,
-        values=group_values,
-        scale_max=scale_max,
-        metric=metric,
-        level=level,
-    )
-    _append_heat_legend(parts=parts, x=left, y=legend_y, scale_max=scale_max)
-    parts.append("</svg>\n")
-    path.write_text("\n".join(parts), encoding="utf-8")
-
-
-def _append_global_bar_panel(
-    *,
-    parts: list[str],
-    x: float,
-    y: float,
-    label_w: float,
-    bar_w: float,
-    tools: list[str],
-    values: dict[str, float],
-    scale_max: float,
-    metric: str,
-    level: str,
-) -> None:
-    parts.append(_svg_text(x, y - 28, "Global", size=14, weight="700"))
-    parts.append(
-        _svg_text(x, y - 10, "Tools with global outputs", size=11, fill="#64748b")
-    )
-    axis_x = x + label_w
-    axis_y = y + (max(1, len(tools)) * 30) + 12
-    parts.append(
-        f'<line x1="{axis_x:.1f}" y1="{axis_y:.1f}" x2="{axis_x + bar_w:.1f}" '
-        f'y2="{axis_y:.1f}" stroke="#cbd5e1" stroke-width="1" />'
-    )
-    for tick in (0.0, 0.5, 1.0):
-        tick_x = axis_x + (tick * bar_w)
-        parts.append(
-            f'<line x1="{tick_x:.1f}" y1="{y:.1f}" x2="{tick_x:.1f}" '
-            f'y2="{axis_y:.1f}" stroke="#e2e8f0" stroke-width="1" />'
-        )
-        parts.append(
-            _svg_text(
-                tick_x,
-                axis_y + 16,
-                _format_plot_value(tick * scale_max),
-                size=10,
-                anchor="middle",
-                fill="#64748b",
-            )
-        )
-
-    if not tools:
-        parts.append(
-            _svg_text(
-                x,
-                y + 28,
-                "No applicable global values",
-                size=12,
-                fill="#64748b",
-            )
-        )
-        return
-
-    for idx, tool in enumerate(tools):
-        value = values[tool]
-        scaled_value = _scale_plot_value(value, scale_max=scale_max)
-        row_y = y + (idx * 30)
-        bar_h = 18
-        parts.append(
-            _svg_text(
-                x + label_w - 8,
-                row_y + 15,
-                _short_label(tool, 18),
-                size=11,
-                anchor="end",
-                fill="#0f172a",
-            )
-        )
-        title = f"{tool} | global | {metric}/{level} = {value:.4f}"
-        parts.append(
-            f'<rect x="{axis_x:.1f}" y="{row_y + 2:.1f}" '
-            f'width="{bar_w:.1f}" height="{bar_h}" fill="#f1f5f9" rx="2" />'
-        )
-        parts.append(
-            f'<rect x="{axis_x:.1f}" y="{row_y + 2:.1f}" '
-            f'width="{bar_w * scaled_value:.1f}" height="{bar_h}" fill="{_heat_color(scaled_value)}" rx="2">'
-            f"<title>{html.escape(title)}</title></rect>"
-        )
-        parts.append(
-            _svg_text(
-                axis_x + (bar_w * scaled_value) + 6,
-                row_y + 16,
-                _format_plot_value(value),
-                size=10,
-                fill="#334155",
-            )
-        )
-
-
-def _append_group_heatmap_panel(
-    *,
-    parts: list[str],
-    x: float,
-    heatmap_x: float,
-    y: float,
-    cell_w: float,
-    cell_h: float,
-    label_w: float,
-    tools: list[str],
-    contexts: list[str],
-    values: dict[tuple[str, str], float],
-    scale_max: float,
-    metric: str,
-    level: str,
-) -> None:
-    parts.append(_svg_text(x, y - 28, "Groups", size=14, weight="700"))
-    parts.append(
-        _svg_text(x, y - 10, "Tools with per-group outputs", size=11, fill="#64748b")
-    )
-    if not tools or not contexts:
-        parts.append(
-            _svg_text(x, y + 28, "No applicable group values", size=12, fill="#64748b")
-        )
-        return
-
-    for col_idx, context in enumerate(contexts):
-        col_x = heatmap_x + (col_idx * cell_w) + (cell_w / 2)
-        parts.append(
-            _svg_text(
-                col_x,
-                y - 16,
-                _short_label(context.removeprefix("group:"), 13),
-                size=11,
-                anchor="middle",
-                fill="#334155",
-            )
-        )
-
-    for row_idx, tool in enumerate(tools):
-        row_y = y + (row_idx * cell_h)
-        parts.append(
-            _svg_text(
-                heatmap_x - 10,
-                row_y + 22,
-                _short_label(tool, 32),
-                size=12,
-                anchor="end",
-                fill="#0f172a",
-            )
-        )
-        for col_idx, context in enumerate(contexts):
-            value = values.get((tool, context))
-            col_x = heatmap_x + (col_idx * cell_w)
-            scaled_value = (
-                _scale_plot_value(value, scale_max=scale_max)
-                if value is not None
-                else None
-            )
-            fill = _heat_color(scaled_value) if scaled_value is not None else "#e5e7eb"
-            if value is None:
-                title = f"{tool} | {context} | {metric}/{level} unavailable"
-            else:
-                title = f"{tool} | {context} | {metric}/{level} = {value:.4f}"
-            parts.append(
-                f'<rect x="{col_x:.1f}" y="{row_y:.1f}" width="{cell_w - 2}" height="{cell_h - 2}" '
-                f'rx="2" fill="{fill}" stroke="#ffffff" stroke-width="1">'
-                f"<title>{html.escape(title)}</title></rect>"
-            )
-            if value is not None:
-                parts.append(
-                    _svg_text(
-                        col_x + (cell_w / 2) - 1,
-                        row_y + 21,
-                        _format_plot_value(value),
-                        size=11,
-                        anchor="middle",
-                        fill=_contrast_color(scaled_value),
-                    )
-                )
-
-
-def _append_heat_legend(
-    parts: list[str],
-    *,
-    x: float,
-    y: float,
-    scale_max: float,
-) -> None:
-    parts.append(_svg_text(x, y - 10, "0", size=11, fill="#475569"))
-    for idx in range(80):
-        value = idx / 79
-        parts.append(
-            f'<rect x="{x + 18 + idx * 2:.1f}" y="{y - 20}" '
-            f'width="2" height="12" fill="{_heat_color(value)}" />'
-        )
-    parts.append(
-        _svg_text(
-            x + 184, y - 10, _format_plot_value(scale_max), size=11, fill="#475569"
-        )
-    )
-    parts.append(
-        f'<rect x="{x + 218}" y="{y - 20}" width="18" height="12" '
-        'fill="#e5e7eb" stroke="#cbd5e1" />'
-    )
-    parts.append(_svg_text(x + 242, y - 10, "missing", size=11, fill="#475569"))
-
-
-def _metric_values_by_tool_context(
-    *,
-    rows: list[dict[str, Any]],
-    metric: str,
-) -> dict[tuple[str, str], Optional[float]]:
-    return {
-        (str(row.get("tool_id")), str(row.get("context"))): _metric_value(row, metric)
-        for row in rows
-    }
-
-
-def _metric_value(row: dict[str, Any], metric: str) -> Optional[float]:
-    value = row.get(metric)
-    if value in (None, ""):
-        return None
-    try:
-        numeric = float(value)
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(numeric):
-        return None
-    return max(0.0, numeric)
-
-
-def _plot_scale_max(values: Iterable[Optional[float]], *, metric: str) -> float:
-    if metric == "epr_at_truth_count":
-        finite_values = [
-            float(value)
-            for value in values
-            if value is not None and math.isfinite(float(value))
-        ]
-        return max(1.0, max(finite_values, default=1.0))
-    return 1.0
-
-
-def _scale_plot_value(value: float, *, scale_max: float) -> float:
-    if scale_max <= 0:
-        return 0.0
-    return max(0.0, min(1.0, float(value) / scale_max))
-
-
-def _format_plot_value(value: float) -> str:
-    if abs(value) >= 100:
-        return f"{value:.0f}"
-    if abs(value) >= 10:
-        return f"{value:.1f}"
-    return f"{value:.2f}"
-
-
-def _sorted_unique(values: Iterable[Any]) -> list[str]:
-    return sorted(
-        {str(value) for value in values if value not in (None, "")},
-        key=_plot_sort_key,
-    )
-
-
-def _plot_sort_key(value: str) -> tuple[int, str]:
-    if value == "global":
-        return (0, value)
-    if value.startswith("group:"):
-        return (1, value.removeprefix("group:").lower())
-    return (2, value.lower())
-
-
-def _heat_color(value: Optional[float]) -> str:
-    if value is None:
-        return "#e5e7eb"
-    stops = [
-        (0.0, (247, 251, 255)),
-        (0.35, (198, 219, 239)),
-        (0.7, (107, 174, 214)),
-        (1.0, (8, 81, 156)),
-    ]
-    return _interpolate_stops(max(0.0, min(1.0, value)), stops)
-
-
-def _interpolate_stops(
-    value: float, stops: list[tuple[float, tuple[int, int, int]]]
-) -> str:
-    for idx in range(len(stops) - 1):
-        left_value, left_color = stops[idx]
-        right_value, right_color = stops[idx + 1]
-        if value <= right_value:
-            span = right_value - left_value
-            ratio = 0.0 if span <= 0 else (value - left_value) / span
-            rgb = tuple(
-                int(
-                    round(
-                        left_color[channel]
-                        + ((right_color[channel] - left_color[channel]) * ratio)
-                    )
-                )
-                for channel in range(3)
-            )
-            return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
-    rgb = stops[-1][1]
-    return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
-
-
-def _contrast_color(value: float) -> str:
-    return "#ffffff" if value >= 0.62 else "#0f172a"
-
-
-def _svg_header(width: float, height: float) -> str:
+def _evaluation_view_html(report: dict[str, Any]) -> str:
+    title = "ANDREA Inference Evaluation"
+    dataset = report.get("ground_truth", {}).get("dataset_id")
+    if dataset:
+        title = f"{title} - {dataset}"
+    report_json = json.dumps(report, ensure_ascii=True).replace("</", "<\\/")
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{height:.0f}" '
-        f'viewBox="0 0 {width:.0f} {height:.0f}" role="img">'
-        '<rect width="100%" height="100%" fill="#ffffff" />'
+        _read_view_asset("template.html")
+        .replace("__TITLE__", html.escape(title, quote=True))
+        .replace("__STYLE__", _read_view_asset("view.css"))
+        .replace("__SCRIPT__", _read_view_asset("view.js"))
+        .replace("__REPORT_JSON__", report_json)
     )
 
 
-def _svg_text(
-    x: float,
-    y: float,
-    text: str,
-    *,
-    size: int,
-    fill: str = "#0f172a",
-    weight: str = "400",
-    anchor: str = "start",
-) -> str:
+def _read_view_asset(name: str) -> str:
     return (
-        f'<text x="{x:.1f}" y="{y:.1f}" fill="{fill}" font-family="Inter, Arial, sans-serif" '
-        f'font-size="{size}" font-weight="{weight}" text-anchor="{anchor}">'
-        f"{html.escape(text)}</text>"
+        resources.files(VIEW_ASSETS_PACKAGE)
+        .joinpath(name)
+        .read_text(encoding="utf-8")
     )
-
-
-def _metric_label(metric: str) -> str:
-    return {
-        "auroc": "AUROC",
-        "aupr": "AUPR",
-        "f1_at_truth_count": "F1@truth-count",
-        "epr_at_truth_count": "EPR@truth-count",
-    }.get(metric, metric)
-
-
-def _short_label(value: str, max_len: int) -> str:
-    if len(value) <= max_len:
-        return value
-    return value[: max_len - 3] + "..."
 
 
 def _normalize_sign(value: str) -> str:

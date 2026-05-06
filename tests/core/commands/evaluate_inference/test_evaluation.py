@@ -11,8 +11,6 @@ from andrea.core.commands.evaluate_inference import evaluate_inference
 from andrea.core.commands.evaluate_inference.evaluation import (
     NetworkRow,
     _aggregate_rows,
-    _metric_value,
-    _plot_scale_max,
     _top_truth_count_stats,
 )
 
@@ -94,16 +92,6 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 stats["fn_at_truth_count"],
             ),
             (1, 1, 1),
-        )
-
-    def test_epr_plot_values_are_not_clamped_to_unit_interval(self) -> None:
-        self.assertEqual(
-            _metric_value({"epr_at_truth_count": 6.0}, "epr_at_truth_count"),
-            6.0,
-        )
-        self.assertEqual(
-            _plot_scale_max([0.5, 6.0], metric="epr_at_truth_count"),
-            6.0,
         )
 
     def test_evaluates_topology_directed_and_signed_levels(self) -> None:
@@ -246,10 +234,9 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             report_json_exists = (
                 output_root / report["outputs"]["evaluation_report"]
             ).exists()
-            plot_paths = [
-                output_root / entry["path"] for entry in report["outputs"]["plots"]
-            ]
-            plot_paths_exist = all(path.exists() for path in plot_paths)
+            view_path = output_root / report["outputs"]["evaluation_view"]
+            view_exists = view_path.exists()
+            view_html = view_path.read_text(encoding="utf-8") if view_exists else ""
 
         metrics = {(row["tool_id"], row["level"]): row for row in report["metrics"]}
         self.assertEqual(metrics[("genie3__01", "topology")]["status"], "ok")
@@ -280,8 +267,11 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         self.assertTrue(metrics_csv_exists)
         self.assertTrue(pairings_csv_exists)
         self.assertTrue(report_json_exists)
-        self.assertTrue(plot_paths)
-        self.assertTrue(plot_paths_exist)
+        self.assertTrue(view_exists)
+        self.assertIn("Inference Evaluation", view_html)
+        self.assertIn("Metrics", view_html)
+        self.assertIn('id="evaluation-view-root"', view_html)
+        self.assertIn("AndreaEvaluationView.render", view_html)
         self.assertEqual(report["inputs"]["inference_dataset_id"], None)
         self.assertEqual(report["inputs"]["ground_truth_dataset_id"], "toy")
         self.assertEqual(report["inputs"]["ground_truth_simulator_id"], "toy_sim")

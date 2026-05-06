@@ -83,7 +83,7 @@ def run_benchmark(
     output_dir: Path,
     max_cores: int,
     max_ram_gb: float | None,
-    no_plots: bool,
+    no_view: bool,
 ) -> Path:
     benchmark_dir = benchmark_dir.resolve()
     tools_params = tools_params.resolve()
@@ -130,7 +130,7 @@ def run_benchmark(
                 run_report_path=run_report,
                 ground_truth_manifest_path=ground_truth_manifest,
                 output_dir=evaluation_root,
-                generate_plots=not no_plots,
+                generate_view=not no_view,
             )
             row.update(
                 {
@@ -149,6 +149,15 @@ def run_benchmark(
                     "metrics_csv": report_path(
                         evaluation_root / str(evaluation["outputs"]["metrics_csv"]),
                         base_dir=run_root,
+                    ),
+                    "evaluation_view": (
+                        report_path(
+                            evaluation_root
+                            / str(evaluation["outputs"]["evaluation_view"]),
+                            base_dir=run_root,
+                        )
+                        if evaluation["outputs"].get("evaluation_view")
+                        else None
                     ),
                 }
             )
@@ -182,7 +191,7 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, default=Path("benchmark_runs"))
     parser.add_argument("--max-cores", type=int, default=multiprocessing.cpu_count())
     parser.add_argument("--max-ram-gb", type=float)
-    parser.add_argument("--no-plots", action="store_true")
+    parser.add_argument("--no-view", action="store_true")
     args = parser.parse_args()
 
     summary_path = run_benchmark(
@@ -191,7 +200,7 @@ def main() -> int:
         output_dir=args.output_dir,
         max_cores=args.max_cores,
         max_ram_gb=args.max_ram_gb,
-        no_plots=args.no_plots,
+        no_view=args.no_view,
     )
     print(f"[bold green]summary:[/bold green] {summary_path}")
     return 0

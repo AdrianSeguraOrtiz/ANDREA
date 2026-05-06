@@ -111,10 +111,10 @@ def evaluate_inference_command(
         Path("./evaluations"),
         help="Root directory where a timestamped evaluation package will be created.",
     ),
-    plots: bool = typer.Option(
+    view: bool = typer.Option(
         True,
-        "--plots/--no-plots",
-        help="Write SVG evaluation heatmaps.",
+        "--view/--no-view",
+        help="Write a self-contained HTML evaluation view.",
     ),
 ):
     """Evaluate inferred GRNs against benchmark ground truth."""
@@ -123,7 +123,7 @@ def evaluate_inference_command(
         run_report_path=run_report,
         ground_truth_manifest_path=ground_truth_manifest,
         output_dir=output_dir,
-        generate_plots=plots,
+        generate_view=view,
     )
     metrics = report.get("metrics", [])
     evaluated = sum(1 for row in metrics if row.get("status") in {"ok", "partial"})
@@ -134,8 +134,8 @@ def evaluate_inference_command(
     print(f"  evaluation: {report['outputs']['evaluation_dir']}")
     print(f"  report: {report['outputs']['evaluation_report']}")
     print(f"  metrics: {report['outputs']['metrics_csv']}")
-    if report["outputs"].get("plots_dir"):
-        print(f"  plots: {report['outputs']['plots_dir']}")
+    if report["outputs"].get("evaluation_view"):
+        print(f"  view: {report['outputs']['evaluation_view']}")
 
 
 @infer_network_app.command("preflight")

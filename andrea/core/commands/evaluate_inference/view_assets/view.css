@@ -1,0 +1,315 @@
+:root {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #dbe3ea;
+  --green: #047857;
+  --radius: 8px;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.35;
+}
+.andrea-evaluation-view {
+  width: min(1480px, calc(100vw - 32px));
+  margin: 24px auto 40px;
+}
+.andrea-evaluation-view header.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+.andrea-evaluation-view h1,
+.andrea-evaluation-view h2,
+.andrea-evaluation-view h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+.andrea-evaluation-view h1 {
+  font-size: 26px;
+  line-height: 1.15;
+}
+.andrea-evaluation-view h2 { font-size: 18px; }
+.andrea-evaluation-view h3 { font-size: 14px; }
+.andrea-evaluation-view .subtle {
+  color: var(--muted);
+  font-size: 13px;
+}
+.andrea-evaluation-view .toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.andrea-evaluation-view select,
+.andrea-evaluation-view input {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  padding: 8px 10px;
+  font: inherit;
+}
+.andrea-evaluation-view .summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.andrea-evaluation-view .stat,
+.andrea-evaluation-view .level-card,
+.andrea-evaluation-view .table-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.andrea-evaluation-view .stat { padding: 12px 14px; }
+.andrea-evaluation-view .stat-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+.andrea-evaluation-view .stat-value {
+  margin-top: 5px;
+  font-size: 18px;
+  font-weight: 750;
+}
+.andrea-evaluation-view .level-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+.andrea-evaluation-view .level-card {
+  padding: 14px;
+  overflow: hidden;
+}
+.andrea-evaluation-view .level-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+.andrea-evaluation-view .badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.andrea-evaluation-view .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: #334155;
+  background: #f8fafc;
+}
+.andrea-evaluation-view .viz-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(420px, 1.65fr);
+  gap: 18px;
+  align-items: start;
+}
+.andrea-evaluation-view .panel-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.andrea-evaluation-view .bar-list {
+  display: grid;
+  gap: 7px;
+}
+.andrea-evaluation-view .bar-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.42fr) minmax(120px, 1fr) 54px;
+  gap: 8px;
+  align-items: center;
+  min-height: 25px;
+  font-size: 12px;
+}
+.andrea-evaluation-view .tool-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1e293b;
+}
+.andrea-evaluation-view .bar-track {
+  position: relative;
+  height: 16px;
+  background: #edf2f7;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.andrea-evaluation-view .bar-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: 3px;
+}
+.andrea-evaluation-view .value-label {
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.andrea-evaluation-view .matrix-wrap {
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  max-height: 420px;
+}
+.andrea-evaluation-view table.matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+}
+.andrea-evaluation-view table.matrix th,
+.andrea-evaluation-view table.matrix td {
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  height: 32px;
+  min-width: 74px;
+  padding: 6px 8px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.andrea-evaluation-view table.matrix th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+}
+.andrea-evaluation-view table.matrix th:first-child {
+  left: 0;
+  z-index: 3;
+  text-align: left;
+  min-width: 155px;
+}
+.andrea-evaluation-view table.matrix td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  background: #f8fafc;
+  font-weight: 650;
+  color: #1e293b;
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.andrea-evaluation-view .empty {
+  padding: 18px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  color: var(--muted);
+  background: #f8fafc;
+  font-size: 13px;
+}
+.andrea-evaluation-view .legend {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.andrea-evaluation-view .legend-ramp {
+  width: 160px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f7fbff, #c6dbef, #6baed6, #08519c);
+  border: 1px solid #dbe3ea;
+}
+.andrea-evaluation-view .legend-ramp.epr {
+  background: linear-gradient(90deg, #b91c1c, #f8fafc, #075985);
+}
+.andrea-evaluation-view .table-card {
+  margin-top: 16px;
+  padding: 14px;
+}
+.andrea-evaluation-view .table-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.andrea-evaluation-view .metrics-table-wrap {
+  max-height: 520px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.andrea-evaluation-view table.metrics {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+  background: #fff;
+}
+.andrea-evaluation-view table.metrics th,
+.andrea-evaluation-view table.metrics td {
+  padding: 7px 9px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  white-space: nowrap;
+}
+.andrea-evaluation-view table.metrics th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 2;
+  color: #334155;
+  font-weight: 750;
+}
+.andrea-evaluation-view .status-ok {
+  color: var(--green);
+  font-weight: 700;
+}
+.andrea-evaluation-view .status-not_applicable,
+.andrea-evaluation-view .status-partial {
+  color: #9a3412;
+  font-weight: 700;
+}
+.andrea-evaluation-view .status-missing { color: #64748b; }
+@media (max-width: 920px) {
+  .andrea-evaluation-view {
+    width: min(100vw - 20px, 1480px);
+  }
+  .andrea-evaluation-view header.page {
+    grid-template-columns: 1fr;
+  }
+  .andrea-evaluation-view .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .andrea-evaluation-view .viz-grid {
+    grid-template-columns: 1fr;
+  }
+  .andrea-evaluation-view .toolbar {
+    justify-content: space-between;
+  }
+}
