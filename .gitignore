@@ -216,3 +216,4 @@ wrappers/simulation_data_tools/simulators/*/papers/
 inferred_networks/
 benchmarks/
 evaluation/
+benchmark_runs/

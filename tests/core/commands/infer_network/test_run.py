@@ -117,7 +117,14 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             self.assertEqual(report_payload["status"], "executed")
             self.assertEqual(report_payload["execution"]["tools_completed"], 1)
             self.assertEqual(report_payload["execution"]["tools_failed"], 0)
-            self.assertIsNotNone(report_payload["outputs"]["merged_network_raw"])
+            raw_output = Path(report_payload["outputs"]["merged_network_raw"])
+            self.assertFalse(raw_output.is_absolute())
+            self.assertTrue((run_dir / raw_output).exists())
+            for result in report_payload["tools"]["results"].values():
+                for key in ("network_path", "progress_path", "logs_path"):
+                    value = result.get(key)
+                    if value is not None:
+                        self.assertFalse(Path(value).is_absolute())
 
     def test_run_plan_rejects_input_fingerprint_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -25,6 +25,10 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             self.assertIn("catalog", preflight)
             self.assertIn("runs", preflight)
             self.assertEqual(preflight["runs"]["selected"], ["aracne__01"])
+            self.assertEqual(preflight["inputs"]["dataset_id"], "toy_ds")
+            self.assertEqual(preflight["inputs"]["tools_params"], "provided")
+            self.assertNotIn("tools_root", preflight["inputs"])
+            self.assertNotIn("schemas_dir", preflight["inputs"])
 
             run_dir = self.mod.plan_infer_network(
                 dataset_manifest_path=manifest_path,
@@ -55,6 +59,16 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 (run_dir / "run_report.json").read_text(encoding="utf-8")
             )
             self.assertEqual(report_payload["status"], "planned")
+            self.assertEqual(
+                report_payload["inputs"]["dataset_manifest_path"],
+                "input/dataset-manifest.json",
+            )
+            self.assertEqual(
+                report_payload["inputs"]["tools_params_path"],
+                "input/tools_params.json",
+            )
+            self.assertNotIn("tools_root", report_payload["inputs"])
+            self.assertNotIn("schemas_dir", report_payload["inputs"])
 
     def test_plan_rejects_invalid_planner_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -15,7 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from rich import print
+
 from andrea.core.shared.issues import issue_messages, make_issue
+from andrea.core.shared.paths import report_path
 
 from .commons.artifacts import (
     _build_input_fingerprints,
@@ -180,7 +183,8 @@ def plan_infer_network(
         run_id: [
             str(issue.get("message", "")).strip()
             for issue in issues
-            if issue.get("severity") == "block" and str(issue.get("message", "")).strip()
+            if issue.get("severity") == "block"
+            and str(issue.get("message", "")).strip()
         ]
         for run_id, issues in run_issues.items()
     }
@@ -502,10 +506,8 @@ def plan_infer_network(
         "run_id": run_id,
         "status": "planned",
         "inputs": {
-            "dataset_manifest_path": str(frozen_manifest.resolve()),
-            "tools_params_path": str(frozen_tools_params.resolve()),
-            "tools_root": str(tools_root.resolve()),
-            "schemas_dir": str(schemas_dir.resolve()),
+            "dataset_manifest_path": report_path(frozen_manifest, base_dir=run_dir),
+            "tools_params_path": report_path(frozen_tools_params, base_dir=run_dir),
         },
         "dataset": {
             "id": dataset.dataset_id,
@@ -513,7 +515,7 @@ def plan_infer_network(
             "expression_profile": dataset.expression_profile,
             "genes": dataset.genes,
             "columns": dataset.columns,
-            "expression_matrix_path": str(frozen_expression.resolve()),
+            "expression_matrix_path": report_path(frozen_expression, base_dir=run_dir),
         },
         "tools": {
             "selected": selected_tools,
@@ -548,7 +550,7 @@ def plan_infer_network(
             "tools_completed": 0,
             "tools_failed": 0,
         },
-        "plan_file": str((run_dir / "plan.json").resolve()),
+        "plan_file": report_path(run_dir / "plan.json", base_dir=run_dir),
         "notes": [
             "Run directory is frozen at planning time.",
             "Use run_infer_network_plan(run_dir=...) to execute this plan.",

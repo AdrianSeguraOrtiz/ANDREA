@@ -143,13 +143,15 @@ def preflight_infer_network(
 
             toolspec = _load_toolspec(tools_root, catalog_tool_id)
             compatibility_warnings: list[str] = []
-            compatible, compat_errors, _conditional_messages = _check_tool_compatibility(
-                tool_id=run_id,
-                toolspec=toolspec,
-                dataset=dataset,
-                constraints=constraints,
-                strict=strict,
-                warnings=compatibility_warnings,
+            compatible, compat_errors, _conditional_messages = (
+                _check_tool_compatibility(
+                    tool_id=run_id,
+                    toolspec=toolspec,
+                    dataset=dataset,
+                    constraints=constraints,
+                    strict=strict,
+                    warnings=compatibility_warnings,
+                )
             )
             add_run_warnings(run_id, "compatibility_warning", compatibility_warnings)
             if not compatible:
@@ -280,13 +282,8 @@ def preflight_infer_network(
         .isoformat()
         .replace("+00:00", "Z"),
         "inputs": {
-            "dataset_manifest_path": str(dataset_manifest_path.resolve()),
-            "tools_params_path": (
-                str(tools_params_path.resolve()) if tools_params_path else None
-            ),
-            "tools_root": str(tools_root.resolve()),
-            "schemas_dir": str(schemas_dir.resolve()),
-            "input_specs_dir": str(INPUT_SPECS_DIR.resolve()),
+            "dataset_id": dataset.dataset_id,
+            "tools_params": "provided" if tools_params_path else "catalog_defaults",
         },
         "dataset": _serialize_dataset_context(dataset),
         "input_validation": input_validation,

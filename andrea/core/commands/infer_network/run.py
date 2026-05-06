@@ -15,7 +15,10 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from rich import print
+
 from andrea.core.shared.issues import issue_messages, make_issue
+from andrea.core.shared.paths import report_path as _report_path
 
 from .commons.artifacts import _load_plan_waves, _verify_input_fingerprints
 from .commons.catalog import _load_schema_constraints, _resolve_catalog_paths
@@ -52,6 +55,22 @@ from .commons.tools import (
     _load_toolspec,
 )
 
+_REPORT_PATH_KEYS = {"network_path", "progress_path", "logs_path"}
+
+
+def _relativize_result_payload(payload: Any, *, base_dir: Path) -> Any:
+    if isinstance(payload, dict):
+        out: dict[str, Any] = {}
+        for key, value in payload.items():
+            if key in _REPORT_PATH_KEYS and value is not None:
+                out[key] = _report_path(Path(str(value)), base_dir=base_dir)
+            else:
+                out[key] = _relativize_result_payload(value, base_dir=base_dir)
+        return out
+    if isinstance(payload, list):
+        return [_relativize_result_payload(item, base_dir=base_dir) for item in payload]
+    return payload
+
 
 def _load_logical_runs_from_plan(
     plan_payload: dict[str, Any]
@@ -68,7 +87,9 @@ def _load_logical_runs_from_plan(
         tool_id = str(raw_run.get("tool_id", "")).strip()
         execution = raw_run.get("execution", {})
         execution_mode = (
-            str(execution.get("mode", "")).strip() if isinstance(execution, dict) else ""
+            str(execution.get("mode", "")).strip()
+            if isinstance(execution, dict)
+            else ""
         )
         physical_tasks = raw_run.get("physical_tasks", [])
         if (
@@ -309,17 +330,17 @@ def run_infer_network_plan(
 
     plan_path = run_dir / "plan.json"
     preflight_path = run_dir / "preflight_report.json"
-    report_path = run_dir / "run_report.json"
+    run_report_path = run_dir / "run_report.json"
     if not plan_path.exists():
         raise ValueError(f"Missing plan.json in run_dir: {plan_path}")
     if not preflight_path.exists():
         raise ValueError(f"Missing preflight_report.json in run_dir: {preflight_path}")
-    if not report_path.exists():
-        raise ValueError(f"Missing run_report.json in run_dir: {report_path}")
+    if not run_report_path.exists():
+        raise ValueError(f"Missing run_report.json in run_dir: {run_report_path}")
 
     plan_payload = _load_json_object(plan_path, "plan")
     preflight_report = _load_json_object(preflight_path, "preflight_report")
-    run_report = _load_json_object(report_path, "run_report")
+    run_report = _load_json_object(run_report_path, "run_report")
 
     fingerprints = plan_payload.get("input_fingerprints", {})
     if not isinstance(fingerprints, dict) or not fingerprints:
@@ -628,6 +649,10 @@ def run_infer_network_plan(
         status_by_tool[logical_run_id] = result.status
         if logical_run_id in logical_results_payload:
             logical_results_payload[logical_run_id].update(asdict(result))
+    logical_results_payload = _relativize_result_payload(
+        logical_results_payload,
+        base_dir=run_dir,
+    )
 
     elapsed_total = round(time.perf_counter() - started_at, 3)
     run_report["status"] = "executed"
@@ -641,30 +666,22 @@ def run_infer_network_plan(
         "results": logical_results_payload,
     }
     run_report["outputs"] = {
-        "merged_network_raw": (
-            str(merged_raw_path.resolve()) if merged_raw_path else None
-        ),
+        "merged_network_raw": _report_path(merged_raw_path, base_dir=run_dir),
         "merged_network_raw_gexf": (
-            str(merged_raw_gexf_path.resolve()) if merged_raw_gexf_path else None
+            _report_path(merged_raw_gexf_path, base_dir=run_dir)
         ),
         "merged_network_raw_graphml": (
-            str(merged_raw_graphml_path.resolve()) if merged_raw_graphml_path else None
+            _report_path(merged_raw_graphml_path, base_dir=run_dir)
         ),
-        "merged_network_normalized": (
-            str(merged_norm_path.resolve()) if merged_norm_path else None
-        ),
+        "merged_network_normalized": _report_path(merged_norm_path, base_dir=run_dir),
         "merged_network_normalized_gexf": (
-            str(merged_norm_gexf_path.resolve()) if merged_norm_gexf_path else None
+            _report_path(merged_norm_gexf_path, base_dir=run_dir)
         ),
         "merged_network_normalized_graphml": (
-            str(merged_norm_graphml_path.resolve())
-            if merged_norm_graphml_path
-            else None
+            _report_path(merged_norm_graphml_path, base_dir=run_dir)
         ),
         "merged_network_normalized_cytoscape_script": (
-            str(merged_norm_cytoscape_script_path.resolve())
-            if merged_norm_cytoscape_script_path
-            else None
+            _report_path(merged_norm_cytoscape_script_path, base_dir=run_dir)
         ),
         "rows_per_tool": per_tool_rows,
     }
@@ -701,7 +718,7 @@ def run_infer_network_plan(
         }
     )
     run_report["execution"] = execution_info
-    _write_json(report_path, run_report)
+    _write_json(run_report_path, run_report)
 
     print(f"infer-network execution completed: {run_dir}")
     print(f"  selected tools: {len(selected_tools)}")
