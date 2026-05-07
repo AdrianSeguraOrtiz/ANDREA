@@ -1,0 +1,546 @@
+"""Deterministic synthetic inputs for inference-tool cost benchmarks."""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import random
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Sequence
+
+GENERATED_EXTRA_INPUTS = {
+    "cell_phenotypes",
+    "cluster_identities",
+    "cluster_markers",
+    "enrichment_background",
+    "grnboost_network",
+    "groups",
+    "lineage_tree",
+    "prior_grn",
+    "prior_grn_by_group",
+    "pseudotime",
+    "terms_of_interest",
+    "tf_list",
+}
+
+EXTRA_FILENAMES = {
+    "cell_phenotypes": "cell_phenotypes.tsv",
+    "cluster_identities": "cluster_identities.tsv",
+    "cluster_markers": "cluster_markers.tsv",
+    "enrichment_background": "enrichment_background.txt",
+    "grnboost_network": "grnboost_network.tsv",
+    "groups": "groups.tsv",
+    "lineage_tree": "lineage_tree.tsv",
+    "prior_grn": "prior_grn.tsv",
+    "prior_grn_by_group": "prior_grn_by_group.tsv",
+    "pseudotime": "pseudotime.tsv",
+    "terms_of_interest": "terms_of_interest.txt",
+    "tf_list": "tf_list.txt",
+}
+
+
+@dataclass(frozen=True)
+class BenchmarkInputSize:
+    genes: int
+    columns: int
+
+
+@dataclass(frozen=True)
+class BenchmarkInputProfile:
+    seed: int = 12345
+    column_kind: str = "samples"
+    expression_profile: str = "synthetic_benchmark"
+    extras_provided: tuple[str, ...] = ()
+    group_count: int = 0
+    tf_count_policy: str | None = "max(3, genes/5)"
+    prior_density: float | None = 0.05
+    marker_count_per_group: int = 4
+    terms_of_interest: tuple[str, ...] = ("root", "development", "stress")
+
+    @classmethod
+    def from_cost_input_profile(
+        cls,
+        payload: dict[str, Any],
+        *,
+        seed: int,
+    ) -> "BenchmarkInputProfile":
+        extras = payload.get("extras_provided", [])
+        if not isinstance(extras, list):
+            extras = []
+        return cls(
+            seed=seed,
+            column_kind=str(payload.get("column_kind", "samples") or "samples"),
+            expression_profile=str(
+                payload.get("expression_profile", "synthetic_benchmark")
+                or "synthetic_benchmark"
+            ),
+            extras_provided=tuple(
+                dict.fromkeys(str(item).strip() for item in extras if str(item).strip())
+            ),
+            group_count=_as_int(payload.get("group_count", 0), default=0),
+            tf_count_policy=(
+                str(payload["tf_count_policy"])
+                if payload.get("tf_count_policy") is not None
+                else None
+            ),
+            prior_density=_as_optional_density(payload.get("prior_density")),
+        )
+
+
+@dataclass(frozen=True)
+class BenchmarkInputBundle:
+    expression_path: Path
+    extra_dir: Path
+    genes: tuple[str, ...]
+    columns: tuple[str, ...]
+    groups: tuple[str, ...]
+    tfs: tuple[str, ...]
+    extras: dict[str, Path]
+
+
+def write_benchmark_io_dir(
+    io_dir: Path,
+    size: BenchmarkInputSize,
+    profile: BenchmarkInputProfile,
+) -> BenchmarkInputBundle:
+    """Write expression.tsv and selected /extra inputs for one benchmark profile."""
+    _validate_profile(size=size, profile=profile)
+
+    io_dir.mkdir(parents=True, exist_ok=True)
+    extra_dir = io_dir / "extra"
+    out_dir = io_dir / "out"
+    extra_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    expression_path = io_dir / "expression.tsv"
+    genes, columns = write_expression_matrix(
+        expression_path,
+        size=size,
+        profile=profile,
+    )
+    tfs = select_tfs(genes, profile.tf_count_policy)
+    groups, assignments = assign_groups(columns, profile.group_count)
+
+    extras: dict[str, Path] = {}
+    for input_key in profile.extras_provided:
+        if input_key not in GENERATED_EXTRA_INPUTS:
+            raise ValueError(f"Unsupported synthetic extra input: {input_key}")
+        path = extra_dir / EXTRA_FILENAMES[input_key]
+        if input_key == "cell_phenotypes":
+            write_cell_phenotypes(path, columns=columns, assignments=assignments)
+        elif input_key == "cluster_identities":
+            write_cluster_identities(path, groups=groups)
+        elif input_key == "cluster_markers":
+            write_cluster_markers(
+                path,
+                genes=genes,
+                groups=groups,
+                marker_count_per_group=profile.marker_count_per_group,
+            )
+        elif input_key == "enrichment_background":
+            write_gene_list(path, genes)
+        elif input_key == "grnboost_network":
+            write_network_edges(
+                path,
+                genes=genes,
+                tfs=tfs,
+                density=resolved_prior_density(profile),
+                seed=stable_seed(size=size, profile=profile, namespace=input_key),
+            )
+        elif input_key == "groups":
+            write_groups(path, assignments=assignments)
+        elif input_key == "lineage_tree":
+            write_lineage_tree(path, groups=groups)
+        elif input_key == "prior_grn":
+            write_network_edges(
+                path,
+                genes=genes,
+                tfs=tfs,
+                density=resolved_prior_density(profile),
+                seed=stable_seed(size=size, profile=profile, namespace=input_key),
+            )
+        elif input_key == "prior_grn_by_group":
+            write_prior_grn_by_group(
+                path,
+                genes=genes,
+                groups=groups,
+                tfs=tfs,
+                density=resolved_prior_density(profile),
+                seed=stable_seed(size=size, profile=profile, namespace=input_key),
+            )
+        elif input_key == "pseudotime":
+            write_pseudotime(path, columns=columns, assignments=assignments)
+        elif input_key == "terms_of_interest":
+            write_terms_of_interest(path, profile.terms_of_interest)
+        elif input_key == "tf_list":
+            write_tf_list(path, tfs)
+        extras[input_key] = path
+
+    return BenchmarkInputBundle(
+        expression_path=expression_path,
+        extra_dir=extra_dir,
+        genes=tuple(genes),
+        columns=tuple(columns),
+        groups=tuple(groups),
+        tfs=tuple(tfs),
+        extras=extras,
+    )
+
+
+def write_expression_matrix(
+    path: Path,
+    *,
+    size: BenchmarkInputSize,
+    profile: BenchmarkInputProfile,
+) -> tuple[list[str], list[str]]:
+    genes = gene_names(size.genes)
+    columns = column_names(size.columns, profile.column_kind)
+    rng = random.Random(stable_seed(size=size, profile=profile, namespace="expression"))
+
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["gene"] + columns)
+        for gene_idx, gene in enumerate(genes, start=1):
+            row = []
+            for col_idx in range(1, size.columns + 1):
+                trend = (gene_idx * 0.17) + (col_idx * 0.031)
+                seasonal = ((gene_idx + col_idx) % 7) * 0.013
+                noise = rng.uniform(0.0, 0.02)
+                row.append(f"{trend + seasonal + noise:.6f}")
+            writer.writerow([gene] + row)
+
+    return genes, columns
+
+
+def write_tf_list(path: Path, tfs: Sequence[str]) -> None:
+    path.write_text("".join(f"{tf}\n" for tf in tfs), encoding="utf-8")
+
+
+def write_groups(
+    path: Path,
+    *,
+    assignments: Sequence[tuple[str, str]],
+) -> None:
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["sample", "cluster"])
+        writer.writerows(assignments)
+
+
+def write_lineage_tree(path: Path, groups: Sequence[str]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["child", "parent", "gain_rate", "loss_rate"])
+        if len(groups) == 1:
+            writer.writerow([groups[0], groups[0], "0.2", "0.8"])
+            return
+        for idx in range(1, len(groups)):
+            writer.writerow([groups[idx], groups[idx - 1], "0.2", "0.8"])
+
+
+def write_network_edges(
+    path: Path,
+    *,
+    genes: Sequence[str],
+    tfs: Sequence[str],
+    density: float,
+    seed: int,
+) -> None:
+    edges = select_directed_edges(genes=genes, tfs=tfs, density=density, seed=seed)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["source", "target", "score"])
+        for source, target, score in edges:
+            writer.writerow([source, target, f"{score:.6f}"])
+
+
+def write_prior_grn_by_group(
+    path: Path,
+    *,
+    genes: Sequence[str],
+    groups: Sequence[str],
+    tfs: Sequence[str],
+    density: float,
+    seed: int,
+) -> None:
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["group", "source", "target", "score"])
+        for group_idx, group in enumerate(groups):
+            group_edges = select_directed_edges(
+                genes=genes,
+                tfs=tfs,
+                density=density,
+                seed=seed + group_idx,
+            )
+            for source, target, score in group_edges:
+                writer.writerow([group, source, target, f"{score:.6f}"])
+
+
+def write_cell_phenotypes(
+    path: Path,
+    *,
+    columns: Sequence[str],
+    assignments: Sequence[tuple[str, str]],
+) -> None:
+    group_order = _unique_in_order(group for _column, group in assignments)
+    order_by_group = {group: idx for idx, group in enumerate(group_order)}
+    label_by_group = {group: f"P{idx + 1}" for idx, group in enumerate(group_order)}
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["cell", "phenotype", "order"])
+        group_by_column = dict(assignments)
+        for column in columns:
+            group = group_by_column[column]
+            writer.writerow([column, label_by_group[group], order_by_group[group]])
+
+
+def write_pseudotime(
+    path: Path,
+    *,
+    columns: Sequence[str],
+    assignments: Sequence[tuple[str, str]],
+) -> None:
+    group_to_columns: dict[str, list[str]] = {}
+    for column, group in assignments:
+        group_to_columns.setdefault(group, []).append(column)
+
+    pseudotime_by_column: dict[str, float] = {}
+    for group_idx, group in enumerate(
+        _unique_in_order(group for _c, group in assignments)
+    ):
+        group_columns = group_to_columns[group]
+        denom = max(1, len(group_columns) - 1)
+        for within_idx, column in enumerate(group_columns):
+            pseudotime_by_column[column] = group_idx + (within_idx / denom)
+
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["cell", "pseudotime"])
+        for column in columns:
+            writer.writerow([column, f"{pseudotime_by_column[column]:.6f}"])
+
+
+def write_cluster_identities(path: Path, groups: Sequence[str]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["cluster", "annotation", "order"])
+        for idx, group in enumerate(groups, start=1):
+            writer.writerow([group, f"Cluster{idx}", idx])
+
+
+def write_cluster_markers(
+    path: Path,
+    *,
+    genes: Sequence[str],
+    groups: Sequence[str],
+    marker_count_per_group: int,
+) -> None:
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(
+            [
+                "geneID",
+                "p_val",
+                "avg_logFC",
+                "pct.1",
+                "pct.2",
+                "p_val_adj",
+                "cluster",
+                "gene",
+            ]
+        )
+        marker_count = max(1, min(len(genes), marker_count_per_group))
+        for group_idx, group in enumerate(groups):
+            offset = (group_idx * marker_count) % len(genes)
+            for marker_idx in range(marker_count):
+                gene = genes[(offset + marker_idx) % len(genes)]
+                p_val = 0.0005 * (marker_idx + 1)
+                p_adj = min(0.99, 0.01 * (marker_idx + 1))
+                avg_logfc = 0.5 + (0.1 * marker_idx)
+                writer.writerow(
+                    [
+                        gene,
+                        f"{p_val:.6g}",
+                        f"{avg_logfc:.6g}",
+                        "0.8",
+                        "0.2",
+                        f"{p_adj:.6g}",
+                        group,
+                        gene,
+                    ]
+                )
+
+
+def write_terms_of_interest(path: Path, terms: Sequence[str]) -> None:
+    clean_terms = [term.strip() for term in terms if term.strip()]
+    if not clean_terms:
+        clean_terms = ["root"]
+    path.write_text("".join(f"{term}\n" for term in clean_terms), encoding="utf-8")
+
+
+def write_gene_list(path: Path, genes: Sequence[str]) -> None:
+    path.write_text("".join(f"{gene}\n" for gene in genes), encoding="utf-8")
+
+
+def gene_names(count: int) -> list[str]:
+    return [f"G{idx + 1}" for idx in range(count)]
+
+
+def column_names(count: int, column_kind: str) -> list[str]:
+    prefix = "cell" if column_kind == "cells" else "S"
+    if prefix == "cell":
+        return [f"cell_{idx + 1}" for idx in range(count)]
+    return [f"S{idx + 1}" for idx in range(count)]
+
+
+def group_names(count: int) -> list[str]:
+    return [f"cluster_{idx + 1}" for idx in range(count)]
+
+
+def assign_groups(
+    columns: Sequence[str],
+    requested_group_count: int,
+) -> tuple[list[str], list[tuple[str, str]]]:
+    group_count = max(1, requested_group_count)
+    if len(columns) < group_count:
+        raise ValueError(
+            f"Cannot assign {len(columns)} columns to {group_count} non-empty groups."
+        )
+    groups = group_names(group_count)
+    assignments = [
+        (column, groups[idx % group_count]) for idx, column in enumerate(columns)
+    ]
+    return groups, assignments
+
+
+def select_tfs(genes: Sequence[str], policy: str | None) -> list[str]:
+    if not genes:
+        return []
+    if policy is None:
+        policy = "max(3, genes/5)"
+    if policy != "max(3, genes/5)":
+        raise ValueError(f"Unsupported TF count policy: {policy}")
+    count = max(1, min(len(genes), max(3, len(genes) // 5)))
+    return list(genes[:count])
+
+
+def select_directed_edges(
+    *,
+    genes: Sequence[str],
+    tfs: Sequence[str],
+    density: float,
+    seed: int,
+) -> list[tuple[str, str, float]]:
+    candidates = [
+        (source, target) for source in tfs for target in genes if source != target
+    ]
+    if not candidates:
+        return []
+
+    rng = random.Random(seed)
+    rng.shuffle(candidates)
+    edge_count = max(1, min(len(candidates), round(len(candidates) * density)))
+    edges = []
+    for source, target in candidates[:edge_count]:
+        score = rng.uniform(0.01, 1.0)
+        edges.append((source, target, score))
+    return edges
+
+
+def stable_seed(
+    *,
+    size: BenchmarkInputSize,
+    profile: BenchmarkInputProfile,
+    namespace: str,
+) -> int:
+    payload = {
+        "seed": profile.seed,
+        "size": {"genes": size.genes, "columns": size.columns},
+        "profile": {
+            "column_kind": profile.column_kind,
+            "expression_profile": profile.expression_profile,
+            "extras_provided": sorted(profile.extras_provided),
+            "group_count": profile.group_count,
+            "tf_count_policy": profile.tf_count_policy,
+            "prior_density": profile.prior_density,
+            "marker_count_per_group": profile.marker_count_per_group,
+            "terms_of_interest": list(profile.terms_of_interest),
+        },
+        "namespace": namespace,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    digest = hashlib.sha256(raw).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=False)
+
+
+def resolved_prior_density(profile: BenchmarkInputProfile) -> float:
+    if profile.prior_density is None:
+        return 0.05
+    density = float(profile.prior_density)
+    if density < 0 or density > 1:
+        raise ValueError("prior_density must be between 0 and 1.")
+    return density
+
+
+def _validate_profile(
+    *,
+    size: BenchmarkInputSize,
+    profile: BenchmarkInputProfile,
+) -> None:
+    if size.genes < 1:
+        raise ValueError("BenchmarkInputSize.genes must be >= 1.")
+    if size.columns < 1:
+        raise ValueError("BenchmarkInputSize.columns must be >= 1.")
+    if profile.group_count < 0:
+        raise ValueError("BenchmarkInputProfile.group_count must be >= 0.")
+    unknown = sorted(set(profile.extras_provided).difference(GENERATED_EXTRA_INPUTS))
+    if unknown:
+        raise ValueError(f"Unknown synthetic extra input(s): {unknown}")
+
+    needs_groups = any(
+        input_key
+        in {
+            "cell_phenotypes",
+            "cluster_identities",
+            "cluster_markers",
+            "groups",
+            "lineage_tree",
+            "prior_grn_by_group",
+            "pseudotime",
+        }
+        for input_key in profile.extras_provided
+    )
+    if needs_groups and profile.group_count < 1:
+        raise ValueError("Grouped synthetic inputs require group_count >= 1.")
+    if profile.group_count > size.columns:
+        raise ValueError("group_count cannot exceed the number of expression columns.")
+    if "cell_phenotypes" in profile.extras_provided and (
+        size.columns < profile.group_count * 2
+    ):
+        raise ValueError(
+            "cell_phenotypes generation requires at least two cells per phenotype."
+        )
+    if profile.marker_count_per_group < 1:
+        raise ValueError("marker_count_per_group must be >= 1.")
+    resolved_prior_density(profile)
+
+
+def _as_int(value: Any, *, default: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return default
+    return int(value)
+
+
+def _as_optional_density(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0.05
+    return max(0.0, min(1.0, float(value)))
+
+
+def _unique_in_order(values: Sequence[str]) -> list[str]:
+    return list(dict.fromkeys(values))

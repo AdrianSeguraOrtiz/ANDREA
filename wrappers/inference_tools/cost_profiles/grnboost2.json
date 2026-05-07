@@ -1,0 +1,34 @@
+{
+  "cost_relevant_params": [
+    "regressor_kwargs.n_estimators",
+    "regressor_kwargs.max_features"
+  ],
+  "profiles": [
+    {
+      "id": "global_default",
+      "execution": {
+        "mode": "global"
+      },
+      "optional_inputs": []
+    },
+    {
+      "id": "global_tf_list",
+      "execution": {
+        "mode": "global"
+      },
+      "optional_inputs": [
+        "tf_list"
+      ]
+    },
+    {
+      "id": "group_emulated_groups_2_tf_list",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "optional_inputs": [
+        "tf_list"
+      ]
+    }
+  ]
+}

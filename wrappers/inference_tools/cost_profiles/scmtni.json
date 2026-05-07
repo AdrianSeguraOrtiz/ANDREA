@@ -1,0 +1,29 @@
+{
+  "cost_relevant_params": [
+    "x",
+    "q",
+    "indep",
+    "split_genes"
+  ],
+  "profiles": [
+    {
+      "id": "group_native_groups_2_q2_with_prior",
+      "execution": {
+        "mode": "group_native"
+      },
+      "group_count": 2,
+      "prior_density": 0.05
+    },
+    {
+      "id": "group_native_groups_2_q0_independent",
+      "execution": {
+        "mode": "group_native"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "q": 0,
+        "indep": true
+      }
+    }
+  ]
+}

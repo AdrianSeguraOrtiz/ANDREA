@@ -1,0 +1,29 @@
+{
+  "cost_relevant_params": [
+    "reference_species",
+    "doMotifAnalysis",
+    "motifFilter",
+    "topMarkers",
+    "expressionFilter",
+    "topRegulons",
+    "grnboostSubjobs"
+  ],
+  "profiles": [
+    {
+      "id": "group_native_motif_off_grnboost_background",
+      "execution": {
+        "mode": "group_native"
+      },
+      "group_count": 2,
+      "optional_inputs": [
+        "enrichment_background",
+        "grnboost_network"
+      ],
+      "param_overrides": {
+        "reference_species": "none",
+        "doMotifAnalysis": false,
+        "grnboostSubjobs": 1
+      }
+    }
+  ]
+}

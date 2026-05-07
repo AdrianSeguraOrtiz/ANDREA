@@ -1,0 +1,39 @@
+{
+  "cost_relevant_params": [
+    "cross_validation",
+    "n_folds",
+    "subsampling_method",
+    "subsampling_ratio",
+    "r_squared_threshold",
+    "sift_method",
+    "shuffles",
+    "entropy_nboot"
+  ],
+  "profiles": [
+    {
+      "id": "group_emulated_groups_2_no_pseudotime",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "optional_inputs": [
+        "tf_list"
+      ]
+    },
+    {
+      "id": "group_emulated_groups_2_entropy_pseudotime",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "sift_method": "entropy",
+        "entropy_nboot": 0,
+        "shuffles": 0
+      }
+    }
+  ]
+}

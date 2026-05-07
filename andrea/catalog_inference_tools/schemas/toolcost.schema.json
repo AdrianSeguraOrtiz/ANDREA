@@ -1,15 +1,53 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://andrea.org/schemas/tool-cost.schema.json",
-  "title": "ANDREA Tool Cost Profile",
-  "description": "Empirical benchmark-derived runtime/cost profile for a tool. Stored in andrea/catalog_inference_tools/tools/<tool_id>/cost.json.",
+  "title": "ANDREA Tool Cost Profiles",
+  "description": "Empirical benchmark-derived runtime/cost profiles for a tool. Stored in andrea/catalog_inference_tools/tools/<tool_id>/cost.json.",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "benchmark_config",
-    "runtime_points"
+    "schema_version",
+    "profiles"
   ],
   "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version. Kept at 1.0 while the platform is pre-release."
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Empirical runtime profiles for relevant execution/input/parameter combinations.",
+      "items": {
+        "$ref": "#/$defs/cost_profile"
+      }
+    }
+  },
+  "$defs": {
+    "cost_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "benchmark_config",
+        "runtime_points"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:/-]+$",
+          "description": "Stable identifier for this execution/input/parameter cost profile."
+        },
+        "benchmark_config": {
+          "$ref": "#/$defs/benchmark_config"
+        },
+        "runtime_points": {
+          "$ref": "#/$defs/runtime_points"
+        }
+      }
+    },
     "benchmark_config": {
       "type": "object",
       "additionalProperties": false,
@@ -19,30 +57,17 @@
         "ram_gb_tested",
         "repeats",
         "timeout_seconds",
+        "execution_profile",
+        "input_profile",
         "params_profile"
       ],
-      "description": "Benchmark matrix configuration used to generate cost metrics.",
+      "description": "Benchmark matrix configuration used to generate one cost profile.",
       "properties": {
         "sizes": {
           "type": "array",
           "minItems": 1,
           "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "genes",
-              "columns"
-            ],
-            "properties": {
-              "genes": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "columns": {
-                "type": "integer",
-                "minimum": 1
-              }
-            }
+            "$ref": "#/$defs/size_point"
           },
           "description": "Input size points used in the benchmark."
         },
@@ -76,35 +101,194 @@
           "minimum": 0,
           "description": "Configured timeout per run in seconds."
         },
+        "execution_profile": {
+          "$ref": "#/$defs/execution_profile"
+        },
+        "input_profile": {
+          "$ref": "#/$defs/input_profile"
+        },
         "params_profile": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "source",
-            "override_file",
-            "resolved_params"
+          "$ref": "#/$defs/params_profile"
+        }
+      }
+    },
+    "size_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "genes",
+        "columns"
+      ],
+      "properties": {
+        "genes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "execution_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "physical_task_policy",
+        "group_count"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Logical execution mode. Must be one of the tool's execution_capabilities."
+        },
+        "physical_task_policy": {
+          "type": "string",
+          "enum": [
+            "single",
+            "native_grouped",
+            "andrea_group_emulated"
           ],
-          "description": "Resolved parameter profile used during benchmarking, derived from ToolSpec defaults plus an optional dev override.",
-          "properties": {
-            "source": {
+          "description": "How the logical run maps to physical wrapper/container tasks."
+        },
+        "group_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of groups represented by this profile; must be 0 for global profiles."
+        }
+      }
+    },
+    "input_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "column_kind",
+        "expression_profile",
+        "extras_provided",
+        "required_inputs_satisfied",
+        "optional_inputs_provided",
+        "conditional_inputs_satisfied",
+        "tf_count_policy",
+        "prior_density",
+        "group_count",
+        "notes"
+      ],
+      "properties": {
+        "column_kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Column semantics used by the benchmark input matrix."
+        },
+        "expression_profile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Expression data profile used by the benchmark fixture generator."
+        },
+        "extras_provided": {
+          "$ref": "#/$defs/input_key_array"
+        },
+        "required_inputs_satisfied": {
+          "$ref": "#/$defs/input_key_array"
+        },
+        "optional_inputs_provided": {
+          "$ref": "#/$defs/input_key_array"
+        },
+        "conditional_inputs_satisfied": {
+          "$ref": "#/$defs/input_key_array"
+        },
+        "tf_count_policy": {
+          "anyOf": [
+            {
               "type": "string",
-              "enum": [
-                "toolspec_defaults",
-                "toolspec_defaults_plus_override"
-              ]
-            },
-            "override_file": {
-              "type": [
-                "string",
-                "null"
-              ],
               "minLength": 1
             },
-            "resolved_params": {
-              "type": "object",
-              "description": "Concrete params.json payload passed to the wrapper during the benchmark."
+            {
+              "type": "null"
             }
+          ],
+          "description": "Policy used to choose candidate TF count, when relevant."
+        },
+        "prior_density": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Prior GRN density used by the benchmark input generator, when relevant."
+        },
+        "group_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of groups represented in grouped extra inputs."
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Short notes about profile limitations or fixture generation choices."
+        }
+      }
+    },
+    "input_key_array": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "params_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "override_file",
+        "resolved_params",
+        "cost_relevant_params",
+        "cost_relevant_values"
+      ],
+      "description": "Resolved parameter profile used during benchmarking, derived from ToolSpec defaults plus an optional dev override.",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "toolspec_defaults",
+            "toolspec_defaults_plus_override"
+          ]
+        },
+        "override_file": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "resolved_params": {
+          "type": "object",
+          "description": "Concrete params.json payload passed to the wrapper during the benchmark."
+        },
+        "cost_relevant_params": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Dotted resolved parameter paths that materially affect runtime/cost profile matching.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]*$"
           }
+        },
+        "cost_relevant_values": {
+          "type": "object",
+          "description": "Flattened values for cost_relevant_params, keyed by dotted parameter path.",
+          "additionalProperties": true
         }
       }
     },
@@ -113,123 +297,126 @@
       "minItems": 1,
       "description": "Empirical runtime and failure profile by size and resource configuration.",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "genes",
-          "columns",
-          "threads",
-          "ram_gb",
-          "status",
-          "repeats_total",
-          "repeats_ok",
-          "repeats_failed",
-          "ok_rate",
-          "failure_breakdown",
-          "seconds_p50",
-          "seconds_p90"
-        ],
-        "properties": {
-          "genes": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Number of genes (rows)."
-          },
-          "columns": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Number of columns (samples/cells/timepoints/perturbations)."
-          },
-          "threads": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Thread count used for this benchmark point."
-          },
-          "ram_gb": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "description": "Container memory limit (GB) used for this benchmark point."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "ok",
-              "partial",
-              "oom",
-              "timeout",
-              "error"
-            ],
-            "description": "Aggregated run status for this point."
-          },
-          "repeats_total": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Total repeats attempted for this point."
-          },
-          "repeats_ok": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Successful repeats for this point."
-          },
-          "repeats_failed": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Failed repeats for this point."
-          },
-          "ok_rate": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1,
-            "description": "Ratio repeats_ok / repeats_total."
-          },
-          "failure_breakdown": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "oom",
-              "timeout",
-              "error"
-            ],
-            "properties": {
-              "oom": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "timeout": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "error": {
-                "type": "integer",
-                "minimum": 0
-              }
+        "$ref": "#/$defs/runtime_point"
+      }
+    },
+    "runtime_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "genes",
+        "columns",
+        "threads",
+        "ram_gb",
+        "status",
+        "repeats_total",
+        "repeats_ok",
+        "repeats_failed",
+        "ok_rate",
+        "failure_breakdown",
+        "seconds_p50",
+        "seconds_p90"
+      ],
+      "properties": {
+        "genes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of genes (rows)."
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of columns (samples/cells/timepoints/perturbations)."
+        },
+        "threads": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Thread count used for this benchmark point."
+        },
+        "ram_gb": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Container memory limit (GB) used for this benchmark point."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "partial",
+            "oom",
+            "timeout",
+            "error"
+          ],
+          "description": "Aggregated run status for this point."
+        },
+        "repeats_total": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total repeats attempted for this point."
+        },
+        "repeats_ok": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Successful repeats for this point."
+        },
+        "repeats_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Failed repeats for this point."
+        },
+        "ok_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Ratio repeats_ok / repeats_total."
+        },
+        "failure_breakdown": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "oom",
+            "timeout",
+            "error"
+          ],
+          "properties": {
+            "oom": {
+              "type": "integer",
+              "minimum": 0
             },
-            "description": "Failure counts by category across repeats for this point."
+            "timeout": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "error": {
+              "type": "integer",
+              "minimum": 0
+            }
           },
-          "seconds_p50": {
-            "description": "Median runtime over successful repeats; null when repeats_ok=0.",
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "seconds_p90": {
-            "description": "Approximate p90 runtime over successful repeats; null when repeats_ok=0.",
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
+          "description": "Failure counts by category across repeats for this point."
+        },
+        "seconds_p50": {
+          "description": "Median runtime over successful repeats; null when repeats_ok=0.",
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "seconds_p90": {
+          "description": "Approximate p90 runtime over successful repeats; null when repeats_ok=0.",
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     }

@@ -1,0 +1,33 @@
+{
+  "cost_relevant_params": [
+    "regression",
+    "num_bootstraps",
+    "bsr_feature_num",
+    "clr_only"
+  ],
+  "profiles": [
+    {
+      "id": "global_prior_sparse",
+      "execution": {
+        "mode": "global"
+      },
+      "prior_density": 0.05
+    },
+    {
+      "id": "group_native_groups_2_prior_sparse",
+      "execution": {
+        "mode": "group_native"
+      },
+      "group_count": 2,
+      "prior_density": 0.05
+    },
+    {
+      "id": "group_emulated_groups_2_prior_sparse",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "prior_density": 0.05
+    }
+  ]
+}

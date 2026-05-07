@@ -1,0 +1,22 @@
+{
+  "cost_relevant_params": [
+    "estimator",
+    "disc",
+    "nbins"
+  ],
+  "profiles": [
+    {
+      "id": "global_default",
+      "execution": {
+        "mode": "global"
+      }
+    },
+    {
+      "id": "group_emulated_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2
+    }
+  ]
+}

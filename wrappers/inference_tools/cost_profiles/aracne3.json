@@ -1,0 +1,25 @@
+{
+  "cost_relevant_params": [
+    "method",
+    "subsample",
+    "adaptive",
+    "min_subnets",
+    "no_alpha",
+    "no_maxent"
+  ],
+  "profiles": [
+    {
+      "id": "global_default",
+      "execution": {
+        "mode": "global"
+      }
+    },
+    {
+      "id": "group_emulated_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2
+    }
+  ]
+}

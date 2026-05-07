@@ -17,26 +17,34 @@ Usage examples:
      --threads 1,2,4,8 \
      --ram-gb 8,16,32,64
 
+4) Run selected cost profiles:
+   python benchmark_costs.py \
+     --tool genie3 \
+     --profile global_tf_list \
+     --profile group_emulated_groups_2_tf_list
+
 Exit codes:
 - 0: script completed (even if some runs failed; inspect report summary)
 - 2: usage/runtime error (invalid args, missing paths, etc.)
 
 Cost model written to cost.json:
-- runtime_points: aggregated per (genes, columns, threads, ram_gb), including
-  status/failure information, ok_rate, failure_breakdown, and p50/p90 runtime estimates.
-- benchmark_config: benchmark matrix metadata (sizes/resources/repeats/timeout)
-  plus the resolved parameter profile used for the benchmark.
+- schema_version: always "1.0".
+- profiles: empirical runtime profiles keyed by execution/input/parameter profile.
+- runtime_points: per profile, aggregated per (genes, columns, threads, ram_gb),
+  including status/failure information, ok_rate, failure_breakdown, and p50/p90
+  runtime estimates.
+
+For `execution.mode=group_emulated`, each runtime point measures one physical
+wrapper task. The logical group count is stored in `execution_profile`; planner
+ETA code applies the group/task multiplier later.
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import math
 import os
-import random
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,7 +54,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
-from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR, resolve_dev_params
+from shared.benchmark_inputs import (
+    BenchmarkInputProfile,
+    BenchmarkInputSize,
+    write_benchmark_io_dir,
+)
+from shared.benchmark_profiles import (
+    DEFAULT_GROUP_COUNT,
+    DEFAULT_PRIOR_DENSITY,
+    DEFAULT_COST_PROFILES_DIR,
+    BenchmarkProfile,
+    resolve_benchmark_profiles,
+)
+from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR
 
 INFERENCE_TOOLS_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -70,6 +90,13 @@ class RunPlanItem:
     threads: int
     ram_gb: int
     repeat: int
+
+
+@dataclass(frozen=True)
+class ToolBenchmarkTarget:
+    tool_id: str
+    catalog_tool_dir: Path
+    profiles: tuple[BenchmarkProfile, ...]
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -108,17 +135,35 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--cost-profiles-dir",
+        type=Path,
+        default=DEFAULT_COST_PROFILES_DIR,
+        help=(
+            "Path to per-tool benchmark profile configs. "
+            f"Default: {DEFAULT_COST_PROFILES_DIR}"
+        ),
+    )
+    parser.add_argument(
         "--tool",
         action="append",
         default=[],
         help="Tool id to benchmark (repeatable). If omitted, benchmarks all discovered tools.",
     )
     parser.add_argument(
+        "--profile",
+        action="append",
+        default=[],
+        help=(
+            "Benchmark profile id to run (repeatable). Accepts PROFILE_ID or "
+            "TOOL_ID:PROFILE_ID. If omitted, runs all resolved profiles."
+        ),
+    )
+    parser.add_argument(
         "--size",
         action="append",
         default=[],
         help=(
-            "Benchmark size point as GENESxCOLUMNS (repeatable). "
+            "Physical wrapper benchmark size point as GENESxCOLUMNS (repeatable). "
             f"Default: {', '.join(DEFAULT_SIZES)}"
         ),
     )
@@ -131,6 +176,34 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--ram-gb",
         default=DEFAULT_RAM_GB,
         help=f"Comma-separated memory limits (GB) to test. Default: {DEFAULT_RAM_GB}",
+    )
+    parser.add_argument(
+        "--group-count",
+        type=int,
+        default=DEFAULT_GROUP_COUNT,
+        help=(
+            "Default group count used when a grouped profile omits group_count. "
+            f"Default: {DEFAULT_GROUP_COUNT}"
+        ),
+    )
+    parser.add_argument(
+        "--prior-density",
+        type=float,
+        default=DEFAULT_PRIOR_DENSITY,
+        help=(
+            "Default synthetic prior density when a profile uses prior-like inputs "
+            f"but omits prior_density. Default: {DEFAULT_PRIOR_DENSITY}"
+        ),
+    )
+    parser.add_argument(
+        "--optional-input",
+        action="append",
+        default=[],
+        help=(
+            "Optional input id to provide in implicit/default profiles when the "
+            "ToolSpec declares it optional (repeatable). Explicit cost profile "
+            "configs still control their own optional_inputs."
+        ),
     )
     parser.add_argument(
         "--max-cpu",
@@ -183,11 +256,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Stop after first failed run.",
     )
     return parser.parse_args(argv)
-
-
-def load_json(path: Path) -> Any:
-    with path.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
 
 
 def save_json(path: Path, payload: Any) -> None:
@@ -263,8 +331,87 @@ def select_tools(
     return [(tool_id, by_id[tool_id]) for tool_id in filters]
 
 
+def profile_filter_keys(profile_filters: Sequence[str]) -> set[str]:
+    return {token.strip() for token in profile_filters if token.strip()}
+
+
+def profile_matches_filter(
+    *,
+    tool_id: str,
+    profile: BenchmarkProfile,
+    filters: set[str],
+) -> bool:
+    if not filters:
+        return True
+    return profile.profile_id in filters or f"{tool_id}:{profile.profile_id}" in filters
+
+
+def resolve_tool_targets(
+    *,
+    selected_tools: list[tuple[str, Path]],
+    catalog_tools_root: Path,
+    param_overrides_dir: Path,
+    cost_profiles_dir: Path,
+    default_group_count: int,
+    default_prior_density: float,
+    default_optional_inputs: set[str] | None,
+    profile_filters: Sequence[str],
+) -> list[ToolBenchmarkTarget]:
+    filters = profile_filter_keys(profile_filters)
+    matched_filters: set[str] = set()
+    targets: list[ToolBenchmarkTarget] = []
+
+    for tool_id, catalog_tool_dir in selected_tools:
+        resolved_profiles = resolve_benchmark_profiles(
+            tool_id=tool_id,
+            catalog_tools_root=catalog_tools_root,
+            param_overrides_dir=param_overrides_dir,
+            cost_profiles_dir=cost_profiles_dir,
+            default_group_count=default_group_count,
+            default_prior_density=default_prior_density,
+            default_optional_inputs=default_optional_inputs,
+        )
+        selected_profiles: list[BenchmarkProfile] = []
+        for profile in resolved_profiles:
+            qualified_id = f"{tool_id}:{profile.profile_id}"
+            if profile_matches_filter(
+                tool_id=tool_id,
+                profile=profile,
+                filters=filters,
+            ):
+                selected_profiles.append(profile)
+                if profile.profile_id in filters:
+                    matched_filters.add(profile.profile_id)
+                if qualified_id in filters:
+                    matched_filters.add(qualified_id)
+
+        if selected_profiles:
+            targets.append(
+                ToolBenchmarkTarget(
+                    tool_id=tool_id,
+                    catalog_tool_dir=catalog_tool_dir,
+                    profiles=tuple(selected_profiles),
+                )
+            )
+        elif filters:
+            print(f"[{tool_id}] no benchmark profiles matched --profile filters")
+
+    unknown_filters = sorted(filters.difference(matched_filters))
+    if unknown_filters:
+        raise RuntimeError(
+            f"Unknown benchmark profile filter(s) for selected tools: {unknown_filters}"
+        )
+    if not targets:
+        raise RuntimeError("No benchmark profiles selected.")
+    return targets
+
+
 def docker_image_tag(tool_id: str) -> str:
     return f"inference-tools-{tool_id}:benchmark-local"
+
+
+def safe_path_token(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in value)
 
 
 def run_cmd(
@@ -317,100 +464,22 @@ def build_image(
         )
 
 
-def write_expression_tsv(
-    path: Path, genes: int, columns: int, rng: random.Random
-) -> list[str]:
-    gene_names = [f"G{i + 1}" for i in range(genes)]
-    sample_names = [f"S{i + 1}" for i in range(columns)]
-
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["gene"] + sample_names)
-        for gene in gene_names:
-            row = [f"{rng.uniform(-2.0, 2.0):.6f}" for _ in range(columns)]
-            writer.writerow([gene] + row)
-
-    return gene_names
-
-
-def write_tf_list(path: Path, genes: Sequence[str]) -> None:
-    n_tf = max(1, min(len(genes), max(3, len(genes) // 5)))
-    with path.open("w", encoding="utf-8") as fh:
-        for gene in genes[:n_tf]:
-            fh.write(f"{gene}\n")
-
-
-def write_groups(path: Path, columns: int) -> list[str]:
-    clusters = ["cluster_root", "cluster_child"] if columns > 1 else ["cluster_root"]
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["sample", "cluster"])
-        for idx in range(columns):
-            sample = f"S{idx + 1}"
-            cluster = clusters[idx % len(clusters)]
-            writer.writerow([sample, cluster])
-    return clusters
-
-
-def write_lineage_tree(path: Path, clusters: Sequence[str]) -> None:
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["child", "parent", "gain_rate", "loss_rate"])
-        if len(clusters) == 1:
-            writer.writerow([clusters[0], clusters[0], "0.2", "0.8"])
-            return
-        for idx in range(1, len(clusters)):
-            writer.writerow([clusters[idx], clusters[idx - 1], "0.2", "0.8"])
-
-
-def write_prior_grn_by_group(
-    path: Path,
-    genes: Sequence[str],
-    groups: Sequence[str],
-    rng: random.Random,
-) -> None:
-    n_tf = max(1, min(len(genes), max(3, len(genes) // 5)))
-    tfs = list(genes[:n_tf])
-    targets = list(genes)
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["group", "source", "target", "score"])
-        for group in groups:
-            for tf in tfs:
-                k = min(5, len(targets))
-                chosen = rng.sample(targets, k=k) if k > 0 else []
-                for target in chosen:
-                    score = rng.uniform(0.01, 1.0)
-                    writer.writerow([group, tf, target, f"{score:.6f}"])
-
-
 def prepare_io_dir(
     io_dir: Path,
     size: SizePoint,
     *,
     resolved_params: dict[str, Any],
+    execution: dict[str, Any],
     seed: int,
-    run_offset: int,
+    input_profile: dict[str, Any],
 ) -> None:
-    io_dir.mkdir(parents=True, exist_ok=True)
-    (io_dir / "extra").mkdir(parents=True, exist_ok=True)
-    (io_dir / "out").mkdir(parents=True, exist_ok=True)
-
-    rng = random.Random(seed + run_offset)
-    genes = write_expression_tsv(
-        io_dir / "expression.tsv", size.genes, size.columns, rng
+    write_benchmark_io_dir(
+        io_dir,
+        BenchmarkInputSize(genes=size.genes, columns=size.columns),
+        BenchmarkInputProfile.from_cost_input_profile(input_profile, seed=seed),
     )
     save_json(io_dir / "params.json", resolved_params)
-
-    write_tf_list(io_dir / "extra" / "tf_list.txt", genes)
-    clusters = write_groups(io_dir / "extra" / "groups.tsv", size.columns)
-    write_lineage_tree(io_dir / "extra" / "lineage_tree.tsv", clusters)
-    write_prior_grn_by_group(
-        io_dir / "extra" / "prior_grn_by_group.tsv",
-        genes,
-        clusters,
-        rng,
-    )
+    save_json(io_dir / "execution.json", execution)
 
 
 def run_container_once(
@@ -594,6 +663,10 @@ def validate_runtime_args(args: argparse.Namespace) -> None:
     """Validate global CLI limits before running any benchmark."""
     if args.repeats < 1:
         raise RuntimeError("--repeats must be >= 1.")
+    if args.group_count < 1:
+        raise RuntimeError("--group-count must be >= 1.")
+    if args.prior_density < 0 or args.prior_density > 1:
+        raise RuntimeError("--prior-density must be between 0 and 1.")
     if args.max_cpu < 1:
         raise RuntimeError("--max-cpu must be >= 1.")
     if args.max_ram_gb < 1:
@@ -634,6 +707,8 @@ def build_benchmark_config(
     threads: list[int],
     ram_gb: list[int],
     params_profile: dict[str, Any],
+    execution_profile: dict[str, Any],
+    input_profile: dict[str, Any],
     args: argparse.Namespace,
 ) -> dict[str, Any]:
     """Build the benchmark_config block stored in cost.json."""
@@ -643,6 +718,8 @@ def build_benchmark_config(
         "ram_gb_tested": [float(r) for r in ram_gb],
         "repeats": int(args.repeats),
         "timeout_seconds": int(args.timeout),
+        "execution_profile": execution_profile,
+        "input_profile": input_profile,
         "params_profile": params_profile,
     }
 
@@ -691,21 +768,37 @@ def summarize_tool_runs(tool_runs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def make_cost_payload(
+def make_cost_profile_entry(
     *,
+    profile_id: str,
     runtime_points: list[dict[str, Any]],
     benchmark_config: dict[str, Any],
 ) -> dict[str, Any]:
-    """Build the final cost payload written into cost.json."""
+    """Build one profile entry for cost.json."""
     return {
+        "profile_id": profile_id,
         "benchmark_config": benchmark_config,
         "runtime_points": runtime_points,
+    }
+
+
+def make_cost_payload(
+    *,
+    profile_entries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build the final cost payload written into cost.json."""
+    if not profile_entries:
+        raise ValueError("Cannot build cost payload without profiles.")
+    return {
+        "schema_version": "1.0",
+        "profiles": profile_entries,
     }
 
 
 def execute_tool_benchmarks(
     *,
     tool_id: str,
+    profile_id: str,
     image_tag: str,
     workdir: Path,
     sizes: list[SizePoint],
@@ -713,6 +806,8 @@ def execute_tool_benchmarks(
     ram_gb: list[int],
     repeats: int,
     resolved_params: dict[str, Any],
+    execution: dict[str, Any],
+    input_profile: dict[str, Any],
     seed: int,
     timeout: int,
     fail_fast: bool,
@@ -721,20 +816,19 @@ def execute_tool_benchmarks(
 ) -> tuple[list[dict[str, Any]], int, bool]:
     """Execute all planned runs for one tool; returns runs, updated index, and fail-fast flag."""
     tool_runs: list[dict[str, Any]] = []
-    run_offset = 0
 
     for plan in iter_run_plan(
         sizes=sizes, threads=threads, ram_gb=ram_gb, repeats=repeats
     ):
         run_index += 1
         print(
-            f"[{run_index}/{total_runs}] {tool_id} "
+            f"[{run_index}/{total_runs}] {tool_id}/{profile_id} "
             f"{plan.size.genes}x{plan.size.columns} "
             f"threads={plan.threads} ram={plan.ram_gb}GB repeat={plan.repeat}"
         )
 
         run_key = (
-            f"g{plan.size.genes}_c{plan.size.columns}_t{plan.threads}"
+            f"{safe_path_token(profile_id)}_g{plan.size.genes}_c{plan.size.columns}_t{plan.threads}"
             f"_m{plan.ram_gb}_r{plan.repeat}"
         )
         io_dir = workdir / run_key / "io"
@@ -742,10 +836,10 @@ def execute_tool_benchmarks(
             io_dir,
             plan.size,
             resolved_params=resolved_params,
+            execution=execution,
             seed=seed,
-            run_offset=run_offset,
+            input_profile=input_profile,
         )
-        run_offset += 1
 
         status, elapsed, error_or_empty = run_container_once(
             image_tag=image_tag,
@@ -787,14 +881,28 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     discovered = discover_catalog_tools(args.catalog_tools_root)
     selected = select_tools(discovered, args.tool)
+    targets = resolve_tool_targets(
+        selected_tools=selected,
+        catalog_tools_root=args.catalog_tools_root,
+        param_overrides_dir=args.param_overrides_dir,
+        cost_profiles_dir=args.cost_profiles_dir,
+        default_group_count=args.group_count,
+        default_prior_density=args.prior_density,
+        default_optional_inputs=(
+            set(args.optional_input) if args.optional_input else None
+        ),
+        profile_filters=args.profile,
+    )
 
-    total_runs = len(selected) * len(sizes) * len(threads) * len(ram_gb) * args.repeats
+    total_profiles = sum(len(target.profiles) for target in targets)
+    total_runs = total_profiles * len(sizes) * len(threads) * len(ram_gb) * args.repeats
     run_index = 0
     fail_fast_triggered = False
     global_success = 0
     global_fail = 0
 
-    for tool_id, catalog_tool_dir in selected:
+    for target in targets:
+        tool_id = target.tool_id
         image_tag = docker_image_tag(tool_id)
         tool_source_dir = args.tool_sources_root / tool_id
         if not tool_source_dir.exists() or not tool_source_dir.is_dir():
@@ -806,7 +914,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 break
             continue
 
-        cost_path = catalog_tool_dir / "cost.json"
+        cost_path = target.catalog_tool_dir / "cost.json"
         wrote_cost = False
         workdir_context: tempfile.TemporaryDirectory[str] | None = None
 
@@ -823,64 +931,81 @@ def run(argv: Sequence[str] | None = None) -> int:
                 tool_id=tool_id,
                 keep_workdir=args.keep_workdir,
             )
-            resolved_params, params_profile = resolve_dev_params(
-                tool_id=tool_id,
-                catalog_tools_root=args.catalog_tools_root,
-                param_overrides_dir=args.param_overrides_dir,
-            )
-            benchmark_config = build_benchmark_config(
-                sizes=sizes,
-                threads=threads,
-                ram_gb=ram_gb,
-                params_profile=params_profile,
-                args=args,
-            )
-            tool_runs, run_index, fail_fast_triggered = execute_tool_benchmarks(
-                tool_id=tool_id,
-                image_tag=image_tag,
-                workdir=workdir,
-                sizes=sizes,
-                threads=threads,
-                ram_gb=ram_gb,
-                repeats=args.repeats,
-                resolved_params=resolved_params,
-                seed=args.seed,
-                timeout=args.timeout,
-                fail_fast=args.fail_fast,
-                run_index=run_index,
-                total_runs=total_runs,
-            )
-
-            tool_summary = summarize_tool_runs(tool_runs)
-            global_success += tool_summary["successful_runs"]
-            global_fail += tool_summary["failed_runs"]
-
-            runtime_points = aggregate_runtime_points(tool_runs)
-
-            has_success = any(
-                int(point.get("repeats_ok", 0)) > 0 for point in runtime_points
-            )
-            if has_success:
-                cost_payload = make_cost_payload(
-                    runtime_points=runtime_points,
-                    benchmark_config=benchmark_config,
+            cost_profile_entries: list[dict[str, Any]] = []
+            tool_total_runs = 0
+            tool_success_runs = 0
+            tool_failed_runs = 0
+            for profile in target.profiles:
+                print(f"[{tool_id}] profile: {profile.profile_id}")
+                benchmark_config = build_benchmark_config(
+                    sizes=sizes,
+                    threads=threads,
+                    ram_gb=ram_gb,
+                    params_profile=profile.params_profile,
+                    execution_profile=profile.execution_profile,
+                    input_profile=profile.input_profile,
+                    args=args,
+                )
+                profile_workdir = workdir / safe_path_token(profile.profile_id)
+                profile_runs, run_index, fail_fast_triggered = execute_tool_benchmarks(
+                    tool_id=tool_id,
+                    profile_id=profile.profile_id,
+                    image_tag=image_tag,
+                    workdir=profile_workdir,
+                    sizes=sizes,
+                    threads=threads,
+                    ram_gb=ram_gb,
+                    repeats=args.repeats,
+                    resolved_params=profile.params,
+                    execution=profile.execution,
+                    input_profile=profile.input_profile,
+                    seed=args.seed,
+                    timeout=args.timeout,
+                    fail_fast=args.fail_fast,
+                    run_index=run_index,
+                    total_runs=total_runs,
                 )
 
-                if not args.no_write_cost:
-                    write_tool_cost_profile(
-                        cost_path=cost_path,
-                        cost_payload=cost_payload,
+                profile_summary = summarize_tool_runs(profile_runs)
+                tool_total_runs += profile_summary["total_runs"]
+                tool_success_runs += profile_summary["successful_runs"]
+                tool_failed_runs += profile_summary["failed_runs"]
+                global_success += profile_summary["successful_runs"]
+                global_fail += profile_summary["failed_runs"]
+
+                runtime_points = aggregate_runtime_points(profile_runs)
+                if runtime_points:
+                    cost_profile_entries.append(
+                        make_cost_profile_entry(
+                            profile_id=profile.profile_id,
+                            runtime_points=runtime_points,
+                            benchmark_config=benchmark_config,
+                        )
                     )
-                    wrote_cost = True
-            else:
+
                 print(
-                    f"[{tool_id}] warning: no successful runs were observed; "
-                    "cost.json was not written."
+                    f"[{tool_id}/{profile.profile_id}] summary: "
+                    f"total={profile_summary['total_runs']} "
+                    f"ok={profile_summary['successful_runs']} "
+                    f"failed={profile_summary['failed_runs']}"
                 )
+                if fail_fast_triggered:
+                    break
+
+            if cost_profile_entries and not args.no_write_cost:
+                write_tool_cost_profile(
+                    cost_path=cost_path,
+                    cost_payload=make_cost_payload(
+                        profile_entries=cost_profile_entries,
+                    ),
+                )
+                wrote_cost = True
+            elif not cost_profile_entries:
+                print(f"[{tool_id}] warning: no profile runs were observed.")
 
             print(
-                f"[{tool_id}] summary: total={tool_summary['total_runs']} "
-                f"ok={tool_summary['successful_runs']} failed={tool_summary['failed_runs']} "
+                f"[{tool_id}] summary: profiles={len(cost_profile_entries)}/{len(target.profiles)} "
+                f"total={tool_total_runs} ok={tool_success_runs} failed={tool_failed_runs} "
                 f"wrote_cost={wrote_cost}"
             )
 

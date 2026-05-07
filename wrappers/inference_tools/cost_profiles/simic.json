@@ -1,0 +1,19 @@
+{
+  "cost_relevant_params": [
+    "similarity",
+    "cross_val",
+    "num_TFs",
+    "num_target_genes",
+    "max_rcd_iter",
+    "num_rep"
+  ],
+  "profiles": [
+    {
+      "id": "group_native_phenotypes_2_default",
+      "execution": {
+        "mode": "group_native"
+      },
+      "group_count": 2
+    }
+  ]
+}
