@@ -16,12 +16,12 @@ dependencies = [
     "fastapi>=0.115.0,<0.116.0",
     "uvicorn>=0.34.0,<0.35.0",
     "python-multipart>=0.0.20,<0.0.21",
+    "aiofiles>=24.1.0,<25.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.0,<9.0.0",
-    "aiofiles>=24.1.0,<25.0.0",
     "httpx>=0.28.0,<0.29.0",
     "black>=24.0.0,<25.0.0",
     "isort>=5.13.0,<6.0.0",
@@ -67,7 +67,16 @@ include = ["andrea*"]
     "static/*",
     "static/**/*",
 ]
+"andrea.gui.compare_networks" = [
+    "static/*",
+    "static/**/*",
+]
 "andrea.core.commands.evaluate_inference.view_assets" = [
+    "*.html",
+    "*.css",
+    "*.js",
+]
+"andrea.core.commands.compare_networks.view_assets" = [
     "*.html",
     "*.css",
     "*.js",

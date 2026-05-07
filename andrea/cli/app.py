@@ -12,6 +12,9 @@ from rich import print
 from rich.markup import escape
 
 from andrea.config import __version__
+from andrea.core.commands.compare_networks import (
+    compare_networks as core_compare_networks,
+)
 from andrea.core.commands.evaluate_inference import (
     evaluate_inference as core_evaluate_inference,
 )
@@ -136,6 +139,40 @@ def evaluate_inference_command(
     print(f"  metrics: {report['outputs']['metrics_csv']}")
     if report["outputs"].get("evaluation_view"):
         print(f"  view: {report['outputs']['evaluation_view']}")
+
+
+@app.command("compare-networks", rich_help_panel="Workflows")
+def compare_networks_command(
+    request: Path = typer.Option(
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        help="Path to comparison-request.json.",
+    ),
+    output_dir: Path = typer.Option(
+        Path("./comparisons"),
+        help="Root directory where a timestamped comparison package will be created.",
+    ),
+):
+    """Compare inferred networks from one or more infer-network runs."""
+    report = _run_core(
+        core_compare_networks,
+        request_path=request,
+        output_dir=output_dir,
+    )
+    summary = report.get("summary", {})
+    print("[bold green]network comparison completed[/bold green]")
+    print(f"  sources: {summary.get('sources', 0)}")
+    print(f"  network instances: {summary.get('network_instances', 0)}")
+    print(f"  edge score rows: {summary.get('edge_score_rows', 0)}")
+    print(f"  comparison: {report['outputs']['comparison_dir']}")
+    print(f"  report: {report['outputs']['comparison_report']}")
+    print(f"  network index: {report['outputs']['network_index_csv']}")
+    print(f"  edge scores: {report['outputs']['edge_scores_csv']}")
+    print(f"  distances: {report['outputs']['distances_csv']}")
+    print(f"  coordinates: {report['outputs']['distance_coordinates_csv']}")
+    print(f"  view: {report['outputs']['comparison_view']}")
 
 
 @infer_network_app.command("preflight")
@@ -601,6 +638,33 @@ def gui_evaluate_inference(
 ):
     """Launch the local graphical interface for evaluate-inference."""
     from andrea.gui.evaluate_inference.server import run_server
+
+    run_server(host=host, port=port, open_browser=open_browser)
+
+
+@gui_app.command("compare-networks")
+def gui_compare_networks(
+    host: str = typer.Option(
+        "127.0.0.1",
+        help="Host address for the local GUI server.",
+    ),
+    port: int = typer.Option(
+        8768,
+        min=1,
+        max=65535,
+        help="Port for the local GUI server.",
+    ),
+    open_browser: bool = typer.Option(
+        False,
+        "--open-browser/--no-open-browser",
+        help=(
+            "Automatically open the GUI in your default browser. "
+            "Disabled by default to avoid SSH/remote session confusion."
+        ),
+    ),
+):
+    """Launch the local graphical interface for compare-networks."""
+    from andrea.gui.compare_networks.server import run_server
 
     run_server(host=host, port=port, open_browser=open_browser)
 

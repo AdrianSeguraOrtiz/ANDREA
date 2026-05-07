@@ -19,6 +19,7 @@ class AndreaCliBootstrapTests(unittest.TestCase):
         self.assertIn("infer-network", result.output)
         self.assertIn("generate-data", result.output)
         self.assertIn("evaluate-inference", result.output)
+        self.assertIn("compare-networks", result.output)
         self.assertIn("gui", result.output)
 
     def test_version_flag_prints_package_version(self) -> None:
@@ -47,9 +48,15 @@ class AndreaCliBootstrapTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Graphical interfaces", result.output)
         self.assertIn("evaluate-inference", result.output)
+        self.assertIn("compare-networks", result.output)
 
     def test_evaluate_inference_gui_command_is_bootstrapped(self) -> None:
         result = self.runner.invoke(app, ["gui", "evaluate-inference", "--help"])
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("Launch the local graphical interface", result.output)
+
+    def test_compare_networks_gui_command_is_bootstrapped(self) -> None:
+        result = self.runner.invoke(app, ["gui", "compare-networks", "--help"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Launch the local graphical interface", result.output)
 
