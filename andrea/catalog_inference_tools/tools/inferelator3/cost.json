@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "profiles": [
     {
-      "profile_id": "global_default",
+      "profile_id": "global_prior_sparse",
       "benchmark_config": {
         "sizes": [
           {
@@ -39,34 +39,46 @@
         "input_profile": {
           "column_kind": "samples",
           "expression_profile": "synthetic_benchmark",
-          "extras_provided": [],
-          "required_inputs_satisfied": [],
+          "extras_provided": [
+            "prior_grn",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [
+            "prior_grn",
+            "tf_list"
+          ],
           "optional_inputs_provided": [],
           "conditional_inputs_satisfied": [],
-          "tf_count_policy": null,
-          "prior_density": null,
+          "tf_count_policy": "max(3, genes/5)",
+          "prior_density": 0.05,
           "group_count": 0,
           "notes": [
             "Resolved by benchmark_profiles.py from ToolSpec defaults."
           ]
         },
         "params_profile": {
-          "source": "toolspec_defaults",
-          "override_file": null,
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "inferelator3.json",
           "resolved_params": {
-            "estimator": "spearman",
-            "disc": "none",
-            "nbins": null
+            "regression": "auto",
+            "num_bootstraps": 1,
+            "random_seed": 42,
+            "bsr_feature_num": 2,
+            "prior_weight": 1.0,
+            "no_prior_weight": 1.0,
+            "clr_only": false
           },
           "cost_relevant_params": [
-            "estimator",
-            "disc",
-            "nbins"
+            "regression",
+            "num_bootstraps",
+            "bsr_feature_num",
+            "clr_only"
           ],
           "cost_relevant_values": {
-            "estimator": "spearman",
-            "disc": "none",
-            "nbins": null
+            "regression": "auto",
+            "num_bootstraps": 1,
+            "bsr_feature_num": 2,
+            "clr_only": false
           }
         }
       },
@@ -86,8 +98,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.046946,
-          "seconds_p90": 1.046946
+          "seconds_p50": 3.223768,
+          "seconds_p90": 3.223768
         },
         {
           "genes": 50,
@@ -104,8 +116,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.028973,
-          "seconds_p90": 1.028973
+          "seconds_p50": 3.127744,
+          "seconds_p90": 3.127744
         },
         {
           "genes": 50,
@@ -122,8 +134,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.918975,
-          "seconds_p90": 0.918975
+          "seconds_p50": 3.187805,
+          "seconds_p90": 3.187805
         },
         {
           "genes": 50,
@@ -140,8 +152,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.966882,
-          "seconds_p90": 0.966882
+          "seconds_p50": 5.150971,
+          "seconds_p90": 5.150971
         },
         {
           "genes": 50,
@@ -158,8 +170,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.916863,
-          "seconds_p90": 0.916863
+          "seconds_p50": 5.169493,
+          "seconds_p90": 5.169493
         },
         {
           "genes": 50,
@@ -176,8 +188,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.922215,
-          "seconds_p90": 0.922215
+          "seconds_p50": 5.218072,
+          "seconds_p90": 5.218072
         },
         {
           "genes": 50,
@@ -194,8 +206,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.8798,
-          "seconds_p90": 0.8798
+          "seconds_p50": 5.106866,
+          "seconds_p90": 5.106866
         },
         {
           "genes": 50,
@@ -212,8 +224,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.837921,
-          "seconds_p90": 0.837921
+          "seconds_p50": 5.369081,
+          "seconds_p90": 5.369081
         },
         {
           "genes": 50,
@@ -230,8 +242,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.844554,
-          "seconds_p90": 0.844554
+          "seconds_p50": 5.206131,
+          "seconds_p90": 5.206131
         },
         {
           "genes": 50,
@@ -248,8 +260,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.851084,
-          "seconds_p90": 0.851084
+          "seconds_p50": 5.927506,
+          "seconds_p90": 5.927506
         },
         {
           "genes": 50,
@@ -266,8 +278,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.91392,
-          "seconds_p90": 0.91392
+          "seconds_p50": 5.04093,
+          "seconds_p90": 5.04093
         },
         {
           "genes": 50,
@@ -284,8 +296,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.881762,
-          "seconds_p90": 0.881762
+          "seconds_p50": 5.950658,
+          "seconds_p90": 5.950658
         },
         {
           "genes": 100,
@@ -302,8 +314,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.167398,
-          "seconds_p90": 1.167398
+          "seconds_p50": 3.51538,
+          "seconds_p90": 3.51538
         },
         {
           "genes": 100,
@@ -320,8 +332,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.142131,
-          "seconds_p90": 1.142131
+          "seconds_p50": 3.586504,
+          "seconds_p90": 3.586504
         },
         {
           "genes": 100,
@@ -338,8 +350,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.240161,
-          "seconds_p90": 1.240161
+          "seconds_p50": 3.619096,
+          "seconds_p90": 3.619096
         },
         {
           "genes": 100,
@@ -356,8 +368,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.211126,
-          "seconds_p90": 1.211126
+          "seconds_p50": 5.483548,
+          "seconds_p90": 5.483548
         },
         {
           "genes": 100,
@@ -374,8 +386,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.095834,
-          "seconds_p90": 1.095834
+          "seconds_p50": 5.461227,
+          "seconds_p90": 5.461227
         },
         {
           "genes": 100,
@@ -392,8 +404,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.171296,
-          "seconds_p90": 1.171296
+          "seconds_p50": 5.308306,
+          "seconds_p90": 5.308306
         },
         {
           "genes": 100,
@@ -410,8 +422,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.053315,
-          "seconds_p90": 1.053315
+          "seconds_p50": 5.267874,
+          "seconds_p90": 5.267874
         },
         {
           "genes": 100,
@@ -428,8 +440,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.065477,
-          "seconds_p90": 1.065477
+          "seconds_p50": 5.605579,
+          "seconds_p90": 5.605579
         },
         {
           "genes": 100,
@@ -446,8 +458,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.090542,
-          "seconds_p90": 1.090542
+          "seconds_p50": 5.518095,
+          "seconds_p90": 5.518095
         },
         {
           "genes": 100,
@@ -464,8 +476,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.045905,
-          "seconds_p90": 1.045905
+          "seconds_p50": 6.047008,
+          "seconds_p90": 6.047008
         },
         {
           "genes": 100,
@@ -482,8 +494,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.010192,
-          "seconds_p90": 1.010192
+          "seconds_p50": 6.058524,
+          "seconds_p90": 6.058524
         },
         {
           "genes": 100,
@@ -500,8 +512,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.046083,
-          "seconds_p90": 1.046083
+          "seconds_p50": 5.615231,
+          "seconds_p90": 5.615231
         },
         {
           "genes": 200,
@@ -518,8 +530,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.977764,
-          "seconds_p90": 1.977764
+          "seconds_p50": 4.906199,
+          "seconds_p90": 4.906199
         },
         {
           "genes": 200,
@@ -536,8 +548,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 2.037566,
-          "seconds_p90": 2.037566
+          "seconds_p50": 4.816747,
+          "seconds_p90": 4.816747
         },
         {
           "genes": 200,
@@ -554,8 +566,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 2.076922,
-          "seconds_p90": 2.076922
+          "seconds_p50": 4.850691,
+          "seconds_p90": 4.850691
         },
         {
           "genes": 200,
@@ -572,8 +584,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.954431,
-          "seconds_p90": 1.954431
+          "seconds_p50": 6.358855,
+          "seconds_p90": 6.358855
         },
         {
           "genes": 200,
@@ -590,8 +602,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.958854,
-          "seconds_p90": 1.958854
+          "seconds_p50": 6.305566,
+          "seconds_p90": 6.305566
         },
         {
           "genes": 200,
@@ -608,8 +620,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.931545,
-          "seconds_p90": 1.931545
+          "seconds_p50": 6.331508,
+          "seconds_p90": 6.331508
         },
         {
           "genes": 200,
@@ -626,8 +638,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.90247,
-          "seconds_p90": 1.90247
+          "seconds_p50": 5.595636,
+          "seconds_p90": 5.595636
         },
         {
           "genes": 200,
@@ -644,8 +656,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.894758,
-          "seconds_p90": 1.894758
+          "seconds_p50": 5.691188,
+          "seconds_p90": 5.691188
         },
         {
           "genes": 200,
@@ -662,8 +674,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.866721,
-          "seconds_p90": 1.866721
+          "seconds_p50": 5.494503,
+          "seconds_p90": 5.494503
         },
         {
           "genes": 200,
@@ -680,8 +692,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.922642,
-          "seconds_p90": 1.922642
+          "seconds_p50": 5.740799,
+          "seconds_p90": 5.740799
         },
         {
           "genes": 200,
@@ -698,8 +710,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.858951,
-          "seconds_p90": 1.858951
+          "seconds_p50": 5.810773,
+          "seconds_p90": 5.810773
         },
         {
           "genes": 200,
@@ -716,13 +728,748 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.842404,
-          "seconds_p90": 1.842404
+          "seconds_p50": 5.39048,
+          "seconds_p90": 5.39048
         }
       ]
     },
     {
-      "profile_id": "group_emulated_groups_2",
+      "profile_id": "group_native_groups_2_prior_sparse",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 50,
+            "columns": 20
+          },
+          {
+            "genes": 100,
+            "columns": 40
+          },
+          {
+            "genes": 200,
+            "columns": 80
+          }
+        ],
+        "threads_tested": [
+          1,
+          2,
+          4,
+          8
+        ],
+        "ram_gb_tested": [
+          8.0,
+          16.0,
+          32.0
+        ],
+        "repeats": 1,
+        "timeout_seconds": 1800,
+        "execution_profile": {
+          "mode": "group_native",
+          "physical_task_policy": "native_grouped",
+          "group_count": 2
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "synthetic_single_cell_benchmark",
+          "extras_provided": [
+            "groups",
+            "prior_grn",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [
+            "prior_grn",
+            "tf_list"
+          ],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [
+            "groups"
+          ],
+          "tf_count_policy": "max(3, genes/5)",
+          "prior_density": 0.05,
+          "group_count": 2,
+          "notes": [
+            "Resolved by benchmark_profiles.py from ToolSpec defaults."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "inferelator3.json",
+          "resolved_params": {
+            "regression": "auto",
+            "num_bootstraps": 1,
+            "random_seed": 42,
+            "bsr_feature_num": 2,
+            "prior_weight": 1.0,
+            "no_prior_weight": 1.0,
+            "clr_only": false
+          },
+          "cost_relevant_params": [
+            "regression",
+            "num_bootstraps",
+            "bsr_feature_num",
+            "clr_only"
+          ],
+          "cost_relevant_values": {
+            "regression": "auto",
+            "num_bootstraps": 1,
+            "bsr_feature_num": 2,
+            "clr_only": false
+          }
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 13.546024,
+          "seconds_p90": 13.546024
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 1,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 13.493904,
+          "seconds_p90": 13.493904
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 1,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 13.587138,
+          "seconds_p90": 13.587138
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.970939,
+          "seconds_p90": 10.970939
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 2,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.970157,
+          "seconds_p90": 10.970157
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 2,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.785238,
+          "seconds_p90": 10.785238
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 4,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.240942,
+          "seconds_p90": 8.240942
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 4,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.156162,
+          "seconds_p90": 8.156162
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 4,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.128124,
+          "seconds_p90": 8.128124
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 8,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 6.704637,
+          "seconds_p90": 6.704637
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 8,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.737697,
+          "seconds_p90": 7.737697
+        },
+        {
+          "genes": 50,
+          "columns": 20,
+          "threads": 8,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.013226,
+          "seconds_p90": 7.013226
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 33.715433,
+          "seconds_p90": 33.715433
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 1,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 33.862474,
+          "seconds_p90": 33.862474
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 1,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 33.938254,
+          "seconds_p90": 33.938254
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 21.944897,
+          "seconds_p90": 21.944897
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 2,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 22.046224,
+          "seconds_p90": 22.046224
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 2,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 22.023281,
+          "seconds_p90": 22.023281
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 4,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 13.888081,
+          "seconds_p90": 13.888081
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 4,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 14.054554,
+          "seconds_p90": 14.054554
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 4,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 13.794643,
+          "seconds_p90": 13.794643
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 8,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 11.353018,
+          "seconds_p90": 11.353018
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 8,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.448676,
+          "seconds_p90": 10.448676
+        },
+        {
+          "genes": 100,
+          "columns": 40,
+          "threads": 8,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.732377,
+          "seconds_p90": 10.732377
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 112.377177,
+          "seconds_p90": 112.377177
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 1,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 111.719999,
+          "seconds_p90": 111.719999
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 1,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 111.117918,
+          "seconds_p90": 111.117918
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 64.445646,
+          "seconds_p90": 64.445646
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 2,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 64.321524,
+          "seconds_p90": 64.321524
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 2,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 64.148023,
+          "seconds_p90": 64.148023
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 4,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 34.889721,
+          "seconds_p90": 34.889721
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 4,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 34.851648,
+          "seconds_p90": 34.851648
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 4,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 34.96998,
+          "seconds_p90": 34.96998
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 8,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 22.742558,
+          "seconds_p90": 22.742558
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 8,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 22.394708,
+          "seconds_p90": 22.394708
+        },
+        {
+          "genes": 200,
+          "columns": 80,
+          "threads": 8,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 23.115088,
+          "seconds_p90": 23.115088
+        }
+      ]
+    },
+    {
+      "profile_id": "group_emulated_groups_2_prior_sparse",
       "benchmark_config": {
         "sizes": [
           {
@@ -760,37 +1507,48 @@
           "column_kind": "cells",
           "expression_profile": "synthetic_single_cell_benchmark",
           "extras_provided": [
-            "groups"
+            "groups",
+            "prior_grn",
+            "tf_list"
           ],
-          "required_inputs_satisfied": [],
+          "required_inputs_satisfied": [
+            "prior_grn",
+            "tf_list"
+          ],
           "optional_inputs_provided": [],
           "conditional_inputs_satisfied": [
             "groups"
           ],
-          "tf_count_policy": null,
-          "prior_density": null,
+          "tf_count_policy": "max(3, genes/5)",
+          "prior_density": 0.05,
           "group_count": 2,
           "notes": [
             "Resolved by benchmark_profiles.py from ToolSpec defaults."
           ]
         },
         "params_profile": {
-          "source": "toolspec_defaults",
-          "override_file": null,
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "inferelator3.json",
           "resolved_params": {
-            "estimator": "spearman",
-            "disc": "none",
-            "nbins": null
+            "regression": "auto",
+            "num_bootstraps": 1,
+            "random_seed": 42,
+            "bsr_feature_num": 2,
+            "prior_weight": 1.0,
+            "no_prior_weight": 1.0,
+            "clr_only": false
           },
           "cost_relevant_params": [
-            "estimator",
-            "disc",
-            "nbins"
+            "regression",
+            "num_bootstraps",
+            "bsr_feature_num",
+            "clr_only"
           ],
           "cost_relevant_values": {
-            "estimator": "spearman",
-            "disc": "none",
-            "nbins": null
+            "regression": "auto",
+            "num_bootstraps": 1,
+            "bsr_feature_num": 2,
+            "clr_only": false
           }
         }
       },
@@ -810,8 +1568,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.940422,
-          "seconds_p90": 0.940422
+          "seconds_p50": 3.13974,
+          "seconds_p90": 3.13974
         },
         {
           "genes": 50,
@@ -828,8 +1586,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.969509,
-          "seconds_p90": 0.969509
+          "seconds_p50": 3.250379,
+          "seconds_p90": 3.250379
         },
         {
           "genes": 50,
@@ -846,8 +1604,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.987262,
-          "seconds_p90": 0.987262
+          "seconds_p50": 3.261542,
+          "seconds_p90": 3.261542
         },
         {
           "genes": 50,
@@ -864,8 +1622,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.947489,
-          "seconds_p90": 0.947489
+          "seconds_p50": 5.31924,
+          "seconds_p90": 5.31924
         },
         {
           "genes": 50,
@@ -882,8 +1640,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.84311,
-          "seconds_p90": 0.84311
+          "seconds_p50": 5.171644,
+          "seconds_p90": 5.171644
         },
         {
           "genes": 50,
@@ -900,8 +1658,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.945058,
-          "seconds_p90": 0.945058
+          "seconds_p50": 5.337596,
+          "seconds_p90": 5.337596
         },
         {
           "genes": 50,
@@ -918,8 +1676,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.868187,
-          "seconds_p90": 0.868187
+          "seconds_p50": 5.043592,
+          "seconds_p90": 5.043592
         },
         {
           "genes": 50,
@@ -936,8 +1694,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.844332,
-          "seconds_p90": 0.844332
+          "seconds_p50": 4.975563,
+          "seconds_p90": 4.975563
         },
         {
           "genes": 50,
@@ -954,8 +1712,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.863585,
-          "seconds_p90": 0.863585
+          "seconds_p50": 5.440102,
+          "seconds_p90": 5.440102
         },
         {
           "genes": 50,
@@ -972,8 +1730,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.821634,
-          "seconds_p90": 0.821634
+          "seconds_p50": 5.388344,
+          "seconds_p90": 5.388344
         },
         {
           "genes": 50,
@@ -990,8 +1748,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.805873,
-          "seconds_p90": 0.805873
+          "seconds_p50": 5.456337,
+          "seconds_p90": 5.456337
         },
         {
           "genes": 50,
@@ -1008,8 +1766,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.835448,
-          "seconds_p90": 0.835448
+          "seconds_p50": 5.141266,
+          "seconds_p90": 5.141266
         },
         {
           "genes": 100,
@@ -1026,8 +1784,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.161892,
-          "seconds_p90": 1.161892
+          "seconds_p50": 3.511622,
+          "seconds_p90": 3.511622
         },
         {
           "genes": 100,
@@ -1044,8 +1802,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.178114,
-          "seconds_p90": 1.178114
+          "seconds_p50": 3.522511,
+          "seconds_p90": 3.522511
         },
         {
           "genes": 100,
@@ -1062,8 +1820,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.284226,
-          "seconds_p90": 1.284226
+          "seconds_p50": 3.511403,
+          "seconds_p90": 3.511403
         },
         {
           "genes": 100,
@@ -1080,8 +1838,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.092419,
-          "seconds_p90": 1.092419
+          "seconds_p50": 5.410891,
+          "seconds_p90": 5.410891
         },
         {
           "genes": 100,
@@ -1098,8 +1856,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.141639,
-          "seconds_p90": 1.141639
+          "seconds_p50": 5.462779,
+          "seconds_p90": 5.462779
         },
         {
           "genes": 100,
@@ -1116,8 +1874,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.155461,
-          "seconds_p90": 1.155461
+          "seconds_p50": 5.4867,
+          "seconds_p90": 5.4867
         },
         {
           "genes": 100,
@@ -1134,8 +1892,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.052769,
-          "seconds_p90": 1.052769
+          "seconds_p50": 5.237425,
+          "seconds_p90": 5.237425
         },
         {
           "genes": 100,
@@ -1152,8 +1910,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.018203,
-          "seconds_p90": 1.018203
+          "seconds_p50": 5.129569,
+          "seconds_p90": 5.129569
         },
         {
           "genes": 100,
@@ -1170,8 +1928,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.074303,
-          "seconds_p90": 1.074303
+          "seconds_p50": 5.575362,
+          "seconds_p90": 5.575362
         },
         {
           "genes": 100,
@@ -1188,8 +1946,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.996075,
-          "seconds_p90": 0.996075
+          "seconds_p50": 6.037646,
+          "seconds_p90": 6.037646
         },
         {
           "genes": 100,
@@ -1206,8 +1964,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.045622,
-          "seconds_p90": 1.045622
+          "seconds_p50": 5.390043,
+          "seconds_p90": 5.390043
         },
         {
           "genes": 100,
@@ -1224,8 +1982,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.033271,
-          "seconds_p90": 1.033271
+          "seconds_p50": 5.902082,
+          "seconds_p90": 5.902082
         },
         {
           "genes": 200,
@@ -1242,8 +2000,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.97434,
-          "seconds_p90": 1.97434
+          "seconds_p50": 4.797184,
+          "seconds_p90": 4.797184
         },
         {
           "genes": 200,
@@ -1260,8 +2018,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.964037,
-          "seconds_p90": 1.964037
+          "seconds_p50": 4.945499,
+          "seconds_p90": 4.945499
         },
         {
           "genes": 200,
@@ -1278,8 +2036,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.987526,
-          "seconds_p90": 1.987526
+          "seconds_p50": 4.704097,
+          "seconds_p90": 4.704097
         },
         {
           "genes": 200,
@@ -1296,8 +2054,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.967936,
-          "seconds_p90": 1.967936
+          "seconds_p50": 6.113861,
+          "seconds_p90": 6.113861
         },
         {
           "genes": 200,
@@ -1314,8 +2072,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.928195,
-          "seconds_p90": 1.928195
+          "seconds_p50": 6.279016,
+          "seconds_p90": 6.279016
         },
         {
           "genes": 200,
@@ -1332,8 +2090,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.90698,
-          "seconds_p90": 1.90698
+          "seconds_p50": 6.347175,
+          "seconds_p90": 6.347175
         },
         {
           "genes": 200,
@@ -1350,8 +2108,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.894393,
-          "seconds_p90": 1.894393
+          "seconds_p50": 5.624049,
+          "seconds_p90": 5.624049
         },
         {
           "genes": 200,
@@ -1368,8 +2126,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.878723,
-          "seconds_p90": 1.878723
+          "seconds_p50": 5.809965,
+          "seconds_p90": 5.809965
         },
         {
           "genes": 200,
@@ -1386,8 +2144,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.896514,
-          "seconds_p90": 1.896514
+          "seconds_p50": 5.781415,
+          "seconds_p90": 5.781415
         },
         {
           "genes": 200,
@@ -1404,8 +2162,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.820477,
-          "seconds_p90": 1.820477
+          "seconds_p50": 5.675491,
+          "seconds_p90": 5.675491
         },
         {
           "genes": 200,
@@ -1422,8 +2180,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.885191,
-          "seconds_p90": 1.885191
+          "seconds_p50": 6.180531,
+          "seconds_p90": 6.180531
         },
         {
           "genes": 200,
@@ -1440,8 +2198,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.932337,
-          "seconds_p90": 1.932337
+          "seconds_p50": 6.358854,
+          "seconds_p90": 6.358854
         }
       ]
     }
