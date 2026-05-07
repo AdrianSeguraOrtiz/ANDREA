@@ -221,6 +221,11 @@ def _load_plan_waves(
                     if raw_task.get("group_label") is not None
                     else None
                 ),
+                eta_provenance=(
+                    raw_task.get("eta_provenance")
+                    if isinstance(raw_task.get("eta_provenance"), dict)
+                    else None
+                ),
             )
             if (
                 not task.tool_id

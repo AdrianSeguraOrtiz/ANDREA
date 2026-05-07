@@ -55,6 +55,7 @@ class ToolPlanItem:
     eta_source: str
     output_dir: str
     group_label: Optional[str] = None
+    eta_provenance: Optional[dict[str, Any]] = None
 
 
 @dataclass(frozen=True)
@@ -127,8 +128,12 @@ def _write_text(path: Path, text: str) -> None:
 def _task_eta_note(eta_source: str) -> Optional[str]:
     if eta_source == "fallback_no_cost":
         return "No cost profile was found; ETA is a conservative fallback estimate."
+    if eta_source == "fallback_no_matching_cost_profile":
+        return "No matching cost profile was found for this execution mode; ETA is a conservative fallback estimate."
     if eta_source == "fallback_invalid_cost":
         return "Cost profile was invalid or unusable; ETA is a conservative fallback estimate."
+    if eta_source == "fallback_no_usable_runtime_point":
+        return "A matching cost profile was found, but no usable benchmark runtime point fit the available resources; ETA is a conservative fallback estimate."
     return None
 
 

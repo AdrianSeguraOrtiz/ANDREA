@@ -54,6 +54,16 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             )
             self.assertIn("input_fingerprints", plan_payload)
             self.assertTrue(plan_payload["input_fingerprints"])
+            first_wave_task = plan_payload["waves"][0]["tasks"][0]
+            self.assertEqual(first_wave_task["eta_source"], "cost_profile")
+            self.assertIn("eta_provenance", first_wave_task)
+            self.assertIn(
+                "profile_id",
+                first_wave_task["eta_provenance"]["cost_profile"],
+            )
+            first_physical_task = plan_payload["runs"][0]["physical_tasks"][0]
+            self.assertEqual(first_physical_task["eta_source"], "cost_profile")
+            self.assertIn("eta_provenance", first_physical_task)
 
             report_payload = json.loads(
                 (run_dir / "run_report.json").read_text(encoding="utf-8")

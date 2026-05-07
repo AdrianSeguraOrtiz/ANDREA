@@ -212,17 +212,33 @@ def plan_infer_network(
 
     group_order: list[str] = []
     group_to_columns: dict[str, list[str]] = {}
+    execution_mode_by_run: dict[str, str] = {}
+    for run_id in selected_tools:
+        resolved_execution = resolved_execution_by_tool.get(run_id, {})
+        execution_mode = str(resolved_execution.get("mode", "")).strip()
+        if not execution_mode:
+            capabilities = _parse_execution_capabilities(
+                tool_id=run_id,
+                toolspec=catalog_toolspec_by_run[run_id],
+            )
+            execution_mode = "global" if "global" in capabilities else capabilities[0]
+        if execution_mode:
+            execution_mode_by_run[run_id] = execution_mode
+
     needs_group_partition = any(
-        str(resolved_execution_by_tool.get(run_id, {}).get("mode", "")).strip()
-        == "group_emulated"
+        execution_mode_by_run.get(run_id) == "group_emulated"
         for run_id in selected_tools
     )
-    if needs_group_partition:
-        groups_path = dataset.extras.get("groups")
-        if groups_path is None:
-            raise ValueError(
-                "Planning requires groups.tsv because at least one run uses execution.mode=group_emulated."
-            )
+    needs_group_count = any(
+        execution_mode_by_run.get(run_id) in {"group_native", "group_emulated"}
+        for run_id in selected_tools
+    )
+    groups_path = dataset.extras.get("groups")
+    if needs_group_partition and groups_path is None:
+        raise ValueError(
+            "Planning requires groups.tsv because at least one run uses execution.mode=group_emulated."
+        )
+    if groups_path is not None and (needs_group_partition or needs_group_count):
         _expression_genes, expression_columns = _read_expression_axes(
             dataset.expression_matrix_path
         )
@@ -233,6 +249,9 @@ def plan_infer_network(
 
     mode_options_by_tool: dict[str, list[Any]] = {}
     logical_run_specs: dict[str, dict[str, Any]] = {}
+    extras_present = {
+        input_key for input_key, path in dataset.extras.items() if path is not None
+    }
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids[run_id]
         toolspec = catalog_toolspec_by_run[run_id]
@@ -278,6 +297,11 @@ def plan_infer_network(
                     run_id=run_id,
                     toolspec=toolspec,
                     cost_profile=cost_profile,
+                    execution_mode=execution_mode,
+                    resolved_params=resolved_params_by_tool.get(run_id, {}),
+                    extras_present=extras_present,
+                    logical_group_count=len(group_order),
+                    physical_tasks_total=len(group_order),
                     dataset=group_dataset,
                     max_cores=max_cores,
                     max_ram_gb=effective_ram,
@@ -301,6 +325,15 @@ def plan_infer_network(
                 run_id=run_id,
                 toolspec=toolspec,
                 cost_profile=cost_profile,
+                execution_mode=execution_mode,
+                resolved_params=resolved_params_by_tool.get(run_id, {}),
+                extras_present=extras_present,
+                logical_group_count=(
+                    len(group_order)
+                    if execution_mode == "group_native" and group_order
+                    else (0 if execution_mode == "global" else None)
+                ),
+                physical_tasks_total=1,
                 dataset=dataset,
                 max_cores=max_cores,
                 max_ram_gb=effective_ram,
@@ -396,6 +429,8 @@ def plan_infer_network(
         tasks_payload = []
         for task in wave.tasks:
             task_payload = asdict(task)
+            if task_payload.get("eta_provenance") is None:
+                task_payload.pop("eta_provenance", None)
             note = _task_eta_note(task.eta_source)
             if note is not None:
                 task_payload["note"] = note
@@ -451,6 +486,8 @@ def plan_infer_network(
                 "eta_start_seconds": round(task_start, 3),
                 "eta_end_seconds": round(task_end, 3),
             }
+            if task.eta_provenance is not None:
+                task_payload["eta_provenance"] = task.eta_provenance
             note = _task_eta_note(task.eta_source)
             if note is not None:
                 task_payload["note"] = note
