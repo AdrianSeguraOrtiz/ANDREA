@@ -215,5 +215,6 @@ wrappers/simulation_data_tools/simulators/*/papers/
 # Local workflow outputs
 inferred_networks/
 benchmarks/
-evaluation/
+evaluations/
+comparisons/
 benchmark_runs/

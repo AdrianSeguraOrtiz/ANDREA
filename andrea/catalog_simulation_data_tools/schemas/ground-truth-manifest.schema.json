@@ -26,8 +26,9 @@
     "outputs": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["global_network", "group_networks"],
+      "required": ["gene_universe", "global_network", "group_networks"],
       "properties": {
+        "gene_universe": { "type": "string", "pattern": ".*\\.txt$" },
         "global_network": { "type": ["string", "null"], "pattern": ".*\\.csv$" },
         "group_networks": {
           "type": "array",

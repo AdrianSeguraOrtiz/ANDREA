@@ -14,6 +14,7 @@ from andrea.core.commands.generate_data.pipeline import (
     _copy_dataset_from_stage,
     run_generate_data,
 )
+from andrea.core.commands.generate_data.backends import docker_runner
 from andrea.core.commands.generate_data.plan import plan_generate_data_request
 from andrea.core.commands.generate_data.request import validate_simulation_plan
 from andrea.core.commands.generate_data.selection import (
@@ -511,7 +512,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             (stage_dir / "truth" / "group_networks").mkdir(parents=True, exist_ok=True)
             (stage_dir / "provenance").mkdir(parents=True, exist_ok=True)
             (stage_dir / "expression.tsv").write_text(
-                "gene\tC1\nG1\t1\n", encoding="utf-8"
+                "gene\tC1\nG1\t1\nG2\t2\n", encoding="utf-8"
             )
             (stage_dir / "truth" / "global_network.csv").write_text(
                 "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
@@ -536,6 +537,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
 
             self.assertTrue((dataset_dir / "truth" / "global_network.csv").exists())
+            self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
             self.assertFalse((dataset_dir / "truth" / "group_networks").exists())
 
     def test_package_copy_preserves_native_outputs_directory(self) -> None:
@@ -547,7 +549,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             (stage_dir / "native").mkdir(parents=True, exist_ok=True)
             (stage_dir / "provenance").mkdir(parents=True, exist_ok=True)
             (stage_dir / "expression.tsv").write_text(
-                "gene\tC1\nG1\t1\n", encoding="utf-8"
+                "gene\tC1\nG1\t1\nG2\t2\n", encoding="utf-8"
             )
             (stage_dir / "truth" / "global_network.csv").write_text(
                 "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
@@ -572,6 +574,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
 
             self.assertTrue((dataset_dir / "native" / "rna_velocity.tsv").exists())
+            self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
 
     def test_run_generate_data_freezes_reproducibility_assets_in_benchmark_root(
         self,
@@ -596,7 +599,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 (stage_dir / "native").mkdir(parents=True, exist_ok=True)
                 (stage_dir / "provenance" / "raw").mkdir(parents=True, exist_ok=True)
                 (stage_dir / "expression.tsv").write_text(
-                    "gene\tC1\nG1\t1\n",
+                    "gene\tC1\nG1\t1\nG2\t2\n",
                     encoding="utf-8",
                 )
                 (stage_dir / "native" / "rna_velocity.tsv").write_text(
@@ -617,7 +620,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                             "seed": 100,
                             "expression": {
                                 "path": "expression.tsv",
-                                "genes": 1,
+                                "genes": 2,
                                 "columns": 1,
                                 "column_kind": "cells",
                                 "expression_profile": "scrna",
@@ -684,6 +687,15 @@ class GenerateDataDyngenTests(unittest.TestCase):
             self.assertTrue((benchmark_root / "input" / "simulator-runs.json").exists())
             self.assertTrue((benchmark_root / "simulation-plan.json").exists())
             self.assertTrue((benchmark_root / "preflight-report.json").exists())
+            self.assertTrue(
+                (
+                    benchmark_root
+                    / "datasets"
+                    / "dyngen_repro__dyngen_small__r01"
+                    / "truth"
+                    / "gene_universe.txt"
+                ).exists()
+            )
 
             frozen_plan = json.loads(
                 (benchmark_root / "simulation-plan.json").read_text(encoding="utf-8")
@@ -702,6 +714,55 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 ["rna_velocity"],
             )
             self.assertEqual(benchmark_manifest["inputs"], {})
+
+    def test_docker_image_resolution_uses_local_before_pull(self) -> None:
+        docker_runner._PULLED_IMAGES.clear()
+        with (
+            patch(
+                "andrea.core.commands.generate_data.backends.docker_runner._docker_image_exists",
+                return_value=True,
+            ) as exists_mock,
+            patch(
+                "andrea.core.commands.generate_data.backends.docker_runner.pull_docker_image"
+            ) as pull_mock,
+        ):
+            origin = docker_runner._ensure_docker_image(
+                simulator_id="dyngen",
+                image="example/dyngen:1.0.0",
+            )
+
+        self.assertEqual(origin, "local")
+        exists_mock.assert_called_once_with("example/dyngen:1.0.0")
+        pull_mock.assert_not_called()
+
+    def test_docker_image_resolution_pulls_when_missing_locally(self) -> None:
+        docker_runner._PULLED_IMAGES.clear()
+        seen_after_pull = False
+
+        def fake_exists(_image: str) -> bool:
+            return seen_after_pull
+
+        def fake_pull(_image: str) -> None:
+            nonlocal seen_after_pull
+            seen_after_pull = True
+
+        with (
+            patch(
+                "andrea.core.commands.generate_data.backends.docker_runner._docker_image_exists",
+                side_effect=fake_exists,
+            ),
+            patch(
+                "andrea.core.commands.generate_data.backends.docker_runner.pull_docker_image",
+                side_effect=fake_pull,
+            ) as pull_mock,
+        ):
+            origin = docker_runner._ensure_docker_image(
+                simulator_id="dyngen",
+                image="example/dyngen:1.0.0",
+            )
+
+        self.assertEqual(origin, "pulled")
+        pull_mock.assert_called_once_with("example/dyngen:1.0.0")
 
     @unittest.skipUnless(
         _has_docker_runtime(), "docker runtime is required for dyngen tests"
@@ -739,6 +800,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
 
             self.assertTrue((dataset_dir / "extras" / "groups.tsv").exists())
             self.assertTrue((dataset_dir / "extras" / "tf_list.txt").exists())
+            self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
             self.assertTrue((dataset_dir / "truth" / "global_network.csv").exists())
 
             report = preflight_infer_network(
@@ -800,6 +862,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             self.assertTrue((dataset_dir / "extras" / "groups.tsv").exists())
             self.assertTrue((dataset_dir / "extras" / "lineage_tree.tsv").exists())
             self.assertTrue((dataset_dir / "extras" / "tf_list.txt").exists())
+            self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
             self.assertTrue((dataset_dir / "truth" / "global_network.csv").exists())
             self.assertTrue(
                 (

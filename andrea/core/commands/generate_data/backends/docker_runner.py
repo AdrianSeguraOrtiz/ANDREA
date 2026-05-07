@@ -15,54 +15,16 @@ from andrea.core.shared.container_runtime import (
     docker_image_exists as _docker_image_exists,
     ensure_docker_cli as _shared_ensure_docker_cli,
     pull_docker_image,
-    run_cmd as _run_cmd,
 )
 
-from ..shared import REPO_ROOT, ResolvedSimulatorRun, _write_json
+from ..shared import ResolvedSimulatorRun, _write_json
 
-_BUILT_IMAGES: set[str] = set()
 _PULLED_IMAGES: set[str] = set()
 _IMAGE_LOCK = threading.Lock()
 
 
 def _ensure_docker_cli() -> None:
     _shared_ensure_docker_cli(check_daemon=True)
-
-
-def _resolve_wrapper_dir(simulator_id: str) -> Path:
-    return (
-        REPO_ROOT / "wrappers" / "simulation_data_tools" / "simulators" / simulator_id
-    ).resolve()
-
-
-def _build_local_image(*, simulator_id: str, image: str) -> str:
-    wrapper_dir = _resolve_wrapper_dir(simulator_id)
-    dockerfile = wrapper_dir / "Dockerfile"
-    if not dockerfile.exists():
-        raise RuntimeError(
-            f"Dockerfile not found for simulator '{simulator_id}': {dockerfile}"
-        )
-    if image in _BUILT_IMAGES and _docker_image_exists(image):
-        return "built_local"
-
-    result = _run_cmd(
-        [
-            "docker",
-            "build",
-            "-f",
-            str(dockerfile),
-            "-t",
-            image,
-            str(REPO_ROOT),
-        ]
-    )
-    if result.returncode != 0:
-        details = (result.stderr or result.stdout or "").strip()
-        raise RuntimeError(
-            f"Failed to build local docker image '{image}' for simulator '{simulator_id}': {details}"
-        )
-    _BUILT_IMAGES.add(image)
-    return "built_local"
 
 
 def _pull_image(*, image: str) -> str:
@@ -75,17 +37,8 @@ def _pull_image(*, image: str) -> str:
 
 def _ensure_docker_image(*, simulator_id: str, image: str) -> str:
     with _IMAGE_LOCK:
-        wrapper_dir = _resolve_wrapper_dir(simulator_id)
-        dockerfile = wrapper_dir / "Dockerfile"
-        if dockerfile.exists():
-            try:
-                return _build_local_image(simulator_id=simulator_id, image=image)
-            except RuntimeError as exc:
-                build_error = str(exc)
-        elif _docker_image_exists(image):
+        if _docker_image_exists(image):
             return "local"
-        else:
-            build_error = None
 
         try:
             return _pull_image(image=image)
@@ -93,8 +46,6 @@ def _ensure_docker_image(*, simulator_id: str, image: str) -> str:
             pull_error = str(exc)
 
         message = [f"Could not prepare docker image '{image}' for '{simulator_id}'."]
-        if build_error:
-            message.append(build_error)
         message.append(pull_error)
         raise RuntimeError(" ".join(message))
 

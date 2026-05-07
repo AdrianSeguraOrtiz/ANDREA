@@ -99,6 +99,10 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             base = Path(tmp)
             truth_dir = base / "truth"
             truth_dir.mkdir(parents=True)
+            (truth_dir / "gene_universe.txt").write_text(
+                "A\nB\nC\nD\n",
+                encoding="utf-8",
+            )
             self._write_csv(
                 truth_dir / "global_network.csv",
                 [
@@ -137,6 +141,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "simulator_id": "toy_sim",
                         "profile": "scrna_grouped",
                         "outputs": {
+                            "gene_universe": "truth/gene_universe.txt",
                             "global_network": "truth/global_network.csv",
                             "group_networks": [],
                         },
@@ -244,14 +249,14 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             metrics[("genie3__01", "topology")]["f1_at_truth_count"], 1.0
         )
         self.assertAlmostEqual(
-            metrics[("genie3__01", "topology")]["epr_at_truth_count"], 1.5
+            metrics[("genie3__01", "topology")]["epr_at_truth_count"], 3.0
         )
         self.assertEqual(metrics[("genie3__01", "directed")]["status"], "ok")
         self.assertAlmostEqual(
             metrics[("genie3__01", "directed")]["f1_at_truth_count"], 0.5
         )
         self.assertAlmostEqual(
-            metrics[("genie3__01", "directed")]["epr_at_truth_count"], 1.5
+            metrics[("genie3__01", "directed")]["epr_at_truth_count"], 3.0
         )
         self.assertEqual(metrics[("genie3__01", "signed")]["status"], "not_applicable")
         self.assertEqual(metrics[("signed_tool", "signed")]["status"], "ok")
@@ -259,7 +264,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             metrics[("signed_tool", "signed")]["f1_at_truth_count"], 1.0
         )
         self.assertAlmostEqual(
-            metrics[("signed_tool", "signed")]["epr_at_truth_count"], 6.0
+            metrics[("signed_tool", "signed")]["epr_at_truth_count"], 12.0
         )
         self.assertEqual(Path(report["outputs"]["output_root"]), Path("."))
         self.assertEqual(evaluation_dir.parent, output_root)
@@ -276,6 +281,8 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         self.assertEqual(report["inputs"]["ground_truth_dataset_id"], "toy")
         self.assertEqual(report["inputs"]["ground_truth_simulator_id"], "toy_sim")
         self.assertEqual(report["inputs"]["merged_network"], "merged_network_raw")
+        self.assertEqual(report["ground_truth"]["gene_universe_size"], 4)
+        self.assertEqual(metrics[("genie3__01", "topology")]["n_candidate_genes"], 4)
         self.assertNotIn("run_report", report["inputs"])
         self.assertNotIn("ground_truth_manifest", report["inputs"])
         self.assertNotIn("derived_inputs", report)
@@ -287,6 +294,10 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             base = Path(tmp)
             truth_dir = base / "truth"
             truth_dir.mkdir(parents=True)
+            (truth_dir / "gene_universe.txt").write_text(
+                "A\nB\n",
+                encoding="utf-8",
+            )
             self._write_csv(
                 truth_dir / "global_network.csv",
                 [
@@ -309,6 +320,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "simulator_id": "toy_sim",
                         "profile": "scrna_grouped",
                         "outputs": {
+                            "gene_universe": "truth/gene_universe.txt",
                             "global_network": "truth/global_network.csv",
                             "group_networks": [],
                         },
@@ -356,6 +368,77 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
 
         self.assertEqual(report["pairings"][0]["status"], "skipped")
         self.assertIn("no ground-truth network", report["pairings"][0]["reason"])
+
+    def test_requires_explicit_ground_truth_gene_universe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            truth_dir = base / "truth"
+            truth_dir.mkdir(parents=True)
+            self._write_csv(
+                truth_dir / "global_network.csv",
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "1",
+                        "sign": "+",
+                        "evidence": "simulated_truth",
+                        "context": "global",
+                    }
+                ],
+            )
+            manifest_path = base / "ground-truth-manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "dataset_id": "toy",
+                        "simulator_id": "toy_sim",
+                        "profile": "scrna_grouped",
+                        "outputs": {
+                            "global_network": "truth/global_network.csv",
+                            "group_networks": [],
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            inferred_path = base / "merged_network_raw.csv"
+            self._write_csv(
+                inferred_path,
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "0.9",
+                        "sign": "?",
+                        "evidence": "association",
+                        "context": "global",
+                        "tool_id": "genie3__01",
+                    }
+                ],
+            )
+            run_report_path = base / "run_report.json"
+            run_report_path.write_text(
+                json.dumps(
+                    {
+                        "outputs": {"merged_network_raw": inferred_path.name},
+                        "tools": {
+                            "catalog_tool_ids": {
+                                "genie3__01": "genie3",
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "outputs.gene_universe"):
+                evaluate_inference(
+                    run_report_path=run_report_path,
+                    ground_truth_manifest_path=manifest_path,
+                    output_dir=base / "evaluation",
+                )
 
     def _write_csv(self, path: Path, rows: list[dict[str, str]]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -137,6 +137,7 @@
           "run_id",
           "simulator_id",
           "expression_matrix",
+          "gene_universe",
           "global_network"
         ],
         "properties": {
@@ -144,6 +145,7 @@
           "run_id": { "type": "string", "minLength": 1 },
           "simulator_id": { "type": "string", "minLength": 1 },
           "expression_matrix": { "type": "string", "minLength": 1 },
+          "gene_universe": { "type": "string", "minLength": 1 },
           "groups": { "type": ["string", "null"] },
           "lineage_tree": { "type": ["string", "null"] },
           "tf_list": { "type": ["string", "null"] },

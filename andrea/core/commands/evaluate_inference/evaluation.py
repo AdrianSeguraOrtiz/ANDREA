@@ -52,6 +52,7 @@ class TruthNetwork:
     context: str
     path: Path
     rows: list[NetworkRow]
+    candidate_genes: set[str]
     directed: bool
     signed: bool
 
@@ -181,6 +182,11 @@ def evaluate_inference(
             "simulator_id": manifest.get("simulator_id"),
             "profile": manifest.get("profile"),
             "contexts": sorted(truth_networks.keys()),
+            "gene_universe_size": (
+                len(next(iter(truth_networks.values())).candidate_genes)
+                if truth_networks
+                else 0
+            ),
         },
         "outputs": {
             "output_root": ".",
@@ -309,12 +315,19 @@ def _load_truth_networks(
 
     base_dir = manifest_path.parent
     networks: dict[str, TruthNetwork] = {}
+    gene_universe_raw = outputs.get("gene_universe")
+    if not isinstance(gene_universe_raw, str) or not gene_universe_raw.strip():
+        raise ValueError("Ground-truth manifest outputs.gene_universe is required")
+    candidate_genes = _load_gene_universe(
+        _resolve_manifest_path(base_dir, gene_universe_raw)
+    )
 
     global_path = outputs.get("global_network")
     if isinstance(global_path, str) and global_path.strip():
         networks["global"] = _load_truth_network(
             path=_resolve_manifest_path(base_dir, global_path),
             context="global",
+            candidate_genes=candidate_genes,
         )
 
     group_entries = outputs.get("group_networks", [])
@@ -337,6 +350,7 @@ def _load_truth_networks(
         networks[context] = _load_truth_network(
             path=_resolve_manifest_path(base_dir, rel_path),
             context=context,
+            candidate_genes=candidate_genes,
         )
 
     if not networks:
@@ -346,7 +360,32 @@ def _load_truth_networks(
     return networks, manifest
 
 
-def _load_truth_network(*, path: Path, context: str) -> TruthNetwork:
+def _load_gene_universe(path: Path) -> set[str]:
+    if not path.exists() or not path.is_file():
+        raise ValueError(f"Ground-truth gene universe file not found: {path}")
+    genes: list[str] = []
+    seen: set[str] = set()
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        gene = line.strip()
+        if not gene:
+            continue
+        if gene in seen:
+            continue
+        seen.add(gene)
+        genes.append(gene)
+    if not genes:
+        raise ValueError(f"Ground-truth gene universe file contains no genes: {path}")
+    return set(genes)
+
+
+def _load_truth_network(
+    *,
+    path: Path,
+    context: str,
+    candidate_genes: set[str],
+) -> TruthNetwork:
     if not path.exists() or not path.is_file():
         raise ValueError(f"Ground-truth network CSV not found: {path}")
 
@@ -380,10 +419,21 @@ def _load_truth_network(*, path: Path, context: str) -> TruthNetwork:
                     f"Ground-truth network CSV has negative score at line {line_number}: "
                     f"{raw_score!r}; score must be a non-negative truth label or magnitude"
                 )
+            source = str(row["source"]).strip()
+            target = str(row["target"]).strip()
+            if not source or not target:
+                raise ValueError(
+                    f"Ground-truth network CSV has empty source or target at line {line_number}: {path}"
+                )
+            if source not in candidate_genes or target not in candidate_genes:
+                raise ValueError(
+                    f"Ground-truth network CSV line {line_number} references genes outside outputs.gene_universe: "
+                    f"{source!r}, {target!r}"
+                )
             rows.append(
                 NetworkRow(
-                    source=str(row["source"]).strip(),
-                    target=str(row["target"]).strip(),
+                    source=source,
+                    target=target,
                     score=score,
                     sign=_normalize_sign(str(row["sign"])) if has_sign else "?",
                     context=context,
@@ -396,6 +446,7 @@ def _load_truth_network(*, path: Path, context: str) -> TruthNetwork:
         context=context,
         path=path,
         rows=rows,
+        candidate_genes=set(candidate_genes),
         directed=True,
         signed=signed,
     )
@@ -504,12 +555,20 @@ def _evaluate_pairing(
     prediction_scores = _aggregate_rows(prediction_rows, level=level)
     truth_keys = set(truth_scores)
     predicted_keys = set(prediction_scores)
-    candidates = _candidate_keys(
-        nodes=_collect_nodes(truth.rows, prediction_rows),
-        level=level,
-    )
-    candidates.update(truth_keys)
-    candidates.update(predicted_keys)
+    candidates = _candidate_keys(nodes=truth.candidate_genes, level=level)
+    truth_outside = truth_keys - candidates
+    if truth_outside:
+        raise ValueError(
+            "Ground-truth edges include genes outside outputs.gene_universe for "
+            f"context {truth.context!r}, level {level!r}"
+        )
+    predicted_outside = predicted_keys - candidates
+    if predicted_outside:
+        example = next(iter(sorted(predicted_outside)))
+        raise ValueError(
+            "Inferred network contains edges outside the ground-truth gene universe "
+            f"for context {prediction_rows[0].context!r}, level {level!r}; example edge: {example}"
+        )
 
     y_true = [1 if key in truth_keys else 0 for key in candidates]
     y_score = [float(prediction_scores.get(key, 0.0)) for key in candidates]
@@ -540,6 +599,7 @@ def _evaluate_pairing(
         "f1_at_truth_count": top_k_stats["f1_at_truth_count"],
         "epr_at_truth_count": top_k_stats["epr_at_truth_count"],
         "n_candidates": len(candidates),
+        "n_candidate_genes": len(truth.candidate_genes),
         "n_truth_edges": len(truth_keys),
         "n_predicted_edges": len(predicted_keys),
         "tp_at_truth_count": top_k_stats["tp_at_truth_count"],
@@ -602,6 +662,7 @@ def _empty_metric_row(
         "f1_at_truth_count": None,
         "epr_at_truth_count": None,
         "n_candidates": 0,
+        "n_candidate_genes": 0,
         "n_truth_edges": 0,
         "n_predicted_edges": 0,
         "tp_at_truth_count": 0,
@@ -670,17 +731,6 @@ def _candidate_keys(
                     candidates.add((source, target, sign))
         return candidates
     raise ValueError(f"Unknown evaluation level: {level}")
-
-
-def _collect_nodes(*row_groups: Iterable[NetworkRow]) -> set[str]:
-    nodes: set[str] = set()
-    for rows in row_groups:
-        for row in rows:
-            if row.source:
-                nodes.add(row.source)
-            if row.target:
-                nodes.add(row.target)
-    return nodes
 
 
 def _top_truth_count_stats(

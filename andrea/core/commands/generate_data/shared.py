@@ -17,7 +17,6 @@ from andrea.core.shared.json_io import (
 
 DEFAULT_OUTPUT_DIR = Path("./benchmarks")
 CATALOG_ROOT = Path(__file__).resolve().parents[3] / "catalog_simulation_data_tools"
-REPO_ROOT = Path(__file__).resolve().parents[4]
 SCHEMA_VERSION = "1.0"
 MAX_SEED_32BIT = 2_147_483_646
 
