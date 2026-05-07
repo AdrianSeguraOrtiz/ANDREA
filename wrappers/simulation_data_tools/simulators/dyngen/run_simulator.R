@@ -341,6 +341,171 @@ write_groups <- function(groups_df, path) {
   )
 }
 
+derive_milestone_order <- function(milestone_network, milestone_ids = character()) {
+  milestone_df <- unique(as.data.frame(milestone_network, stringsAsFactors = FALSE)[, c("from", "to"), drop = FALSE])
+  milestone_df$from <- as.character(milestone_df$from)
+  milestone_df$to <- as.character(milestone_df$to)
+  ids <- sort(unique(as.character(c(milestone_ids, milestone_df$from, milestone_df$to))))
+  ids <- ids[nzchar(ids)]
+  if (length(ids) == 0) {
+    return(structure(numeric(), names = character()))
+  }
+
+  milestone_df <- milestone_df[
+    milestone_df$from %in% ids &
+      milestone_df$to %in% ids &
+      milestone_df$from != milestone_df$to,
+    ,
+    drop = FALSE
+  ]
+  incoming <- unique(milestone_df$to)
+  roots <- sort(setdiff(ids, incoming))
+  if (length(roots) == 0) {
+    roots <- ids[[1]]
+  }
+
+  distances <- rep(Inf, length(ids))
+  names(distances) <- ids
+  distances[roots] <- 0
+  frontier <- roots
+  while (length(frontier) > 0 && nrow(milestone_df) > 0) {
+    current <- frontier[[1]]
+    frontier <- frontier[-1]
+    children <- sort(unique(milestone_df$to[milestone_df$from == current]))
+    for (child in children) {
+      next_distance <- distances[[current]] + 1
+      if (next_distance < distances[[child]]) {
+        distances[[child]] <- next_distance
+        frontier <- c(frontier, child)
+      }
+    }
+  }
+
+  if (any(is.infinite(distances))) {
+    max_finite <- max(distances[is.finite(distances)], 0)
+    unreachable <- sort(names(distances)[is.infinite(distances)])
+    distances[unreachable] <- max_finite + seq_along(unreachable)
+  }
+
+  ordered_ids <- names(distances)[order(distances, names(distances))]
+  ranks <- seq_along(ordered_ids) - 1L
+  names(ranks) <- ordered_ids
+  ranks
+}
+
+write_pseudotime <- function(milestone_percentages, cell_ids, milestone_order, path) {
+  milestone_df <- as.data.frame(milestone_percentages, stringsAsFactors = FALSE)
+  milestone_df$cell_id <- as.character(milestone_df$cell_id)
+  milestone_df$milestone_id <- as.character(milestone_df$milestone_id)
+  milestone_df$percentage <- as.numeric(milestone_df$percentage)
+  milestone_df$order <- as.numeric(milestone_order[milestone_df$milestone_id])
+  if (any(is.na(milestone_df$order))) {
+    fallback_order <- if (length(milestone_order) == 0) 0 else max(as.numeric(milestone_order), na.rm = TRUE) + 1
+    milestone_df$order[is.na(milestone_df$order)] <- fallback_order
+  }
+  milestone_df$weighted_order <- milestone_df$percentage * milestone_df$order
+  weighted <- aggregate(weighted_order ~ cell_id, data = milestone_df, FUN = sum)
+  weights <- aggregate(percentage ~ cell_id, data = milestone_df, FUN = sum)
+  pseudotime_df <- merge(weighted, weights, by = "cell_id", all = TRUE)
+  pseudotime_df$pseudotime_raw <- pseudotime_df$weighted_order / pmax(pseudotime_df$percentage, .Machine$double.eps)
+  pseudotime <- pseudotime_df$pseudotime_raw[match(cell_ids, pseudotime_df$cell_id)]
+  pseudotime[is.na(pseudotime)] <- 0
+  pseudotime_range <- range(pseudotime, na.rm = TRUE)
+  if (is.finite(pseudotime_range[[1]]) && diff(pseudotime_range) > 0) {
+    pseudotime <- (pseudotime - pseudotime_range[[1]]) / diff(pseudotime_range)
+  } else {
+    pseudotime <- rep(0, length(cell_ids))
+  }
+  out <- data.frame(
+    cell = as.character(cell_ids),
+    pseudotime = as.numeric(pseudotime),
+    stringsAsFactors = FALSE
+  )
+  write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+}
+
+write_cell_phenotypes <- function(groups_df, milestone_order, path) {
+  phenotype_order <- as.integer(milestone_order[as.character(groups_df$cluster)])
+  if (any(is.na(phenotype_order))) {
+    fallback_order <- if (length(milestone_order) == 0) 0L else max(as.integer(milestone_order), na.rm = TRUE) + 1L
+    phenotype_order[is.na(phenotype_order)] <- fallback_order
+  }
+  out <- data.frame(
+    cell = groups_df$cell,
+    phenotype = groups_df$cluster,
+    order = phenotype_order,
+    stringsAsFactors = FALSE
+  )
+  write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+}
+
+write_cluster_identities <- function(groups_df, milestone_order, path) {
+  clusters <- sort(unique(as.character(groups_df$cluster)))
+  cluster_order <- as.integer(milestone_order[clusters])
+  if (any(is.na(cluster_order))) {
+    fallback_order <- if (length(milestone_order) == 0) 0L else max(as.integer(milestone_order), na.rm = TRUE) + 1L
+    cluster_order[is.na(cluster_order)] <- fallback_order + seq_len(sum(is.na(cluster_order))) - 1L
+  }
+  out <- data.frame(
+    cluster = clusters,
+    annotation = clusters,
+    order = cluster_order,
+    stringsAsFactors = FALSE
+  )
+  out <- out[order(out$order, out$cluster), , drop = FALSE]
+  write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+}
+
+write_enrichment_background <- function(counts, path) {
+  genes <- unique(as.character(colnames(counts)))
+  genes <- genes[nzchar(genes)]
+  if (length(genes) == 0) {
+    stop("enrichment_background derivation found no generated expression genes.", call. = FALSE)
+  }
+  writeLines(genes, con = path, sep = "\n", useBytes = TRUE)
+}
+
+write_prior_grn <- function(model, path) {
+  feature_network <- unique(as.data.frame(model$feature_network)[, c("from", "to", "strength", "effect")])
+  feature_network$from <- as.character(feature_network$from)
+  feature_network$to <- as.character(feature_network$to)
+  feature_network$strength <- as.numeric(feature_network$strength)
+  feature_network$effect <- as.numeric(feature_network$effect)
+  prior_df <- data.frame(
+    source = feature_network$from,
+    target = feature_network$to,
+    score = abs(feature_network$strength) * ifelse(feature_network$effect >= 0, 1, -1),
+    stringsAsFactors = FALSE
+  )
+  prior_df <- prior_df[!is.na(prior_df$score) & prior_df$score != 0, , drop = FALSE]
+  if (nrow(prior_df) == 0) {
+    stop("prior_grn derivation found no nonzero feature-network edges.", call. = FALSE)
+  }
+  prior_df <- prior_df[order(prior_df$source, prior_df$target), , drop = FALSE]
+  write.table(prior_df, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+}
+
+write_prior_grn_by_group <- function(group_edge_activity, path) {
+  active_edges <- group_edge_activity[group_edge_activity$active, , drop = FALSE]
+  score <- as.numeric(active_edges$mean_signed_strength)
+  score[is.na(score)] <- 0
+  fallback <- abs(score) <= .Machine$double.eps
+  score[fallback] <- as.numeric(active_edges$mean_abs_strength[fallback])
+  prior_df <- data.frame(
+    group = as.character(active_edges$cluster),
+    source = as.character(active_edges$regulator),
+    target = as.character(active_edges$target),
+    score = score,
+    stringsAsFactors = FALSE
+  )
+  prior_df <- prior_df[!is.na(prior_df$score) & prior_df$score != 0, , drop = FALSE]
+  if (nrow(prior_df) == 0) {
+    stop("prior_grn_by_group derivation found no active nonzero group-specific edges.", call. = FALSE)
+  }
+  prior_df <- prior_df[order(prior_df$group, prior_df$source, prior_df$target), , drop = FALSE]
+  write.table(prior_df, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+}
+
 slugify_group <- function(value) {
   slug <- gsub("[^A-Za-z0-9_.-]+", "_", as.character(value))
   slug <- gsub("^_+|_+$", "", slug)
@@ -526,7 +691,8 @@ derive_group_networks <- function(dataset, groups_df, output_dir, raw_dir, activ
   list(
     group_networks = if (isTRUE(export_public)) group_networks else list(),
     active_edges_by_group = active_edges_by_group,
-    used_groups = used_groups
+    used_groups = used_groups,
+    group_edge_activity = group_edge_activity
   )
 }
 
@@ -641,9 +807,14 @@ write_manifest <- function(request, params, dataset, output_dir, group_networks 
     ),
     extras = list(
       groups = if (file.exists(file.path(output_dir, "extras", "groups.tsv"))) "extras/groups.tsv" else NULL,
+      cell_phenotypes = if (file.exists(file.path(output_dir, "extras", "cell_phenotypes.tsv"))) "extras/cell_phenotypes.tsv" else NULL,
+      cluster_identities = if (file.exists(file.path(output_dir, "extras", "cluster_identities.tsv"))) "extras/cluster_identities.tsv" else NULL,
+      enrichment_background = if (file.exists(file.path(output_dir, "extras", "enrichment_background.txt"))) "extras/enrichment_background.txt" else NULL,
       lineage_tree = if (file.exists(file.path(output_dir, "extras", "lineage_tree.tsv"))) "extras/lineage_tree.tsv" else NULL,
+      pseudotime = if (file.exists(file.path(output_dir, "extras", "pseudotime.tsv"))) "extras/pseudotime.tsv" else NULL,
+      prior_grn = if (file.exists(file.path(output_dir, "extras", "prior_grn.tsv"))) "extras/prior_grn.tsv" else NULL,
       tf_list = if (file.exists(file.path(output_dir, "extras", "tf_list.txt"))) "extras/tf_list.txt" else NULL,
-      prior_grn_by_group = NULL
+      prior_grn_by_group = if (file.exists(file.path(output_dir, "extras", "prior_grn_by_group.tsv"))) "extras/prior_grn_by_group.tsv" else NULL
     ),
     native_outputs = if (length(native_outputs) > 0) native_outputs else structure(list(), names = character()),
     truth = list(
@@ -687,13 +858,19 @@ tryCatch(
 
     write_progress("running", "initialise_model", "Initialising dyngen model.")
     backbone <- load_backbone(params$backbone_template)
-    need_groups <- identical(request$profile, "scrna_grouped") || any(c("groups", "lineage_tree") %in% effective_extras)
+    need_pseudotime <- "pseudotime" %in% effective_extras
+    need_cell_phenotypes <- "cell_phenotypes" %in% effective_extras
+    need_cluster_identities <- "cluster_identities" %in% effective_extras
+    need_enrichment_background <- "enrichment_background" %in% effective_extras
+    need_prior_grn <- "prior_grn" %in% effective_extras
+    need_prior_grn_by_group <- "prior_grn_by_group" %in% effective_extras
+    need_groups <- identical(request$profile, "scrna_grouped") || any(c("groups", "lineage_tree", "cell_phenotypes", "cluster_identities", "prior_grn_by_group") %in% effective_extras)
     need_lineage <- "lineage_tree" %in% effective_extras
     need_tf_list <- "tf_list" %in% effective_extras
     need_group_networks <- "group_networks" %in% effective_extras
     need_regulatory_network_sc <- "regulatory_network_sc" %in% native_outputs
     need_rna_velocity <- "rna_velocity" %in% native_outputs
-    need_cellwise_grn <- need_group_networks || need_lineage || need_regulatory_network_sc
+    need_cellwise_grn <- need_group_networks || need_lineage || need_prior_grn_by_group || need_regulatory_network_sc
     group_networks <- list()
     exported_native_outputs <- structure(list(), names = character())
 
@@ -736,12 +913,34 @@ tryCatch(
     if (need_tf_list) {
       write_tf_list(model$feature_info, file.path(output_dir, "extras", "tf_list.txt"))
     }
+    if (need_enrichment_background) {
+      write_enrichment_background(dataset$counts, file.path(output_dir, "extras", "enrichment_background.txt"))
+    }
+    if (need_prior_grn) {
+      write_prior_grn(model, file.path(output_dir, "extras", "prior_grn.tsv"))
+    }
+    if (need_pseudotime) {
+      milestone_order <- derive_milestone_order(
+        dataset$milestone_network,
+        milestone_ids = unique(as.character(dataset$milestone_percentages$milestone_id))
+      )
+      write_pseudotime(
+        dataset$milestone_percentages,
+        dataset$cell_ids,
+        milestone_order,
+        file.path(output_dir, "extras", "pseudotime.tsv")
+      )
+    }
 
     if (need_groups) {
       groups_df <- derive_groups(dataset$milestone_percentages, dataset$cell_ids)
+      milestone_order <- derive_milestone_order(
+        dataset$milestone_network,
+        milestone_ids = unique(as.character(groups_df$cluster))
+      )
       write_groups(groups_df, file.path(output_dir, "extras", "groups.tsv"))
       group_network_result <- NULL
-      if (need_group_networks) {
+      if (need_group_networks || need_prior_grn_by_group) {
         write_progress("running", "derive_truth", "Deriving group_networks from dyngen cell-specific GRN outputs.")
         group_network_result <- derive_group_networks(
           dataset = dataset,
@@ -751,6 +950,18 @@ tryCatch(
           export_public = need_group_networks
         )
         group_networks <- group_network_result$group_networks
+      }
+      if (need_cell_phenotypes) {
+        write_cell_phenotypes(groups_df, milestone_order, file.path(output_dir, "extras", "cell_phenotypes.tsv"))
+      }
+      if (need_cluster_identities) {
+        write_cluster_identities(groups_df, milestone_order, file.path(output_dir, "extras", "cluster_identities.tsv"))
+      }
+      if (need_prior_grn_by_group) {
+        write_prior_grn_by_group(
+          group_network_result$group_edge_activity,
+          file.path(output_dir, "extras", "prior_grn_by_group.tsv")
+        )
       }
       if (need_lineage) {
         if (is.null(group_network_result)) {

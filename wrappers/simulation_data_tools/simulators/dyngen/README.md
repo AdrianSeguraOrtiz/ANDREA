@@ -15,4 +15,5 @@ dyngen docker wrapper notes:
   - experiment sampling settings
 - derives `groups.tsv` from `milestone_percentages`
 - derives optional `lineage_tree.tsv` from `milestone_network` and aggregated `regulatory_network_sc`
+- derives optional `pseudotime.tsv`, `cell_phenotypes.tsv`, `cluster_identities.tsv`, `enrichment_background.txt`, `prior_grn.tsv` and `prior_grn_by_group.tsv` from dyngen trajectory, feature and cell-specific GRN state
 - writes `progress.json`, normalized outputs and raw `.rds` provenance artefacts

@@ -3,7 +3,17 @@
   "request": {
     "profile": "scrna_grouped",
     "seed": 17,
-    "effective_extras": ["groups", "lineage_tree", "tf_list"],
+    "effective_extras": [
+      "groups",
+      "cell_phenotypes",
+      "cluster_identities",
+      "enrichment_background",
+      "lineage_tree",
+      "pseudotime",
+      "prior_grn",
+      "tf_list",
+      "prior_grn_by_group"
+    ],
     "inputs": {},
     "params": {
       "backbone_template": "bifurcating",
@@ -18,8 +28,14 @@
   "required_files": [
     "expression.tsv",
     "extras/groups.tsv",
+    "extras/cell_phenotypes.tsv",
+    "extras/cluster_identities.tsv",
+    "extras/enrichment_background.txt",
     "extras/lineage_tree.tsv",
+    "extras/pseudotime.tsv",
+    "extras/prior_grn.tsv",
     "extras/tf_list.txt",
+    "extras/prior_grn_by_group.tsv",
     "truth/global_network.csv",
     "simulator-output-manifest.json",
     "progress.json",

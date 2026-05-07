@@ -26,6 +26,12 @@
 - Public `truth/group_networks/*.csv` files are derived from dyngen `regulatory_network_sc` by aggregating cell-specific regulatory strengths within each exported group. Missing cell-edge values are treated as zero; active edges use `mean(abs(strength)) >= 0.1`.
 - `lineage_tree.tsv` is derived from dyngen `milestone_network` and the public group truth active-edge sets.
 - `tf_list.txt` is derived from `feature_info$is_tf`.
+- `pseudotime.tsv` is derived from dyngen `milestone_percentages` and a deterministic order over `milestone_network`; branching/disconnected/cyclic topologies are projected to a single wrapper-defined order.
+- `cell_phenotypes.tsv` reuses the hard milestone-derived group assignment as an ordered phenotype/state assignment.
+- `cluster_identities.tsv` maps each exported group to its dyngen milestone identifier and the same deterministic milestone order.
+- `enrichment_background.txt` is the complete set of generated expression genes.
+- `prior_grn.tsv` is an oracle global prior from dyngen `feature_network`, with signed scores from `strength` and `effect`.
+- `prior_grn_by_group.tsv` is an oracle group-specific prior from aggregated `regulatory_network_sc`; active edges use the same `mean(abs(strength)) >= 0.1` threshold as public group truth, and scores preserve mean signed strength where possible.
 - The current single dyngen spec is intentionally operational as well as scientific:
   - only inputs and parameters that ANDREA can actually execute today are declared
   - unsupported custom-backbone file inputs are not advertised yet

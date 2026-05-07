@@ -24,7 +24,7 @@
   "profile_capabilities": {
     "scrna_global": {
       "native_extras": [],
-      "derivable_extras": ["tf_list"],
+      "derivable_extras": ["enrichment_background", "pseudotime", "prior_grn", "tf_list"],
       "truth_outputs": {
         "global_network": "native",
         "group_networks": "none"
@@ -74,6 +74,44 @@
             "The exported TF list reflects dyngen's simulated regulator classes, not an external organism-specific TF catalogue."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": ["counts"],
+          "method": "Export every generated expression feature identifier from the dyngen count matrix as the background gene universe, one identifier per line.",
+          "assumptions": [
+            "The generated expression feature set is the appropriate enrichment background universe for downstream analyses on the simulated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived, not an external organism-specific gene universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "pseudotime",
+          "source_artifacts": ["milestone_network", "milestone_percentages"],
+          "method": "Derive a deterministic milestone order from dyngen milestone transitions, compute each cell's weighted milestone-order coordinate from milestone_percentages, then min-max scale the resulting coordinate to [0, 1].",
+          "assumptions": [
+            "dyngen milestone transitions provide a usable ordering backbone for a scalar pseudotime coordinate.",
+            "Soft milestone percentages can be summarized as a weighted position on that order."
+          ],
+          "limitations": [
+            "Branching trajectories are projected onto a single scalar ordering.",
+            "Disconnected or cyclic milestone graphs use a deterministic wrapper fallback order."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": ["feature_network"],
+          "method": "Export dyngen feature_network regulator-target edges with signed scores equal to abs(strength) multiplied by the sign of dyngen effect.",
+          "assumptions": [
+            "dyngen feature_network is the native simulated regulatory network and can serve as an oracle global prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior, not a noisy external prior; benchmark interpretation must account for that advantage."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         }
       ],
       "artifacts_aux": [
@@ -87,7 +125,17 @@
     },
     "scrna_grouped": {
       "native_extras": [],
-      "derivable_extras": ["groups", "lineage_tree", "tf_list"],
+      "derivable_extras": [
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "pseudotime",
+        "prior_grn",
+        "tf_list",
+        "prior_grn_by_group"
+      ],
       "truth_outputs": {
         "global_network": "native",
         "group_networks": "derivable"
@@ -139,6 +187,38 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
+          "artifact": "cell_phenotypes",
+          "source_artifacts": [
+            "groups",
+            "milestone_network"
+          ],
+          "method": "Reuse the wrapper-derived hard group assignment as each cell's phenotype label, and assign phenotype order from the deterministic milestone order derived from dyngen milestone transitions.",
+          "assumptions": [
+            "For dyngen grouped scRNA benchmarks, the milestone-derived group label is also an appropriate ordered cell phenotype/state label."
+          ],
+          "limitations": [
+            "The phenotype label is still a hard maximum-membership state, so mixed transition cells lose their soft milestone proportions.",
+            "Branching milestone topologies are reduced to a deterministic integer order."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "cluster_identities",
+          "source_artifacts": [
+            "groups",
+            "milestone_network"
+          ],
+          "method": "Export one row per wrapper-derived group, using the dyngen milestone/group identifier as both cluster and annotation, and assign the optional order from the deterministic milestone order.",
+          "assumptions": [
+            "dyngen milestone identifiers are meaningful cluster annotations for synthetic benchmark datasets."
+          ],
+          "limitations": [
+            "Annotations are simulator state identifiers, not curated biological labels.",
+            "Branching milestone topologies are reduced to a deterministic integer order."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
           "artifact": "lineage_tree",
           "source_artifacts": [
             "milestone_network",
@@ -169,6 +249,62 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
+          "artifact": "enrichment_background",
+          "source_artifacts": ["counts"],
+          "method": "Export every generated expression feature identifier from the dyngen count matrix as the background gene universe, one identifier per line.",
+          "assumptions": [
+            "The generated expression feature set is the appropriate enrichment background universe for downstream analyses on the simulated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived, not an external organism-specific gene universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "pseudotime",
+          "source_artifacts": ["milestone_network", "milestone_percentages"],
+          "method": "Derive a deterministic milestone order from dyngen milestone transitions, compute each cell's weighted milestone-order coordinate from milestone_percentages, then min-max scale the resulting coordinate to [0, 1].",
+          "assumptions": [
+            "dyngen milestone transitions provide a usable ordering backbone for a scalar pseudotime coordinate.",
+            "Soft milestone percentages can be summarized as a weighted position on that order."
+          ],
+          "limitations": [
+            "Branching trajectories are projected onto a single scalar ordering.",
+            "Disconnected or cyclic milestone graphs use a deterministic wrapper fallback order."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": ["feature_network"],
+          "method": "Export dyngen feature_network regulator-target edges with signed scores equal to abs(strength) multiplied by the sign of dyngen effect.",
+          "assumptions": [
+            "dyngen feature_network is the native simulated regulatory network and can serve as an oracle global prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior, not a noisy external prior; benchmark interpretation must account for that advantage."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "prior_grn_by_group",
+          "source_artifacts": [
+            "groups",
+            "regulatory_network_sc"
+          ],
+          "method": "Aggregate dyngen cell-specific regulatory strengths by group and regulator-target edge, keep edges active when mean absolute strength is at least 0.1, and export signed group-specific prior scores from the mean signed strength, falling back to mean absolute strength for sign-ambiguous active edges.",
+          "assumptions": [
+            "dyngen regulatory_network_sc is a cell-specific regulatory activity truth over the generated feature network.",
+            "A group-specific prior can be generated as an oracle benchmark input by aggregating cell-specific regulatory activity over each hard group."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior, not an independently simulated modality such as scATAC.",
+            "The active-edge set depends on the fixed 0.1 threshold and on hard group assignments.",
+            "Opposing signed effects across cells can produce a sign-ambiguous active edge."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
           "artifact": "group_networks",
           "source_artifacts": [
             "groups",
@@ -195,7 +331,7 @@
           "description": "dyngen feature metadata, including feature identifiers and TF annotations."
         }
       ],
-      "notes": "Groups can be derived from milestone assignments. Public group truth networks are derived from cell-specific regulatory activity, and lineage_tree is derived from milestone transitions plus those public group truth networks."
+      "notes": "Groups, ordered cell phenotypes, cluster identities and pseudotime can be derived from milestone assignments and transitions. Public group truth networks and group-specific oracle priors are derived from cell-specific regulatory activity, and lineage_tree is derived from milestone transitions plus those active-edge summaries."
     }
   },
   "params": {
