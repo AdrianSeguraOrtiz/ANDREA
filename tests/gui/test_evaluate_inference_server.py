@@ -102,9 +102,13 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                             "dataset_id": "dataset_a",
                             "simulator_id": "dyngen",
                             "profile": "scrna_grouped",
-                            "outputs": {"global_network": "truth/global_network.csv"},
+                            "outputs": {
+                                "gene_universe": "truth/gene_universe.txt",
+                                "global_network": "truth/global_network.csv",
+                            },
                         }
                     ),
+                    "benchmark/datasets/dataset_a/truth/gene_universe.txt": "G1\nG2\n",
                     "benchmark/datasets/dataset_a/truth/global_network.csv": "source,target,score,sign\n",
                 }
             )
@@ -122,6 +126,7 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                 client = TestClient(gui_server.create_app())
                 response = client.post(
                     "/api/evaluate-inference/run",
+                    data={"output_dir": str(tmp_root / "evaluations")},
                     files={
                         "inference_zip": (
                             "inference.zip",
@@ -136,10 +141,29 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
             payload = response.json()
             self.assertEqual(payload["job"]["status"], "completed")
             self.assertEqual(payload["evaluation_report"]["metrics"][0]["tool_id"], "genie3")
+            self.assertTrue(payload["reproducibility"]["available"])
+            self.assertIn(
+                "andrea evaluate-inference",
+                payload["reproducibility"]["cli"]["primary_code"],
+            )
+            self.assertNotIn(
+                "/gui_tmp/",
+                payload["reproducibility"]["cli"]["primary_code"],
+            )
+            self.assertIn(
+                "evaluate_inference(",
+                payload["reproducibility"]["python"]["primary_code"],
+            )
             self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0]["output_dir"], tmp_root / "evaluations")
             self.assertTrue(calls[0]["run_report_path"].exists())
             self.assertTrue(calls[0]["ground_truth_manifest_path"].exists())
             self.assertTrue(calls[0]["generate_view"])
+            self.assertTrue(
+                Path(payload["job"]["frozen_run_report_path"]).is_relative_to(
+                    tmp_root / "evaluations"
+                )
+            )
 
     def test_multiple_candidates_require_selection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -181,16 +205,24 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                     "datasets/a/ground-truth-manifest.json": json.dumps(
                         {
                             "dataset_id": "dataset_x",
-                            "outputs": {"global_network": "truth/global_network.csv"},
+                            "outputs": {
+                                "gene_universe": "truth/gene_universe.txt",
+                                "global_network": "truth/global_network.csv",
+                            },
                         }
                     ),
+                    "datasets/a/truth/gene_universe.txt": "G1\nG2\n",
                     "datasets/a/truth/global_network.csv": "source,target\n",
                     "datasets/b/ground-truth-manifest.json": json.dumps(
                         {
                             "dataset_id": "dataset_y",
-                            "outputs": {"global_network": "truth/global_network.csv"},
+                            "outputs": {
+                                "gene_universe": "truth/gene_universe.txt",
+                                "global_network": "truth/global_network.csv",
+                            },
                         }
                     ),
+                    "datasets/b/truth/gene_universe.txt": "G1\nG2\n",
                     "datasets/b/truth/global_network.csv": "source,target\n",
                 }
             )
@@ -208,6 +240,7 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                 client = TestClient(gui_server.create_app())
                 response = client.post(
                     "/api/evaluate-inference/run",
+                    data={"output_dir": str(tmp_root / "evaluations")},
                     files={
                         "inference_zip": (
                             "inference.zip",
@@ -234,6 +267,23 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
 
             self.assertEqual(run_response.status_code, 200, msg=run_response.text)
             self.assertEqual(run_response.json()["job"]["status"], "completed")
+            self.assertTrue(run_response.json()["reproducibility"]["available"])
+            self.assertNotIn(
+                "/gui_tmp/",
+                run_response.json()["reproducibility"]["cli"]["primary_code"],
+            )
+
+    def test_static_gui_contains_reproducibility_section(self) -> None:
+        index = (Path(gui_server.STATIC_DIR) / "index.html").read_text(encoding="utf-8")
+        script = (Path(gui_server.STATIC_DIR) / "app" / "main.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Reproduce This Evaluation", index)
+        self.assertIn("reproducibility-grid", index)
+        self.assertIn("repro-steps-modal", index)
+        self.assertIn("renderReproducibility", script)
+        self.assertIn("initReproducibility", script)
 
 
 if __name__ == "__main__":

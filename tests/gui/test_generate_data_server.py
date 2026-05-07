@@ -315,16 +315,28 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     '{"schema_version":"1.0"}\n', encoding="utf-8"
                 )
                 (dataset_dir / "ground-truth-manifest.json").write_text(
-                    '{"schema_version":"1.0"}\n', encoding="utf-8"
+                    json.dumps(
+                        {
+                            "schema_version": "1.0",
+                            "outputs": {"gene_universe": "truth/gene_universe.txt"},
+                        },
+                        ensure_ascii=True,
+                    )
+                    + "\n",
+                    encoding="utf-8",
                 )
                 (dataset_dir / "expression.tsv").write_text(
-                    "gene\tC1\nG1\t1\n", encoding="utf-8"
+                    "gene\tC1\nG1\t1\nG2\t2\n", encoding="utf-8"
                 )
                 (dataset_dir / "extras" / "groups.tsv").write_text(
                     "cell\tcluster\nC1\tA\n", encoding="utf-8"
                 )
                 (dataset_dir / "truth" / "global_network.csv").write_text(
                     "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
+                    encoding="utf-8",
+                )
+                (dataset_dir / "truth" / "gene_universe.txt").write_text(
+                    "G1\nG2\n",
                     encoding="utf-8",
                 )
                 (

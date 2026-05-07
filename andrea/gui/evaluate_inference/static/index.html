@@ -31,6 +31,12 @@
               <input id="truth-zip" name="truth_zip" type="file" accept=".zip" required />
             </label>
           </div>
+          <div class="options-grid">
+            <label>
+              <span>Output directory</span>
+              <input id="output-dir" name="output_dir" type="text" value="./evaluations" />
+            </label>
+          </div>
           <div class="actions">
             <button id="run-button" type="submit">Run evaluation</button>
             <span id="status-pill" class="status-pill idle">Idle</span>
@@ -75,10 +81,26 @@
           </details>
         </div>
         <div id="evaluation-view"></div>
+        <div id="reproducibility-placeholder" class="panel muted-box results-placeholder">Reproducibility snippets will be available after execution.</div>
+        <section id="reproducibility-section" class="panel" hidden>
+          <div class="section-head">
+            <h2>Reproduce This Evaluation</h2>
+          </div>
+          <div id="reproducibility-grid" class="repro-grid"></div>
+        </section>
       </section>
     </main>
 
     <script src="/evaluation-view-assets/view.js?v=20260506a"></script>
-    <script src="/static/app/main.js?v=20260506a"></script>
+    <div id="repro-steps-modal" class="info-popover hidden" role="dialog" aria-modal="true" aria-labelledby="repro-steps-modal-title">
+      <div class="info-popover-card repro-steps-modal-card">
+        <button id="repro-steps-modal-close" class="info-popover-close" type="button" aria-label="Close reproducibility steps">x</button>
+        <h4 id="repro-steps-modal-title">Reproducibility Steps</h4>
+        <div id="repro-steps-modal-body" class="repro-steps-modal-body"></div>
+      </div>
+    </div>
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+    <script type="module" src="/static/app/main.js?v=20260506b"></script>
   </body>
 </html>

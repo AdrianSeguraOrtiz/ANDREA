@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 import zipfile
 from pathlib import Path
 from typing import Any, Optional
@@ -25,6 +26,66 @@ def read_json_if_exists(path: Optional[str | Path]) -> Optional[dict[str, Any]]:
     if not isinstance(data, dict):
         return None
     return data
+
+
+def save_upload(upload: Any, destination: Path) -> None:
+    """Save a FastAPI/Starlette upload object to a local path."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    file_obj = getattr(upload, "file", None)
+    if file_obj is None:
+        raise ValueError("Invalid uploaded file")
+    file_obj.seek(0)
+    with destination.open("wb") as out_fh:
+        shutil.copyfileobj(file_obj, out_fh)
+
+
+def extract_zip_upload(upload: Any, *, zip_path: Path, extract_dir: Path) -> None:
+    """Save and safely extract an uploaded ZIP archive."""
+    filename = str(getattr(upload, "filename", "") or "")
+    if not filename.lower().endswith(".zip"):
+        raise ValueError(
+            f"Uploaded file must be a ZIP archive: {filename or 'unnamed'}"
+        )
+    save_upload(upload, zip_path)
+    if not zipfile.is_zipfile(zip_path):
+        raise ValueError(f"Uploaded file is not a valid ZIP archive: {filename}")
+
+    extract_dir.mkdir(parents=True, exist_ok=True)
+    root = extract_dir.resolve()
+    with zipfile.ZipFile(zip_path) as zf:
+        for info in zf.infolist():
+            member = Path(info.filename)
+            if member.is_absolute() or ".." in member.parts:
+                raise ValueError(f"Unsafe ZIP member path: {info.filename}")
+            if info.is_dir():
+                continue
+            destination = (extract_dir / member).resolve()
+            if not destination.is_relative_to(root):
+                raise ValueError(f"Unsafe ZIP member path: {info.filename}")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(info) as in_fh, destination.open("wb") as out_fh:
+                shutil.copyfileobj(in_fh, out_fh)
+
+
+def uploaded_file(form: Any, key: str) -> Any:
+    upload = form.get(key)
+    if upload is None or not getattr(upload, "filename", ""):
+        return None
+    return upload
+
+
+def output_dir_from_form(form: Any, *, default: str) -> Path:
+    raw = str(form.get("output_dir") or default).strip() or default
+    return Path(raw).expanduser().resolve()
+
+
+def resolve_report_path(report_path: Path, value: Any) -> Optional[Path]:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        path = report_path.parent / path
+    return path.resolve()
 
 
 def default_viewer_for_path(path: str) -> str:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shlex
 import shutil
 import threading
 import traceback
@@ -29,6 +28,11 @@ from andrea.core.commands.generate_data.catalog import _load_simulator_catalog
 from andrea.core.commands.generate_data.shared import PROFILE_SPECS
 from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
 from andrea.core.shared.input_specs import load_input_specs
+from andrea.gui.common.reproducibility import (
+    python_path_expr,
+    shell_join_pretty,
+    unavailable_reproducibility,
+)
 from andrea.gui.common.server_files import (
     MAX_TABLE_PREVIEW_ROWS,
     MAX_TEXT_PREVIEW_BYTES,
@@ -40,6 +44,7 @@ from andrea.gui.common.server_files import (
     preview_text,
     read_json_if_exists,
     resolve_virtual_source,
+    save_upload,
 )
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -281,16 +286,6 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
     }
 
 
-def _save_upload(upload: Any, destination: Path) -> None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with destination.open("wb") as out_fh:
-        file_obj = getattr(upload, "file", None)
-        if file_obj is None:
-            raise ValueError("Invalid uploaded file")
-        file_obj.seek(0)
-        shutil.copyfileobj(file_obj, out_fh)
-
-
 def _scenario_payload_from_config(
     *,
     config: dict[str, Any],
@@ -337,7 +332,7 @@ def _scenario_payload_from_config(
         suffix = Path(str(upload.filename)).suffix
         filename = f"{input_id}{suffix}" if suffix else input_id
         destination = request_dir / "inputs" / filename
-        _save_upload(upload, destination)
+        save_upload(upload, destination)
         meta = resolved_inputs.get(input_id, {})
         meta["path"] = str(Path("inputs") / filename)
         resolved_inputs[input_id] = meta
@@ -572,46 +567,21 @@ def _run_job(*, job_id: str, action: str, options: dict[str, Any]) -> None:
             job.finished_at = _utc_now()
 
 
-def _shell_join_pretty(args: list[str]) -> str:
-    if len(args) <= 3:
-        return " ".join(shlex.quote(str(item)) for item in args)
-    head = " ".join(shlex.quote(str(item)) for item in args[:3])
-    groups: list[str] = []
-    idx = 3
-    while idx < len(args):
-        token = str(args[idx])
-        if token.startswith("--") and idx + 1 < len(args):
-            next_token = str(args[idx + 1])
-            if not next_token.startswith("--"):
-                groups.append(f"{shlex.quote(token)} {shlex.quote(next_token)}")
-                idx += 2
-                continue
-        groups.append(shlex.quote(token))
-        idx += 1
-    return head + "".join(f" \\\n  {group}" for group in groups)
-
-
-def _python_path_expr(path_value: Optional[str]) -> str:
-    return f"Path({str(path_value or '')!r})"
-
-
 def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     benchmark_root = Path(job.benchmark_root) if job.benchmark_root else None
     if benchmark_root is None or not benchmark_root.exists():
-        return {
-            "available": False,
-            "message": "Reproducibility snippets will be available after execution.",
-        }
+        return unavailable_reproducibility(
+            "Reproducibility snippets will be available after execution."
+        )
     scenario_file = benchmark_root / "input" / "scenario-request.json"
     simulator_runs_file = benchmark_root / "input" / "simulator-runs.json"
     plan_file = benchmark_root / "simulation-plan.json"
     if not (
         scenario_file.exists() and simulator_runs_file.exists() and plan_file.exists()
     ):
-        return {
-            "available": False,
-            "message": "Frozen benchmark inputs are not available yet in the output directory.",
-        }
+        return unavailable_reproducibility(
+            "Frozen benchmark inputs are not available yet in the output directory."
+        )
     scenario_path = str(scenario_file.resolve())
     simulator_runs_path = str(simulator_runs_file.resolve())
     plan_path = str(plan_file.resolve())
@@ -681,9 +651,9 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "from andrea.core.commands.generate_data import execute_generate_data",
             "",
             "benchmark_root = execute_generate_data(",
-            f"    scenario_request_path={_python_path_expr(scenario_path)},",
-            f"    simulator_runs_path={_python_path_expr(simulator_runs_path)},",
-            f"    output_dir={_python_path_expr(output_dir)},",
+            f"    scenario_request_path={python_path_expr(scenario_path)},",
+            f"    simulator_runs_path={python_path_expr(simulator_runs_path)},",
+            f"    output_dir={python_path_expr(output_dir)},",
             f"    max_parallel_tasks={max_parallel_tasks},",
             f"    progress_poll_seconds={progress_poll_seconds},",
             ")",
@@ -701,10 +671,10 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "    run_generate_data,",
             ")",
             "",
-            f"scenario_path = {_python_path_expr(scenario_path)}",
-            f"simulator_runs_path = {_python_path_expr(simulator_runs_path)}",
-            f"plan_path = {_python_path_expr(plan_path)}",
-            f"output_dir = {_python_path_expr(output_dir)}",
+            f"scenario_path = {python_path_expr(scenario_path)}",
+            f"simulator_runs_path = {python_path_expr(simulator_runs_path)}",
+            f"plan_path = {python_path_expr(plan_path)}",
+            f"output_dir = {python_path_expr(output_dir)}",
             "",
             "preflight_report = preflight_generate_data_scenario(scenario_path)",
             "plan_generate_data_request(",
@@ -730,23 +700,23 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "summary": "Replay this GUI job using the frozen scenario and simulator-runs files stored in the benchmark output directory.",
             "primary_label": "Unified command",
             "primary_language": "bash",
-            "primary_code": _shell_join_pretty(cli_unified),
+            "primary_code": shell_join_pretty(cli_unified),
             "steps_label": "If you prefer by steps",
             "steps": [
                 {
                     "title": "1. Preflight",
                     "language": "bash",
-                    "code": _shell_join_pretty(cli_preflight),
+                    "code": shell_join_pretty(cli_preflight),
                 },
                 {
                     "title": "2. Plan",
                     "language": "bash",
-                    "code": _shell_join_pretty(cli_plan),
+                    "code": shell_join_pretty(cli_plan),
                 },
                 {
                     "title": "3. Run",
                     "language": "bash",
-                    "code": _shell_join_pretty(cli_run),
+                    "code": shell_join_pretty(cli_run),
                 },
             ],
         },

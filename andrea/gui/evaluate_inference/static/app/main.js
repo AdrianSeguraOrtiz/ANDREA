@@ -1,3 +1,9 @@
+import {
+  initReproducibility,
+  renderReproducibility,
+  resetReproducibility,
+} from "/static-common/app/repro/view.js";
+
 const state = {
   jobId: null,
   pollTimer: null
@@ -67,13 +73,14 @@ function renderError(job) {
   setHidden("#error-panel", false);
 }
 
-function renderReport(report, job) {
+function renderReport(report, job, reproducibility) {
   if (!report || !window.AndreaEvaluationView) return;
   $("#raw-report").textContent = JSON.stringify(report, null, 2);
   const evaluated = (report.metrics || []).filter((row) => row.status === "ok" || row.status === "partial").length;
   const total = (report.metrics || []).length;
   $("#result-summary").textContent = `${evaluated} of ${total} metric rows evaluated`;
   window.AndreaEvaluationView.render($("#evaluation-view"), report);
+  renderReproducibility(reproducibility);
   $("#download-link").href = `/api/evaluate-inference/jobs/${job.job_id}/bundle`;
   setHidden("#download-link", false);
   setHidden("#result-panel", false);
@@ -87,6 +94,7 @@ function renderJob(payload) {
   setHidden("#error-panel", true);
   setHidden("#result-panel", true);
   setHidden("#download-link", true);
+  resetReproducibility();
 
   if (job.status === "needs_selection") {
     stopPolling();
@@ -100,7 +108,7 @@ function renderJob(payload) {
   }
   if (job.status === "completed") {
     stopPolling();
-    renderReport(payload.evaluation_report, job);
+    renderReport(payload.evaluation_report, job, payload.reproducibility);
     return;
   }
   if (job.status === "queued" || job.status === "running") {
@@ -126,6 +134,7 @@ async function submitUploads(event) {
   setHidden("#error-panel", true);
   setHidden("#result-panel", true);
   setHidden("#download-link", true);
+  resetReproducibility();
   $("#evaluation-view").innerHTML = "";
   $("#raw-report").textContent = "";
   $("#run-button").disabled = true;
@@ -181,4 +190,5 @@ $("#inference-zip").addEventListener("change", updateFileLabels);
 $("#truth-zip").addEventListener("change", updateFileLabels);
 $("#upload-form").addEventListener("submit", submitUploads);
 $("#selection-run-button").addEventListener("click", submitSelection);
+initReproducibility();
 updateFileLabels();

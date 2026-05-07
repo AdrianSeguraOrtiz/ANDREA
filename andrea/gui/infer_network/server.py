@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import csv
 import json
-import shlex
 import tempfile
 import threading
 import traceback
@@ -35,6 +34,14 @@ from andrea.core.commands.infer_network.commons.dataset import (
     _inspect_expression_tsv,
     _load_input_specs,
 )
+from andrea.gui.common.reproducibility import (
+    append_cli_option,
+    python_literal,
+    python_path_expr,
+    shell_join_pretty,
+    unavailable_reproducibility,
+)
+from andrea.gui.common.server_files import read_json_if_exists, save_upload
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 COMMON_STATIC_DIR = Path(__file__).resolve().parents[1] / "common" / "static"
@@ -365,17 +372,6 @@ def _safe_int(value: Any, *, default: int) -> int:
     return int(value)
 
 
-def _save_upload(upload: Any, destination: Path) -> None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    upload.file.seek(0)
-    with destination.open("wb") as fh:
-        while True:
-            chunk = upload.file.read(1024 * 1024)
-            if not chunk:
-                break
-            fh.write(chunk)
-
-
 def _normalize_runs(raw_runs: Any) -> list[dict[str, Any]]:
     if not isinstance(raw_runs, list) or not raw_runs:
         raise ValueError("runs must be a non-empty array")
@@ -495,7 +491,7 @@ def _build_dataset_manifest_file(
     inputs_dir = request_dir / "inputs"
     extras_dir = inputs_dir / "extra"
     expression_path = inputs_dir / "expression.tsv"
-    _save_upload(expression_upload, expression_path)
+    save_upload(expression_upload, expression_path)
 
     observed_genes, observed_columns = _inspect_expression_tsv(expression_path)
     genes = _safe_int(dataset_cfg.get("genes"), default=observed_genes)
@@ -519,7 +515,7 @@ def _build_dataset_manifest_file(
             continue
         filename = extra_default_filenames.get(key, f"{key}.tsv")
         destination = extras_dir / filename
-        _save_upload(upload, destination)
+        save_upload(upload, destination)
         extras_payload[key] = str(Path("inputs") / "extra" / filename)
 
     dataset_manifest = {
@@ -591,72 +587,24 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
     }
 
 
-def _shell_join_pretty(args: list[str]) -> str:
-    if not args:
-        return ""
-    if len(args) <= 3:
-        return " ".join(shlex.quote(str(item)) for item in args)
-
-    head = " ".join(shlex.quote(str(item)) for item in args[:3])
-    groups: list[str] = []
-    idx = 3
-    while idx < len(args):
-        token = str(args[idx])
-        if token.startswith("--") and idx + 1 < len(args):
-            next_token = str(args[idx + 1])
-            if not next_token.startswith("--"):
-                groups.append(f"{shlex.quote(token)} {shlex.quote(next_token)}")
-                idx += 2
-                continue
-        groups.append(shlex.quote(token))
-        idx += 1
-
-    if not groups:
-        return head
-    return head + "".join(f" \\\n  {group}" for group in groups)
-
-
-def _python_path_expr(path_value: Optional[str]) -> str:
-    return f"Path({str(path_value or '')!r})"
-
-
-def _python_literal(value: Any) -> str:
-    return repr(value)
-
-
-def _append_cli_option(args: list[str], name: str, value: Any) -> None:
-    if value is None:
-        return
-    if isinstance(value, bool):
-        if value:
-            args.append(name)
-        return
-    text = str(value).strip()
-    if not text:
-        return
-    args.extend([name, text])
-
-
 def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     run_dir_raw = str(job.run_dir or "").strip()
     if not run_dir_raw:
-        return {
-            "available": False,
-            "message": "Reproducibility snippets will be available after planning and execution.",
-        }
+        return unavailable_reproducibility(
+            "Reproducibility snippets will be available after planning and execution."
+        )
     run_dir = Path(run_dir_raw).resolve()
     dataset_manifest = (run_dir / "input" / "dataset-manifest.json").resolve()
     tools_params = (run_dir / "input" / "tools_params.json").resolve()
     if not dataset_manifest.exists() or not tools_params.exists():
-        return {
-            "available": False,
-            "message": "Frozen run inputs are not available yet in the output directory.",
-        }
+        return unavailable_reproducibility(
+            "Frozen run inputs are not available yet in the output directory."
+        )
 
     dataset_manifest_path = str(dataset_manifest)
     tools_params_path = str(tools_params)
     plan_payload = (
-        _read_json_if_exists(job.plan_path or str(run_dir / "plan.json")) or {}
+        read_json_if_exists(job.plan_path or str(run_dir / "plan.json")) or {}
     )
     resource_limits = (
         plan_payload.get("resource_limits", {})
@@ -699,8 +647,8 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--progress-poll-seconds",
         str(progress_poll_seconds),
     ]
-    _append_cli_option(cli_unified_args, "--max-ram-gb", max_ram_gb)
-    _append_cli_option(cli_unified_args, "--strict", strict)
+    append_cli_option(cli_unified_args, "--max-ram-gb", max_ram_gb)
+    append_cli_option(cli_unified_args, "--strict", strict)
 
     cli_preflight_args = [
         "andrea",
@@ -713,7 +661,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--output-json",
         preflight_output_json,
     ]
-    _append_cli_option(cli_preflight_args, "--strict", strict)
+    append_cli_option(cli_preflight_args, "--strict", strict)
 
     cli_plan_args = [
         "andrea",
@@ -732,8 +680,8 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--planner-time-limit-seconds",
         str(planner_time_limit_seconds),
     ]
-    _append_cli_option(cli_plan_args, "--max-ram-gb", max_ram_gb)
-    _append_cli_option(cli_plan_args, "--strict", strict)
+    append_cli_option(cli_plan_args, "--max-ram-gb", max_ram_gb)
+    append_cli_option(cli_plan_args, "--strict", strict)
 
     cli_run_args = [
         "andrea",
@@ -744,7 +692,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--progress-poll-seconds",
         str(progress_poll_seconds),
     ]
-    _append_cli_option(cli_run_args, "--strict", strict)
+    append_cli_option(cli_run_args, "--strict", strict)
 
     python_unified = "\n".join(
         [
@@ -753,15 +701,15 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "from andrea.core.commands.infer_network import infer_network",
             "",
             "run_dir = infer_network(",
-            f"    dataset_manifest_path={_python_path_expr(dataset_manifest_path)},",
-            f"    tools_params_path={_python_path_expr(tools_params_path)},",
-            f"    output_dir={_python_path_expr(output_dir)},",
+            f"    dataset_manifest_path={python_path_expr(dataset_manifest_path)},",
+            f"    tools_params_path={python_path_expr(tools_params_path)},",
+            f"    output_dir={python_path_expr(output_dir)},",
             f"    max_cores={int(max_cores)},",
-            f"    max_ram_gb={_python_literal(max_ram_gb)},",
-            f"    planner={_python_literal(planner)},",
+            f"    max_ram_gb={python_literal(max_ram_gb)},",
+            f"    planner={python_literal(planner)},",
             f"    planner_time_limit_seconds={planner_time_limit_seconds},",
             f"    progress_poll_seconds={progress_poll_seconds},",
-            f"    strict={_python_literal(strict)},",
+            f"    strict={python_literal(strict)},",
             ")",
             "",
             "print(run_dir)",
@@ -778,14 +726,14 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "    run_infer_network_plan,",
             ")",
             "",
-            f"dataset_manifest_path = {_python_path_expr(dataset_manifest_path)}",
-            f"tools_params_path = {_python_path_expr(tools_params_path)}",
-            f"output_dir = {_python_path_expr(output_dir)}",
+            f"dataset_manifest_path = {python_path_expr(dataset_manifest_path)}",
+            f"tools_params_path = {python_path_expr(tools_params_path)}",
+            f"output_dir = {python_path_expr(output_dir)}",
             "",
             "preflight_report = preflight_infer_network(",
             "    dataset_manifest_path=dataset_manifest_path,",
             "    tools_params_path=tools_params_path,",
-            f"    strict={_python_literal(strict)},",
+            f"    strict={python_literal(strict)},",
             ")",
             "",
             "run_dir = plan_infer_network(",
@@ -793,17 +741,17 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "    tools_params_path=tools_params_path,",
             "    output_dir=output_dir,",
             f"    max_cores={int(max_cores)},",
-            f"    max_ram_gb={_python_literal(max_ram_gb)},",
-            f"    planner={_python_literal(planner)},",
+            f"    max_ram_gb={python_literal(max_ram_gb)},",
+            f"    planner={python_literal(planner)},",
             f"    planner_time_limit_seconds={planner_time_limit_seconds},",
-            f"    strict={_python_literal(strict)},",
+            f"    strict={python_literal(strict)},",
             "    preflight_report=preflight_report,",
             ")",
             "",
             "run_dir = run_infer_network_plan(",
             "    run_dir=run_dir,",
             f"    progress_poll_seconds={progress_poll_seconds},",
-            f"    strict={_python_literal(strict)},",
+            f"    strict={python_literal(strict)},",
             ")",
             "",
             "print(run_dir)",
@@ -817,23 +765,23 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "summary": "Replay this GUI job using the frozen inputs stored in the run output directory.",
             "primary_label": "Unified command",
             "primary_language": "bash",
-            "primary_code": _shell_join_pretty(cli_unified_args),
+            "primary_code": shell_join_pretty(cli_unified_args),
             "steps_label": "If you prefer by steps",
             "steps": [
                 {
                     "title": "1. Preflight",
                     "language": "bash",
-                    "code": _shell_join_pretty(cli_preflight_args),
+                    "code": shell_join_pretty(cli_preflight_args),
                 },
                 {
                     "title": "2. Plan",
                     "language": "bash",
-                    "code": _shell_join_pretty(cli_plan_args),
+                    "code": shell_join_pretty(cli_plan_args),
                 },
                 {
                     "title": "3. Run",
                     "language": "bash",
-                    "code": _shell_join_pretty(cli_run_args),
+                    "code": shell_join_pretty(cli_run_args),
                 },
             ],
         },
@@ -855,21 +803,6 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     }
 
 
-def _read_json_if_exists(path: Optional[str]) -> Optional[dict[str, Any]]:
-    if not path:
-        return None
-    json_path = Path(path)
-    if not json_path.exists() or not json_path.is_file():
-        return None
-    try:
-        data = json.loads(json_path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        return None
-    if not isinstance(data, dict):
-        return None
-    return data
-
-
 def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
     if run_dir is None or not run_dir.exists() or not run_dir.is_dir():
         return {
@@ -883,10 +816,10 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
             },
         }
 
-    plan_payload = _read_json_if_exists(str(run_dir / "plan.json"))
+    plan_payload = read_json_if_exists(str(run_dir / "plan.json"))
     status_by_tool: dict[str, str] = {}
     logical_results: dict[str, Any] = {}
-    run_report = _read_json_if_exists(str(run_dir / "run_report.json"))
+    run_report = read_json_if_exists(str(run_dir / "run_report.json"))
     if isinstance(run_report, dict):
         tools_payload = run_report.get("tools")
         if isinstance(tools_payload, dict):
@@ -1379,7 +1312,7 @@ def _run_job(
             if dataset_manifest_path is None or tools_params_path is None:
                 raise ValueError("Job is missing dataset/tools paths for planning")
             preflight_path = Path(job.request_dir) / "preflight_report.json"
-            preflight_report = _read_json_if_exists(str(preflight_path))
+            preflight_report = read_json_if_exists(str(preflight_path))
             run_dir = plan_infer_network(
                 dataset_manifest_path=dataset_manifest_path,
                 tools_params_path=tools_params_path,
@@ -1478,8 +1411,8 @@ def create_app() -> FastAPI:
             payload = _job_payload(job)
             reproducibility = _build_reproducibility_payload(job)
 
-        run_report = _read_json_if_exists(payload.get("run_report_path"))
-        preflight_report = _read_json_if_exists(payload.get("preflight_report_path"))
+        run_report = read_json_if_exists(payload.get("run_report_path"))
+        preflight_report = read_json_if_exists(payload.get("preflight_report_path"))
         run_dir = Path(payload["run_dir"]) if payload.get("run_dir") else None
         runtime_progress = _collect_runtime_progress(run_dir=run_dir)
 
@@ -1502,7 +1435,7 @@ def create_app() -> FastAPI:
             plan_path = job.plan_path
             status = job.status
 
-        plan = _read_json_if_exists(plan_path)
+        plan = read_json_if_exists(plan_path)
         if plan is None:
             return JSONResponse({"status": status, "plan": None})
         return JSONResponse({"status": status, "plan": plan, "plan_path": plan_path})

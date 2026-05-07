@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import tempfile
 import threading
 import traceback
 import uuid
 import webbrowser
-import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,7 +21,18 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from andrea.core.commands.evaluate_inference import evaluate_inference
-from andrea.gui.common.server_files import build_zip_bundle, read_json_if_exists
+from andrea.gui.common.reproducibility import (
+    build_single_step_reproducibility_payload,
+    python_path_expr,
+    unavailable_reproducibility,
+)
+from andrea.gui.common.server_files import (
+    build_zip_bundle,
+    extract_zip_upload,
+    output_dir_from_form,
+    read_json_if_exists,
+    resolve_report_path,
+)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 COMMON_STATIC_DIR = Path(__file__).resolve().parents[1] / "common" / "static"
@@ -51,6 +62,8 @@ class GuiJob:
     truth_candidates: list[dict[str, Any]] = field(default_factory=list)
     selected_run_report: Optional[str] = None
     selected_ground_truth_manifest: Optional[str] = None
+    frozen_run_report_path: Optional[str] = None
+    frozen_ground_truth_manifest_path: Optional[str] = None
     evaluation_report_path: Optional[str] = None
     evaluation_dir: Optional[str] = None
     error: Optional[str] = None
@@ -80,6 +93,8 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
         "truth_candidates": job.truth_candidates,
         "selected_run_report": job.selected_run_report,
         "selected_ground_truth_manifest": job.selected_ground_truth_manifest,
+        "frozen_run_report_path": job.frozen_run_report_path,
+        "frozen_ground_truth_manifest_path": job.frozen_ground_truth_manifest_path,
         "evaluation_report_path": job.evaluation_report_path,
         "evaluation_dir": job.evaluation_dir,
         "error": job.error,
@@ -98,49 +113,8 @@ def _job_response(job_id: str) -> dict[str, Any]:
     return {
         "job": payload,
         "evaluation_report": read_json_if_exists(payload.get("evaluation_report_path")),
+        "reproducibility": _build_reproducibility_payload(job),
     }
-
-
-def _save_upload(upload: Any, destination: Path) -> None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with destination.open("wb") as out_fh:
-        file_obj = getattr(upload, "file", None)
-        if file_obj is None:
-            raise ValueError("Invalid uploaded file")
-        file_obj.seek(0)
-        shutil.copyfileobj(file_obj, out_fh)
-
-
-def _extract_zip(upload: Any, *, zip_path: Path, extract_dir: Path) -> None:
-    filename = str(getattr(upload, "filename", "") or "")
-    if not filename.lower().endswith(".zip"):
-        raise ValueError(f"Uploaded file must be a ZIP archive: {filename or 'unnamed'}")
-    _save_upload(upload, zip_path)
-    if not zipfile.is_zipfile(zip_path):
-        raise ValueError(f"Uploaded file is not a valid ZIP archive: {filename}")
-    extract_dir.mkdir(parents=True, exist_ok=True)
-    root = extract_dir.resolve()
-    with zipfile.ZipFile(zip_path) as zf:
-        for info in zf.infolist():
-            member = Path(info.filename)
-            if member.is_absolute() or ".." in member.parts:
-                raise ValueError(f"Unsafe ZIP member path: {info.filename}")
-            if info.is_dir():
-                continue
-            destination = (extract_dir / member).resolve()
-            if not destination.is_relative_to(root):
-                raise ValueError(f"Unsafe ZIP member path: {info.filename}")
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            with zf.open(info) as in_fh, destination.open("wb") as out_fh:
-                shutil.copyfileobj(in_fh, out_fh)
-
-
-def _load_json(path: Path) -> Optional[dict[str, Any]]:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        return None
-    return data if isinstance(data, dict) else None
 
 
 def _discover_run_candidates(root: Path) -> list[dict[str, Any]]:
@@ -148,7 +122,7 @@ def _discover_run_candidates(root: Path) -> list[dict[str, Any]]:
     for path in sorted(root.rglob("run_report.json")):
         if not path.is_file():
             continue
-        payload = _load_json(path)
+        payload = read_json_if_exists(path)
         if not payload:
             continue
         outputs = payload.get("outputs")
@@ -173,7 +147,7 @@ def _discover_truth_candidates(root: Path) -> list[dict[str, Any]]:
     for path in sorted(root.rglob("ground-truth-manifest.json")):
         if not path.is_file():
             continue
-        payload = _load_json(path)
+        payload = read_json_if_exists(path)
         if not payload:
             continue
         outputs = payload.get("outputs")
@@ -234,7 +208,6 @@ def _candidate_path(
         raise ValueError(f"Selected {kind} file no longer exists: {selected_path}")
     return path
 
-
 def _start_evaluation_job(
     *,
     job_id: str,
@@ -247,6 +220,8 @@ def _start_evaluation_job(
         job.stage = "queued"
         job.selected_run_report = run_report
         job.selected_ground_truth_manifest = ground_truth_manifest
+        job.frozen_run_report_path = None
+        job.frozen_ground_truth_manifest_path = None
         job.error = None
         job.traceback = None
         job.started_at = None
@@ -298,10 +273,19 @@ def _run_evaluation_job(
         )
         evaluation_report = output_dir / str(report["outputs"]["evaluation_report"])
         evaluation_dir = output_dir / str(report["outputs"]["evaluation_dir"])
+        frozen_run_report_path, frozen_truth_manifest_path = _freeze_evaluation_inputs(
+            evaluation_dir=evaluation_dir,
+            run_report_path=run_report_path,
+            truth_manifest_path=truth_manifest_path,
+        )
         with STATE.lock:
             job = STATE.jobs[job_id]
             job.status = "completed"
             job.stage = "completed"
+            job.frozen_run_report_path = str(frozen_run_report_path.resolve())
+            job.frozen_ground_truth_manifest_path = str(
+                frozen_truth_manifest_path.resolve()
+            )
             job.evaluation_report_path = str(evaluation_report.resolve())
             job.evaluation_dir = str(evaluation_dir.resolve())
             job.finished_at = _utc_now()
@@ -313,6 +297,163 @@ def _run_evaluation_job(
             job.error = str(exc)
             job.traceback = traceback.format_exc(limit=30)
             job.finished_at = _utc_now()
+
+
+def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
+    if job.status != "completed":
+        return unavailable_reproducibility(
+            "Reproducibility snippets will be available after execution."
+        )
+    if not job.frozen_run_report_path or not job.frozen_ground_truth_manifest_path:
+        return unavailable_reproducibility(
+            "Frozen evaluation inputs are not available for this job."
+        )
+    run_report_path = Path(job.frozen_run_report_path).resolve()
+    truth_manifest_path = Path(job.frozen_ground_truth_manifest_path).resolve()
+    if not run_report_path.exists() or not truth_manifest_path.exists():
+        return unavailable_reproducibility(
+            "Frozen evaluation inputs no longer exist for this job."
+        )
+    output_dir = Path(job.output_dir).resolve()
+    cli_args = [
+        "andrea",
+        "evaluate-inference",
+        "--run-report",
+        str(run_report_path),
+        "--ground-truth-manifest",
+        str(truth_manifest_path),
+        "--output-dir",
+        str(output_dir),
+        "--view",
+    ]
+    python_code = "\n".join(
+        [
+            "from pathlib import Path",
+            "",
+            "from andrea.core.commands.evaluate_inference import evaluate_inference",
+            "",
+            "report = evaluate_inference(",
+            f"    run_report_path={python_path_expr(run_report_path)},",
+            f"    ground_truth_manifest_path={python_path_expr(truth_manifest_path)},",
+            f"    output_dir={python_path_expr(output_dir)},",
+            "    generate_view=True,",
+            ")",
+            "",
+            "print(report['outputs']['evaluation_dir'])",
+        ]
+    )
+    return build_single_step_reproducibility_payload(
+        cli_summary=(
+            "Replay this GUI evaluation using the frozen inputs stored in the "
+            "evaluation output package."
+        ),
+        cli_args=cli_args,
+        python_summary=(
+            "Replay this GUI evaluation using the current evaluate-inference "
+            "Python API and the frozen inputs stored in the output package."
+        ),
+        python_code=python_code,
+    )
+
+
+def _freeze_evaluation_inputs(
+    *,
+    evaluation_dir: Path,
+    run_report_path: Path,
+    truth_manifest_path: Path,
+) -> tuple[Path, Path]:
+    input_dir = evaluation_dir / "input"
+    frozen_run_report = _freeze_run_report(
+        run_report_path=run_report_path,
+        destination_dir=input_dir / "inference",
+    )
+    frozen_truth_manifest = _freeze_truth_manifest(
+        truth_manifest_path=truth_manifest_path,
+        destination_dir=input_dir / "ground_truth",
+    )
+    return frozen_run_report, frozen_truth_manifest
+
+
+def _freeze_run_report(*, run_report_path: Path, destination_dir: Path) -> Path:
+    run_report = read_json_if_exists(run_report_path) or {}
+    outputs = run_report.setdefault("outputs", {})
+    if not isinstance(outputs, dict):
+        outputs = {}
+        run_report["outputs"] = outputs
+    raw_path = resolve_report_path(run_report_path, outputs.get("merged_network_raw"))
+    if raw_path is None or not raw_path.exists():
+        raise ValueError(
+            "Cannot freeze evaluation input: run_report outputs.merged_network_raw "
+            f"is missing or unresolved ({run_report_path})"
+        )
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    frozen_network = destination_dir / "merged_network_raw.csv"
+    shutil.copy2(raw_path, frozen_network)
+    outputs["merged_network_raw"] = frozen_network.name
+    frozen_report = destination_dir / "run_report.json"
+    frozen_report.write_text(
+        json.dumps(run_report, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    return frozen_report
+
+
+def _freeze_truth_manifest(*, truth_manifest_path: Path, destination_dir: Path) -> Path:
+    manifest = read_json_if_exists(truth_manifest_path) or {}
+    outputs = manifest.setdefault("outputs", {})
+    if not isinstance(outputs, dict):
+        outputs = {}
+        manifest["outputs"] = outputs
+    gene_universe_path = resolve_report_path(
+        truth_manifest_path, outputs.get("gene_universe")
+    )
+    if gene_universe_path is None or not gene_universe_path.exists():
+        raise ValueError(
+            "Cannot freeze evaluation input: ground_truth_manifest outputs.gene_universe "
+            f"is missing or unresolved ({truth_manifest_path})"
+        )
+    frozen_gene_universe = destination_dir / "truth" / "gene_universe.txt"
+    frozen_gene_universe.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(gene_universe_path, frozen_gene_universe)
+    outputs["gene_universe"] = "truth/gene_universe.txt"
+    global_path = resolve_report_path(
+        truth_manifest_path, outputs.get("global_network")
+    )
+    if global_path is not None:
+        frozen_global = destination_dir / "truth" / "global_network.csv"
+        frozen_global.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(global_path, frozen_global)
+        outputs["global_network"] = "truth/global_network.csv"
+    group_entries = outputs.get("group_networks", [])
+    if isinstance(group_entries, list):
+        frozen_entries: list[dict[str, str]] = []
+        for entry in group_entries:
+            if not isinstance(entry, dict):
+                continue
+            group = str(entry.get("group") or "").strip()
+            source_path = resolve_report_path(truth_manifest_path, entry.get("path"))
+            if not group or source_path is None:
+                continue
+            filename = f"{_slugify(group)}.csv"
+            frozen_group = destination_dir / "truth" / "group_networks" / filename
+            frozen_group.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_path, frozen_group)
+            frozen_entries.append(
+                {"group": group, "path": f"truth/group_networks/{filename}"}
+            )
+        outputs["group_networks"] = frozen_entries
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    frozen_manifest = destination_dir / "ground-truth-manifest.json"
+    frozen_manifest.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    return frozen_manifest
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip()).strip("._-")
+    return slug or "unknown"
 
 
 def _bundle_sources(*, evaluation_dir: Optional[Path]) -> list[tuple[str, Path]]:
@@ -359,16 +500,16 @@ def create_app() -> FastAPI:
 
         job_id = uuid.uuid4().hex[:12]
         request_dir = (GUI_TMP_ROOT / job_id).resolve()
-        output_dir = request_dir / "output"
+        output_dir = output_dir_from_form(form, default="./evaluations")
         request_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            _extract_zip(
+            extract_zip_upload(
                 inference_upload,
                 zip_path=request_dir / "uploads" / "inference.zip",
                 extract_dir=request_dir / "inference",
             )
-            _extract_zip(
+            extract_zip_upload(
                 truth_upload,
                 zip_path=request_dir / "uploads" / "truth.zip",
                 extract_dir=request_dir / "truth",

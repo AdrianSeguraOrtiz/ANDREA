@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ANDREA compare-networks</title>
+    <link rel="stylesheet" href="/comparison-view-assets/view.css?v=20260506g" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260506f" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Compare Networks</h1>
+          <p>Compare normalized inferred networks across one or more inference runs.</p>
+        </div>
+        <a id="download-link" class="button secondary hidden" href="#">Download ZIP</a>
+      </header>
+
+      <section class="panel upload-panel">
+        <div class="section-head">
+          <div>
+            <h2>Comparison Sources</h2>
+            <span class="muted">Each source needs an inference output ZIP. Evaluation output ZIPs are optional.</span>
+          </div>
+          <button id="add-source-button" type="button" class="button secondary">Add source</button>
+        </div>
+        <form id="upload-form">
+          <div id="source-upload-list" class="source-upload-list"></div>
+          <div class="options-grid">
+            <label>
+              <span>Output directory</span>
+              <input id="output-dir" name="output_dir" type="text" value="./comparisons" />
+            </label>
+          </div>
+          <div class="actions">
+            <button id="run-button" type="submit">Run comparison</button>
+            <span id="status-pill" class="status-pill idle">Idle</span>
+          </div>
+        </form>
+      </section>
+
+      <section id="selection-panel" class="panel hidden">
+        <div class="section-head">
+          <h2>Select Reports</h2>
+          <span class="muted">Multiple candidates were detected in at least one source.</span>
+        </div>
+        <div id="selection-list" class="selection-list"></div>
+        <div class="actions">
+          <button id="selection-run-button" type="button">Run selected sources</button>
+        </div>
+      </section>
+
+      <section id="error-panel" class="panel error-panel hidden">
+        <h2>Execution Error</h2>
+        <pre id="error-text"></pre>
+      </section>
+
+      <section id="result-panel" class="result-panel hidden">
+        <div class="panel result-head">
+          <div>
+            <h2>Comparison Results</h2>
+            <span id="result-summary" class="muted"></span>
+          </div>
+          <details>
+            <summary>Raw comparison_report.json</summary>
+            <pre id="raw-report"></pre>
+          </details>
+        </div>
+        <nav class="result-tabs" aria-label="Comparison views">
+          <button class="tab-button active" type="button" data-tab-target="distance-tab">Distance Maps</button>
+          <button class="tab-button" type="button" data-tab-target="edges-tab">Edge Differences</button>
+        </nav>
+
+        <section id="distance-tab" class="tab-panel">
+          <div id="distance-source-cards-panel" class="panel hidden">
+            <div class="section-head">
+              <div>
+                <h2>Sources</h2>
+                <span class="muted">Select one source for the distance maps.</span>
+              </div>
+              <span id="distance-source-status" class="muted"></span>
+            </div>
+            <div id="distance-source-cards" class="source-card-grid compact"></div>
+          </div>
+          <div id="distance-map-view"></div>
+        </section>
+
+        <section id="edges-tab" class="tab-panel hidden">
+          <div id="edge-source-cards-panel" class="panel hidden">
+            <div class="section-head">
+              <div>
+                <h2>Sources And Runs</h2>
+                <span class="muted">Select tools in order. Comparisons use only genes common to all selected networks.</span>
+              </div>
+              <span id="tool-selection-status" class="muted"></span>
+            </div>
+            <div id="edge-source-cards" class="source-card-grid"></div>
+          </div>
+          <div id="edge-difference-view"></div>
+        </section>
+        <div id="reproducibility-placeholder" class="panel muted-box results-placeholder">Reproducibility snippets will be available after execution.</div>
+        <section id="reproducibility-section" class="panel" hidden>
+          <div class="section-head">
+            <h2>Reproduce This Comparison</h2>
+          </div>
+          <div id="reproducibility-grid" class="repro-grid"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/comparison-view-assets/view.js?v=20260506g"></script>
+    <div id="repro-steps-modal" class="info-popover hidden" role="dialog" aria-modal="true" aria-labelledby="repro-steps-modal-title">
+      <div class="info-popover-card repro-steps-modal-card">
+        <button id="repro-steps-modal-close" class="info-popover-close" type="button" aria-label="Close reproducibility steps">x</button>
+        <h4 id="repro-steps-modal-title">Reproducibility Steps</h4>
+        <div id="repro-steps-modal-body" class="repro-steps-modal-body"></div>
+      </div>
+    </div>
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+    <script type="module" src="/static/app/main.js?v=20260506f"></script>
+  </body>
+</html>
