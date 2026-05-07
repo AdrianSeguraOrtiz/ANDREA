@@ -258,7 +258,17 @@ def _dataset_manifest_payload(
         },
         "extras": {},
     }
-    for key in ("groups", "lineage_tree", "tf_list", "prior_grn_by_group"):
+    for key in (
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "pseudotime",
+        "prior_grn",
+        "tf_list",
+        "prior_grn_by_group",
+    ):
         value = extras.get(key)
         if value is not None:
             payload["extras"][key] = value
@@ -755,12 +765,46 @@ def _execute_simulation_task(
             if (dataset_dir / "extras" / "groups.tsv").exists()
             else None
         ),
+        "cell_phenotypes": (
+            _relative_posix(
+                dataset_dir / "extras" / "cell_phenotypes.tsv",
+                benchmark_root,
+            )
+            if (dataset_dir / "extras" / "cell_phenotypes.tsv").exists()
+            else None
+        ),
+        "cluster_identities": (
+            _relative_posix(
+                dataset_dir / "extras" / "cluster_identities.tsv",
+                benchmark_root,
+            )
+            if (dataset_dir / "extras" / "cluster_identities.tsv").exists()
+            else None
+        ),
+        "enrichment_background": (
+            _relative_posix(
+                dataset_dir / "extras" / "enrichment_background.txt",
+                benchmark_root,
+            )
+            if (dataset_dir / "extras" / "enrichment_background.txt").exists()
+            else None
+        ),
         "lineage_tree": (
             _relative_posix(
                 dataset_dir / "extras" / "lineage_tree.tsv",
                 benchmark_root,
             )
             if (dataset_dir / "extras" / "lineage_tree.tsv").exists()
+            else None
+        ),
+        "pseudotime": (
+            _relative_posix(dataset_dir / "extras" / "pseudotime.tsv", benchmark_root)
+            if (dataset_dir / "extras" / "pseudotime.tsv").exists()
+            else None
+        ),
+        "prior_grn": (
+            _relative_posix(dataset_dir / "extras" / "prior_grn.tsv", benchmark_root)
+            if (dataset_dir / "extras" / "prior_grn.tsv").exists()
             else None
         ),
         "tf_list": (

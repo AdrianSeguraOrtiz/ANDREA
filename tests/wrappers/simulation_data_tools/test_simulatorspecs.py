@@ -76,7 +76,17 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
         )
         self.assertEqual(
             set(grouped["derivable_extras"]),
-            {"groups", "lineage_tree", "tf_list"},
+            {
+                "groups",
+                "cell_phenotypes",
+                "cluster_identities",
+                "enrichment_background",
+                "lineage_tree",
+                "pseudotime",
+                "prior_grn",
+                "tf_list",
+                "prior_grn_by_group",
+            },
         )
         self.assertEqual(grouped["truth_outputs"]["global_network"], "native")
         self.assertEqual(grouped["truth_outputs"]["group_networks"], "derivable")

@@ -69,7 +69,12 @@ Do not create a new canonical profile just because one inference tool has specia
 
 Supported extras currently include:
 - `groups`
+- `cell_phenotypes`
+- `cluster_identities`
+- `enrichment_background`
 - `lineage_tree`
+- `pseudotime`
+- `prior_grn`
 - `tf_list`
 - `prior_grn_by_group`
 
@@ -369,7 +374,12 @@ Optional files:
 
 ```text
 extras/groups.tsv
+extras/cell_phenotypes.tsv
+extras/cluster_identities.tsv
+extras/enrichment_background.txt
 extras/lineage_tree.tsv
+extras/pseudotime.tsv
+extras/prior_grn.tsv
 extras/tf_list.txt
 extras/prior_grn_by_group.tsv
 truth/group_networks/<group>.csv
@@ -584,6 +594,51 @@ Rules:
 - `cell` values must match expression column names
 - group labels should be stable and human-readable
 
+### `cell_phenotypes.tsv`
+
+Use:
+
+```text
+cell	phenotype	order
+cell_1	state_a	0
+cell_2	state_b	1
+```
+
+Rules:
+- exactly one phenotype assignment per expression column
+- `cell` values must match expression column names
+- `order` must be an integer and must follow a documented simulator-derived state ordering
+
+### `cluster_identities.tsv`
+
+Use:
+
+```text
+cluster	annotation	order
+group_a	progenitor	0
+group_b	branch_1	1
+```
+
+Rules:
+- `cluster` values must exist in `groups.tsv`
+- `annotation` should be stable and human-readable
+- `order` is optional by input spec but should be emitted when the simulator has an ordered state or trajectory model
+
+### `pseudotime.tsv`
+
+Use:
+
+```text
+cell	pseudotime
+cell_1	0.0
+cell_2	0.7
+```
+
+Rules:
+- exactly one pseudotime value per expression column
+- `cell` values must match expression column names
+- document whether pseudotime is native or derived, including branch handling and scaling
+
 ### `lineage_tree.tsv`
 
 Use:
@@ -607,6 +662,30 @@ Rules:
 - ids must be a subset of expression genes
 - if the simulator does not distinguish TFs natively, document the derivation rule
 
+### `enrichment_background.txt`
+
+Use one gene id per line.
+
+Rules:
+- ids should be a subset of expression genes
+- document whether the background is all simulated genes, assay-specific detected genes, or an external universe
+
+### `prior_grn.tsv`
+
+Use:
+
+```text
+source	target	score
+TF1	G2	0.7
+TF2	G3	-0.4
+```
+
+Rules:
+- `source` and `target` must be expression genes
+- document whether `score` is unsigned confidence, signed effect, or another method-specific value
+- document whether the prior is modality-grounded, truth-derived, or heuristic
+- avoid deriving a prior directly from clean truth unless the benchmark explicitly intends that
+
 ### `prior_grn_by_group.tsv`
 
 Use:
@@ -619,7 +698,7 @@ group_a	TF1	G2	0.7
 Rules:
 - `group` must exist in `groups.tsv`
 - `source` and `target` must be expression genes
-- `score` should be in `[0, 1]`
+- document whether `score` is unsigned confidence, signed effect, or another method-specific value
 - document whether the prior is modality-grounded, truth-derived, or heuristic
 - avoid deriving a prior directly from clean truth unless the benchmark explicitly intends that
 

@@ -76,7 +76,18 @@
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "enum": ["groups", "lineage_tree", "tf_list", "prior_grn_by_group", "group_networks"]
+        "enum": [
+          "groups",
+          "cell_phenotypes",
+          "cluster_identities",
+          "enrichment_background",
+          "lineage_tree",
+          "pseudotime",
+          "prior_grn",
+          "tf_list",
+          "prior_grn_by_group",
+          "group_networks"
+        ]
       }
     },
     "effective_extras": {
@@ -84,7 +95,18 @@
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "enum": ["groups", "lineage_tree", "tf_list", "prior_grn_by_group", "group_networks"]
+        "enum": [
+          "groups",
+          "cell_phenotypes",
+          "cluster_identities",
+          "enrichment_background",
+          "lineage_tree",
+          "pseudotime",
+          "prior_grn",
+          "tf_list",
+          "prior_grn_by_group",
+          "group_networks"
+        ]
       }
     },
     "inputs": {

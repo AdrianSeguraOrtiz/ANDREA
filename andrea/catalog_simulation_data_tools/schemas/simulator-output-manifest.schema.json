@@ -55,7 +55,12 @@
       "additionalProperties": false,
       "properties": {
         "groups": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
+        "cell_phenotypes": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
+        "cluster_identities": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
+        "enrichment_background": { "type": ["string", "null"], "pattern": ".*\\.txt$" },
         "lineage_tree": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
+        "pseudotime": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
+        "prior_grn": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
         "tf_list": { "type": ["string", "null"], "pattern": ".*\\.txt$" },
         "prior_grn_by_group": { "type": ["string", "null"], "pattern": ".*\\.tsv$" }
       }

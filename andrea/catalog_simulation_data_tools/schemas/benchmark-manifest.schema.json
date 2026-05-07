@@ -147,7 +147,12 @@
           "expression_matrix": { "type": "string", "minLength": 1 },
           "gene_universe": { "type": "string", "minLength": 1 },
           "groups": { "type": ["string", "null"] },
+          "cell_phenotypes": { "type": ["string", "null"] },
+          "cluster_identities": { "type": ["string", "null"] },
+          "enrichment_background": { "type": ["string", "null"] },
           "lineage_tree": { "type": ["string", "null"] },
+          "pseudotime": { "type": ["string", "null"] },
+          "prior_grn": { "type": ["string", "null"] },
           "tf_list": { "type": ["string", "null"] },
           "prior_grn_by_group": { "type": ["string", "null"] },
           "native_outputs": {

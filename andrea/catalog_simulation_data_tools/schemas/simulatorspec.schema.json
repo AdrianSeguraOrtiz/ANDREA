@@ -35,7 +35,12 @@
       "type": "string",
       "enum": [
         "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
         "lineage_tree",
+        "pseudotime",
+        "prior_grn",
         "tf_list",
         "prior_grn_by_group",
         "group_networks"
@@ -185,7 +190,12 @@
       "type": "string",
       "enum": [
         "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
         "lineage_tree",
+        "pseudotime",
+        "prior_grn",
         "tf_list",
         "prior_grn_by_group",
         "global_network",
