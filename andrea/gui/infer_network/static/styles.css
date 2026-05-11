@@ -1079,6 +1079,13 @@ button:disabled {
   white-space: pre-wrap;
 }
 
+.warning-box {
+  border-color: var(--warn-brd);
+  background: var(--warn-bg);
+  color: #92400e;
+  white-space: pre-wrap;
+}
+
 .preflight-view {
   margin-top: 0.65rem;
   display: grid;

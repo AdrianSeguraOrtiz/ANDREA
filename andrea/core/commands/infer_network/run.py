@@ -445,10 +445,11 @@ def run_infer_network_plan(
         )
 
     report_issues = [
-        issue for issue in run_report.get("issues", []) if isinstance(issue, dict)
+        issue
+        for issue in run_report.get("issues", [])
+        if isinstance(issue, dict) and issue.get("code") != "planning_warning"
     ]
-    warnings = issue_messages(report_issues, severity="warn")
-    warnings.extend(compatibility_warnings)
+    warnings = list(compatibility_warnings)
     runtime_warnings: list[str] = []
     physical_results: dict[str, ToolExecutionResult] = {}
     merged_raw_path = None
@@ -744,7 +745,16 @@ def run_infer_network_plan(
             "  merged normalized cytoscape preset:"
             f" {merged_norm_cytoscape_script_path}"
         )
-    warning_count = len(issue_messages(report_issues, severity="warn"))
+    warning_count = len(
+        issue_messages(
+            [
+                issue
+                for issue in report_issues
+                if issue.get("code") != "planning_warning"
+            ],
+            severity="warn",
+        )
+    )
     if warning_count:
         print(f"  warnings: {warning_count} (see run_report.json)")
 

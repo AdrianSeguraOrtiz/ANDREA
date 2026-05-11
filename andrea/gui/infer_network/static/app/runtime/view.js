@@ -14,9 +14,8 @@ function normalizeExecutionAlertMessage(message) {
   return normalized.trim();
 }
 
-function isPreExecutionWarning(message) {
-  const text = String(message || "").trim().toLowerCase();
-  return text.includes("optional extra not provided");
+function isPlanningWarning(issue) {
+  return String(issue?.code || "") === "planning_warning";
 }
 
 export function renderExecutionAlerts(job = null, runReport = null) {
@@ -28,13 +27,15 @@ export function renderExecutionAlerts(job = null, runReport = null) {
 
   const errors = [];
   const executionWarnings = [];
-  const preExecutionWarnings = [];
-  const rawWarnings =
+  const rawWarningIssues =
     runReport && Array.isArray(runReport.issues)
       ? runReport.issues
-          .filter((issue) => String(issue?.severity || "") === "warn")
-          .map((issue) => String(issue?.message || "").trim())
-          .filter(Boolean)
+          .filter(
+            (issue) =>
+              String(issue?.severity || "") === "warn" &&
+              !isPlanningWarning(issue) &&
+              String(issue?.message || "").trim()
+          )
       : [];
   const errorSignatures = new Set();
 
@@ -64,25 +65,21 @@ export function renderExecutionAlerts(job = null, runReport = null) {
   }
 
   const warningSeen = new Set();
-  for (const message of rawWarnings) {
+  for (const issue of rawWarningIssues) {
+    const message = String(issue?.message || "").trim();
     const signature = normalizeExecutionAlertMessage(message);
     if (errorSignatures.has(signature)) {
       continue;
     }
-    const bucket = isPreExecutionWarning(message) ? "pre" : "exec";
-    const dedupeKey = `${bucket}:${signature}`;
+    const dedupeKey = `exec:${signature}`;
     if (warningSeen.has(dedupeKey)) {
       continue;
     }
     warningSeen.add(dedupeKey);
-    if (bucket === "pre") {
-      preExecutionWarnings.push(message);
-    } else {
-      executionWarnings.push(message);
-    }
+    executionWarnings.push(message);
   }
 
-  if (!errors.length && !executionWarnings.length && !preExecutionWarnings.length) {
+  if (!errors.length && !executionWarnings.length) {
     root.textContent = "No execution errors or warnings.";
     return;
   }
@@ -91,8 +88,7 @@ export function renderExecutionAlerts(job = null, runReport = null) {
   title.className = "execution-alerts-title";
   title.textContent =
     `Execution alerts: ${errors.length} error(s), ` +
-    `${executionWarnings.length} execution warning(s), ` +
-    `${preExecutionWarnings.length} pre-execution note(s)`;
+    `${executionWarnings.length} execution warning(s)`;
   root.appendChild(title);
 
   const renderAlertSection = (sectionTitle, messages, className) => {
@@ -116,21 +112,16 @@ export function renderExecutionAlerts(job = null, runReport = null) {
 
   renderAlertSection("Execution errors", errors, "error");
   renderAlertSection("Execution warnings", executionWarnings, "warning");
-  renderAlertSection("Pre-execution notes", preExecutionWarnings, "warning");
 
   const hiddenErrors = Math.max(0, errors.length - 8);
   const hiddenExecutionWarnings = Math.max(0, executionWarnings.length - 8);
-  const hiddenPreExecutionWarnings = Math.max(0, preExecutionWarnings.length - 8);
-  if (hiddenErrors || hiddenExecutionWarnings || hiddenPreExecutionWarnings) {
+  if (hiddenErrors || hiddenExecutionWarnings) {
     const parts = [];
     if (hiddenErrors) {
       parts.push(`${hiddenErrors} more error(s)`);
     }
     if (hiddenExecutionWarnings) {
       parts.push(`${hiddenExecutionWarnings} more execution warning(s)`);
-    }
-    if (hiddenPreExecutionWarnings) {
-      parts.push(`${hiddenPreExecutionWarnings} more pre-execution note(s)`);
     }
     const more = document.createElement("div");
     more.className = "execution-alert";

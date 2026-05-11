@@ -17,7 +17,6 @@ from typing import Any, Optional
 
 from rich import print
 
-from andrea.core.shared.issues import issue_messages, make_issue
 from andrea.core.shared.paths import report_path
 
 from .commons.artifacts import (
@@ -87,7 +86,7 @@ def plan_infer_network(
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
 
-    warnings = issue_messages(preflight_report.get("issues", []), severity="warn")
+    warnings: list[str] = []
     runs_payload = preflight_report.get("runs", {})
     if not isinstance(runs_payload, dict):
         raise ValueError("preflight_report.runs is invalid")
@@ -112,11 +111,6 @@ def plan_infer_network(
         for k, v in runs_payload.get("issues", {}).items()
         if isinstance(k, str) and isinstance(v, list)
     }
-    for run_id, issues_for_run in sorted(run_issues.items()):
-        warnings.extend(
-            f"[{run_id}] {message}"
-            for message in issue_messages(issues_for_run, severity="warn")
-        )
     skipped_tools = {
         str(k): str(v)
         for k, v in runs_payload.get("skipped", {}).items()
@@ -134,9 +128,7 @@ def plan_infer_network(
         if not isinstance(dataset_payload, dict):
             raise ValueError("refreshed preflight report has invalid dataset payload")
         dataset = _deserialize_dataset_context(dataset_payload)
-        warnings = issue_messages(
-            refreshed_preflight.get("issues", []), severity="warn"
-        )
+        warnings = []
         runs_payload = refreshed_preflight.get("runs", {})
         if not isinstance(runs_payload, dict):
             raise ValueError("refreshed preflight report has invalid runs payload")
@@ -163,11 +155,6 @@ def plan_infer_network(
             for k, v in runs_payload.get("issues", {}).items()
             if isinstance(k, str) and isinstance(v, list)
         }
-        for run_id, issues_for_run in sorted(run_issues.items()):
-            warnings.extend(
-                f"[{run_id}] {message}"
-                for message in issue_messages(issues_for_run, severity="warn")
-            )
         skipped_tools = {
             str(k): str(v)
             for k, v in runs_payload.get("skipped", {}).items()
@@ -508,6 +495,7 @@ def plan_infer_network(
             }
         )
 
+    planning_warnings = list(dict.fromkeys(warnings))
     plan_payload = {
         "schema_version": PLAN_SCHEMA_VERSION,
         "generated_at_utc": plan_generated_at,
@@ -534,6 +522,7 @@ def plan_infer_network(
         "runs": logical_runs_payload,
         "waves": plan_waves,
         "eta_total_seconds": total_eta,
+        "warnings": planning_warnings,
         "input_fingerprints": input_fingerprints,
     }
     _write_json(run_dir / "plan.json", plan_payload)
@@ -568,14 +557,7 @@ def plan_infer_network(
             "merged_network_normalized": None,
             "rows_per_tool": {},
         },
-        "issues": [
-            make_issue(
-                severity="warn",
-                code="planning_warning",
-                message=message,
-            )
-            for message in dict.fromkeys(warnings)
-        ],
+        "issues": [],
         "execution": {
             "elapsed_seconds": 0.0,
             "planner_requested": planner_mode,

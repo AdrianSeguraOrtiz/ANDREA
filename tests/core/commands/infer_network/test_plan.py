@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 from ._helpers import InferNetworkCoreTestCase
 
@@ -79,6 +80,92 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             )
             self.assertNotIn("tools_root", report_payload["inputs"])
             self.assertNotIn("schemas_dir", report_payload["inputs"])
+
+    def test_cost_profile_warnings_are_planning_warnings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            output_dir = base / "out"
+            manifest_path, tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1", "G2"],
+            )
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                strict=False,
+            )
+            warning = "[aracne3] no cost.json found; using fallback estimation."
+            with patch(
+                "andrea.core.commands.infer_network.plan._load_tool_cost_profile",
+                return_value=(None, [warning]),
+            ):
+                run_dir = self.mod.plan_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                    output_dir=output_dir,
+                    planner="heuristic",
+                    strict=False,
+                    preflight_report=preflight,
+                )
+
+            plan_payload = json.loads(
+                (run_dir / "plan.json").read_text(encoding="utf-8")
+            )
+            report_payload = json.loads(
+                (run_dir / "run_report.json").read_text(encoding="utf-8")
+            )
+
+        self.assertIn(warning, plan_payload["warnings"])
+        self.assertEqual(report_payload["issues"], [])
+
+    def test_preflight_warnings_are_not_planning_warnings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            output_dir = base / "out"
+            manifest_path, tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1", "G2"],
+            )
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                strict=False,
+            )
+            preflight.setdefault("runs", {}).setdefault("issues", {}).setdefault(
+                "aracne__01", []
+            ).append(
+                {
+                    "severity": "warn",
+                    "code": "optional_extra_missing",
+                    "message": "optional extra not provided: tf_list",
+                }
+            )
+
+            run_dir = self.mod.plan_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                output_dir=output_dir,
+                planner="heuristic",
+                strict=False,
+                preflight_report=preflight,
+            )
+
+            plan_payload = json.loads(
+                (run_dir / "plan.json").read_text(encoding="utf-8")
+            )
+            report_payload = json.loads(
+                (run_dir / "run_report.json").read_text(encoding="utf-8")
+            )
+
+        self.assertFalse(
+            any("optional extra not provided" in item for item in plan_payload["warnings"])
+        )
+        self.assertFalse(
+            any(
+                "optional extra not provided" in issue.get("message", "")
+                for issue in report_payload["issues"]
+            )
+        )
 
     def test_plan_rejects_invalid_planner_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

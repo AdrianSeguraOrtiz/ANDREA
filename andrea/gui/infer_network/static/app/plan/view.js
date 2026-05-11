@@ -31,6 +31,20 @@ export function renderPlan(plan) {
 
   const wavesRoot = $("plan-waves");
   wavesRoot.innerHTML = "";
+  const warnings = Array.isArray(plan.warnings)
+    ? plan.warnings.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  if (warnings.length) {
+    const warningBox = document.createElement("div");
+    warningBox.className = "muted-box warning-box";
+    warningBox.textContent = warnings.slice(0, 12).join("\n");
+    if (warnings.length > 12) {
+      const more = document.createElement("div");
+      more.textContent = `... and ${warnings.length - 12} more warning(s)`;
+      warningBox.appendChild(more);
+    }
+    wavesRoot.appendChild(warningBox);
+  }
   const logicalRuns = Array.isArray(plan.runs) ? plan.runs : [];
   const waves = Array.isArray(plan.waves) ? plan.waves : [];
   if (!logicalRuns.length && !waves.length) {
@@ -173,6 +187,15 @@ export function renderPlanInlinePreview(plan, virtualPath) {
 
   const wavesHost = document.createElement("div");
   wavesHost.className = "inline-plan-waves";
+  const warnings = Array.isArray(plan.warnings)
+    ? plan.warnings.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  if (warnings.length) {
+    const warningBox = document.createElement("div");
+    warningBox.className = "muted-box warning-box";
+    warningBox.textContent = warnings.slice(0, 12).join("\n");
+    previewRoot.appendChild(warningBox);
+  }
   const logicalRuns = Array.isArray(plan.runs) ? plan.runs : [];
   const waves = Array.isArray(plan.waves) ? plan.waves : [];
   if (logicalRuns.length) {
