@@ -86,8 +86,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.046946,
-          "seconds_p90": 1.046946
+          "seconds_p50": 0.943475,
+          "seconds_p90": 0.943475
         },
         {
           "genes": 50,
@@ -104,8 +104,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.028973,
-          "seconds_p90": 1.028973
+          "seconds_p50": 1.023508,
+          "seconds_p90": 1.023508
         },
         {
           "genes": 50,
@@ -122,8 +122,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.918975,
-          "seconds_p90": 0.918975
+          "seconds_p50": 0.929015,
+          "seconds_p90": 0.929015
         },
         {
           "genes": 50,
@@ -140,8 +140,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.966882,
-          "seconds_p90": 0.966882
+          "seconds_p50": 0.893322,
+          "seconds_p90": 0.893322
         },
         {
           "genes": 50,
@@ -158,8 +158,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.916863,
-          "seconds_p90": 0.916863
+          "seconds_p50": 0.964172,
+          "seconds_p90": 0.964172
         },
         {
           "genes": 50,
@@ -176,8 +176,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.922215,
-          "seconds_p90": 0.922215
+          "seconds_p50": 0.909149,
+          "seconds_p90": 0.909149
         },
         {
           "genes": 50,
@@ -194,8 +194,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.8798,
-          "seconds_p90": 0.8798
+          "seconds_p50": 0.823121,
+          "seconds_p90": 0.823121
         },
         {
           "genes": 50,
@@ -212,8 +212,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.837921,
-          "seconds_p90": 0.837921
+          "seconds_p50": 0.905442,
+          "seconds_p90": 0.905442
         },
         {
           "genes": 50,
@@ -230,8 +230,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.844554,
-          "seconds_p90": 0.844554
+          "seconds_p50": 0.866514,
+          "seconds_p90": 0.866514
         },
         {
           "genes": 50,
@@ -248,8 +248,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.851084,
-          "seconds_p90": 0.851084
+          "seconds_p50": 0.789818,
+          "seconds_p90": 0.789818
         },
         {
           "genes": 50,
@@ -266,8 +266,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.91392,
-          "seconds_p90": 0.91392
+          "seconds_p50": 0.826091,
+          "seconds_p90": 0.826091
         },
         {
           "genes": 50,
@@ -284,8 +284,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.881762,
-          "seconds_p90": 0.881762
+          "seconds_p50": 0.799129,
+          "seconds_p90": 0.799129
         },
         {
           "genes": 100,
@@ -302,8 +302,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.167398,
-          "seconds_p90": 1.167398
+          "seconds_p50": 1.157711,
+          "seconds_p90": 1.157711
         },
         {
           "genes": 100,
@@ -320,8 +320,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.142131,
-          "seconds_p90": 1.142131
+          "seconds_p50": 1.180878,
+          "seconds_p90": 1.180878
         },
         {
           "genes": 100,
@@ -338,8 +338,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.240161,
-          "seconds_p90": 1.240161
+          "seconds_p50": 1.129347,
+          "seconds_p90": 1.129347
         },
         {
           "genes": 100,
@@ -356,8 +356,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.211126,
-          "seconds_p90": 1.211126
+          "seconds_p50": 1.174559,
+          "seconds_p90": 1.174559
         },
         {
           "genes": 100,
@@ -374,8 +374,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.095834,
-          "seconds_p90": 1.095834
+          "seconds_p50": 1.135737,
+          "seconds_p90": 1.135737
         },
         {
           "genes": 100,
@@ -392,8 +392,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.171296,
-          "seconds_p90": 1.171296
+          "seconds_p50": 1.153453,
+          "seconds_p90": 1.153453
         },
         {
           "genes": 100,
@@ -410,8 +410,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.053315,
-          "seconds_p90": 1.053315
+          "seconds_p50": 1.146906,
+          "seconds_p90": 1.146906
         },
         {
           "genes": 100,
@@ -428,8 +428,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.065477,
-          "seconds_p90": 1.065477
+          "seconds_p50": 1.134004,
+          "seconds_p90": 1.134004
         },
         {
           "genes": 100,
@@ -446,8 +446,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.090542,
-          "seconds_p90": 1.090542
+          "seconds_p50": 1.054321,
+          "seconds_p90": 1.054321
         },
         {
           "genes": 100,
@@ -464,8 +464,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.045905,
-          "seconds_p90": 1.045905
+          "seconds_p50": 1.105723,
+          "seconds_p90": 1.105723
         },
         {
           "genes": 100,
@@ -482,8 +482,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.010192,
-          "seconds_p90": 1.010192
+          "seconds_p50": 1.068804,
+          "seconds_p90": 1.068804
         },
         {
           "genes": 100,
@@ -500,8 +500,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.046083,
-          "seconds_p90": 1.046083
+          "seconds_p50": 1.021341,
+          "seconds_p90": 1.021341
         },
         {
           "genes": 200,
@@ -518,8 +518,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.977764,
-          "seconds_p90": 1.977764
+          "seconds_p50": 1.987114,
+          "seconds_p90": 1.987114
         },
         {
           "genes": 200,
@@ -536,8 +536,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 2.037566,
-          "seconds_p90": 2.037566
+          "seconds_p50": 1.97191,
+          "seconds_p90": 1.97191
         },
         {
           "genes": 200,
@@ -554,8 +554,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 2.076922,
-          "seconds_p90": 2.076922
+          "seconds_p50": 1.898302,
+          "seconds_p90": 1.898302
         },
         {
           "genes": 200,
@@ -572,8 +572,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.954431,
-          "seconds_p90": 1.954431
+          "seconds_p50": 1.835187,
+          "seconds_p90": 1.835187
         },
         {
           "genes": 200,
@@ -590,8 +590,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.958854,
-          "seconds_p90": 1.958854
+          "seconds_p50": 1.956724,
+          "seconds_p90": 1.956724
         },
         {
           "genes": 200,
@@ -608,8 +608,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.931545,
-          "seconds_p90": 1.931545
+          "seconds_p50": 1.966063,
+          "seconds_p90": 1.966063
         },
         {
           "genes": 200,
@@ -626,8 +626,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.90247,
-          "seconds_p90": 1.90247
+          "seconds_p50": 1.836673,
+          "seconds_p90": 1.836673
         },
         {
           "genes": 200,
@@ -644,8 +644,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.894758,
-          "seconds_p90": 1.894758
+          "seconds_p50": 1.826544,
+          "seconds_p90": 1.826544
         },
         {
           "genes": 200,
@@ -662,8 +662,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.866721,
-          "seconds_p90": 1.866721
+          "seconds_p50": 1.943114,
+          "seconds_p90": 1.943114
         },
         {
           "genes": 200,
@@ -680,8 +680,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.922642,
-          "seconds_p90": 1.922642
+          "seconds_p50": 1.873871,
+          "seconds_p90": 1.873871
         },
         {
           "genes": 200,
@@ -698,8 +698,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.858951,
-          "seconds_p90": 1.858951
+          "seconds_p50": 1.826825,
+          "seconds_p90": 1.826825
         },
         {
           "genes": 200,
@@ -716,8 +716,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.842404,
-          "seconds_p90": 1.842404
+          "seconds_p50": 1.864065,
+          "seconds_p90": 1.864065
         }
       ]
     },
@@ -810,8 +810,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.940422,
-          "seconds_p90": 0.940422
+          "seconds_p50": 0.93525,
+          "seconds_p90": 0.93525
         },
         {
           "genes": 50,
@@ -828,8 +828,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.969509,
-          "seconds_p90": 0.969509
+          "seconds_p50": 1.004018,
+          "seconds_p90": 1.004018
         },
         {
           "genes": 50,
@@ -846,8 +846,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.987262,
-          "seconds_p90": 0.987262
+          "seconds_p50": 0.970163,
+          "seconds_p90": 0.970163
         },
         {
           "genes": 50,
@@ -864,8 +864,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.947489,
-          "seconds_p90": 0.947489
+          "seconds_p50": 0.92866,
+          "seconds_p90": 0.92866
         },
         {
           "genes": 50,
@@ -882,8 +882,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.84311,
-          "seconds_p90": 0.84311
+          "seconds_p50": 0.963053,
+          "seconds_p90": 0.963053
         },
         {
           "genes": 50,
@@ -900,8 +900,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.945058,
-          "seconds_p90": 0.945058
+          "seconds_p50": 0.938827,
+          "seconds_p90": 0.938827
         },
         {
           "genes": 50,
@@ -918,8 +918,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.868187,
-          "seconds_p90": 0.868187
+          "seconds_p50": 0.838677,
+          "seconds_p90": 0.838677
         },
         {
           "genes": 50,
@@ -936,8 +936,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.844332,
-          "seconds_p90": 0.844332
+          "seconds_p50": 0.879558,
+          "seconds_p90": 0.879558
         },
         {
           "genes": 50,
@@ -954,8 +954,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.863585,
-          "seconds_p90": 0.863585
+          "seconds_p50": 0.841795,
+          "seconds_p90": 0.841795
         },
         {
           "genes": 50,
@@ -972,8 +972,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.821634,
-          "seconds_p90": 0.821634
+          "seconds_p50": 0.838528,
+          "seconds_p90": 0.838528
         },
         {
           "genes": 50,
@@ -990,8 +990,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.805873,
-          "seconds_p90": 0.805873
+          "seconds_p50": 0.921663,
+          "seconds_p90": 0.921663
         },
         {
           "genes": 50,
@@ -1008,8 +1008,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.835448,
-          "seconds_p90": 0.835448
+          "seconds_p50": 0.918974,
+          "seconds_p90": 0.918974
         },
         {
           "genes": 100,
@@ -1026,8 +1026,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.161892,
-          "seconds_p90": 1.161892
+          "seconds_p50": 1.376527,
+          "seconds_p90": 1.376527
         },
         {
           "genes": 100,
@@ -1044,8 +1044,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.178114,
-          "seconds_p90": 1.178114
+          "seconds_p50": 1.197037,
+          "seconds_p90": 1.197037
         },
         {
           "genes": 100,
@@ -1062,8 +1062,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.284226,
-          "seconds_p90": 1.284226
+          "seconds_p50": 1.256959,
+          "seconds_p90": 1.256959
         },
         {
           "genes": 100,
@@ -1080,8 +1080,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.092419,
-          "seconds_p90": 1.092419
+          "seconds_p50": 1.279355,
+          "seconds_p90": 1.279355
         },
         {
           "genes": 100,
@@ -1098,8 +1098,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.141639,
-          "seconds_p90": 1.141639
+          "seconds_p50": 1.232437,
+          "seconds_p90": 1.232437
         },
         {
           "genes": 100,
@@ -1116,8 +1116,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.155461,
-          "seconds_p90": 1.155461
+          "seconds_p50": 1.182472,
+          "seconds_p90": 1.182472
         },
         {
           "genes": 100,
@@ -1134,8 +1134,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.052769,
-          "seconds_p90": 1.052769
+          "seconds_p50": 1.196496,
+          "seconds_p90": 1.196496
         },
         {
           "genes": 100,
@@ -1152,8 +1152,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.018203,
-          "seconds_p90": 1.018203
+          "seconds_p50": 1.158139,
+          "seconds_p90": 1.158139
         },
         {
           "genes": 100,
@@ -1170,8 +1170,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.074303,
-          "seconds_p90": 1.074303
+          "seconds_p50": 1.1896,
+          "seconds_p90": 1.1896
         },
         {
           "genes": 100,
@@ -1188,8 +1188,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.996075,
-          "seconds_p90": 0.996075
+          "seconds_p50": 1.191716,
+          "seconds_p90": 1.191716
         },
         {
           "genes": 100,
@@ -1206,8 +1206,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.045622,
-          "seconds_p90": 1.045622
+          "seconds_p50": 1.191233,
+          "seconds_p90": 1.191233
         },
         {
           "genes": 100,
@@ -1224,8 +1224,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.033271,
-          "seconds_p90": 1.033271
+          "seconds_p50": 1.102672,
+          "seconds_p90": 1.102672
         },
         {
           "genes": 200,
@@ -1242,8 +1242,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.97434,
-          "seconds_p90": 1.97434
+          "seconds_p50": 2.122311,
+          "seconds_p90": 2.122311
         },
         {
           "genes": 200,
@@ -1260,8 +1260,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.964037,
-          "seconds_p90": 1.964037
+          "seconds_p50": 2.252663,
+          "seconds_p90": 2.252663
         },
         {
           "genes": 200,
@@ -1278,8 +1278,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.987526,
-          "seconds_p90": 1.987526
+          "seconds_p50": 2.1371,
+          "seconds_p90": 2.1371
         },
         {
           "genes": 200,
@@ -1296,8 +1296,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.967936,
-          "seconds_p90": 1.967936
+          "seconds_p50": 2.029464,
+          "seconds_p90": 2.029464
         },
         {
           "genes": 200,
@@ -1314,8 +1314,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.928195,
-          "seconds_p90": 1.928195
+          "seconds_p50": 2.098187,
+          "seconds_p90": 2.098187
         },
         {
           "genes": 200,
@@ -1332,8 +1332,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.90698,
-          "seconds_p90": 1.90698
+          "seconds_p50": 2.014458,
+          "seconds_p90": 2.014458
         },
         {
           "genes": 200,
@@ -1350,8 +1350,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.894393,
-          "seconds_p90": 1.894393
+          "seconds_p50": 2.050088,
+          "seconds_p90": 2.050088
         },
         {
           "genes": 200,
@@ -1368,8 +1368,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.878723,
-          "seconds_p90": 1.878723
+          "seconds_p50": 2.051841,
+          "seconds_p90": 2.051841
         },
         {
           "genes": 200,
@@ -1386,8 +1386,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.896514,
-          "seconds_p90": 1.896514
+          "seconds_p50": 2.050793,
+          "seconds_p90": 2.050793
         },
         {
           "genes": 200,
@@ -1404,8 +1404,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.820477,
-          "seconds_p90": 1.820477
+          "seconds_p50": 1.859948,
+          "seconds_p90": 1.859948
         },
         {
           "genes": 200,
@@ -1422,8 +1422,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.885191,
-          "seconds_p90": 1.885191
+          "seconds_p50": 1.884073,
+          "seconds_p90": 1.884073
         },
         {
           "genes": 200,
@@ -1440,8 +1440,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.932337,
-          "seconds_p90": 1.932337
+          "seconds_p50": 1.926217,
+          "seconds_p90": 1.926217
         }
       ]
     }
