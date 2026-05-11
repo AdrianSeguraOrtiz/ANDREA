@@ -292,10 +292,6 @@ async function validateExtraRowFile(row) {
   notifyDatasetChanged();
 }
 
-export function refreshExtraSelectOptions() {
-  renderExtraInputModalBody();
-}
-
 export function closeExtraInputModal() {
   $("extra-input-modal")?.classList.add("hidden");
 }

@@ -52,17 +52,6 @@ def discover_catalog_simulator_dirs(
     return discovered
 
 
-def discover_wrapper_dirs(wrappers_root: Path) -> list[tuple[str, Path]]:
-    if not wrappers_root.exists() or not wrappers_root.is_dir():
-        raise RuntimeError(f"Invalid simulator wrappers root: {wrappers_root}")
-
-    return sorted(
-        (wrapper_dir.name, wrapper_dir)
-        for wrapper_dir in wrappers_root.iterdir()
-        if wrapper_dir.is_dir()
-    )
-
-
 def discover_evidence_dirs(evidence_root: Path) -> list[tuple[str, Path]]:
     if not evidence_root.exists() or not evidence_root.is_dir():
         raise RuntimeError(f"Invalid simulator evidence root: {evidence_root}")
@@ -114,28 +103,6 @@ def load_required_simulatorspec_string(
             f"[{simulator_id}] simulatorspec.{field_name} must be a non-empty string."
         )
     return value.strip()
-
-
-def load_simulatorspec_publications(
-    *,
-    simulator_id: str,
-    catalog_simulators_root: Path,
-) -> list[str]:
-    spec = load_simulatorspec(catalog_simulators_root, simulator_id)
-    value = spec.get("publication")
-    if not isinstance(value, list) or not value:
-        raise RuntimeError(
-            f"[{simulator_id}] simulatorspec.publication must be a non-empty array."
-        )
-
-    publications: list[str] = []
-    for idx, item in enumerate(value, start=1):
-        if not isinstance(item, str) or not item.strip():
-            raise RuntimeError(
-                f"[{simulator_id}] simulatorspec.publication[{idx}] must be a non-empty string."
-            )
-        publications.append(item.strip())
-    return publications
 
 
 def expected_docker_image(simulator_id: str) -> str:

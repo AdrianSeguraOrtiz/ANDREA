@@ -154,15 +154,6 @@ def select_toolspecs(
     return [(tool_id, by_tool_id[tool_id]) for tool_id in tool_filters]
 
 
-def validate_one_toolspec(
-    *,
-    spec_path: Path,
-    validator: Draft202012Validator,
-) -> list[ValidationError]:
-    instance = load_json(spec_path)
-    return validate_instance(validator, instance)
-
-
 def _extra_input_set(*, raw_items: Any, field_name: str, errors: list[str]) -> set[str]:
     if not isinstance(raw_items, list):
         errors.append(f"extra_inputs.{field_name} must be an array.")
