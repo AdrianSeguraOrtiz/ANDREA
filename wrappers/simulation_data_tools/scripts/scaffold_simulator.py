@@ -178,7 +178,19 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
         "simulation_keywords": ["todo"],
         "implementation_url": "TODO_IMPLEMENTATION_URL",
         "docker_image": expected_docker_image(simulator_id),
-        "simulator_inputs": {"required": [], "optional": []},
+        "simulator_inputs": {
+            "required": [],
+            "optional": [],
+            "conditional_required": [],
+        },
+        "runtime_resources": {
+            "threading": {
+                "supported": False,
+                "default_threads": 1,
+                "max_threads": 1,
+                "upstream_mapping": "No upstream threading control is declared.",
+            }
+        },
         "profile_capabilities": {
             "scrna_global": {
                 "native_extras": [],
@@ -206,6 +218,7 @@ def smoketest_payload(simulator_id: str) -> dict[str, object]:
             "effective_extras": [],
             "inputs": {},
             "params": {},
+            "runtime_resources": {"threads": 1},
         },
         "expect_progress": True,
         "required_files": [
@@ -215,6 +228,65 @@ def smoketest_payload(simulator_id: str) -> dict[str, object]:
             "progress.json",
         ],
     }
+
+
+def wrapper_readme_template(simulator_id: str) -> str:
+    return f"""# {simulator_id}
+
+TODO: document installation, wrapper behavior and smoke tests.
+
+## Runtime Contract
+
+- The container reads `/work/request/simulator-run-request.json`.
+- The container writes normalized outputs directly under `/work/out/`.
+- The wrapper must write `progress.json`.
+- The wrapper must map `runtime_resources.threads` to the upstream public
+  thread/worker control declared in `simulatorspec.json`.
+- Do not expose thread counts as simulator params.
+
+## Simulator Inputs
+
+Document every simulator-side input file declared in `simulator_inputs`:
+
+- required inputs
+- optional inputs
+- conditional inputs and the params/extras/profile values that require them
+
+Generated extras are not simulator-side inputs.
+
+## Cost Profiles
+
+After smoke tests pass, add a bounded benchmark matrix under
+`wrappers/simulation_data_tools/cost_profiles/{simulator_id}.json` and generate
+the catalog `cost.json` with:
+
+```bash
+make benchmark-simulator-costs ARGS="--simulator {simulator_id}"
+make validate-simulator-costs ARGS="--simulator {simulator_id} --require"
+```
+"""
+
+
+def integration_decisions_template(simulator_id: str) -> str:
+    return f"""# {simulator_id} Integration Decisions
+
+TODO: record paper/repo review and wrapper decisions.
+
+## Required Decisions
+
+- upstream evidence reviewed
+- selected installation route and version/tag/commit
+- selected public API/CLI entrypoint
+- supported profiles and unsupported profiles
+- native and derivable extras
+- simulator-side input files and conditional rules
+- parameter mapping and unsupported function-valued hooks
+- runtime resource mapping from `runtime_resources.threads`
+- output mapping
+- progress strategy
+- smoke-test matrix and outcome
+- cost profile status and ETA fallback/cost behavior
+"""
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -259,7 +331,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             wrapper_dir / "README.md",
             write_file(
                 wrapper_dir / "README.md",
-                f"# {simulator_id}\\n\\nTODO: document installation, wrapper behavior, and smoke tests.\\n",
+                wrapper_readme_template(simulator_id),
                 force=args.force,
             ),
         )
@@ -269,7 +341,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             wrapper_dir / "integration_decisions.md",
             write_file(
                 wrapper_dir / "integration_decisions.md",
-                f"# {simulator_id} Integration Decisions\\n\\nTODO: record paper/repo review and wrapper decisions.\\n",
+                integration_decisions_template(simulator_id),
                 force=args.force,
             ),
         )

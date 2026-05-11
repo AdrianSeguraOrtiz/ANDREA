@@ -19,7 +19,16 @@
   "docker_image": "adriansegura99/simulator_dyngen:1.0.0",
   "simulator_inputs": {
     "required": [],
-    "optional": []
+    "optional": [],
+    "conditional_required": []
+  },
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 4096,
+      "upstream_mapping": "Mapped by the wrapper to R options(Ncpus=threads) and dyngen::initialise_model(num_cores=threads)."
+    }
   },
   "profile_capabilities": {
     "scrna_global": {

@@ -18,7 +18,8 @@
         "census_interval": 0.25,
         "simulate_targets": true
       }
-    }
+    },
+    "runtime_resources": {"threads": 1}
   },
   "expect_progress": true,
   "required_files": [

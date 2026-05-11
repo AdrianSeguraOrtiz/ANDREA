@@ -1,4 +1,4 @@
-import { $ } from "/static-common/app/core/dom.js";
+import { $, formatBytes } from "/static-common/app/core/dom.js";
 import { fetchFiles, resetFilesView } from "/static-common/app/files/explorer.js?v=20260423a";
 import {
   deepEqualJson,
@@ -143,6 +143,14 @@ function nativeOutputLabel(definitionOrId) {
   return String(definitionOrId.id || "-");
 }
 
+function nativeOutputMatches(definition, params) {
+  const conditions = Array.isArray(definition?.conditions) ? definition.conditions : [];
+  if (!conditions.length) {
+    return true;
+  }
+  return conditionalInputMatches(definition, params);
+}
+
 function readNativeOutputsFromHost(host) {
   if (!host) {
     return [];
@@ -191,6 +199,14 @@ function renderNativeOutputsHost(host, simulator, selected = []) {
     meta.appendChild(title);
     meta.appendChild(desc);
 
+    const conditionText = formatInputConditions(def);
+    if (conditionText) {
+      const conditions = document.createElement("div");
+      conditions.className = "native-output-notes";
+      conditions.textContent = `Available when ${conditionText}.`;
+      meta.appendChild(conditions);
+    }
+
     if (def.notes) {
       const notes = document.createElement("div");
       notes.className = "native-output-notes";
@@ -233,7 +249,7 @@ function renderCardNativeOutputs(card, simulator, selected = null) {
 }
 
 function simulatorInputById(inputId) {
-  return (state.bootstrap?.simulator_inputs || []).find((item) => item.id === inputId) || null;
+  return (state.bootstrap?.simulator_inputs || []).find((item) => item.id === String(inputId || "")) || null;
 }
 
 function checkedExtras() {
@@ -318,46 +334,16 @@ function initBootstrapView() {
   if (Number.isInteger(defaultMaxParallel) && defaultMaxParallel >= 1) {
     $("max-parallel-tasks").value = String(defaultMaxParallel);
   }
+  const defaultMaxCores = Number.parseInt(String(state.bootstrap?.planning_defaults?.max_cores || ""), 10);
+  if (Number.isInteger(defaultMaxCores) && defaultMaxCores >= 1) {
+    $("max-cores").value = String(defaultMaxCores);
+  }
+  const defaultMaxRam = Number(state.bootstrap?.planning_defaults?.max_ram_gb || 0);
+  if (Number.isFinite(defaultMaxRam) && defaultMaxRam >= 1) {
+    $("max-ram-gb").value = String(defaultMaxRam);
+  }
   renderExtras();
   populateSimulatorIssueSelect();
-}
-
-function addInputRow() {
-  const template = $("input-template");
-  const node = template.content.firstElementChild.cloneNode(true);
-  const select = node.querySelector(".input-kind");
-  select.innerHTML = "";
-  for (const item of state.bootstrap.simulator_inputs || []) {
-    const option = document.createElement("option");
-    option.value = item.id;
-    option.textContent = item.label || item.id;
-    select.appendChild(option);
-  }
-  const updateDescription = () => {
-    const meta = simulatorInputById(select.value);
-    const description = node.querySelector(".input-kind-description");
-    const formats = Array.isArray(meta?.formats) && meta.formats.length ? ` Formats: ${meta.formats.join(", ")}.` : "";
-    const columns = Array.isArray(meta?.required_columns) && meta.required_columns.length
-      ? ` Required columns: ${meta.required_columns.join(", ")}.`
-      : "";
-    description.textContent = `${meta?.description || ""}${formats}${columns}`.trim() || "Input file.";
-    node.querySelector(".input-file").accept = String(meta?.accept || "");
-    updateOrganismRequirement(node);
-    resetScenarioDerivedState();
-  };
-  select.addEventListener("change", updateDescription);
-  node.querySelector(".input-file").addEventListener("change", resetScenarioDerivedState);
-  node.querySelector(".taxonomic-group")?.addEventListener("change", resetScenarioDerivedState);
-  node.querySelector(".organism-ncbi-taxon-id")?.addEventListener("input", resetScenarioDerivedState);
-  node.querySelector(".remove-input").addEventListener("click", () => {
-    node.remove();
-    updateInputsEmptyState();
-    updateOrganismRequirement();
-    resetScenarioDerivedState();
-  });
-  $("inputs-list").appendChild(node);
-  updateDescription();
-  updateInputsEmptyState();
 }
 
 function updateInputsEmptyState() {
@@ -366,6 +352,14 @@ function updateInputsEmptyState() {
 
 function selectedInputRows() {
   return Array.from(document.querySelectorAll("#inputs-list .extra-row"));
+}
+
+function selectedInputIds() {
+  return new Set(
+    selectedInputRows()
+      .map((row) => String(row.querySelector(".input-kind")?.value || "").trim())
+      .filter(Boolean)
+  );
 }
 
 function rowRequiresOrganism(row) {
@@ -396,6 +390,474 @@ function rowOrganismPayload(row) {
     taxonomic_group: taxonomicGroup,
     ncbi_taxon_id: taxIdRaw ? Number.parseInt(taxIdRaw, 10) : null,
   };
+}
+
+function providedSimulatorInputIds() {
+  return new Set(
+    selectedInputRows()
+      .map((row) => {
+        const inputId = String(row.querySelector(".input-kind")?.value || "").trim();
+        const file = row.querySelector(".input-file")?.files?.[0] || null;
+        return inputId && file ? inputId : "";
+      })
+      .filter(Boolean)
+  );
+}
+
+function inputUsageToolCount(meta) {
+  const usedBy = meta?.used_by && typeof meta.used_by === "object" ? meta.used_by : {};
+  const ids = new Set();
+  for (const relation of ["required", "optional", "conditional"]) {
+    const items = Array.isArray(usedBy[relation]) ? usedBy[relation] : [];
+    for (const item of items) {
+      const id = String(item?.simulator_id || item?.name || "").trim();
+      if (id) {
+        ids.add(id);
+      }
+    }
+  }
+  return ids.size;
+}
+
+function inputRelationLabel(relation) {
+  if (relation === "conditional") {
+    return "Conditional required";
+  }
+  return relation === "required" ? "Required" : "Optional";
+}
+
+function appendInputDetailField(parent, labelText, valueText, { code = false } = {}) {
+  const normalized = String(valueText ?? "").trim();
+  if (!normalized) {
+    return;
+  }
+  const label = document.createElement("dt");
+  label.textContent = labelText;
+  const value = document.createElement("dd");
+  if (code) {
+    const codeEl = document.createElement("code");
+    codeEl.textContent = normalized;
+    value.appendChild(codeEl);
+  } else {
+    value.textContent = normalized;
+  }
+  parent.append(label, value);
+}
+
+function formatInputConditions(item) {
+  const conditions = Array.isArray(item?.conditions) ? item.conditions : [];
+  return conditions.map(formatSimulatorInputCondition).filter(Boolean).join(" AND ");
+}
+
+function renderInputUsageDetail(detailPanel, item, relation) {
+  detailPanel.innerHTML = "";
+  const title = document.createElement("div");
+  title.className = "input-usage-detail-head";
+  const name = document.createElement("strong");
+  name.textContent = String(item?.name || item?.simulator_id || "").trim();
+  const badge = document.createElement("span");
+  badge.className = `input-usage-relation ${relation}`;
+  badge.textContent = inputRelationLabel(relation);
+  title.append(name, badge);
+
+  const usage = document.createElement("p");
+  usage.textContent = String(item?.usage || "").trim() || "No usage note available.";
+  detailPanel.append(title, usage);
+
+  if (relation === "conditional") {
+    const details = document.createElement("dl");
+    details.className = "input-usage-detail-meta";
+    appendInputDetailField(details, "Condition", formatInputConditions(item), { code: true });
+    appendInputDetailField(details, "Message", item?.message);
+    if (details.children.length) {
+      detailPanel.appendChild(details);
+    }
+  }
+  detailPanel.hidden = false;
+}
+
+function inputUsageTag(item, relation, detailPanel) {
+  const tag = document.createElement("button");
+  tag.type = "button";
+  tag.className = `input-tool-tag ${relation}`;
+  tag.textContent = String(item?.name || item?.simulator_id || "").trim();
+  tag.addEventListener("click", () => {
+    const activeTags = tag.closest(".input-catalog-card")?.querySelectorAll(".input-tool-tag.active") || [];
+    for (const activeTag of activeTags) {
+      activeTag.classList.remove("active");
+    }
+    tag.classList.add("active");
+    renderInputUsageDetail(detailPanel, item, relation);
+  });
+  return tag;
+}
+
+function renderInputUsage(meta) {
+  const usedBy = meta?.used_by && typeof meta.used_by === "object" ? meta.used_by : {};
+  const groups = [
+    ["required", "Required by"],
+    ["optional", "Optional for"],
+    ["conditional", "Conditional for"],
+  ];
+  const host = document.createElement("div");
+  host.className = "input-usage-groups";
+  const detailPanel = document.createElement("div");
+  detailPanel.className = "input-usage-detail";
+  detailPanel.hidden = true;
+  let hasUsage = false;
+  for (const [relation, label] of groups) {
+    const items = Array.isArray(usedBy[relation]) ? usedBy[relation] : [];
+    if (!items.length) {
+      continue;
+    }
+    hasUsage = true;
+    const group = document.createElement("div");
+    group.className = "input-usage-group";
+    const title = document.createElement("div");
+    title.className = "input-usage-title";
+    title.textContent = label;
+    const tags = document.createElement("div");
+    tags.className = "input-tool-tags";
+    for (const item of items) {
+      tags.appendChild(inputUsageTag(item, relation, detailPanel));
+    }
+    group.append(title, tags);
+    host.appendChild(group);
+  }
+  if (!hasUsage) {
+    const empty = document.createElement("div");
+    empty.className = "input-usage-empty";
+    empty.textContent = "No catalog simulator currently declares this input.";
+    host.appendChild(empty);
+  }
+  host.appendChild(detailPanel);
+  return host;
+}
+
+function renderInputModalBody() {
+  const body = $("input-modal-body");
+  if (!body) {
+    return;
+  }
+  const metas = Array.isArray(state.bootstrap?.simulator_inputs)
+    ? [...state.bootstrap.simulator_inputs]
+    : [];
+  const added = selectedInputIds();
+  body.innerHTML = "";
+  if (!metas.length) {
+    const empty = document.createElement("div");
+    empty.className = "muted-box";
+    empty.textContent = "No simulator input specs are available.";
+    body.appendChild(empty);
+    return;
+  }
+  metas.sort((a, b) => {
+    const usageDelta = inputUsageToolCount(b) - inputUsageToolCount(a);
+    if (usageDelta !== 0) {
+      return usageDelta;
+    }
+    return String(a.id || "").localeCompare(String(b.id || ""));
+  });
+  for (const meta of metas) {
+    const inputId = String(meta.id || "").trim();
+    if (!inputId) {
+      continue;
+    }
+    const card = document.createElement("article");
+    card.className = "input-catalog-card";
+
+    const head = document.createElement("div");
+    head.className = "input-catalog-card-head";
+    const title = document.createElement("div");
+    title.className = "input-catalog-card-title";
+    title.textContent = meta.label || inputId;
+    const actions = document.createElement("div");
+    actions.className = "input-catalog-card-actions";
+
+    const infoBtn = document.createElement("button");
+    infoBtn.type = "button";
+    infoBtn.className = "info-icon";
+    infoBtn.textContent = "i";
+    infoBtn.setAttribute("aria-label", `Show ${inputId} example`);
+    infoBtn.addEventListener("click", () => {
+      const formats = Array.isArray(meta.formats) && meta.formats.length ? meta.formats.join(", ") : "any";
+      showInfoTooltip(
+        buildInfoTooltip({
+          title: `${inputId} input`,
+          description: `Accepted formats: ${formats}.`,
+          example: String(meta.example || "").trim() || "No example available.",
+        })
+      );
+    });
+
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "secondary";
+    addBtn.textContent = added.has(inputId) ? "Added" : "Add";
+    addBtn.disabled = added.has(inputId);
+    addBtn.addEventListener("click", () => {
+      addInputRow(inputId);
+      closeInputModal();
+    });
+    actions.append(infoBtn, addBtn);
+    head.append(title, actions);
+
+    const description = document.createElement("p");
+    description.className = "input-catalog-description";
+    description.textContent = String(meta.description || "Simulator input file.").trim();
+
+    const format = document.createElement("div");
+    format.className = "input-catalog-format";
+    const formats = Array.isArray(meta.formats) && meta.formats.length ? meta.formats.join(", ") : "any";
+    format.textContent = `Formats: ${formats}`;
+
+    card.append(head, description, format, renderInputUsage(meta));
+    body.appendChild(card);
+  }
+}
+
+function openInputModal() {
+  renderInputModalBody();
+  openModal("input-modal");
+}
+
+function closeInputModal() {
+  closeModal("input-modal");
+}
+
+function setInputRowState(row, stateName) {
+  row.classList.remove("missing", "valid", "invalid");
+  if (stateName) {
+    row.classList.add(stateName);
+  }
+}
+
+function syncInputRowMeta(row) {
+  const inputId = String(row.querySelector(".input-kind")?.value || "").trim();
+  const meta = simulatorInputById(inputId) || {};
+  const label = row.querySelector(".input-kind-label");
+  const description = row.querySelector(".input-kind-description");
+  const descriptionInput = row.querySelector(".input-description");
+  const fileInput = row.querySelector(".input-file");
+  const fileName = row.querySelector(".extra-file-name");
+  const pickerName = row.querySelector(".extra-file-picker-name");
+  const status = row.querySelector(".input-file-status");
+  const file = fileInput?.files?.[0] || null;
+
+  label.textContent = String(meta.label || inputId);
+  const formats = Array.isArray(meta.formats) && meta.formats.length ? ` Formats: ${meta.formats.join(", ")}.` : "";
+  const descriptionText = `${String(meta.description || "Simulator input file.").trim()}${formats}`.trim();
+  description.textContent = descriptionText;
+  descriptionInput.value = String(meta.description || "");
+  fileInput.accept = String(meta.accept || "");
+
+  const fileLabel = file ? `${file.name} (${formatBytes(file.size)})` : "No file selected";
+  fileName.textContent = fileLabel;
+  pickerName.textContent = file ? file.name : "No file selected";
+  if (!file) {
+    setInputRowState(row, "missing");
+    status.classList.remove("ok");
+    status.classList.add("err");
+    status.textContent = "Select a file";
+  } else {
+    setInputRowState(row, "valid");
+    status.classList.remove("err");
+    status.classList.add("ok");
+    status.textContent = "Ready";
+  }
+  updateOrganismRequirement(row);
+}
+
+function addInputRow(inputId) {
+  const selectedId = String(inputId || "").trim();
+  const meta = simulatorInputById(selectedId);
+  if (!meta) {
+    pushToast({
+      title: "Simulator input",
+      message: selectedId ? `Unknown simulator input '${selectedId}'.` : "No simulator input selected.",
+      kind: "error",
+      ttlMs: 5000,
+    });
+    return;
+  }
+  if (selectedInputIds().has(selectedId)) {
+    pushToast({
+      title: "Simulator input",
+      message: `${meta.label || selectedId} is already added.`,
+      kind: "warning",
+      ttlMs: 4500,
+    });
+    return;
+  }
+  const template = $("input-template");
+  const node = template.content.firstElementChild.cloneNode(true);
+  node.querySelector(".input-kind").value = selectedId;
+  const infoBtn = node.querySelector(".input-info-btn");
+  infoBtn.addEventListener("click", () => {
+    const formats = Array.isArray(meta.formats) && meta.formats.length ? meta.formats.join(", ") : "any";
+    showInfoTooltip(
+      buildInfoTooltip({
+        title: `${selectedId} input`,
+        description: `Accepted formats: ${formats}. ${String(meta.description || "").trim()}`.trim(),
+        example: String(meta.example || "").trim() || "No example available.",
+      })
+    );
+  });
+  node.querySelector(".input-file").addEventListener("change", () => {
+    syncInputRowMeta(node);
+    resetScenarioDerivedState();
+  });
+  node.querySelector(".taxonomic-group")?.addEventListener("change", resetScenarioDerivedState);
+  node.querySelector(".organism-ncbi-taxon-id")?.addEventListener("input", resetScenarioDerivedState);
+  node.querySelector(".remove-input").addEventListener("click", () => {
+    node.remove();
+    updateInputsEmptyState();
+    updateOrganismRequirement();
+    renderInputModalBody();
+    resetScenarioDerivedState();
+  });
+  $("inputs-list").appendChild(node);
+  syncInputRowMeta(node);
+  updateInputsEmptyState();
+  renderInputModalBody();
+  resetScenarioDerivedState();
+}
+
+function valueAtPath(payload, rawPath) {
+  const parts = String(rawPath || "").trim().split(".").map((item) => item.trim()).filter(Boolean);
+  let current = payload;
+  for (const part of parts) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return null;
+    }
+    current = current[part];
+  }
+  return current;
+}
+
+function compareConditionValue(actual, op, expected) {
+  if (op === "eq") {
+    return actual === expected;
+  }
+  if (op === "ne") {
+    return actual !== expected;
+  }
+  if (op === "in") {
+    return Array.isArray(expected) && expected.includes(actual);
+  }
+  if (op === "not_in") {
+    return Array.isArray(expected) && !expected.includes(actual);
+  }
+  if (["gt", "gte", "lt", "lte"].includes(op)) {
+    const actualNum = Number(actual);
+    const expectedNum = Number(expected);
+    if (!Number.isFinite(actualNum) || !Number.isFinite(expectedNum)) {
+      return false;
+    }
+    if (op === "gt") {
+      return actualNum > expectedNum;
+    }
+    if (op === "gte") {
+      return actualNum >= expectedNum;
+    }
+    if (op === "lt") {
+      return actualNum < expectedNum;
+    }
+    if (op === "lte") {
+      return actualNum <= expectedNum;
+    }
+  }
+  return false;
+}
+
+function conditionActualValue(field, params) {
+  const normalized = String(field || "").trim();
+  if (normalized === "profile") {
+    return selectedProfileId();
+  }
+  if (normalized === "requested_extra") {
+    return checkedExtras().sort();
+  }
+  if (normalized.startsWith("param.")) {
+    return valueAtPath(params, normalized.slice("param.".length));
+  }
+  return null;
+}
+
+function conditionalInputMatches(requirement, params) {
+  const conditions = Array.isArray(requirement?.conditions) ? requirement.conditions : [];
+  if (!conditions.length) {
+    return false;
+  }
+  const requestedExtras = new Set(checkedExtras());
+  for (const condition of conditions) {
+    if (!condition || typeof condition !== "object") {
+      return false;
+    }
+    const field = String(condition.field || "").trim();
+    const op = String(condition.op || "").trim();
+    const expected = condition.value;
+    if (field === "requested_extra" && op === "eq") {
+      if (!requestedExtras.has(String(expected))) {
+        return false;
+      }
+      continue;
+    }
+    if (field === "requested_extra" && op === "ne") {
+      if (requestedExtras.has(String(expected))) {
+        return false;
+      }
+      continue;
+    }
+    if (field === "requested_extra" && op === "in") {
+      const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
+      if (!values.some((item) => requestedExtras.has(item))) {
+        return false;
+      }
+      continue;
+    }
+    if (field === "requested_extra" && op === "not_in") {
+      const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
+      if (values.some((item) => requestedExtras.has(item))) {
+        return false;
+      }
+      continue;
+    }
+    if (!compareConditionValue(conditionActualValue(field, params), op, expected)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function simulatorInputMessages(simulator, params) {
+  const simulatorInputs = simulator?.simulator_inputs && typeof simulator.simulator_inputs === "object"
+    ? simulator.simulator_inputs
+    : {};
+  const providedInputs = providedSimulatorInputIds();
+  const messages = [];
+  const requiredInputs = Array.isArray(simulatorInputs.required) ? simulatorInputs.required : [];
+  for (const item of requiredInputs) {
+    const inputId = String(item?.input || "").trim();
+    if (inputId && !providedInputs.has(inputId)) {
+      messages.push(String(item?.message || `Missing input: ${inputId}`).trim());
+    }
+  }
+  const conditionalInputs = Array.isArray(simulatorInputs.conditional_required)
+    ? simulatorInputs.conditional_required
+    : [];
+  for (const requirement of conditionalInputs) {
+    const inputId = String(requirement?.input || "").trim();
+    if (!inputId || providedInputs.has(inputId)) {
+      continue;
+    }
+    if (conditionalInputMatches(requirement, params)) {
+      messages.push(
+        String(requirement?.message || `Missing conditionally required input: ${inputId}`).trim()
+      );
+    }
+  }
+  return messages.filter(Boolean);
 }
 
 function validateScenarioForm() {
@@ -526,6 +988,7 @@ function simulatorInfoPayload(simulator) {
           { label: "First author", value: simulator.first_author || "-" },
           { label: "Publication year", value: simulator.year ? String(simulator.year) : "-" },
           { label: "Keywords", value: keywords.length ? keywords.join(", ") : "-" },
+          { label: "Runtime resources", value: simulatorRuntimeResourceSummary(simulator.runtime_resources) },
           {
             label: "Implementation",
             link: {
@@ -560,6 +1023,22 @@ function simulatorInfoPayload(simulator) {
   });
 }
 
+function simulatorRuntimeResourceSummary(resources) {
+  const threading = resources?.threading && typeof resources.threading === "object"
+    ? resources.threading
+    : {};
+  const supported = Boolean(threading.supported);
+  const defaultThreads = threading.default_threads ?? 1;
+  const maxThreads = threading.max_threads ?? 1;
+  const mapping = String(threading.upstream_mapping || "").trim();
+  return [
+    `threading: ${supported ? "supported" : "not supported"}`,
+    `default_threads: ${defaultThreads}`,
+    `max_threads: ${maxThreads}`,
+    mapping ? `mapping: ${mapping}` : "",
+  ].filter(Boolean).join("\n");
+}
+
 function simulatorNotesSummary(notes) {
   if (Array.isArray(notes)) {
     return notes.map((item) => String(item || "").trim()).filter(Boolean).join("\n") || "none";
@@ -568,14 +1047,11 @@ function simulatorNotesSummary(notes) {
 }
 
 function simulatorInputSummary(item) {
-  if (typeof item === "string") {
-    return item;
-  }
   if (!item || typeof item !== "object") {
     return "";
   }
-  const id = String(item.id || item.input || "").trim();
-  const description = String(item.description || item.message || "").trim();
+  const id = String(item.input || "").trim();
+  const description = String(item.usage || item.message || "").trim();
   return [id, description].filter(Boolean).join(": ");
 }
 
@@ -583,19 +1059,25 @@ function conditionalSimulatorInputDetail(rule) {
   if (!rule || typeof rule !== "object") {
     return null;
   }
-  const input = String(rule.input || rule.id || "").trim();
-  const message = String(rule.message || rule.description || "").trim();
-  const op = String(rule.op || "").trim();
-  const value = rule.value === undefined ? "" : JSON.stringify(rule.value);
-  const left = rule.param
-    ? `param.${String(rule.param).trim()}`
-    : rule.profile
-      ? `profile.${String(rule.profile).trim()}`
-      : "";
-  const condition = left && op ? `${left} ${formatConditionalOperator(op)} ${value}` : "";
+  const input = String(rule.input || "").trim();
+  const message = String(rule.message || "").trim();
+  const conditions = Array.isArray(rule.conditions)
+    ? rule.conditions.map(formatSimulatorInputCondition).filter(Boolean)
+    : [];
+  const condition = conditions.join(" AND ");
   return input || condition || message
     ? { input, condition, message }
     : null;
+}
+
+function formatSimulatorInputCondition(condition) {
+  if (!condition || typeof condition !== "object") {
+    return "";
+  }
+  const field = String(condition.field || "").trim();
+  const op = String(condition.op || "").trim();
+  const value = condition.value === undefined ? "" : JSON.stringify(condition.value);
+  return field && op ? `${field} ${formatConditionalOperator(op)} ${value}` : "";
 }
 
 function formatConditionalOperator(op) {
@@ -603,10 +1085,12 @@ function formatConditionalOperator(op) {
   const labels = {
     eq: "==",
     ne: "!=",
-    neq: "!=",
     in: "in",
     not_in: "not in",
-    exists: "exists",
+    gt: ">",
+    gte: ">=",
+    lt: "<",
+    lte: "<=",
   };
   return labels[normalized] || normalized;
 }
@@ -1230,7 +1714,7 @@ function updateRunsEmptyState() {
   $("runs-empty").style.display = hasRuns ? "none" : "block";
 }
 
-function refreshRunCardsValidation() {
+function refreshRunCardsValidation({ sync = true } = {}) {
   let ok = true;
   const seen = new Set();
   document.querySelectorAll(".run-card").forEach((card) => {
@@ -1247,27 +1731,49 @@ function refreshRunCardsValidation() {
       messages.push("Replicates must be >= 1.");
     }
     const simulator = simulatorById(card.querySelector(".simulator-id").value);
+    let params = null;
     try {
-      readParamsFromHost(simulator, card.querySelector(".run-params-form"));
+      params = readParamsFromHost(simulator, card.querySelector(".run-params-form"));
     } catch (err) {
       messages.push(String(err?.message || "Invalid parameters"));
     }
+    if (params) {
+      messages.push(...simulatorInputMessages(simulator, params));
+    }
     const selectedNativeOutputs = readNativeOutputsFromHost(card.querySelector(".run-native-outputs-form"));
-    const supportedNativeOutputs = new Set(nativeOutputDefsForSimulator(simulator).map((item) => String(item.id)));
+    const nativeOutputDefs = nativeOutputDefsForSimulator(simulator);
+    const supportedNativeOutputs = new Set(nativeOutputDefs.map((item) => String(item.id)));
+    const nativeOutputDefsById = new Map(nativeOutputDefs.map((item) => [String(item.id), item]));
     const unsupportedNativeOutputs = selectedNativeOutputs.filter((item) => !supportedNativeOutputs.has(String(item)));
     if (unsupportedNativeOutputs.length) {
       messages.push(`Unsupported native outputs: ${unsupportedNativeOutputs.join(", ")}`);
     }
+    if (params) {
+      for (const outputId of selectedNativeOutputs) {
+        const outputDef = nativeOutputDefsById.get(String(outputId));
+        if (outputDef && !nativeOutputMatches(outputDef, params)) {
+          messages.push(
+            String(
+              outputDef.message
+              || `${outputId} is not available with the current run parameters.`
+            ).trim()
+          );
+        }
+      }
+    }
     const validation = card.querySelector(".run-validation");
-    validation.classList.toggle("ok", messages.length === 0);
-    validation.classList.toggle("err", messages.length > 0);
-    validation.textContent = messages.length ? messages.join("\n") : "Run configuration looks valid.";
-    card.classList.toggle("invalid", messages.length > 0);
-    if (messages.length) {
+    const uniqueMessages = [...new Set(messages.filter(Boolean))];
+    validation.classList.toggle("ok", uniqueMessages.length === 0);
+    validation.classList.toggle("err", uniqueMessages.length > 0);
+    validation.textContent = uniqueMessages.length ? uniqueMessages.join("\n") : "Run configuration looks valid.";
+    card.classList.toggle("invalid", uniqueMessages.length > 0);
+    if (uniqueMessages.length) {
       ok = false;
     }
   });
-  syncButtons();
+  if (sync) {
+    syncButtons();
+  }
   return ok;
 }
 
@@ -1359,14 +1865,26 @@ function renderPlan(plan) {
     `runs: ${(plan.runs || []).length}`,
     `tasks: ${(plan.tasks || []).length}`,
     `max_parallel_tasks: ${plan.execution?.max_parallel_tasks ?? "-"}`,
+    `max_cores: ${plan.execution?.max_cores ?? "-"}`,
+    `max_ram_gb: ${plan.execution?.max_ram_gb ?? "-"}`,
+    `estimated_total_time_s: ${plan.execution?.eta_total_seconds ?? "-"}`,
+    `waves: ${(plan.execution?.waves || []).length}`,
   ].join("\n");
+
+  const warnings = Array.isArray(plan.execution?.warnings) ? plan.execution.warnings.filter(Boolean) : [];
+  if (warnings.length) {
+    const warningBox = document.createElement("div");
+    warningBox.className = "muted-box warning-box";
+    warningBox.textContent = warnings.join("\n");
+    tables.appendChild(warningBox);
+  }
 
   const runsCard = document.createElement("article");
   runsCard.className = "wave-card";
   runsCard.innerHTML = "<h3>Simulator Runs</h3>";
   const runsTable = document.createElement("table");
   runsTable.className = "wave-table";
-  runsTable.innerHTML = "<thead><tr><th>run_id</th><th>simulator</th><th>replicates</th><th>native_outputs</th><th>base_seed</th><th>replicate_seeds</th></tr></thead>";
+  runsTable.innerHTML = "<thead><tr><th>run_id</th><th>simulator</th><th>replicates</th><th>threads</th><th>RAM GB</th><th>ETA s</th><th>ETA source</th><th>native_outputs</th><th>base_seed</th><th>replicate_seeds</th></tr></thead>";
   const runsBody = document.createElement("tbody");
   for (const run of plan.runs || []) {
     const tr = document.createElement("tr");
@@ -1374,6 +1892,10 @@ function renderPlan(plan) {
       run.run_id,
       run.simulator_id,
       run.replicates,
+      run.runtime_resources?.threads ?? "-",
+      run.ram_gb ?? "-",
+      run.eta_seconds ?? "-",
+      run.eta_source ?? "-",
       (run.native_outputs || []).join(", ") || "-",
       run.base_seed,
       (run.replicate_seeds || []).join(", "),
@@ -1388,16 +1910,53 @@ function renderPlan(plan) {
   runsCard.appendChild(runsTable);
   tables.appendChild(runsCard);
 
+  const wavesCard = document.createElement("article");
+  wavesCard.className = "wave-card";
+  wavesCard.innerHTML = "<h3>Execution Waves</h3>";
+  const wavesTable = document.createElement("table");
+  wavesTable.className = "wave-table";
+  wavesTable.innerHTML = "<thead><tr><th>wave</th><th>tasks</th><th>threads_used</th><th>RAM GB</th><th>ETA s</th><th>window</th></tr></thead>";
+  const wavesBody = document.createElement("tbody");
+  for (const wave of plan.execution?.waves || []) {
+    const tr = document.createElement("tr");
+    [
+      wave.index,
+      (wave.tasks || []).map((task) => task.task_id).join(", "),
+      wave.threads_used,
+      wave.ram_gb_used,
+      wave.eta_seconds,
+      `${wave.eta_start_seconds ?? "-"}-${wave.eta_end_seconds ?? "-"}`,
+    ].forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = String(value ?? "-");
+      tr.appendChild(td);
+    });
+    wavesBody.appendChild(tr);
+  }
+  wavesTable.appendChild(wavesBody);
+  wavesCard.appendChild(wavesTable);
+  tables.appendChild(wavesCard);
+
   const tasksCard = document.createElement("article");
   tasksCard.className = "wave-card";
   tasksCard.innerHTML = "<h3>Planned Tasks</h3>";
   const tasksTable = document.createElement("table");
   tasksTable.className = "wave-table";
-  tasksTable.innerHTML = "<thead><tr><th>task_id</th><th>run_id</th><th>replicate</th><th>seed</th><th>dataset_id</th></tr></thead>";
+  tasksTable.innerHTML = "<thead><tr><th>task_id</th><th>run_id</th><th>replicate</th><th>seed</th><th>threads</th><th>RAM GB</th><th>ETA s</th><th>wave</th><th>dataset_id</th></tr></thead>";
   const tasksBody = document.createElement("tbody");
   for (const task of plan.tasks || []) {
     const tr = document.createElement("tr");
-    [task.task_id, task.run_id, task.replicate_index, task.seed, task.dataset_id].forEach((value) => {
+    [
+      task.task_id,
+      task.run_id,
+      task.replicate_index,
+      task.seed,
+      task.runtime_resources?.threads ?? "-",
+      task.ram_gb ?? "-",
+      task.eta_seconds ?? "-",
+      task.eta_wave ?? "-",
+      task.dataset_id,
+    ].forEach((value) => {
       const td = document.createElement("td");
       td.textContent = String(value ?? "-");
       tr.appendChild(td);
@@ -1409,15 +1968,31 @@ function renderPlan(plan) {
   tables.appendChild(tasksCard);
 }
 
-function renderExecutionAlerts(job) {
+function renderExecutionAlerts(job, runtimeProgress = null) {
   const root = $("execution-alerts");
   const error = String(job?.error || "").trim();
-  if (!error) {
+  const failedTasks = Array.isArray(runtimeProgress?.tasks)
+    ? runtimeProgress.tasks.filter((task) => String(task?.status || "") === "failed")
+    : [];
+  const messages = [];
+  if (error) {
+    messages.push(error);
+  }
+  for (const task of failedTasks) {
+    const taskId = String(task?.task_id || "").trim() || "task";
+    const message = String(task?.message || "Task failed.").trim();
+    messages.push(`${taskId}: ${message}`);
+  }
+  const uniqueMessages = [...new Set(messages.filter(Boolean))];
+  root.classList.toggle("has-errors", uniqueMessages.length > 0);
+  if (!uniqueMessages.length) {
     root.textContent = "No execution errors or warnings.";
     return;
   }
-  root.textContent = error;
-  pushToast({ title: "Job failed", message: error, kind: "error", ttlMs: 9000 });
+  root.textContent = uniqueMessages.join("\n");
+  if (error) {
+    pushToast({ title: "Job failed", message: error, kind: "error", ttlMs: 9000 });
+  }
 }
 
 function hasExecutionArtifacts(job) {
@@ -1453,13 +2028,14 @@ function syncButtons() {
   const planReady = ["planned", "executed"].includes(job?.stage || "");
   const executed = job?.stage === "executed";
   const hasRuns = Boolean(document.querySelectorAll(".run-card").length);
+  const runsValid = hasRuns ? refreshRunCardsValidation({ sync: false }) : true;
   $("preflight-btn").disabled = busy;
   $("step-1-next-btn").disabled = busy || !preflightReady;
   $("add-all-simulators-btn").disabled = busy || !preflightReady || availableSimulatorIds().length === 0;
   $("clear-runs-btn").disabled = busy || !hasRuns;
-  $("plan-btn").disabled = busy || !preflightReady || !hasRuns;
-  $("step-2-next-btn").disabled = busy || !planReady;
-  $("execute-btn").disabled = busy || !planReady || executed;
+  $("plan-btn").disabled = busy || !preflightReady || !hasRuns || !runsValid;
+  $("step-2-next-btn").disabled = busy || !planReady || !hasRuns || !runsValid;
+  $("execute-btn").disabled = busy || !planReady || executed || !hasRuns || !runsValid;
   setStepState(1, preflightReady ? "ready" : busy ? "running" : "draft");
   setStepState(2, planReady ? "ready" : preflightReady ? "ready" : "blocked");
   setStepState(3, executed ? "ready" : planReady ? "ready" : "blocked");
@@ -1480,7 +2056,7 @@ async function pollJob(jobId) {
   }
   renderRuntimeProgress(payload.runtime_progress);
   pushRuntimeFailureToasts(payload.runtime_progress, state.notifiedFailures);
-  renderExecutionAlerts(job);
+  renderExecutionAlerts(job, payload.runtime_progress);
   renderReproducibility(payload.reproducibility);
   updateExplorerVisibility(job);
   await refreshFilesIfNeeded(job);
@@ -1528,6 +2104,8 @@ async function handlePlan() {
       runs: collectRuns(),
       options: {
         max_parallel_tasks: Number.parseInt($("max-parallel-tasks").value || "1", 10),
+        max_cores: Number.parseInt($("max-cores").value || "1", 10),
+        max_ram_gb: Number($("max-ram-gb").value || "1"),
         output_dir: $("output-dir").value.trim() || "./benchmarks",
       },
     });
@@ -1539,10 +2117,15 @@ async function handlePlan() {
 
 async function handleRun() {
   try {
+    if (!document.querySelectorAll(".run-card").length) {
+      throw new Error("At least one simulator run is required.");
+    }
+    if (!refreshRunCardsValidation()) {
+      throw new Error("Fix invalid run configuration before execution.");
+    }
     const payload = await submitRun({
       job_id: state.jobId,
       options: {
-        max_parallel_tasks: Number.parseInt($("max-parallel-tasks").value || "1", 10),
         output_dir: $("output-dir").value.trim() || "./benchmarks",
         progress_poll_seconds: Number($("progress-poll").value || 0.5),
       },
@@ -1555,7 +2138,7 @@ async function handleRun() {
 }
 
 function initEvents() {
-  $("add-input-btn").addEventListener("click", addInputRow);
+  $("add-input-btn").addEventListener("click", openInputModal);
   $("preflight-btn").addEventListener("click", handlePreflight);
   $("plan-btn").addEventListener("click", handlePlan);
   $("execute-btn").addEventListener("click", handleRun);
@@ -1580,6 +2163,7 @@ function initEvents() {
   $("open-simulator-issue-modal-btn").addEventListener("click", () => openModal("simulator-issue-modal"));
   $("simulator-request-modal-close").addEventListener("click", () => closeModal("simulator-request-modal"));
   $("simulator-issue-modal-close").addEventListener("click", () => closeModal("simulator-issue-modal"));
+  $("input-modal-close").addEventListener("click", closeInputModal);
   $("simulator-request-modal").addEventListener("click", (event) => {
     if (event.target && event.target.id === "simulator-request-modal") {
       closeModal("simulator-request-modal");
@@ -1588,6 +2172,11 @@ function initEvents() {
   $("simulator-issue-modal").addEventListener("click", (event) => {
     if (event.target && event.target.id === "simulator-issue-modal") {
       closeModal("simulator-issue-modal");
+    }
+  });
+  $("input-modal").addEventListener("click", (event) => {
+    if (event.target && event.target.id === "input-modal") {
+      closeInputModal();
     }
   });
   $("open-simulator-request-issue-btn").addEventListener("click", () => {
@@ -1655,6 +2244,7 @@ function initEvents() {
       return;
     }
     closeParamsModal();
+    closeInputModal();
     closeModal("simulator-request-modal");
     closeModal("simulator-issue-modal");
   });
@@ -1668,6 +2258,7 @@ async function main() {
   state.bootstrap = await fetchBootstrapData();
   state.simulatorsById = new Map((state.bootstrap.simulators || []).map((item) => [item.simulator_id, item]));
   initBootstrapView();
+  renderInputModalBody();
   updateInputsEmptyState();
   updateRunsEmptyState();
   syncButtons();

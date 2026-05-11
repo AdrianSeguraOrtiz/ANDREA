@@ -8,7 +8,8 @@
     "params": {
       "backbone_template": "bifurcating",
       "distance_metric": "pearson"
-    }
+    },
+    "runtime_resources": {"threads": 1}
   },
   "expect_progress": true,
   "required_files": [

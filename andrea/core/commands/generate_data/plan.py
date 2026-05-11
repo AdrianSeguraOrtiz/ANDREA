@@ -7,9 +7,12 @@ from pathlib import Path
 from typing import Any
 
 from .catalog import _load_simulator_catalog, get_profile_capability
+from .cost_planner import apply_simulator_cost_plan, detect_host_ram_gb
 from .request import (
     _resolve_native_outputs,
     _resolve_simulator_params,
+    resolve_simulator_runtime_resources,
+    validate_simulator_inputs,
     validate_simulation_plan_payload,
 )
 from .scenario import validate_scenario_request
@@ -45,6 +48,8 @@ def _build_simulation_plan_payload(
     scenario_request_path: Path,
     simulator_runs_path: Path,
     max_parallel_tasks: int | None = None,
+    max_cores: int | None = None,
+    max_ram_gb: float | None = None,
 ) -> dict[str, Any]:
     scenario = validate_scenario_request(scenario_request_path)
     simulator_runs_payload = _load_simulator_runs_payload(simulator_runs_path)
@@ -91,6 +96,19 @@ def _build_simulation_plan_payload(
             user_params=dict(run_config.get("params", {})),
             spec_params=simulator_spec.get("params", {}),
         )
+        input_errors = validate_simulator_inputs(
+            simulator_id=simulator_id,
+            simulator_spec=simulator_spec,
+            profile=scenario.profile,
+            requested_extras=scenario.requested_extras,
+            simulator_params=resolved_params,
+            input_ids=set(scenario.inputs),
+        )
+        if input_errors:
+            raise ValueError(
+                f"Simulator run '{run_id}' has invalid inputs: "
+                + "; ".join(input_errors)
+            )
         profile_capability = get_profile_capability(simulator_spec, scenario.profile)
         if profile_capability is None:
             raise ValueError(
@@ -100,8 +118,14 @@ def _build_simulation_plan_payload(
             simulator_id=simulator_id,
             profile=scenario.profile,
             profile_capability=profile_capability,
+            requested_extras=scenario.requested_extras,
+            simulator_params=resolved_params,
             raw_native_outputs=run_config.get("native_outputs"),
             label=f"simulator-runs.runs[{run_id}]",
+        )
+        runtime_resources = resolve_simulator_runtime_resources(
+            simulator_id=simulator_id,
+            simulator_spec=simulator_spec,
         )
         base_seed = run_config.get("base_seed")
         if base_seed is None:
@@ -122,6 +146,7 @@ def _build_simulation_plan_payload(
                 "run_id": run_id,
                 "simulator_id": simulator_id,
                 "simulator_params": resolved_params,
+                "runtime_resources": runtime_resources,
                 "replicates": replicates,
                 "native_outputs": native_outputs,
                 "base_seed": int(base_seed),
@@ -139,12 +164,32 @@ def _build_simulation_plan_payload(
                     "replicate_index": replicate_index,
                     "seed": seed,
                     "dataset_id": f"{scenario.request_id}__{task_id}",
+                    "runtime_resources": runtime_resources,
                 }
             )
 
     if max_parallel_tasks is None:
         max_parallel_tasks = multiprocessing.cpu_count()
     max_parallel_tasks = max(1, min(int(max_parallel_tasks), max(1, len(tasks))))
+    if max_cores is None:
+        max_cores = multiprocessing.cpu_count()
+    max_cores = max(1, int(max_cores))
+    if max_ram_gb is None:
+        max_ram_gb = detect_host_ram_gb()
+    max_ram_gb = max(1.0, float(max_ram_gb))
+
+    resolved_runs, tasks, execution = apply_simulator_cost_plan(
+        runs=resolved_runs,
+        tasks=tasks,
+        catalog=catalog,
+        scenario_profile=scenario.profile,
+        requested_extras=scenario.requested_extras,
+        effective_extras=scenario.effective_extras,
+        input_ids=set(scenario.inputs),
+        max_parallel_tasks=max_parallel_tasks,
+        max_cores=max_cores,
+        max_ram_gb=max_ram_gb,
+    )
 
     payload: dict[str, Any] = {
         "schema_version": "1.0",
@@ -159,9 +204,7 @@ def _build_simulation_plan_payload(
         },
         "runs": resolved_runs,
         "tasks": tasks,
-        "execution": {
-            "max_parallel_tasks": max_parallel_tasks,
-        },
+        "execution": execution,
         "base_seed": scenario.base_seed,
     }
     if scenario.notes:
@@ -175,11 +218,15 @@ def plan_generate_data_request(
     simulator_runs_path: Path,
     output_path: Path,
     max_parallel_tasks: int | None = None,
+    max_cores: int | None = None,
+    max_ram_gb: float | None = None,
 ) -> Path:
     payload = _build_simulation_plan_payload(
         scenario_request_path=scenario_request_path,
         simulator_runs_path=simulator_runs_path,
         max_parallel_tasks=max_parallel_tasks,
+        max_cores=max_cores,
+        max_ram_gb=max_ram_gb,
     )
     validate_simulation_plan_payload(payload, base_dir=output_path.resolve().parent)
     _write_json(output_path, payload)

@@ -1,8 +1,8 @@
 {
-  "simulator_id": "dyngen",
+  "simulator_id": "scmultisim",
   "request": {
     "profile": "scrna_grouped",
-    "seed": 17,
+    "seed": 103,
     "effective_extras": [
       "groups",
       "cell_phenotypes",
@@ -12,15 +12,28 @@
       "pseudotime",
       "prior_grn",
       "tf_list",
-      "prior_grn_by_group"
+      "prior_grn_by_group",
+      "group_networks"
     ],
     "inputs": {},
     "params": {
-      "backbone_template": "bifurcating",
-      "simulation_params": {
-        "num_simulations": 2,
-        "census_interval": 2.0,
-        "compute_rna_velocity": false
+      "grn_source": "builtin_100",
+      "tree_preset": "phyla3",
+      "num_cells": 12,
+      "num_cifs": 20,
+      "velocity": {
+        "enabled": false
+      },
+      "dynamic_grn": {
+        "enabled": true,
+        "num_steps": 3,
+        "cell_per_step": 1,
+        "num_changing_edges": 2,
+        "weight_mean": 0,
+        "weight_sd": 1
+      },
+      "technical_noise": {
+        "enabled": false
       }
     },
     "runtime_resources": {"threads": 1}
@@ -38,13 +51,13 @@
     "extras/tf_list.txt",
     "extras/prior_grn_by_group.tsv",
     "truth/global_network.csv",
+    "truth/group_networks",
     "simulator-output-manifest.json",
     "progress.json",
-    "provenance/raw/model.rds",
-    "provenance/raw/dataset.rds",
+    "provenance/raw/result.rds",
     "provenance/raw/group_edge_activity.tsv",
-    "provenance/raw/group_active_networks.tsv",
-    "provenance/raw/lineage_states_used.tsv",
-    "provenance/raw/lineage_transitions_used.tsv"
+    "provenance/raw/group_networks_index.tsv",
+    "provenance/raw/lineage_transitions_used.tsv",
+    "provenance/raw/session_info.txt"
   ]
 }

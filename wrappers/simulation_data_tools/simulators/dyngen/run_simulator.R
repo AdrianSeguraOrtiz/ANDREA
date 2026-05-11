@@ -76,7 +76,7 @@ write_progress <- function(status, phase, message = NULL, details = list()) {
 
 parse_request <- function(path) {
   req <- jsonlite::read_json(path, simplifyVector = TRUE)
-  required_fields <- c("simulator_id", "profile", "seed", "effective_extras", "params")
+  required_fields <- c("simulator_id", "profile", "seed", "effective_extras", "params", "runtime_resources")
   missing_fields <- required_fields[!required_fields %in% names(req)]
   if (length(missing_fields) > 0) {
     stop(
@@ -88,6 +88,21 @@ parse_request <- function(path) {
     )
   }
   req
+}
+
+normalise_runtime_resources <- function(req) {
+  resources <- req$runtime_resources
+  raw_threads <- resources$threads %||% 1L
+  if (
+    length(raw_threads) != 1L ||
+      is.na(raw_threads) ||
+      raw_threads != floor(raw_threads) ||
+      raw_threads < 1L
+  ) {
+    stop("runtime_resources.threads must be an integer >= 1.", call. = FALSE)
+  }
+  threads <- as.integer(raw_threads)
+  list(threads = threads)
 }
 
 normalise_params <- function(req) {
@@ -834,18 +849,20 @@ write_manifest <- function(request, params, dataset, output_dir, group_networks 
 
 request <- parse_request(request_path)
 params <- normalise_params(request)
+runtime_resources <- normalise_runtime_resources(request)
 effective_extras <- unique(as.character(request$effective_extras))
 native_outputs <- unique(as.character(request$native_outputs %||% character()))
 cache_dir <- Sys.getenv("DYNGEN_CACHE_DIR", unset = "/opt/dyngen-cache")
 dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-options(dyngen_download_cache_dir = cache_dir, Ncpus = 1L)
+options(dyngen_download_cache_dir = cache_dir, Ncpus = runtime_resources$threads)
 
 write_json_atomic(file.path(raw_dir, "simulator-run-request.json"), request)
 write_json_atomic(
   file.path(raw_dir, "wrapper_environment.json"),
   list(
     dyngen_version = as.character(utils::packageVersion("dyngen")),
-    cache_dir = cache_dir
+    cache_dir = cache_dir,
+    runtime_resources = request$runtime_resources
   )
 )
 writeLines(capture.output(sessionInfo()), con = file.path(raw_dir, "session_info.txt"))
@@ -884,6 +901,7 @@ tryCatch(
       tf_network_params = build_tf_network_params(params),
       feature_network_params = build_feature_network_params(params),
       verbose = FALSE,
+      num_cores = runtime_resources$threads,
       download_cache_dir = cache_dir,
       gold_standard_params = build_gold_standard_params(params),
       simulation_params = build_simulation_params(params, need_cellwise_grn, need_rna_velocity),

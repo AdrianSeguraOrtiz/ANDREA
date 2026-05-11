@@ -61,6 +61,8 @@ def _resolve_native_outputs(
     simulator_id: str,
     profile: str,
     profile_capability: dict[str, Any],
+    requested_extras: list[str],
+    simulator_params: dict[str, Any],
     raw_native_outputs: Any,
     label: str,
 ) -> list[str]:
@@ -88,6 +90,33 @@ def _resolve_native_outputs(
         raise ValueError(
             f"Simulator '{simulator_id}' does not support native outputs for profile '{profile}': "
             f"{unsupported}"
+        )
+    requested_extra_set = set(requested_extras)
+    unavailable = [
+        supported[output_id]
+        for output_id in resolved
+        if not _conditional_item_matches(
+            supported[output_id],
+            default_if_no_conditions=True,
+            profile=profile,
+            requested_extras=requested_extra_set,
+            simulator_params=simulator_params,
+        )
+    ]
+    if unavailable:
+        messages = []
+        for output_def in unavailable:
+            output_id = str(output_def.get("id", "")).strip()
+            message = str(
+                output_def.get(
+                    "message",
+                    f"native output '{output_id}' is not available with the current configuration",
+                )
+            ).strip()
+            messages.append(f"{output_id}: {message}")
+        raise ValueError(
+            f"Simulator '{simulator_id}' cannot produce selected native output(s) "
+            f"for profile '{profile}': {'; '.join(messages)}"
         )
     return resolved
 
@@ -183,6 +212,88 @@ def _param_lookup(params: dict[str, Any], path: str) -> Any:
     return current
 
 
+def _compare_condition_value(actual: Any, op: str, expected: Any) -> bool:
+    if op == "eq":
+        return actual == expected
+    if op == "ne":
+        return actual != expected
+    if op == "in":
+        return isinstance(expected, list) and actual in expected
+    if op == "not_in":
+        return isinstance(expected, list) and actual not in expected
+    if op in {"gt", "gte", "lt", "lte"}:
+        try:
+            actual_num = float(actual)
+            expected_num = float(expected)
+        except (TypeError, ValueError):
+            return False
+        if op == "gt":
+            return actual_num > expected_num
+        if op == "gte":
+            return actual_num >= expected_num
+        if op == "lt":
+            return actual_num < expected_num
+        if op == "lte":
+            return actual_num <= expected_num
+    return False
+
+
+def _condition_actual_value(
+    field: str,
+    *,
+    profile: str,
+    requested_extras: set[str],
+    simulator_params: dict[str, Any],
+) -> Any:
+    if field == "profile":
+        return profile
+    if field == "requested_extra":
+        return sorted(requested_extras)
+    if field.startswith("param."):
+        return _param_lookup(simulator_params, field.removeprefix("param."))
+    return None
+
+
+def _conditional_item_matches(
+    item: dict[str, Any],
+    *,
+    default_if_no_conditions: bool,
+    profile: str,
+    requested_extras: set[str],
+    simulator_params: dict[str, Any],
+) -> bool:
+    conditions = item.get("conditions", [])
+    if not isinstance(conditions, list) or not conditions:
+        return default_if_no_conditions
+    for condition in conditions:
+        if not isinstance(condition, dict):
+            return False
+        field = str(condition.get("field", "")).strip()
+        op = str(condition.get("op", "")).strip()
+        expected = condition.get("value")
+        actual = _condition_actual_value(
+            field,
+            profile=profile,
+            requested_extras=requested_extras,
+            simulator_params=simulator_params,
+        )
+        if field == "requested_extra" and op in {"eq", "ne"}:
+            matches = expected in requested_extras
+            if op == "ne":
+                matches = not matches
+        elif field == "requested_extra" and op == "in":
+            expected_values = set(expected if isinstance(expected, list) else [])
+            matches = bool(expected_values.intersection(requested_extras))
+        elif field == "requested_extra" and op == "not_in":
+            expected_values = set(expected if isinstance(expected, list) else [])
+            matches = not bool(expected_values.intersection(requested_extras))
+        else:
+            matches = _compare_condition_value(actual, op, expected)
+        if not matches:
+            return False
+    return True
+
+
 def _conditional_input_matches(
     requirement: dict[str, Any],
     *,
@@ -190,26 +301,13 @@ def _conditional_input_matches(
     requested_extras: set[str],
     simulator_params: dict[str, Any],
 ) -> bool:
-    if requirement.get("profile") not in (None, profile):
-        return False
-    requested_extra = requirement.get("requested_extra")
-    if requested_extra is not None and requested_extra not in requested_extras:
-        return False
-    param = requirement.get("param")
-    if param is None:
-        return True
-    actual = _param_lookup(simulator_params, str(param))
-    op = str(requirement.get("op", "=="))
-    expected = requirement.get("value")
-    if op == "==":
-        return actual == expected
-    if op == "!=":
-        return actual != expected
-    if op == "in":
-        return isinstance(expected, list) and actual in expected
-    if op == "not_in":
-        return isinstance(expected, list) and actual not in expected
-    return False
+    return _conditional_item_matches(
+        requirement,
+        default_if_no_conditions=False,
+        profile=profile,
+        requested_extras=requested_extras,
+        simulator_params=simulator_params,
+    )
 
 
 def validate_simulator_inputs(
@@ -227,9 +325,9 @@ def validate_simulator_inputs(
     conditional_required = simulator_inputs.get("conditional_required", [])
 
     declared_ids = {
-        str(item.get("id"))
+        str(item.get("input"))
         for item in required + optional
-        if isinstance(item, dict) and item.get("id")
+        if isinstance(item, dict) and item.get("input")
     }
     declared_ids.update(
         str(item.get("input"))
@@ -246,7 +344,7 @@ def validate_simulator_inputs(
 
     for item in required:
         if isinstance(item, dict):
-            input_id = str(item.get("id", ""))
+            input_id = str(item.get("input", ""))
             if input_id and input_id not in input_ids:
                 errors.append(f"missing required input file '{input_id}'")
 
@@ -275,6 +373,55 @@ def validate_simulator_inputs(
                 )
             )
     return errors
+
+
+def resolve_simulator_runtime_resources(
+    *,
+    simulator_id: str,
+    simulator_spec: dict[str, Any],
+    raw_resources: Any = None,
+) -> dict[str, Any]:
+    threading = (
+        simulator_spec.get("runtime_resources", {})
+        .get("threading", {})
+        if isinstance(simulator_spec.get("runtime_resources"), dict)
+        else {}
+    )
+    supported = bool(threading.get("supported", False))
+    default_threads = int(threading.get("default_threads", 1))
+    max_threads = int(threading.get("max_threads", default_threads))
+    if default_threads < 1 or max_threads < 1 or default_threads > max_threads:
+        raise ValueError(
+            f"[{simulator_id}] invalid runtime_resources.threading defaults"
+        )
+
+    if raw_resources is None:
+        threads = default_threads
+    else:
+        if not isinstance(raw_resources, dict):
+            raise ValueError(
+                f"[{simulator_id}] runtime_resources must be an object"
+            )
+        raw_threads = raw_resources.get("threads")
+        if raw_threads is None:
+            raise ValueError(f"[{simulator_id}] runtime_resources.threads is required")
+        if isinstance(raw_threads, bool) or not isinstance(raw_threads, int):
+            raise ValueError(
+                f"[{simulator_id}] runtime_resources.threads must be an integer"
+            )
+        threads = int(raw_threads)
+
+    if threads < 1:
+        raise ValueError(f"[{simulator_id}] runtime_resources.threads must be >= 1")
+    if not supported and threads != 1:
+        raise ValueError(
+            f"[{simulator_id}] does not support threaded execution; runtime_resources.threads must be 1"
+        )
+    if threads > max_threads:
+        raise ValueError(
+            f"[{simulator_id}] runtime_resources.threads must be <= {max_threads}"
+        )
+    return {"threads": threads}
 
 
 def _validate_organism(payload: dict[str, Any]) -> None:
@@ -386,10 +533,17 @@ def _resolve_simulator_run(
         user_params=raw_simulator_params,
         spec_params=simulator_spec.get("params", {}),
     )
+    runtime_resources = resolve_simulator_runtime_resources(
+        simulator_id=simulator_id,
+        simulator_spec=simulator_spec,
+        raw_resources=run_payload.get("runtime_resources"),
+    )
     native_outputs = _resolve_native_outputs(
         simulator_id=simulator_id,
         profile=profile,
         profile_capability=profile_capability,
+        requested_extras=requested_extras,
+        simulator_params=resolved_params,
         raw_native_outputs=run_payload.get("native_outputs"),
         label=f"simulation-plan.runs[{run_id}]",
     )
@@ -447,6 +601,7 @@ def _resolve_simulator_run(
         inputs=inputs,
         resolved_input_paths=resolved_input_paths,
         simulator_params=resolved_params,
+        runtime_resources=runtime_resources,
         native_outputs=native_outputs,
         replicates=replicates,
         base_seed=int(simulator_seed_base),
@@ -549,6 +704,11 @@ def validate_simulation_plan_payload(
             raise ValueError(
                 f"simulation-plan.tasks[{task.get('task_id')}].seed must match "
                 f"runs[{run_id}].replicate_seeds[{replicate_index - 1}]"
+            )
+        if dict(task.get("runtime_resources", {})) != run.runtime_resources:
+            raise ValueError(
+                f"simulation-plan.tasks[{task.get('task_id')}].runtime_resources "
+                f"must match runs[{run_id}].runtime_resources"
             )
         seen_replicates_by_run[run_id].add(replicate_index)
     missing_replicates = {

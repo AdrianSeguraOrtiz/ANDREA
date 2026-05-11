@@ -199,6 +199,7 @@ def _run_one_config(
             "effective_extras": list(config["request"]["effective_extras"]),
             "mounted_inputs": mounted_inputs,
             "params": params,
+            "runtime_resources": dict(config["request"]["runtime_resources"]),
             "output_dir_in_container": "/work/out",
         }
         request_path = request_dir / "simulator-run-request.json"

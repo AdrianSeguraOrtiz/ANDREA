@@ -211,6 +211,7 @@ wrappers/inference_tools/tools/*/repo/
 wrappers/inference_tools/tools/*/papers/
 wrappers/simulation_data_tools/simulators/*/repo/
 wrappers/simulation_data_tools/simulators/*/papers/
+wrappers/simulation_data_tools/simulators/*/additional_files/
 
 # Local workflow outputs
 inferred_networks/

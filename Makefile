@@ -43,6 +43,9 @@ run-tool-smoketests:
 benchmark-tool-costs:
 	@$(PYTHON) $(INFERENCE_WRAPPER_SCRIPTS)/benchmark_costs.py $(ARGS)
 
+benchmark-simulator-costs:
+	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/benchmark_costs.py $(ARGS)
+
 run-simulator-smoketests:
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/run_smoketests.py $(ARGS)
 
@@ -76,6 +79,9 @@ validate-simulatorspecs:
 validate-simulator-smoketest-configs:
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_smoketest_configs.py $(ARGS)
 
+validate-simulator-costs:
+	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_simulator_costs.py $(ARGS)
+
 validate-inference-catalog:
 	@$(MAKE) validate-toolspecs
 	@$(MAKE) validate-input-specs
@@ -85,6 +91,7 @@ validate-inference-catalog:
 validate-generation-catalog:
 	@$(MAKE) validate-simulatorspecs
 	@$(MAKE) validate-simulator-smoketest-configs
+	@$(MAKE) validate-simulator-costs
 
 scaffold-tool:
 	@test -n "$(TOOL)" || (echo "Usage: make scaffold-tool TOOL=<tool_id> [WRAPPER=<language>] [ARGS='...']" && exit 2)

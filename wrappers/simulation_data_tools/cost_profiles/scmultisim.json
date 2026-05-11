@@ -1,0 +1,113 @@
+{
+  "cost_relevant_params": [
+    "grn_source",
+    "tree_preset",
+    "num_cifs",
+    "speed_up",
+    "velocity.enabled",
+    "dynamic_grn.enabled",
+    "dynamic_grn.num_steps",
+    "dynamic_grn.cell_per_step",
+    "technical_noise.enabled",
+    "batch_effect.enabled"
+  ],
+  "dimension_params": {
+    "cells": "num_cells",
+    "genes": "num_genes"
+  },
+  "input_source_params": [
+    "grn_source",
+    "tree_preset"
+  ],
+  "profiles": [
+    {
+      "id": "scrna_global_builtin_static",
+      "profile": "scrna_global",
+      "requested_extras": [
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla1",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_grouped_builtin_dynamic",
+      "profile": "scrna_grouped",
+      "requested_extras": [
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "group_networks",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_grouped_custom_grn_tree",
+      "profile": "scrna_grouped",
+      "requested_extras": [
+        "groups",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 2,
+      "population_count": 2,
+      "inputs": {
+        "grn_params": "../tests/fixtures/scmultisim_grn_params.tsv",
+        "tree_newick": "../tests/fixtures/scmultisim_tree_newick.txt"
+      },
+      "param_overrides": {
+        "grn_source": "input_tsv",
+        "tree_preset": "input_newick",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    }
+  ]
+}

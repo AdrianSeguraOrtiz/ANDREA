@@ -52,6 +52,9 @@
   - gold-standard settings
   - simulation settings
   - experiment sampling settings
+- Runtime parallelism is not exposed as a simulator parameter. The simulator
+  spec declares `runtime_resources.threading`; the wrapper maps assigned
+  `threads` to R `options(Ncpus=...)` and `dyngen::initialise_model(num_cores=...)`.
 - Function-valued hooks from the R package are still not exposed as free-form user callbacks:
   - for example arbitrary `sample_num_regulators` functions
   - custom kinetics sampler functions

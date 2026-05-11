@@ -1,0 +1,35 @@
+{
+  "simulator_id": "scmultisim",
+  "request": {
+    "profile": "scrna_global",
+    "seed": 101,
+    "effective_extras": [],
+    "inputs": {},
+    "params": {
+      "grn_source": "builtin_100",
+      "tree_preset": "phyla1",
+      "num_cells": 8,
+      "num_cifs": 20,
+      "velocity": {
+        "enabled": false
+      },
+      "dynamic_grn": {
+        "enabled": false
+      },
+      "technical_noise": {
+        "enabled": false
+      }
+    },
+    "runtime_resources": {"threads": 1}
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "truth/global_network.csv",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/result.rds",
+    "provenance/raw/session_info.txt",
+    "provenance/raw/true_counts.tsv"
+  ]
+}

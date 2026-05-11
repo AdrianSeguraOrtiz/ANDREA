@@ -1,0 +1,370 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://andrea.dev/schemas/simulator-cost.schema.json",
+  "title": "ANDREA Simulator Cost Profiles",
+  "description": "Empirical benchmark-derived runtime/cost profiles for a simulator. Stored in andrea/catalog_simulation_data_tools/simulators/<simulator_id>/cost.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profiles"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/cost_profile"
+      }
+    }
+  },
+  "$defs": {
+    "cost_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "benchmark_config", "runtime_points"],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:/-]+$"
+        },
+        "benchmark_config": {
+          "$ref": "#/$defs/benchmark_config"
+        },
+        "runtime_points": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/runtime_point"
+          }
+        }
+      }
+    },
+    "benchmark_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "simulator_id",
+        "profile",
+        "sizes",
+        "threads_tested",
+        "ram_gb_tested",
+        "repeats",
+        "timeout_seconds",
+        "dimension_profile",
+        "input_profile",
+        "params_profile",
+        "runtime_resources_profile"
+      ],
+      "properties": {
+        "simulator_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sizes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/size_point"
+          }
+        },
+        "threads_tested": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "ram_gb_tested": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "repeats": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dimension_profile": {
+          "$ref": "#/$defs/dimension_profile"
+        },
+        "input_profile": {
+          "$ref": "#/$defs/input_profile"
+        },
+        "params_profile": {
+          "$ref": "#/$defs/params_profile"
+        },
+        "runtime_resources_profile": {
+          "$ref": "#/$defs/runtime_resources_profile"
+        }
+      }
+    },
+    "size_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["genes", "cells"],
+      "properties": {
+        "genes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cells": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "dimension_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cells_param", "genes_param", "group_count", "population_count"],
+      "properties": {
+        "cells_param": {
+          "type": "string",
+          "minLength": 1
+        },
+        "genes_param": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["fraction", "min"],
+                "properties": {
+                  "fraction": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "min": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "group_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "population_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "input_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_extras",
+        "effective_extras",
+        "required_inputs_satisfied",
+        "optional_inputs_provided",
+        "conditional_inputs_satisfied",
+        "input_source_modes",
+        "notes"
+      ],
+      "properties": {
+        "requested_extras": {
+          "$ref": "#/$defs/string_array"
+        },
+        "effective_extras": {
+          "$ref": "#/$defs/string_array"
+        },
+        "required_inputs_satisfied": {
+          "$ref": "#/$defs/string_array"
+        },
+        "optional_inputs_provided": {
+          "$ref": "#/$defs/string_array"
+        },
+        "conditional_inputs_satisfied": {
+          "$ref": "#/$defs/string_array"
+        },
+        "input_source_modes": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "params_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "override_file",
+        "resolved_base_params",
+        "cost_relevant_params",
+        "cost_relevant_values"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["simulatorspec_defaults", "simulatorspec_defaults_plus_override"]
+        },
+        "override_file": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "resolved_base_params": {
+          "type": "object"
+        },
+        "cost_relevant_params": {
+          "$ref": "#/$defs/string_array"
+        },
+        "cost_relevant_values": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "runtime_resources_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["threading_supported", "default_threads", "max_threads", "upstream_mapping"],
+      "properties": {
+        "threading_supported": {
+          "type": "boolean"
+        },
+        "default_threads": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_threads": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "upstream_mapping": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "runtime_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "genes",
+        "cells",
+        "groups",
+        "population_count",
+        "threads",
+        "ram_gb",
+        "status",
+        "repeats_total",
+        "repeats_ok",
+        "repeats_failed",
+        "ok_rate",
+        "failure_breakdown",
+        "seconds_p50",
+        "seconds_p90",
+        "output_bytes_p50",
+        "output_bytes_p90",
+        "peak_memory_mb_p50",
+        "peak_memory_mb_p90",
+        "feature_vector"
+      ],
+      "properties": {
+        "genes": { "type": "integer", "minimum": 1 },
+        "cells": { "type": "integer", "minimum": 1 },
+        "groups": { "type": "integer", "minimum": 0 },
+        "population_count": { "type": "integer", "minimum": 0 },
+        "threads": { "type": "integer", "minimum": 1 },
+        "ram_gb": { "type": "number", "exclusiveMinimum": 0 },
+        "status": {
+          "type": "string",
+          "enum": ["ok", "partial", "oom", "timeout", "error"]
+        },
+        "repeats_total": { "type": "integer", "minimum": 1 },
+        "repeats_ok": { "type": "integer", "minimum": 0 },
+        "repeats_failed": { "type": "integer", "minimum": 0 },
+        "ok_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "failure_breakdown": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["oom", "timeout", "error"],
+          "properties": {
+            "oom": { "type": "integer", "minimum": 0 },
+            "timeout": { "type": "integer", "minimum": 0 },
+            "error": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "seconds_p50": {
+          "anyOf": [
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "seconds_p90": {
+          "anyOf": [
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "output_bytes_p50": {
+          "anyOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "output_bytes_p90": {
+          "anyOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "peak_memory_mb_p50": {
+          "anyOf": [
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "peak_memory_mb_p90": {
+          "anyOf": [
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "feature_vector": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "string_array": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

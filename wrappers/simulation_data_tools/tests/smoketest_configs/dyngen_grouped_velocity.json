@@ -13,7 +13,8 @@
         "store_reaction_propensities": true,
         "kinetics_noise_kind": "none"
       }
-    }
+    },
+    "runtime_resources": {"threads": 1}
   },
   "expect_progress": true,
   "required_files": [

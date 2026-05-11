@@ -130,6 +130,13 @@
           "run_id",
           "simulator_id",
           "simulator_params",
+          "runtime_resources",
+          "ram_gb",
+          "eta_seconds",
+          "eta_source",
+          "eta_start_seconds",
+          "eta_end_seconds",
+          "eta_provenance",
           "replicates",
           "base_seed",
           "replicate_seeds"
@@ -146,6 +153,40 @@
             "pattern": "^[a-z0-9][a-z0-9_-]*$"
           },
           "simulator_params": {
+            "type": "object"
+          },
+          "runtime_resources": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["threads"],
+            "properties": {
+              "threads": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "ram_gb": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "eta_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "eta_start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_end_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_provenance": {
             "type": "object"
           },
           "replicates": {
@@ -189,7 +230,15 @@
           "simulator_id",
           "replicate_index",
           "seed",
-          "dataset_id"
+          "dataset_id",
+          "runtime_resources",
+          "ram_gb",
+          "eta_seconds",
+          "eta_source",
+          "eta_start_seconds",
+          "eta_end_seconds",
+          "eta_wave",
+          "eta_provenance"
         ],
         "properties": {
           "task_id": {
@@ -219,6 +268,44 @@
             "type": "string",
             "minLength": 1,
             "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "runtime_resources": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["threads"],
+            "properties": {
+              "threads": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "ram_gb": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "eta_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "eta_start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_end_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_wave": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eta_provenance": {
+            "type": "object"
           }
         }
       }
@@ -226,11 +313,87 @@
     "execution": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["max_parallel_tasks"],
+      "required": [
+        "max_parallel_tasks",
+        "max_cores",
+        "max_ram_gb",
+        "eta_total_seconds",
+        "waves",
+        "warnings"
+      ],
       "properties": {
         "max_parallel_tasks": {
           "type": "integer",
           "minimum": 1
+        },
+        "max_cores": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_ram_gb": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "eta_total_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "waves": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "threads_used",
+              "ram_gb_used",
+              "eta_seconds",
+              "eta_start_seconds",
+              "eta_end_seconds",
+              "tasks"
+            ],
+            "properties": {
+              "index": { "type": "integer", "minimum": 1 },
+              "threads_used": { "type": "integer", "minimum": 1 },
+              "ram_gb_used": { "type": "number", "exclusiveMinimum": 0 },
+              "eta_seconds": { "type": "number", "minimum": 0 },
+              "eta_start_seconds": { "type": "number", "minimum": 0 },
+              "eta_end_seconds": { "type": "number", "minimum": 0 },
+              "tasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "task_id",
+                    "run_id",
+                    "simulator_id",
+                    "threads",
+                    "ram_gb",
+                    "eta_seconds",
+                    "eta_source",
+                    "eta_start_seconds",
+                    "eta_end_seconds"
+                  ],
+                  "properties": {
+                    "task_id": { "type": "string", "minLength": 1 },
+                    "run_id": { "type": "string", "minLength": 1 },
+                    "simulator_id": { "type": "string", "minLength": 1 },
+                    "threads": { "type": "integer", "minimum": 1 },
+                    "ram_gb": { "type": "number", "exclusiveMinimum": 0 },
+                    "eta_seconds": { "type": "number", "minimum": 0 },
+                    "eta_source": { "type": "string", "minLength": 1 },
+                    "eta_start_seconds": { "type": "number", "minimum": 0 },
+                    "eta_end_seconds": { "type": "number", "minimum": 0 }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

@@ -44,6 +44,17 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
                 + "; ".join(f"{list(err.path)} -> {err.message}" for err in errors),
             )
 
+    def test_runtime_parallelism_is_declared_as_resources(self) -> None:
+        for simulator_id, spec in self.specs.items():
+            threading = spec["runtime_resources"]["threading"]
+            self.assertIn("supported", threading)
+            self.assertIn("default_threads", threading)
+            self.assertIn("max_threads", threading)
+            self.assertIn("upstream_mapping", threading)
+            self.assertLessEqual(threading["default_threads"], threading["max_threads"])
+            self.assertNotIn("threads", spec["params"], msg=simulator_id)
+            self.assertNotIn("num_cores", spec["params"], msg=simulator_id)
+
     def test_dyngen_spec_uses_full_publication_url_and_full_first_author(self) -> None:
         dyngen = self.specs["dyngen"]
         self.assertEqual(

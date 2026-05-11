@@ -25,6 +25,7 @@ from andrea.core.commands.generate_data import (
     run_generate_data,
 )
 from andrea.core.commands.generate_data.catalog import _load_simulator_catalog
+from andrea.core.commands.generate_data.cost_planner import detect_host_ram_gb
 from andrea.core.commands.generate_data.shared import PROFILE_SPECS
 from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
 from andrea.core.shared.input_specs import load_input_specs
@@ -51,19 +52,6 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 COMMON_STATIC_DIR = Path(__file__).resolve().parents[1] / "common" / "static"
 GUI_TMP_ROOT = Path("/tmp/andrea_gui/generate_data")
 
-CANONICAL_SIMULATOR_INPUTS: dict[str, dict[str, Any]] = {
-    "grn": {
-        "id": "grn",
-        "label": "Input GRN",
-        "description": "Optional prior/source GRN with source, target and weight columns.",
-        "formats": ["tsv", "csv"],
-        "required_columns": ["source", "target", "weight"],
-        "example": "source\ttarget\tweight\nG1\tG2\t0.83\nG3\tG2\t-0.21",
-        "accept": ".tsv,.csv,.txt",
-        "requires_organism": True,
-    }
-}
-
 CANONICAL_OUTPUT_EXTRAS: dict[str, dict[str, Any]] = {
     "group_networks": {
         "key": "group_networks",
@@ -73,6 +61,21 @@ CANONICAL_OUTPUT_EXTRAS: dict[str, dict[str, Any]] = {
         "example": "truth/group_networks/group_a.csv\ntruth/group_networks/group_b.csv",
     }
 }
+
+
+def _accept_from_formats(formats: list[str]) -> str:
+    extensions_by_format = {
+        "csv": [".csv"],
+        "newick": [".nwk", ".newick", ".txt"],
+        "rds": [".rds"],
+        "tsv": [".tsv", ".txt"],
+        "txt": [".txt"],
+    }
+    extensions: set[str] = set()
+    for value in formats:
+        normalized = str(value or "").strip().lower()
+        extensions.update(extensions_by_format.get(normalized, []))
+    return ",".join(sorted(extensions))
 
 
 def _utc_now() -> str:
@@ -115,39 +118,75 @@ def _load_generate_bootstrap() -> dict[str, Any]:
         profile_id: set(spec.required_extras)
         for profile_id, spec in PROFILE_SPECS.items()
     }
-    simulator_inputs: dict[str, dict[str, Any]] = {
-        key: dict(value) for key, value in CANONICAL_SIMULATOR_INPUTS.items()
-    }
+    simulator_inputs: dict[str, dict[str, Any]] = {}
 
-    def _merge_simulator_input(item: dict[str, Any], *, simulator_id: str) -> None:
-        input_id = str(item.get("id") or item.get("input") or "").strip()
+    def _merge_simulator_input(
+        item: dict[str, Any],
+        *,
+        simulator_id: str,
+        simulator_name: str,
+        relation: str,
+    ) -> None:
+        input_id = str(item.get("input") or "").strip()
         if not input_id:
             return
+        formats = [str(x) for x in item.get("formats", []) if str(x).strip()] if isinstance(item.get("formats", []), list) else []
+        input_spec = input_specs.get(input_id, {})
         existing = simulator_inputs.setdefault(
             input_id,
             {
                 "id": input_id,
-                "label": input_id,
-                "description": str(item.get("description", "")),
+                "label": str(input_spec.get("label") or input_id),
+                "description": str(
+                    input_spec.get("description")
+                    or item.get("description")
+                    or item.get("usage")
+                    or ""
+                ),
+                "example": str(input_spec.get("example") or ""),
                 "formats": [],
-                "required_columns": [],
                 "accept": "",
-                "requires_organism": False,
                 "supported_by": [],
+                "used_by": {
+                    "required": [],
+                    "optional": [],
+                    "conditional": [],
+                },
             },
         )
         existing.setdefault("supported_by", [])
         if simulator_id not in existing["supported_by"]:
             existing["supported_by"].append(simulator_id)
-        if item.get("description") and not existing.get("description"):
-            existing["description"] = str(item["description"])
-        formats = item.get("formats", [])
-        if isinstance(formats, list):
-            existing["formats"] = sorted(
-                set(existing.get("formats", [])).union(str(x) for x in formats)
-            )
+            existing["supported_by"].sort()
+        description = item.get("description") or item.get("usage")
+        if description and not existing.get("description"):
+            existing["description"] = str(description)
+        example = item.get("example") or input_spec.get("example")
+        if example and not existing.get("example"):
+            existing["example"] = str(example)
+        existing["formats"] = sorted(set(existing.get("formats", [])).union(formats))
+        existing["accept"] = _accept_from_formats(existing["formats"])
+        entry: dict[str, Any] = {
+            "simulator_id": simulator_id,
+            "name": simulator_name,
+            "usage": str(item.get("usage") or item.get("description") or "").strip(),
+        }
+        if relation == "conditional":
+            entry["conditions"] = item.get("conditions", [])
+            entry["message"] = str(item.get("message") or "").strip()
+        used_by = existing.setdefault(
+            "used_by", {"required": [], "optional": [], "conditional": []}
+        )
+        relation_entries = used_by.setdefault(relation, [])
+        if not any(
+            str(existing_entry.get("simulator_id")) == simulator_id
+            for existing_entry in relation_entries
+        ):
+            relation_entries.append(entry)
+            relation_entries.sort(key=lambda value: str(value.get("simulator_id", "")))
 
     for simulator_id, spec in sorted(catalog.items()):
+        simulator_name = str(spec.get("name") or simulator_id)
         profile_capabilities = spec.get("profile_capabilities", {})
         if isinstance(profile_capabilities, dict):
             for profile_id, capability in profile_capabilities.items():
@@ -177,10 +216,20 @@ def _load_generate_bootstrap() -> dict[str, Any]:
             for group_key in ("required", "optional"):
                 for item in raw_inputs.get(group_key, []):
                     if isinstance(item, dict):
-                        _merge_simulator_input(item, simulator_id=simulator_id)
+                        _merge_simulator_input(
+                            item,
+                            simulator_id=simulator_id,
+                            simulator_name=simulator_name,
+                            relation=group_key,
+                        )
             for item in raw_inputs.get("conditional_required", []):
                 if isinstance(item, dict):
-                    _merge_simulator_input(item, simulator_id=simulator_id)
+                    _merge_simulator_input(
+                        item,
+                        simulator_id=simulator_id,
+                        simulator_name=simulator_name,
+                        relation="conditional",
+                    )
 
     profiles = [
         {
@@ -223,6 +272,7 @@ def _load_generate_bootstrap() -> dict[str, Any]:
                 "implementation_url": spec.get("implementation_url"),
                 "docker_image": spec.get("docker_image"),
                 "simulator_inputs": spec.get("simulator_inputs", {}),
+                "runtime_resources": spec.get("runtime_resources", {}),
                 "profile_capabilities": spec.get("profile_capabilities", {}),
                 "notes": spec.get("notes"),
                 "params_schema": spec.get("params", {}),
@@ -234,9 +284,18 @@ def _load_generate_bootstrap() -> dict[str, Any]:
         "extras": extras,
         "planning_defaults": {
             "max_parallel_tasks": max(1, int(os.cpu_count() or 1)),
+            "max_cores": max(1, int(os.cpu_count() or 1)),
+            "max_ram_gb": round(detect_host_ram_gb(), 3),
         },
         "simulator_inputs": sorted(
-            simulator_inputs.values(), key=lambda item: str(item.get("id", ""))
+            simulator_inputs.values(),
+            key=lambda item: (
+                -sum(
+                    len(item.get("used_by", {}).get(relation, []))
+                    for relation in ("required", "optional", "conditional")
+                ),
+                str(item.get("id", "")),
+            ),
         ),
         "simulators": simulators,
     }
@@ -519,6 +578,8 @@ def _run_job(*, job_id: str, action: str, options: dict[str, Any]) -> None:
                 simulator_runs_path=simulator_runs_path,
                 output_path=output_path,
                 max_parallel_tasks=int(options.get("max_parallel_tasks", 1)),
+                max_cores=int(options.get("max_cores", os.cpu_count() or 1)),
+                max_ram_gb=float(options.get("max_ram_gb", detect_host_ram_gb())),
             )
             with STATE.lock:
                 job = STATE.jobs[job_id]
@@ -593,6 +654,16 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         if isinstance(plan.get("execution"), dict)
         else 1
     )
+    max_cores = int(
+        (plan.get("execution") or {}).get("max_cores", max_parallel_tasks)
+        if isinstance(plan.get("execution"), dict)
+        else max_parallel_tasks
+    )
+    max_ram_gb = float(
+        (plan.get("execution") or {}).get("max_ram_gb", detect_host_ram_gb())
+        if isinstance(plan.get("execution"), dict)
+        else detect_host_ram_gb()
+    )
     preflight_output_json = str((benchmark_root / "preflight-report.json").resolve())
 
     cli_unified = [
@@ -607,6 +678,10 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         output_dir,
         "--max-parallel-tasks",
         str(max_parallel_tasks),
+        "--max-cores",
+        str(max_cores),
+        "--max-ram-gb",
+        str(max_ram_gb),
         "--progress-poll-seconds",
         str(progress_poll_seconds),
     ]
@@ -629,6 +704,10 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         simulator_runs_path,
         "--max-parallel-tasks",
         str(max_parallel_tasks),
+        "--max-cores",
+        str(max_cores),
+        "--max-ram-gb",
+        str(max_ram_gb),
         "--out",
         plan_path,
     ]
@@ -655,6 +734,8 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             f"    simulator_runs_path={python_path_expr(simulator_runs_path)},",
             f"    output_dir={python_path_expr(output_dir)},",
             f"    max_parallel_tasks={max_parallel_tasks},",
+            f"    max_cores={max_cores},",
+            f"    max_ram_gb={max_ram_gb},",
             f"    progress_poll_seconds={progress_poll_seconds},",
             ")",
             "",
@@ -682,6 +763,8 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "    simulator_runs_path=simulator_runs_path,",
             "    output_path=plan_path,",
             f"    max_parallel_tasks={max_parallel_tasks},",
+            f"    max_cores={max_cores},",
+            f"    max_ram_gb={max_ram_gb},",
             ")",
             "benchmark_root = run_generate_data(",
             "    plan_path=plan_path,",

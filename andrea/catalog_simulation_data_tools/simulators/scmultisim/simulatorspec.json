@@ -1,0 +1,1064 @@
+{
+  "schema_version": "1.0",
+  "id": "scmultisim",
+  "name": "scMultiSim",
+  "publication": [
+    "https://doi.org/10.1038/s41592-025-02651-0",
+    "https://doi.org/10.18129/B9.bioc.scMultiSim"
+  ],
+  "first_author": "Hechen Li",
+  "year": 2025,
+  "simulation_summary": "Simulates multi-modal single-cell data with gene expression, chromatin accessibility, RNA velocity and spatial locations while modeling cell identity, gene regulatory networks, cell-cell interactions, chromatin accessibility and technical noise.",
+  "simulation_keywords": [
+    "scrna",
+    "single_cell",
+    "multi_omics",
+    "dynamic_grn",
+    "rna_velocity",
+    "cell_lineage"
+  ],
+  "implementation_url": "https://github.com/ZhangLabGT/scMultiSim",
+  "docker_image": "adriansegura99/simulator_scmultisim:1.0.0",
+  "simulator_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "grn_params",
+        "usage": "Wrapper reads this three-column TSV as scMultiSim's GRN parameter table when grn_source=input_tsv; columns are target gene, regulator gene and signed effect.",
+        "formats": ["tsv"],
+        "example": "target\tregulator\teffect\nGene3\tGene1\t0.8\nGene4\tGene2\t-0.6",
+        "conditions": [
+          {
+            "field": "param.grn_source",
+            "op": "eq",
+            "value": "input_tsv"
+          }
+        ],
+        "message": "grn_params is required when grn_source=input_tsv."
+      },
+      {
+        "input": "tree_newick",
+        "usage": "Wrapper reads this Newick file as scMultiSim's differentiation tree when tree_preset=input_newick.",
+        "formats": ["newick", "txt"],
+        "example": "((pop_a:0.4,pop_b:0.4):0.3,pop_c:0.7);",
+        "conditions": [
+          {
+            "field": "param.tree_preset",
+            "op": "eq",
+            "value": "input_newick"
+          }
+        ],
+        "message": "tree_newick is required when tree_preset=input_newick."
+      }
+    ]
+  },
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 4096,
+      "upstream_mapping": "Mapped by the wrapper to scMultiSim::sim_true_counts(threads=threads)."
+    }
+  },
+  "profile_capabilities": {
+    "scrna_global": {
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "pseudotime",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": {
+        "global_network": "derivable",
+        "group_networks": "none"
+      },
+      "native_outputs": [
+        {
+          "id": "true_counts",
+          "kind": "counts",
+          "description": "Gene-by-cell scRNA-seq true count matrix returned as results$counts.",
+          "formats": ["rds", "tsv"]
+        },
+        {
+          "id": "observed_counts",
+          "kind": "counts",
+          "description": "Observed scRNA-seq counts produced by add_expr_noise when technical_noise.enabled is true.",
+          "formats": ["rds", "tsv"],
+          "conditions": [
+            {
+              "field": "param.technical_noise.enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "observed_counts requires technical_noise.enabled=true because it is produced by scMultiSim::add_expr_noise."
+        },
+        {
+          "id": "atac_counts",
+          "kind": "counts",
+          "description": "Region-by-cell scATAC-seq count matrix returned by scMultiSim.",
+          "formats": ["rds", "tsv"]
+        },
+        {
+          "id": "cell_meta",
+          "kind": "metadata",
+          "description": "scMultiSim cell metadata containing population labels and pseudotime/depth information when available.",
+          "formats": ["rds", "tsv"]
+        },
+        {
+          "id": "velocity",
+          "kind": "matrix",
+          "description": "Gene-by-cell RNA velocity ground truth emitted when do_velocity is true.",
+          "formats": ["rds", "tsv"],
+          "conditions": [
+            {
+              "field": "param.velocity.enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "velocity requires velocity.enabled=true because it maps to scMultiSim do.velocity."
+        },
+        {
+          "id": "cell_specific_grn",
+          "kind": "directory",
+          "description": "Per-cell gene-by-TF GRN effect matrices emitted when dynamic_grn.enabled is true.",
+          "formats": ["rds", "tsv"],
+          "conditions": [
+            {
+              "field": "param.dynamic_grn.enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "cell_specific_grn requires dynamic_grn.enabled=true because it is emitted from upstream dynamic.GRN."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": ["counts"],
+          "method": "Export every generated expression gene identifier from the selected expression matrix as the background gene universe, one identifier per line.",
+          "assumptions": [
+            "The generated expression feature set is the appropriate enrichment background universe for downstream analyses on the simulated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived, not an external organism-specific gene universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "pseudotime",
+          "source_artifacts": ["cell_meta", "cell_time", "tree"],
+          "method": "Use results$cell_time when do_velocity is true; otherwise use cell_meta$depth when present; if neither exists, derive a deterministic tree-depth coordinate for each cell population and min-max scale the coordinate to [0, 1].",
+          "assumptions": [
+            "scMultiSim cell_time is the native pseudotime at which cell counts were generated.",
+            "For non-velocity continuous simulations, cell_meta$depth is a usable trajectory coordinate."
+          ],
+          "limitations": [
+            "Discrete populations without cell_time receive one tree-depth coordinate per population.",
+            "Branching trajectories are represented as a scalar pseudotime coordinate."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [".grn$geff", ".grn$regulators", "grn_params"],
+          "method": "Convert the non-zero entries of the scMultiSim gene-by-TF GRN effect matrix into regulator-target edges with score abs(effect) and sign from sign(effect).",
+          "assumptions": [
+            "The scMultiSim GRN effect matrix is the authoritative simulator regulatory input and can serve as an oracle prior when requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior, not a noisy external prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [".grn$regulators"],
+          "method": "Export the regulator identifiers stored in results$.grn$regulators, mapped back to public gene names, one identifier per line.",
+          "assumptions": [
+            "scMultiSim .grn$regulators is the authoritative TF/regulator list for the simulated GRN."
+          ],
+          "limitations": [
+            "The exported TF list reflects the simulated GRN regulators, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "global_network",
+          "source_artifacts": [".grn$geff", "cell_specific_grn"],
+          "method": "When dynamic_grn.enabled is false, convert non-zero entries of .grn$geff into the global truth network. When dynamic_grn.enabled is true, aggregate cell_specific_grn matrices across all cells, use mean(abs(effect)) as score, and derive sign from the mean signed effect.",
+          "assumptions": [
+            "Static simulations have one simulator GRN effect matrix for the whole dataset.",
+            "Dynamic simulations are best represented globally by aggregating cell-specific GRN effects over all generated cells."
+          ],
+          "limitations": [
+            "Dynamic global truth is a wrapper-derived summary of changing cell-specific networks.",
+            "Opposing signed effects across cells can yield an ambiguous global sign."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "scmultisim_result_rds",
+          "kind": "metadata",
+          "description": "Serialized scMultiSim result environment for provenance and debugging."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "R session information for the installed scMultiSim runtime."
+        }
+      ],
+      "notes": "The global profile exports the whole simulated single-cell expression matrix without groups. The wrapper will use the profile-aware tree_preset=auto rule to prefer Phyla1 for this profile unless a tree is explicitly selected."
+    },
+    "scrna_grouped": {
+      "native_extras": [],
+      "derivable_extras": [
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "pseudotime",
+        "prior_grn",
+        "tf_list",
+        "prior_grn_by_group",
+        "group_networks"
+      ],
+      "truth_outputs": {
+        "global_network": "derivable",
+        "group_networks": "derivable"
+      },
+      "native_outputs": [
+        {
+          "id": "true_counts",
+          "kind": "counts",
+          "description": "Gene-by-cell scRNA-seq true count matrix returned as results$counts.",
+          "formats": ["rds", "tsv"]
+        },
+        {
+          "id": "observed_counts",
+          "kind": "counts",
+          "description": "Observed scRNA-seq counts produced by add_expr_noise when technical_noise.enabled is true.",
+          "formats": ["rds", "tsv"],
+          "conditions": [
+            {
+              "field": "param.technical_noise.enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "observed_counts requires technical_noise.enabled=true because it is produced by scMultiSim::add_expr_noise."
+        },
+        {
+          "id": "atac_counts",
+          "kind": "counts",
+          "description": "Region-by-cell scATAC-seq count matrix returned by scMultiSim.",
+          "formats": ["rds", "tsv"]
+        },
+        {
+          "id": "cell_meta",
+          "kind": "metadata",
+          "description": "scMultiSim cell metadata containing population labels and pseudotime/depth information when available.",
+          "formats": ["rds", "tsv"]
+        },
+        {
+          "id": "velocity",
+          "kind": "matrix",
+          "description": "Gene-by-cell RNA velocity ground truth emitted when do_velocity is true.",
+          "formats": ["rds", "tsv"],
+          "conditions": [
+            {
+              "field": "param.velocity.enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "velocity requires velocity.enabled=true because it maps to scMultiSim do.velocity."
+        },
+        {
+          "id": "cell_specific_grn",
+          "kind": "directory",
+          "description": "Per-cell gene-by-TF GRN effect matrices emitted when dynamic_grn.enabled is true.",
+          "formats": ["rds", "tsv"],
+          "conditions": [
+            {
+              "field": "param.dynamic_grn.enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "cell_specific_grn requires dynamic_grn.enabled=true because it is emitted from upstream dynamic.GRN."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "groups",
+          "source_artifacts": ["cell_meta"],
+          "method": "Export each cell's scMultiSim cell_meta$pop value as its group label. Group identifiers are normalized to stable strings while preserving the upstream population identity.",
+          "assumptions": [
+            "scMultiSim cell_meta$pop is the native population or trajectory-segment label for each generated cell."
+          ],
+          "limitations": [
+            "Continuous populations produce branch/trajectory-segment labels rather than terminal discrete clusters."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "cell_phenotypes",
+          "source_artifacts": ["cell_meta", "tree"],
+          "method": "Reuse each cell's group label as its phenotype and assign phenotype order by mean pseudotime/tree-depth coordinate, breaking ties by group identifier.",
+          "assumptions": [
+            "For scMultiSim grouped benchmarks, population labels are appropriate phenotype/state labels."
+          ],
+          "limitations": [
+            "Branching structures are summarized by a scalar order."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "cluster_identities",
+          "source_artifacts": ["groups", "cell_meta", "tree"],
+          "method": "Export one row per group, using the normalized group identifier as cluster and annotation, and assign order by mean pseudotime/tree-depth coordinate.",
+          "assumptions": [
+            "scMultiSim population identifiers are meaningful synthetic cluster annotations."
+          ],
+          "limitations": [
+            "Annotations are simulator state identifiers, not curated biological labels."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": ["counts"],
+          "method": "Export every generated expression gene identifier from the selected expression matrix as the background gene universe, one identifier per line.",
+          "assumptions": [
+            "The generated expression feature set is the appropriate enrichment background universe for downstream analyses on the simulated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived, not an external organism-specific gene universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "lineage_tree",
+          "source_artifacts": ["tree", "groups", "cell_specific_grn"],
+          "method": "Derive parent-child relationships between exported groups from the selected scMultiSim differentiation tree. For each child-parent pair, aggregate active group-specific GRN edges from cell_specific_grn and report gain/loss rates between parent and child active-edge sets.",
+          "assumptions": [
+            "The differentiation tree defines the lineage topology for scMultiSim populations.",
+            "Group-level active regulatory edges can be summarized from cell-specific GRN matrices."
+          ],
+          "limitations": [
+            "The lineage_tree.tsv file is a wrapper-derived summary, not a native scMultiSim file.",
+            "Gain/loss rates depend on the active-edge threshold used for group network derivation.",
+            "Discrete terminal populations may require collapsing internal tree nodes to exported groups."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "pseudotime",
+          "source_artifacts": ["cell_meta", "cell_time", "tree"],
+          "method": "Use results$cell_time when do_velocity is true; otherwise use cell_meta$depth when present; if neither exists, derive a deterministic tree-depth coordinate for each cell population and min-max scale the coordinate to [0, 1].",
+          "assumptions": [
+            "scMultiSim cell_time is the native pseudotime at which cell counts were generated.",
+            "For non-velocity continuous simulations, cell_meta$depth is a usable trajectory coordinate."
+          ],
+          "limitations": [
+            "Discrete populations without cell_time receive one tree-depth coordinate per population.",
+            "Branching trajectories are represented as a scalar pseudotime coordinate."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [".grn$geff", ".grn$regulators", "grn_params"],
+          "method": "Convert the non-zero entries of the scMultiSim gene-by-TF GRN effect matrix into regulator-target edges with score abs(effect) and sign from sign(effect).",
+          "assumptions": [
+            "The scMultiSim GRN effect matrix is the authoritative simulator regulatory input and can serve as an oracle prior when requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior, not a noisy external prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [".grn$regulators"],
+          "method": "Export the regulator identifiers stored in results$.grn$regulators, mapped back to public gene names, one identifier per line.",
+          "assumptions": [
+            "scMultiSim .grn$regulators is the authoritative TF/regulator list for the simulated GRN."
+          ],
+          "limitations": [
+            "The exported TF list reflects the simulated GRN regulators, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "prior_grn_by_group",
+          "source_artifacts": ["groups", "cell_specific_grn"],
+          "method": "For each exported group, aggregate cell_specific_grn matrices across cells in that group, keep edges with mean(abs(effect)) greater than zero, export score as mean(abs(effect)), and derive sign from the mean signed effect.",
+          "assumptions": [
+            "Dynamic scMultiSim simulations expose cell-specific GRN truth that can be aggregated into group-specific oracle priors."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior, not an independently simulated prior modality.",
+            "If dynamic_grn.enabled is false, group-specific GRN outputs are not scientifically distinct from the global GRN and the wrapper should reject requests for this artifact."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "global_network",
+          "source_artifacts": [".grn$geff", "cell_specific_grn"],
+          "method": "When dynamic_grn.enabled is false, convert non-zero entries of .grn$geff into the global truth network. When dynamic_grn.enabled is true, aggregate cell_specific_grn matrices across all cells, use mean(abs(effect)) as score, and derive sign from the mean signed effect.",
+          "assumptions": [
+            "Static simulations have one simulator GRN effect matrix for the whole dataset.",
+            "Dynamic simulations are best represented globally by aggregating cell-specific GRN effects over all generated cells."
+          ],
+          "limitations": [
+            "Dynamic global truth is a wrapper-derived summary of changing cell-specific networks.",
+            "Opposing signed effects across cells can yield an ambiguous global sign."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        },
+        {
+          "artifact": "group_networks",
+          "source_artifacts": ["groups", "cell_specific_grn"],
+          "method": "For each exported group, aggregate cell_specific_grn matrices across cells in that group, keep edges with mean(abs(effect)) greater than zero, export score as mean(abs(effect)), and derive sign from the mean signed effect.",
+          "assumptions": [
+            "Dynamic scMultiSim simulations expose cell-specific GRN truth that can be summarized as group-level truth networks.",
+            "A non-zero mean absolute effect is a natural active-edge rule for scMultiSim GRN effect matrices."
+          ],
+          "limitations": [
+            "Group truth networks are wrapper-derived summaries, not native scMultiSim files.",
+            "If dynamic_grn.enabled is false, group networks are not scientifically distinct from the global GRN and the wrapper should reject requests for this artifact.",
+            "Opposing signed effects across cells can yield an ambiguous sign."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "scmultisim_result_rds",
+          "kind": "metadata",
+          "description": "Serialized scMultiSim result environment for provenance and debugging."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "R session information for the installed scMultiSim runtime."
+        },
+        {
+          "id": "group_edge_activity",
+          "kind": "table",
+          "description": "Wrapper-generated per-group regulatory edge activity table used to derive group truth and oracle group priors."
+        }
+      ],
+      "notes": "The grouped profile exports groups from scMultiSim cell_meta$pop. The wrapper default keeps dynamic_grn.enabled=true so group_networks and prior_grn_by_group can be derived from native cell-specific GRN matrices."
+    }
+  },
+  "params": {
+    "grn_source": {
+      "type": "enum",
+      "required": false,
+      "default": "builtin_100",
+      "enum": ["builtin_100", "builtin_1139", "input_tsv"],
+      "description": "GRN source passed to sim_true_counts as the GRN option. Built-in presets use scMultiSim GRN_params_100 or GRN_params_1139; input_tsv uses the grn_params simulator input."
+    },
+    "tree_preset": {
+      "type": "enum",
+      "required": false,
+      "default": "auto",
+      "enum": ["auto", "phyla1", "phyla3", "phyla5", "input_newick"],
+      "description": "Differentiation tree passed to sim_true_counts as the tree option. auto uses Phyla1 for scrna_global and Phyla5 for scrna_grouped."
+    },
+    "population_mode": {
+      "type": "enum",
+      "required": false,
+      "default": "auto",
+      "enum": ["auto", "continuous", "discrete"],
+      "description": "Maps to upstream discrete.cif. auto uses continuous for scrna_global and scrna_grouped unless explicitly overridden."
+    },
+    "num_cells": {
+      "type": "int",
+      "required": false,
+      "default": 1000,
+      "min": 1,
+      "description": "Total number of cells to simulate, mapped to num.cells."
+    },
+    "speed_up": {
+      "type": "bool",
+      "required": false,
+      "default": false,
+      "description": "Maps to upstream speed.up, the experimental speed and memory optimization option."
+    },
+    "num_genes": {
+      "type": "int",
+      "required": false,
+      "default": null,
+      "min": 1,
+      "description": "Optional total number of genes. When null, scMultiSim derives the number from the supplied GRN and unregulated_gene_ratio."
+    },
+    "unregulated_gene_ratio": {
+      "type": "float",
+      "required": false,
+      "default": 0.1,
+      "min": 0.0,
+      "description": "Ratio of extra unregulated genes added relative to the GRN genes."
+    },
+    "grn_effect": {
+      "type": "float",
+      "required": false,
+      "default": 1.0,
+      "min": 0.0,
+      "description": "Overall strength of the GRN effect on expression, mapped to grn.effect."
+    },
+    "num_cifs": {
+      "type": "int",
+      "required": false,
+      "default": 50,
+      "min": 1,
+      "description": "Number of Cell Identity Factors for each kinetic parameter, mapped to num.cifs."
+    },
+    "diff_cif_fraction": {
+      "type": "float",
+      "required": false,
+      "default": 0.9,
+      "min": 0.0,
+      "max": 1.0,
+      "description": "Fraction of CIFs that encode cell type or trajectory information."
+    },
+    "cif_center": {
+      "type": "float",
+      "required": false,
+      "default": 1.0,
+      "description": "Mean of the CIF values."
+    },
+    "cif_sigma": {
+      "type": "float",
+      "required": false,
+      "default": 0.1,
+      "min": 0.0,
+      "description": "Standard deviation of CIF values; larger values produce noisier trajectories or clusters."
+    },
+    "use_impulse": {
+      "type": "bool",
+      "required": false,
+      "default": false,
+      "description": "Use the impulse model when generating continuous CIFs."
+    },
+    "discrete_population": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "pop_size": [],
+        "min_pop_size": 70,
+        "min_pop_index": 1
+      },
+      "description": "Serializable subset of discrete population settings used when population_mode is discrete.",
+      "properties": {
+        "pop_size": {
+          "type": "array",
+          "required": false,
+          "default": [],
+          "items": {
+            "type": "int",
+            "required": false,
+            "default": 1,
+            "min": 1,
+            "description": "Population size entry."
+          },
+          "description": "Optional explicit cell counts for each discrete population. Empty array preserves upstream discrete.pop.size default."
+        },
+        "min_pop_size": {
+          "type": "int",
+          "required": false,
+          "default": 70,
+          "min": 1,
+          "description": "Size of the smallest discrete cell population."
+        },
+        "min_pop_index": {
+          "type": "int",
+          "required": false,
+          "default": 1,
+          "min": 1,
+          "description": "Index of the smallest discrete cell population."
+        }
+      }
+    },
+    "giv": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "mean": 0.0,
+        "prob": 0.3,
+        "sd": 1.0
+      },
+      "description": "Parameters used to sample Gene Identity Vectors.",
+      "properties": {
+        "mean": {
+          "type": "float",
+          "required": false,
+          "default": 0.0,
+          "description": "Mean of Gene Identity Vector values."
+        },
+        "prob": {
+          "type": "float",
+          "required": false,
+          "default": 0.3,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Probability of non-zero Gene Identity Vector values."
+        },
+        "sd": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Standard deviation of Gene Identity Vector values."
+        }
+      }
+    },
+    "high_expression": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "range": 1,
+        "proportion": 0.0,
+        "mean": 5.0,
+        "sd": 1.0,
+        "max_var": 500.0
+      },
+      "description": "Settings for randomly selected highly expressed genes.",
+      "properties": {
+        "range": {
+          "type": "int",
+          "required": false,
+          "default": 1,
+          "min": 1,
+          "description": "Only genes with ID greater than this value are eligible for high-expression scaling."
+        },
+        "proportion": {
+          "type": "float",
+          "required": false,
+          "default": 0.0,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Proportion of genes selected as highly expressed."
+        },
+        "mean": {
+          "type": "float",
+          "required": false,
+          "default": 5.0,
+          "min": 1.0,
+          "description": "Mean multiplier for highly expressed genes."
+        },
+        "sd": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Standard deviation of the high-expression multiplier."
+        },
+        "max_var": {
+          "type": "float",
+          "required": false,
+          "default": 500.0,
+          "min": 0.0,
+          "description": "Genes with higher variation are not selected as highly expressed genes."
+        }
+      }
+    },
+    "atac": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "effect": 0.5,
+        "region_distrib": [0.1, 0.5, 0.4],
+        "p_zero": 0.8,
+        "riv_mean": 0.0,
+        "riv_prob": 0.3,
+        "riv_sd": 1.0
+      },
+      "description": "scATAC-related settings that also influence scRNA expression through chromatin accessibility.",
+      "properties": {
+        "effect": {
+          "type": "float",
+          "required": false,
+          "default": 0.5,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Influence of chromatin accessibility on gene expression."
+        },
+        "region_distrib": {
+          "type": "array",
+          "required": false,
+          "default": [0.1, 0.5, 0.4],
+          "items": {
+            "type": "float",
+            "required": false,
+            "default": 0.0,
+            "min": 0.0,
+            "description": "Region distribution probability entry."
+          },
+          "description": "Probabilities that a gene is regulated by zero, one or two consecutive regions; values must sum to one."
+        },
+        "p_zero": {
+          "type": "float",
+          "required": false,
+          "default": 0.8,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Proportion of zeros in simulated scATAC-seq data."
+        },
+        "riv_mean": {
+          "type": "float",
+          "required": false,
+          "default": 0.0,
+          "min": 0.0,
+          "description": "Mean of Region Identity Vector values."
+        },
+        "riv_prob": {
+          "type": "float",
+          "required": false,
+          "default": 0.3,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Probability of non-zero Region Identity Vector values."
+        },
+        "riv_sd": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Standard deviation of Region Identity Vector values."
+        }
+      }
+    },
+    "rna_model": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "vary": "s",
+        "bimod": 0.0,
+        "scale_s": 1.0,
+        "intrinsic_noise": 1.0
+      },
+      "description": "RNA simulation settings controlling kinetic variation and intrinsic noise.",
+      "properties": {
+        "vary": {
+          "type": "enum",
+          "required": false,
+          "default": "s",
+          "enum": ["all", "kon", "koff", "s", "except_kon", "except_koff", "except_s"],
+          "description": "Which kinetic parameters vary across cells."
+        },
+        "bimod": {
+          "type": "float",
+          "required": false,
+          "default": 0.0,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Controls bimodality of the gene expression distribution."
+        },
+        "scale_s": {
+          "type": "union",
+          "required": false,
+          "default": 1.0,
+          "description": "Scale of the s parameter. A scalar maps directly to upstream scale.s; an array can specify per-cluster values for discrete populations.",
+          "oneOf": [
+            {
+              "type": "float",
+              "required": false,
+              "default": 1.0,
+              "description": "Scalar scale.s value."
+            },
+            {
+              "type": "array",
+              "required": false,
+              "default": [],
+              "items": {
+                "type": "float",
+                "required": false,
+                "default": 1.0,
+                "description": "Per-cluster scale.s entry."
+              },
+              "description": "Per-cluster scale.s values."
+            }
+          ]
+        },
+        "intrinsic_noise": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Weight assigned to random Beta-Poisson sampling in the RNA model."
+        }
+      }
+    },
+    "velocity": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "enabled": true,
+        "beta": 0.4,
+        "d": 1.0,
+        "num_cycles": 3,
+        "cycle_len": 1.0
+      },
+      "description": "Full kinetic model and RNA velocity settings. The wrapper default enables this so pseudotime and velocity truth are available.",
+      "properties": {
+        "enabled": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Maps to do.velocity."
+        },
+        "beta": {
+          "type": "float",
+          "required": false,
+          "default": 0.4,
+          "description": "Splicing rate for the kinetic model."
+        },
+        "d": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "description": "Degradation rate for the kinetic model."
+        },
+        "num_cycles": {
+          "type": "int",
+          "required": false,
+          "default": 3,
+          "min": 1,
+          "description": "Number of cycles run before sampling gene expression."
+        },
+        "cycle_len": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Multiplier for cell-cycle length in velocity mode."
+        }
+      }
+    },
+    "dynamic_grn": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "enabled": true,
+        "num_steps": 200,
+        "cell_per_step": 1,
+        "involved_genes": [],
+        "num_changing_edges": 2.0,
+        "create_tf_edges": false,
+        "weight_mean": null,
+        "weight_sd": 1.0
+      },
+      "description": "Dynamic GRN settings. enabled=true maps to a dynamic.GRN list so scMultiSim emits cell_specific_grn.",
+      "properties": {
+        "enabled": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Whether to enable upstream dynamic.GRN."
+        },
+        "num_steps": {
+          "type": "int",
+          "required": false,
+          "default": 200,
+          "min": 1,
+          "description": "Number of steps in each dynamic GRN epoch."
+        },
+        "cell_per_step": {
+          "type": "int",
+          "required": false,
+          "default": 1,
+          "min": 1,
+          "description": "How many cells share the GRN at the same dynamic GRN step."
+        },
+        "involved_genes": {
+          "type": "array",
+          "required": false,
+          "default": [],
+          "items": {
+            "type": "string",
+            "required": false,
+            "default": "",
+            "description": "Gene identifier allowed to participate in new dynamic GRN edges."
+          },
+          "description": "Genes within which new edges may be created. Empty array preserves the upstream default of all existing GRN genes."
+        },
+        "num_changing_edges": {
+          "type": "float",
+          "required": false,
+          "default": 2.0,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "If less than one, proportion of edges changed per epoch; otherwise number of edges changed per epoch. The wrapper rejects values that resolve to exactly one changed edge because scMultiSim 1.8.0 drops matrix dimensions in dynamic.GRN$restructure() for single-edge updates."
+        },
+        "create_tf_edges": {
+          "type": "bool",
+          "required": false,
+          "default": false,
+          "description": "Whether new dynamic GRN edges may connect two TFs."
+        },
+        "weight_mean": {
+          "type": "float",
+          "required": false,
+          "default": null,
+          "description": "Mean effect of newly created edges. Null preserves the upstream rule of using the mean input GRN effect."
+        },
+        "weight_sd": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Standard deviation of newly created edge effects."
+        }
+      }
+    },
+    "technical_noise": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "enabled": false,
+        "protocol": "nonUMI",
+        "alpha_mean": 0.1,
+        "alpha_sd": 0.02,
+        "depth_mean": 100000.0,
+        "depth_sd": 3000.0,
+        "n_pcr1": 16,
+        "n_pcr2": 10,
+        "atac_obs_prob": 0.3,
+        "atac_sd_frac": 0.5
+      },
+      "description": "Optional add_expr_noise settings. When enabled, expression.tsv is written from observed counts unless batch effects are also enabled.",
+      "properties": {
+        "enabled": {
+          "type": "bool",
+          "required": false,
+          "default": false,
+          "description": "Whether to run scMultiSim add_expr_noise after sim_true_counts."
+        },
+        "protocol": {
+          "type": "enum",
+          "required": false,
+          "default": "nonUMI",
+          "enum": ["UMI", "nonUMI"],
+          "description": "Sequencing protocol used by add_expr_noise."
+        },
+        "alpha_mean": {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Mean capture efficiency for observed-count simulation."
+        },
+        "alpha_sd": {
+          "type": "float",
+          "required": false,
+          "default": 0.02,
+          "min": 0.0,
+          "description": "Standard deviation of capture efficiency."
+        },
+        "depth_mean": {
+          "type": "float",
+          "required": false,
+          "default": 100000.0,
+          "min": 0.0,
+          "description": "Mean sequencing depth."
+        },
+        "depth_sd": {
+          "type": "float",
+          "required": false,
+          "default": 3000.0,
+          "min": 0.0,
+          "description": "Standard deviation of sequencing depth."
+        },
+        "n_pcr1": {
+          "type": "int",
+          "required": false,
+          "default": 16,
+          "min": 0,
+          "description": "Number of PCR cycles in the pre-amplification step."
+        },
+        "n_pcr2": {
+          "type": "int",
+          "required": false,
+          "default": 10,
+          "min": 0,
+          "description": "Number of PCR cycles after fragmentation."
+        },
+        "atac_obs_prob": {
+          "type": "float",
+          "required": false,
+          "default": 0.3,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Observation probability used when adding ATAC technical noise."
+        },
+        "atac_sd_frac": {
+          "type": "float",
+          "required": false,
+          "default": 0.5,
+          "min": 0.0,
+          "description": "ATAC noise standard-deviation fraction."
+        }
+      }
+    },
+    "batch_effect": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "enabled": false,
+        "num_batches": 2,
+        "effect": 3.0
+      },
+      "description": "Optional divide_batches settings. Requires technical_noise.enabled=true because upstream divide_batches operates on observed counts.",
+      "properties": {
+        "enabled": {
+          "type": "bool",
+          "required": false,
+          "default": false,
+          "description": "Whether to run scMultiSim divide_batches after add_expr_noise."
+        },
+        "num_batches": {
+          "type": "int",
+          "required": false,
+          "default": 2,
+          "min": 1,
+          "description": "Number of batches."
+        },
+        "effect": {
+          "type": "float",
+          "required": false,
+          "default": 3.0,
+          "min": 0.0,
+          "description": "Batch effect size."
+        }
+      }
+    },
+    "mod_cif_giv_preset": {
+      "type": "enum",
+      "required": false,
+      "default": "none",
+      "enum": ["none"],
+      "description": "Preset for upstream mod.cif.giv, which expects an R function. Only none is currently serializable and supported."
+    },
+    "ext_cif_giv_preset": {
+      "type": "enum",
+      "required": false,
+      "default": "none",
+      "enum": ["none"],
+      "description": "Preset for upstream ext.cif.giv, which expects an R function. Only none is currently serializable and supported."
+    }
+  },
+  "notes": "Phase 1 contract for the scMultiSim Bioconductor package version 1.8.0. The wrapper will mirror sim_true_counts(options), optionally followed by add_expr_noise and divide_batches. Spatial cell-cell interaction simulation is scientifically supported upstream but is not claimed in this initial ANDREA contract because there is no canonical spatial simulation profile yet and CCI inputs/outputs need a separate normalized contract."
+}

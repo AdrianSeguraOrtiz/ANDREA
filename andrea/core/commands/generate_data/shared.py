@@ -75,6 +75,7 @@ class ResolvedSimulatorRun:
     inputs: dict[str, dict[str, Any]]
     resolved_input_paths: dict[str, Path]
     simulator_params: dict[str, Any]
+    runtime_resources: dict[str, Any]
     native_outputs: list[str]
     replicates: int
     base_seed: Optional[int]
@@ -123,12 +124,6 @@ def _copy_tree(src: Path, dst: Path) -> None:
 def _copy_file(src: Path, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
-
-
-def _ensure_clean_dir(path: Path) -> None:
-    if path.exists():
-        shutil.rmtree(path)
-    path.mkdir(parents=True, exist_ok=True)
 
 
 def _relative_posix(path: Path, start: Path) -> str:

@@ -22,7 +22,8 @@
         "profile",
         "effective_extras",
         "inputs",
-        "params"
+        "params",
+        "runtime_resources"
       ],
       "properties": {
         "profile": {
@@ -51,6 +52,17 @@
         },
         "params": {
           "type": "object"
+        },
+        "runtime_resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["threads"],
+          "properties": {
+            "threads": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         }
       }
     },

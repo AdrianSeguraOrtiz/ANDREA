@@ -1,0 +1,94 @@
+{
+  "cost_relevant_params": [
+    "backbone_template",
+    "distance_metric",
+    "simulation_params.compute_dimred",
+    "experiment_params.map_reference_cpm",
+    "experiment_params.map_reference_ls"
+  ],
+  "dimension_params": {
+    "cells": "num_cells",
+    "genes": {
+      "num_tfs": {
+        "fraction": 0.2,
+        "min": 2
+      },
+      "num_targets": {
+        "fraction": 0.6,
+        "min": 1
+      },
+      "num_hks": {
+        "fraction": 0.2,
+        "min": 0
+      }
+    }
+  },
+  "profiles": [
+    {
+      "id": "scrna_global_linear_default",
+      "profile": "scrna_global",
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "backbone_template": "linear",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false
+        }
+      }
+    },
+    {
+      "id": "scrna_grouped_bifurcating_groups",
+      "profile": "scrna_grouped",
+      "requested_extras": [
+        "groups"
+      ],
+      "group_count": 2,
+      "population_count": 2,
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false
+        }
+      }
+    },
+    {
+      "id": "scrna_grouped_bifurcating_full_extras",
+      "profile": "scrna_grouped",
+      "requested_extras": [
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "group_networks",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 2,
+      "population_count": 2,
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false
+        }
+      }
+    }
+  ]
+}

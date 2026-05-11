@@ -30,6 +30,7 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
                 inputs={},
                 resolved_input_paths={},
                 simulator_params={},
+                runtime_resources={"threads": 1},
                 native_outputs=[],
                 replicates=1,
                 base_seed=11,
@@ -44,6 +45,14 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
                 "replicate_index": 1,
                 "seed": 11,
                 "dataset_id": "bench__dyngen_cfg__r01",
+                "runtime_resources": {"threads": 1},
+                "ram_gb": 4.0,
+                "eta_seconds": 60.0,
+                "eta_source": "test_fixture",
+                "eta_start_seconds": 0.0,
+                "eta_end_seconds": 60.0,
+                "eta_wave": 1,
+                "eta_provenance": {"eta_source": "test_fixture", "warnings": []},
             }
             resolved = ResolvedSimulationPlan(
                 request_id="bench",
@@ -57,7 +66,36 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
                 notes=None,
                 simulator_runs=[run],
                 tasks=[task],
-                execution={"max_parallel_tasks": 1},
+                execution={
+                    "max_parallel_tasks": 1,
+                    "max_cores": 1,
+                    "max_ram_gb": 4.0,
+                    "eta_total_seconds": 60.0,
+                    "warnings": [],
+                    "waves": [
+                        {
+                            "index": 1,
+                            "threads_used": 1,
+                            "ram_gb_used": 4.0,
+                            "eta_seconds": 60.0,
+                            "eta_start_seconds": 0.0,
+                            "eta_end_seconds": 60.0,
+                            "tasks": [
+                                {
+                                    "task_id": "dyngen_cfg__r01",
+                                    "run_id": "dyngen_cfg",
+                                    "simulator_id": "dyngen",
+                                    "threads": 1,
+                                    "ram_gb": 4.0,
+                                    "eta_seconds": 60.0,
+                                    "eta_source": "test_fixture",
+                                    "eta_start_seconds": 0.0,
+                                    "eta_end_seconds": 60.0,
+                                }
+                            ],
+                        }
+                    ],
+                },
                 plan_payload={},
             )
             events: list[dict] = []

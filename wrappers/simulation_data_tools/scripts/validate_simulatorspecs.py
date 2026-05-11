@@ -54,6 +54,73 @@ def build_validator(schema: Any) -> Draft202012Validator:
     return validator
 
 
+def _param_path_exists(params_schema: dict[str, Any], path: str) -> bool:
+    current = params_schema
+    parts = path.split(".")
+    for index, part in enumerate(parts):
+        if not isinstance(current, dict) or part not in current:
+            return False
+        param_def = current[part]
+        if not isinstance(param_def, dict):
+            return False
+        if index == len(parts) - 1:
+            return True
+        if param_def.get("type") != "object":
+            return False
+        current = param_def.get("properties", {})
+    return False
+
+
+def _condition_values(condition: dict[str, Any]) -> list[Any]:
+    value = condition.get("value")
+    if isinstance(value, list):
+        return list(value)
+    return [value]
+
+
+def _validate_condition_reference(
+    *,
+    spec: dict[str, Any],
+    condition: dict[str, Any],
+    location: str,
+) -> list[str]:
+    field = str(condition.get("field", "")).strip()
+    errors: list[str] = []
+    if field.startswith("param."):
+        param_path = field.removeprefix("param.")
+        if not _param_path_exists(spec.get("params", {}), param_path):
+            errors.append(f"{location}: unknown parameter path '{field}'")
+    elif field == "profile":
+        profile_values = {
+            str(value) for value in _condition_values(condition) if value is not None
+        }
+        unknown_profiles = sorted(
+            profile_values.difference(spec.get("profile_capabilities", {}))
+        )
+        if unknown_profiles:
+            errors.append(
+                f"{location}: profile condition references unsupported profile(s): "
+                + ", ".join(unknown_profiles)
+            )
+    elif field == "requested_extra":
+        all_extras = set()
+        for capability in spec.get("profile_capabilities", {}).values():
+            if not isinstance(capability, dict):
+                continue
+            all_extras.update(capability.get("native_extras", []))
+            all_extras.update(capability.get("derivable_extras", []))
+        extra_values = {
+            str(value) for value in _condition_values(condition) if value is not None
+        }
+        unknown_extras = sorted(extra_values.difference(all_extras))
+        if unknown_extras:
+            errors.append(
+                f"{location}: requested_extra condition references unsupported extra(s): "
+                + ", ".join(unknown_extras)
+            )
+    return errors
+
+
 def semantic_errors(
     *,
     simulator_id: str,
@@ -79,11 +146,73 @@ def semantic_errors(
     if len(first_author.split()) < 2:
         errors.append("first_author must include at least given name and surname")
 
+    threading = spec.get("runtime_resources", {}).get("threading", {})
+    default_threads = threading.get("default_threads")
+    max_threads = threading.get("max_threads")
+    if isinstance(default_threads, int) and isinstance(max_threads, int):
+        if default_threads > max_threads:
+            errors.append(
+                "runtime_resources.threading.default_threads must be <= max_threads"
+            )
+    if any(key in spec.get("params", {}) for key in ("threads", "num_cores")):
+        errors.append(
+            "params must not expose runtime parallelism controls; use runtime_resources.threading"
+        )
+
     wrapper_dir = wrappers_root / simulator_id
     if not wrapper_dir.exists():
         errors.append(f"missing wrapper directory: {wrapper_dir}")
     elif not (wrapper_dir / "Dockerfile").exists():
         errors.append(f"missing wrapper Dockerfile: {wrapper_dir / 'Dockerfile'}")
+
+    simulator_inputs = spec.get("simulator_inputs", {})
+    input_declarations: dict[str, list[str]] = {}
+    for category in ("required", "optional"):
+        for index, item in enumerate(simulator_inputs.get(category, [])):
+            if not isinstance(item, dict):
+                continue
+            input_id = str(item.get("input", "")).strip()
+            if not input_id:
+                continue
+            input_declarations.setdefault(input_id, []).append(
+                f"simulator_inputs.{category}[{index}]"
+            )
+    for index, requirement in enumerate(
+        simulator_inputs.get("conditional_required", [])
+    ):
+        if not isinstance(requirement, dict):
+            continue
+        input_id = str(requirement.get("input", "")).strip()
+        if input_id:
+            input_declarations.setdefault(input_id, []).append(
+                f"simulator_inputs.conditional_required[{index}]"
+            )
+        for condition_index, condition in enumerate(requirement.get("conditions", [])):
+            if not isinstance(condition, dict):
+                continue
+            location = (
+                "simulator_inputs.conditional_required"
+                f"[{index}].conditions[{condition_index}]"
+            )
+            errors.extend(
+                _validate_condition_reference(
+                    spec=spec,
+                    condition=condition,
+                    location=location,
+                )
+            )
+
+    for input_id, locations in sorted(input_declarations.items()):
+        required_locations = [
+            location for location in locations if ".required[" in location
+        ]
+        optional_locations = [
+            location for location in locations if ".optional[" in location
+        ]
+        if required_locations and optional_locations:
+            errors.append(
+                f"simulator_inputs: input '{input_id}' cannot be both required and optional"
+            )
 
     for profile, capability in spec.get("profile_capabilities", {}).items():
         native = set(capability.get("native_extras", []))
@@ -93,6 +222,22 @@ def semantic_errors(
             errors.append(
                 f"profile_capabilities.{profile}: native_extras and derivable_extras overlap: {overlap}"
             )
+        for output_index, output in enumerate(capability.get("native_outputs", [])):
+            if not isinstance(output, dict):
+                continue
+            for condition_index, condition in enumerate(output.get("conditions", [])):
+                if not isinstance(condition, dict):
+                    continue
+                errors.extend(
+                    _validate_condition_reference(
+                        spec=spec,
+                        condition=condition,
+                        location=(
+                            f"profile_capabilities.{profile}.native_outputs"
+                            f"[{output_index}].conditions[{condition_index}]"
+                        ),
+                    )
+                )
         truth_derivable = {
             key
             for key, value in capability.get("truth_outputs", {}).items()

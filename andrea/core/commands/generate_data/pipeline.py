@@ -365,6 +365,7 @@ def _simulator_run_payload(
         "seed": seed,
         "inputs": request.inputs,
         "simulator_params": request.simulator_params,
+        "runtime_resources": request.runtime_resources,
         "native_outputs": request.native_outputs,
         "requested_extras": request.requested_extras,
         "effective_extras": request.effective_extras,
@@ -511,11 +512,9 @@ def _frozen_plan_payload(
     *,
     resolved: ResolvedSimulationPlan,
     root_inputs: dict[str, dict[str, Any]],
-    max_parallel_tasks: int,
 ) -> dict[str, Any]:
     payload = copy.deepcopy(resolved.plan_payload)
     payload["inputs"] = root_inputs
-    payload["execution"] = {"max_parallel_tasks": int(max_parallel_tasks)}
     return payload
 
 
@@ -524,7 +523,6 @@ def _write_frozen_benchmark_request_assets(
     resolved: ResolvedSimulationPlan,
     benchmark_root: Path,
     schemas: dict[str, dict[str, Any]],
-    max_parallel_tasks: int,
 ) -> dict[str, Any]:
     benchmark_input_dir = benchmark_root / "input"
     benchmark_input_dir.mkdir(parents=True, exist_ok=True)
@@ -558,7 +556,6 @@ def _write_frozen_benchmark_request_assets(
     plan_payload = _frozen_plan_payload(
         resolved=resolved,
         root_inputs=root_inputs,
-        max_parallel_tasks=max_parallel_tasks,
     )
     _validate_json_instance(
         instance=plan_payload,
@@ -595,6 +592,34 @@ def validate_generate_data_plan(plan_path: Path) -> dict[str, Any]:
                 "run_id": run.run_id,
                 "simulator_id": run.simulator_id,
                 "simulator_params": run.simulator_params,
+                "runtime_resources": run.runtime_resources,
+                "ram_gb": next(
+                    (
+                        raw_run.get("ram_gb")
+                        for raw_run in resolved.plan_payload.get("runs", [])
+                        if isinstance(raw_run, dict)
+                        and raw_run.get("run_id") == run.run_id
+                    ),
+                    None,
+                ),
+                "eta_seconds": next(
+                    (
+                        raw_run.get("eta_seconds")
+                        for raw_run in resolved.plan_payload.get("runs", [])
+                        if isinstance(raw_run, dict)
+                        and raw_run.get("run_id") == run.run_id
+                    ),
+                    None,
+                ),
+                "eta_source": next(
+                    (
+                        raw_run.get("eta_source")
+                        for raw_run in resolved.plan_payload.get("runs", [])
+                        if isinstance(raw_run, dict)
+                        and raw_run.get("run_id") == run.run_id
+                    ),
+                    None,
+                ),
                 "native_outputs": run.native_outputs,
                 "replicates": run.replicates,
                 "base_seed": run.base_seed,
@@ -605,6 +630,46 @@ def validate_generate_data_plan(plan_path: Path) -> dict[str, Any]:
         "tasks": resolved.tasks,
         "execution": resolved.execution,
     }
+
+
+def _planned_wave_task_groups(
+    *,
+    resolved: ResolvedSimulationPlan,
+    max_parallel_tasks: int,
+) -> list[list[dict[str, Any]]]:
+    task_by_id = {str(task["task_id"]): task for task in resolved.tasks}
+    groups: list[list[dict[str, Any]]] = []
+    waves = resolved.execution.get("waves", [])
+    if isinstance(waves, list) and waves:
+        seen: set[str] = set()
+        for wave in waves:
+            if not isinstance(wave, dict):
+                continue
+            wave_tasks = wave.get("tasks", [])
+            if not isinstance(wave_tasks, list):
+                continue
+            current: list[dict[str, Any]] = []
+            for item in wave_tasks:
+                if not isinstance(item, dict):
+                    continue
+                task_id = str(item.get("task_id") or "")
+                if not task_id or task_id not in task_by_id:
+                    continue
+                current.append(task_by_id[task_id])
+                seen.add(task_id)
+                if len(current) >= max_parallel_tasks:
+                    groups.append(current)
+                    current = []
+            if current:
+                groups.append(current)
+        missing = [task for task in resolved.tasks if str(task["task_id"]) not in seen]
+        if missing:
+            groups.append(missing)
+        return groups
+
+    if resolved.tasks:
+        raise ValueError("simulation plan execution.waves is required")
+    return []
 
 
 def _validate_selected_native_outputs(
@@ -866,10 +931,20 @@ def run_generate_data(
     benchmark_datasets: list[dict[str, Any]] = []
     benchmark_artifacts: list[dict[str, Any]] = []
     task_order = {str(task["task_id"]): idx for idx, task in enumerate(resolved.tasks)}
+    planned_max_parallel_tasks = int(resolved.execution.get("max_parallel_tasks", 1))
     if max_parallel_tasks is None:
-        max_parallel_tasks = int(resolved.execution.get("max_parallel_tasks", 1))
+        max_parallel_tasks = planned_max_parallel_tasks
+    elif int(max_parallel_tasks) != planned_max_parallel_tasks:
+        raise ValueError(
+            "max_parallel_tasks is part of the resolved simulation plan; regenerate "
+            "the plan to change execution parallelism."
+        )
     max_parallel_tasks = max(
         1, min(int(max_parallel_tasks), max(1, len(resolved.tasks)))
+    )
+    planned_task_groups = _planned_wave_task_groups(
+        resolved=resolved,
+        max_parallel_tasks=max_parallel_tasks,
     )
     with tempfile.TemporaryDirectory(prefix="andrea_generate_data_") as tmp:
         staging_root = Path(tmp) / "staging"
@@ -892,43 +967,54 @@ def run_generate_data(
                             },
                         )
                     )
-            with ThreadPoolExecutor(max_workers=max_parallel_tasks) as executor:
-                future_to_task = {
-                    executor.submit(
-                        _execute_simulation_task,
-                        task=task,
-                        resolved=resolved,
-                        schemas=schemas,
-                        staging_root=staging_root,
-                        datasets_root=datasets_root,
-                        benchmark_root=benchmark_root,
-                        progress_poll_seconds=progress_poll_seconds,
-                        show_progress=show_progress,
-                        progress_callback=_combine_progress_callbacks(
+            completed: list[tuple[dict[str, Any], dict[str, Any]]] = []
+            for task_group in planned_task_groups:
+                with ThreadPoolExecutor(
+                    max_workers=max(1, min(max_parallel_tasks, len(task_group)))
+                ) as executor:
+                    future_to_task = {
+                        executor.submit(
+                            _execute_simulation_task,
                             task=task,
-                            terminal_callback=progress_reporter.callback_for(
-                                str(task["task_id"])
+                            resolved=resolved,
+                            schemas=schemas,
+                            staging_root=staging_root,
+                            datasets_root=datasets_root,
+                            benchmark_root=benchmark_root,
+                            progress_poll_seconds=progress_poll_seconds,
+                            show_progress=show_progress,
+                            progress_callback=_combine_progress_callbacks(
+                                task=task,
+                                terminal_callback=progress_reporter.callback_for(
+                                    str(task["task_id"])
+                                ),
+                                external_callback=progress_callback,
                             ),
-                            external_callback=progress_callback,
-                        ),
-                    ): task
-                    for task in resolved.tasks
-                }
-                completed: list[tuple[dict[str, Any], dict[str, Any]]] = []
-                for future in as_completed(future_to_task):
-                    task = future_to_task[future]
-                    try:
-                        completed.append(future.result())
-                    except Exception as exc:  # noqa: BLE001
-                        progress_reporter.update(
-                            str(task["task_id"]),
-                            {
+                        ): task
+                        for task in task_group
+                    }
+                    for future in as_completed(future_to_task):
+                        task = future_to_task[future]
+                        try:
+                            completed.append(future.result())
+                        except Exception as exc:  # noqa: BLE001
+                            failure_payload = {
                                 "status": "failed",
                                 "phase": "failed",
                                 "message": str(exc),
-                            },
-                        )
-                        raise
+                            }
+                            progress_reporter.update(
+                                str(task["task_id"]),
+                                failure_payload,
+                            )
+                            if progress_callback is not None:
+                                progress_callback(
+                                    _normalized_progress_event(
+                                        task=task,
+                                        payload=failure_payload,
+                                    )
+                                )
+                            raise
             completed.sort(
                 key=lambda item: task_order[
                     item[0]["dataset_id"].removeprefix(f"{resolved.request_id}__")
@@ -942,7 +1028,6 @@ def run_generate_data(
         resolved=resolved,
         benchmark_root=benchmark_root,
         schemas=schemas,
-        max_parallel_tasks=max_parallel_tasks,
     )
 
     benchmark_manifest = {
@@ -963,11 +1048,26 @@ def run_generate_data(
                 "base_seed": run.base_seed,
                 "replicate_seeds": run.replicate_seeds,
                 "resolved_simulator_params": run.simulator_params,
+                "runtime_resources": run.runtime_resources,
+                "ram_gb": raw_run.get("ram_gb"),
+                "eta_seconds": raw_run.get("eta_seconds"),
+                "eta_source": raw_run.get("eta_source"),
+                "eta_start_seconds": raw_run.get("eta_start_seconds"),
+                "eta_end_seconds": raw_run.get("eta_end_seconds"),
+                "eta_provenance": raw_run.get("eta_provenance", {}),
             }
+            for raw_runs_by_id in [
+                {
+                    str(item.get("run_id")): item
+                    for item in resolved.plan_payload.get("runs", [])
+                    if isinstance(item, dict)
+                }
+            ]
             for run in resolved.simulator_runs
+            for raw_run in [raw_runs_by_id.get(run.run_id, {})]
         ],
         "tasks": resolved.tasks,
-        "execution": {"max_parallel_tasks": max_parallel_tasks},
+        "execution": resolved.execution,
         "datasets": benchmark_datasets,
         "artifacts": benchmark_artifacts,
     }
@@ -988,6 +1088,8 @@ def execute_generate_data(
     simulator_runs_path: Path,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     max_parallel_tasks: int | None = None,
+    max_cores: int | None = None,
+    max_ram_gb: float | None = None,
     progress_poll_seconds: float = 0.5,
     show_progress: bool = True,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
@@ -1000,6 +1102,8 @@ def execute_generate_data(
             simulator_runs_path=simulator_runs_path,
             output_path=plan_path,
             max_parallel_tasks=max_parallel_tasks,
+            max_cores=max_cores,
+            max_ram_gb=max_ram_gb,
         )
         return run_generate_data(
             plan_path=plan_path,

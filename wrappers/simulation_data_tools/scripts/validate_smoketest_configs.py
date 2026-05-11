@@ -60,8 +60,8 @@ def declared_input_ids(spec: dict[str, Any]) -> set[str]:
     declared: set[str] = set()
     for key in ("required", "optional"):
         for item in simulator_inputs.get(key, []):
-            if isinstance(item, dict) and item.get("id"):
-                declared.add(str(item["id"]))
+            if isinstance(item, dict) and item.get("input"):
+                declared.add(str(item["input"]))
     for item in simulator_inputs.get("conditional_required", []):
         if isinstance(item, dict) and item.get("input"):
             declared.add(str(item["input"]))
@@ -114,6 +114,22 @@ def semantic_errors(
         )
     except ValueError as exc:
         errors.append(str(exc))
+
+    runtime_resources = request.get("runtime_resources", {})
+    threading = spec.get("runtime_resources", {}).get("threading", {})
+    supported = bool(threading.get("supported", False))
+    max_threads = int(threading.get("max_threads", 1))
+    threads = runtime_resources.get("threads")
+    if not isinstance(threads, int) or isinstance(threads, bool) or threads < 1:
+        errors.append("request.runtime_resources.threads must be an integer >= 1")
+    elif not supported and threads != 1:
+        errors.append(
+            "request.runtime_resources.threads must be 1 because simulator threading is not supported"
+        )
+    elif threads > max_threads:
+        errors.append(
+            f"request.runtime_resources.threads exceeds simulator max_threads={max_threads}"
+        )
 
     if not config_path.name.startswith(f"{simulator_id}_") and config_path.name != (
         f"{simulator_id}.json"

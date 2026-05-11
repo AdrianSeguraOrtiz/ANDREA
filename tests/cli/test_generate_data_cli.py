@@ -94,7 +94,19 @@ class GenerateDataCliTests(unittest.TestCase):
                 CLI_MODULE,
                 "core_plan_generate_data_request",
                 return_value=output_path,
-            ) as mock_fn:
+            ) as mock_fn, patch.object(
+                CLI_MODULE,
+                "core_validate_generate_data_plan",
+                return_value={
+                    "total_tasks": 1,
+                    "execution": {
+                        "waves": [{"index": 1}],
+                        "eta_total_seconds": 60.0,
+                        "max_cores": 1,
+                        "max_ram_gb": 4.0,
+                    },
+                },
+            ):
                 result = self.runner.invoke(
                     app,
                     [
@@ -108,6 +120,10 @@ class GenerateDataCliTests(unittest.TestCase):
                         str(output_path),
                         "--max-parallel-tasks",
                         "1",
+                        "--max-cores",
+                        "1",
+                        "--max-ram-gb",
+                        "4",
                     ],
                 )
 
@@ -118,6 +134,8 @@ class GenerateDataCliTests(unittest.TestCase):
         self.assertEqual(kwargs["simulator_runs_path"], simulator_runs_path)
         self.assertEqual(kwargs["output_path"], output_path)
         self.assertEqual(kwargs["max_parallel_tasks"], 1)
+        self.assertEqual(kwargs["max_cores"], 1)
+        self.assertEqual(kwargs["max_ram_gb"], 4.0)
 
     def test_run_calls_core(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -172,6 +190,10 @@ class GenerateDataCliTests(unittest.TestCase):
                         str(output_dir),
                         "--max-parallel-tasks",
                         "2",
+                        "--max-cores",
+                        "2",
+                        "--max-ram-gb",
+                        "8",
                     ],
                 )
 
@@ -182,3 +204,5 @@ class GenerateDataCliTests(unittest.TestCase):
         self.assertEqual(kwargs["simulator_runs_path"], simulator_runs_path)
         self.assertEqual(kwargs["output_dir"], output_dir)
         self.assertEqual(kwargs["max_parallel_tasks"], 2)
+        self.assertEqual(kwargs["max_cores"], 2)
+        self.assertEqual(kwargs["max_ram_gb"], 8.0)

@@ -113,6 +113,7 @@ def run_docker_simulator(
             "inputs": request.inputs,
             "mounted_inputs": mounted_inputs,
             "params": dict(request.simulator_params),
+            "runtime_resources": dict(request.runtime_resources),
             "output_dir_in_container": "/work/out",
         }
         request_path = request_dir / "simulator-run-request.json"

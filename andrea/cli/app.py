@@ -30,6 +30,10 @@ from andrea.core.commands.generate_data import (
 from andrea.core.commands.generate_data import (
     run_generate_data as core_run_generate_data,
 )
+from andrea.core.commands.generate_data import (
+    validate_generate_data_plan as core_validate_generate_data_plan,
+)
+from andrea.core.commands.generate_data.cost_planner import detect_host_ram_gb
 from andrea.core.commands.infer_network import infer_network as core_infer_network
 from andrea.core.commands.infer_network import (
     plan_infer_network as core_plan_infer_network,
@@ -475,6 +479,16 @@ def generate_data_plan(
         min=1,
         help="Maximum simulator tasks to run concurrently when this plan is executed.",
     ),
+    max_cores: int = typer.Option(
+        multiprocessing.cpu_count(),
+        min=1,
+        help="Maximum CPU cores available to the simulator resource planner.",
+    ),
+    max_ram_gb: float = typer.Option(
+        round(detect_host_ram_gb(), 3),
+        min=1.0,
+        help="Maximum RAM in GB available to the simulator resource planner.",
+    ),
 ):
     """Resolve a scenario request into a runnable simulation-plan.json."""
     output_path = _run_core(
@@ -483,8 +497,20 @@ def generate_data_plan(
         simulator_runs_path=simulator_runs,
         output_path=out,
         max_parallel_tasks=max_parallel_tasks,
+        max_cores=max_cores,
+        max_ram_gb=max_ram_gb,
     )
     print(f"[bold green]simulation plan written[/bold green]: {output_path}")
+    summary = _run_core(core_validate_generate_data_plan, output_path)
+    execution = summary.get("execution", {})
+    print(
+        "  "
+        f"tasks={summary.get('total_tasks', 0)} "
+        f"waves={len(execution.get('waves', []))} "
+        f"eta={float(execution.get('eta_total_seconds', 0.0) or 0.0):.2f}s "
+        f"cores={execution.get('max_cores', '-')} "
+        f"ram={execution.get('max_ram_gb', '-')}GB"
+    )
 
 
 @generate_data_app.command("run")
@@ -502,7 +528,7 @@ def generate_data_run(
     max_parallel_tasks: Optional[int] = typer.Option(
         None,
         min=1,
-        help="Optional override for the plan's max_parallel_tasks.",
+        help="Must match the plan's max_parallel_tasks when provided.",
     ),
     progress_poll_seconds: float = typer.Option(
         0.5,
@@ -544,6 +570,16 @@ def generate_data_execute(
         min=1,
         help="Maximum simulator tasks to run concurrently.",
     ),
+    max_cores: int = typer.Option(
+        multiprocessing.cpu_count(),
+        min=1,
+        help="Maximum CPU cores available to the simulator resource planner.",
+    ),
+    max_ram_gb: float = typer.Option(
+        round(detect_host_ram_gb(), 3),
+        min=1.0,
+        help="Maximum RAM in GB available to the simulator resource planner.",
+    ),
     progress_poll_seconds: float = typer.Option(
         0.5,
         help="Polling interval in seconds for reading per-simulator progress.json.",
@@ -556,6 +592,8 @@ def generate_data_execute(
         simulator_runs_path=simulator_runs,
         output_dir=output_dir,
         max_parallel_tasks=max_parallel_tasks,
+        max_cores=max_cores,
+        max_ram_gb=max_ram_gb,
         progress_poll_seconds=progress_poll_seconds,
     )
     print(f"[bold green]benchmark written[/bold green]: {benchmark_root}")

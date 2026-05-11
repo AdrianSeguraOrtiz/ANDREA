@@ -1,0 +1,50 @@
+{
+  "simulator_id": "scmultisim",
+  "request": {
+    "profile": "scrna_grouped",
+    "seed": 105,
+    "effective_extras": [
+      "enrichment_background",
+      "groups"
+    ],
+    "inputs": {},
+    "params": {
+      "grn_source": "builtin_100",
+      "tree_preset": "phyla3",
+      "num_cells": 8,
+      "num_cifs": 20,
+      "velocity": {
+        "enabled": false
+      },
+      "dynamic_grn": {
+        "enabled": false
+      },
+      "technical_noise": {
+        "enabled": true,
+        "protocol": "UMI",
+        "depth_mean": 1000,
+        "depth_sd": 100,
+        "n_pcr1": 2,
+        "n_pcr2": 2
+      },
+      "batch_effect": {
+        "enabled": true,
+        "num_batches": 2,
+        "effect": 1.5
+      }
+    },
+    "runtime_resources": {"threads": 1}
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/enrichment_background.txt",
+    "extras/groups.tsv",
+    "truth/global_network.csv",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/result.rds",
+    "provenance/raw/true_counts.tsv",
+    "provenance/raw/session_info.txt"
+  ]
+}

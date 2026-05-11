@@ -1,0 +1,44 @@
+{
+  "simulator_id": "scmultisim",
+  "request": {
+    "profile": "scrna_grouped",
+    "seed": 104,
+    "effective_extras": [
+      "groups",
+      "prior_grn",
+      "tf_list"
+    ],
+    "inputs": {
+      "grn_params": "../fixtures/scmultisim_grn_params.tsv",
+      "tree_newick": "../fixtures/scmultisim_tree_newick.txt"
+    },
+    "params": {
+      "grn_source": "input_tsv",
+      "tree_preset": "input_newick",
+      "num_cells": 9,
+      "num_cifs": 20,
+      "velocity": {
+        "enabled": false
+      },
+      "dynamic_grn": {
+        "enabled": false
+      },
+      "technical_noise": {
+        "enabled": false
+      }
+    },
+    "runtime_resources": {"threads": 1}
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/global_network.csv",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/result.rds",
+    "provenance/raw/session_info.txt"
+  ]
+}

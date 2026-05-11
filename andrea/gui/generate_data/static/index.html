@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ANDREA GUI · generate-data</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260423i" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260423j" />
   </head>
   <body>
     <main class="app-shell">
@@ -42,8 +42,8 @@
           <div id="extras-empty" class="muted-box compact-empty" hidden>No optional extras are available for this profile.</div>
 
           <div class="panel-head compact-head input-files-head">
-            <h3>Optional Input Files</h3>
-            <button class="secondary" id="add-input-btn" type="button">Add Input</button>
+            <h3>Simulator Input Files</h3>
+            <button class="secondary" id="add-input-btn" type="button">Add Input File</button>
           </div>
           <div id="inputs-empty" class="muted-box">No simulator input files added.</div>
           <div id="inputs-list" class="extra-list"></div>
@@ -95,7 +95,7 @@
           <div id="runs-container" class="runs"></div>
 
           <h3>Planning Options</h3>
-          <div class="grid two planning-options">
+          <div class="grid four planning-options">
             <label>
               Output Directory
               <input id="output-dir" type="text" value="./benchmarks" />
@@ -103,6 +103,14 @@
             <label>
               Max Parallel Tasks
               <input id="max-parallel-tasks" type="number" min="1" step="1" value="4" />
+            </label>
+            <label>
+              Max CPU Cores
+              <input id="max-cores" type="number" min="1" step="1" value="4" />
+            </label>
+            <label>
+              Max RAM GB
+              <input id="max-ram-gb" type="number" min="1" step="0.1" value="8" />
             </label>
           </div>
 
@@ -276,6 +284,17 @@
       </div>
     </div>
 
+    <div id="input-modal" class="info-popover hidden" role="dialog" aria-modal="true" aria-labelledby="input-modal-title">
+      <div class="info-popover-card input-modal-card">
+        <button id="input-modal-close" class="info-popover-close" type="button" aria-label="Close input selector">x</button>
+        <h4 id="input-modal-title">Simulator Inputs</h4>
+        <p class="input-modal-subtitle">
+          Add files that simulators can consume. Conditional requirements are checked later against each configured run.
+        </p>
+        <div id="input-modal-body" class="input-modal-body"></div>
+      </div>
+    </div>
+
     <div id="repro-steps-modal" class="info-popover hidden" role="dialog" aria-modal="true">
       <div class="info-popover-card repro-steps-modal-card">
         <button id="repro-steps-modal-close" class="info-popover-close" type="button" aria-label="Close reproducibility steps">x</button>
@@ -317,11 +336,18 @@
     <template id="input-template">
       <article class="extra-row">
         <div class="extra-left">
-          <label>
-            Input Type
-            <select class="input-kind"></select>
-          </label>
-          <div class="input-kind-description muted-box"></div>
+          <input class="input-kind" type="hidden" />
+          <input class="input-description" type="hidden" />
+          <div class="input-card-head">
+            <div>
+              <div class="input-kind-label"></div>
+              <div class="input-kind-description"></div>
+            </div>
+            <div class="input-card-actions">
+              <button class="input-info-btn info-icon" type="button" aria-label="Show input info">i</button>
+              <button class="remove-input icon-btn" type="button" aria-label="Remove input">x</button>
+            </div>
+          </div>
           <details class="advanced-box input-organism-box" hidden>
             <summary>Organism metadata</summary>
             <div class="grid three">
@@ -347,10 +373,16 @@
           </details>
         </div>
         <div class="extra-file-wrap">
-          <input class="input-file" type="file" />
-          <input class="input-description" type="text" placeholder="Description" />
+          <label class="extra-file-picker">
+            <input class="input-file" type="file" />
+            <span class="extra-file-button">Choose File</span>
+            <span class="extra-file-picker-name">No file selected</span>
+          </label>
+          <div class="extra-file-meta">
+            <span class="extra-file-name">No file selected</span>
+            <span class="input-file-status status-badge err">Select a file</span>
+          </div>
         </div>
-        <button class="remove-input icon-btn" type="button" aria-label="Remove input">x</button>
       </article>
     </template>
 
@@ -365,6 +397,6 @@
       </article>
     </template>
 
-    <script type="module" src="/static/app/main.js?v=20260423i"></script>
+    <script type="module" src="/static/app/main.js?v=20260423j"></script>
   </body>
 </html>
