@@ -18,6 +18,32 @@ Simulator build sources live in `wrappers/simulation_data_tools/simulators/`.
 Smoketest parameter overrides live in `wrappers/simulation_data_tools/param_overrides/`.
 Simulator cost benchmark profile configs live in `wrappers/simulation_data_tools/cost_profiles/`.
 
+## Normalized Output Contract
+
+Every simulator wrapper writes normalized outputs directly under `/work/out/`.
+The public truth contract is a single context-aware edge table:
+
+```text
+expression.tsv
+truth/
+  networks.csv
+  gene_universe.txt
+extras/
+provenance/
+  raw/
+simulator-output-manifest.json
+progress.json
+```
+
+All public truth networks are exported through `truth/networks.csv`, with
+columns `source,target,score,sign,evidence,context`. The `context` value
+determines whether an edge belongs to global, group or future cell truth.
+Use `context=global` for dataset-level truth and `context=group:<id>` for
+group-specific truth. The manifests reference this table through
+`outputs.networks` and `truth.networks`. Simulators may preserve native
+outputs under provenance, but public consumers must not depend on those native
+files.
+
 ## Layout
 
 ```text

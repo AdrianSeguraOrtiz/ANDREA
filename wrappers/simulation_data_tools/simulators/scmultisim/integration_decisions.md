@@ -46,9 +46,9 @@ Phase: 3 complete. This file is the working contract for the wrapper and Docker 
 | `profile_capabilities.scrna_global` | Supported | scMultiSim simulates single-cell count matrices; `Phyla1()` can avoid specific trajectory | The whole expression matrix can be used as a global scRNA benchmark without exporting groups. | The simulator is still single-cell, not bulk. |
 | `profile_capabilities.scrna_grouped` | Supported | `cell_meta$pop`; differentiation tree; discrete and continuous population docs | scMultiSim natively generates population/trajectory labels and can support grouped scRNA benchmarks. | Continuous populations produce trajectory segment labels; discrete populations produce terminal cell-type labels. |
 | Bulk profiles | Not claimed | README/DESCRIPTION describe single-cell data | Aggregating single cells into bulk would be wrapper invention, not a native profile. | None. |
-| `truth_outputs.global_network` | `derivable` | `.grn$geff`, `grn_params`, dynamic `cell_specific_grn` | The wrapper must convert matrices into ANDREA `source,target,score,sign` CSV and aggregate dynamic GRNs when enabled. | Dynamic global truth is a summary over changing per-cell networks. |
-| `truth_outputs.group_networks` | `derivable` for `scrna_grouped`, `none` for `scrna_global` | Dynamic GRN returns one gene-by-TF matrix per cell | Group networks can be derived by aggregating cell-specific GRN matrices over group labels. | Requires `dynamic_grn.enabled=true`; wrapper should reject group-network requests when disabled. |
-| `derivable_extras` | Global: enrichment background, pseudotime, prior GRN, TF list. Grouped: all global extras plus groups, cell phenotypes, cluster identities, lineage tree, prior GRN by group and group networks. | `sim_true_counts` return docs; vignettes; dynamic GRN implementation | Every normalized artifact is exported by wrapper conversion from native result objects. | `lineage_tree` for discrete terminal clusters is less direct than for continuous trajectory segments. |
+| `truth_outputs.global` | `derivable` | `.grn$geff`, `grn_params`, dynamic `cell_specific_grn` | The wrapper converts matrices into ANDREA `source,target,score,sign,evidence,context` rows and aggregates dynamic GRNs when enabled. | Dynamic global truth is a summary over changing per-cell networks. |
+| `truth_outputs.group` | `derivable` for `scrna_grouped`, `none` for `scrna_global` | Dynamic GRN returns one gene-by-TF matrix per cell | Group truth is derived by aggregating cell-specific GRN matrices over group labels and writing `context=group:<group_id>` rows in `truth/networks.csv`. | Requires `dynamic_grn.enabled=true`; wrapper rejects grouped profile or group-specific extras when disabled. |
+| `derivable_extras` | Global: enrichment background, pseudotime, prior GRN, TF list. Grouped: all global extras plus groups, cell phenotypes, cluster identities, lineage tree and prior GRN by group. | `sim_true_counts` return docs; vignettes; dynamic GRN implementation | Every normalized artifact is exported by wrapper conversion from native result objects. Truth by group is profile output, not a selectable extra. | `lineage_tree` for discrete terminal clusters is less direct than for continuous trajectory segments. |
 | `native_outputs` | true counts, observed counts, ATAC counts, cell metadata, velocity, cell-specific GRN | `sim_true_counts` value docs; `add_expr_noise`; `divide_batches` | These are upstream-native artifacts worth preserving under provenance/native outputs. | Phase 2 may restrict user-requestable native outputs if runtime size is high. |
 | `params` | Serializable subset of `sim_true_counts`, `dynamic.GRN`, `add_expr_noise`, `divide_batches`; function hooks as presets | `R/0_opts.R`, `options.Rmd`, `R/6_technoise.R` | Exposes the supportable public surface while preventing arbitrary R callbacks through JSON. | Spatial/CCI params are intentionally excluded in this first contract. |
 
@@ -71,13 +71,13 @@ Phase: 3 complete. This file is the working contract for the wrapper and Docker 
   - Else if `technical_noise.enabled=true`, use `counts_obs`.
   - Else use true `counts`.
   - Rows are genes and columns are cells.
-- `truth/global_network.csv`
-  - Static GRN: convert non-zero `.grn$geff` entries.
-  - Dynamic GRN: aggregate all `cell_specific_grn` matrices with `score=mean(abs(effect))` and sign from the mean signed effect.
-- `truth/group_networks/*.csv`
-  - Aggregate `cell_specific_grn` by exported group.
-  - Active edge rule: `mean(abs(effect)) > 0`.
+- `truth/networks.csv`
+  - Static global GRN: convert non-zero `.grn$geff` entries with `context=global`.
+  - Dynamic global GRN: aggregate all `cell_specific_grn` matrices with `score=mean(abs(effect))` and sign from the mean signed effect.
+  - Group GRN rows for `scrna_grouped`: aggregate `cell_specific_grn` by exported group and write `context=group:<group_id>`.
   - Score stores magnitude only; sign stores direction of the mean signed effect.
+- `truth/gene_universe.txt`
+  - All genes present in the exported expression matrix.
 - `extras/groups.tsv`
   - From `cell_meta$pop`.
 - `extras/cell_phenotypes.tsv`
@@ -172,11 +172,11 @@ Runtime resources:
   - Package install: `BiocManager::install("scMultiSim", version="3.23", update=FALSE)`
   - Version assertion: `packageVersion("scMultiSim") == "1.8.0"`
 - The container reads `/work/request/simulator-run-request.json` and writes the normalized output tree directly under `/work/out/`.
-- The wrapper writes `progress.json`, `expression.tsv`, `truth/global_network.csv`, optional `extras/`, optional `truth/group_networks/`, `simulator-output-manifest.json`, and provenance under `provenance/raw/`.
+- The wrapper writes `progress.json`, `expression.tsv`, `truth/networks.csv`, `truth/gene_universe.txt`, optional `extras/`, `simulator-output-manifest.json`, and provenance under `provenance/raw/`.
 - Provenance currently includes the wrapper request, resolved wrapper params, scMultiSim options RDS, result RDS, true counts, cell metadata, session info and group derivation tables when requested.
 - The wrapper requires `runtime_resources.threads` in `/work/request/simulator-run-request.json` and records it in `provenance/raw/wrapper_environment.json`.
 - `batch_effect.enabled=true` hard-errors unless `technical_noise.enabled=true`, because upstream `divide_batches()` operates on observed counts produced by `add_expr_noise()`.
-- `group_networks`, `prior_grn_by_group` and `lineage_tree` hard-error unless `dynamic_grn.enabled=true`, because their implementation depends on native `cell_specific_grn`.
+- `scrna_grouped`, `prior_grn_by_group` and `lineage_tree` hard-error unless `dynamic_grn.enabled=true`, because group truth and those extras depend on native `cell_specific_grn`.
 - `atac.region_distrib` is validated by the wrapper and passed with a small R class workaround. scMultiSim 1.8.0 validates this length-3 vector with `x > 0 && length(x) == 3`, which fails under R 4.6 unless the vector comparison returns a scalar. The wrapper keeps the public value and uses `sim_true_counts()` unchanged.
 - `dynamic_grn.num_changing_edges` hard-errors when it resolves to fewer than two changed edges because scMultiSim 1.8.0 drops matrix dimensions when sampling a single edge in `dynamic.GRN$restructure()`. The ToolSpec default remains upstream-compatible at `2.0`.
 
@@ -188,16 +188,16 @@ Implemented smoke tests:
    - profile: `scrna_global`
    - extras: none
    - small `num_cells`, `grn_source=builtin_100`, `tree_preset=phyla1`
-   - validates `expression.tsv`, `truth/global_network.csv`, manifest, progress, provenance
+   - validates `expression.tsv`, `truth/networks.csv`, `truth/gene_universe.txt`, manifest, progress, provenance
 2. `scmultisim_global_extras`
    - profile: `scrna_global`
    - extras: `enrichment_background`, `pseudotime`, `prior_grn`, `tf_list`
    - validates all global normalized extras
 3. `scmultisim_grouped_full`
    - profile: `scrna_grouped`
-   - extras: `groups`, `cell_phenotypes`, `cluster_identities`, `enrichment_background`, `lineage_tree`, `pseudotime`, `prior_grn`, `tf_list`, `prior_grn_by_group`, `group_networks`
+   - extras: `groups`, `cell_phenotypes`, `cluster_identities`, `enrichment_background`, `lineage_tree`, `pseudotime`, `prior_grn`, `tf_list`, `prior_grn_by_group`
    - params: `dynamic_grn.enabled=true`
-   - validates group truth networks and group-specific prior
+   - validates `group:<id>` rows in the unified truth network and group-specific prior
 4. `scmultisim_grouped_custom_inputs`
    - profile: `scrna_grouped`
    - use `grn_source=input_tsv` and `tree_preset=input_newick`
@@ -216,7 +216,15 @@ Implemented smoke tests:
 - Generated a temporary `scrna_grouped` benchmark with `scmultisim` and all declared grouped extras, then ran `infer-network preflight` on the generated `dataset-manifest.json`: passed. Expression and requested extras validated as `ok`; missing inputs were optional extras not requested by the benchmark.
 - Docker build confirmed Bioconductor `scMultiSim` version `1.8.0`.
 
+## Phase 4 Truth Unification Update
+
+- Public truth now uses one edge table, `truth/networks.csv`.
+- Global scMultiSim truth rows use `context=global`.
+- `scrna_grouped` truth rows use `context=group:<group_id>` in the same table.
+- The wrapper no longer writes the legacy split public truth files.
+- `simulator-output-manifest.json` now reports `truth.gene_universe` and `truth.networks`.
+- Group derivation debug files remain under `provenance/raw/`, including `group_edge_activity.tsv`, `group_active_networks.tsv` and `group_networks_index.tsv` when group truth is derived.
+
 ## Remaining Follow-Up
 
-- `group_networks` is currently declared as a derivable extra so users can request it, although it is also a truth output. A future catalog cleanup could split selectable extras from truth-output toggles more explicitly.
 - Spatial/CCI and ATAC benchmark profiles remain intentionally unclaimed until ANDREA has normalized contracts for those modalities.

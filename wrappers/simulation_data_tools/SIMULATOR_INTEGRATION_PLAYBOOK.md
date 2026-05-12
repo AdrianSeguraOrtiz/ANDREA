@@ -91,10 +91,14 @@ Truth output modes are:
 - `derivable`
 
 Use these modes for:
-- `global_network`
-- `group_networks`
+- `global`
+- `group`
 
-Be explicit about whether a truth output comes directly from the simulator or is derived by the wrapper from simulator-native state.
+All public truth networks are exported through `truth/networks.csv`.
+`context` determines whether an edge belongs to global, group or future cell truth.
+`global` means rows with `context=global`; `group` means rows with `context=group:<group_id>`.
+Be explicit about whether each context family comes directly from the simulator or is derived by the wrapper from simulator-native state.
+Simulators may preserve native outputs under provenance, but public consumers must not depend on those native files.
 
 Every derived public artifact must also have a `derivations[]` entry in the relevant profile capability. This applies to both:
 - each item in `derivable_extras`
@@ -258,7 +262,8 @@ Requirements:
   in `simulatorspec.json`; do not reintroduce thread controls as simulator params
 - Produce:
   - `expression.tsv`
-  - `truth/global_network.csv`
+  - `truth/networks.csv`
+  - `truth/gene_universe.txt`
   - optional `extras/`
   - `simulator-output-manifest.json`
 - Add smoke-test configs under [wrappers/simulation_data_tools/tests/smoketest_configs/](wrappers/simulation_data_tools/tests/smoketest_configs/)
@@ -374,7 +379,8 @@ The wrapper must write under `/work/out/`:
 expression.tsv
 extras/
 truth/
-  global_network.csv
+  networks.csv
+  gene_universe.txt
 provenance/
   raw/
 simulator-output-manifest.json
@@ -393,10 +399,10 @@ extras/pseudotime.tsv
 extras/prior_grn.tsv
 extras/tf_list.txt
 extras/prior_grn_by_group.tsv
-truth/group_networks/<group>.csv
 ```
 
 The core validates only the normalized contract. It must not parse simulator-native files directly.
+Simulators may preserve native outputs under provenance, but public consumers must not depend on those native files.
 
 ### Progress
 
@@ -526,8 +532,8 @@ Rules:
 ### Truth Outputs
 
 For each profile, set:
-- `global_network`
-- `group_networks`
+- `global`
+- `group`
 
 Rules:
 - `native`: directly available from simulator internals or declared inputs
@@ -539,7 +545,8 @@ Document:
 - edge sign convention
 - score meaning
 - thresholding rule, if any
-- whether group truth is public output or only provenance
+- context convention (`global` and, when supported, `group:<group_id>`)
+- whether grouped truth is profile-native, derived from simulator-native state, or unavailable
 
 ### Parameters
 
@@ -714,29 +721,26 @@ Rules:
 - document whether the prior is modality-grounded, truth-derived, or heuristic
 - avoid deriving a prior directly from clean truth unless the benchmark explicitly intends that
 
-### `truth/global_network.csv`
+### `truth/networks.csv`
 
 Use:
 
 ```text
 source,target,score,sign,evidence,context
 TF1,G2,1,+,simulated_truth,global
+TF1,G3,0.7,-,simulated_truth,group:group_a
 ```
 
 Rules:
 - do not include self-loops unless upstream semantics require them
 - omit exact zero-score edges
 - preserve direction if the simulator has directed regulatory semantics
-- `context = global`
-
-### `truth/group_networks/<group>.csv`
-
-Same columns as global truth.
-
-Rules:
-- `context = group:<group_label>`
-- every file must correspond to a group in `groups.tsv`
-- include in `ground-truth-manifest.json` as `{group, path}`
+- `score` must be a positive truth label, confidence or effect magnitude; sign belongs in `sign`
+- `context=global` for dataset-level truth
+- `context=group:<group_id>` for group-specific truth
+- every group context must correspond to a group in `groups.tsv`
+- include this file in `ground-truth-manifest.json` as `outputs.networks`
+- include this file in `simulator-output-manifest.json` as `truth.networks`
 
 ## Smoke-Test Requirements
 

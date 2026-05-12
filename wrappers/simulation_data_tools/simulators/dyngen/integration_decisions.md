@@ -22,8 +22,9 @@
   - `scrna_grouped`
 - `dyngen` does not define a bulk RNA-seq simulator, so it is not mapped to bulk profiles.
 - Native global truth comes from the package-generated regulatory network.
+- Public truth export filters simulator self-loops because ANDREA truth networks exclude self-regulatory edges unless a simulator-specific contract explicitly requires them.
 - `groups.tsv` is derived from dyngen `milestone_percentages` by assigning each cell to the milestone with maximum percentage.
-- Public `truth/group_networks/*.csv` files are derived from dyngen `regulatory_network_sc` by aggregating cell-specific regulatory strengths within each exported group. Missing cell-edge values are treated as zero; active edges use `mean(abs(strength)) >= 0.1`.
+- Group truth rows in public `truth/networks.csv` are derived from dyngen `regulatory_network_sc` by aggregating cell-specific regulatory strengths within each exported group. Missing cell-edge values are treated as zero; active edges use `mean(abs(strength)) >= 0.1` and use `context=group:<group_id>`.
 - `lineage_tree.tsv` is derived from dyngen `milestone_network` and the public group truth active-edge sets.
 - `tf_list.txt` is derived from `feature_info$is_tf`.
 - `pseudotime.tsv` is derived from dyngen `milestone_percentages` and a deterministic order over `milestone_network`; branching/disconnected/cyclic topologies are projected to a single wrapper-defined order.
@@ -65,6 +66,17 @@
 - The wrapper writes:
   - `progress.json`
   - `simulator-output-manifest.json`
+  - `truth/networks.csv`
+  - `truth/gene_universe.txt`
   - `provenance/raw/model.rds`
   - `provenance/raw/dataset.rds`
   - `provenance/raw/session_info.txt`
+
+## Phase 4 Truth Unification Update
+
+- Public truth now uses one edge table, `truth/networks.csv`.
+- Global dyngen truth rows use `context=global`.
+- `scrna_grouped` truth rows use `context=group:<group_id>` in the same table.
+- The wrapper no longer writes the legacy split public truth files.
+- `simulator-output-manifest.json` now reports `truth.gene_universe` and `truth.networks`.
+- Group derivation debug files remain under `provenance/raw/`, including `group_edge_activity.tsv`, `group_active_networks.tsv` and `group_networks_index.tsv` when group truth is derived.

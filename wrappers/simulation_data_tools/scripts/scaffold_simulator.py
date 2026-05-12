@@ -132,7 +132,8 @@ def wrapper_template(wrapper: str) -> str:
 
 The wrapper must read --request and --output-dir, then write:
 - expression.tsv
-- truth/global_network.csv
+- truth/networks.csv
+- truth/gene_universe.txt
 - simulator-output-manifest.json
 - progress.json
 """
@@ -196,8 +197,8 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
                 "native_extras": [],
                 "derivable_extras": [],
                 "truth_outputs": {
-                    "global_network": "native",
-                    "group_networks": "none",
+                    "global": "native",
+                    "group": "none",
                 },
                 "derivations": [],
                 "artifacts_aux": [],
@@ -223,10 +224,12 @@ def smoketest_payload(simulator_id: str) -> dict[str, object]:
         "expect_progress": True,
         "required_files": [
             "expression.tsv",
-            "truth/global_network.csv",
+            "truth/networks.csv",
+            "truth/gene_universe.txt",
             "simulator-output-manifest.json",
             "progress.json",
         ],
+        "required_truth_context_prefixes": ["global"],
     }
 
 
@@ -240,6 +243,13 @@ TODO: document installation, wrapper behavior and smoke tests.
 - The container reads `/work/request/simulator-run-request.json`.
 - The container writes normalized outputs directly under `/work/out/`.
 - The wrapper must write `progress.json`.
+- All public truth networks are exported through `truth/networks.csv`; the
+  `context` column determines whether an edge belongs to global, group or
+  future cell truth.
+- `simulator-output-manifest.json` must report `truth.gene_universe` and
+  `truth.networks`.
+- Simulators may preserve native outputs under provenance, but public consumers
+  must not depend on those native files.
 - The wrapper must map `runtime_resources.threads` to the upstream public
   thread/worker control declared in `simulatorspec.json`.
 - Do not expose thread counts as simulator params.
