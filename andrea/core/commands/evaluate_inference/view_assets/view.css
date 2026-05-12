@@ -175,6 +175,9 @@ body {
   background: #fff;
   max-height: 420px;
 }
+.andrea-evaluation-view .other-contexts {
+  margin-top: 14px;
+}
 .andrea-evaluation-view table.matrix {
   border-collapse: separate;
   border-spacing: 0;
@@ -218,6 +221,13 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.andrea-evaluation-view table.other-context-table {
+  width: 100%;
+}
+.andrea-evaluation-view table.other-context-table th,
+.andrea-evaluation-view table.other-context-table td {
+  text-align: left;
 }
 .andrea-evaluation-view .empty {
   padding: 18px;

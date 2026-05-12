@@ -1543,7 +1543,7 @@ def create_app() -> FastAPI:
                         "recommended_tools": ["Cytoscape Desktop", "py4cytoscape"],
                         "tips": [
                             "This artifact is specific to Cytoscape Desktop and uses the normalized GraphML export as its data source.",
-                            "Default mappings: edge width by score, edge color by tool_id, edge line type by context scope.",
+                            "Default mappings: edge width by score, edge color by tool_id, edge line type by exact context.",
                             "Run it with Cytoscape Desktop open and CyREST enabled on the default localhost port.",
                             "If you prefer manual styling, you can still import the sibling GraphML file directly.",
                         ],
@@ -1573,7 +1573,7 @@ def create_app() -> FastAPI:
                 else [
                     "Use this export for interoperable graph workflows across desktop and scripting tools.",
                     "This file preserves one edge per CSV row, including context and tool_id edge attributes.",
-                    "The export also includes context_scope, which is convenient for styling global vs grouped edges in Cytoscape Desktop.",
+                    "Use the exact context attribute for filtering or styling global, group or future context-specific edges.",
                     "This export carries graph data and edge attributes, not an application-specific visual style preset.",
                     "GraphML is the best default choice for Cytoscape Desktop and remains directly usable in Gephi.",
                     "If you want the ANDREA default Cytoscape styling automatically, use the sibling merged_network_normalized_cytoscape.py artifact.",

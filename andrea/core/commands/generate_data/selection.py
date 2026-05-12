@@ -25,6 +25,13 @@ def _evaluate_runtime_requirements(_simulator_id: str) -> list[str]:
     return []
 
 
+def _required_truth_outputs(profile: str) -> list[str]:
+    required = ["global"]
+    if profile == "scrna_grouped":
+        required.append("group")
+    return required
+
+
 def evaluate_simulator_for_scenario(
     *,
     simulator_id: str,
@@ -46,8 +53,8 @@ def evaluate_simulator_for_scenario(
         native = set()
         derivable = set()
         truth_outputs = {
-            "global_network": "none",
-            "group_networks": "none",
+            "global": "none",
+            "group": "none",
         }
         supported_effective_extras: list[str] = []
     else:
@@ -58,6 +65,21 @@ def evaluate_simulator_for_scenario(
         )
         native, derivable = _supported_requested_artifacts(profile_capability)
         truth_outputs = dict(profile_capability.get("truth_outputs", {}))
+        missing_truth = [
+            output_id
+            for output_id in _required_truth_outputs(scenario.profile)
+            if truth_outputs.get(output_id) not in {"native", "derivable"}
+        ]
+        if missing_truth:
+            issues.append(
+                make_issue(
+                    severity="block",
+                    code="unsupported_truth_outputs",
+                    message="profile requires truth output(s) not supported by this simulator: "
+                    + ", ".join(missing_truth),
+                    simulator_id=simulator_id,
+                )
+            )
         supported_effective_extras = sorted(
             set(scenario.effective_extras).intersection(native.union(derivable))
         )

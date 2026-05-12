@@ -35,8 +35,8 @@
       "native_extras": [],
       "derivable_extras": ["enrichment_background", "pseudotime", "prior_grn", "tf_list"],
       "truth_outputs": {
-        "global_network": "native",
-        "group_networks": "none"
+        "global": "native",
+        "group": "none"
       },
       "native_outputs": [
         {
@@ -146,8 +146,8 @@
         "prior_grn_by_group"
       ],
       "truth_outputs": {
-        "global_network": "native",
-        "group_networks": "derivable"
+        "global": "native",
+        "group": "derivable"
       },
       "native_outputs": [
         {
@@ -314,7 +314,7 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
-          "artifact": "group_networks",
+          "artifact": "group",
           "source_artifacts": [
             "groups",
             "regulatory_network_sc"

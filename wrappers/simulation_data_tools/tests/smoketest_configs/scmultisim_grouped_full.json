@@ -12,8 +12,7 @@
       "pseudotime",
       "prior_grn",
       "tf_list",
-      "prior_grn_by_group",
-      "group_networks"
+      "prior_grn_by_group"
     ],
     "inputs": {},
     "params": {
@@ -50,8 +49,8 @@
     "extras/prior_grn.tsv",
     "extras/tf_list.txt",
     "extras/prior_grn_by_group.tsv",
-    "truth/global_network.csv",
-    "truth/group_networks",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/result.rds",
@@ -59,5 +58,6 @@
     "provenance/raw/group_networks_index.tsv",
     "provenance/raw/lineage_transitions_used.tsv",
     "provenance/raw/session_info.txt"
-  ]
+  ],
+  "required_truth_context_prefixes": ["global", "group:"]
 }

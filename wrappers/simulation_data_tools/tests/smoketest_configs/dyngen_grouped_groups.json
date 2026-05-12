@@ -15,10 +15,13 @@
   "required_files": [
     "expression.tsv",
     "extras/groups.tsv",
-    "truth/global_network.csv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "provenance/raw/group_networks_index.tsv",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/model.rds",
     "provenance/raw/dataset.rds"
-  ]
+  ],
+  "required_truth_context_prefixes": ["global", "group:"]
 }

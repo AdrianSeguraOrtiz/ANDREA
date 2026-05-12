@@ -37,7 +37,8 @@
     "extras/prior_grn.tsv",
     "extras/tf_list.txt",
     "extras/prior_grn_by_group.tsv",
-    "truth/global_network.csv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/model.rds",
@@ -46,5 +47,6 @@
     "provenance/raw/group_active_networks.tsv",
     "provenance/raw/lineage_states_used.tsv",
     "provenance/raw/lineage_transitions_used.tsv"
-  ]
+  ],
+  "required_truth_context_prefixes": ["global", "group:"]
 }

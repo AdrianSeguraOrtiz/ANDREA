@@ -52,16 +52,6 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 COMMON_STATIC_DIR = Path(__file__).resolve().parents[1] / "common" / "static"
 GUI_TMP_ROOT = Path("/tmp/andrea_gui/generate_data")
 
-CANONICAL_OUTPUT_EXTRAS: dict[str, dict[str, Any]] = {
-    "group_networks": {
-        "key": "group_networks",
-        "label": "group_networks/*.csv",
-        "description": "Optional public truth edge lists exported one file per group under truth/group_networks/.",
-        "file_kind": "directory",
-        "example": "truth/group_networks/group_a.csv\ntruth/group_networks/group_b.csv",
-    }
-}
-
 
 def _accept_from_formats(formats: list[str]) -> str:
     extensions_by_format = {
@@ -204,13 +194,6 @@ def _load_generate_bootstrap() -> dict[str, Any]:
                     for x in capability.get("derivable_extras", [])
                     if isinstance(x, str) and x in SIMULATION_EXTRA_IDS
                 )
-                truth_outputs = capability.get("truth_outputs", {})
-                if isinstance(truth_outputs, dict):
-                    extras_by_profile[profile_id].update(
-                        key
-                        for key, mode in truth_outputs.items()
-                        if key in SIMULATION_EXTRA_IDS and mode in {"native", "derivable"}
-                    )
         raw_inputs = spec.get("simulator_inputs", {})
         if isinstance(raw_inputs, dict):
             for group_key in ("required", "optional"):
@@ -243,7 +226,7 @@ def _load_generate_bootstrap() -> dict[str, Any]:
     ]
     extras = []
     for key in sorted(set().union(*extras_by_profile.values())):
-        spec = CANONICAL_OUTPUT_EXTRAS.get(key, input_specs.get(key, {}))
+        spec = input_specs.get(key, {})
         default_suffix = ".txt" if spec.get("file_kind") == "txt_list" else ".tsv"
         extras.append(
             {
@@ -877,7 +860,8 @@ def _bundle_sources(
                     dataset_dir / "dataset-manifest.json",
                     dataset_dir / "ground-truth-manifest.json",
                     dataset_dir / "expression.tsv",
-                    dataset_dir / "truth" / "global_network.csv",
+                    dataset_dir / "truth" / "networks.csv",
+                    dataset_dir / "truth" / "gene_universe.txt",
                     dataset_dir / "provenance" / "simulator-output-manifest.json",
                     dataset_dir / "provenance" / "simulator-run.json",
                     dataset_dir / "provenance" / "progress.json",
@@ -885,7 +869,6 @@ def _bundle_sources(
             )
             for folder in [
                 dataset_dir / "extras",
-                dataset_dir / "truth" / "group_networks",
             ]:
                 if folder.exists():
                     candidates.extend(

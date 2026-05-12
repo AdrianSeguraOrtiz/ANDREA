@@ -128,8 +128,9 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
                         "lineage_tree": None,
                         "tf_list": None,
                         "prior_grn_by_group": None,
-                        "global_network": "datasets/bench__dyngen_cfg__r01/truth/global_network.csv",
-                        "group_networks_dir": None,
+                        "gene_universe": "datasets/bench__dyngen_cfg__r01/truth/gene_universe.txt",
+                        "networks": "datasets/bench__dyngen_cfg__r01/truth/networks.csv",
+                        "native_outputs": {},
                     },
                 )
 

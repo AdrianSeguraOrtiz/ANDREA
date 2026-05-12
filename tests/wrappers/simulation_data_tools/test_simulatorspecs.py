@@ -99,8 +99,8 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
                 "prior_grn_by_group",
             },
         )
-        self.assertEqual(grouped["truth_outputs"]["global_network"], "native")
-        self.assertEqual(grouped["truth_outputs"]["group_networks"], "derivable")
+        self.assertEqual(grouped["truth_outputs"]["global"], "native")
+        self.assertEqual(grouped["truth_outputs"]["group"], "derivable")
 
     def test_dyngen_documents_every_derivation(self) -> None:
         dyngen = self.specs["dyngen"]

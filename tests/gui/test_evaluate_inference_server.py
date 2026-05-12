@@ -104,12 +104,12 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                             "profile": "scrna_grouped",
                             "outputs": {
                                 "gene_universe": "truth/gene_universe.txt",
-                                "global_network": "truth/global_network.csv",
+                                "networks": "truth/networks.csv",
                             },
                         }
                     ),
                     "benchmark/datasets/dataset_a/truth/gene_universe.txt": "G1\nG2\n",
-                    "benchmark/datasets/dataset_a/truth/global_network.csv": "source,target,score,sign\n",
+                    "benchmark/datasets/dataset_a/truth/networks.csv": "source,target,score,sign,evidence,context\n",
                 }
             )
 
@@ -207,23 +207,23 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                             "dataset_id": "dataset_x",
                             "outputs": {
                                 "gene_universe": "truth/gene_universe.txt",
-                                "global_network": "truth/global_network.csv",
+                                "networks": "truth/networks.csv",
                             },
                         }
                     ),
                     "datasets/a/truth/gene_universe.txt": "G1\nG2\n",
-                    "datasets/a/truth/global_network.csv": "source,target\n",
+                    "datasets/a/truth/networks.csv": "source,target,score,sign,evidence,context\n",
                     "datasets/b/ground-truth-manifest.json": json.dumps(
                         {
                             "dataset_id": "dataset_y",
                             "outputs": {
                                 "gene_universe": "truth/gene_universe.txt",
-                                "global_network": "truth/global_network.csv",
+                                "networks": "truth/networks.csv",
                             },
                         }
                     ),
                     "datasets/b/truth/gene_universe.txt": "G1\nG2\n",
-                    "datasets/b/truth/global_network.csv": "source,target\n",
+                    "datasets/b/truth/networks.csv": "source,target,score,sign,evidence,context\n",
                 }
             )
 

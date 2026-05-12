@@ -26,22 +26,10 @@
     "outputs": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["gene_universe", "global_network", "group_networks"],
+      "required": ["gene_universe", "networks"],
       "properties": {
         "gene_universe": { "type": "string", "pattern": ".*\\.txt$" },
-        "global_network": { "type": ["string", "null"], "pattern": ".*\\.csv$" },
-        "group_networks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["group", "path"],
-            "properties": {
-              "group": { "type": "string", "minLength": 1 },
-              "path": { "type": "string", "pattern": ".*\\.csv$" }
-            }
-          }
-        }
+        "networks": { "type": "string", "pattern": ".*\\.csv$" }
       }
     },
     "notes": {

@@ -288,7 +288,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 Path(tmp),
                 request_id="scrna_grouped_lineage",
                 profile="scrna_grouped",
-                requested_extras=["lineage_tree", "group_networks"],
+                requested_extras=["lineage_tree"],
             )
             report = preflight_generate_data_scenario(scenario_path)
 
@@ -297,9 +297,12 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(report["catalog_summary"]["warning"], 0)
         self.assertGreaterEqual(report["catalog_summary"]["eligible"], 1)
         dyngen_entry = _entry_by_id(report["eligible"], "dyngen")
+        self.assertEqual(
+            dyngen_entry["truth_outputs"],
+            {"global": "native", "group": "derivable"},
+        )
         self.assertIn("groups", dyngen_entry["derived_extras_used"])
         self.assertIn("lineage_tree", dyngen_entry["derived_extras_used"])
-        self.assertIn("group_networks", dyngen_entry["derived_extras_used"])
         self.assertEqual(dyngen_entry["issues"], [])
 
     def test_preflight_blocks_dyngen_when_docker_is_unavailable(self) -> None:
@@ -589,21 +592,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(len(resolved.simulator_runs), 1)
         self.assertEqual(resolved.simulator_runs[0].simulator_id, "dyngen")
         self.assertEqual(resolved.effective_extras, ["groups", "lineage_tree"])
-
-    def test_validate_plan_accepts_group_networks_requested_extra(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            plan_path = self._write_plan(
-                Path(tmp),
-                request_id="dyngen_group_networks_ok",
-                profile="scrna_grouped",
-                simulator_id="dyngen",
-                requested_extras=["group_networks"],
-                simulator_params={"num_cells": 10},
-            )
-            resolved = validate_simulation_plan(plan_path)
-
-        self.assertEqual(resolved.profile, "scrna_grouped")
-        self.assertEqual(resolved.effective_extras, ["group_networks", "groups"])
 
     def test_validate_plan_accepts_dyngen_native_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1081,23 +1069,22 @@ class GenerateDataDyngenTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "waves"):
                 validate_simulation_plan(plan_path)
 
-    def test_package_copy_omits_group_networks_when_not_requested(self) -> None:
+    def test_package_copy_preserves_unified_truth_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             stage_dir = base / "stage"
             dataset_dir = base / "dataset"
-            (stage_dir / "truth" / "group_networks").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
             (stage_dir / "provenance").mkdir(parents=True, exist_ok=True)
             (stage_dir / "expression.tsv").write_text(
                 "gene\tC1\nG1\t1\nG2\t2\n", encoding="utf-8"
             )
-            (stage_dir / "truth" / "global_network.csv").write_text(
-                "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
-                encoding="utf-8",
-            )
-            (stage_dir / "truth" / "group_networks" / "group_a.csv").write_text(
+            (stage_dir / "truth" / "networks.csv").write_text(
                 "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,group:A\n",
                 encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n", encoding="utf-8"
             )
             (stage_dir / "simulator-output-manifest.json").write_text(
                 '{"schema_version":"1.0"}\n',
@@ -1110,12 +1097,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 dataset_manifest_payload={"schema_version": "1.0"},
                 ground_truth_manifest_payload={"schema_version": "1.0"},
                 simulator_run_payload={"schema_version": "1.0"},
-                include_group_networks=False,
             )
 
-            self.assertTrue((dataset_dir / "truth" / "global_network.csv").exists())
+            self.assertTrue((dataset_dir / "truth" / "networks.csv").exists())
             self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
-            self.assertFalse((dataset_dir / "truth" / "group_networks").exists())
 
     def test_package_copy_preserves_native_outputs_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1128,9 +1113,12 @@ class GenerateDataDyngenTests(unittest.TestCase):
             (stage_dir / "expression.tsv").write_text(
                 "gene\tC1\nG1\t1\nG2\t2\n", encoding="utf-8"
             )
-            (stage_dir / "truth" / "global_network.csv").write_text(
+            (stage_dir / "truth" / "networks.csv").write_text(
                 "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
                 encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n", encoding="utf-8"
             )
             (stage_dir / "native" / "rna_velocity.tsv").write_text(
                 "gene\tC1\nG1\t0.1\n",
@@ -1147,7 +1135,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 dataset_manifest_payload={"schema_version": "1.0"},
                 ground_truth_manifest_payload={"schema_version": "1.0"},
                 simulator_run_payload={"schema_version": "1.0"},
-                include_group_networks=True,
             )
 
             self.assertTrue((dataset_dir / "native" / "rna_velocity.tsv").exists())
@@ -1183,8 +1170,12 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     "gene\tC1\nG1\t0.1\n",
                     encoding="utf-8",
                 )
-                (stage_dir / "truth" / "global_network.csv").write_text(
+                (stage_dir / "truth" / "networks.csv").write_text(
                     "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
+                    encoding="utf-8",
+                )
+                (stage_dir / "truth" / "gene_universe.txt").write_text(
+                    "G1\nG2\n",
                     encoding="utf-8",
                 )
                 manifest_path = stage_dir / "simulator-output-manifest.json"
@@ -1207,8 +1198,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
                                 "rna_velocity": "native/rna_velocity.tsv",
                             },
                             "truth": {
-                                "global_network": "truth/global_network.csv",
-                                "group_networks": [],
+                                "gene_universe": "truth/gene_universe.txt",
+                                "networks": "truth/networks.csv",
                             },
                             "provenance": {"raw_dir": "provenance/raw"},
                         },
@@ -1401,7 +1392,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             self.assertTrue((dataset_dir / "extras" / "groups.tsv").exists())
             self.assertTrue((dataset_dir / "extras" / "tf_list.txt").exists())
             self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
-            self.assertTrue((dataset_dir / "truth" / "global_network.csv").exists())
+            self.assertTrue((dataset_dir / "truth" / "networks.csv").exists())
 
             report = preflight_infer_network(
                 dataset_manifest_path=manifest_path,
@@ -1463,7 +1454,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             self.assertTrue((dataset_dir / "extras" / "lineage_tree.tsv").exists())
             self.assertTrue((dataset_dir / "extras" / "tf_list.txt").exists())
             self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
-            self.assertTrue((dataset_dir / "truth" / "global_network.csv").exists())
+            self.assertTrue((dataset_dir / "truth" / "networks.csv").exists())
             self.assertTrue(
                 (
                     dataset_dir / "provenance" / "raw" / "group_edge_activity.tsv"

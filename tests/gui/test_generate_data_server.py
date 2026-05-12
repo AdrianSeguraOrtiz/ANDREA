@@ -103,7 +103,6 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
         )
         self.assertIn("groups", profiles["scrna_grouped"]["available_extras"])
         self.assertIn("lineage_tree", profiles["scrna_grouped"]["available_extras"])
-        self.assertIn("group_networks", profiles["scrna_grouped"]["available_extras"])
         inputs = {item["id"]: item for item in payload["simulator_inputs"]}
         self.assertIn("grn_params", inputs)
         self.assertIn("tree_newick", inputs)
@@ -170,8 +169,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                             "native_extras_used": [],
                             "derived_extras_used": ["groups", "lineage_tree"],
                             "truth_outputs": {
-                                "global_network": "native",
-                                "group_networks": "derivable",
+                                "global": "native",
+                                "group": "derivable",
                             },
                             "status": "eligible",
                             "issues": [],
@@ -401,7 +400,10 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     json.dumps(
                         {
                             "schema_version": "1.0",
-                            "outputs": {"gene_universe": "truth/gene_universe.txt"},
+                            "outputs": {
+                                "gene_universe": "truth/gene_universe.txt",
+                                "networks": "truth/networks.csv",
+                            },
                         },
                         ensure_ascii=True,
                     )
@@ -414,7 +416,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 (dataset_dir / "extras" / "groups.tsv").write_text(
                     "cell\tcluster\nC1\tA\n", encoding="utf-8"
                 )
-                (dataset_dir / "truth" / "global_network.csv").write_text(
+                (dataset_dir / "truth" / "networks.csv").write_text(
                     "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
                     encoding="utf-8",
                 )

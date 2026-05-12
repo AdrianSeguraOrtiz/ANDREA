@@ -14,7 +14,8 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
-    "truth/global_network.csv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/model.rds",

@@ -51,7 +51,6 @@
         "cell_phenotypes",
         "cluster_identities",
         "enrichment_background",
-        "group_networks",
         "lineage_tree",
         "prior_grn",
         "prior_grn_by_group",

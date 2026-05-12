@@ -43,8 +43,7 @@
         "pseudotime",
         "prior_grn",
         "tf_list",
-        "prior_grn_by_group",
-        "group_networks"
+        "prior_grn_by_group"
       ]
     },
     "identifier": {
@@ -247,14 +246,14 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "global_network",
-        "group_networks"
+        "global",
+        "group"
       ],
       "properties": {
-        "global_network": {
+        "global": {
           "$ref": "#/$defs/truth_output_mode"
         },
-        "group_networks": {
+        "group": {
           "$ref": "#/$defs/truth_output_mode"
         }
       }
@@ -271,8 +270,8 @@
         "prior_grn",
         "tf_list",
         "prior_grn_by_group",
-        "global_network",
-        "group_networks"
+        "global",
+        "group"
       ]
     },
     "derivation": {

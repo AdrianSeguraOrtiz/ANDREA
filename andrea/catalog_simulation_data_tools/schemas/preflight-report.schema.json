@@ -57,13 +57,13 @@
         "truth_outputs": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["global_network", "group_networks"],
+          "required": ["global", "group"],
           "properties": {
-            "global_network": {
+            "global": {
               "type": "string",
               "enum": ["none", "native", "derivable"]
             },
-            "group_networks": {
+            "group": {
               "type": "string",
               "enum": ["none", "native", "derivable"]
             }

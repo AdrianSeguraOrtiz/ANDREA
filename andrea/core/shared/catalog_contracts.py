@@ -27,6 +27,5 @@ SIMULATION_EXTRA_IDS = frozenset(
         "prior_grn",
         "tf_list",
         "prior_grn_by_group",
-        "group_networks",
     }
 )

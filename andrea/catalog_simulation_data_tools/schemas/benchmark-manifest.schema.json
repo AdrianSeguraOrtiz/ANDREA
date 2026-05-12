@@ -249,7 +249,7 @@
           "simulator_id",
           "expression_matrix",
           "gene_universe",
-          "global_network"
+          "networks"
         ],
         "properties": {
           "dataset_id": { "type": "string", "minLength": 1 },
@@ -270,8 +270,7 @@
             "type": "object",
             "additionalProperties": { "type": "string", "minLength": 1 }
           },
-          "global_network": { "type": "string", "minLength": 1 },
-          "group_networks_dir": { "type": ["string", "null"] }
+          "networks": { "type": "string", "minLength": 1 }
         }
       }
     },

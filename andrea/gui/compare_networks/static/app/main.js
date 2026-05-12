@@ -209,7 +209,18 @@ function sourceDisplayName(report, sourceId) {
 
 function contextLabel(context) {
   const text = String(context || "");
-  return text.startsWith("group:") ? text.slice(6) : text;
+  if (text === "global") return "global";
+  const prefixes = [
+    ["group:", "group"],
+    ["cell:", "cell"]
+  ];
+  for (const [prefix, label] of prefixes) {
+    if (text.startsWith(prefix)) {
+      const value = text.slice(prefix.length);
+      return value ? `${label} ${value}` : label;
+    }
+  }
+  return text;
 }
 
 function syncDistanceMapSource(sourceId) {

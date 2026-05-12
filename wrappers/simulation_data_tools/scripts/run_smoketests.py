@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 import shutil
@@ -142,6 +143,33 @@ def _assert_required_files(
             )
 
 
+def _assert_truth_context_prefixes(
+    *,
+    simulator_id: str,
+    out_dir: Path,
+    prefixes: Sequence[str],
+) -> None:
+    if not prefixes:
+        return
+    truth_path = out_dir / "truth" / "networks.csv"
+    if not truth_path.exists():
+        raise RuntimeError(
+            f"[{simulator_id}] cannot check truth contexts because truth/networks.csv is missing"
+        )
+    with truth_path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        if "context" not in (reader.fieldnames or []):
+            raise RuntimeError(
+                f"[{simulator_id}] truth/networks.csv is missing required context column"
+            )
+        contexts = {str(row.get("context", "")) for row in reader}
+    for prefix in prefixes:
+        if not any(context.startswith(prefix) for context in contexts):
+            raise RuntimeError(
+                f"[{simulator_id}] truth/networks.csv has no context starting with {prefix!r}"
+            )
+
+
 def _stage_inputs(
     *,
     config_path: Path,
@@ -254,6 +282,11 @@ def _run_one_config(
             simulator_id,
             out_dir,
             list(config["required_files"]),
+        )
+        _assert_truth_context_prefixes(
+            simulator_id=simulator_id,
+            out_dir=out_dir,
+            prefixes=list(config.get("required_truth_context_prefixes", [])),
         )
 
         if show_output:

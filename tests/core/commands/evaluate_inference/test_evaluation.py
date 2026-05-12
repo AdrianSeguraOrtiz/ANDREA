@@ -45,7 +45,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             {("A", "B", "-"): 0.9, ("A", "B", "+"): 0.2},
         )
 
-    def test_zero_truth_scores_do_not_create_positive_edges(self) -> None:
+    def test_aggregate_rows_ignores_non_positive_scores(self) -> None:
         rows = [
             NetworkRow(
                 source="A",
@@ -104,7 +104,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self._write_csv(
-                truth_dir / "global_network.csv",
+                truth_dir / "networks.csv",
                 [
                     {
                         "source": "A",
@@ -125,10 +125,10 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                     {
                         "source": "A",
                         "target": "C",
-                        "score": "0",
+                        "score": "1",
                         "sign": "+",
                         "evidence": "simulated_truth",
-                        "context": "global",
+                        "context": "cell:cell_a",
                     },
                 ],
             )
@@ -142,8 +142,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "profile": "scrna_grouped",
                         "outputs": {
                             "gene_universe": "truth/gene_universe.txt",
-                            "global_network": "truth/global_network.csv",
-                            "group_networks": [],
+                            "networks": "truth/networks.csv",
                         },
                     }
                 ),
@@ -160,6 +159,15 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "sign": "?",
                         "evidence": "association",
                         "context": "global",
+                        "tool_id": "genie3__01",
+                    },
+                    {
+                        "source": "A",
+                        "target": "C",
+                        "score": "0.6",
+                        "sign": "?",
+                        "evidence": "association",
+                        "context": "cell:cell_a",
                         "tool_id": "genie3__01",
                     },
                     {
@@ -243,28 +251,32 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             view_exists = view_path.exists()
             view_html = view_path.read_text(encoding="utf-8") if view_exists else ""
 
-        metrics = {(row["tool_id"], row["level"]): row for row in report["metrics"]}
-        self.assertEqual(metrics[("genie3__01", "topology")]["status"], "ok")
+        metrics = {
+            (row["tool_id"], row["context"], row["level"]): row
+            for row in report["metrics"]
+        }
+        self.assertEqual(metrics[("genie3__01", "global", "topology")]["status"], "ok")
         self.assertAlmostEqual(
-            metrics[("genie3__01", "topology")]["f1_at_truth_count"], 1.0
+            metrics[("genie3__01", "global", "topology")]["f1_at_truth_count"], 1.0
         )
         self.assertAlmostEqual(
-            metrics[("genie3__01", "topology")]["epr_at_truth_count"], 3.0
+            metrics[("genie3__01", "global", "topology")]["epr_at_truth_count"], 3.0
         )
-        self.assertEqual(metrics[("genie3__01", "directed")]["status"], "ok")
+        self.assertEqual(metrics[("genie3__01", "global", "directed")]["status"], "ok")
         self.assertAlmostEqual(
-            metrics[("genie3__01", "directed")]["f1_at_truth_count"], 0.5
-        )
-        self.assertAlmostEqual(
-            metrics[("genie3__01", "directed")]["epr_at_truth_count"], 3.0
-        )
-        self.assertEqual(metrics[("genie3__01", "signed")]["status"], "not_applicable")
-        self.assertEqual(metrics[("signed_tool", "signed")]["status"], "ok")
-        self.assertAlmostEqual(
-            metrics[("signed_tool", "signed")]["f1_at_truth_count"], 1.0
+            metrics[("genie3__01", "global", "directed")]["f1_at_truth_count"], 0.5
         )
         self.assertAlmostEqual(
-            metrics[("signed_tool", "signed")]["epr_at_truth_count"], 12.0
+            metrics[("genie3__01", "global", "directed")]["epr_at_truth_count"], 3.0
+        )
+        self.assertEqual(metrics[("genie3__01", "global", "signed")]["status"], "not_applicable")
+        self.assertEqual(metrics[("genie3__01", "cell:cell_a", "topology")]["status"], "ok")
+        self.assertEqual(metrics[("signed_tool", "global", "signed")]["status"], "ok")
+        self.assertAlmostEqual(
+            metrics[("signed_tool", "global", "signed")]["f1_at_truth_count"], 1.0
+        )
+        self.assertAlmostEqual(
+            metrics[("signed_tool", "global", "signed")]["epr_at_truth_count"], 12.0
         )
         self.assertEqual(Path(report["outputs"]["output_root"]), Path("."))
         self.assertEqual(evaluation_dir.parent, output_root)
@@ -282,7 +294,9 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         self.assertEqual(report["inputs"]["ground_truth_simulator_id"], "toy_sim")
         self.assertEqual(report["inputs"]["merged_network"], "merged_network_raw")
         self.assertEqual(report["ground_truth"]["gene_universe_size"], 4)
-        self.assertEqual(metrics[("genie3__01", "topology")]["n_candidate_genes"], 4)
+        self.assertEqual(metrics[("genie3__01", "global", "topology")]["n_candidate_genes"], 4)
+        self.assertIn("cell:cell_a", report["ground_truth"]["contexts"])
+        self.assertIn("Other Contexts", view_html)
         self.assertNotIn("run_report", report["inputs"])
         self.assertNotIn("ground_truth_manifest", report["inputs"])
         self.assertNotIn("derived_inputs", report)
@@ -299,7 +313,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self._write_csv(
-                truth_dir / "global_network.csv",
+                truth_dir / "networks.csv",
                 [
                     {
                         "source": "A",
@@ -321,8 +335,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "profile": "scrna_grouped",
                         "outputs": {
                             "gene_universe": "truth/gene_universe.txt",
-                            "global_network": "truth/global_network.csv",
-                            "group_networks": [],
+                            "networks": "truth/networks.csv",
                         },
                     }
                 ),
@@ -375,7 +388,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             truth_dir = base / "truth"
             truth_dir.mkdir(parents=True)
             self._write_csv(
-                truth_dir / "global_network.csv",
+                truth_dir / "networks.csv",
                 [
                     {
                         "source": "A",
@@ -396,8 +409,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "simulator_id": "toy_sim",
                         "profile": "scrna_grouped",
                         "outputs": {
-                            "global_network": "truth/global_network.csv",
-                            "group_networks": [],
+                            "networks": "truth/networks.csv",
                         },
                     }
                 ),

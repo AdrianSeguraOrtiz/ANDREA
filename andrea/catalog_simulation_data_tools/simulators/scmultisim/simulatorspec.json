@@ -71,8 +71,8 @@
         "tf_list"
       ],
       "truth_outputs": {
-        "global_network": "derivable",
-        "group_networks": "none"
+        "global": "derivable",
+        "group": "none"
       },
       "native_outputs": [
         {
@@ -188,7 +188,7 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
         },
         {
-          "artifact": "global_network",
+          "artifact": "global",
           "source_artifacts": [".grn$geff", "cell_specific_grn"],
           "method": "When dynamic_grn.enabled is false, convert non-zero entries of .grn$geff into the global truth network. When dynamic_grn.enabled is true, aggregate cell_specific_grn matrices across all cells, use mean(abs(effect)) as score, and derive sign from the mean signed effect.",
           "assumptions": [
@@ -227,12 +227,11 @@
         "pseudotime",
         "prior_grn",
         "tf_list",
-        "prior_grn_by_group",
-        "group_networks"
+        "prior_grn_by_group"
       ],
       "truth_outputs": {
-        "global_network": "derivable",
-        "group_networks": "derivable"
+        "global": "derivable",
+        "group": "derivable"
       },
       "native_outputs": [
         {
@@ -412,7 +411,7 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
         },
         {
-          "artifact": "global_network",
+          "artifact": "global",
           "source_artifacts": [".grn$geff", "cell_specific_grn"],
           "method": "When dynamic_grn.enabled is false, convert non-zero entries of .grn$geff into the global truth network. When dynamic_grn.enabled is true, aggregate cell_specific_grn matrices across all cells, use mean(abs(effect)) as score, and derive sign from the mean signed effect.",
           "assumptions": [
@@ -426,7 +425,7 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/scmultisim/run_simulator.R"
         },
         {
-          "artifact": "group_networks",
+          "artifact": "group",
           "source_artifacts": ["groups", "cell_specific_grn"],
           "method": "For each exported group, aggregate cell_specific_grn matrices across cells in that group, keep edges with mean(abs(effect)) greater than zero, export score as mean(abs(effect)), and derive sign from the mean signed effect.",
           "assumptions": [
@@ -458,7 +457,7 @@
           "description": "Wrapper-generated per-group regulatory edge activity table used to derive group truth and oracle group priors."
         }
       ],
-      "notes": "The grouped profile exports groups from scMultiSim cell_meta$pop. The wrapper default keeps dynamic_grn.enabled=true so group_networks and prior_grn_by_group can be derived from native cell-specific GRN matrices."
+      "notes": "The grouped profile exports groups from scMultiSim cell_meta$pop. The wrapper default keeps dynamic_grn.enabled=true so group truth and prior_grn_by_group can be derived from native cell-specific GRN matrices."
     }
   },
   "params": {

@@ -1113,10 +1113,31 @@ function artifactDisplayLabel(artifact) {
     return extra.label;
   }
   const truthLabels = {
-    global_network: "global_network.csv",
-    group_networks: "group_networks/*.csv",
+    global: "truth/networks.csv · global",
+    group: "truth/networks.csv · group:<id>",
+    cell: "truth/networks.csv · cell:<id>",
   };
   return truthLabels[artifact] || artifact;
+}
+
+function truthOutputDescription(artifact) {
+  if (artifact === "global") {
+    return "Rows in truth/networks.csv with context=global represent the dataset-level ground-truth GRN.";
+  }
+  if (artifact === "group") {
+    return "Rows in truth/networks.csv with context=group:<id> represent group-specific ground-truth GRNs.";
+  }
+  if (artifact === "cell") {
+    return "Rows in truth/networks.csv with context=cell:<id> represent cell-specific ground-truth GRNs.";
+  }
+  return "Truth rows are represented in truth/networks.csv and distinguished by their exact context value.";
+}
+
+function truthOutputSummary(truthOutputs) {
+  const entries = Object.entries(truthOutputs || {})
+    .filter(([, mode]) => mode && mode !== "none")
+    .map(([artifact, mode]) => `${artifactDisplayLabel(artifact)} (${mode})`);
+  return entries.length ? entries.join(", ") : "no public truth";
 }
 
 function artifactHasDetail(item, derivation) {
@@ -1371,7 +1392,15 @@ function appendCapabilitySection(host, simulator) {
     truthWrap.className = "artifact-chip-row";
     const truthEntries = Object.entries(capability.truth_outputs || {})
       .filter(([, mode]) => mode && mode !== "none")
-      .map(([artifact, mode]) => ({ artifact, mode }));
+      .map(([artifact, mode]) => ({
+        artifact,
+        label: artifactDisplayLabel(artifact),
+        kind: "truth",
+        description: truthOutputDescription(artifact),
+        formats: ["csv"],
+        notes: "All public truth networks are exported through truth/networks.csv; context determines the scope.",
+        mode,
+      }));
     appendArtifactChipRow(truthWrap, truthEntries, { derivations, simulator, profileId });
     truthRow.appendChild(truthLabel);
     truthRow.appendChild(truthWrap);
@@ -1583,7 +1612,7 @@ function renderSimulatorList(containerId, entries, kind) {
     node.querySelector(".tool-item-name").textContent = simulator.name;
     node.querySelector(".tool-item-badge").textContent = kind;
     node.querySelector(".tool-item-meta").textContent =
-      `${simulator.first_author || "-"} ${simulator.year || ""} · ${entry.truth_outputs?.global_network || "truth?"} truth`;
+      `${simulator.first_author || "-"} ${simulator.year || ""} · ${truthOutputSummary(entry.truth_outputs)}`;
     const actions = node.querySelector(".tool-item-actions");
     const infoBtn = document.createElement("button");
     infoBtn.type = "button";

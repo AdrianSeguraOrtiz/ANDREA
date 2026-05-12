@@ -17,6 +17,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
+_REPO_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT_FOR_IMPORTS) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT_FOR_IMPORTS))
+
 from andrea.core.commands.generate_data.request import (
     _resolve_simulator_params,
     resolve_simulator_runtime_resources,
@@ -622,9 +626,6 @@ def validate_supported_extras(
     capability = spec["profile_capabilities"][profile]
     supported = set(capability.get("native_extras", []))
     supported.update(capability.get("derivable_extras", []))
-    truth_outputs = capability.get("truth_outputs", {})
-    if isinstance(truth_outputs, dict):
-        supported.update(key for key, mode in truth_outputs.items() if mode != "none")
     unsupported = sorted(set(effective_extras).difference(supported))
     if unsupported:
         raise RuntimeError(
@@ -1109,7 +1110,7 @@ def run_container_once(
 
     manifest_path = out_dir / "simulator-output-manifest.json"
     expression_path = out_dir / "expression.tsv"
-    truth_path = out_dir / "truth" / "global_network.csv"
+    truth_path = out_dir / "truth" / "networks.csv"
     if not manifest_path.exists() or not expression_path.exists() or not truth_path.exists():
         return (
             "error",

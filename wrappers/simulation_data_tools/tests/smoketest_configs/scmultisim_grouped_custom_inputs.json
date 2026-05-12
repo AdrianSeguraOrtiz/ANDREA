@@ -21,7 +21,12 @@
         "enabled": false
       },
       "dynamic_grn": {
-        "enabled": false
+        "enabled": true,
+        "num_steps": 3,
+        "cell_per_step": 1,
+        "num_changing_edges": 2,
+        "weight_mean": 0,
+        "weight_sd": 1
       },
       "technical_noise": {
         "enabled": false
@@ -35,10 +40,13 @@
     "extras/groups.tsv",
     "extras/prior_grn.tsv",
     "extras/tf_list.txt",
-    "truth/global_network.csv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "provenance/raw/group_networks_index.tsv",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/result.rds",
     "provenance/raw/session_info.txt"
-  ]
+  ],
+  "required_truth_context_prefixes": ["global", "group:"]
 }

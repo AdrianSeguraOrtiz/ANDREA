@@ -77,6 +77,15 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "required_truth_context_prefixes": {
+      "type": "array",
+      "default": [],
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     }
   }
 }

@@ -27,7 +27,14 @@ MERGED_NETWORK_REQUIRED_COLUMNS = [
     "context",
     "tool_id",
 ]
-TRUTH_NETWORK_REQUIRED_COLUMNS = ["source", "target"]
+TRUTH_NETWORK_REQUIRED_COLUMNS = [
+    "source",
+    "target",
+    "score",
+    "sign",
+    "evidence",
+    "context",
+]
 EVALUATION_LEVELS = ["topology", "directed", "signed"]
 METRIC_COLUMNS = ["auroc", "aupr", "f1_at_truth_count", "epr_at_truth_count"]
 VALID_SIGNS = {"+", "-"}
@@ -314,44 +321,19 @@ def _load_truth_networks(
         raise ValueError("Ground-truth manifest must contain an object at outputs")
 
     base_dir = manifest_path.parent
-    networks: dict[str, TruthNetwork] = {}
     gene_universe_raw = outputs.get("gene_universe")
     if not isinstance(gene_universe_raw, str) or not gene_universe_raw.strip():
         raise ValueError("Ground-truth manifest outputs.gene_universe is required")
+    networks_raw = outputs.get("networks")
+    if not isinstance(networks_raw, str) or not networks_raw.strip():
+        raise ValueError("Ground-truth manifest outputs.networks is required")
     candidate_genes = _load_gene_universe(
         _resolve_manifest_path(base_dir, gene_universe_raw)
     )
-
-    global_path = outputs.get("global_network")
-    if isinstance(global_path, str) and global_path.strip():
-        networks["global"] = _load_truth_network(
-            path=_resolve_manifest_path(base_dir, global_path),
-            context="global",
-            candidate_genes=candidate_genes,
-        )
-
-    group_entries = outputs.get("group_networks", [])
-    if group_entries is None:
-        group_entries = []
-    if not isinstance(group_entries, list):
-        raise ValueError(
-            "Ground-truth manifest outputs.group_networks must be an array"
-        )
-    for entry in group_entries:
-        if not isinstance(entry, dict):
-            raise ValueError("Every group_networks entry must be an object")
-        group = str(entry.get("group", "")).strip()
-        rel_path = entry.get("path")
-        if not group or not isinstance(rel_path, str) or not rel_path.strip():
-            raise ValueError(
-                "Every group_networks entry must include non-empty group and path"
-            )
-        context = f"group:{group}"
-        networks[context] = _load_truth_network(
-            path=_resolve_manifest_path(base_dir, rel_path),
-            context=context,
-            candidate_genes=candidate_genes,
-        )
+    networks = _load_truth_network_table(
+        path=_resolve_manifest_path(base_dir, networks_raw),
+        candidate_genes=candidate_genes,
+    )
 
     if not networks:
         raise ValueError(
@@ -380,16 +362,15 @@ def _load_gene_universe(path: Path) -> set[str]:
     return set(genes)
 
 
-def _load_truth_network(
+def _load_truth_network_table(
     *,
     path: Path,
-    context: str,
     candidate_genes: set[str],
-) -> TruthNetwork:
+) -> dict[str, TruthNetwork]:
     if not path.exists() or not path.is_file():
         raise ValueError(f"Ground-truth network CSV not found: {path}")
 
-    rows: list[NetworkRow] = []
+    rows_by_context: dict[str, list[NetworkRow]] = defaultdict(list)
     with path.open("r", encoding="utf-8", newline="") as fh:
         reader = csv.DictReader(fh)
         headers = reader.fieldnames or []
@@ -398,10 +379,8 @@ def _load_truth_network(
             raise ValueError(
                 f"Ground-truth network CSV is missing required columns {missing}: {path}"
             )
-        has_score = "score" in headers
-        has_sign = "sign" in headers
         for line_number, row in enumerate(reader, start=2):
-            raw_score = row["score"] if has_score else "1"
+            raw_score = row["score"]
             try:
                 score = float(raw_score)
             except Exception as exc:  # noqa: BLE001
@@ -414,42 +393,58 @@ def _load_truth_network(
                     f"Ground-truth network CSV has non-finite score at line {line_number}: "
                     f"{raw_score!r}"
                 )
-            if score < 0.0:
+            if score <= 0.0:
                 raise ValueError(
-                    f"Ground-truth network CSV has negative score at line {line_number}: "
-                    f"{raw_score!r}; score must be a non-negative truth label or magnitude"
+                    f"Ground-truth network CSV has non-positive score at line {line_number}: "
+                    f"{raw_score!r}; score must be a positive truth label or magnitude"
                 )
             source = str(row["source"]).strip()
             target = str(row["target"]).strip()
+            context = str(row["context"]).strip()
+            evidence = str(row["evidence"]).strip()
             if not source or not target:
                 raise ValueError(
                     f"Ground-truth network CSV has empty source or target at line {line_number}: {path}"
+                )
+            if source == target:
+                raise ValueError(
+                    f"Ground-truth network CSV has a self-loop at line {line_number}: {source!r}"
                 )
             if source not in candidate_genes or target not in candidate_genes:
                 raise ValueError(
                     f"Ground-truth network CSV line {line_number} references genes outside outputs.gene_universe: "
                     f"{source!r}, {target!r}"
                 )
-            rows.append(
+            if not context:
+                raise ValueError(
+                    f"Ground-truth network CSV has empty context at line {line_number}: {path}"
+                )
+            if not evidence:
+                raise ValueError(
+                    f"Ground-truth network CSV has empty evidence at line {line_number}: {path}"
+                )
+            rows_by_context[context].append(
                 NetworkRow(
                     source=source,
                     target=target,
                     score=score,
-                    sign=_normalize_sign(str(row["sign"])) if has_sign else "?",
+                    sign=_normalize_sign(str(row["sign"])),
                     context=context,
                 )
             )
-    if not rows:
+    if not rows_by_context:
         raise ValueError(f"Ground-truth network CSV contains no rows: {path}")
-    signed = any(row.sign in VALID_SIGNS for row in rows)
-    return TruthNetwork(
-        context=context,
-        path=path,
-        rows=rows,
-        candidate_genes=set(candidate_genes),
-        directed=True,
-        signed=signed,
-    )
+    return {
+        context: TruthNetwork(
+            context=context,
+            path=path,
+            rows=rows,
+            candidate_genes=set(candidate_genes),
+            directed=True,
+            signed=any(row.sign in VALID_SIGNS for row in rows),
+        )
+        for context, rows in rows_by_context.items()
+    }
 
 
 def _resolve_manifest_path(base_dir: Path, value: str) -> Path:

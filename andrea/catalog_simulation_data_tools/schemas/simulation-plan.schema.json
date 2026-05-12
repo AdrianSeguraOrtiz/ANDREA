@@ -85,8 +85,7 @@
           "pseudotime",
           "prior_grn",
           "tf_list",
-          "prior_grn_by_group",
-          "group_networks"
+          "prior_grn_by_group"
         ]
       }
     },
@@ -104,8 +103,7 @@
           "pseudotime",
           "prior_grn",
           "tf_list",
-          "prior_grn_by_group",
-          "group_networks"
+          "prior_grn_by_group"
         ]
       }
     },

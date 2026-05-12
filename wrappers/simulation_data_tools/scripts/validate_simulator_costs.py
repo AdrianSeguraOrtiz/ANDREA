@@ -10,6 +10,10 @@ from typing import Any, Iterable, Sequence
 
 from jsonschema import Draft202012Validator
 
+_REPO_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT_FOR_IMPORTS) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT_FOR_IMPORTS))
+
 from andrea.core.commands.generate_data.request import validate_simulator_inputs
 from andrea.core.commands.generate_data.shared import PROFILE_SPECS
 
@@ -180,9 +184,6 @@ def semantic_input_errors(
     capability = spec["profile_capabilities"][scenario_profile]
     supported = set(capability.get("native_extras", []))
     supported.update(capability.get("derivable_extras", []))
-    truth_outputs = capability.get("truth_outputs", {})
-    if isinstance(truth_outputs, dict):
-        supported.update(key for key, mode in truth_outputs.items() if mode != "none")
     unsupported = sorted(effective.difference(supported))
     if unsupported:
         errors.append(f"{prefix}.input_profile.effective_extras unsupported: {unsupported}")

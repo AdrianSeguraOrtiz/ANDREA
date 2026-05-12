@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import tempfile
 import threading
@@ -153,7 +152,7 @@ def _discover_truth_candidates(root: Path) -> list[dict[str, Any]]:
         outputs = payload.get("outputs")
         if not isinstance(outputs, dict):
             continue
-        if not outputs.get("global_network") and not outputs.get("group_networks"):
+        if not outputs.get("networks"):
             continue
         rel = path.relative_to(root).as_posix()
         candidates.append(
@@ -412,36 +411,19 @@ def _freeze_truth_manifest(*, truth_manifest_path: Path, destination_dir: Path) 
             "Cannot freeze evaluation input: ground_truth_manifest outputs.gene_universe "
             f"is missing or unresolved ({truth_manifest_path})"
         )
+    networks_path = resolve_report_path(truth_manifest_path, outputs.get("networks"))
+    if networks_path is None or not networks_path.exists():
+        raise ValueError(
+            "Cannot freeze evaluation input: ground_truth_manifest outputs.networks "
+            f"is missing or unresolved ({truth_manifest_path})"
+        )
     frozen_gene_universe = destination_dir / "truth" / "gene_universe.txt"
     frozen_gene_universe.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(gene_universe_path, frozen_gene_universe)
     outputs["gene_universe"] = "truth/gene_universe.txt"
-    global_path = resolve_report_path(
-        truth_manifest_path, outputs.get("global_network")
-    )
-    if global_path is not None:
-        frozen_global = destination_dir / "truth" / "global_network.csv"
-        frozen_global.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(global_path, frozen_global)
-        outputs["global_network"] = "truth/global_network.csv"
-    group_entries = outputs.get("group_networks", [])
-    if isinstance(group_entries, list):
-        frozen_entries: list[dict[str, str]] = []
-        for entry in group_entries:
-            if not isinstance(entry, dict):
-                continue
-            group = str(entry.get("group") or "").strip()
-            source_path = resolve_report_path(truth_manifest_path, entry.get("path"))
-            if not group or source_path is None:
-                continue
-            filename = f"{_slugify(group)}.csv"
-            frozen_group = destination_dir / "truth" / "group_networks" / filename
-            frozen_group.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source_path, frozen_group)
-            frozen_entries.append(
-                {"group": group, "path": f"truth/group_networks/{filename}"}
-            )
-        outputs["group_networks"] = frozen_entries
+    frozen_networks = destination_dir / "truth" / "networks.csv"
+    shutil.copy2(networks_path, frozen_networks)
+    outputs["networks"] = "truth/networks.csv"
     destination_dir.mkdir(parents=True, exist_ok=True)
     frozen_manifest = destination_dir / "ground-truth-manifest.json"
     frozen_manifest.write_text(
@@ -449,11 +431,6 @@ def _freeze_truth_manifest(*, truth_manifest_path: Path, destination_dir: Path) 
         encoding="utf-8",
     )
     return frozen_manifest
-
-
-def _slugify(value: str) -> str:
-    slug = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip()).strip("._-")
-    return slug or "unknown"
 
 
 def _bundle_sources(*, evaluation_dir: Optional[Path]) -> list[tuple[str, Path]]:

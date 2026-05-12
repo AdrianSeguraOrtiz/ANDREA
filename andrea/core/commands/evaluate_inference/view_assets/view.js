@@ -219,6 +219,44 @@
     return `<div class="matrix-wrap"><table class="matrix">${head}${body}</table></div>`;
   }
 
+  function renderOtherContexts(rows, metricKey, maxValue) {
+    const otherRows = rows
+      .filter((row) => {
+        const context = String(row.context || "");
+        return context && context !== "global" && !context.startsWith("group:");
+      })
+      .sort((a, b) => sortContext(a.context, b.context) || String(a.tool_id).localeCompare(String(b.tool_id)));
+    if (!otherRows.length) return "";
+    const body = otherRows.map((row) => {
+      const value = statusOk(row) ? metricValue(row, metricKey) : null;
+      const color = value === null ? "#e5e7eb" : colorFor(value, metricKey, maxValue);
+      const textColor = value === null ? "#64748b" : textColorFor(value, metricKey, maxValue);
+      const reason = row.reason || row.status || "";
+      return `
+        <tr>
+          <td>${escapeHtml(row.context)}</td>
+          <td>${escapeHtml(row.tool_id)}</td>
+          <td style="background:${color}; color:${textColor}">${value === null ? "N/A" : formatValue(value)}</td>
+          <td>${escapeHtml(reason)}</td>
+        </tr>
+      `;
+    }).join("");
+    return `
+      <section class="other-contexts">
+        <div class="panel-title">
+          <h3>Other Contexts</h3>
+          <span class="subtle">generic table</span>
+        </div>
+        <div class="matrix-wrap">
+          <table class="matrix other-context-table">
+            <tr><th>Context</th><th>Tool</th><th>${escapeHtml(metricLabel(metricKey))}</th><th>Status</th></tr>
+            ${body}
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
   function renderLevels(root, metrics) {
     const metricKey = root.querySelector('[data-role="metric-select"]').value;
     const target = root.querySelector('[data-role="levels"]');
@@ -228,6 +266,7 @@
       const maxValue = scaleMax(values, metricKey);
       const evaluated = rows.filter(statusOk).length;
       const na = rows.filter((row) => row.status === "not_applicable").length;
+      const otherContexts = renderOtherContexts(rows, metricKey, maxValue);
       return `
         <article class="level-card">
           <div class="level-head">
@@ -251,6 +290,7 @@
               ${renderGroups(rows, metricKey, maxValue)}
             </section>
           </div>
+          ${otherContexts}
           <div class="legend">
             <span>Scale</span>
             <span class="legend-ramp ${metricKey === "epr_at_truth_count" ? "epr" : ""}"></span>

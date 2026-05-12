@@ -40,13 +40,6 @@ CYTOSCAPE_OPACITY_POINTS = [0.0, 1.0]
 CYTOSCAPE_OPACITY_VALUES = [80, 220]
 
 
-def _context_scope(value: str) -> str:
-    normalized = str(value).strip().lower()
-    if normalized.startswith("group:"):
-        return "group"
-    return "global"
-
-
 def _load_merged_network_rows(csv_path: Path) -> list[dict[str, Any]]:
     if not csv_path.exists() or not csv_path.is_file():
         raise ValueError(f"Merged network CSV not found: {csv_path}")
@@ -71,7 +64,6 @@ def _load_merged_network_rows(csv_path: Path) -> list[dict[str, Any]]:
                     "sign": str(row["sign"]),
                     "evidence": str(row["evidence"]),
                     "context": str(row["context"]),
-                    "context_scope": _context_scope(str(row["context"])),
                     "tool_id": str(row["tool_id"]),
                 }
             )
@@ -113,7 +105,6 @@ def export_network_graphml(csv_path: Path, out_path: Path) -> int:
         ("edge_sign", "edge", "sign", "string"),
         ("edge_evidence", "edge", "evidence", "string"),
         ("edge_context", "edge", "context", "string"),
-        ("edge_context_scope", "edge", "context_scope", "string"),
         ("edge_tool_id", "edge", "tool_id", "string"),
     ]
     for key_id, key_for, attr_name, attr_type in key_specs:
@@ -145,7 +136,6 @@ def export_network_graphml(csv_path: Path, out_path: Path) -> int:
             ("edge_sign", str(row["sign"])),
             ("edge_evidence", str(row["evidence"])),
             ("edge_context", str(row["context"])),
-            ("edge_context_scope", str(row["context_scope"])),
             ("edge_tool_id", str(row["tool_id"])),
         ]
         for key, value in values:
@@ -176,7 +166,6 @@ def export_network_gexf(csv_path: Path, out_path: Path) -> int:
         ("sign", "sign", "string"),
         ("evidence", "evidence", "string"),
         ("context", "context", "string"),
-        ("context_scope", "context_scope", "string"),
         ("tool_id", "tool_id", "string"),
     ]:
         ET.SubElement(
@@ -212,7 +201,6 @@ def export_network_gexf(csv_path: Path, out_path: Path) -> int:
             ("sign", str(row["sign"])),
             ("evidence", str(row["evidence"])),
             ("context", str(row["context"])),
-            ("context_scope", str(row["context_scope"])),
             ("tool_id", str(row["tool_id"])),
         ]:
             ET.SubElement(
@@ -241,6 +229,9 @@ def export_cytoscape_style_script(
         tool_id: CYTOSCAPE_TOOL_PALETTE[idx % len(CYTOSCAPE_TOOL_PALETTE)]
         for idx, tool_id in enumerate(tool_ids)
     }
+    contexts = sorted(
+        {str(row["context"]).strip() for row in rows if str(row["context"]).strip()}
+    )
     style_name = f"ANDREA :: {graphml_path.stem}"
 
     script = dedent(
@@ -277,13 +268,14 @@ def export_cytoscape_style_script(
         STYLE_NAME = {style_name!r}
         TOOL_IDS = {json.dumps(tool_ids, ensure_ascii=True)}
         TOOL_COLORS = {json.dumps(tool_colors, ensure_ascii=True, sort_keys=True)}
+        CONTEXTS = {json.dumps(contexts, ensure_ascii=True)}
         WIDTH_POINTS = {json.dumps(CYTOSCAPE_WIDTH_POINTS)}
         WIDTH_VALUES = {json.dumps(CYTOSCAPE_WIDTH_VALUES)}
         OPACITY_POINTS = {json.dumps(CYTOSCAPE_OPACITY_POINTS)}
         OPACITY_VALUES = {json.dumps(CYTOSCAPE_OPACITY_VALUES)}
 
 
-        def _pick_group_line_style(base_url: str) -> str:
+        def _pick_alternate_line_style(base_url: str) -> str:
             try:
                 available = set(p4c.get_line_styles(base_url=base_url))
             except Exception:
@@ -292,6 +284,10 @@ def export_cytoscape_style_script(
                 if candidate in available:
                     return candidate
             return "SOLID"
+
+
+        def _line_style_for_context(context: str, alternate_line_style: str) -> str:
+            return "SOLID" if context == "global" else alternate_line_style
 
 
         def _pick_layout_name(base_url: str) -> str | None:
@@ -305,7 +301,7 @@ def export_cytoscape_style_script(
             return None
 
 
-        def _style_defaults(group_line_style: str) -> dict[str, object]:
+        def _style_defaults() -> dict[str, object]:
             return {{
                 "node fill color": "#7dd3fc",
                 "node border paint": "#0369a1",
@@ -322,7 +318,7 @@ def export_cytoscape_style_script(
             }}
 
 
-        def _build_mappings(group_line_style: str) -> list[dict[str, object]]:
+        def _build_mappings(alternate_line_style: str) -> list[dict[str, object]]:
             mappings = [
                 p4c.map_visual_property("node label", "label", "p"),
                 p4c.map_visual_property(
@@ -341,10 +337,10 @@ def export_cytoscape_style_script(
                 ),
                 p4c.map_visual_property(
                     "edge line type",
-                    "context_scope",
+                    "context",
                     "d",
-                    ["global", "group"],
-                    ["SOLID", group_line_style],
+                    CONTEXTS,
+                    [_line_style_for_context(context, alternate_line_style) for context in CONTEXTS],
                 ),
             ]
             if TOOL_IDS:
@@ -360,7 +356,7 @@ def export_cytoscape_style_script(
             return mappings
 
 
-        def _recreate_style(style_name: str, group_line_style: str, base_url: str) -> None:
+        def _recreate_style(style_name: str, alternate_line_style: str, base_url: str) -> None:
             try:
                 if style_name in p4c.get_visual_style_names(base_url=base_url):
                     p4c.delete_visual_style(style_name, base_url=base_url)
@@ -369,12 +365,12 @@ def export_cytoscape_style_script(
 
             p4c.create_visual_style(
                 style_name,
-                mappings=_build_mappings(group_line_style),
+                mappings=_build_mappings(alternate_line_style),
                 base_url=base_url,
             )
             p4c.update_style_defaults(
                 style_name,
-                _style_defaults(group_line_style),
+                _style_defaults(),
                 base_url=base_url,
             )
             p4c.lock_node_dimensions(True, style_name=style_name, base_url=base_url)
@@ -412,8 +408,8 @@ def export_cytoscape_style_script(
                 base_url=args.base_url,
             )
             network_suid = result["networks"][0]
-            group_line_style = _pick_group_line_style(args.base_url)
-            _recreate_style(STYLE_NAME, group_line_style, args.base_url)
+            alternate_line_style = _pick_alternate_line_style(args.base_url)
+            _recreate_style(STYLE_NAME, alternate_line_style, args.base_url)
             p4c.set_visual_style(STYLE_NAME, network=network_suid, base_url=args.base_url)
 
             if not args.skip_layout:
@@ -428,7 +424,7 @@ def export_cytoscape_style_script(
             print("Network SUID:", network_suid)
             print("Applied style:", STYLE_NAME)
             print("Tool colors:", ", ".join(f"{{tool_id}}={{TOOL_COLORS[tool_id]}}" for tool_id in TOOL_IDS) or "<none>")
-            print("Group contexts use line type:", group_line_style)
+            print("Context line styles:", ", ".join(f"{{context}}={{_line_style_for_context(context, alternate_line_style)}}" for context in CONTEXTS) or "<none>")
             return 0
 
 
