@@ -411,7 +411,10 @@ def generate_data_preflight(
         ...,
         exists=True,
         file_okay=True,
-        help="Path to scenario-request.json.",
+        help=(
+            "Path to scenario-request.json. Its optional inputs object must "
+            "reference ids from catalog_simulation_data_tools/input_specs."
+        ),
     ),
     output_json: Optional[Path] = typer.Option(
         None,
@@ -461,7 +464,10 @@ def generate_data_plan(
         ...,
         exists=True,
         file_okay=True,
-        help="Path to scenario-request.json.",
+        help=(
+            "Path to scenario-request.json. Its optional inputs object must "
+            "reference ids from catalog_simulation_data_tools/input_specs."
+        ),
     ),
     simulator_runs: Path = typer.Option(
         ...,
@@ -552,7 +558,10 @@ def generate_data_execute(
         ...,
         exists=True,
         file_okay=True,
-        help="Path to scenario-request.json.",
+        help=(
+            "Path to scenario-request.json. Its optional inputs object must "
+            "reference ids from catalog_simulation_data_tools/input_specs."
+        ),
     ),
     simulator_runs: Path = typer.Option(
         ...,
