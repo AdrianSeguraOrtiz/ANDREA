@@ -173,8 +173,15 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         profile = targets[0].profiles[0]
         self.assertEqual(profile.profile_id, "scrna_grouped_custom_grn_tree")
         self.assertEqual(
+            [(size.genes, size.cells) for size in profile.sizes],
+            [(50, 20), (100, 40), (200, 80)],
+        )
+        self.assertTrue(profile.params["dynamic_grn"]["enabled"])
+        self.assertEqual(profile.dimension_profile["group_count"], 3)
+        self.assertEqual(profile.dimension_profile["population_count"], 3)
+        self.assertEqual(
             profile.input_profile["conditional_inputs_satisfied"],
-            ["grn_params", "tree_newick"],
+            ["regulatory_network", "tree_newick"],
         )
         self.assertEqual(profile.input_profile["input_source_modes"]["grn_source"], "input_tsv")
         self.assertEqual(
@@ -187,14 +194,18 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             config_dir = Path(tmp)
             shutil.copy2(COST_PROFILES_DIR / "scmultisim.json", config_dir / "scmultisim.json")
             payload = json.loads((config_dir / "scmultisim.json").read_text(encoding="utf-8"))
-            custom = payload["profiles"][2]
+            custom = next(
+                profile
+                for profile in payload["profiles"]
+                if profile["id"] == "scrna_grouped_custom_grn_tree"
+            )
             custom["inputs"] = {}
             (config_dir / "scmultisim.json").write_text(
                 json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(RuntimeError, "grn_params is required"):
+            with self.assertRaisesRegex(RuntimeError, "regulatory_network is required"):
                 benchmark_costs.resolve_simulator_targets(
                     selected_simulators=[
                         ("scmultisim", CATALOG_SIMULATORS_ROOT / "scmultisim")
@@ -204,6 +215,58 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                     param_overrides_dir=PARAM_OVERRIDES_DIR,
                     default_group_count=2,
                     profile_filters=["scrna_grouped_custom_grn_tree"],
+                )
+
+    def test_cost_profile_configs_cover_supported_profiles(self) -> None:
+        for simulator_id in ("dyngen", "scmultisim"):
+            with self.subTest(simulator_id=simulator_id):
+                targets = benchmark_costs.resolve_simulator_targets(
+                    selected_simulators=[
+                        (simulator_id, CATALOG_SIMULATORS_ROOT / simulator_id)
+                    ],
+                    catalog_simulators_root=CATALOG_SIMULATORS_ROOT,
+                    cost_profiles_dir=COST_PROFILES_DIR,
+                    param_overrides_dir=PARAM_OVERRIDES_DIR,
+                    default_group_count=2,
+                    profile_filters=[],
+                )
+                spec = targets[0].spec
+                supported = set(spec["profile_capabilities"])
+                configured = {profile.profile for profile in targets[0].profiles}
+
+                self.assertEqual(supported - configured, set())
+
+    def test_cell_specific_cost_profiles_record_group_dimensions(self) -> None:
+        for simulator_id in ("dyngen", "scmultisim"):
+            with self.subTest(simulator_id=simulator_id):
+                targets = benchmark_costs.resolve_simulator_targets(
+                    selected_simulators=[
+                        (simulator_id, CATALOG_SIMULATORS_ROOT / simulator_id)
+                    ],
+                    catalog_simulators_root=CATALOG_SIMULATORS_ROOT,
+                    cost_profiles_dir=COST_PROFILES_DIR,
+                    param_overrides_dir=PARAM_OVERRIDES_DIR,
+                    default_group_count=2,
+                    profile_filters=[],
+                )
+                cell_profiles = [
+                    profile
+                    for profile in targets[0].profiles
+                    if profile.profile == "scrna_cell_specific"
+                ]
+
+                self.assertTrue(cell_profiles)
+                self.assertTrue(
+                    all(
+                        profile.dimension_profile["group_count"] > 0
+                        for profile in cell_profiles
+                    )
+                )
+                self.assertTrue(
+                    all(
+                        profile.dimension_profile["population_count"] > 0
+                        for profile in cell_profiles
+                    )
                 )
 
     def test_run_writes_selected_simulator_cost_profile(self) -> None:
@@ -267,6 +330,52 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             self.assertEqual(point["output_bytes_p50"], 4321)
             self.assertEqual(point["feature_vector"]["genes"], 10)
             self.assertEqual(point["feature_vector"]["cells"], 10)
+            self.assertEqual(point["feature_vector"]["n_genes"], 10)
+            self.assertEqual(point["feature_vector"]["n_cells"], 10)
+            self.assertIsInstance(point["feature_vector"]["n_tfs"], int)
+            self.assertFalse(point["feature_vector"]["native_cell_truth_enabled"])
+
+    def test_profile_sizes_override_default_sizes_unless_cli_size_is_explicit(self) -> None:
+        profile = benchmark_costs.SimulatorBenchmarkProfile(
+            simulator_id="scmultisim",
+            profile_id="profile",
+            profile="scrna_global",
+            sizes=(
+                benchmark_costs.SizePoint(genes=50, cells=20),
+                benchmark_costs.SizePoint(genes=101, cells=40),
+            ),
+            requested_extras=(),
+            effective_extras=(),
+            params={},
+            params_profile={},
+            runtime_resources_profile={},
+            dimension_profile={},
+            input_profile={
+                "requested_extras": [],
+                "effective_extras": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "input_source_modes": {},
+                "notes": [],
+            },
+            input_paths={},
+        )
+        defaults = [benchmark_costs.SizePoint(genes=100, cells=40)]
+
+        implicit = benchmark_costs.sizes_for_profile(
+            profile=profile,
+            cli_sizes=defaults,
+            cli_sizes_were_explicit=False,
+        )
+        explicit = benchmark_costs.sizes_for_profile(
+            profile=profile,
+            cli_sizes=defaults,
+            cli_sizes_were_explicit=True,
+        )
+
+        self.assertEqual([(item.genes, item.cells) for item in implicit], [(50, 20), (101, 40)])
+        self.assertEqual([(item.genes, item.cells) for item in explicit], [(100, 40)])
 
     def test_validator_accepts_generated_payload_semantics(self) -> None:
         payload = _valid_cost_payload()

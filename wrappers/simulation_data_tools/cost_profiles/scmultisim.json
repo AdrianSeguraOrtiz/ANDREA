@@ -23,7 +23,32 @@
     {
       "id": "scrna_global_builtin_static",
       "profile": "scrna_global",
+      "sizes": ["101x40", "150x60", "200x80"],
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla1",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_global_builtin_static_full_extras",
+      "profile": "scrna_global",
+      "sizes": ["101x40", "150x60", "200x80"],
       "requested_extras": [
+        "enrichment_background",
+        "pseudotime",
         "prior_grn",
         "tf_list"
       ],
@@ -45,9 +70,40 @@
       }
     },
     {
-      "id": "scrna_grouped_builtin_dynamic",
+      "id": "scrna_grouped_builtin_dynamic_groups",
       "profile": "scrna_grouped",
+      "sizes": ["101x40", "150x60", "200x80"],
       "requested_extras": [
+        "groups"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_grouped_builtin_dynamic_full_extras",
+      "profile": "scrna_grouped",
+      "sizes": ["101x40", "150x60", "200x80"],
+      "requested_extras": [
+        "groups",
         "cell_phenotypes",
         "cluster_identities",
         "enrichment_background",
@@ -82,16 +138,17 @@
     {
       "id": "scrna_grouped_custom_grn_tree",
       "profile": "scrna_grouped",
+      "sizes": ["50x20", "100x40", "200x80"],
       "requested_extras": [
         "groups",
         "prior_grn",
         "tf_list"
       ],
-      "group_count": 2,
-      "population_count": 2,
+      "group_count": 3,
+      "population_count": 3,
       "inputs": {
-        "grn_params": "../tests/fixtures/scmultisim_grn_params.tsv",
-        "tree_newick": "../tests/fixtures/scmultisim_tree_newick.txt"
+        "regulatory_network": "../tests/fixtures/regulatory_network.tsv",
+        "tree_newick": "../tests/fixtures/tree_newick.txt"
       },
       "param_overrides": {
         "grn_source": "input_tsv",
@@ -101,7 +158,255 @@
           "enabled": false
         },
         "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
           "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_cell_specific_builtin_dynamic_truth",
+      "profile": "scrna_cell_specific",
+      "sizes": ["101x40", "150x60", "200x80"],
+      "requested_extras": [],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_cell_specific_builtin_dynamic_full_extras",
+      "profile": "scrna_cell_specific",
+      "sizes": ["101x40", "150x60", "200x80"],
+      "requested_extras": [
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_global_builtin_1139_static",
+      "profile": "scrna_global",
+      "sizes": ["1140x40"],
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "grn_source": "builtin_1139",
+        "tree_preset": "phyla1",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_global_builtin_1139_static_full_extras",
+      "profile": "scrna_global",
+      "sizes": ["1140x40"],
+      "requested_extras": [
+        "enrichment_background",
+        "pseudotime",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "grn_source": "builtin_1139",
+        "tree_preset": "phyla1",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_grouped_builtin_1139_dynamic_groups",
+      "profile": "scrna_grouped",
+      "sizes": ["1140x40"],
+      "requested_extras": [
+        "groups"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_1139",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_grouped_builtin_1139_dynamic_full_extras",
+      "profile": "scrna_grouped",
+      "sizes": ["1140x40"],
+      "requested_extras": [
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_1139",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_cell_specific_builtin_1139_dynamic_truth",
+      "profile": "scrna_cell_specific",
+      "sizes": ["1140x40"],
+      "requested_extras": [],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_1139",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "id": "scrna_cell_specific_builtin_1139_dynamic_full_extras",
+      "profile": "scrna_cell_specific",
+      "sizes": ["1140x40"],
+      "requested_extras": [
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_1139",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
         },
         "technical_noise": {
           "enabled": false

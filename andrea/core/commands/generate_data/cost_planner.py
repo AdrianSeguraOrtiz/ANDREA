@@ -204,6 +204,93 @@ def _estimate_dimensions(
     return resolved_genes, resolved_cells, groups, population_count, dimension_profile
 
 
+def _infer_tf_count(
+    *,
+    params: dict[str, Any],
+    dimension_profile: dict[str, Any],
+    genes: int,
+) -> int | None:
+    value = _value_at_path(params, "num_tfs")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return max(0, int(value))
+    genes_param = dimension_profile.get("genes_param")
+    if not isinstance(genes_param, dict) or "num_tfs" not in genes_param:
+        return None
+    min_total = 0
+    rules: dict[str, dict[str, Any]] = {}
+    for path, raw_rule in genes_param.items():
+        if not isinstance(raw_rule, dict):
+            continue
+        rule = {
+            "fraction": float(raw_rule.get("fraction", 0) or 0),
+            "min": int(raw_rule.get("min", 0) or 0),
+        }
+        rules[str(path)] = rule
+        min_total += rule["min"]
+    if not rules or min_total > genes:
+        return None
+    remaining = genes - min_total
+    allocations = {
+        path: int(rule["min"]) + int(math.floor(float(rule["fraction"]) * remaining))
+        for path, rule in rules.items()
+    }
+    assigned = sum(allocations.values())
+    order = sorted(
+        rules,
+        key=lambda path: (
+            (float(rules[path]["fraction"]) * remaining)
+            - math.floor(float(rules[path]["fraction"]) * remaining),
+            path,
+        ),
+        reverse=True,
+    )
+    idx = 0
+    while assigned < genes and order:
+        allocations[order[idx % len(order)]] += 1
+        assigned += 1
+        idx += 1
+    value = allocations.get("num_tfs")
+    return max(0, int(value)) if isinstance(value, int) else None
+
+
+def _dynamic_grn_flags(params: dict[str, Any]) -> dict[str, Any]:
+    keywords = ("dynamic", "grn", "backbone")
+    out: dict[str, Any] = {}
+    for path, value in _flatten_values(params).items():
+        lowered = path.lower()
+        if not any(keyword in lowered for keyword in keywords):
+            continue
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            out[path] = value
+    return out
+
+
+def _simulation_cost_features(
+    *,
+    params: dict[str, Any],
+    scenario_profile: str,
+    genes: int,
+    cells: int,
+    groups: int,
+    population_count: int,
+    dimension_profile: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "profile": scenario_profile,
+        "n_cells": int(cells),
+        "n_genes": int(genes),
+        "n_tfs": _infer_tf_count(
+            params=params,
+            dimension_profile=dimension_profile,
+            genes=genes,
+        ),
+        "n_groups": int(groups),
+        "population_count": int(population_count),
+        "native_cell_truth_enabled": scenario_profile == "scrna_cell_specific",
+        "dynamic_grn_flags": _dynamic_grn_flags(params),
+    }
+
+
 def _select_cost_profile(
     *,
     simulator_id: str,
@@ -350,10 +437,14 @@ def _fallback_mode(
     eta_source: str,
     warnings: list[str],
 ) -> SimulatorRunMode:
-    genes, cells, groups, _population_count, _dimension_profile = _estimate_dimensions(
+    genes, cells, groups, population_count, dimension_profile = _estimate_dimensions(
         params=params, selected_profile=None
     )
-    extras_multiplier = 1.4 if scenario_profile == "scrna_grouped" else 1.0
+    extras_multiplier = (
+        2.0
+        if scenario_profile == "scrna_cell_specific"
+        else (1.4 if scenario_profile == "scrna_grouped" else 1.0)
+    )
     eta = max(60.0, 0.04 * genes * cells * extras_multiplier)
     resources = resolve_simulator_runtime_resources(
         simulator_id=simulator_id,
@@ -370,7 +461,15 @@ def _fallback_mode(
         eta_provenance={
             "eta_source": "fallback",
             "warnings": warnings,
-            "features": {"genes": genes, "cells": cells, "groups": groups},
+            "features": _simulation_cost_features(
+                params=params,
+                scenario_profile=scenario_profile,
+                genes=genes,
+                cells=cells,
+                groups=groups,
+                population_count=population_count,
+                dimension_profile=dimension_profile,
+            ),
             "limits": {"max_cores": int(max_cores), "max_ram_gb": float(max_ram_gb)},
         },
     )
@@ -435,6 +534,15 @@ def _estimate_run_modes(
     genes, cells, groups, population_count, dimension_profile = _estimate_dimensions(
         params=params, selected_profile=selected_profile
     )
+    cost_features = _simulation_cost_features(
+        params=params,
+        scenario_profile=scenario_profile,
+        genes=genes,
+        cells=cells,
+        groups=groups,
+        population_count=population_count,
+        dimension_profile=dimension_profile,
+    )
     candidate_resources = sorted(
         {
             (int(point["threads"]), round(float(point["ram_gb"]), 3))
@@ -492,12 +600,7 @@ def _estimate_run_modes(
                         "profile_id": profile_id,
                         "match": profile_match,
                         "dimension_profile": dimension_profile,
-                        "features": {
-                            "genes": genes,
-                            "cells": cells,
-                            "groups": groups,
-                            "population_count": population_count,
-                        },
+                        "features": cost_features,
                         "nearest_runtime_point": {
                             "genes": nearest_genes,
                             "cells": nearest_cells,

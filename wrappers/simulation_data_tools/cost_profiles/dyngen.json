@@ -66,6 +66,7 @@
       "id": "scrna_grouped_bifurcating_full_extras",
       "profile": "scrna_grouped",
       "requested_extras": [
+        "groups",
         "cell_phenotypes",
         "cluster_identities",
         "enrichment_background",
@@ -82,6 +83,77 @@
         "distance_metric": "pearson",
         "simulation_params": {
           "compute_dimred": false
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false
+        }
+      }
+    },
+    {
+      "id": "scrna_global_linear_full_extras",
+      "profile": "scrna_global",
+      "requested_extras": [
+        "enrichment_background",
+        "pseudotime",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "backbone_template": "linear",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false
+        }
+      }
+    },
+    {
+      "id": "scrna_cell_specific_bifurcating_truth",
+      "profile": "scrna_cell_specific",
+      "requested_extras": [],
+      "group_count": 2,
+      "population_count": 2,
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false,
+          "compute_rna_velocity": false
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false
+        }
+      }
+    },
+    {
+      "id": "scrna_cell_specific_bifurcating_full_extras",
+      "profile": "scrna_cell_specific",
+      "requested_extras": [
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 2,
+      "population_count": 2,
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false,
+          "compute_rna_velocity": false
         },
         "experiment_params": {
           "map_reference_cpm": false,

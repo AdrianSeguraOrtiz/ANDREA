@@ -34,8 +34,12 @@ Example:
 ```
 
 Conditional simulator inputs are explicit. If a profile sets a parameter value
-that activates `simulator_inputs.conditional_required`, the profile must provide
+that activates `simulatorspec.extra_inputs.conditional_required`, the profile must provide
 that input in its `inputs` object.
 
 Use `input_source_params` for params that define which upstream data source is
 used. Those values are copied into `benchmark_config.input_profile.input_source_modes`.
+
+The reusable input-file contract itself lives in
+`andrea/catalog_simulation_data_tools/input_specs/`; cost profiles only decide
+which declared simulator inputs are present for a benchmarked configuration.

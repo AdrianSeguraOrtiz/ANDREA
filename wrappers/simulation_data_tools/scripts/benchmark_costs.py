@@ -45,6 +45,7 @@ DEFAULT_SIZES = ("50x20", "100x40", "200x80")
 DEFAULT_THREADS = "1,2,4,8"
 DEFAULT_RAM_GB = "8,16,32,64"
 DEFAULT_GROUP_COUNT = 2
+PROFILES_WITH_GROUP_DIMENSION = {"scrna_grouped", "scrna_cell_specific"}
 
 CONDITIONAL_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
 
@@ -68,6 +69,7 @@ class SimulatorBenchmarkProfile:
     simulator_id: str
     profile_id: str
     profile: str
+    sizes: tuple[SizePoint, ...] | None
     requested_extras: tuple[str, ...]
     effective_extras: tuple[str, ...]
     params: dict[str, Any]
@@ -484,6 +486,9 @@ def configured_profiles(
         inherited_input_source_params, list
     ):
         raise RuntimeError("input_source_params must be an array.")
+    inherited_sizes = profile_config.get("sizes")
+    if inherited_sizes is not None and not isinstance(inherited_sizes, list):
+        raise RuntimeError("sizes must be an array.")
     raw_profiles = profile_config.get("profiles")
     if not isinstance(raw_profiles, list) or not raw_profiles:
         raise RuntimeError("cost profile config must include profiles.")
@@ -501,6 +506,8 @@ def configured_profiles(
             and inherited_input_source_params is not None
         ):
             profile["input_source_params"] = copy.deepcopy(inherited_input_source_params)
+        if "sizes" not in profile and inherited_sizes is not None:
+            profile["sizes"] = copy.deepcopy(inherited_sizes)
         out.append(profile)
     return out
 
@@ -526,6 +533,7 @@ def resolve_one_profile(
         raise RuntimeError(f"[{simulator_id}:{profile_id}] unknown profile {profile!r}.")
 
     requested_extras = sorted_unique_strings(raw_profile.get("requested_extras", []))
+    profile_sizes = resolve_profile_sizes(raw_profile=raw_profile, profile_id=profile_id)
     effective_extras = sorted(
         set(requested_extras).union(PROFILE_SPECS[profile].required_extras)
     )
@@ -587,6 +595,7 @@ def resolve_one_profile(
         simulator_id=simulator_id,
         profile_id=profile_id,
         profile=profile,
+        sizes=profile_sizes,
         requested_extras=tuple(requested_extras),
         effective_extras=tuple(effective_extras),
         params=base_params,
@@ -613,6 +622,44 @@ def sorted_unique_strings(raw: Any) -> list[str]:
     return sorted(
         dict.fromkeys(str(item).strip() for item in raw if str(item).strip())
     )
+
+
+def resolve_profile_sizes(
+    *,
+    raw_profile: dict[str, Any],
+    profile_id: str,
+) -> tuple[SizePoint, ...] | None:
+    raw_sizes = raw_profile.get("sizes")
+    if raw_sizes is None:
+        return None
+    if not isinstance(raw_sizes, list) or not raw_sizes:
+        raise RuntimeError(f"profile {profile_id}.sizes must be a non-empty array.")
+    sizes: list[SizePoint] = []
+    for idx, raw_size in enumerate(raw_sizes, start=1):
+        if isinstance(raw_size, str):
+            sizes.append(parse_size(raw_size))
+            continue
+        if isinstance(raw_size, dict):
+            genes = raw_size.get("genes")
+            cells = raw_size.get("cells")
+            if (
+                isinstance(genes, bool)
+                or isinstance(cells, bool)
+                or not isinstance(genes, int)
+                or not isinstance(cells, int)
+                or genes < 1
+                or cells < 1
+            ):
+                raise RuntimeError(
+                    f"profile {profile_id}.sizes[{idx}] must contain integer genes/cells >= 1."
+                )
+            sizes.append(SizePoint(genes=genes, cells=cells))
+            continue
+        raise RuntimeError(
+            f"profile {profile_id}.sizes[{idx}] must be GENESxCELLS or an object."
+        )
+    unique = {(item.genes, item.cells): item for item in sizes}
+    return tuple(unique[key] for key in sorted(unique))
 
 
 def validate_supported_extras(
@@ -761,7 +808,8 @@ def resolve_dimension_profile(
         raise RuntimeError("dimension_params.genes must be a path or weighted object.")
 
     group_count = raw_profile.get(
-        "group_count", default_group_count if profile == "scrna_grouped" else 0
+        "group_count",
+        default_group_count if profile in PROFILES_WITH_GROUP_DIMENSION else 0,
     )
     population_count = raw_profile.get("population_count", group_count)
     if not isinstance(group_count, int) or isinstance(group_count, bool) or group_count < 0:
@@ -772,8 +820,10 @@ def resolve_dimension_profile(
         or population_count < 0
     ):
         raise RuntimeError("profile.population_count must be an integer >= 0.")
-    if profile != "scrna_grouped" and group_count != 0:
-        raise RuntimeError("group_count must be 0 outside scrna_grouped profiles.")
+    if profile not in PROFILES_WITH_GROUP_DIMENSION and group_count != 0:
+        raise RuntimeError(
+            "group_count must be 0 outside scrna_grouped and scrna_cell_specific profiles."
+        )
     return {
         "cells_param": cells_param,
         "genes_param": normalized_genes,
@@ -793,9 +843,9 @@ def build_input_profile(
     input_paths: dict[str, Path],
     input_source_params: list[str],
 ) -> dict[str, Any]:
-    simulator_inputs = spec.get("simulator_inputs", {})
-    required_declared = set(input_ids_for(simulator_inputs, "required"))
-    optional_declared = set(input_ids_for(simulator_inputs, "optional"))
+    extra_inputs = spec.get("extra_inputs", {})
+    required_declared = set(input_ids_for(extra_inputs, "required"))
+    optional_declared = set(input_ids_for(extra_inputs, "optional"))
     conditional = active_conditional_inputs(
         spec=spec,
         profile=profile,
@@ -817,10 +867,10 @@ def build_input_profile(
     }
 
 
-def input_ids_for(simulator_inputs: Any, field: str) -> list[str]:
-    if not isinstance(simulator_inputs, dict):
+def input_ids_for(extra_inputs: Any, field: str) -> list[str]:
+    if not isinstance(extra_inputs, dict):
         return []
-    raw = simulator_inputs.get(field, [])
+    raw = extra_inputs.get(field, [])
     if not isinstance(raw, list):
         return []
     out: list[str] = []
@@ -839,12 +889,12 @@ def active_conditional_inputs(
     requested_extras: list[str],
     params: dict[str, Any],
 ) -> list[str]:
-    simulator_inputs = spec.get("simulator_inputs", {})
-    if not isinstance(simulator_inputs, dict):
+    extra_inputs = spec.get("extra_inputs", {})
+    if not isinstance(extra_inputs, dict):
         return []
     requested = set(requested_extras)
     out: list[str] = []
-    for requirement in simulator_inputs.get("conditional_required", []):
+    for requirement in extra_inputs.get("conditional_required", []):
         if not isinstance(requirement, dict):
             continue
         if conditional_requirement_matches(
@@ -1273,6 +1323,8 @@ def build_feature_vector(
     threads: int,
     ram_gb: int,
 ) -> dict[str, Any]:
+    n_tfs = infer_tf_count(profile=profile, genes=genes)
+    dynamic_flags = dynamic_grn_flags(profile.params)
     return {
         "simulator_id": profile.simulator_id,
         "profile": profile.profile,
@@ -1281,6 +1333,11 @@ def build_feature_vector(
         "cells": cells,
         "groups": groups,
         "population_count": population_count,
+        "n_genes": genes,
+        "n_cells": cells,
+        "n_tfs": n_tfs,
+        "native_cell_truth_enabled": profile.profile == "scrna_cell_specific",
+        "dynamic_grn_flags": dynamic_flags,
         "requested_extras_count": len(profile.input_profile["requested_extras"]),
         "effective_extras_count": len(profile.input_profile["effective_extras"]),
         "required_inputs_count": len(profile.input_profile["required_inputs_satisfied"]),
@@ -1293,6 +1350,47 @@ def build_feature_vector(
         ),
         "input_source_modes": copy.deepcopy(profile.input_profile["input_source_modes"]),
     }
+
+
+def infer_tf_count(*, profile: SimulatorBenchmarkProfile, genes: int) -> int | None:
+    value = value_at_param_path(profile.params, "num_tfs")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return max(0, int(value))
+    genes_param = profile.dimension_profile.get("genes_param")
+    if isinstance(genes_param, dict) and "num_tfs" in genes_param:
+        try:
+            allocated = allocate_weighted_counts(genes, genes_param)
+        except RuntimeError:
+            return None
+        value = allocated.get("num_tfs")
+        if isinstance(value, int):
+            return max(0, value)
+    return None
+
+
+def dynamic_grn_flags(params: dict[str, Any]) -> dict[str, Any]:
+    keywords = ("dynamic", "grn", "backbone")
+    out: dict[str, Any] = {}
+    for path, value in flatten_values(params).items():
+        lowered = path.lower()
+        if not any(keyword in lowered for keyword in keywords):
+            continue
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            out[path] = copy.deepcopy(value)
+    return out
+
+
+def flatten_values(payload: Any, prefix: str = "") -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {prefix: payload} if prefix else {}
+    out: dict[str, Any] = {}
+    for key, value in payload.items():
+        child = f"{prefix}.{key}" if prefix else str(key)
+        if isinstance(value, dict):
+            out.update(flatten_values(value, child))
+        else:
+            out[child] = value
+    return out
 
 
 def build_benchmark_config(
@@ -1430,6 +1528,17 @@ def execute_profile_benchmarks(
     return profile_runs, run_index, False
 
 
+def sizes_for_profile(
+    *,
+    profile: SimulatorBenchmarkProfile,
+    cli_sizes: list[SizePoint],
+    cli_sizes_were_explicit: bool,
+) -> list[SizePoint]:
+    if cli_sizes_were_explicit or profile.sizes is None:
+        return cli_sizes
+    return list(profile.sizes)
+
+
 def write_simulator_cost_profile(*, cost_path: Path, payload: dict[str, Any]) -> None:
     save_json(cost_path, payload)
 
@@ -1448,6 +1557,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     validate_runtime_args(args)
     sizes, threads, ram_gb = resolve_benchmark_dimensions(args)
+    cli_sizes_were_explicit = bool(args.size)
 
     discovered = discover_catalog_simulator_dirs(args.catalog_simulators_root)
     selected = select_simulators(discovered, args.simulator)
@@ -1460,8 +1570,20 @@ def run(argv: Sequence[str] | None = None) -> int:
         profile_filters=args.profile,
     )
 
-    total_profiles = sum(len(target.profiles) for target in targets)
-    total_runs = total_profiles * len(sizes) * len(threads) * len(ram_gb) * args.repeats
+    total_runs = sum(
+        len(
+            sizes_for_profile(
+                profile=profile,
+                cli_sizes=sizes,
+                cli_sizes_were_explicit=cli_sizes_were_explicit,
+            )
+        )
+        * len(threads)
+        * len(ram_gb)
+        * args.repeats
+        for target in targets
+        for profile in target.profiles
+    )
     run_index = 0
     global_success = 0
     global_fail = 0
@@ -1495,6 +1617,11 @@ def run(argv: Sequence[str] | None = None) -> int:
                 simulator_id, args.keep_workdir
             )
             for profile in target.profiles:
+                profile_sizes = sizes_for_profile(
+                    profile=profile,
+                    cli_sizes=sizes,
+                    cli_sizes_were_explicit=cli_sizes_were_explicit,
+                )
                 print(f"[{simulator_id}] profile: {profile.profile_id}")
                 profile_workdir = workdir / safe_path_token(profile.profile_id)
                 profile_runs, run_index, fail_fast_triggered = execute_profile_benchmarks(
@@ -1503,7 +1630,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                     image_tag=image_tag,
                     workdir=profile_workdir,
                     profile=profile,
-                    sizes=sizes,
+                    sizes=profile_sizes,
                     threads=threads,
                     ram_gb=ram_gb,
                     repeats=args.repeats,
@@ -1530,7 +1657,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                             benchmark_config=build_benchmark_config(
                                 simulator_id=simulator_id,
                                 profile=profile,
-                                sizes=sizes,
+                                sizes=profile_sizes,
                                 threads=threads,
                                 ram_gb=ram_gb,
                                 args=args,
