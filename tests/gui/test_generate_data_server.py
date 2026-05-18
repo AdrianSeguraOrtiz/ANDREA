@@ -94,22 +94,39 @@ def _add_eta_contract(plan_payload: dict[str, object], *, max_parallel_tasks: in
     "GUI test dependencies are not installed",
 )
 class GenerateDataV2GuiServerTests(unittest.TestCase):
-    def test_bootstrap_exposes_profile_extras_and_simulator_inputs(self) -> None:
+    def test_bootstrap_exposes_profile_extras_and_simulation_inputs(self) -> None:
         client = TestClient(gui_server.create_app())
         payload = client.get("/api/generate-data/bootstrap").json()
         profiles = {item["id"]: item for item in payload["profiles"]}
         self.assertNotIn(
             "lineage_tree", profiles["bulk_steady_state"]["available_extras"]
         )
+        self.assertEqual(profiles["scrna_cell_specific"]["column_kind"], "cells")
+        self.assertEqual(
+            profiles["scrna_cell_specific"]["required_truth_outputs"],
+            ["global", "group", "cell"],
+        )
+        self.assertEqual(
+            profiles["scrna_cell_specific"]["required_truth_contexts"],
+            ["global", "group:", "cell:"],
+        )
+        self.assertEqual(
+            profiles["scrna_grouped"]["required_truth_outputs"], ["global", "group"]
+        )
+        self.assertEqual(
+            profiles["scrna_grouped"]["required_truth_contexts"], ["global", "group:"]
+        )
         self.assertIn("groups", profiles["scrna_grouped"]["available_extras"])
         self.assertIn("lineage_tree", profiles["scrna_grouped"]["available_extras"])
-        inputs = {item["id"]: item for item in payload["simulator_inputs"]}
-        self.assertIn("grn_params", inputs)
+        inputs = {item["id"]: item for item in payload["simulation_inputs"]}
+        self.assertIn("regulatory_network", inputs)
         self.assertIn("tree_newick", inputs)
-        self.assertIn("target\tregulator\teffect", inputs["grn_params"]["example"])
-        self.assertIn("pop_a", inputs["tree_newick"]["example"])
-        self.assertIn("scmultisim", inputs["grn_params"]["supported_by"])
-        conditional_usage = inputs["grn_params"]["used_by"]["conditional"]
+        self.assertIn("target\tregulator\teffect", inputs["regulatory_network"]["example"])
+        self.assertIn("A:1", inputs["tree_newick"]["example"])
+        self.assertEqual(inputs["regulatory_network"]["formats"], ["tsv"])
+        self.assertIn(".tsv", inputs["regulatory_network"]["accept"])
+        self.assertIn("scmultisim", inputs["regulatory_network"]["supported_by"])
+        conditional_usage = inputs["regulatory_network"]["used_by"]["conditional"]
         self.assertEqual(conditional_usage[0]["simulator_id"], "scmultisim")
         self.assertIn("grn_source=input_tsv", conditional_usage[0]["message"])
         planning_defaults = payload["planning_defaults"]
@@ -134,6 +151,17 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
             scmultisim_outputs["observed_counts"]["conditions"][0]["field"],
             "param.technical_noise.enabled",
         )
+        scmultisim_cell_contexts = {
+            item["context"]: item["status"]
+            for item in simulators["scmultisim"]["profile_capabilities"][
+                "scrna_cell_specific"
+            ]["truth_contexts"]
+        }
+        self.assertEqual(
+            scmultisim_cell_contexts,
+            {"global": "derivable", "group": "derivable", "cell": "native"},
+        )
+        self.assertIn("extra_inputs", simulators["scmultisim"])
 
     def test_preflight_plan_run_workflow(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -171,6 +199,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                             "truth_outputs": {
                                 "global": "native",
                                 "group": "derivable",
+                                "cell": "none",
                             },
                             "status": "eligible",
                             "issues": [],
@@ -559,6 +588,11 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                         for item in entries
                     )
                 )
+                truth_network_entry = next(
+                    item
+                    for item in entries
+                    if item["path"].endswith("/truth/networks.csv")
+                )
 
                 content_response = client.get(
                     f"/api/generate-data/jobs/{job_id}/file-content",
@@ -572,6 +606,23 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 )
                 self.assertEqual(content_response.json()["viewer"], "json")
                 self.assertIn("guide", content_response.json())
+
+                truth_response = client.get(
+                    f"/api/generate-data/jobs/{job_id}/file-content",
+                    params={
+                        "mode": "light",
+                        "path": truth_network_entry["path"],
+                    },
+                )
+                self.assertEqual(
+                    truth_response.status_code, 200, msg=truth_response.text
+                )
+                truth_payload = truth_response.json()
+                self.assertEqual(truth_payload["viewer"], "table_csv")
+                self.assertIn(
+                    "cell:<cell_id>",
+                    " ".join(truth_payload["guide"]["tips"]),
+                )
 
                 bundle_response = client.get(
                     f"/api/generate-data/jobs/{job_id}/bundle?mode=light"

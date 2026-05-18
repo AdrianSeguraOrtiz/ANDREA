@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ANDREA GUI · generate-data</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260423j" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260423l" />
   </head>
   <body>
     <main class="app-shell">
@@ -36,10 +36,10 @@
               <input id="base-seed" type="number" min="1" step="1" placeholder="stable default" />
             </label>
           </div>
-
-          <h3>Requested Extras</h3>
+          <div id="profile-truth-contexts" class="profile-context-summary profile-derived-summary"></div>
+          <h3>Requested Standardized Extras</h3>
           <div id="extras-grid" class="checkbox-grid"></div>
-          <div id="extras-empty" class="muted-box compact-empty" hidden>No optional extras are available for this profile.</div>
+          <div id="extras-empty" class="muted-box compact-empty" hidden>No optional standardized extras are available for this profile.</div>
 
           <div class="panel-head compact-head input-files-head">
             <h3>Simulator Input Files</h3>
@@ -397,6 +397,6 @@
       </article>
     </template>
 
-    <script type="module" src="/static/app/main.js?v=20260423j"></script>
+    <script type="module" src="/static/app/main.js?v=20260423l"></script>
   </body>
 </html>

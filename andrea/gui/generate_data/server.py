@@ -24,11 +24,18 @@ from andrea.core.commands.generate_data import (
     preflight_generate_data_scenario,
     run_generate_data,
 )
-from andrea.core.commands.generate_data.catalog import _load_simulator_catalog
+from andrea.core.commands.generate_data.catalog import (
+    _load_simulator_catalog,
+    load_simulation_input_specs,
+)
 from andrea.core.commands.generate_data.cost_planner import detect_host_ram_gb
-from andrea.core.commands.generate_data.shared import PROFILE_SPECS
+from andrea.core.commands.generate_data.shared import (
+    PROFILE_SPECS,
+    required_truth_context_prefixes_for_profile,
+    required_truth_outputs_for_profile,
+)
 from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
-from andrea.core.shared.input_specs import load_input_specs
+from andrea.core.shared.input_specs import load_input_specs as load_inference_input_specs
 from andrea.gui.common.reproducibility import (
     python_path_expr,
     shell_join_pretty,
@@ -68,6 +75,15 @@ def _accept_from_formats(formats: list[str]) -> str:
     return ",".join(sorted(extensions))
 
 
+def _accept_from_extensions(extensions: list[str]) -> str:
+    normalized = {
+        value if value.startswith(".") else f".{value}"
+        for value in (str(item or "").strip().lower() for item in extensions)
+        if value
+    }
+    return ",".join(sorted(normalized))
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -103,14 +119,15 @@ STATE = GuiState()
 
 def _load_generate_bootstrap() -> dict[str, Any]:
     _schemas, catalog = _load_simulator_catalog()
-    input_specs = load_input_specs()
+    inference_input_specs = load_inference_input_specs()
+    simulation_input_specs = load_simulation_input_specs()
     extras_by_profile: dict[str, set[str]] = {
         profile_id: set(spec.required_extras)
         for profile_id, spec in PROFILE_SPECS.items()
     }
-    simulator_inputs: dict[str, dict[str, Any]] = {}
+    simulation_inputs: dict[str, dict[str, Any]] = {}
 
-    def _merge_simulator_input(
+    def _merge_simulation_input(
         item: dict[str, Any],
         *,
         simulator_id: str,
@@ -120,21 +137,27 @@ def _load_generate_bootstrap() -> dict[str, Any]:
         input_id = str(item.get("input") or "").strip()
         if not input_id:
             return
-        formats = [str(x) for x in item.get("formats", []) if str(x).strip()] if isinstance(item.get("formats", []), list) else []
-        input_spec = input_specs.get(input_id, {})
-        existing = simulator_inputs.setdefault(
+        input_spec = simulation_input_specs.get(input_id, {})
+        input_format = str(input_spec.get("format") or "").strip()
+        formats = [input_format] if input_format else []
+        accepted_extensions = (
+            [
+                str(x).strip()
+                for x in input_spec.get("accepted_extensions", [])
+                if str(x).strip()
+            ]
+            if isinstance(input_spec.get("accepted_extensions", []), list)
+            else []
+        )
+        existing = simulation_inputs.setdefault(
             input_id,
             {
                 "id": input_id,
-                "label": str(input_spec.get("label") or input_id),
-                "description": str(
-                    input_spec.get("description")
-                    or item.get("description")
-                    or item.get("usage")
-                    or ""
-                ),
+                "label": str(input_spec.get("name") or input_id),
+                "description": str(input_spec.get("description") or ""),
                 "example": str(input_spec.get("example") or ""),
                 "formats": [],
+                "accepted_extensions": [],
                 "accept": "",
                 "supported_by": [],
                 "used_by": {
@@ -148,18 +171,17 @@ def _load_generate_bootstrap() -> dict[str, Any]:
         if simulator_id not in existing["supported_by"]:
             existing["supported_by"].append(simulator_id)
             existing["supported_by"].sort()
-        description = item.get("description") or item.get("usage")
-        if description and not existing.get("description"):
-            existing["description"] = str(description)
-        example = item.get("example") or input_spec.get("example")
-        if example and not existing.get("example"):
-            existing["example"] = str(example)
         existing["formats"] = sorted(set(existing.get("formats", [])).union(formats))
-        existing["accept"] = _accept_from_formats(existing["formats"])
+        existing["accepted_extensions"] = sorted(
+            set(existing.get("accepted_extensions", [])).union(accepted_extensions)
+        )
+        existing["accept"] = _accept_from_extensions(existing["accepted_extensions"])
+        if not existing["accept"]:
+            existing["accept"] = _accept_from_formats(existing["formats"])
         entry: dict[str, Any] = {
             "simulator_id": simulator_id,
             "name": simulator_name,
-            "usage": str(item.get("usage") or item.get("description") or "").strip(),
+            "usage": str(item.get("usage") or "").strip(),
         }
         if relation == "conditional":
             entry["conditions"] = item.get("conditions", [])
@@ -194,12 +216,12 @@ def _load_generate_bootstrap() -> dict[str, Any]:
                     for x in capability.get("derivable_extras", [])
                     if isinstance(x, str) and x in SIMULATION_EXTRA_IDS
                 )
-        raw_inputs = spec.get("simulator_inputs", {})
+        raw_inputs = spec.get("extra_inputs", {})
         if isinstance(raw_inputs, dict):
             for group_key in ("required", "optional"):
                 for item in raw_inputs.get(group_key, []):
                     if isinstance(item, dict):
-                        _merge_simulator_input(
+                        _merge_simulation_input(
                             item,
                             simulator_id=simulator_id,
                             simulator_name=simulator_name,
@@ -207,7 +229,7 @@ def _load_generate_bootstrap() -> dict[str, Any]:
                         )
             for item in raw_inputs.get("conditional_required", []):
                 if isinstance(item, dict):
-                    _merge_simulator_input(
+                    _merge_simulation_input(
                         item,
                         simulator_id=simulator_id,
                         simulator_name=simulator_name,
@@ -219,6 +241,12 @@ def _load_generate_bootstrap() -> dict[str, Any]:
             "id": profile_id,
             "column_kind": spec.column_kind,
             "expression_profile": spec.expression_profile,
+            "required_truth_outputs": list(
+                required_truth_outputs_for_profile(profile_id)
+            ),
+            "required_truth_contexts": list(
+                required_truth_context_prefixes_for_profile(profile_id)
+            ),
             "required_extras": sorted(spec.required_extras),
             "available_extras": sorted(extras_by_profile.get(profile_id, set())),
         }
@@ -226,7 +254,7 @@ def _load_generate_bootstrap() -> dict[str, Any]:
     ]
     extras = []
     for key in sorted(set().union(*extras_by_profile.values())):
-        spec = input_specs.get(key, {})
+        spec = inference_input_specs.get(key, {})
         default_suffix = ".txt" if spec.get("file_kind") == "txt_list" else ".tsv"
         extras.append(
             {
@@ -254,7 +282,7 @@ def _load_generate_bootstrap() -> dict[str, Any]:
                 "simulation_keywords": spec.get("simulation_keywords", []),
                 "implementation_url": spec.get("implementation_url"),
                 "docker_image": spec.get("docker_image"),
-                "simulator_inputs": spec.get("simulator_inputs", {}),
+                "extra_inputs": spec.get("extra_inputs", {}),
                 "runtime_resources": spec.get("runtime_resources", {}),
                 "profile_capabilities": spec.get("profile_capabilities", {}),
                 "notes": spec.get("notes"),
@@ -270,8 +298,8 @@ def _load_generate_bootstrap() -> dict[str, Any]:
             "max_cores": max(1, int(os.cpu_count() or 1)),
             "max_ram_gb": round(detect_host_ram_gb(), 3),
         },
-        "simulator_inputs": sorted(
-            simulator_inputs.values(),
+        "simulation_inputs": sorted(
+            simulation_inputs.values(),
             key=lambda item: (
                 -sum(
                     len(item.get("used_by", {}).get(relation, []))
@@ -939,12 +967,21 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
                 "This file is referenced from dataset-manifest.json when present."
             ],
         }
+    if "truth/" in normalized and basename == "networks.csv":
+        return {
+            "title": "Truth networks",
+            "summary": "Unified public ground-truth edge list used by evaluate-inference.",
+            "tips": [
+                "The context column distinguishes global, group:<group_id> and cell:<cell_id> truth networks.",
+                "Cell-specific profiles store one cell-level network per cell context in this single file.",
+            ],
+        }
     if "truth/" in normalized:
         return {
             "title": "Truth artifact",
             "summary": "Public simulated ground truth for benchmark evaluation.",
             "tips": [
-                "Use the normalized edge-list truth artifacts for evaluation."
+                "Use the normalized truth artifacts through ground-truth-manifest.json for evaluation."
             ],
         }
     if basename == "simulator-output-manifest.json":

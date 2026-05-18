@@ -1,5 +1,5 @@
 import { $, formatBytes } from "/static-common/app/core/dom.js";
-import { fetchFiles, resetFilesView } from "/static-common/app/files/explorer.js?v=20260423a";
+import { fetchFiles, resetFilesView } from "/static-common/app/files/explorer.js?v=20260423b";
 import {
   deepEqualJson,
   readParamsFromHost,
@@ -33,7 +33,11 @@ const state = {
   loadedFilesKey: null,
   paramsModalCard: null,
   notifiedFailures: new Set(),
+  simulatorInputMetrics: new Map(),
 };
+
+const LARGE_TRUTH_NETWORK_BYTES = 25 * 1024 * 1024;
+const TRUTH_OUTPUT_ORDER = ["global", "group", "cell"];
 
 async function readJson(response, fallbackMessage) {
   let payload = null;
@@ -104,7 +108,91 @@ function fileApi() {
 function fileExplorerOptions() {
   return {
     preferredPathSuffixes: ["benchmark/benchmark-manifest.json"],
+    renderSummary: renderGenerateFilesSummary,
   };
+}
+
+function renderGenerateFilesSummary({ summaryEl, entries, mode, filesCount, dirsCount }) {
+  summaryEl.innerHTML = "";
+  const line = document.createElement("div");
+  line.className = "files-summary-line";
+  line.textContent = `bundle=${mode} | files=${filesCount} | dirs=${dirsCount}`;
+  summaryEl.appendChild(line);
+
+  const allEntries = Array.isArray(entries) ? entries : [];
+  const firstMatchingPath = (suffix) => {
+    const match = allEntries.find((item) => (
+      item.kind === "file"
+      && String(item.path || "").toLowerCase().endsWith(suffix)
+    ));
+    return match ? String(match.path || "") : "";
+  };
+  const keyFiles = [
+    {
+      label: "expression.tsv",
+      path: firstMatchingPath("/expression.tsv"),
+      description: "normalized expression matrix",
+    },
+    {
+      label: "truth/networks.csv",
+      path: firstMatchingPath("/truth/networks.csv"),
+      description: "ground-truth GRN rows with context labels",
+    },
+    {
+      label: "extras/groups.tsv",
+      path: firstMatchingPath("/extras/groups.tsv"),
+      description: "cell-to-group assignments",
+    },
+  ].filter((item) => item.path);
+  if (keyFiles.length) {
+    const keyBox = document.createElement("div");
+    keyBox.className = "files-summary-keyfiles";
+    const keyTitle = document.createElement("strong");
+    keyTitle.textContent = "Key files";
+    keyBox.appendChild(keyTitle);
+    const keyList = document.createElement("div");
+    keyList.className = "files-summary-keyfile-list";
+    for (const item of keyFiles) {
+      const chip = document.createElement("span");
+      chip.className = "files-summary-keyfile";
+      const name = document.createElement("strong");
+      name.textContent = item.label;
+      const description = document.createElement("span");
+      description.textContent = item.description;
+      chip.title = item.path;
+      chip.append(name, description);
+      keyList.appendChild(chip);
+    }
+    keyBox.appendChild(keyList);
+    summaryEl.appendChild(keyBox);
+  }
+
+  const truthNetworks = (entries || []).find((item) => (
+    item.kind === "file"
+    && String(item.path || "").toLowerCase().endsWith("/truth/networks.csv")
+  ));
+  const warnings = [];
+  if (
+    truthNetworks
+    && Number(truthNetworks.size_bytes || 0) >= LARGE_TRUTH_NETWORK_BYTES
+  ) {
+    warnings.push(
+      `truth/networks.csv is large (${formatBytes(truthNetworks.size_bytes)}). `
+      + "Preview is row-limited; download the ZIP for full inspection."
+    );
+  }
+  if (!warnings.length) {
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "files-summary-warnings";
+  for (const warning of warnings) {
+    const item = document.createElement("div");
+    item.className = "files-summary-warning";
+    item.textContent = warning;
+    list.appendChild(item);
+  }
+  summaryEl.appendChild(list);
 }
 
 function simulatorById(id) {
@@ -115,12 +203,110 @@ function profileSpec(profileId) {
   return (state.bootstrap?.profiles || []).find((item) => item.id === profileId) || null;
 }
 
+function profileRequiredTruthOutputs(profileId = selectedProfileId()) {
+  const profile = profileSpec(profileId);
+  if (Array.isArray(profile?.required_truth_outputs)) {
+    return profile.required_truth_outputs.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  if (profileId === "scrna_grouped") {
+    return ["global", "group"];
+  }
+  if (profileId === "scrna_cell_specific") {
+    return ["global", "group", "cell"];
+  }
+  return ["global"];
+}
+
+function primaryTruthOutputForProfile(profileId = selectedProfileId()) {
+  if (profileId === "scrna_grouped") {
+    return "group";
+  }
+  if (profileId === "scrna_cell_specific") {
+    return "cell";
+  }
+  return "global";
+}
+
+function truthContextPrefixForOutput(outputId) {
+  const normalized = String(outputId || "").trim();
+  if (normalized === "group") {
+    return "group:";
+  }
+  if (normalized === "cell") {
+    return "cell:";
+  }
+  return normalized || "-";
+}
+
+function profileRequiredTruthContexts(profileId = selectedProfileId()) {
+  const profile = profileSpec(profileId);
+  if (Array.isArray(profile?.required_truth_contexts)) {
+    return profile.required_truth_contexts.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  return profileRequiredTruthOutputs(profileId).map(truthContextPrefixForOutput).filter(Boolean);
+}
+
+function profileRequiredExtras(profileId = selectedProfileId()) {
+  const profile = profileSpec(profileId);
+  return Array.isArray(profile?.required_extras)
+    ? profile.required_extras.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+}
+
+function fixedOutputFilesForProfile(profileId = selectedProfileId()) {
+  const files = [
+    {
+      path: "expression.tsv",
+      description: "Normalized expression matrix.",
+    },
+    {
+      path: "truth/networks.csv",
+      description: "Unified ground-truth network table.",
+      highlight: true,
+    },
+    {
+      path: "truth/gene_universe.txt",
+      description: "Genes covered by the ground-truth networks.",
+    },
+  ];
+  for (const extra of profileRequiredExtras(profileId)) {
+    if (extra === "groups") {
+      files.push({
+        path: "extras/groups.tsv",
+        description: "Cell-to-group assignments used by group-level truth.",
+      });
+    }
+  }
+  return files;
+}
+
+function truthContextExplanation(context) {
+  const normalized = String(context || "").trim();
+  if (normalized === "global") {
+    return "one dataset-level GRN.";
+  }
+  if (normalized === "group:") {
+    return "one GRN per group, stored as context values like group:<group_id>.";
+  }
+  if (normalized === "cell:") {
+    return "one GRN per cell, stored as context values like cell:<cell_id>.";
+  }
+  return "truth rows distinguished by this context value.";
+}
+
 function extraByKey(key) {
   return (state.bootstrap?.extras || []).find((item) => item.key === key) || null;
 }
 
 function selectedProfileId() {
   return state.preflightReport?.scenario?.profile || $("profile").value;
+}
+
+function profileCapabilityForSimulator(simulator, profileId = selectedProfileId()) {
+  const profileCapabilities = simulator?.profile_capabilities && typeof simulator.profile_capabilities === "object"
+    ? simulator.profile_capabilities
+    : {};
+  return profileCapabilities?.[profileId] || null;
 }
 
 function nativeOutputDefsForSimulator(simulator, profileId = selectedProfileId()) {
@@ -149,6 +335,35 @@ function nativeOutputMatches(definition, params) {
     return true;
   }
   return conditionalInputMatches(definition, params);
+}
+
+function profileTruthConditionMessages(simulator, params) {
+  const profileId = selectedProfileId();
+  const capability = profileCapabilityForSimulator(simulator, profileId);
+  if (!capability || !params) {
+    return [];
+  }
+  const requiredTruth = new Set(profileRequiredTruthOutputs(profileId));
+  const messages = [];
+
+  const explicitRequirements = Array.isArray(capability.truth_parameter_requirements)
+    ? capability.truth_parameter_requirements
+    : [];
+  for (const requirement of explicitRequirements) {
+    const truthOutput = String(requirement?.truth_output || "").trim();
+    if (truthOutput && !requiredTruth.has(truthOutput)) {
+      continue;
+    }
+    if (Array.isArray(requirement?.conditions) && !conditionalInputMatches(requirement, params)) {
+      messages.push(
+        String(
+          requirement?.message
+          || `${truthOutput || "Required truth output"} is not available with the current run parameters.`
+        ).trim()
+      );
+    }
+  }
+  return [...new Set(messages.filter(Boolean))];
 }
 
 function readNativeOutputsFromHost(host) {
@@ -249,11 +464,24 @@ function renderCardNativeOutputs(card, simulator, selected = null) {
 }
 
 function simulatorInputById(inputId) {
-  return (state.bootstrap?.simulator_inputs || []).find((item) => item.id === String(inputId || "")) || null;
+  return (state.bootstrap?.simulation_inputs || []).find((item) => item.id === String(inputId || "")) || null;
 }
 
 function checkedExtras() {
   return Array.from(document.querySelectorAll(".extra-checkbox:checked")).map((node) => node.value);
+}
+
+function truthContextPattern(outputId) {
+  if (outputId === "global") {
+    return "global";
+  }
+  if (outputId === "group") {
+    return "group:<group_id>";
+  }
+  if (outputId === "cell") {
+    return "cell:<cell_id>";
+  }
+  return String(outputId || "");
 }
 
 function resetScenarioDerivedState() {
@@ -276,6 +504,51 @@ function resetScenarioDerivedState() {
   syncButtons();
 }
 
+async function updateSimulatorInputMetrics(row) {
+  const inputId = String(row.querySelector(".input-kind")?.value || "").trim();
+  const file = row.querySelector(".input-file")?.files?.[0] || null;
+  if (!inputId || !file) {
+    if (inputId) {
+      state.simulatorInputMetrics.delete(inputId);
+    }
+    return;
+  }
+  if (inputId !== "regulatory_network") {
+    state.simulatorInputMetrics.delete(inputId);
+    return;
+  }
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).filter((line) => line.trim());
+  if (!lines.length) {
+    state.simulatorInputMetrics.delete(inputId);
+    return;
+  }
+  const header = lines[0].split("\t").map((item) => item.trim());
+  const targetIndex = header.indexOf("target");
+  const regulatorIndex = header.indexOf("regulator");
+  if (targetIndex < 0 || regulatorIndex < 0) {
+    state.simulatorInputMetrics.delete(inputId);
+    return;
+  }
+  const genes = new Set();
+  for (const line of lines.slice(1)) {
+    const parts = line.split("\t");
+    const target = String(parts[targetIndex] || "").trim();
+    const regulator = String(parts[regulatorIndex] || "").trim();
+    if (target) {
+      genes.add(target);
+    }
+    if (regulator) {
+      genes.add(regulator);
+    }
+  }
+  if (genes.size) {
+    state.simulatorInputMetrics.set(inputId, { unique_gene_count: genes.size });
+  } else {
+    state.simulatorInputMetrics.delete(inputId);
+  }
+}
+
 function renderExtras() {
   const host = $("extras-grid");
   host.innerHTML = "";
@@ -287,30 +560,111 @@ function renderExtras() {
     .filter(Boolean);
   $("extras-empty").hidden = available.length > 0;
   for (const extra of available) {
+    const isRequired = required.has(extra.key);
     const row = document.createElement("label");
-    row.className = "checkbox-row";
+    row.className = "checkbox-row extra-card";
     const input = document.createElement("input");
     input.type = "checkbox";
     input.className = "extra-checkbox";
     input.value = extra.key;
-    input.checked = required.has(extra.key);
-    input.disabled = required.has(extra.key);
-    input.addEventListener("change", resetScenarioDerivedState);
+    input.checked = isRequired;
+    input.disabled = isRequired;
+    input.setAttribute("aria-label", extra.label);
     const text = document.createElement("span");
+    text.className = "checkbox-copy";
+    const head = document.createElement("div");
+    head.className = "checkbox-head";
     const title = document.createElement("div");
     title.className = "checkbox-title";
     title.textContent = extra.label;
+    const statePill = document.createElement("span");
+    statePill.className = "extra-state-pill";
+    head.append(title, statePill);
     const desc = document.createElement("div");
     desc.className = "checkbox-desc";
-    desc.textContent = required.has(extra.key)
-      ? `${extra.description} Required by ${selectedProfile}.`
+    desc.textContent = isRequired
+      ? `${extra.description} Generated automatically for ${selectedProfile}.`
       : extra.description;
-    text.appendChild(title);
+    const syncState = () => {
+      const isSelected = input.checked;
+      row.classList.toggle("is-required", isRequired);
+      row.classList.toggle("is-selected", isSelected && !isRequired);
+      row.classList.toggle("is-optional", !isSelected && !isRequired);
+      statePill.textContent = isRequired ? "Fixed" : (isSelected ? "Selected" : "Optional");
+    };
+    input.addEventListener("change", () => {
+      syncState();
+      resetScenarioDerivedState();
+    });
+    syncState();
+    text.appendChild(head);
     text.appendChild(desc);
     row.appendChild(input);
     row.appendChild(text);
     host.appendChild(row);
   }
+}
+
+function renderScenarioProfileControls() {
+  renderProfileTruthContextSummary();
+  renderExtras();
+}
+
+function renderProfileTruthContextSummary() {
+  const host = $("profile-truth-contexts");
+  if (!host) {
+    return;
+  }
+  host.innerHTML = "";
+  const profileId = $("profile").value;
+  const contexts = profileRequiredTruthContexts(profileId);
+  const files = fixedOutputFilesForProfile(profileId);
+
+  const head = document.createElement("div");
+  head.className = "profile-output-head";
+  const badge = document.createElement("span");
+  badge.className = "profile-output-badge";
+  badge.textContent = "Selected profile";
+  const title = document.createElement("strong");
+  title.textContent = profileId;
+  const subtitle = document.createElement("span");
+  subtitle.textContent = "ANDREA will generate these standardized outputs automatically.";
+  head.append(badge, title, subtitle);
+
+  const fileList = document.createElement("div");
+  fileList.className = "profile-output-file-list";
+  for (const file of files) {
+    const item = document.createElement("div");
+    item.className = file.highlight
+      ? "profile-output-file is-highlight"
+      : "profile-output-file";
+    const path = document.createElement("strong");
+    path.textContent = file.path;
+    const description = document.createElement("span");
+    description.textContent = file.description;
+    item.append(path, description);
+    fileList.appendChild(item);
+  }
+
+  const network = document.createElement("div");
+  network.className = "profile-network-contexts";
+  const networkTitle = document.createElement("strong");
+  networkTitle.textContent = "truth/networks.csv contexts";
+  const chips = document.createElement("div");
+  chips.className = "profile-context-chip-row";
+  for (const context of contexts) {
+    const chip = document.createElement("div");
+    chip.className = "profile-context-chip";
+    const label = document.createElement("strong");
+    label.textContent = context;
+    const description = document.createElement("span");
+    description.textContent = truthContextExplanation(context);
+    chip.append(label, description);
+    chips.appendChild(chip);
+  }
+  network.append(networkTitle, chips);
+
+  host.append(head, fileList, network);
 }
 
 function initBootstrapView() {
@@ -325,7 +679,7 @@ function initBootstrapView() {
   if ((state.bootstrap.profiles || []).some((item) => item.id === "scrna_grouped")) {
     profileSelect.value = "scrna_grouped";
   }
-  profileSelect.addEventListener("change", renderExtras);
+  profileSelect.addEventListener("change", renderScenarioProfileControls);
   profileSelect.addEventListener("change", resetScenarioDerivedState);
   const defaultMaxParallel = Number.parseInt(
     String(state.bootstrap?.planning_defaults?.max_parallel_tasks || ""),
@@ -342,7 +696,7 @@ function initBootstrapView() {
   if (Number.isFinite(defaultMaxRam) && defaultMaxRam >= 1) {
     $("max-ram-gb").value = String(defaultMaxRam);
   }
-  renderExtras();
+  renderScenarioProfileControls();
   populateSimulatorIssueSelect();
 }
 
@@ -539,8 +893,8 @@ function renderInputModalBody() {
   if (!body) {
     return;
   }
-  const metas = Array.isArray(state.bootstrap?.simulator_inputs)
-    ? [...state.bootstrap.simulator_inputs]
+  const metas = Array.isArray(state.bootstrap?.simulation_inputs)
+    ? [...state.bootstrap.simulation_inputs]
     : [];
   const added = selectedInputIds();
   body.innerHTML = "";
@@ -705,11 +1059,13 @@ function addInputRow(inputId) {
   });
   node.querySelector(".input-file").addEventListener("change", () => {
     syncInputRowMeta(node);
+    updateSimulatorInputMetrics(node).then(() => refreshRunCardsValidation({ sync: false }));
     resetScenarioDerivedState();
   });
   node.querySelector(".taxonomic-group")?.addEventListener("change", resetScenarioDerivedState);
   node.querySelector(".organism-ncbi-taxon-id")?.addEventListener("input", resetScenarioDerivedState);
   node.querySelector(".remove-input").addEventListener("click", () => {
+    state.simulatorInputMetrics.delete(selectedId);
     node.remove();
     updateInputsEmptyState();
     updateOrganismRequirement();
@@ -770,7 +1126,7 @@ function compareConditionValue(actual, op, expected) {
   return false;
 }
 
-function conditionActualValue(field, params) {
+function conditionActualValue(field, params, nativeOutputs = []) {
   const normalized = String(field || "").trim();
   if (normalized === "profile") {
     return selectedProfileId();
@@ -778,18 +1134,108 @@ function conditionActualValue(field, params) {
   if (normalized === "requested_extra") {
     return checkedExtras().sort();
   }
+  if (normalized === "native_output") {
+    return [...nativeOutputs].map((item) => String(item)).sort();
+  }
   if (normalized.startsWith("param.")) {
     return valueAtPath(params, normalized.slice("param.".length));
   }
   return null;
 }
 
-function conditionalInputMatches(requirement, params) {
+function inputMetricValue(field) {
+  const parts = String(field || "").trim().split(".");
+  if (parts.length !== 3 || parts[0] !== "input") {
+    return null;
+  }
+  const metrics = state.simulatorInputMetrics.get(parts[1]);
+  return metrics && Object.hasOwn(metrics, parts[2]) ? metrics[parts[2]] : null;
+}
+
+function compatibilityConditionValue(field, params, nativeOutputs = []) {
+  const normalized = String(field || "").trim();
+  if (normalized.startsWith("input.")) {
+    return inputMetricValue(normalized);
+  }
+  return conditionActualValue(normalized, params, nativeOutputs);
+}
+
+function conditionExpectedValue(condition, params, nativeOutputs = []) {
+  const valueFrom = String(condition?.value_from || "").trim();
+  if (valueFrom) {
+    return compatibilityConditionValue(valueFrom, params, nativeOutputs);
+  }
+  return condition?.value;
+}
+
+function compatibilityConditionMatches(condition, params, nativeOutputs = []) {
+  if (!condition || typeof condition !== "object") {
+    return false;
+  }
+  const field = String(condition.field || "").trim();
+  const op = String(condition.op || "").trim();
+  const expected = conditionExpectedValue(condition, params, nativeOutputs);
+  const requestedExtras = new Set(checkedExtras());
+  const selectedNativeOutputs = new Set((nativeOutputs || []).map((item) => String(item)));
+  if (field === "requested_extra" && op === "eq") {
+    return requestedExtras.has(String(expected));
+  }
+  if (field === "requested_extra" && op === "ne") {
+    return !requestedExtras.has(String(expected));
+  }
+  if (field === "requested_extra" && op === "in") {
+    const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
+    return values.some((item) => requestedExtras.has(item));
+  }
+  if (field === "requested_extra" && op === "not_in") {
+    const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
+    return !values.some((item) => requestedExtras.has(item));
+  }
+  if (field === "native_output" && op === "eq") {
+    return selectedNativeOutputs.has(String(expected));
+  }
+  if (field === "native_output" && op === "ne") {
+    return !selectedNativeOutputs.has(String(expected));
+  }
+  if (field === "native_output" && op === "in") {
+    const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
+    return values.some((item) => selectedNativeOutputs.has(item));
+  }
+  if (field === "native_output" && op === "not_in") {
+    const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
+    return !values.some((item) => selectedNativeOutputs.has(item));
+  }
+  return compareConditionValue(compatibilityConditionValue(field, params, nativeOutputs), op, expected);
+}
+
+function compatibilityRuleMatches(rule, params, nativeOutputs = []) {
+  const conditions = Array.isArray(rule?.conditions) ? rule.conditions : [];
+  return conditions.length > 0
+    && conditions.every((condition) => compatibilityConditionMatches(condition, params, nativeOutputs));
+}
+
+function simulatorCompatibilityMessages(simulator, params, nativeOutputs = []) {
+  const spec = simulator?.spec && typeof simulator.spec === "object" ? simulator.spec : simulator;
+  const rules = Array.isArray(spec?.compatibility_rules) ? spec.compatibility_rules : [];
+  const messages = [];
+  for (const rule of rules) {
+    if (!rule || typeof rule !== "object" || rule.action !== "block") {
+      continue;
+    }
+    if (compatibilityRuleMatches(rule, params, nativeOutputs)) {
+      messages.push(String(rule.message || "Run configuration is not compatible.").trim());
+    }
+  }
+  return messages.filter(Boolean);
+}
+
+function conditionalInputMatches(requirement, params, nativeOutputs = []) {
   const conditions = Array.isArray(requirement?.conditions) ? requirement.conditions : [];
   if (!conditions.length) {
     return false;
   }
   const requestedExtras = new Set(checkedExtras());
+  const selectedNativeOutputs = new Set((nativeOutputs || []).map((item) => String(item)));
   for (const condition of conditions) {
     if (!condition || typeof condition !== "object") {
       return false;
@@ -823,16 +1269,42 @@ function conditionalInputMatches(requirement, params) {
       }
       continue;
     }
-    if (!compareConditionValue(conditionActualValue(field, params), op, expected)) {
+    if (field === "native_output" && op === "eq") {
+      if (!selectedNativeOutputs.has(String(expected))) {
+        return false;
+      }
+      continue;
+    }
+    if (field === "native_output" && op === "ne") {
+      if (selectedNativeOutputs.has(String(expected))) {
+        return false;
+      }
+      continue;
+    }
+    if (field === "native_output" && op === "in") {
+      const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
+      if (!values.some((item) => selectedNativeOutputs.has(item))) {
+        return false;
+      }
+      continue;
+    }
+    if (field === "native_output" && op === "not_in") {
+      const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
+      if (values.some((item) => selectedNativeOutputs.has(item))) {
+        return false;
+      }
+      continue;
+    }
+    if (!compareConditionValue(conditionActualValue(field, params, nativeOutputs), op, expected)) {
       return false;
     }
   }
   return true;
 }
 
-function simulatorInputMessages(simulator, params) {
-  const simulatorInputs = simulator?.simulator_inputs && typeof simulator.simulator_inputs === "object"
-    ? simulator.simulator_inputs
+function simulatorInputMessages(simulator, params, nativeOutputs = []) {
+  const simulatorInputs = simulator?.extra_inputs && typeof simulator.extra_inputs === "object"
+    ? simulator.extra_inputs
     : {};
   const providedInputs = providedSimulatorInputIds();
   const messages = [];
@@ -851,7 +1323,7 @@ function simulatorInputMessages(simulator, params) {
     if (!inputId || providedInputs.has(inputId)) {
       continue;
     }
-    if (conditionalInputMatches(requirement, params)) {
+    if (conditionalInputMatches(requirement, params, nativeOutputs)) {
       messages.push(
         String(requirement?.message || `Missing conditionally required input: ${inputId}`).trim()
       );
@@ -951,8 +1423,8 @@ function simulatorInfoPayload(simulator) {
     : {};
   const publications = Array.isArray(simulator.publication) ? simulator.publication : [];
   const keywords = Array.isArray(simulator.simulation_keywords) ? simulator.simulation_keywords : [];
-  const rawInputs = simulator.simulator_inputs && typeof simulator.simulator_inputs === "object"
-    ? simulator.simulator_inputs
+  const rawInputs = simulator.extra_inputs && typeof simulator.extra_inputs === "object"
+    ? simulator.extra_inputs
     : {};
   const params = simulator?.params_schema && typeof simulator.params_schema === "object" ? simulator.params_schema : {};
   const profileIds = Object.keys(profileCapabilities);
@@ -1120,24 +1592,195 @@ function artifactDisplayLabel(artifact) {
   return truthLabels[artifact] || artifact;
 }
 
-function truthOutputDescription(artifact) {
-  if (artifact === "global") {
-    return "Rows in truth/networks.csv with context=global represent the dataset-level ground-truth GRN.";
+function truthOutputStatusLabel(status) {
+  if (status === "native") {
+    return "native";
   }
-  if (artifact === "group") {
-    return "Rows in truth/networks.csv with context=group:<id> represent group-specific ground-truth GRNs.";
+  if (status === "derivable") {
+    return "derived";
   }
-  if (artifact === "cell") {
-    return "Rows in truth/networks.csv with context=cell:<id> represent cell-specific ground-truth GRNs.";
-  }
-  return "Truth rows are represented in truth/networks.csv and distinguished by their exact context value.";
+  return "unavailable";
 }
 
-function truthOutputSummary(truthOutputs) {
-  const entries = Object.entries(truthOutputs || {})
-    .filter(([, mode]) => mode && mode !== "none")
-    .map(([artifact, mode]) => `${artifactDisplayLabel(artifact)} (${mode})`);
-  return entries.length ? entries.join(", ") : "no public truth";
+function appendSimulatorTruthContextChips(host, entry) {
+  const truthOutputs = entry?.truth_outputs || {};
+  const primaryOutput = primaryTruthOutputForProfile(entry?.requested_profile || selectedProfileId());
+  const row = document.createElement("div");
+  row.className = "simulator-context-chip-row";
+  for (const outputId of TRUTH_OUTPUT_ORDER) {
+    const rawStatus = String(truthOutputs[outputId] || "none");
+    const status = rawStatus === "native" || rawStatus === "derivable" ? rawStatus : "none";
+    const chip = document.createElement("span");
+    chip.className = `simulator-context-chip status-${status}`;
+    if (outputId === primaryOutput) {
+      chip.classList.add("is-primary");
+    }
+    const label = document.createElement("strong");
+    label.textContent = truthContextChipLabel(outputId);
+    const statusText = document.createElement("span");
+    statusText.textContent = truthOutputStatusLabel(status);
+    chip.append(label, statusText);
+    row.appendChild(chip);
+  }
+  host.appendChild(row);
+}
+
+function truthContextChipLabel(context) {
+  const normalized = String(context || "").trim();
+  if (normalized === "group") {
+    return "group";
+  }
+  if (normalized === "cell") {
+    return "cell";
+  }
+  return normalized || "-";
+}
+
+function appendTruthContextList(host, title, values) {
+  const cleanValues = Array.isArray(values)
+    ? values.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  if (!cleanValues.length) {
+    return;
+  }
+  const block = document.createElement("div");
+  block.className = "simulator-truth-context-block";
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  const list = document.createElement("ul");
+  list.className = "simulator-truth-context-list";
+  for (const value of cleanValues) {
+    const li = document.createElement("li");
+    li.textContent = value;
+    list.appendChild(li);
+  }
+  block.append(heading, list);
+  host.appendChild(block);
+}
+
+function normalizedTruthContextKey(context) {
+  const normalized = String(context || "").trim();
+  if (normalized === "global") {
+    return "global";
+  }
+  if (normalized === "group" || normalized.startsWith("group:")) {
+    return "group";
+  }
+  if (normalized === "cell" || normalized.startsWith("cell:")) {
+    return "cell";
+  }
+  return normalized;
+}
+
+function truthContextMap(truthContexts) {
+  const contexts = Array.isArray(truthContexts)
+    ? truthContexts.filter((item) => item && typeof item === "object")
+    : [];
+  const byOutput = new Map();
+  for (const context of contexts) {
+    const key = normalizedTruthContextKey(context.context);
+    if (key && !byOutput.has(key)) {
+      byOutput.set(key, context);
+    }
+  }
+  return byOutput;
+}
+
+function truthContextHasDetail(context, status) {
+  if (!context || status === "none") {
+    return false;
+  }
+  const textFields = ["explanation", "generation", "score_semantics"];
+  if (textFields.some((field) => String(context?.[field] || "").trim())) {
+    return true;
+  }
+  const listFields = ["upstream_configuration", "source_artifacts", "limitations"];
+  return listFields.some((field) => Array.isArray(context?.[field]) && context[field].length);
+}
+
+function appendTruthContextDetail(host, context) {
+  const explanation = String(context.explanation || "").trim();
+  const generation = String(context.generation || "").trim();
+  const scoreSemantics = String(context.score_semantics || "").trim();
+  if (explanation) {
+    const text = document.createElement("p");
+    text.textContent = explanation;
+    host.appendChild(text);
+  }
+  appendTruthContextList(host, "Upstream configuration", context.upstream_configuration);
+  if (generation) {
+    const block = document.createElement("div");
+    block.className = "simulator-truth-context-block";
+    const heading = document.createElement("strong");
+    heading.textContent = "Generation";
+    const text = document.createElement("p");
+    text.textContent = generation;
+    block.append(heading, text);
+    host.appendChild(block);
+  }
+  if (scoreSemantics) {
+    const block = document.createElement("div");
+    block.className = "simulator-truth-context-block";
+    const heading = document.createElement("strong");
+    heading.textContent = "Score semantics";
+    const text = document.createElement("p");
+    text.textContent = scoreSemantics;
+    block.append(heading, text);
+    host.appendChild(block);
+  }
+  appendTruthContextList(host, "Source artifacts", context.source_artifacts);
+  appendTruthContextList(host, "Limitations", context.limitations);
+}
+
+function appendTruthNetworksSummary(host, truthOutputs, truthContexts, profileId) {
+  const primaryOutput = primaryTruthOutputForProfile(profileId);
+  const contextByOutput = truthContextMap(truthContexts);
+  const panel = document.createElement("div");
+  panel.className = "truth-networks-summary";
+
+  const file = document.createElement("div");
+  file.className = "truth-networks-file";
+  const fileName = document.createElement("strong");
+  fileName.textContent = "truth/networks.csv";
+  const fileDesc = document.createElement("span");
+  fileDesc.textContent = "Unified public truth table; context selects the GRN scope.";
+  file.append(fileName, fileDesc);
+  panel.appendChild(file);
+
+  const contexts = document.createElement("div");
+  contexts.className = "truth-network-context-list";
+  for (const outputId of TRUTH_OUTPUT_ORDER) {
+    const rawStatus = String(truthOutputs?.[outputId] || "none");
+    const status = rawStatus === "native" || rawStatus === "derivable" ? rawStatus : "none";
+    const context = contextByOutput.get(outputId) || { context: outputId, status };
+    const hasDetail = truthContextHasDetail(context, status);
+    const row = document.createElement(hasDetail ? "details" : "div");
+    row.className = `truth-network-context-row status-${status}`;
+    if (hasDetail) {
+      row.classList.add("has-detail");
+    }
+    if (outputId === primaryOutput) {
+      row.classList.add("is-primary");
+    }
+    const head = document.createElement(hasDetail ? "summary" : "div");
+    head.className = "truth-network-context-head";
+    const label = document.createElement("strong");
+    label.textContent = truthContextChipLabel(outputId);
+    const statusText = document.createElement("span");
+    statusText.className = "truth-network-context-status";
+    statusText.textContent = truthOutputStatusLabel(status);
+    head.append(label, statusText);
+    row.appendChild(head);
+    if (hasDetail) {
+      const detail = document.createElement("div");
+      detail.className = "truth-network-context-detail";
+      appendTruthContextDetail(detail, context);
+      row.appendChild(detail);
+    }
+    contexts.appendChild(row);
+  }
+  panel.appendChild(contexts);
+  host.appendChild(panel);
 }
 
 function artifactHasDetail(item, derivation) {
@@ -1340,10 +1983,55 @@ function appendCapabilitySection(host, simulator) {
       card.appendChild(notesNode);
     }
 
+    const truthRow = document.createElement("div");
+    truthRow.className = "simulator-capability-row";
+    const truthLabel = document.createElement("strong");
+    truthLabel.textContent = "Truth networks";
+    const truthWrap = document.createElement("div");
+    truthWrap.className = "truth-networks-host";
+    appendTruthNetworksSummary(
+      truthWrap,
+      capability.truth_outputs || {},
+      capability.truth_contexts,
+      profileId
+    );
+    truthRow.appendChild(truthLabel);
+    truthRow.appendChild(truthWrap);
+    card.appendChild(truthRow);
+
+    const truthRequirements = Array.isArray(capability.truth_parameter_requirements)
+      ? capability.truth_parameter_requirements
+      : [];
+    if (truthRequirements.length) {
+      const truthRulesRow = document.createElement("div");
+      truthRulesRow.className = "simulator-capability-row";
+      const truthRulesLabel = document.createElement("strong");
+      truthRulesLabel.textContent = "Truth parameter rules";
+      const truthRulesWrap = document.createElement("div");
+      truthRulesWrap.className = "simulator-truth-rules";
+      for (const requirement of truthRequirements) {
+        const rule = document.createElement("div");
+        rule.className = "simulator-truth-rule";
+        const head = document.createElement("strong");
+        head.textContent = artifactDisplayLabel(String(requirement?.truth_output || ""));
+        const condition = document.createElement("code");
+        const conditionText = Array.isArray(requirement?.conditions)
+          ? requirement.conditions.map(formatSimulatorInputCondition).filter(Boolean).join(" AND ")
+          : "";
+        condition.textContent = conditionText || "always";
+        const message = document.createElement("span");
+        message.textContent = String(requirement?.message || "").trim();
+        rule.append(head, condition, message);
+        truthRulesWrap.appendChild(rule);
+      }
+      truthRulesRow.append(truthRulesLabel, truthRulesWrap);
+      card.appendChild(truthRulesRow);
+    }
+
     const extrasRow = document.createElement("div");
     extrasRow.className = "simulator-capability-row";
     const extrasLabel = document.createElement("strong");
-    extrasLabel.textContent = "Optional outputs";
+    extrasLabel.textContent = "Standardized extras";
     const extrasWrap = document.createElement("div");
     extrasWrap.className = "artifact-chip-row";
     const nativeExtras = Array.isArray(capability.native_extras) ? capability.native_extras : [];
@@ -1363,7 +2051,7 @@ function appendCapabilitySection(host, simulator) {
     const nativeOutputRow = document.createElement("div");
     nativeOutputRow.className = "simulator-capability-row";
     const nativeOutputLabel = document.createElement("strong");
-    nativeOutputLabel.textContent = "Native outputs";
+    nativeOutputLabel.textContent = "Native / provenance outputs";
     const nativeOutputWrap = document.createElement("div");
     nativeOutputWrap.className = "artifact-chip-row";
     const nativeOutputs = Array.isArray(capability.native_outputs) ? capability.native_outputs : [];
@@ -1383,28 +2071,6 @@ function appendCapabilitySection(host, simulator) {
     nativeOutputRow.appendChild(nativeOutputLabel);
     nativeOutputRow.appendChild(nativeOutputWrap);
     card.appendChild(nativeOutputRow);
-
-    const truthRow = document.createElement("div");
-    truthRow.className = "simulator-capability-row";
-    const truthLabel = document.createElement("strong");
-    truthLabel.textContent = "Truth outputs";
-    const truthWrap = document.createElement("div");
-    truthWrap.className = "artifact-chip-row";
-    const truthEntries = Object.entries(capability.truth_outputs || {})
-      .filter(([, mode]) => mode && mode !== "none")
-      .map(([artifact, mode]) => ({
-        artifact,
-        label: artifactDisplayLabel(artifact),
-        kind: "truth",
-        description: truthOutputDescription(artifact),
-        formats: ["csv"],
-        notes: "All public truth networks are exported through truth/networks.csv; context determines the scope.",
-        mode,
-      }));
-    appendArtifactChipRow(truthWrap, truthEntries, { derivations, simulator, profileId });
-    truthRow.appendChild(truthLabel);
-    truthRow.appendChild(truthWrap);
-    card.appendChild(truthRow);
 
     const auxArtifacts = Array.isArray(capability.artifacts_aux) ? capability.artifacts_aux : [];
     const auxRow = document.createElement("div");
@@ -1558,14 +2224,136 @@ function renderPreflightSummary(report) {
     root.textContent = "No preflight report yet.";
     return;
   }
+  root.innerHTML = "";
   const summary = report.catalog_summary || {};
-  root.textContent = [
-    `scenario: ${report.scenario?.id || "-"}`,
-    `profile: ${report.scenario?.profile || "-"}`,
-    `requested_extras: ${(report.scenario?.requested_extras || []).join(", ") || "(none)"}`,
-    `effective_extras: ${(report.scenario?.effective_extras || []).join(", ") || "(none)"}`,
-    `catalog: total=${summary.total ?? 0} eligible=${summary.eligible ?? 0} warning=${summary.warning ?? 0} blocked=${summary.blocked ?? 0}`,
-  ].join("\n");
+  const scenario = report.scenario || {};
+  const organism = scenario.organism && typeof scenario.organism === "object" ? scenario.organism : {};
+  const taxonRaw = organism.ncbi_taxon_id;
+  const taxonId = taxonRaw === null || taxonRaw === undefined ? "-" : String(taxonRaw);
+  const issueCounts = countPreflightIssues(report);
+
+  appendPreflightSummaryBand(root, "Scenario", [
+    { label: "Scenario", value: scenario.id || "-" },
+    { label: "Profile", value: scenario.profile || "-" },
+    {
+      label: "Organism",
+      value: organism.taxonomic_group || "synthetic",
+      detail: `NCBI taxon ${taxonId}`,
+    },
+  ]);
+
+  appendPreflightExtrasBand(root, scenario);
+
+  appendPreflightSummaryBand(root, "Simulator Catalog", [
+    { label: "Total", value: summary.total ?? 0 },
+    { label: "Eligible", value: summary.eligible ?? 0, tone: "ok" },
+    { label: "Warning", value: summary.warning ?? 0, tone: Number(summary.warning || 0) ? "warning" : "" },
+    { label: "Blocked", value: summary.blocked ?? 0, tone: Number(summary.blocked || 0) ? "blocked" : "" },
+    { label: "Issues", value: issueCounts.total, detail: `${issueCounts.warn} warn · ${issueCounts.block} block` },
+  ]);
+
+  const rawDetails = document.createElement("details");
+  rawDetails.className = "preflight-list";
+  const summaryNode = document.createElement("summary");
+  summaryNode.textContent = "Raw preflight_report.json";
+  rawDetails.appendChild(summaryNode);
+  const pre = document.createElement("pre");
+  pre.textContent = JSON.stringify(report, null, 2);
+  rawDetails.appendChild(pre);
+  root.appendChild(rawDetails);
+}
+
+function countPreflightIssues(report) {
+  const counts = { warn: 0, block: 0, total: 0 };
+  const entries = [
+    ...(Array.isArray(report?.eligible) ? report.eligible : []),
+    ...(Array.isArray(report?.warning) ? report.warning : []),
+    ...(Array.isArray(report?.blocked) ? report.blocked : []),
+  ];
+  for (const entry of entries) {
+    for (const issue of entry.issues || []) {
+      const severity = String(issue?.severity || "").trim();
+      if (severity === "warn") {
+        counts.warn += 1;
+      } else if (severity === "block") {
+        counts.block += 1;
+      }
+    }
+  }
+  counts.total = counts.warn + counts.block;
+  return counts;
+}
+
+function appendPreflightMetricCard(parent, { label, value, detail = "", tone = "" }) {
+  const card = document.createElement("article");
+  card.className = `preflight-kpi${tone ? ` ${tone}` : ""}`;
+  const title = document.createElement("strong");
+  title.textContent = label;
+  const main = document.createElement("span");
+  main.textContent = String(value ?? "-");
+  card.append(title, main);
+  if (detail) {
+    const small = document.createElement("small");
+    small.textContent = detail;
+    card.appendChild(small);
+  }
+  parent.appendChild(card);
+}
+
+function appendPreflightSummaryBand(parent, title, cards) {
+  const section = document.createElement("section");
+  section.className = "preflight-summary-section";
+  const heading = document.createElement("h4");
+  heading.textContent = title;
+  const grid = document.createElement("div");
+  grid.className = "preflight-grid";
+  for (const card of cards) {
+    appendPreflightMetricCard(grid, card);
+  }
+  section.append(heading, grid);
+  parent.appendChild(section);
+}
+
+function appendPreflightExtrasBand(parent, scenario) {
+  const section = document.createElement("section");
+  section.className = "preflight-summary-section";
+  const heading = document.createElement("h4");
+  heading.textContent = "Standardized Extras";
+  const grid = document.createElement("div");
+  grid.className = "preflight-extra-grid";
+  appendPreflightExtraSet(grid, "Requested", scenario.requested_extras || []);
+  appendPreflightExtraSet(grid, "Effective", scenario.effective_extras || []);
+  section.append(heading, grid);
+  parent.appendChild(section);
+}
+
+function appendPreflightExtraSet(parent, title, items) {
+  const block = document.createElement("div");
+  block.className = "preflight-extra-set";
+  const head = document.createElement("div");
+  head.className = "preflight-extra-head";
+  const label = document.createElement("strong");
+  label.textContent = title;
+  const count = document.createElement("span");
+  count.textContent = String(items.length);
+  head.append(label, count);
+  const chips = document.createElement("div");
+  chips.className = "preflight-chip-row";
+  if (!items.length) {
+    const empty = document.createElement("span");
+    empty.className = "preflight-chip muted";
+    empty.textContent = "none";
+    chips.appendChild(empty);
+  } else {
+    for (const item of items) {
+      const chip = document.createElement("span");
+      chip.className = "preflight-chip";
+      chip.textContent = String(item);
+      chips.appendChild(chip);
+    }
+  }
+  block.append(head, chips);
+  parent.appendChild(block);
 }
 
 function simulatorIssues(entry, severity = null) {
@@ -1611,9 +2399,13 @@ function renderSimulatorList(containerId, entries, kind) {
     const node = template.content.firstElementChild.cloneNode(true);
     node.querySelector(".tool-item-name").textContent = simulator.name;
     node.querySelector(".tool-item-badge").textContent = kind;
-    node.querySelector(".tool-item-meta").textContent =
-      `${simulator.first_author || "-"} ${simulator.year || ""} · ${truthOutputSummary(entry.truth_outputs)}`;
+    const meta = node.querySelector(".tool-item-meta");
+    meta.innerHTML = "";
+    const byline = document.createElement("span");
+    byline.textContent = `${simulator.first_author || "-"} ${simulator.year || ""}`.trim();
+    meta.appendChild(byline);
     const actions = node.querySelector(".tool-item-actions");
+    appendSimulatorTruthContextChips(meta, entry);
     const infoBtn = document.createElement("button");
     infoBtn.type = "button";
     infoBtn.className = "secondary";
@@ -1766,10 +2558,12 @@ function refreshRunCardsValidation({ sync = true } = {}) {
     } catch (err) {
       messages.push(String(err?.message || "Invalid parameters"));
     }
-    if (params) {
-      messages.push(...simulatorInputMessages(simulator, params));
-    }
     const selectedNativeOutputs = readNativeOutputsFromHost(card.querySelector(".run-native-outputs-form"));
+    if (params) {
+      messages.push(...simulatorInputMessages(simulator, params, selectedNativeOutputs));
+      messages.push(...simulatorCompatibilityMessages(simulator, params, selectedNativeOutputs));
+      messages.push(...profileTruthConditionMessages(simulator, params));
+    }
     const nativeOutputDefs = nativeOutputDefsForSimulator(simulator);
     const supportedNativeOutputs = new Set(nativeOutputDefs.map((item) => String(item.id)));
     const nativeOutputDefsById = new Map(nativeOutputDefs.map((item) => [String(item.id), item]));
@@ -1915,24 +2709,30 @@ function renderPlan(plan) {
   runsTable.className = "wave-table";
   runsTable.innerHTML = "<thead><tr><th>run_id</th><th>simulator</th><th>replicates</th><th>threads</th><th>RAM GB</th><th>ETA s</th><th>ETA source</th><th>native_outputs</th><th>base_seed</th><th>replicate_seeds</th></tr></thead>";
   const runsBody = document.createElement("tbody");
+  const appendPlanCell = (tr, value, className = "") => {
+    const td = document.createElement("td");
+    td.textContent = String(value ?? "-");
+    if (className) {
+      td.className = className;
+    }
+    tr.appendChild(td);
+  };
   for (const run of plan.runs || []) {
     const tr = document.createElement("tr");
-    [
-      run.run_id,
-      run.simulator_id,
-      run.replicates,
-      run.runtime_resources?.threads ?? "-",
-      run.ram_gb ?? "-",
-      run.eta_seconds ?? "-",
-      run.eta_source ?? "-",
+    appendPlanCell(tr, run.run_id);
+    appendPlanCell(tr, run.simulator_id);
+    appendPlanCell(tr, run.replicates);
+    appendPlanCell(tr, run.runtime_resources?.threads ?? "-");
+    appendPlanCell(tr, run.ram_gb ?? "-");
+    appendPlanCell(tr, run.eta_seconds ?? "-");
+    appendPlanCell(tr, run.eta_source ?? "-");
+    appendPlanCell(
+      tr,
       (run.native_outputs || []).join(", ") || "-",
-      run.base_seed,
-      (run.replicate_seeds || []).join(", "),
-    ].forEach((value) => {
-      const td = document.createElement("td");
-      td.textContent = String(value ?? "-");
-      tr.appendChild(td);
-    });
+      "wrap-cell native-outputs-cell",
+    );
+    appendPlanCell(tr, run.base_seed);
+    appendPlanCell(tr, (run.replicate_seeds || []).join(", "), "wrap-cell");
     runsBody.appendChild(tr);
   }
   runsTable.appendChild(runsBody);
@@ -1948,18 +2748,16 @@ function renderPlan(plan) {
   const wavesBody = document.createElement("tbody");
   for (const wave of plan.execution?.waves || []) {
     const tr = document.createElement("tr");
-    [
-      wave.index,
+    appendPlanCell(tr, wave.index);
+    appendPlanCell(
+      tr,
       (wave.tasks || []).map((task) => task.task_id).join(", "),
-      wave.threads_used,
-      wave.ram_gb_used,
-      wave.eta_seconds,
-      `${wave.eta_start_seconds ?? "-"}-${wave.eta_end_seconds ?? "-"}`,
-    ].forEach((value) => {
-      const td = document.createElement("td");
-      td.textContent = String(value ?? "-");
-      tr.appendChild(td);
-    });
+      "wrap-cell",
+    );
+    appendPlanCell(tr, wave.threads_used);
+    appendPlanCell(tr, wave.ram_gb_used);
+    appendPlanCell(tr, wave.eta_seconds);
+    appendPlanCell(tr, `${wave.eta_start_seconds ?? "-"}-${wave.eta_end_seconds ?? "-"}`);
     wavesBody.appendChild(tr);
   }
   wavesTable.appendChild(wavesBody);
@@ -1975,21 +2773,15 @@ function renderPlan(plan) {
   const tasksBody = document.createElement("tbody");
   for (const task of plan.tasks || []) {
     const tr = document.createElement("tr");
-    [
-      task.task_id,
-      task.run_id,
-      task.replicate_index,
-      task.seed,
-      task.runtime_resources?.threads ?? "-",
-      task.ram_gb ?? "-",
-      task.eta_seconds ?? "-",
-      task.eta_wave ?? "-",
-      task.dataset_id,
-    ].forEach((value) => {
-      const td = document.createElement("td");
-      td.textContent = String(value ?? "-");
-      tr.appendChild(td);
-    });
+    appendPlanCell(tr, task.task_id);
+    appendPlanCell(tr, task.run_id);
+    appendPlanCell(tr, task.replicate_index);
+    appendPlanCell(tr, task.seed);
+    appendPlanCell(tr, task.runtime_resources?.threads ?? "-");
+    appendPlanCell(tr, task.ram_gb ?? "-");
+    appendPlanCell(tr, task.eta_seconds ?? "-");
+    appendPlanCell(tr, task.eta_wave ?? "-");
+    appendPlanCell(tr, task.dataset_id, "wrap-cell");
     tasksBody.appendChild(tr);
   }
   tasksTable.appendChild(tasksBody);

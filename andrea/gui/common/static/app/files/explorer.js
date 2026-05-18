@@ -488,7 +488,18 @@ export function renderFiles(state, api, entries, mode, ids = {}, options = {}) {
   const list = state.filesEntries;
   const filesCount = list.filter((item) => item.kind === "file").length;
   const dirsCount = list.filter((item) => item.kind === "dir").length;
-  target(ids, "summary").textContent = `bundle=${mode} | files=${filesCount} | dirs=${dirsCount}`;
+  const summaryEl = target(ids, "summary");
+  if (typeof options.renderSummary === "function") {
+    options.renderSummary({
+      summaryEl,
+      entries: list,
+      mode,
+      filesCount,
+      dirsCount,
+    });
+  } else {
+    summaryEl.textContent = `bundle=${mode} | files=${filesCount} | dirs=${dirsCount}`;
+  }
 
   if (!list.length) {
     const empty = document.createElement("div");
