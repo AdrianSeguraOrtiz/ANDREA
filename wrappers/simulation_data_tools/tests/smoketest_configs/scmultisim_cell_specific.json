@@ -1,21 +1,17 @@
 {
   "simulator_id": "scmultisim",
   "request": {
-    "profile": "scrna_grouped",
-    "seed": 104,
+    "profile": "scrna_cell_specific",
+    "seed": 106,
     "effective_extras": [
       "groups",
-      "prior_grn",
       "tf_list"
     ],
-    "inputs": {
-      "regulatory_network": "../fixtures/regulatory_network.tsv",
-      "tree_newick": "../fixtures/tree_newick.txt"
-    },
+    "inputs": {},
     "params": {
-      "grn_source": "input_tsv",
-      "tree_preset": "input_newick",
-      "num_cells": 9,
+      "grn_source": "builtin_100",
+      "tree_preset": "phyla3",
+      "num_cells": 8,
       "num_cifs": 20,
       "velocity": {
         "enabled": false
@@ -29,7 +25,7 @@
         "weight_sd": 1
       },
       "technical_noise": {
-        "enabled": false
+        "enabled": true
       }
     },
     "runtime_resources": {"threads": 1}
@@ -38,15 +34,15 @@
   "required_files": [
     "expression.tsv",
     "extras/groups.tsv",
-    "extras/prior_grn.tsv",
     "extras/tf_list.txt",
     "truth/networks.csv",
     "truth/gene_universe.txt",
     "provenance/raw/group_networks_index.tsv",
+    "provenance/raw/cell_networks_index.tsv",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/result.rds",
     "provenance/raw/session_info.txt"
   ],
-  "required_truth_context_prefixes": ["global", "group:"]
+  "required_truth_context_prefixes": ["global", "group:", "cell:"]
 }

@@ -3,7 +3,7 @@ dyngen docker wrapper notes:
 - installs `dyngen` from CRAN, pinned to version `1.1.1`
 - predownloads dyngen cacheable data files during image build
 - executes the public package API via `initialise_model()` and `generate_dataset()`
-- supports the ANDREA canonical profiles `scrna_global` and `scrna_grouped`
+- supports the ANDREA canonical profiles `scrna_global`, `scrna_grouped` and `scrna_cell_specific`
 - exposes a broad serializable parameter surface from the public dyngen API:
   - backbone template
   - cell / TF / target / housekeeping counts
@@ -14,6 +14,7 @@ dyngen docker wrapper notes:
   - simulation settings
   - experiment sampling settings
 - derives `groups.tsv` from `milestone_percentages`
+- derives public `cell:<cell_id>` truth rows from native `regulatory_network_sc` for `scrna_cell_specific`
 - derives optional `lineage_tree.tsv` from `milestone_network` and aggregated `regulatory_network_sc`
 - derives optional `pseudotime.tsv`, `cell_phenotypes.tsv`, `cluster_identities.tsv`, `enrichment_background.txt`, `prior_grn.tsv` and `prior_grn_by_group.tsv` from dyngen trajectory, feature and cell-specific GRN state
 - writes `progress.json`, normalized outputs and raw `.rds` provenance artefacts

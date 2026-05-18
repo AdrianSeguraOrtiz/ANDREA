@@ -1,0 +1,33 @@
+{
+  "simulator_id": "dyngen",
+  "request": {
+    "profile": "scrna_cell_specific",
+    "seed": 23,
+    "effective_extras": ["groups", "tf_list"],
+    "inputs": {},
+    "params": {
+      "backbone_template": "bifurcating",
+      "simulation_params": {
+        "num_simulations": 2,
+        "census_interval": 2.0,
+        "compute_rna_velocity": false
+      }
+    },
+    "runtime_resources": {"threads": 1}
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "provenance/raw/group_networks_index.tsv",
+    "provenance/raw/cell_networks_index.tsv",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/model.rds",
+    "provenance/raw/dataset.rds"
+  ],
+  "required_truth_context_prefixes": ["global", "group:", "cell:"]
+}

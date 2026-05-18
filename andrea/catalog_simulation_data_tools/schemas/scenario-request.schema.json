@@ -29,7 +29,8 @@
         "bulk_time_series",
         "bulk_perturbational",
         "scrna_global",
-        "scrna_grouped"
+        "scrna_grouped",
+        "scrna_cell_specific"
       ]
     },
     "organism": {

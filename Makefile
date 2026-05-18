@@ -76,6 +76,9 @@ validate-tool-costs:
 validate-simulatorspecs:
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_simulatorspecs.py $(ARGS)
 
+validate-simulation-input-specs:
+	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_input_specs.py $(ARGS)
+
 validate-simulator-smoketest-configs:
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_smoketest_configs.py $(ARGS)
 
@@ -89,6 +92,7 @@ validate-inference-catalog:
 	@$(MAKE) validate-tool-costs
 
 validate-generation-catalog:
+	@$(MAKE) validate-simulation-input-specs
 	@$(MAKE) validate-simulatorspecs
 	@$(MAKE) validate-simulator-smoketest-configs
 	@$(MAKE) validate-simulator-costs
@@ -118,6 +122,7 @@ verify-tool:
 
 verify-simulator:
 	@test -n "$(SIMULATOR)" || (echo "Usage: make verify-simulator SIMULATOR=<simulator_id> [ARGS='...']" && exit 2)
+	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_input_specs.py
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_simulatorspecs.py --simulator $(SIMULATOR)
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_smoketest_configs.py --simulator $(SIMULATOR)
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/build_simulator_images.py --simulator $(SIMULATOR)

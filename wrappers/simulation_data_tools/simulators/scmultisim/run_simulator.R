@@ -242,12 +242,12 @@ read_grn_input <- function(path) {
   required <- c("target", "regulator", "effect")
   missing <- setdiff(required, names(grn))
   if (length(missing) > 0) {
-    stop(sprintf("grn_params is missing required columns: %s", paste(missing, collapse = ", ")), call. = FALSE)
+    stop(sprintf("regulatory_network is missing required columns: %s", paste(missing, collapse = ", ")), call. = FALSE)
   }
   grn <- grn[, required, drop = FALSE]
   grn$effect <- as.numeric(grn$effect)
   if (anyNA(grn$effect)) {
-    stop("grn_params effect column must be numeric.", call. = FALSE)
+    stop("regulatory_network effect column must be numeric.", call. = FALSE)
   }
   grn
 }
@@ -262,9 +262,9 @@ load_grn <- function(params, request) {
     return(GRN_params_1139)
   }
   if (identical(params$grn_source, "input_tsv")) {
-    path <- mounted_input_path(request, "grn_params")
+    path <- mounted_input_path(request, "regulatory_network")
     if (is.null(path)) {
-      stop("grn_params mounted input is required when grn_source=input_tsv.", call. = FALSE)
+      stop("regulatory_network mounted input is required when grn_source=input_tsv.", call. = FALSE)
     }
     return(read_grn_input(path))
   }
@@ -433,6 +433,31 @@ write_matrix_tsv <- function(mat, path, row_id = "gene") {
   write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 }
 
+valid_dimnames <- function(values, expected_length) {
+  !is.null(values) &&
+    length(values) == expected_length &&
+    all(!is.na(values)) &&
+    all(nzchar(as.character(values)))
+}
+
+restore_missing_dimnames <- function(mat, reference) {
+  mat <- as.matrix(mat)
+  if (is.null(reference)) {
+    return(mat)
+  }
+  reference <- as.matrix(reference)
+  if (!identical(dim(mat), dim(reference))) {
+    return(mat)
+  }
+  if (!valid_dimnames(rownames(mat), nrow(mat)) && valid_dimnames(rownames(reference), nrow(reference))) {
+    rownames(mat) <- rownames(reference)
+  }
+  if (!valid_dimnames(colnames(mat), ncol(mat)) && valid_dimnames(colnames(reference), ncol(reference))) {
+    colnames(mat) <- colnames(reference)
+  }
+  mat
+}
+
 write_gene_universe <- function(expr, path) {
   genes <- unique(as.character(matrix_row_ids(expr)))
   genes <- genes[nzchar(genes)]
@@ -443,22 +468,23 @@ write_gene_universe <- function(expr, path) {
 }
 
 extract_counts_matrix <- function(results, params) {
+  true_counts <- as.matrix(results$counts)
   if (isTRUE(params$batch_effect$enabled)) {
     if (is.null(results$counts_with_batches)) {
       stop("batch_effect.enabled=true but counts_with_batches was not generated.", call. = FALSE)
     }
-    return(as.matrix(results$counts_with_batches))
+    return(restore_missing_dimnames(results$counts_with_batches, true_counts))
   }
   if (isTRUE(params$technical_noise$enabled)) {
     if (is.null(results$counts_obs)) {
       stop("technical_noise.enabled=true but counts_obs was not generated.", call. = FALSE)
     }
     if (is.list(results$counts_obs) && !is.null(results$counts_obs$counts)) {
-      return(as.matrix(results$counts_obs$counts))
+      return(restore_missing_dimnames(results$counts_obs$counts, true_counts))
     }
-    return(as.matrix(results$counts_obs))
+    return(restore_missing_dimnames(results$counts_obs, true_counts))
   }
-  as.matrix(results$counts)
+  true_counts
 }
 
 gene_mapper <- function(grn_obj) {
@@ -575,12 +601,73 @@ derive_global_truth <- function(results, params) {
   truth_df[order(truth_df$source, truth_df$target), , drop = FALSE]
 }
 
-write_truth_networks <- function(global_truth, group_truth_rows, output_dir) {
+derive_cell_truth <- function(results, expr, raw_dir) {
+  if (is.null(results$cell_specific_grn)) {
+    stop("cell truth derivation requires dynamic_grn.enabled=true and results$cell_specific_grn.", call. = FALSE)
+  }
+  mats <- results$cell_specific_grn
+  cell_ids <- colnames(expr)
+  genes <- rownames(expr)
+  if (length(mats) != length(cell_ids)) {
+    stop("cell_specific_grn length does not match expression cell count.", call. = FALSE)
+  }
+
+  truth_rows <- lapply(seq_along(cell_ids), function(idx) {
+    cell_truth <- matrix_edges(mats[[idx]], results$.grn, paste0("cell:", cell_ids[[idx]]))
+    cell_truth <- cell_truth[
+      cell_truth$score > 0 &
+        !is.na(cell_truth$score) &
+        cell_truth$source != cell_truth$target,
+      ,
+      drop = FALSE
+    ]
+    cell_truth
+  })
+  truth_df <- do.call(rbind, truth_rows)
+  if (is.null(truth_df) || nrow(truth_df) == 0) {
+    stop("cell truth derivation produced no nonzero cell-specific edges.", call. = FALSE)
+  }
+
+  unknown_genes <- sort(unique(setdiff(unique(c(truth_df$source, truth_df$target)), genes)))
+  if (length(unknown_genes) > 0) {
+    stop(
+      sprintf(
+        "cell_specific_grn contains genes absent from truth/gene_universe.txt: %s",
+        paste(unknown_genes, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  context_counts <- vapply(truth_rows, nrow, integer(1))
+  write_tsv(
+    data.frame(
+      cell = cell_ids,
+      context = paste0("cell:", cell_ids),
+      edge_count = as.integer(context_counts),
+      stringsAsFactors = FALSE
+    ),
+    file.path(raw_dir, "cell_networks_index.tsv")
+  )
+
+  truth_df[order(truth_df$context, truth_df$source, truth_df$target), , drop = FALSE]
+}
+
+write_truth_networks <- function(global_truth, group_truth_rows, cell_truth_rows, output_dir) {
   truth_df <- global_truth
   if (length(group_truth_rows) > 0) {
     truth_df <- rbind(truth_df, do.call(rbind, group_truth_rows))
   }
-  truth_df <- truth_df[truth_df$score > 0 & !is.na(truth_df$score), , drop = FALSE]
+  if (!is.null(cell_truth_rows) && nrow(cell_truth_rows) > 0) {
+    truth_df <- rbind(truth_df, cell_truth_rows)
+  }
+  truth_df <- truth_df[
+    truth_df$score > 0 &
+      !is.na(truth_df$score) &
+      truth_df$source != truth_df$target,
+    ,
+    drop = FALSE
+  ]
   if (nrow(truth_df) == 0) {
     stop("truth/networks.csv derivation produced no nonzero edges.", call. = FALSE)
   }
@@ -920,6 +1007,7 @@ write_native_outputs <- function(results, native_output_ids, output_dir) {
   }
   if ("observed_counts" %in% requested && !is.null(results$counts_obs)) {
     observed <- if (is.list(results$counts_obs) && !is.null(results$counts_obs$counts)) results$counts_obs$counts else results$counts_obs
+    observed <- restore_missing_dimnames(observed, results$counts)
     write_matrix_tsv(observed, file.path(output_dir, "native", "observed_counts.tsv"))
     manifest$observed_counts <- "native/observed_counts.tsv"
   }
@@ -1005,9 +1093,10 @@ tryCatch(
     if (params$batch_effect$enabled && !params$technical_noise$enabled) {
       stop("batch_effect.enabled=true requires technical_noise.enabled=true.", call. = FALSE)
     }
-    needs_group_specific <- identical(request$profile, "scrna_grouped") || any(c("prior_grn_by_group", "lineage_tree") %in% effective_extras)
+    need_public_cell_truth <- identical(request$profile, "scrna_cell_specific")
+    needs_group_specific <- identical(request$profile, "scrna_grouped") || need_public_cell_truth || any(c("prior_grn_by_group", "lineage_tree") %in% effective_extras)
     if (needs_group_specific && !params$dynamic_grn$enabled) {
-      stop("scrna_grouped group truth, prior_grn_by_group and lineage_tree require dynamic_grn.enabled=true.", call. = FALSE)
+      stop("scrna_grouped or scrna_cell_specific group/cell truth, prior_grn_by_group and lineage_tree require dynamic_grn.enabled=true.", call. = FALSE)
     }
     if (!identical(params$mod_cif_giv_preset, "none")) {
       stop("Only mod_cif_giv_preset='none' is supported.", call. = FALSE)
@@ -1064,13 +1153,23 @@ tryCatch(
     global_truth <- derive_global_truth(results, params)
     exported_native_outputs <- write_native_outputs(results, native_outputs, output_dir)
 
-    need_public_group_truth <- identical(request$profile, "scrna_grouped")
+    need_public_group_truth <- identical(request$profile, "scrna_grouped") || need_public_cell_truth
     need_groups <- need_public_group_truth || any(c("groups", "cell_phenotypes", "cluster_identities", "lineage_tree", "prior_grn_by_group") %in% effective_extras)
     groups_df <- NULL
     pseudotime_values <- NULL
     group_order <- NULL
     group_truth_result <- NULL
     group_truth_rows <- list()
+    cell_truth_rows <- NULL
+
+    if (need_public_cell_truth) {
+      write_progress("running", "derive_cell_truth", "Deriving cell regulatory truth from cell_specific_grn.")
+      cell_truth_rows <- derive_cell_truth(
+        results,
+        expr,
+        raw_dir
+      )
+    }
 
     if (need_groups) {
       groups_df <- derive_groups(results, expr)
@@ -1130,7 +1229,7 @@ tryCatch(
       }
     }
 
-    write_truth_networks(global_truth, group_truth_rows, output_dir)
+    write_truth_networks(global_truth, group_truth_rows, cell_truth_rows, output_dir)
 
     write_progress("running", "write_manifest", "Writing simulator-output-manifest.json.")
     write_manifest(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import csv
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +13,11 @@ from andrea.core.shared.param_validation import (
 )
 from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
 
-from .catalog import _load_simulator_catalog, get_profile_capability
+from .catalog import (
+    _load_simulator_catalog,
+    get_profile_capability,
+    load_simulation_input_specs,
+)
 from .shared import (
     PROFILE_SPECS,
     ResolvedSimulationPlan,
@@ -20,7 +25,11 @@ from .shared import (
     TAXONOMIC_GROUPS,
     _load_json_object,
     _validate_json_instance,
+    required_truth_outputs_for_profile,
 )
+
+COMPATIBILITY_ACTIONS = {"block", "warn"}
+COMPATIBILITY_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
 
 
 def _supported_requested_artifacts(
@@ -172,6 +181,7 @@ def _resolve_inputs(
     raw_inputs: Any,
     *,
     base_dir: Path,
+    known_input_ids: set[str] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Path]]:
     if raw_inputs is None:
         return {}, {}
@@ -183,6 +193,8 @@ def _resolve_inputs(
     for input_id, raw_input in raw_inputs.items():
         if not isinstance(input_id, str) or not input_id:
             raise ValueError("inputs keys must be non-empty strings")
+        if known_input_ids is not None and input_id not in known_input_ids:
+            raise ValueError(f"unknown simulator input id: {input_id}")
         if isinstance(raw_input, dict):
             input_payload = dict(raw_input)
         else:
@@ -243,12 +255,15 @@ def _condition_actual_value(
     *,
     profile: str,
     requested_extras: set[str],
+    native_outputs: set[str],
     simulator_params: dict[str, Any],
 ) -> Any:
     if field == "profile":
         return profile
     if field == "requested_extra":
         return sorted(requested_extras)
+    if field == "native_output":
+        return sorted(native_outputs)
     if field.startswith("param."):
         return _param_lookup(simulator_params, field.removeprefix("param."))
     return None
@@ -260,8 +275,10 @@ def _conditional_item_matches(
     default_if_no_conditions: bool,
     profile: str,
     requested_extras: set[str],
+    native_outputs: set[str] | None = None,
     simulator_params: dict[str, Any],
 ) -> bool:
+    native_outputs = native_outputs or set()
     conditions = item.get("conditions", [])
     if not isinstance(conditions, list) or not conditions:
         return default_if_no_conditions
@@ -275,6 +292,7 @@ def _conditional_item_matches(
             field,
             profile=profile,
             requested_extras=requested_extras,
+            native_outputs=native_outputs,
             simulator_params=simulator_params,
         )
         if field == "requested_extra" and op in {"eq", "ne"}:
@@ -287,6 +305,16 @@ def _conditional_item_matches(
         elif field == "requested_extra" and op == "not_in":
             expected_values = set(expected if isinstance(expected, list) else [])
             matches = not bool(expected_values.intersection(requested_extras))
+        elif field == "native_output" and op in {"eq", "ne"}:
+            matches = expected in native_outputs
+            if op == "ne":
+                matches = not matches
+        elif field == "native_output" and op == "in":
+            expected_values = set(expected if isinstance(expected, list) else [])
+            matches = bool(expected_values.intersection(native_outputs))
+        elif field == "native_output" and op == "not_in":
+            expected_values = set(expected if isinstance(expected, list) else [])
+            matches = not bool(expected_values.intersection(native_outputs))
         else:
             matches = _compare_condition_value(actual, op, expected)
         if not matches:
@@ -299,6 +327,7 @@ def _conditional_input_matches(
     *,
     profile: str,
     requested_extras: set[str],
+    native_outputs: set[str] | None = None,
     simulator_params: dict[str, Any],
 ) -> bool:
     return _conditional_item_matches(
@@ -306,7 +335,251 @@ def _conditional_input_matches(
         default_if_no_conditions=False,
         profile=profile,
         requested_extras=requested_extras,
+        native_outputs=native_outputs or set(),
         simulator_params=simulator_params,
+    )
+
+
+def validate_truth_parameter_requirements(
+    *,
+    profile_capability: dict[str, Any],
+    profile: str,
+    requested_extras: list[str],
+    native_outputs: list[str] | None = None,
+    simulator_params: dict[str, Any],
+) -> list[str]:
+    required_truth_outputs = set(required_truth_outputs_for_profile(profile))
+    requested_extra_set = set(requested_extras)
+    native_output_set = set(native_outputs or [])
+    errors: list[str] = []
+    for requirement in profile_capability.get("truth_parameter_requirements", []):
+        if not isinstance(requirement, dict):
+            continue
+        truth_output = str(requirement.get("truth_output", "")).strip()
+        if truth_output not in required_truth_outputs:
+            continue
+        if not _conditional_item_matches(
+            requirement,
+            default_if_no_conditions=True,
+            profile=profile,
+            requested_extras=requested_extra_set,
+            native_outputs=native_output_set,
+            simulator_params=simulator_params,
+        ):
+            errors.append(
+                str(
+                    requirement.get(
+                        "message",
+                        f"truth output '{truth_output}' is unavailable with the current simulator parameters",
+                    )
+                )
+            )
+    return errors
+
+
+def _read_unique_gene_count(path: Path) -> int:
+    with path.open("r", encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        if reader.fieldnames is None:
+            raise ValueError(f"{path.name} must be a tabular file with a header")
+        missing = {"target", "regulator"}.difference(reader.fieldnames)
+        if missing:
+            raise ValueError(
+                f"{path.name} is missing required gene columns: "
+                + ", ".join(sorted(missing))
+            )
+        genes: set[str] = set()
+        for row in reader:
+            for column in ("target", "regulator"):
+                value = str(row.get(column, "")).strip()
+                if value:
+                    genes.add(value)
+    if not genes:
+        raise ValueError(f"{path.name} contains no target/regulator gene identifiers")
+    return len(genes)
+
+
+def _input_metric_value(
+    *,
+    field: str,
+    resolved_input_paths: dict[str, Path] | None,
+) -> Any:
+    parts = field.split(".")
+    if len(parts) != 3 or parts[0] != "input":
+        raise ValueError(f"unsupported input compatibility field: {field}")
+    input_id = parts[1]
+    metric = parts[2]
+    if metric != "unique_gene_count":
+        raise ValueError(f"unsupported input compatibility metric: {field}")
+    input_path = (resolved_input_paths or {}).get(input_id)
+    if input_path is None:
+        return None
+    return _read_unique_gene_count(input_path)
+
+
+def _compatibility_condition_value(
+    *,
+    field: str,
+    profile: str,
+    requested_extras: set[str],
+    native_outputs: set[str],
+    simulator_params: dict[str, Any],
+    resolved_input_paths: dict[str, Path] | None,
+) -> Any:
+    if field.startswith("input."):
+        return _input_metric_value(
+            field=field,
+            resolved_input_paths=resolved_input_paths,
+        )
+    return _condition_actual_value(
+        field,
+        profile=profile,
+        requested_extras=requested_extras,
+        native_outputs=native_outputs,
+        simulator_params=simulator_params,
+    )
+
+
+def _compatibility_condition_matches(
+    *,
+    condition: dict[str, Any],
+    profile: str,
+    requested_extras: set[str],
+    native_outputs: set[str],
+    simulator_params: dict[str, Any],
+    resolved_input_paths: dict[str, Path] | None,
+) -> bool:
+    field = str(condition.get("field", "")).strip()
+    op = str(condition.get("op", "")).strip()
+    if not field:
+        raise ValueError("compatibility condition field is required")
+    if op not in COMPATIBILITY_OPS:
+        raise ValueError("compatibility condition op is invalid")
+    has_value = "value" in condition
+    has_value_from = "value_from" in condition
+    if has_value == has_value_from:
+        raise ValueError(
+            "compatibility condition must define exactly one of value or value_from"
+        )
+    expected = (
+        _compatibility_condition_value(
+            field=str(condition.get("value_from", "")).strip(),
+            profile=profile,
+            requested_extras=requested_extras,
+            native_outputs=native_outputs,
+            simulator_params=simulator_params,
+            resolved_input_paths=resolved_input_paths,
+        )
+        if has_value_from
+        else condition.get("value")
+    )
+    actual = _compatibility_condition_value(
+        field=field,
+        profile=profile,
+        requested_extras=requested_extras,
+        native_outputs=native_outputs,
+        simulator_params=simulator_params,
+        resolved_input_paths=resolved_input_paths,
+    )
+    if field == "requested_extra" and op in {"eq", "ne"}:
+        matches = expected in requested_extras
+        return not matches if op == "ne" else matches
+    if field == "requested_extra" and op in {"in", "not_in"}:
+        expected_values = set(expected if isinstance(expected, list) else [])
+        matches = bool(expected_values.intersection(requested_extras))
+        return not matches if op == "not_in" else matches
+    if field == "native_output" and op in {"eq", "ne"}:
+        matches = expected in native_outputs
+        return not matches if op == "ne" else matches
+    if field == "native_output" and op in {"in", "not_in"}:
+        expected_values = set(expected if isinstance(expected, list) else [])
+        matches = bool(expected_values.intersection(native_outputs))
+        return not matches if op == "not_in" else matches
+    return _compare_condition_value(actual, op, expected)
+
+
+def _compatibility_rule_matches(
+    *,
+    rule: dict[str, Any],
+    profile: str,
+    requested_extras: set[str],
+    native_outputs: set[str],
+    simulator_params: dict[str, Any],
+    resolved_input_paths: dict[str, Path] | None,
+) -> bool:
+    conditions = rule.get("conditions", [])
+    if not isinstance(conditions, list) or not conditions:
+        raise ValueError("compatibility rule must include non-empty conditions")
+    for condition in conditions:
+        if not isinstance(condition, dict):
+            raise ValueError("compatibility rule conditions must be objects")
+        if not _compatibility_condition_matches(
+            condition=condition,
+            profile=profile,
+            requested_extras=requested_extras,
+            native_outputs=native_outputs,
+            simulator_params=simulator_params,
+            resolved_input_paths=resolved_input_paths,
+        ):
+            return False
+    return True
+
+
+def collect_simulator_compatibility_rule_issues(
+    *,
+    simulator_id: str,
+    simulator_spec: dict[str, Any],
+    profile: str,
+    requested_extras: list[str],
+    simulator_params: dict[str, Any],
+    native_outputs: list[str] | None = None,
+    resolved_input_paths: dict[str, Path] | None = None,
+) -> tuple[list[str], list[str], list[str]]:
+    raw_rules = simulator_spec.get("compatibility_rules", [])
+    if raw_rules is None:
+        raw_rules = []
+    if not isinstance(raw_rules, list):
+        return [], [], ["simulatorspec.compatibility_rules must be an array"]
+
+    requested_extra_set = set(requested_extras)
+    native_output_set = set(native_outputs or [])
+    blocking: list[str] = []
+    warnings: list[str] = []
+    errors: list[str] = []
+    for index, rule in enumerate(raw_rules, start=1):
+        if not isinstance(rule, dict):
+            errors.append(f"compatibility_rules[{index}] must be an object")
+            continue
+        action = str(rule.get("action", "")).strip()
+        message = str(rule.get("message", "")).strip()
+        if action not in COMPATIBILITY_ACTIONS:
+            errors.append(f"compatibility_rules[{index}].action is invalid")
+            continue
+        if not message:
+            errors.append(f"compatibility_rules[{index}].message is required")
+            continue
+        try:
+            matches = _compatibility_rule_matches(
+                rule=rule,
+                profile=profile,
+                requested_extras=requested_extra_set,
+                native_outputs=native_output_set,
+                simulator_params=simulator_params,
+                resolved_input_paths=resolved_input_paths,
+            )
+        except ValueError as exc:
+            errors.append(f"compatibility_rules[{index}]: {exc}")
+            continue
+        if not matches:
+            continue
+        if action == "block":
+            blocking.append(message)
+        else:
+            warnings.append(f"[{simulator_id}] {message}")
+    return (
+        list(dict.fromkeys(blocking)),
+        list(dict.fromkeys(warnings)),
+        list(dict.fromkeys(errors)),
     )
 
 
@@ -317,31 +590,14 @@ def validate_simulator_inputs(
     profile: str,
     requested_extras: list[str],
     simulator_params: dict[str, Any],
+    native_outputs: list[str] | None = None,
     input_ids: set[str],
 ) -> list[str]:
-    simulator_inputs = simulator_spec.get("simulator_inputs", {})
-    required = simulator_inputs.get("required", [])
-    optional = simulator_inputs.get("optional", [])
-    conditional_required = simulator_inputs.get("conditional_required", [])
-
-    declared_ids = {
-        str(item.get("input"))
-        for item in required + optional
-        if isinstance(item, dict) and item.get("input")
-    }
-    declared_ids.update(
-        str(item.get("input"))
-        for item in conditional_required
-        if isinstance(item, dict) and item.get("input")
-    )
+    extra_inputs = simulator_spec.get("extra_inputs", {})
+    required = extra_inputs.get("required", [])
+    conditional_required = extra_inputs.get("conditional_required", [])
 
     errors: list[str] = []
-    unknown_inputs = sorted(set(input_ids).difference(declared_ids))
-    if unknown_inputs:
-        errors.append(
-            f"unknown inputs for simulator '{simulator_id}': {', '.join(unknown_inputs)}"
-        )
-
     for item in required:
         if isinstance(item, dict):
             input_id = str(item.get("input", ""))
@@ -349,6 +605,7 @@ def validate_simulator_inputs(
                 errors.append(f"missing required input file '{input_id}'")
 
     requested_extra_set = set(requested_extras)
+    native_output_set = set(native_outputs or [])
     for requirement in conditional_required:
         if not isinstance(requirement, dict):
             continue
@@ -360,6 +617,7 @@ def validate_simulator_inputs(
                 requirement,
                 profile=profile,
                 requested_extras=requested_extra_set,
+                native_outputs=native_output_set,
                 simulator_params=simulator_params,
             )
             and input_id not in input_ids
@@ -373,6 +631,23 @@ def validate_simulator_inputs(
                 )
             )
     return errors
+
+
+def simulator_input_warnings(
+    *,
+    simulator_spec: dict[str, Any],
+    input_ids: set[str],
+) -> list[str]:
+    extra_inputs = simulator_spec.get("extra_inputs", {})
+    optional = extra_inputs.get("optional", [])
+    warnings: list[str] = []
+    for item in optional:
+        if not isinstance(item, dict):
+            continue
+        input_id = str(item.get("input", "")).strip()
+        if input_id and input_id not in input_ids:
+            warnings.append(f"optional input not provided: {input_id}")
+    return warnings
 
 
 def resolve_simulator_runtime_resources(
@@ -505,6 +780,17 @@ def _resolve_simulator_run(
         raise ValueError(
             f"Simulator '{simulator_id}' does not support profile '{profile}'"
         )
+    truth_outputs = profile_capability.get("truth_outputs", {})
+    missing_truth = [
+        output_id
+        for output_id in required_truth_outputs_for_profile(profile)
+        if truth_outputs.get(output_id) not in {"native", "derivable"}
+    ]
+    if missing_truth:
+        raise ValueError(
+            f"Simulator '{simulator_id}' cannot satisfy required truth outputs for "
+            f"profile '{profile}': {missing_truth}"
+        )
 
     native, derivable = _supported_requested_artifacts(profile_capability)
     supported_extras = native.union(derivable)
@@ -533,6 +819,17 @@ def _resolve_simulator_run(
         user_params=raw_simulator_params,
         spec_params=simulator_spec.get("params", {}),
     )
+    truth_parameter_errors = validate_truth_parameter_requirements(
+        profile_capability=profile_capability,
+        profile=profile,
+        requested_extras=requested_extras,
+        simulator_params=resolved_params,
+    )
+    if truth_parameter_errors:
+        raise ValueError(
+            f"[{simulator_id}] invalid truth output parameters: "
+            + "; ".join(truth_parameter_errors)
+        )
     runtime_resources = resolve_simulator_runtime_resources(
         simulator_id=simulator_id,
         simulator_spec=simulator_spec,
@@ -554,11 +851,34 @@ def _resolve_simulator_run(
         profile=profile,
         requested_extras=requested_extras,
         simulator_params=resolved_params,
+        native_outputs=native_outputs,
         input_ids=set(inputs),
     )
     if input_errors:
         raise ValueError(
             f"[{simulator_id}] invalid inputs: {'; '.join(input_errors)}"
+        )
+
+    compatibility_blocks, _compatibility_warnings, compatibility_errors = (
+        collect_simulator_compatibility_rule_issues(
+            simulator_id=simulator_id,
+            simulator_spec=simulator_spec,
+            profile=profile,
+            requested_extras=requested_extras,
+            simulator_params=resolved_params,
+            native_outputs=native_outputs,
+            resolved_input_paths=resolved_input_paths,
+        )
+    )
+    if compatibility_errors:
+        raise ValueError(
+            f"[{simulator_id}] invalid compatibility rules: "
+            + "; ".join(compatibility_errors)
+        )
+    if compatibility_blocks:
+        raise ValueError(
+            f"[{simulator_id}] incompatible simulator parameters: "
+            + "; ".join(compatibility_blocks)
         )
 
     simulator_seed_base = run_payload.get("base_seed")
@@ -627,9 +947,11 @@ def validate_simulation_plan_payload(
         _validate_common_plan_fields(plan_payload, label="simulation-plan")
     )
     raw_inputs = plan_payload.get("inputs", {})
+    input_specs = load_simulation_input_specs()
     inputs, resolved_input_paths = _resolve_inputs(
         raw_inputs,
         base_dir=base_dir or Path.cwd(),
+        known_input_ids=set(input_specs),
     )
 
     run_payloads = plan_payload.get("runs", [])

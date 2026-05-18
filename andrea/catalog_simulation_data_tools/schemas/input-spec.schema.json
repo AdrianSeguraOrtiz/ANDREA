@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://andrea.org/schemas/simulation-input-spec.schema.json",
+  "title": "ANDREA Simulation InputSpec",
+  "description": "Declarative contract for generate-data simulator-side input files.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "format",
+    "description",
+    "example",
+    "validation_notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "newick",
+        "tsv",
+        "txt"
+      ]
+    },
+    "accepted_extensions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^\\.[A-Za-z0-9_.-]+$"
+      },
+      "default": []
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "example": {
+      "type": "string",
+      "minLength": 1
+    },
+    "delimiter": {
+      "type": "string"
+    },
+    "header": {
+      "type": "boolean"
+    },
+    "min_rows": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "required_columns": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "column_types": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "string",
+          "int",
+          "float",
+          "bool"
+        ]
+      },
+      "default": {}
+    },
+    "validation_notes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "format": {
+            "const": "tsv"
+          }
+        },
+        "required": ["format"]
+      },
+      "then": {
+        "required": [
+          "delimiter",
+          "header",
+          "min_rows",
+          "required_columns"
+        ],
+        "properties": {
+          "delimiter": {
+            "const": "\t"
+          },
+          "header": {
+            "const": true
+          },
+          "required_columns": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "format": {
+            "enum": ["newick", "txt"]
+          }
+        },
+        "required": ["format"]
+      },
+      "then": {
+        "properties": {
+          "required_columns": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

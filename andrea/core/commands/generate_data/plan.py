@@ -11,8 +11,10 @@ from .cost_planner import apply_simulator_cost_plan, detect_host_ram_gb
 from .request import (
     _resolve_native_outputs,
     _resolve_simulator_params,
+    collect_simulator_compatibility_rule_issues,
     resolve_simulator_runtime_resources,
     validate_simulator_inputs,
+    validate_truth_parameter_requirements,
     validate_simulation_plan_payload,
 )
 from .scenario import validate_scenario_request
@@ -96,18 +98,19 @@ def _build_simulation_plan_payload(
             user_params=dict(run_config.get("params", {})),
             spec_params=simulator_spec.get("params", {}),
         )
-        input_errors = validate_simulator_inputs(
-            simulator_id=simulator_id,
-            simulator_spec=simulator_spec,
+        truth_parameter_errors = validate_truth_parameter_requirements(
+            profile_capability=get_profile_capability(
+                simulator_spec, scenario.profile
+            )
+            or {},
             profile=scenario.profile,
             requested_extras=scenario.requested_extras,
             simulator_params=resolved_params,
-            input_ids=set(scenario.inputs),
         )
-        if input_errors:
+        if truth_parameter_errors:
             raise ValueError(
-                f"Simulator run '{run_id}' has invalid inputs: "
-                + "; ".join(input_errors)
+                f"Simulator run '{run_id}' has invalid truth output parameters: "
+                + "; ".join(truth_parameter_errors)
             )
         profile_capability = get_profile_capability(simulator_spec, scenario.profile)
         if profile_capability is None:
@@ -123,6 +126,41 @@ def _build_simulation_plan_payload(
             raw_native_outputs=run_config.get("native_outputs"),
             label=f"simulator-runs.runs[{run_id}]",
         )
+        compatibility_blocks, _compatibility_warnings, compatibility_errors = (
+            collect_simulator_compatibility_rule_issues(
+                simulator_id=simulator_id,
+                simulator_spec=simulator_spec,
+                profile=scenario.profile,
+                requested_extras=scenario.requested_extras,
+                simulator_params=resolved_params,
+                native_outputs=native_outputs,
+                resolved_input_paths=scenario.resolved_input_paths,
+            )
+        )
+        if compatibility_errors:
+            raise ValueError(
+                f"Simulator run '{run_id}' has invalid compatibility rules: "
+                + "; ".join(compatibility_errors)
+            )
+        if compatibility_blocks:
+            raise ValueError(
+                f"Simulator run '{run_id}' is blocked by compatibility rules: "
+                + "; ".join(compatibility_blocks)
+            )
+        input_errors = validate_simulator_inputs(
+            simulator_id=simulator_id,
+            simulator_spec=simulator_spec,
+            profile=scenario.profile,
+            requested_extras=scenario.requested_extras,
+            simulator_params=resolved_params,
+            native_outputs=native_outputs,
+            input_ids=set(scenario.inputs),
+        )
+        if input_errors:
+            raise ValueError(
+                f"Simulator run '{run_id}' has invalid inputs: "
+                + "; ".join(input_errors)
+            )
         runtime_resources = resolve_simulator_runtime_resources(
             simulator_id=simulator_id,
             simulator_spec=simulator_spec,

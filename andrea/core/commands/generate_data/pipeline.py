@@ -39,6 +39,7 @@ from .shared import (
     _relative_posix,
     _validate_json_instance,
     _write_json,
+    required_truth_context_prefixes_for_profile,
 )
 
 INFERENCE_DATASET_MANIFEST_SCHEMA = (
@@ -313,21 +314,13 @@ def _required_truth_contexts(
     *,
     request: ResolvedSimulatorRun,
 ) -> tuple[set[str], list[str]]:
-    capability = request.simulator_spec.get("profile_capabilities", {}).get(
-        request.profile,
-        {},
-    )
-    truth_outputs = capability.get("truth_outputs", {})
     exact_contexts: set[str] = set()
     context_prefixes: list[str] = []
-    if isinstance(truth_outputs, dict):
-        if truth_outputs.get("global") in {"native", "derivable"}:
-            exact_contexts.add("global")
-        if (
-            request.profile == "scrna_grouped"
-            and truth_outputs.get("group") in {"native", "derivable"}
-        ):
-            context_prefixes.append("group:")
+    for context in required_truth_context_prefixes_for_profile(request.profile):
+        if context.endswith(":"):
+            context_prefixes.append(context)
+        else:
+            exact_contexts.add(context)
     return exact_contexts, context_prefixes
 
 
@@ -420,6 +413,11 @@ def _validate_truth_outputs(
         for context in contexts
         if context.startswith("group:")
     )
+    cell_contexts = sorted(
+        context.removeprefix("cell:")
+        for context in contexts
+        if context.startswith("cell:")
+    )
     if group_contexts and isinstance(groups_rel, str) and groups_rel.strip():
         groups_path = stage_dir / groups_rel
         if groups_path.exists():
@@ -436,6 +434,35 @@ def _validate_truth_outputs(
                     f"truth networks for dataset {dataset_id} contain group contexts not present in extras/groups.tsv: "
                     + ", ".join(missing_groups)
                 )
+    if cell_contexts:
+        expression = simulator_manifest.get("expression", {})
+        expression_rel = expression.get("path") if isinstance(expression, dict) else None
+        if not isinstance(expression_rel, str) or not expression_rel.strip():
+            raise ValueError(
+                f"simulator-output-manifest[{dataset_id}] is missing expression.path"
+            )
+        expression_path = stage_dir / expression_rel
+        if not expression_path.exists() or not expression_path.is_file():
+            raise ValueError(
+                f"simulator-output-manifest[{dataset_id}] references missing expression matrix: {expression_rel}"
+            )
+        with expression_path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.reader(handle, delimiter="\t")
+            try:
+                header = next(reader)
+            except StopIteration as exc:
+                raise ValueError(
+                    f"expression matrix is empty for dataset {dataset_id}: {expression_rel}"
+                ) from exc
+        expression_cells = {
+            str(value).strip() for value in header[1:] if str(value).strip()
+        }
+        missing_cells = sorted(set(cell_contexts).difference(expression_cells))
+        if missing_cells:
+            raise ValueError(
+                f"truth networks for dataset {dataset_id} contain cell contexts not present in expression columns: "
+                + ", ".join(missing_cells)
+            )
     return {
         "gene_universe": str(gene_universe_rel),
         "networks": str(networks_rel),

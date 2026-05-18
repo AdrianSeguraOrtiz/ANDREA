@@ -11,10 +11,19 @@ from .catalog import _load_simulator_catalog, get_profile_capability
 from .request import (
     _resolve_simulator_params,
     _supported_requested_artifacts,
+    collect_simulator_compatibility_rule_issues,
+    simulator_input_warnings,
+    validate_truth_parameter_requirements,
     validate_simulator_inputs,
 )
 from .scenario import validate_scenario_request
-from .shared import ResolvedScenarioRequest, _validate_json_instance
+from .shared import (
+    ResolvedScenarioRequest,
+    _validate_json_instance,
+    primary_truth_output_for_profile,
+    required_truth_context_prefixes_for_profile,
+    required_truth_outputs_for_profile,
+)
 
 
 def _evaluate_runtime_requirements(_simulator_id: str) -> list[str]:
@@ -23,13 +32,6 @@ def _evaluate_runtime_requirements(_simulator_id: str) -> list[str]:
     except RuntimeError as exc:
         return [str(exc)]
     return []
-
-
-def _required_truth_outputs(profile: str) -> list[str]:
-    required = ["global"]
-    if profile == "scrna_grouped":
-        required.append("group")
-    return required
 
 
 def evaluate_simulator_for_scenario(
@@ -55,6 +57,7 @@ def evaluate_simulator_for_scenario(
         truth_outputs = {
             "global": "none",
             "group": "none",
+            "cell": "none",
         }
         supported_effective_extras: list[str] = []
     else:
@@ -67,19 +70,102 @@ def evaluate_simulator_for_scenario(
         truth_outputs = dict(profile_capability.get("truth_outputs", {}))
         missing_truth = [
             output_id
-            for output_id in _required_truth_outputs(scenario.profile)
+            for output_id in required_truth_outputs_for_profile(scenario.profile)
             if truth_outputs.get(output_id) not in {"native", "derivable"}
         ]
         if missing_truth:
+            required_outputs = list(required_truth_outputs_for_profile(scenario.profile))
+            required_contexts = list(
+                required_truth_context_prefixes_for_profile(scenario.profile)
+            )
+            missing_contexts = [
+                required_contexts[required_outputs.index(output_id)]
+                for output_id in missing_truth
+                if output_id in required_outputs
+            ]
             issues.append(
                 make_issue(
                     severity="block",
                     code="unsupported_truth_outputs",
-                    message="profile requires truth output(s) not supported by this simulator: "
-                    + ", ".join(missing_truth),
+                    message="profile requires truth context(s) not supported by this simulator: "
+                    + ", ".join(missing_contexts or missing_truth),
                     simulator_id=simulator_id,
                 )
             )
+        primary_truth_output = primary_truth_output_for_profile(scenario.profile)
+        primary_truth_status = truth_outputs.get(primary_truth_output)
+        if primary_truth_status == "derivable":
+            primary_context = {
+                "global": "global",
+                "group": "group:",
+                "cell": "cell:",
+            }.get(primary_truth_output, primary_truth_output)
+            issues.append(
+                make_issue(
+                    severity="warn",
+                    code="primary_truth_context_derived",
+                    message=(
+                        f"profile '{scenario.profile}' uses canonical truth context "
+                        f"'{primary_context}', which this simulator derives rather than "
+                        "produces natively"
+                    ),
+                    simulator_id=simulator_id,
+                    context=primary_context,
+                )
+            )
+        truth_parameter_errors = validate_truth_parameter_requirements(
+            profile_capability=profile_capability,
+            profile=scenario.profile,
+            requested_extras=scenario.requested_extras,
+            simulator_params=resolved_params,
+        )
+        issues.extend(
+            make_issue(
+                severity="block",
+                code="invalid_truth_output_parameters",
+                message=message,
+                simulator_id=simulator_id,
+            )
+            for message in truth_parameter_errors
+        )
+        compatibility_blocks, compatibility_warnings, compatibility_errors = (
+            collect_simulator_compatibility_rule_issues(
+                simulator_id=simulator_id,
+                simulator_spec=spec,
+                profile=scenario.profile,
+                requested_extras=scenario.requested_extras,
+                simulator_params=resolved_params,
+                native_outputs=[],
+                resolved_input_paths=scenario.resolved_input_paths,
+            )
+        )
+        issues.extend(
+            make_issue(
+                severity="block",
+                code="compatibility_rule",
+                message=message,
+                simulator_id=simulator_id,
+            )
+            for message in compatibility_blocks
+        )
+        issues.extend(
+            make_issue(
+                severity="warn",
+                code="compatibility_rule",
+                message=message,
+                simulator_id=simulator_id,
+            )
+            for message in compatibility_warnings
+        )
+        issues.extend(
+            make_issue(
+                severity="block",
+                code="invalid_compatibility_rule",
+                message=f"invalid compatibility rule: {message}",
+                simulator_id=simulator_id,
+            )
+            for message in compatibility_errors
+        )
         supported_effective_extras = sorted(
             set(scenario.effective_extras).intersection(native.union(derivable))
         )
@@ -109,6 +195,19 @@ def evaluate_simulator_for_scenario(
                 profile=scenario.profile,
                 requested_extras=scenario.requested_extras,
                 simulator_params=resolved_params,
+                native_outputs=[],
+                input_ids=set(scenario.inputs),
+            )
+        )
+        issues.extend(
+            make_issue(
+                severity="warn",
+                code="optional_input_missing",
+                message=message,
+                simulator_id=simulator_id,
+            )
+            for message in simulator_input_warnings(
+                simulator_spec=spec,
                 input_ids=set(scenario.inputs),
             )
         )

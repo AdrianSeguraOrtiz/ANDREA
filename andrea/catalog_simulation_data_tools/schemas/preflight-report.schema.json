@@ -57,13 +57,17 @@
         "truth_outputs": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["global", "group"],
+          "required": ["global", "group", "cell"],
           "properties": {
             "global": {
               "type": "string",
               "enum": ["none", "native", "derivable"]
             },
             "group": {
+              "type": "string",
+              "enum": ["none", "native", "derivable"]
+            },
+            "cell": {
               "type": "string",
               "enum": ["none", "native", "derivable"]
             }

@@ -16,7 +16,8 @@
     "simulation_keywords",
     "implementation_url",
     "docker_image",
-    "simulator_inputs",
+    "extra_inputs",
+    "compatibility_rules",
     "runtime_resources",
     "profile_capabilities",
     "params"
@@ -29,7 +30,8 @@
         "bulk_time_series",
         "bulk_perturbational",
         "scrna_global",
-        "scrna_grouped"
+        "scrna_grouped",
+        "scrna_cell_specific"
       ]
     },
     "extra_key": {
@@ -51,7 +53,7 @@
       "minLength": 1,
       "pattern": "^[a-z][a-z0-9_]*$"
     },
-    "simulator_input_usage": {
+    "extra_input_usage": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -65,18 +67,6 @@
         "usage": {
           "type": "string",
           "minLength": 1
-        },
-        "formats": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "example": {
-          "type": "string"
         }
       }
     },
@@ -92,7 +82,7 @@
         "field": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^(profile|requested_extra|param\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$"
+          "pattern": "^(profile|requested_extra|native_output|param\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$"
         },
         "op": {
           "type": "string",
@@ -146,18 +136,6 @@
           "type": "string",
           "minLength": 1
         },
-        "formats": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "example": {
-          "type": "string"
-        },
         "conditions": {
           "type": "array",
           "minItems": 1,
@@ -171,7 +149,90 @@
         }
       }
     },
-    "simulator_inputs": {
+    "compatibility_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "op"
+      ],
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(profile|requested_extra|native_output|param\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*|input\\.[a-z][a-z0-9_]*\\.unique_gene_count)$"
+        },
+        "op": {
+          "type": "string",
+          "enum": [
+            "eq",
+            "ne",
+            "in",
+            "not_in",
+            "gt",
+            "gte",
+            "lt",
+            "lte"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "integer" },
+            { "type": "number" },
+            { "type": "boolean" },
+            { "type": "string" },
+            {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  { "type": "integer" },
+                  { "type": "number" },
+                  { "type": "boolean" },
+                  { "type": "string" }
+                ]
+              }
+            }
+          ]
+        },
+        "value_from": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(param\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*|input\\.[a-z][a-z0-9_]*\\.unique_gene_count)$"
+        }
+      },
+      "oneOf": [
+        { "required": ["value"], "not": { "required": ["value_from"] } },
+        { "required": ["value_from"], "not": { "required": ["value"] } }
+      ]
+    },
+    "compatibility_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "conditions",
+        "message"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["block", "warn"]
+        },
+        "conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/compatibility_condition"
+          }
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "extra_inputs": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -183,13 +244,13 @@
         "required": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/simulator_input_usage"
+            "$ref": "#/$defs/extra_input_usage"
           }
         },
         "optional": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/simulator_input_usage"
+            "$ref": "#/$defs/extra_input_usage"
           }
         },
         "conditional_required": {
@@ -247,7 +308,8 @@
       "additionalProperties": false,
       "required": [
         "global",
-        "group"
+        "group",
+        "cell"
       ],
       "properties": {
         "global": {
@@ -255,6 +317,118 @@
         },
         "group": {
           "$ref": "#/$defs/truth_output_mode"
+        },
+        "cell": {
+          "$ref": "#/$defs/truth_output_mode"
+        }
+      }
+    },
+    "truth_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context",
+        "status"
+      ],
+      "properties": {
+        "context": {
+          "type": "string",
+          "enum": [
+            "global",
+            "group",
+            "cell"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/truth_output_mode"
+        },
+        "source_artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "upstream_configuration": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "generation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score_semantics": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": ["native", "derivable"]
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "required": [
+              "source_artifacts",
+              "upstream_configuration",
+              "generation",
+              "score_semantics",
+              "limitations"
+            ]
+          }
+        }
+      ]
+    },
+    "truth_parameter_requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "truth_output",
+        "conditions",
+        "message"
+      ],
+      "properties": {
+        "truth_output": {
+          "type": "string",
+          "enum": [
+            "global",
+            "group",
+            "cell"
+          ]
+        },
+        "conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/conditional_input_condition"
+          }
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
@@ -271,7 +445,8 @@
         "tf_list",
         "prior_grn_by_group",
         "global",
-        "group"
+        "group",
+        "cell"
       ]
     },
     "derivation": {
@@ -443,6 +618,19 @@
         },
         "truth_outputs": {
           "$ref": "#/$defs/truth_outputs"
+        },
+        "truth_contexts": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "$ref": "#/$defs/truth_context"
+          }
+        },
+        "truth_parameter_requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/truth_parameter_requirement"
+          }
         },
         "derivations": {
           "type": "array",
@@ -638,8 +826,14 @@
       "type": "string",
       "minLength": 1
     },
-    "simulator_inputs": {
-      "$ref": "#/$defs/simulator_inputs"
+    "extra_inputs": {
+      "$ref": "#/$defs/extra_inputs"
+    },
+    "compatibility_rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/compatibility_rule"
+      }
     },
     "runtime_resources": {
       "$ref": "#/$defs/runtime_resources"
@@ -662,6 +856,9 @@
           "$ref": "#/$defs/profile_capability"
         },
         "scrna_grouped": {
+          "$ref": "#/$defs/profile_capability"
+        },
+        "scrna_cell_specific": {
           "$ref": "#/$defs/profile_capability"
         }
       }

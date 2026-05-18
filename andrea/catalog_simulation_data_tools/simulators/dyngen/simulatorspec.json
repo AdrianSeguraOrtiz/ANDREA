@@ -17,11 +17,12 @@
   ],
   "implementation_url": "https://github.com/dynverse/dyngen",
   "docker_image": "adriansegura99/simulator_dyngen:1.0.0",
-  "simulator_inputs": {
+  "extra_inputs": {
     "required": [],
     "optional": [],
     "conditional_required": []
   },
+  "compatibility_rules": [],
   "runtime_resources": {
     "threading": {
       "supported": true,
@@ -33,48 +34,94 @@
   "profile_capabilities": {
     "scrna_global": {
       "native_extras": [],
-      "derivable_extras": ["enrichment_background", "pseudotime", "prior_grn", "tf_list"],
+      "derivable_extras": [
+        "enrichment_background",
+        "pseudotime",
+        "prior_grn",
+        "tf_list"
+      ],
       "truth_outputs": {
         "global": "native",
-        "group": "none"
+        "group": "none",
+        "cell": "none"
       },
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "model$feature_network",
+            "dataset$regulatory_network"
+          ],
+          "upstream_configuration": [
+            "dyngen::generate_dataset(format='list') is run without requiring cellwise GRN storage for the global-only profile."
+          ],
+          "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
+          "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
+          "limitations": [
+            "Represents the static simulator regulatory graph for the generated process, not group-specific or cell-specific regulatory activity."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "The global profile does not request or export group truth contexts."
+        },
+        {
+          "context": "cell",
+          "status": "none",
+          "explanation": "The global profile does not request or export cell-specific truth contexts."
+        }
+      ],
       "native_outputs": [
         {
           "id": "milestone_network",
           "kind": "graph",
           "description": "Directed milestone-state network describing the simulated trajectory topology.",
-          "formats": ["tsv"]
+          "formats": [
+            "tsv"
+          ]
         },
         {
           "id": "milestone_percentages",
           "kind": "table",
           "description": "Per-cell soft assignments over milestone states derived from the simulated trajectory.",
-          "formats": ["tsv"]
+          "formats": [
+            "tsv"
+          ]
         },
         {
           "id": "progressions",
           "kind": "table",
           "description": "Per-cell progression records along directed milestone transitions.",
-          "formats": ["tsv"]
+          "formats": [
+            "tsv"
+          ]
         },
         {
           "id": "rna_velocity",
           "kind": "matrix",
           "description": "Ground-truth RNA velocity matrix over the simulated feature set.",
-          "formats": ["tsv"]
+          "formats": [
+            "tsv"
+          ]
         },
         {
           "id": "regulatory_network_sc",
           "kind": "table",
           "description": "Cell-specific regulatory interaction scores emitted directly by dyngen.",
-          "formats": ["tsv"],
+          "formats": [
+            "tsv"
+          ],
           "notes": "Advanced output intended for downstream benchmarking or method development rather than the canonical generate-data extras layer."
         }
       ],
       "derivations": [
         {
           "artifact": "tf_list",
-          "source_artifacts": ["feature_info"],
+          "source_artifacts": [
+            "feature_info"
+          ],
           "method": "Select dyngen features whose feature metadata marks them as transcription factors and export their feature identifiers one per line.",
           "assumptions": [
             "dyngen feature_info$is_tf is the authoritative TF annotation for the simulated feature set."
@@ -86,7 +133,9 @@
         },
         {
           "artifact": "enrichment_background",
-          "source_artifacts": ["counts"],
+          "source_artifacts": [
+            "counts"
+          ],
           "method": "Export every generated expression feature identifier from the dyngen count matrix as the background gene universe, one identifier per line.",
           "assumptions": [
             "The generated expression feature set is the appropriate enrichment background universe for downstream analyses on the simulated dataset."
@@ -98,7 +147,10 @@
         },
         {
           "artifact": "pseudotime",
-          "source_artifacts": ["milestone_network", "milestone_percentages"],
+          "source_artifacts": [
+            "milestone_network",
+            "milestone_percentages"
+          ],
           "method": "Derive a deterministic milestone order from dyngen milestone transitions, compute each cell's weighted milestone-order coordinate from milestone_percentages, then min-max scale the resulting coordinate to [0, 1].",
           "assumptions": [
             "dyngen milestone transitions provide a usable ordering backbone for a scalar pseudotime coordinate.",
@@ -112,7 +164,9 @@
         },
         {
           "artifact": "prior_grn",
-          "source_artifacts": ["feature_network"],
+          "source_artifacts": [
+            "feature_network"
+          ],
           "method": "Export dyngen feature_network regulator-target edges with signed scores equal to abs(strength) multiplied by the sign of dyngen effect.",
           "assumptions": [
             "dyngen feature_network is the native simulated regulatory network and can serve as an oracle global prior when explicitly requested."
@@ -147,45 +201,98 @@
       ],
       "truth_outputs": {
         "global": "native",
-        "group": "derivable"
+        "group": "derivable",
+        "cell": "none"
       },
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "model$feature_network",
+            "dataset$regulatory_network"
+          ],
+          "upstream_configuration": [
+            "dyngen::generate_dataset(format='list', store_cellwise_grn=TRUE) is run after enabling compute_cellwise_grn because grouped truth also needs cellwise regulatory activity."
+          ],
+          "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
+          "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
+          "limitations": [
+            "Represents the static simulator regulatory graph for the generated process, not the group-derived active regulatory summaries."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "derivable",
+          "source_artifacts": [
+            "groups",
+            "dataset$regulatory_network_sc"
+          ],
+          "upstream_configuration": [
+            "simulation_params.compute_cellwise_grn is enabled and dyngen::generate_dataset(..., store_cellwise_grn=TRUE) stores dataset$regulatory_network_sc."
+          ],
+          "generation": "For each exported group, the wrapper aggregates dyngen cell-specific regulatory strengths by regulator-target edge across group cells and writes active edges as context=group:<group_id>.",
+          "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
+          "limitations": [
+            "Group truth is an ANDREA-derived summary, not a native dyngen object.",
+            "The active-edge set depends on the hard group assignment and the fixed 0.1 mean-absolute-strength threshold."
+          ]
+        },
+        {
+          "context": "cell",
+          "status": "none",
+          "explanation": "The grouped profile does not export one network per cell."
+        }
+      ],
       "native_outputs": [
         {
           "id": "milestone_network",
           "kind": "graph",
           "description": "Directed milestone-state network describing the simulated trajectory topology.",
-          "formats": ["tsv"]
+          "formats": [
+            "tsv"
+          ]
         },
         {
           "id": "milestone_percentages",
           "kind": "table",
           "description": "Per-cell soft assignments over milestone states derived from the simulated trajectory.",
-          "formats": ["tsv"]
+          "formats": [
+            "tsv"
+          ]
         },
         {
           "id": "progressions",
           "kind": "table",
           "description": "Per-cell progression records along directed milestone transitions.",
-          "formats": ["tsv"]
+          "formats": [
+            "tsv"
+          ]
         },
         {
           "id": "rna_velocity",
           "kind": "matrix",
           "description": "Ground-truth RNA velocity matrix over the simulated feature set.",
-          "formats": ["tsv"]
+          "formats": [
+            "tsv"
+          ]
         },
         {
           "id": "regulatory_network_sc",
           "kind": "table",
           "description": "Cell-specific regulatory interaction scores emitted directly by dyngen.",
-          "formats": ["tsv"],
+          "formats": [
+            "tsv"
+          ],
           "notes": "Advanced output intended for downstream benchmarking or method development rather than the canonical generate-data extras layer."
         }
       ],
       "derivations": [
         {
           "artifact": "groups",
-          "source_artifacts": ["milestone_percentages"],
+          "source_artifacts": [
+            "milestone_percentages"
+          ],
           "method": "Assign each exported cell to the dyngen milestone with the highest milestone percentage; ties are resolved deterministically by milestone identifier.",
           "assumptions": [
             "A hard single-group assignment is acceptable for grouped scRNA benchmarks even though dyngen stores soft milestone memberships."
@@ -247,7 +354,9 @@
         },
         {
           "artifact": "tf_list",
-          "source_artifacts": ["feature_info"],
+          "source_artifacts": [
+            "feature_info"
+          ],
           "method": "Select dyngen features whose feature metadata marks them as transcription factors and export their feature identifiers one per line.",
           "assumptions": [
             "dyngen feature_info$is_tf is the authoritative TF annotation for the simulated feature set."
@@ -259,7 +368,9 @@
         },
         {
           "artifact": "enrichment_background",
-          "source_artifacts": ["counts"],
+          "source_artifacts": [
+            "counts"
+          ],
           "method": "Export every generated expression feature identifier from the dyngen count matrix as the background gene universe, one identifier per line.",
           "assumptions": [
             "The generated expression feature set is the appropriate enrichment background universe for downstream analyses on the simulated dataset."
@@ -271,7 +382,10 @@
         },
         {
           "artifact": "pseudotime",
-          "source_artifacts": ["milestone_network", "milestone_percentages"],
+          "source_artifacts": [
+            "milestone_network",
+            "milestone_percentages"
+          ],
           "method": "Derive a deterministic milestone order from dyngen milestone transitions, compute each cell's weighted milestone-order coordinate from milestone_percentages, then min-max scale the resulting coordinate to [0, 1].",
           "assumptions": [
             "dyngen milestone transitions provide a usable ordering backbone for a scalar pseudotime coordinate.",
@@ -285,7 +399,9 @@
         },
         {
           "artifact": "prior_grn",
-          "source_artifacts": ["feature_network"],
+          "source_artifacts": [
+            "feature_network"
+          ],
           "method": "Export dyngen feature_network regulator-target edges with signed scores equal to abs(strength) multiplied by the sign of dyngen effect.",
           "assumptions": [
             "dyngen feature_network is the native simulated regulatory network and can serve as an oracle global prior when explicitly requested."
@@ -341,6 +457,293 @@
         }
       ],
       "notes": "Groups, ordered cell phenotypes, cluster identities and pseudotime can be derived from milestone assignments and transitions. Public group truth networks and group-specific oracle priors are derived from cell-specific regulatory activity, and lineage_tree is derived from milestone transitions plus those active-edge summaries."
+    },
+    "scrna_cell_specific": {
+      "native_extras": [],
+      "derivable_extras": [
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "truth_outputs": {
+        "global": "native",
+        "group": "derivable",
+        "cell": "native"
+      },
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "model$feature_network",
+            "dataset$regulatory_network"
+          ],
+          "upstream_configuration": [
+            "dyngen::generate_dataset(format='list', store_cellwise_grn=TRUE) is run after enabling compute_cellwise_grn because cell-specific and group-derived truth need cellwise regulatory activity."
+          ],
+          "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
+          "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
+          "limitations": [
+            "Global truth remains the static simulator regulatory graph and is not recomputed as a cellwise aggregate."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "derivable",
+          "source_artifacts": [
+            "groups",
+            "dataset$regulatory_network_sc"
+          ],
+          "upstream_configuration": [
+            "simulation_params.compute_cellwise_grn is enabled and dyngen::generate_dataset(..., store_cellwise_grn=TRUE) stores dataset$regulatory_network_sc."
+          ],
+          "generation": "The wrapper first derives hard group assignments from milestone_percentages, then aggregates cell-specific regulatory strengths within each group and writes active edges as context=group:<group_id>.",
+          "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
+          "limitations": [
+            "Group truth is an ANDREA-derived summary layered on top of a cell-specific dyngen run.",
+            "The active-edge set depends on maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold."
+          ]
+        },
+        {
+          "context": "cell",
+          "status": "native",
+          "source_artifacts": [
+            "dataset$regulatory_network_sc"
+          ],
+          "upstream_configuration": [
+            "simulation_params.compute_cellwise_grn is enabled and dyngen::generate_dataset(..., store_cellwise_grn=TRUE) stores dataset$regulatory_network_sc."
+          ],
+          "generation": "The wrapper maps each nonzero non-self-loop row from dyngen regulatory_network_sc to context=cell:<cell_id> in truth/networks.csv.",
+          "score_semantics": "score is abs(strength) for that cell/regulator/target row; sign is derived from the row strength sign.",
+          "limitations": [
+            "Cell truth is available only when dyngen computes and stores the cellwise GRN.",
+            "The public export filters zero-strength rows and self-loops."
+          ]
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "milestone_network",
+          "kind": "graph",
+          "description": "Directed milestone-state network describing the simulated trajectory topology.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "milestone_percentages",
+          "kind": "table",
+          "description": "Per-cell soft assignments over milestone states derived from the simulated trajectory.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "progressions",
+          "kind": "table",
+          "description": "Per-cell progression records along directed milestone transitions.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "rna_velocity",
+          "kind": "matrix",
+          "description": "Ground-truth RNA velocity matrix over the simulated feature set.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "regulatory_network_sc",
+          "kind": "table",
+          "description": "Cell-specific regulatory interaction scores emitted directly by dyngen.",
+          "formats": [
+            "tsv"
+          ],
+          "notes": "This is the native dyngen source for public `cell:<cell_id>` truth rows in `truth/networks.csv`."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "groups",
+          "source_artifacts": [
+            "milestone_percentages"
+          ],
+          "method": "Assign each exported cell to the dyngen milestone with the highest milestone percentage; ties are resolved deterministically by milestone identifier.",
+          "assumptions": [
+            "A hard single-group assignment is useful metadata for cell-specific scRNA benchmarks even though the public truth is cell-level."
+          ],
+          "limitations": [
+            "Cells near transitions can have mixed milestone memberships; the exported group keeps only the maximum-membership state."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "cell_phenotypes",
+          "source_artifacts": [
+            "groups",
+            "milestone_network"
+          ],
+          "method": "Reuse the wrapper-derived hard group assignment as each cell's phenotype label, and assign phenotype order from the deterministic milestone order derived from dyngen milestone transitions.",
+          "assumptions": [
+            "For dyngen cell-specific scRNA benchmarks, the milestone-derived group label is also an appropriate ordered cell phenotype/state label."
+          ],
+          "limitations": [
+            "The phenotype label is still a hard maximum-membership state, so mixed transition cells lose their soft milestone proportions.",
+            "Branching milestone topologies are reduced to a deterministic integer order."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "cluster_identities",
+          "source_artifacts": [
+            "groups",
+            "milestone_network"
+          ],
+          "method": "Export one row per wrapper-derived group, using the dyngen milestone/group identifier as both cluster and annotation, and assign the optional order from the deterministic milestone order.",
+          "assumptions": [
+            "dyngen milestone identifiers are meaningful cluster annotations for synthetic benchmark datasets."
+          ],
+          "limitations": [
+            "Annotations are simulator state identifiers, not curated biological labels.",
+            "Branching milestone topologies are reduced to a deterministic integer order."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "feature_info"
+          ],
+          "method": "Select dyngen features whose feature metadata marks them as transcription factors and export their feature identifiers one per line.",
+          "assumptions": [
+            "dyngen feature_info$is_tf is the authoritative TF annotation for the simulated feature set."
+          ],
+          "limitations": [
+            "The exported TF list reflects dyngen's simulated regulator classes, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "counts"
+          ],
+          "method": "Export every generated expression feature identifier from the dyngen count matrix as the background gene universe, one identifier per line.",
+          "assumptions": [
+            "The generated expression feature set is the appropriate enrichment background universe for downstream analyses on the simulated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived, not an external organism-specific gene universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "pseudotime",
+          "source_artifacts": [
+            "milestone_network",
+            "milestone_percentages"
+          ],
+          "method": "Derive a deterministic milestone order from dyngen milestone transitions, compute each cell's weighted milestone-order coordinate from milestone_percentages, then min-max scale the resulting coordinate to [0, 1].",
+          "assumptions": [
+            "dyngen milestone transitions provide a usable ordering backbone for a scalar pseudotime coordinate.",
+            "Soft milestone percentages can be summarized as a weighted position on that order."
+          ],
+          "limitations": [
+            "Branching trajectories are projected onto a single scalar ordering.",
+            "Disconnected or cyclic milestone graphs use a deterministic wrapper fallback order."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "feature_network"
+          ],
+          "method": "Export dyngen feature_network regulator-target edges with signed scores equal to abs(strength) multiplied by the sign of dyngen effect.",
+          "assumptions": [
+            "dyngen feature_network is the native simulated regulatory network and can serve as an oracle global prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior, not a noisy external prior; benchmark interpretation must account for that advantage."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "group",
+          "source_artifacts": [
+            "groups",
+            "regulatory_network_sc"
+          ],
+          "method": "For each exported group, aggregate dyngen cell-specific regulatory strengths by regulator-target edge across all cells in the group, treating missing cell-edge values as zero. An edge is active when mean absolute strength is at least 0.1. The group truth score is the mean absolute strength and the sign is derived from the mean signed strength.",
+          "assumptions": [
+            "dyngen regulatory_network_sc is a cell-specific regulatory activity truth over the generated feature network.",
+            "A hard group-level truth network can be represented by aggregating cell-specific regulatory activity over the cells assigned to that group.",
+            "Mean absolute cell-specific regulatory strength >= 0.1 is a stable activity threshold for public group truth."
+          ],
+          "limitations": [
+            "Group truth networks are wrapper-derived summaries, not dyngen-native files.",
+            "The active-edge set depends on the fixed 0.1 threshold and on the hard group assignment used in groups.tsv.",
+            "Opposing signed effects across cells can yield an ambiguous sign even when the mean absolute activity is high."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "lineage_tree",
+          "source_artifacts": [
+            "milestone_network",
+            "groups",
+            "regulatory_network_sc"
+          ],
+          "method": "Filter dyngen milestone transitions to exported groups, aggregate absolute cell-specific regulatory strengths by group and edge, mark edges active when mean absolute strength is at least 0.1, then compute gain/loss rates between parent and child active-edge sets.",
+          "assumptions": [
+            "Cell-specific profiles also export group truth, so the same group lineage derivation used for scrna_grouped applies to the group layer of scrna_cell_specific outputs.",
+            "dyngen milestone transitions define the lineage topology for the exported hard groups.",
+            "Mean absolute cell-specific regulatory strength >= 0.1 is a stable activity threshold for lineage gain/loss summaries."
+          ],
+          "limitations": [
+            "This artifact describes the derived group layer of a cell-specific benchmark; it is not a per-cell lineage file.",
+            "The lineage tree is a wrapper-derived summary, not a dyngen-native file.",
+            "Gain/loss rates depend on the fixed 0.1 activity threshold and on hard group assignments."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        },
+        {
+          "artifact": "prior_grn_by_group",
+          "source_artifacts": [
+            "groups",
+            "regulatory_network_sc"
+          ],
+          "method": "Aggregate dyngen cell-specific regulatory strengths by group and regulator-target edge, keep edges active when mean absolute strength is at least 0.1, and export signed group-specific prior scores from the mean signed strength, falling back to mean absolute strength for sign-ambiguous active edges.",
+          "assumptions": [
+            "Cell-specific profiles also export group truth, so group-specific oracle priors can be derived by aggregating the same cell-specific regulatory truth used for the public group layer.",
+            "dyngen regulatory_network_sc is a cell-specific regulatory activity truth over the generated feature network.",
+            "A group-specific prior can be generated as an oracle benchmark input by aggregating cell-specific regulatory activity over each hard group."
+          ],
+          "limitations": [
+            "This artifact describes the derived group layer of a cell-specific benchmark; it is not a per-cell prior file.",
+            "This is a truth-derived oracle prior, not an independently simulated modality such as scATAC.",
+            "The active-edge set depends on the fixed 0.1 threshold and on hard group assignments.",
+            "Opposing signed effects across cells can produce a sign-ambiguous active edge."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "feature_info",
+          "kind": "metadata",
+          "description": "dyngen feature metadata, including feature identifiers and TF annotations."
+        }
+      ],
+      "notes": "Cell-specific scRNA truth is generated from dyngen's native `regulatory_network_sc` table while cumulative group truth is derived from the same cellwise regulatory activity using the group-level active-edge threshold. Optional group/phenotype metadata can still be derived from milestone assignments for downstream stratification."
     }
   },
   "params": {
@@ -398,7 +801,13 @@
       "type": "enum",
       "required": false,
       "default": "pearson",
-      "enum": ["pearson", "spearman", "cosine", "euclidean", "manhattan"],
+      "enum": [
+        "pearson",
+        "spearman",
+        "cosine",
+        "euclidean",
+        "manhattan"
+      ],
       "description": "Distance metric used internally by dyngen for cell-to-cell distance calculations."
     },
     "tf_network_params": {
@@ -591,7 +1000,10 @@
           "type": "enum",
           "required": false,
           "default": "simple",
-          "enum": ["simple", "none"],
+          "enum": [
+            "simple",
+            "none"
+          ],
           "description": "Kinetics noise preset passed to dyngen."
         },
         "kinetics_noise_mean": {
@@ -626,7 +1038,10 @@
           "type": "enum",
           "required": false,
           "default": "snapshot",
-          "enum": ["snapshot", "synchronised"],
+          "enum": [
+            "snapshot",
+            "synchronised"
+          ],
           "description": "Whether dyngen should sample a snapshot experiment or a synchronised time-course experiment."
         },
         "map_reference_cpm": {

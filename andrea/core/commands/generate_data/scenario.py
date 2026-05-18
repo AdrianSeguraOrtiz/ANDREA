@@ -7,7 +7,7 @@ from typing import Any
 
 from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
 
-from .catalog import _load_simulator_catalog
+from .catalog import _load_simulator_catalog, load_simulation_input_specs
 from .request import _resolve_inputs, _validate_organism
 from .shared import (
     PROFILE_SPECS,
@@ -60,9 +60,11 @@ def validate_scenario_request_payload(
         set(requested_extras).union(PROFILE_SPECS[profile].required_extras)
     )
     raw_inputs = payload.get("inputs", {})
+    input_specs = load_simulation_input_specs()
     inputs, resolved_input_paths = _resolve_inputs(
         raw_inputs,
         base_dir=base_dir or Path.cwd(),
+        known_input_ids=set(input_specs),
     )
 
     return ResolvedScenarioRequest(

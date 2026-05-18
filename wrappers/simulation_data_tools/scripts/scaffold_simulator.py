@@ -179,7 +179,7 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
         "simulation_keywords": ["todo"],
         "implementation_url": "TODO_IMPLEMENTATION_URL",
         "docker_image": expected_docker_image(simulator_id),
-        "simulator_inputs": {
+        "extra_inputs": {
             "required": [],
             "optional": [],
             "conditional_required": [],
@@ -199,6 +199,7 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
                 "truth_outputs": {
                     "global": "native",
                     "group": "none",
+                    "cell": "none",
                 },
                 "derivations": [],
                 "artifacts_aux": [],
@@ -256,13 +257,16 @@ TODO: document installation, wrapper behavior and smoke tests.
 
 ## Simulator Inputs
 
-Document every simulator-side input file declared in `simulator_inputs`:
+Document every simulator-side input file declared in `simulatorspec.extra_inputs`.
+File semantics, format, examples and basic validation live in
+`andrea/catalog_simulation_data_tools/input_specs/<input_id>.json`.
 
 - required inputs
 - optional inputs
 - conditional inputs and the params/extras/profile values that require them
 
-Generated extras are not simulator-side inputs.
+Generated extras are not simulator-side inputs. Do not put formats or examples
+inline in `extra_inputs`; create or reuse an input spec instead.
 
 ## Cost Profiles
 
@@ -289,7 +293,7 @@ TODO: record paper/repo review and wrapper decisions.
 - selected public API/CLI entrypoint
 - supported profiles and unsupported profiles
 - native and derivable extras
-- simulator-side input files and conditional rules
+- simulator-side input specs and `extra_inputs` usage/conditional rules
 - parameter mapping and unsupported function-valued hooks
 - runtime resource mapping from `runtime_resources.threads`
 - output mapping

@@ -785,10 +785,100 @@ derive_global_truth <- function(model) {
   truth_df[order(truth_df$source, truth_df$target), , drop = FALSE]
 }
 
-write_truth_networks <- function(global_truth, group_truth_rows, output_dir) {
+derive_cell_truth <- function(dataset, cell_ids, genes, raw_dir) {
+  if (is.null(dataset$regulatory_network_sc)) {
+    stop("cell truth derivation requires dyngen cell-specific GRN output.", call. = FALSE)
+  }
+
+  regulatory_network_sc <- as.data.frame(dataset$regulatory_network_sc, stringsAsFactors = FALSE)
+  required_columns <- c("cell_id", "regulator", "target", "strength")
+  missing_columns <- setdiff(required_columns, names(regulatory_network_sc))
+  if (length(missing_columns) > 0) {
+    stop(
+      sprintf(
+        "dyngen regulatory_network_sc is missing required columns for cell truth: %s",
+        paste(missing_columns, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  regulatory_network_sc$cell_id <- as.character(regulatory_network_sc$cell_id)
+  regulatory_network_sc$regulator <- as.character(regulatory_network_sc$regulator)
+  regulatory_network_sc$target <- as.character(regulatory_network_sc$target)
+  regulatory_network_sc$strength <- as.numeric(regulatory_network_sc$strength)
+
+  valid_cells <- unique(as.character(cell_ids))
+  valid_genes <- unique(as.character(genes))
+  unknown_cells <- sort(unique(setdiff(unique(regulatory_network_sc$cell_id), valid_cells)))
+  if (length(unknown_cells) > 0) {
+    stop(
+      sprintf(
+        "dyngen regulatory_network_sc contains cell IDs absent from expression columns: %s",
+        paste(unknown_cells, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  unknown_genes <- sort(unique(setdiff(
+    unique(c(regulatory_network_sc$regulator, regulatory_network_sc$target)),
+    valid_genes
+  )))
+  if (length(unknown_genes) > 0) {
+    stop(
+      sprintf(
+        "dyngen regulatory_network_sc contains genes absent from truth/gene_universe.txt: %s",
+        paste(unknown_genes, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  cell_truth <- regulatory_network_sc[
+    !is.na(regulatory_network_sc$strength) &
+      regulatory_network_sc$strength != 0 &
+      regulatory_network_sc$regulator != regulatory_network_sc$target,
+    ,
+    drop = FALSE
+  ]
+  cell_truth <- data.frame(
+    source = as.character(cell_truth$regulator),
+    target = as.character(cell_truth$target),
+    score = abs(as.numeric(cell_truth$strength)),
+    sign = ifelse(cell_truth$strength > 0, "+", "-"),
+    evidence = "simulated_truth",
+    context = paste0("cell:", cell_truth$cell_id),
+    stringsAsFactors = FALSE
+  )
+  cell_truth <- cell_truth[cell_truth$score > 0 & !is.na(cell_truth$score), , drop = FALSE]
+  if (nrow(cell_truth) == 0) {
+    stop("cell truth derivation produced no nonzero cell-specific edges.", call. = FALSE)
+  }
+  cell_truth <- cell_truth[order(cell_truth$context, cell_truth$source, cell_truth$target), , drop = FALSE]
+
+  context_counts <- as.data.frame(table(cell_truth$context), stringsAsFactors = FALSE)
+  names(context_counts) <- c("context", "edge_count")
+  context_counts$cell <- sub("^cell:", "", context_counts$context)
+  context_counts <- context_counts[, c("cell", "context", "edge_count"), drop = FALSE]
+  write.table(
+    context_counts,
+    file = file.path(raw_dir, "cell_networks_index.tsv"),
+    sep = "\t",
+    row.names = FALSE,
+    col.names = TRUE,
+    quote = FALSE
+  )
+
+  cell_truth
+}
+
+write_truth_networks <- function(global_truth, group_truth_rows, cell_truth_rows, output_dir) {
   truth_df <- global_truth
   if (length(group_truth_rows) > 0) {
     truth_df <- rbind(truth_df, do.call(rbind, group_truth_rows))
+  }
+  if (!is.null(cell_truth_rows) && nrow(cell_truth_rows) > 0) {
+    truth_df <- rbind(truth_df, cell_truth_rows)
   }
   truth_df <- truth_df[
     truth_df$score > 0 &
@@ -888,14 +978,16 @@ tryCatch(
     need_enrichment_background <- "enrichment_background" %in% effective_extras
     need_prior_grn <- "prior_grn" %in% effective_extras
     need_prior_grn_by_group <- "prior_grn_by_group" %in% effective_extras
-    need_groups <- identical(request$profile, "scrna_grouped") || any(c("groups", "lineage_tree", "cell_phenotypes", "cluster_identities", "prior_grn_by_group") %in% effective_extras)
     need_lineage <- "lineage_tree" %in% effective_extras
     need_tf_list <- "tf_list" %in% effective_extras
-    need_public_group_truth <- identical(request$profile, "scrna_grouped")
+    need_public_cell_truth <- identical(request$profile, "scrna_cell_specific")
+    need_public_group_truth <- identical(request$profile, "scrna_grouped") || need_public_cell_truth
+    need_groups <- need_public_group_truth || any(c("groups", "lineage_tree", "cell_phenotypes", "cluster_identities", "prior_grn_by_group") %in% effective_extras)
     need_regulatory_network_sc <- "regulatory_network_sc" %in% native_outputs
     need_rna_velocity <- "rna_velocity" %in% native_outputs
-    need_cellwise_grn <- need_public_group_truth || need_lineage || need_prior_grn_by_group || need_regulatory_network_sc
+    need_cellwise_grn <- need_public_group_truth || need_public_cell_truth || need_lineage || need_prior_grn_by_group || need_regulatory_network_sc
     group_truth_rows <- list()
+    cell_truth_rows <- NULL
     exported_native_outputs <- structure(list(), names = character())
 
     init <- dyngen::initialise_model(
@@ -935,6 +1027,15 @@ tryCatch(
     write_gene_universe(dataset$counts, file.path(output_dir, "truth", "gene_universe.txt"))
     global_truth <- derive_global_truth(model)
     exported_native_outputs <- write_native_outputs(dataset, native_outputs, output_dir)
+    if (need_public_cell_truth) {
+      write_progress("running", "derive_truth", "Deriving cell truth from dyngen cell-specific GRN outputs.")
+      cell_truth_rows <- derive_cell_truth(
+        dataset = dataset,
+        cell_ids = rownames(dataset$counts),
+        genes = colnames(dataset$counts),
+        raw_dir = raw_dir
+      )
+    }
 
     if (need_tf_list) {
       write_tf_list(model$feature_info, file.path(output_dir, "extras", "tf_list.txt"))
@@ -1001,7 +1102,7 @@ tryCatch(
       }
     }
 
-    write_truth_networks(global_truth, group_truth_rows, output_dir)
+    write_truth_networks(global_truth, group_truth_rows, cell_truth_rows, output_dir)
 
     write_progress("running", "write_manifest", "Writing simulator-output-manifest.json.")
     write_manifest(

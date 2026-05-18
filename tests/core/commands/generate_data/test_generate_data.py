@@ -6,20 +6,30 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from jsonschema import Draft202012Validator
 
 from andrea.core.commands.generate_data.pipeline import (
     _copy_dataset_from_stage,
+    _validate_truth_outputs,
     execute_generate_data,
     run_generate_data,
 )
 from andrea.core.commands.generate_data.backends import docker_runner
 from andrea.core.commands.generate_data.plan import plan_generate_data_request
-from andrea.core.commands.generate_data.request import validate_simulation_plan
+from andrea.core.commands.generate_data.request import (
+    validate_simulation_plan,
+    validate_simulator_inputs,
+)
 from andrea.core.commands.generate_data.selection import (
+    evaluate_simulator_for_scenario,
     preflight_generate_data_scenario,
+)
+from andrea.core.commands.generate_data.shared import (
+    ResolvedScenarioRequest,
+    ResolvedSimulatorRun,
 )
 from andrea.core.commands.infer_network.preflight import preflight_infer_network
 
@@ -290,20 +300,28 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 profile="scrna_grouped",
                 requested_extras=["lineage_tree"],
             )
-            report = preflight_generate_data_scenario(scenario_path)
+            with patch(
+                "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                return_value=None,
+            ):
+                report = preflight_generate_data_scenario(scenario_path)
 
         self.assertGreaterEqual(report["catalog_summary"]["total"], 1)
         self.assertEqual(report["catalog_summary"]["blocked"], 0)
-        self.assertEqual(report["catalog_summary"]["warning"], 0)
-        self.assertGreaterEqual(report["catalog_summary"]["eligible"], 1)
-        dyngen_entry = _entry_by_id(report["eligible"], "dyngen")
+        self.assertGreaterEqual(report["catalog_summary"]["warning"], 1)
+        dyngen_entry = _entry_by_id(report["warning"], "dyngen")
         self.assertEqual(
             dyngen_entry["truth_outputs"],
-            {"global": "native", "group": "derivable"},
+            {"global": "native", "group": "derivable", "cell": "none"},
         )
         self.assertIn("groups", dyngen_entry["derived_extras_used"])
         self.assertIn("lineage_tree", dyngen_entry["derived_extras_used"])
-        self.assertEqual(dyngen_entry["issues"], [])
+        self.assertTrue(
+            any(
+                "canonical truth context 'group:'" in message
+                for message in _issue_messages(dyngen_entry, "warn")
+            )
+        )
 
     def test_preflight_blocks_dyngen_when_docker_is_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -330,7 +348,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
         )
 
-    def test_preflight_blocks_unknown_simulator_input_file(self) -> None:
+    def test_preflight_rejects_unknown_simulator_input_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             custom_input = base / "custom.tsv"
@@ -342,21 +360,13 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 requested_extras=[],
                 inputs={"custom_backbone": {"path": "custom.tsv"}},
             )
-            report = preflight_generate_data_scenario(scenario_path)
+            with self.assertRaisesRegex(
+                ValueError,
+                "unknown simulator input id: custom_backbone",
+            ):
+                preflight_generate_data_scenario(scenario_path)
 
-        self.assertEqual(
-            report["catalog_summary"]["blocked"],
-            report["catalog_summary"]["total"],
-        )
-        dyngen_entry = _entry_by_id(report["blocked"], "dyngen")
-        self.assertTrue(
-            any(
-                "unknown inputs" in reason
-                for reason in _issue_messages(dyngen_entry, "block")
-            )
-        )
-
-    def test_preflight_keeps_scmultisim_default_config_eligible_without_inputs(
+    def test_preflight_warns_when_scmultisim_global_truth_is_derived(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -372,18 +382,176 @@ class GenerateDataDyngenTests(unittest.TestCase):
             ):
                 report = preflight_generate_data_scenario(scenario_path)
 
-        scmultisim_entry = _entry_by_id(report["eligible"], "scmultisim")
-        self.assertEqual(scmultisim_entry["issues"], [])
+        scmultisim_entry = _entry_by_id(report["warning"], "scmultisim")
+        self.assertTrue(
+            any(
+                "canonical truth context 'global'" in message
+                for message in _issue_messages(scmultisim_entry, "warn")
+            )
+        )
         self.assertEqual(scmultisim_entry["inputs_used"], [])
 
-    def test_plan_rejects_scmultisim_input_grn_source_without_grn_params(
+    def test_validate_simulator_inputs_supports_native_output_conditions(
+        self,
+    ) -> None:
+        simulator_spec = {
+            "extra_inputs": {
+                "required": [],
+                "optional": [],
+                "conditional_required": [
+                    {
+                        "input": "tree_newick",
+                        "usage": "Used when a selected native output needs a user tree.",
+                        "conditions": [
+                            {
+                                "field": "native_output",
+                                "op": "eq",
+                                "value": "cell_meta",
+                            }
+                        ],
+                        "message": "tree_newick is required when native_output=cell_meta.",
+                    }
+                ],
+            }
+        }
+
+        inactive = validate_simulator_inputs(
+            simulator_id="toy",
+            simulator_spec=simulator_spec,
+            profile="scrna_grouped",
+            requested_extras=[],
+            simulator_params={},
+            native_outputs=[],
+            input_ids=set(),
+        )
+        missing = validate_simulator_inputs(
+            simulator_id="toy",
+            simulator_spec=simulator_spec,
+            profile="scrna_grouped",
+            requested_extras=[],
+            simulator_params={},
+            native_outputs=["cell_meta"],
+            input_ids=set(),
+        )
+        satisfied = validate_simulator_inputs(
+            simulator_id="toy",
+            simulator_spec=simulator_spec,
+            profile="scrna_grouped",
+            requested_extras=[],
+            simulator_params={},
+            native_outputs=["cell_meta"],
+            input_ids={"tree_newick"},
+        )
+
+        self.assertEqual(inactive, [])
+        self.assertEqual(
+            missing,
+            ["tree_newick is required when native_output=cell_meta."],
+        )
+        self.assertEqual(satisfied, [])
+
+    def test_preflight_accepts_cell_specific_cumulative_truth(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario_path = self._write_scenario_request(
+                Path(tmp),
+                request_id="cell_specific_contract",
+                profile="scrna_cell_specific",
+                requested_extras=[],
+            )
+            with patch(
+                "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                return_value=None,
+            ):
+                report = preflight_generate_data_scenario(scenario_path)
+
+        self.assertEqual(report["scenario"]["profile"], "scrna_cell_specific")
+        self.assertEqual(_entry_by_id(report["eligible"], "dyngen")["status"], "eligible")
+        self.assertEqual(
+            _entry_by_id(report["eligible"], "scmultisim")["status"],
+            "eligible",
+        )
+
+    def test_preflight_missing_truth_issue_names_required_contexts(self) -> None:
+        scenario = ResolvedScenarioRequest(
+            request_id="cell_specific_context_issue",
+            profile="scrna_cell_specific",
+            organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
+            requested_extras=[],
+            effective_extras=[],
+            inputs={},
+            resolved_input_paths={},
+            base_seed=None,
+            notes=None,
+            request_payload={},
+        )
+        entry = evaluate_simulator_for_scenario(
+            simulator_id="toy",
+            spec={
+                "name": "Toy",
+                "params": {},
+                "extra_inputs": {
+                    "required": [],
+                    "optional": [],
+                    "conditional_required": [],
+                },
+                "compatibility_rules": [],
+                "profile_capabilities": {
+                    "scrna_cell_specific": {
+                        "native_extras": [],
+                        "derivable_extras": [],
+                        "truth_outputs": {
+                            "global": "native",
+                            "group": "none",
+                            "cell": "native",
+                        },
+                    }
+                },
+            },
+            scenario=scenario,
+        )
+
+        messages = _issue_messages(entry, "block")
+        self.assertTrue(any("truth context" in message for message in messages))
+        self.assertTrue(any("group:" in message for message in messages))
+
+    def test_preflight_does_not_block_simulators_that_ignore_provided_inputs(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            (base / "regulatory_network.tsv").write_text(
+                "target\tregulator\teffect\nG2\tG1\t1.0\n",
+                encoding="utf-8",
+            )
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="unused_input_is_allowed",
+                profile="scrna_global",
+                requested_extras=[],
+                inputs={"regulatory_network": {"path": "regulatory_network.tsv"}},
+            )
+            with patch(
+                "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                return_value=None,
+            ):
+                report = preflight_generate_data_scenario(scenario_path)
+
+        self.assertEqual(_entry_by_id(report["eligible"], "dyngen")["status"], "eligible")
+        self.assertEqual(
+            _entry_by_id(report["warning"], "scmultisim")["status"],
+            "warning",
+        )
+
+    def test_plan_rejects_scmultisim_input_grn_source_without_regulatory_network(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             scenario_path = self._write_scenario_request(
                 base,
-                request_id="scmultisim_missing_grn_params",
+                request_id="scmultisim_missing_regulatory_network",
                 profile="scrna_global",
                 requested_extras=[],
             )
@@ -403,7 +571,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     "andrea.core.commands.generate_data.selection.ensure_docker_cli",
                     return_value=None,
                 ),
-                self.assertRaisesRegex(ValueError, "grn_params is required"),
+                self.assertRaisesRegex(ValueError, "regulatory_network is required"),
             ):
                 plan_generate_data_request(
                     scenario_request_path=scenario_path,
@@ -412,20 +580,94 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     max_parallel_tasks=1,
                 )
 
-    def test_plan_accepts_scmultisim_input_grn_source_with_grn_params(self) -> None:
+    def test_plan_rejects_scmultisim_cell_specific_when_dynamic_grn_disabled(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
-            grn_path = base / "grn_params.tsv"
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="scmultisim_cell_specific_dynamic_required",
+                profile="scrna_cell_specific",
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "scmultisim_static",
+                        "simulator_id": "scmultisim",
+                        "replicates": 1,
+                        "params": {
+                            "dynamic_grn": {
+                                "enabled": False,
+                            }
+                        },
+                    }
+                ],
+            )
+            with self.assertRaisesRegex(
+                ValueError,
+                "scrna_cell_specific group truth requires dynamic_grn.enabled=true",
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+
+    def test_plan_rejects_scmultisim_grouped_when_dynamic_grn_disabled(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="scmultisim_grouped_dynamic_required",
+                profile="scrna_grouped",
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "scmultisim_static",
+                        "simulator_id": "scmultisim",
+                        "replicates": 1,
+                        "params": {
+                            "dynamic_grn": {
+                                "enabled": False,
+                            }
+                        },
+                    }
+                ],
+            )
+            with self.assertRaisesRegex(
+                ValueError,
+                "scrna_grouped group truth requires dynamic_grn.enabled=true",
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+
+    def test_plan_accepts_scmultisim_input_grn_source_with_regulatory_network(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            grn_path = base / "regulatory_network.tsv"
             grn_path.write_text(
                 "target\tregulator\teffect\nG2\tG1\t1.0\nG3\tG1\t-0.5\n",
                 encoding="utf-8",
             )
             scenario_path = self._write_scenario_request(
                 base,
-                request_id="scmultisim_with_grn_params",
+                request_id="scmultisim_with_regulatory_network",
                 profile="scrna_global",
                 requested_extras=[],
-                inputs={"grn_params": {"path": "grn_params.tsv"}},
+                inputs={"regulatory_network": {"path": "regulatory_network.tsv"}},
             )
             simulator_runs_path = self._write_simulator_runs(
                 base,
@@ -451,11 +693,124 @@ class GenerateDataDyngenTests(unittest.TestCase):
             payload = json.loads(planned_path.read_text(encoding="utf-8"))
             resolved = validate_simulation_plan(planned_path)
 
-        self.assertEqual(payload["inputs"]["grn_params"]["path"], str(grn_path))
+        self.assertEqual(payload["inputs"]["regulatory_network"]["path"], str(grn_path))
         self.assertEqual(
             resolved.simulator_runs[0].simulator_params["grn_source"],
             "input_tsv",
         )
+
+    def test_plan_rejects_scmultisim_builtin_100_with_too_few_genes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="scmultisim_builtin_100_too_few",
+                profile="scrna_global",
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "scmultisim_builtin_100",
+                        "simulator_id": "scmultisim",
+                        "replicates": 1,
+                        "params": {"grn_source": "builtin_100", "num_genes": 100},
+                    }
+                ],
+            )
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                    return_value=None,
+                ),
+                self.assertRaisesRegex(ValueError, "greater than 100"),
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+
+    def test_plan_rejects_scmultisim_builtin_1139_with_too_few_genes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="scmultisim_builtin_1139_too_few",
+                profile="scrna_global",
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "scmultisim_builtin_1139",
+                        "simulator_id": "scmultisim",
+                        "replicates": 1,
+                        "params": {"grn_source": "builtin_1139", "num_genes": 1136},
+                    }
+                ],
+            )
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                    return_value=None,
+                ),
+                self.assertRaisesRegex(ValueError, "greater than 1136"),
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+
+    def test_plan_rejects_scmultisim_input_grn_when_num_genes_is_not_larger(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            grn_path = base / "regulatory_network.tsv"
+            grn_path.write_text(
+                "target\tregulator\teffect\nG2\tG1\t1.0\nG3\tG1\t-0.5\n",
+                encoding="utf-8",
+            )
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="scmultisim_input_grn_too_few",
+                profile="scrna_global",
+                requested_extras=[],
+                inputs={"regulatory_network": {"path": "regulatory_network.tsv"}},
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "scmultisim_input_grn",
+                        "simulator_id": "scmultisim",
+                        "replicates": 1,
+                        "params": {"grn_source": "input_tsv", "num_genes": 3},
+                    }
+                ],
+            )
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                    return_value=None,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "greater than the number of unique genes",
+                ),
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
 
     def test_plan_rejects_scmultisim_input_tree_preset_without_tree_newick(
         self,
@@ -565,7 +920,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 patch(
                     "andrea.core.commands.generate_data.pipeline.run_generate_data"
                 ) as run_mock,
-                self.assertRaisesRegex(ValueError, "grn_params is required"),
+                self.assertRaisesRegex(ValueError, "regulatory_network is required"),
             ):
                 execute_generate_data(
                     scenario_request_path=scenario_path,
@@ -641,6 +996,20 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 ValueError,
                 "observed_counts.*technical_noise.enabled",
             ):
+                validate_simulation_plan(plan_path)
+
+    def test_validate_plan_rejects_scmultisim_compatibility_rule(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            plan_path = self._write_plan(
+                Path(tmp),
+                request_id="scmultisim_builtin_100_bad_plan",
+                profile="scrna_global",
+                simulator_id="scmultisim",
+                requested_extras=[],
+                simulator_params={"grn_source": "builtin_100", "num_genes": 100},
+                run_id="scmultisim_builtin_100",
+            )
+            with self.assertRaisesRegex(ValueError, "greater than 100"):
                 validate_simulation_plan(plan_path)
 
     def test_validate_plan_accepts_conditional_native_output_when_available(
@@ -1002,6 +1371,11 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(payload["tasks"][0]["eta_source"], "cost_profile")
         self.assertEqual(payload["execution"]["eta_total_seconds"], 7.0)
         self.assertEqual(len(payload["execution"]["waves"]), 1)
+        features = payload["runs"][0]["eta_provenance"]["cost_profile"]["features"]
+        self.assertEqual(features["profile"], "scrna_global")
+        self.assertEqual(features["n_cells"], 20)
+        self.assertEqual(features["n_genes"], 10)
+        self.assertFalse(features["native_cell_truth_enabled"])
 
     def test_plan_uses_conservative_eta_fallback_without_cost_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1101,6 +1475,166 @@ class GenerateDataDyngenTests(unittest.TestCase):
 
             self.assertTrue((dataset_dir / "truth" / "networks.csv").exists())
             self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
+
+    def test_validate_truth_outputs_requires_group_context_for_cell_specific_profile(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stage_dir = Path(tmp)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "expression.tsv").write_text(
+                "gene\tC1\nG1\t1\nG2\t2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "networks.csv").write_text(
+                "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
+                encoding="utf-8",
+            )
+            request = SimpleNamespace(
+                profile="scrna_cell_specific",
+                simulator_spec={
+                    "profile_capabilities": {
+                        "scrna_cell_specific": {
+                            "truth_outputs": {
+                                "global": "none",
+                                "group": "none",
+                                "cell": "native",
+                            }
+                        }
+                    }
+                },
+            )
+            manifest = {
+                "expression": {"path": "expression.tsv"},
+                "truth": {
+                    "gene_universe": "truth/gene_universe.txt",
+                    "networks": "truth/networks.csv",
+                },
+            }
+
+            with self.assertRaisesRegex(ValueError, "required context prefix: group:"):
+                _validate_truth_outputs(
+                    stage_dir=stage_dir,
+                    dataset_id="cell_missing",
+                    request=request,
+                    simulator_manifest=manifest,
+                )
+
+    def test_validate_truth_outputs_requires_cell_context_for_cell_specific_profile(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stage_dir = Path(tmp)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "expression.tsv").write_text(
+                "gene\tC1\nG1\t1\nG2\t2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "networks.csv").write_text(
+                "source,target,score,sign,evidence,context\n"
+                "G1,G2,1,+,simulated_truth,global\n"
+                "G1,G2,1,+,simulated_truth,group:A\n",
+                encoding="utf-8",
+            )
+            request = SimpleNamespace(profile="scrna_cell_specific")
+            manifest = {
+                "expression": {"path": "expression.tsv"},
+                "truth": {
+                    "gene_universe": "truth/gene_universe.txt",
+                    "networks": "truth/networks.csv",
+                },
+            }
+
+            with self.assertRaisesRegex(ValueError, "required context prefix: cell:"):
+                _validate_truth_outputs(
+                    stage_dir=stage_dir,
+                    dataset_id="cell_missing",
+                    request=request,
+                    simulator_manifest=manifest,
+                )
+
+    def test_validate_truth_outputs_accepts_cell_specific_contexts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stage_dir = Path(tmp)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "expression.tsv").write_text(
+                "gene\tC1\tC2\nG1\t1\t0\nG2\t2\t3\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "networks.csv").write_text(
+                "source,target,score,sign,evidence,context\n"
+                "G1,G2,1,+,simulated_truth,global\n"
+                "G1,G2,1,+,simulated_truth,group:A\n"
+                "G1,G2,1,+,simulated_truth,cell:C1\n",
+                encoding="utf-8",
+            )
+            request = SimpleNamespace(profile="scrna_cell_specific")
+            manifest = {
+                "expression": {"path": "expression.tsv"},
+                "truth": {
+                    "gene_universe": "truth/gene_universe.txt",
+                    "networks": "truth/networks.csv",
+                },
+            }
+
+            paths = _validate_truth_outputs(
+                stage_dir=stage_dir,
+                dataset_id="cell_ok",
+                request=request,
+                simulator_manifest=manifest,
+            )
+
+        self.assertEqual(paths["networks"], "truth/networks.csv")
+
+    def test_validate_truth_outputs_rejects_cell_context_outside_expression_columns(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stage_dir = Path(tmp)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "expression.tsv").write_text(
+                "gene\tC1\nG1\t1\nG2\t2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "networks.csv").write_text(
+                "source,target,score,sign,evidence,context\n"
+                "G1,G2,1,+,simulated_truth,global\n"
+                "G1,G2,1,+,simulated_truth,group:A\n"
+                "G1,G2,1,+,simulated_truth,cell:C2\n",
+                encoding="utf-8",
+            )
+            request = SimpleNamespace(profile="scrna_cell_specific")
+            manifest = {
+                "expression": {"path": "expression.tsv"},
+                "truth": {
+                    "gene_universe": "truth/gene_universe.txt",
+                    "networks": "truth/networks.csv",
+                },
+            }
+
+            with self.assertRaisesRegex(ValueError, "not present in expression columns"):
+                _validate_truth_outputs(
+                    stage_dir=stage_dir,
+                    dataset_id="cell_bad",
+                    request=request,
+                    simulator_manifest=manifest,
+                )
 
     def test_package_copy_preserves_native_outputs_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1354,6 +1888,114 @@ class GenerateDataDyngenTests(unittest.TestCase):
 
         self.assertEqual(origin, "pulled")
         pull_mock.assert_called_once_with("example/dyngen:1.0.0")
+
+    def test_docker_runner_stages_declared_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            input_path = base / "regulatory_network.tsv"
+            input_path.write_text(
+                "target\tregulator\teffect\nG2\tG1\t1\n",
+                encoding="utf-8",
+            )
+            stage_dir = base / "stage"
+
+            request = ResolvedSimulatorRun(
+                request_id="scenario",
+                profile="scrna_grouped",
+                run_id="scmultisim_01",
+                simulator_id="scmultisim",
+                organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
+                requested_extras=[],
+                effective_extras=[],
+                inputs={
+                    "regulatory_network": {
+                        "path": str(input_path),
+                    }
+                },
+                resolved_input_paths={
+                    "regulatory_network": input_path,
+                },
+                simulator_params={},
+                runtime_resources={"threads": 1},
+                native_outputs=[],
+                replicates=1,
+                base_seed=1,
+                replicate_seeds=[1],
+                notes=None,
+                simulator_spec={
+                    "docker_image": "example/scmultisim:1.0.0",
+                },
+            )
+
+            class FakeProcess:
+                returncode = 0
+
+                def __init__(self, cmd: list[str], **_kwargs: object) -> None:
+                    out_mount = next(
+                        entry for entry in cmd if entry.endswith(":/work/out")
+                    )
+                    host_out = Path(out_mount.rsplit(":", 1)[0])
+                    (host_out / "simulator-output-manifest.json").write_text(
+                        json.dumps(
+                            {
+                                "schema_version": "1.0",
+                                "simulator_id": "scmultisim",
+                                "profile": "scrna_grouped",
+                                "expression_matrix": "expression.tsv",
+                                "truth_outputs": {
+                                    "networks": "truth/networks.csv",
+                                    "gene_universe": "truth/gene_universe.txt",
+                                },
+                            }
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+
+                def poll(self) -> int:
+                    return 0
+
+                def wait(self) -> int:
+                    return 0
+
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.backends.docker_runner._ensure_docker_cli"
+                ),
+                patch(
+                    "andrea.core.commands.generate_data.backends.docker_runner._ensure_docker_image",
+                    return_value="local",
+                ),
+                patch(
+                    "andrea.core.commands.generate_data.backends.docker_runner.subprocess.Popen",
+                    side_effect=FakeProcess,
+                ),
+            ):
+                manifest_path = docker_runner.run_docker_simulator(
+                    request=request,
+                    seed=1,
+                    stage_dir=stage_dir,
+                    task_label="scmultisim_01__r01",
+                    progress_poll_seconds=0.01,
+                    show_progress=False,
+                )
+
+            self.assertEqual(
+                manifest_path,
+                stage_dir / "simulator-output-manifest.json",
+            )
+            frozen_request = json.loads(
+                (
+                    stage_dir
+                    / "provenance"
+                    / "raw"
+                    / "docker_wrapper.request.json"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                frozen_request["mounted_inputs"],
+                {"regulatory_network": "/work/inputs/regulatory_network"},
+            )
 
     @unittest.skipUnless(
         _has_docker_runtime(), "docker runtime is required for dyngen tests"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -10,6 +11,18 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SMOKETEST_SCRIPT = (
     REPO_ROOT / "wrappers" / "simulation_data_tools" / "scripts" / "run_smoketests.py"
 )
+VALIDATE_SMOKETEST_SCRIPT = (
+    REPO_ROOT
+    / "wrappers"
+    / "simulation_data_tools"
+    / "scripts"
+    / "validate_smoketest_configs.py"
+)
+SMOKETEST_CONFIGS_ROOT = (
+    REPO_ROOT / "wrappers" / "simulation_data_tools" / "tests" / "smoketest_configs"
+)
+FIXTURES_ROOT = REPO_ROOT / "wrappers" / "simulation_data_tools" / "tests" / "fixtures"
+INPUT_SPECS_ROOT = REPO_ROOT / "andrea" / "catalog_simulation_data_tools" / "input_specs"
 BUILD_IMAGES_SCRIPT = (
     REPO_ROOT
     / "wrappers"
@@ -40,6 +53,22 @@ def _has_docker_runtime() -> bool:
 
 
 class SimulatorSmoketestScripts(unittest.TestCase):
+    def test_cell_specific_smoketests_require_cumulative_truth_contexts(self) -> None:
+        config_paths = sorted(SMOKETEST_CONFIGS_ROOT.glob("*cell_specific*.json"))
+        self.assertTrue(config_paths)
+        for config_path in config_paths:
+            payload = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                set(payload.get("required_truth_context_prefixes", [])),
+                {"global", "group:", "cell:"},
+                msg=config_path.name,
+            )
+
+    def test_fixture_names_match_simulator_input_spec_ids(self) -> None:
+        input_ids = {path.stem for path in INPUT_SPECS_ROOT.glob("*.json")}
+        fixture_ids = {path.stem for path in FIXTURES_ROOT.iterdir() if path.is_file()}
+        self.assertEqual(fixture_ids, input_ids)
+
     def test_run_smoketests_list_mode(self) -> None:
         completed = subprocess.run(
             [
@@ -69,6 +98,23 @@ class SimulatorSmoketestScripts(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("dyngen", completed.stdout)
+
+    def test_validate_scmultisim_smoketest_configs_with_conditional_inputs(self) -> None:
+        completed = subprocess.run(
+            [
+                _python_executable(),
+                str(VALIDATE_SMOKETEST_SCRIPT),
+                "--simulator",
+                "scmultisim",
+            ],
+            cwd=REPO_ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("scmultisim_grouped_custom_inputs.json", completed.stdout)
 
     @unittest.skipUnless(
         _has_docker_runtime(),

@@ -60,7 +60,41 @@ PROFILE_SPECS: dict[str, ProfileSpec] = {
         expression_profile="scrna",
         required_extras=frozenset({"groups"}),
     ),
+    "scrna_cell_specific": ProfileSpec(
+        profile="scrna_cell_specific",
+        column_kind="cells",
+        expression_profile="scrna",
+        required_extras=frozenset({"groups"}),
+    ),
 }
+
+
+def required_truth_outputs_for_profile(profile: str) -> tuple[str, ...]:
+    if profile == "scrna_grouped":
+        return ("global", "group")
+    if profile == "scrna_cell_specific":
+        return ("global", "group", "cell")
+    return ("global",)
+
+
+def primary_truth_output_for_profile(profile: str) -> str:
+    if profile == "scrna_grouped":
+        return "group"
+    if profile == "scrna_cell_specific":
+        return "cell"
+    return "global"
+
+
+def required_truth_context_prefixes_for_profile(profile: str) -> tuple[str, ...]:
+    prefixes = {
+        "global": "global",
+        "group": "group:",
+        "cell": "cell:",
+    }
+    return tuple(
+        prefixes[output_id]
+        for output_id in required_truth_outputs_for_profile(profile)
+    )
 
 
 @dataclass(frozen=True)

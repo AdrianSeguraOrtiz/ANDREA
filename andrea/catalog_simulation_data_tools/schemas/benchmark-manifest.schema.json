@@ -25,7 +25,17 @@
       "const": "1.0"
     },
     "id": { "type": "string", "minLength": 1 },
-    "profile": { "type": "string", "minLength": 1 },
+    "profile": {
+      "type": "string",
+      "enum": [
+        "bulk_steady_state",
+        "bulk_time_series",
+        "bulk_perturbational",
+        "scrna_global",
+        "scrna_grouped",
+        "scrna_cell_specific"
+      ]
+    },
     "organism": { "type": "object" },
     "requested_extras": {
       "type": "array",

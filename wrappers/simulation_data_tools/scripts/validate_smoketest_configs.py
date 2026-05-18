@@ -56,13 +56,13 @@ def build_validator(schema: Any) -> Draft202012Validator:
 
 
 def declared_input_ids(spec: dict[str, Any]) -> set[str]:
-    simulator_inputs = spec.get("simulator_inputs", {})
+    extra_inputs = spec.get("extra_inputs", {})
     declared: set[str] = set()
     for key in ("required", "optional"):
-        for item in simulator_inputs.get(key, []):
+        for item in extra_inputs.get(key, []):
             if isinstance(item, dict) and item.get("input"):
                 declared.add(str(item["input"]))
-    for item in simulator_inputs.get("conditional_required", []):
+    for item in extra_inputs.get("conditional_required", []):
         if isinstance(item, dict) and item.get("input"):
             declared.add(str(item["input"]))
     return declared
