@@ -1169,10 +1169,581 @@ button:disabled {
   color: #334155;
 }
 
+.andrea-progress-card {
+  margin-top: 0.7rem;
+  border: 1px solid rgba(14, 116, 144, 0.28);
+  border-left: 5px solid #0e7490;
+  border-radius: 12px;
+  background: rgba(240, 249, 255, 0.92);
+  padding: 0.75rem 0.8rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.andrea-progress-card.is-empty {
+  border-left-color: rgba(100, 116, 139, 0.55);
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.andrea-progress-card.status-completed {
+  border-color: rgba(22, 163, 74, 0.28);
+  border-left-color: #16a34a;
+  background: rgba(240, 253, 244, 0.92);
+}
+
+.andrea-progress-card.status-warning {
+  border-color: rgba(217, 119, 6, 0.28);
+  border-left-color: #d97706;
+  background: rgba(255, 251, 235, 0.92);
+}
+
+.andrea-progress-card.status-failed {
+  border-color: rgba(185, 28, 28, 0.32);
+  border-left-color: #b91c1c;
+  background: rgba(254, 242, 242, 0.94);
+}
+
+.andrea-progress-card.status-pending {
+  border-left-color: #64748b;
+}
+
+.andrea-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.andrea-progress-eyebrow {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.andrea-progress-title {
+  margin-top: 0.06rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.andrea-progress-percent {
+  flex: 0 0 auto;
+  min-width: 64px;
+  text-align: right;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.andrea-progress-message {
+  color: #334155;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.andrea-progress-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.26);
+  overflow: hidden;
+}
+
+.andrea-progress-fill {
+  height: 100%;
+  background: linear-gradient(120deg, #0e7490, #0891b2);
+}
+
+.andrea-progress-card.status-completed .andrea-progress-fill {
+  background: linear-gradient(120deg, #15803d, #22c55e);
+}
+
+.andrea-progress-card.status-warning .andrea-progress-fill {
+  background: linear-gradient(120deg, #b45309, #f59e0b);
+}
+
+.andrea-progress-card.status-failed .andrea-progress-fill {
+  background: linear-gradient(120deg, #991b1b, #ef4444);
+}
+
+.andrea-progress-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.45rem;
+}
+
+.andrea-progress-kpi {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.45rem 0.55rem;
+  min-width: 0;
+}
+
+.andrea-progress-kpi span {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.andrea-progress-kpi small {
+  display: block;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.andrea-progress-kpi.ok {
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.andrea-progress-kpi.running {
+  border-color: rgba(14, 116, 144, 0.22);
+}
+
+.andrea-progress-kpi.failed {
+  border-color: rgba(185, 28, 28, 0.25);
+}
+
+.andrea-progress-kpi.warning {
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
 .runtime-progress {
   margin-top: 0.6rem;
   font-family: "IBM Plex Mono", "Fira Code", monospace;
   font-size: 0.77rem;
+}
+
+.runtime-wave-timeline {
+  font-family: "IBM Plex Sans", "Source Sans 3", "Segoe UI", sans-serif;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.runtime-wave-timeline-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #334155;
+}
+
+.runtime-wave-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.65rem;
+}
+
+.runtime-wave-card {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  overflow: hidden;
+}
+
+.runtime-wave-card.is-current {
+  border-color: rgba(14, 116, 144, 0.48);
+  box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.08);
+}
+
+.runtime-wave-card.status-running {
+  background: rgba(240, 249, 255, 0.92);
+  border-color: rgba(14, 116, 144, 0.28);
+}
+
+.runtime-wave-card.status-completed {
+  background: rgba(240, 253, 244, 0.86);
+  border-color: rgba(22, 163, 74, 0.26);
+}
+
+.runtime-wave-card.status-warning {
+  background: rgba(255, 251, 235, 0.9);
+  border-color: rgba(217, 119, 6, 0.3);
+}
+
+.runtime-wave-card.status-failed {
+  background: rgba(254, 242, 242, 0.94);
+  border-color: rgba(185, 28, 28, 0.32);
+}
+
+.runtime-wave-card.status-pending {
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.runtime-wave-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.62rem 0.68rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.runtime-wave-summary::-webkit-details-marker {
+  display: none;
+}
+
+.runtime-wave-summary::after {
+  content: "+";
+  position: absolute;
+  right: 0.68rem;
+  top: 0.62rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.8);
+  color: #334155;
+  font-weight: 800;
+}
+
+.runtime-wave-card[open] .runtime-wave-summary::after {
+  content: "-";
+}
+
+.runtime-wave-summary {
+  position: relative;
+}
+
+.runtime-wave-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding-right: 2.1rem;
+}
+
+.runtime-wave-name {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.runtime-wave-status {
+  border: 1px solid rgba(15, 23, 42, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #475569;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.runtime-wave-status.status-running {
+  border-color: rgba(14, 116, 144, 0.25);
+  color: #0e7490;
+}
+
+.runtime-wave-status.status-completed {
+  border-color: rgba(22, 163, 74, 0.25);
+  color: #166534;
+}
+
+.runtime-wave-status.status-warning {
+  border-color: rgba(217, 119, 6, 0.28);
+  color: #92400e;
+}
+
+.runtime-wave-status.status-failed {
+  border-color: rgba(185, 28, 28, 0.28);
+  color: #991b1b;
+}
+
+.runtime-wave-meta {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.runtime-wave-body {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 0.62rem 0.68rem 0.7rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.runtime-wave-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.runtime-wave-tool-chip {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  max-width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.22rem 0.45rem;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.runtime-wave-tool-chip.status-running {
+  border-color: rgba(14, 116, 144, 0.32);
+  background: rgba(224, 242, 254, 0.78);
+  color: #075985;
+}
+
+.runtime-wave-tool-chip.status-completed {
+  border-color: rgba(22, 163, 74, 0.3);
+  background: rgba(220, 252, 231, 0.74);
+  color: #166534;
+}
+
+.runtime-wave-tool-chip.status-warning {
+  border-color: rgba(217, 119, 6, 0.34);
+  background: rgba(254, 243, 199, 0.72);
+  color: #92400e;
+}
+
+.runtime-wave-tool-chip.status-failed {
+  border-color: rgba(185, 28, 28, 0.36);
+  background: rgba(254, 226, 226, 0.82);
+  color: #991b1b;
+}
+
+.runtime-wave-tool-chip.status-pending {
+  background: rgba(248, 250, 252, 0.9);
+  color: #64748b;
+}
+
+.runtime-wave-tool-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.runtime-wave-tool-chip small {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: inherit;
+}
+
+.runtime-wave-tool-chip strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.11);
+  font-size: 0.68rem;
+}
+
+.runtime-wave-issues {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.runtime-wave-issue-block {
+  border: 1px solid rgba(185, 28, 28, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  overflow: hidden;
+}
+
+.runtime-wave-issue-title {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.runtime-wave-issue-title::-webkit-details-marker {
+  display: none;
+}
+
+.runtime-wave-issue-title::after {
+  content: "+";
+  color: #64748b;
+  font-weight: 800;
+}
+
+.runtime-wave-issue-block[open] .runtime-wave-issue-title::after {
+  content: "-";
+}
+
+.runtime-wave-issue-badge {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  padding: 0.08rem 0.36rem;
+  color: #64748b;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.runtime-wave-issue-badge.status-failed {
+  border-color: rgba(185, 28, 28, 0.28);
+  color: #991b1b;
+}
+
+.runtime-wave-issue-badge.status-warning {
+  border-color: rgba(217, 119, 6, 0.28);
+  color: #92400e;
+}
+
+.runtime-wave-issue-body {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 0.45rem 0.5rem 0.5rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.runtime-wave-issue-section {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.runtime-wave-issue-section-title {
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.runtime-wave-issue-list {
+  max-height: 145px;
+  overflow: auto;
+  display: grid;
+  gap: 0.24rem;
+}
+
+.runtime-wave-issue-line {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.32rem 0.38rem;
+  color: #334155;
+  font-family: "IBM Plex Mono", "Fira Code", monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.runtime-wave-issue-section.errors .runtime-wave-issue-line {
+  border-color: rgba(185, 28, 28, 0.16);
+  color: #7f1d1d;
+}
+
+.runtime-wave-issue-section.warnings .runtime-wave-issue-line {
+  border-color: rgba(217, 119, 6, 0.16);
+  color: #92400e;
+}
+
+.runtime-active-tools-panel {
+  border: 1px solid rgba(14, 116, 144, 0.2);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.92);
+  padding: 0.68rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.runtime-active-tools-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.runtime-active-tools-title {
+  color: #0f172a;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.runtime-active-tools-count {
+  border: 1px solid rgba(14, 116, 144, 0.2);
+  border-radius: 999px;
+  background: rgba(224, 242, 254, 0.72);
+  color: #075985;
+  padding: 0.16rem 0.48rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.runtime-active-tools-list {
+  display: grid;
+  gap: 0.48rem;
+}
+
+.runtime-active-tool-row {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.52rem 0.58rem;
+  display: grid;
+  gap: 0.34rem;
+}
+
+.runtime-active-tool-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.runtime-active-tool-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.runtime-active-tool-meta {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.runtime-active-tool-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.runtime-active-tool-fill {
+  height: 100%;
+  background: linear-gradient(120deg, #0e7490, #0891b2);
+}
+
+.runtime-active-tool-message {
+  color: #334155;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.runtime-active-tools-note {
+  border: 1px dashed rgba(14, 116, 144, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #334155;
+  padding: 0.52rem 0.58rem;
+  font-size: 0.8rem;
 }
 
 .execution-alerts {
@@ -1214,6 +1785,28 @@ button:disabled {
 
 .execution-alert.warning {
   border-color: rgba(217, 119, 6, 0.35);
+  background: rgba(255, 247, 237, 0.9);
+  color: #9a3412;
+}
+
+.execution-alert-summary {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  padding: 0.5rem 0.58rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #334155;
+  font-family: "IBM Plex Sans", "Source Sans 3", "Segoe UI", sans-serif;
+  font-size: 0.84rem;
+}
+
+.execution-alert-summary.error {
+  border-color: rgba(185, 28, 28, 0.3);
+  background: rgba(254, 242, 242, 0.9);
+  color: #7f1d1d;
+}
+
+.execution-alert-summary.warning {
+  border-color: rgba(217, 119, 6, 0.3);
   background: rgba(255, 247, 237, 0.9);
   color: #9a3412;
 }
@@ -1369,6 +1962,34 @@ button:disabled {
   margin-top: 0.85rem;
   padding-left: 0.8rem;
   text-indent: 0;
+}
+
+.results-explorer-status {
+  margin-top: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.68rem 0.85rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.results-explorer-status.status-ready {
+  border-color: rgba(34, 197, 94, 0.36);
+  color: #166534;
+  background: rgba(240, 253, 244, 0.92);
+}
+
+.results-explorer-status.status-finalizing {
+  border-color: rgba(249, 115, 22, 0.34);
+  color: #9a3412;
+  background: rgba(255, 247, 237, 0.94);
+}
+
+.results-explorer-status.status-partial {
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #854d0e;
+  background: rgba(255, 251, 235, 0.96);
 }
 
 .plan-waves {

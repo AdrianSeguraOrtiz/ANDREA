@@ -5,6 +5,8 @@ export const state = {
   stage: "draft",
   preflightReport: null,
   lastPlan: null,
+  executionState: null,
+  outputReadiness: null,
   runtimeProgress: null,
   pollTimer: null,
   loadedPlanKey: null,

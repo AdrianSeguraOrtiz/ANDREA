@@ -5,7 +5,12 @@ import { updateToolEligibilityView } from "../catalog/view.js";
 import { fetchFiles, resetFilesView } from "../files/explorer.js";
 import { renderPlan } from "../plan/view.js";
 import { resetReproducibility, renderReproducibility } from "../repro/view.js";
-import { renderExecutionAlerts, pushRuntimeFailureToasts, renderRuntimeProgress } from "../runtime/view.js";
+import {
+  renderAndreaExecutionProgress,
+  renderExecutionAlerts,
+  pushRuntimeFailureToasts,
+  renderRuntimeProgress,
+} from "../runtime/view.js";
 import { setStepState, setActiveStep } from "../ui/steps.js";
 import { pushToast } from "../ui/toasts.js";
 import { refreshRunCardsValidation } from "../runs/cards.js";
@@ -30,29 +35,110 @@ export function freezeActions(disabled) {
   }
 }
 
-export function hasExecutionArtifacts(job = null) {
+export function hasExecutionArtifacts(job = null, outputReadiness = null) {
   if (!job || !job.run_dir) {
     return false;
+  }
+  if (outputReadiness && typeof outputReadiness === "object") {
+    return Boolean(outputReadiness.explorer_available);
   }
   const stage = String(job.stage || "");
   const status = String(job.status || "");
   return stage === "executed" || status === "failed";
 }
 
-export function updateResultsExplorerVisibility(job = null) {
+function resultsExplorerWaitingMessage(job = null, executionState = null, outputReadiness = null) {
+  const readinessMessage = String(outputReadiness?.message || "").trim();
+  if (!job || !job.run_dir) {
+    return readinessMessage || "Results Explorer will be available after execution.";
+  }
+  if (readinessMessage) {
+    return readinessMessage;
+  }
+  const phase = String(executionState?.phase || "").trim();
+  if (phase === "running_tools") {
+    return "Tools are still running. Results Explorer will be available after ANDREA finalizes outputs.";
+  }
+  if (
+    [
+      "collecting_results",
+      "finalizing_grouped",
+      "finalizing_group_aggregated",
+      "merging_raw_networks",
+      "normalizing_scores",
+    ].includes(phase)
+  ) {
+    return "ANDREA is finalizing merged network outputs. Results Explorer will be available shortly.";
+  }
+  if (phase === "exporting_artifacts") {
+    return "ANDREA is exporting graph artifacts. Results Explorer will be available when exports complete.";
+  }
+  if (phase === "writing_report") {
+    return "ANDREA is writing the final report. Results Explorer will be available shortly.";
+  }
+  if (String(job.status || "") === "running") {
+    return "ANDREA is executing the run. Results Explorer will be available after output finalization.";
+  }
+  return "Results Explorer will be available after execution.";
+}
+
+function renderResultsExplorerStatus(outputReadiness = null) {
+  const statusNode = $("results-explorer-status");
+  if (!statusNode) {
+    return;
+  }
+  if (!outputReadiness || !outputReadiness.explorer_available) {
+    statusNode.hidden = true;
+    statusNode.className = "results-explorer-status";
+    statusNode.textContent = "";
+    return;
+  }
+
+  const message = String(outputReadiness.message || "Execution outputs are available.").trim();
+  const classes = ["results-explorer-status"];
+  if (outputReadiness.partial) {
+    classes.push("status-partial");
+  } else if (outputReadiness.finalizing_artifacts || !outputReadiness.graph_exports_ready) {
+    classes.push("status-finalizing");
+  } else {
+    classes.push("status-ready");
+  }
+  const bits = [];
+  if (outputReadiness.csv_ready) {
+    bits.push("merged CSVs ready");
+  }
+  if (outputReadiness.final_report_ready) {
+    bits.push("final report ready");
+  }
+  if (outputReadiness.graph_exports_ready) {
+    bits.push("graph exports ready");
+  } else if (outputReadiness.csv_ready) {
+    bits.push("graph exports pending");
+  }
+  statusNode.className = classes.join(" ");
+  statusNode.textContent = bits.length ? `${message} (${bits.join(" · ")})` : message;
+  statusNode.hidden = false;
+}
+
+export function updateResultsExplorerVisibility(job = null, executionState = null, outputReadiness = null) {
   const section = $("results-explorer-section");
   const placeholder = $("results-explorer-placeholder");
-  const visible = hasExecutionArtifacts(job);
+  const visible = hasExecutionArtifacts(job, outputReadiness);
+  const waitingMessage = resultsExplorerWaitingMessage(job, executionState, outputReadiness);
   if (section) {
     section.hidden = !visible;
   }
   if (placeholder) {
     placeholder.hidden = visible;
+    if (!visible) {
+      placeholder.textContent = waitingMessage;
+    }
   }
   if (!visible) {
-    resetFilesView("Results Explorer will be available after execution.");
-    resetReproducibility("Reproducibility snippets will be available after execution.");
+    resetFilesView(waitingMessage);
+    resetReproducibility("Reproducibility snippets will be available after final report writing.");
   }
+  renderResultsExplorerStatus(visible ? outputReadiness : null);
 }
 
 export async function fetchPlan(jobId) {
@@ -61,7 +147,7 @@ export async function fetchPlan(jobId) {
   return payload.plan;
 }
 
-export async function refreshArtifacts(job) {
+export async function refreshArtifacts(job, outputReadiness = null) {
   if (!job || !job.job_id) {
     return;
   }
@@ -74,9 +160,15 @@ export async function refreshArtifacts(job) {
     }
   }
 
-  if (hasExecutionArtifacts(job)) {
+  if (hasExecutionArtifacts(job, outputReadiness)) {
     const bundleMode = String($("bundle-mode")?.value || "full");
-    const desiredFilesKey = `${job.job_id}:${bundleMode}:${job.status}:${job.run_dir || ""}`;
+    const readinessKey = [
+      outputReadiness?.csv_ready ? "csv" : "no-csv",
+      outputReadiness?.final_report_ready ? "report" : "no-report",
+      outputReadiness?.graph_exports_ready ? "graphs" : "no-graphs",
+      outputReadiness?.partial ? "partial" : "complete",
+    ].join(":");
+    const desiredFilesKey = `${job.job_id}:${bundleMode}:${job.status}:${job.run_dir || ""}:${readinessKey}`;
     if (state.loadedFilesKey !== desiredFilesKey) {
       await fetchFiles(job.job_id);
       state.loadedFilesKey = desiredFilesKey;
@@ -90,9 +182,13 @@ export async function pollJob(jobId) {
   state.currentJob = job;
   const runReport = payload.run_report;
   const preflightReport = payload.preflight_report;
+  const executionState = payload.execution_state;
+  const outputReadiness = payload.output_readiness;
   const runtimeProgress = payload.runtime_progress;
   const reproducibility = payload.reproducibility;
   state.stage = job.stage || state.stage;
+  state.executionState = executionState || null;
+  state.outputReadiness = outputReadiness || null;
   state.runtimeProgress = runtimeProgress || null;
   if (job.stage === "planned" && state.activeStep < 3) {
     setActiveStep(2, { scroll: false });
@@ -106,14 +202,15 @@ export async function pollJob(jobId) {
   }
 
   updateToolEligibilityView(preflightReport);
+  renderAndreaExecutionProgress(executionState, job);
   renderRuntimeProgress(runtimeProgress);
   pushRuntimeFailureToasts(runtimeProgress, state.notifiedFailures);
-  renderExecutionAlerts(job, runReport);
+  renderExecutionAlerts(job, runReport, executionState);
   renderReproducibility(reproducibility);
-  updateResultsExplorerVisibility(job);
+  updateResultsExplorerVisibility(job, executionState, outputReadiness);
 
   syncActionButtons(job);
-  await refreshArtifacts(job);
+  await refreshArtifacts(job, outputReadiness);
 
   if (job.status === "completed" || job.status === "failed") {
     freezeActions(false);

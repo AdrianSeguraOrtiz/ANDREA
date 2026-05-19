@@ -5,7 +5,7 @@ import { buildToolIssueReportUrl, buildToolRequestIssueUrl, defaultGroupModeForT
 import { initCatalogView, updateToolEligibilityView } from "./catalog/view.js";
 import { applyDatasetDefaults, handleExpressionSelected, initExpressionDropzone, syncExpressionHelpTooltip } from "./dataset/expression.js";
 import { closeExtraInputModal, getExtraRows, initExtras, listProvidedExtraKeys, openExtraInputModal, updateExtrasEmptyState } from "./dataset/extras.js";
-import { renderRuntimeProgress, renderExecutionAlerts } from "./runtime/view.js";
+import { renderAndreaExecutionProgress, renderRuntimeProgress, renderExecutionAlerts } from "./runtime/view.js";
 import { fetchFiles, resetFilesView } from "./files/explorer.js";
 import { freezeActions, startPolling, syncActionButtons, updateResultsExplorerVisibility } from "./jobs/controller.js";
 import { resetPlanView } from "./plan/view.js";
@@ -118,6 +118,8 @@ async function submitPreflight() {
     state.eligibleToolIds = null;
     state.preflightReport = null;
     state.lastPlan = null;
+    state.executionState = null;
+    state.outputReadiness = null;
     state.runtimeProgress = null;
     state.currentJob = null;
     state.notifiedFailures.clear();
@@ -129,6 +131,7 @@ async function submitPreflight() {
     resetPlanView("Waiting for preflight/plan output...");
     updateResultsExplorerVisibility(null);
     resetReproducibility();
+    renderAndreaExecutionProgress(null);
     renderRuntimeProgress(null);
     renderExecutionAlerts(null, null);
 
@@ -234,6 +237,7 @@ async function bootstrap() {
   resetPlanView("No plan loaded yet.");
   updateResultsExplorerVisibility(null);
   resetReproducibility();
+  renderAndreaExecutionProgress(null);
   renderRuntimeProgress(null);
   renderExecutionAlerts(null, null);
   state.notifiedFailures.clear();
