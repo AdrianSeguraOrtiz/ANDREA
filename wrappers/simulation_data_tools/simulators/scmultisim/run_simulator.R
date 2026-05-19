@@ -425,6 +425,113 @@ matrix_row_ids <- function(mat) {
   row_ids
 }
 
+build_builtin_gene_id_map <- function(results, params) {
+  if (!params$grn_source %in% c("builtin_100", "builtin_1139")) {
+    return(NULL)
+  }
+
+  row_ids <- matrix_row_ids(results$counts)
+  gene_numeric <- grepl("^gene[0-9]+$", row_ids)
+  bare_numeric <- grepl("^[0-9]+$", row_ids)
+  if (!any(gene_numeric) || !any(bare_numeric)) {
+    return(NULL)
+  }
+
+  canonical <- row_ids
+  canonical[gene_numeric] <- sub("^gene", "", canonical[gene_numeric])
+  if (anyDuplicated(canonical)) {
+    return(NULL)
+  }
+
+  changed <- row_ids != canonical
+  out <- canonical[changed]
+  names(out) <- row_ids[changed]
+  out
+}
+
+normalise_gene_vector <- function(values, gene_id_map) {
+  if (is.null(values) || is.null(gene_id_map) || length(gene_id_map) == 0) {
+    return(values)
+  }
+  out <- as.character(values)
+  hits <- out %in% names(gene_id_map)
+  out[hits] <- unname(gene_id_map[out[hits]])
+  out
+}
+
+normalise_gene_matrix <- function(mat, gene_id_map, rows = TRUE, cols = FALSE) {
+  if (is.null(mat) || is.null(gene_id_map) || length(gene_id_map) == 0) {
+    return(mat)
+  }
+  mat <- as.matrix(mat)
+  if (rows && !is.null(rownames(mat))) {
+    rownames(mat) <- normalise_gene_vector(rownames(mat), gene_id_map)
+  }
+  if (cols && !is.null(colnames(mat))) {
+    colnames(mat) <- normalise_gene_vector(colnames(mat), gene_id_map)
+  }
+  mat
+}
+
+normalise_counts_obs <- function(counts_obs, gene_id_map) {
+  if (is.null(counts_obs)) {
+    return(NULL)
+  }
+  if (is.list(counts_obs) && !is.null(counts_obs$counts)) {
+    counts_obs$counts <- normalise_gene_matrix(counts_obs$counts, gene_id_map, rows = TRUE)
+    return(counts_obs)
+  }
+  normalise_gene_matrix(counts_obs, gene_id_map, rows = TRUE)
+}
+
+normalise_name_map <- function(name_map, gene_id_map) {
+  if (is.null(name_map) || length(name_map) == 0) {
+    return(name_map)
+  }
+  out <- normalise_gene_vector(as.character(name_map), gene_id_map)
+  names(out) <- normalise_gene_vector(names(name_map), gene_id_map)
+  out
+}
+
+normalise_public_gene_ids <- function(results, params, raw_dir) {
+  gene_id_map <- build_builtin_gene_id_map(results, params)
+  if (is.null(gene_id_map) || length(gene_id_map) == 0) {
+    return(results)
+  }
+
+  write_tsv(
+    data.frame(
+      original_gene = names(gene_id_map),
+      public_gene = unname(gene_id_map),
+      stringsAsFactors = FALSE
+    ),
+    file.path(raw_dir, "public_gene_id_normalization.tsv")
+  )
+
+  results$counts <- normalise_gene_matrix(results$counts, gene_id_map, rows = TRUE)
+  results$counts_with_batches <- normalise_gene_matrix(results$counts_with_batches, gene_id_map, rows = TRUE)
+  results$counts_obs <- normalise_counts_obs(results$counts_obs, gene_id_map)
+  results$velocity <- normalise_gene_matrix(results$velocity, gene_id_map, rows = TRUE)
+
+  if (!is.null(results$cell_specific_grn)) {
+    results$cell_specific_grn <- lapply(
+      results$cell_specific_grn,
+      normalise_gene_matrix,
+      gene_id_map = gene_id_map,
+      rows = TRUE,
+      cols = TRUE
+    )
+  }
+
+  if (!is.null(results$.grn)) {
+    results$.grn$geff <- normalise_gene_matrix(results$.grn$geff, gene_id_map, rows = TRUE, cols = TRUE)
+    results$.grn$regulators <- normalise_gene_vector(results$.grn$regulators, gene_id_map)
+    results$.grn$name_map <- normalise_name_map(results$.grn$name_map, gene_id_map)
+  }
+
+  results
+}
+
 write_matrix_tsv <- function(mat, path, row_id = "gene") {
   mat <- as.matrix(mat)
   row_ids <- matrix_row_ids(mat)
@@ -1142,6 +1249,9 @@ tryCatch(
         randseed = as.integer(request$seed)
       )
     }
+
+    saveRDS(results, file.path(raw_dir, "upstream_result.rds"), compress = TRUE)
+    results <- normalise_public_gene_ids(results, params, raw_dir)
 
     write_progress("running", "package_outputs", "Writing normalized ANDREA outputs.")
     expr <- extract_counts_matrix(results, params)

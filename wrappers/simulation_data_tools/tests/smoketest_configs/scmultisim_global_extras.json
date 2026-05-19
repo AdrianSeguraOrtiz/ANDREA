@@ -13,6 +13,7 @@
     "params": {
       "grn_source": "builtin_100",
       "tree_preset": "phyla1",
+      "num_genes": 110,
       "num_cells": 8,
       "num_cifs": 20,
       "velocity": {
@@ -39,6 +40,8 @@
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/result.rds",
+    "provenance/raw/upstream_result.rds",
+    "provenance/raw/public_gene_id_normalization.tsv",
     "provenance/raw/session_info.txt"
   ]
 }

@@ -309,7 +309,8 @@ Implemented smoke tests:
 2. `scmultisim_global_extras`
    - profile: `scrna_global`
    - extras: `enrichment_background`, `pseudotime`, `prior_grn`, `tf_list`
-   - validates all global normalized extras
+   - sets `num_genes=110` with `grn_source=builtin_100` to cover scMultiSim's mixed upstream row IDs (`1..100` plus `gene101..gene110`)
+   - validates all global normalized extras plus `provenance/raw/public_gene_id_normalization.tsv`
 3. `scmultisim_grouped_full`
    - profile: `scrna_grouped`
    - extras: `groups`, `cell_phenotypes`, `cluster_identities`, `enrichment_background`, `lineage_tree`, `pseudotime`, `prior_grn`, `tf_list`, `prior_grn_by_group`
@@ -373,6 +374,13 @@ Implemented smoke tests:
 - `truth_contexts` in the spec records the native upstream artifact or wrapper derivation rule, required dynamic-GRN switches, score/sign semantics and limitations for every `global`, `group` and `cell` entry.
 - `truth_parameter_requirements` documents that grouped and cell-specific truth requiring per-cell GRN state depends on `dynamic_grn.enabled=true`.
 - The cell-specific smoke config requires `global`, `group:` and `cell:` context prefixes, proving the cumulative contract.
+
+## Public Gene ID Normalization
+
+- scMultiSim `builtin_100`/`builtin_1139` runs with `num_genes` above the built-in GRN size can emit mixed row IDs: built-in regulated genes as bare numeric IDs and additional unregulated genes as `gene<N>`.
+- The wrapper now normalizes the wrapper working object immediately after the upstream `sim_true_counts()` / optional noise and batch steps, when stripping the `gene` prefix is collision-free.
+- All standardized public files and requested `native/` outputs are therefore written with one naming convention (`1`, `2`, ..., `N`) instead of a mixture of `N` and `gene<N>`.
+- The pre-normalization upstream object is preserved as `provenance/raw/upstream_result.rds`; normalized wrapper provenance remains in `provenance/raw/result.rds`, and the audit rename table is written to `provenance/raw/public_gene_id_normalization.tsv`.
 
 ## Remaining Follow-Up
 
