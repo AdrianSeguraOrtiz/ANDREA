@@ -123,6 +123,8 @@ Score decision:
 - Preserve raw upstream `combined_confidences` directly.
 - Do not apply ANDREA-specific normalization in the wrapper.
 - Drop exact zero-score edges before writing `network.csv`.
+- Use safe internal gene aliases in upstream runtime files and map Inferelator `regulator`/`target` labels back to public ANDREA gene IDs before writing `network.csv`.
+- Preserve the public-to-upstream mapping as `raw/gene_alias_map.tsv`.
 
 Evidence:
 
@@ -149,7 +151,7 @@ Evidence:
 - `outputs`: directed regulator-target edges with unsigned confidence and optional coefficient sign.
 - `progress`: BBSR progress uses MI/CLR and per-target regression jobs; AMuSR native grouped mode currently reports coarse phase progress.
 - `params`: public workflow/regression parameters above.
-- `artifacts_aux`: upstream log plus `network.tsv.gz`, `combined_confidences.tsv.gz`, `model_coefficients.tsv.gz`, and `inferelator_model.h5ad`; smoke validation confirms all exist.
+- `artifacts_aux`: upstream log plus `network.tsv.gz`, `gene_alias_map.tsv`, `combined_confidences.tsv.gz`, `model_coefficients.tsv.gz`, and `inferelator_model.h5ad`; smoke validation confirms all exist.
 
 Uncertainty:
 
@@ -161,7 +163,15 @@ Uncertainty:
 
 - Docker pins `numpy<2` because `inferelator==0.6.3` fails the smoke BBSR path with current NumPy 2.x scalar assignment behavior.
 - Inferelator 0.6.3 also calls `np.isdtype`; the wrapper installs a small NumPy 1.x compatibility shim before importing/using Inferelator.
+- Inferelator can retype numeric-looking TF names internally, producing an empty prior/TF intersection even when public ANDREA `tf_list.txt` and `prior_grn.tsv` agree. The wrapper therefore writes safe `andrea_gene_*` aliases into upstream runtime files and translates outputs back to the original public gene IDs.
 - `threads` remains an ANDREA runtime argument and maps to Inferelator `MPControl`; it is not a ToolSpec parameter.
+
+## Failure Semantics Review
+
+- The `inferelator3__01`, `inferelator3__02` and `inferelator3__03` failures observed in `inferred_networks/gui_dataset_20260519T003127Z` are classified as a wrapper/upstream-adapter bug.
+- The generated public inputs were valid: `expression.tsv`, `tf_list.txt` and `prior_grn.tsv` shared numeric gene identifiers and had non-empty intersections before the upstream call.
+- The failure arose because upstream Inferelator retyped numeric-looking gene labels during prior/TF filtering. The wrapper now aliases all public gene IDs to safe internal identifiers before invoking Inferelator and maps exported edges back to the original public IDs.
+- Genuine invalid inputs remain failures. If, after aliasing, expression, TF list and prior still have no valid regulator/target intersection, the wrapper should fail clearly rather than report a successful empty network.
 
 ## Verification
 
@@ -172,6 +182,10 @@ Validated successfully:
 - `python wrappers/inference_tools/scripts/validate_smoketest_configs.py`
 - `python wrappers/inference_tools/scripts/run_smoketests.py --tool inferelator3 --threads 2 --timeout 900 --show-output-lines 20`
 - `python wrappers/inference_tools/scripts/run_smoketests.py --tool inferelator3 --threads 2 --timeout 900 --skip-image-build`
+- `python wrappers/inference_tools/scripts/run_smoketests.py --tool inferelator3 --threads 2 --timeout 900 --show-output-lines 40` with numeric gene-ID fixtures.
+- Manual rerun of frozen `inferred_networks/gui_dataset_20260519T003127Z/tools/inferelator3__01/io/` using the rebuilt wrapper image; completed and exported 176 public-ID edges.
+- Manual rerun of frozen `inferred_networks/gui_dataset_20260519T003127Z/tools/inferelator3__02/subruns/01_pop_6_7/io/` using the rebuilt wrapper image; completed and exported 170 public-ID edges.
+- Manual rerun of frozen `inferred_networks/gui_dataset_20260519T003127Z/tools/inferelator3__03/io/` using the rebuilt wrapper image; completed and exported 5565 public-ID edges across 8 group contexts.
 - `PYENV_VERSION=3.10.7 python -m pytest tests/core/commands/infer_network/test_preflight.py tests/core/commands/infer_network/test_plan.py tests/core/commands/infer_network/test_run.py -q`
 - `PYENV_VERSION=3.10.7 python -m pytest tests/gui/test_infer_network_server.py -q`
 - Manual preflight/plan check with `execution.mode=group_native`; generated one logical run with one physical task and `execution_mode=group_native`.
@@ -182,6 +196,7 @@ Smoketest outcome:
 - `global` variant passed and wrote 5 non-zero directed edges.
 - `group_native` variant passed and wrote 16 non-zero directed edges with `context=group:*`.
 - Both variants wrote `progress.json` and the declared auxiliary raw artifacts.
+- Current numeric-ID fixture smoke outcome: `global` wrote 4 non-zero directed edges; `group_native` wrote 22 non-zero directed edges with `context=group:*`; both wrote `raw/gene_alias_map.tsv`.
 
 Environment note:
 

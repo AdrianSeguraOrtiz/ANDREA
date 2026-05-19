@@ -7,6 +7,7 @@ import contextlib
 import csv
 import json
 import math
+import shutil
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,6 +53,8 @@ class PreparedInputs:
     expression_file: Path
     tf_file: Path
     prior_file: Path
+    gene_alias_map_file: Path
+    gene_alias_reverse_map: dict[str, str]
     metadata_file: Optional[Path]
     target_count: int
     regulator_count: int
@@ -281,6 +284,25 @@ def _read_prior_grn(
     return prior
 
 
+def _build_gene_alias_map(genes: list[str]) -> dict[str, str]:
+    return {
+        gene: f"andrea_gene_{idx:06d}"
+        for idx, gene in enumerate(genes, start=1)
+    }
+
+
+def _write_gene_alias_map(alias_map: dict[str, str], output_path: Path) -> None:
+    with output_path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(
+            fh,
+            fieldnames=["gene_id", "upstream_gene_alias"],
+            delimiter="\t",
+        )
+        writer.writeheader()
+        for gene_id, alias in alias_map.items():
+            writer.writerow({"gene_id": gene_id, "upstream_gene_alias": alias})
+
+
 def _read_groups_tsv(groups_path: Path, expression_columns: list[str]) -> pd.DataFrame:
     groups = pd.read_csv(groups_path, sep="\t", header=0)
     if groups.shape[1] < 2:
@@ -325,18 +347,26 @@ def _prepare_upstream_inputs(
     tf_names = _read_tf_list(tf_path, set(genes))
     prior = _read_prior_grn(prior_path, genes=genes, tf_names=tf_names)
 
-    upstream_expr = expression.transpose()
+    gene_alias_map = _build_gene_alias_map(genes)
+    gene_alias_reverse_map = {alias: gene for gene, alias in gene_alias_map.items()}
+    alias_tf_names = [gene_alias_map[tf_name] for tf_name in tf_names]
+    alias_expression = expression.rename(index=gene_alias_map)
+    alias_prior = prior.rename(index=gene_alias_map, columns=gene_alias_map)
+
+    upstream_expr = alias_expression.transpose()
     upstream_expr.index.name = "sample"
 
     expression_file = runtime_dir / "expression_samples_by_genes.tsv"
     tf_file = runtime_dir / "tf_list.txt"
     prior_file = runtime_dir / "prior_genes_by_tfs.tsv"
+    gene_alias_map_file = runtime_dir / "gene_alias_map.tsv"
     metadata_file: Optional[Path] = None
     group_count = 0
 
     upstream_expr.to_csv(expression_file, sep="\t")
-    tf_file.write_text("\n".join(tf_names) + "\n", encoding="utf-8")
-    prior.to_csv(prior_file, sep="\t")
+    tf_file.write_text("\n".join(alias_tf_names) + "\n", encoding="utf-8")
+    alias_prior.to_csv(prior_file, sep="\t")
+    _write_gene_alias_map(gene_alias_map, gene_alias_map_file)
     if groups_path is not None:
         groups = _read_groups_tsv(groups_path, upstream_expr.index.astype(str).tolist())
         groups["isTs"] = True
@@ -351,6 +381,8 @@ def _prepare_upstream_inputs(
         expression_file=expression_file,
         tf_file=tf_file,
         prior_file=prior_file,
+        gene_alias_map_file=gene_alias_map_file,
+        gene_alias_reverse_map=gene_alias_reverse_map,
         metadata_file=metadata_file,
         target_count=len(genes),
         regulator_count=len(tf_names),
@@ -489,6 +521,7 @@ def _run_inferelator(
     from inferelator.utils import inferelator_verbose_level
 
     raw_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(prepared.gene_alias_map_file, raw_dir / "gene_alias_map.tsv")
 
     inferelator_verbose_level(0, log_to_stderr=False)
     upstream_regression = _resolve_upstream_regression(params, execution)
@@ -589,7 +622,17 @@ def _edge_sign(row: pd.Series) -> str:
     return "?"
 
 
-def _network_rows_from_raw(raw_network_path: Path, *, context: str) -> list[dict[str, Any]]:
+def _map_upstream_gene_id(alias: Any, gene_alias_reverse_map: dict[str, str]) -> str:
+    alias_str = str(alias)
+    return gene_alias_reverse_map.get(alias_str, alias_str)
+
+
+def _network_rows_from_raw(
+    raw_network_path: Path,
+    *,
+    context: str,
+    gene_alias_reverse_map: dict[str, str],
+) -> list[dict[str, Any]]:
     if not raw_network_path.exists() or raw_network_path.stat().st_size <= 0:
         raise FileNotFoundError(f"Raw Inferelator network not found: {raw_network_path}")
 
@@ -610,8 +653,14 @@ def _network_rows_from_raw(raw_network_path: Path, *, context: str) -> list[dict
             continue
         rows.append(
             {
-                "source": str(row["regulator"]),
-                "target": str(row["target"]),
+                "source": _map_upstream_gene_id(
+                    row["regulator"],
+                    gene_alias_reverse_map,
+                ),
+                "target": _map_upstream_gene_id(
+                    row["target"],
+                    gene_alias_reverse_map,
+                ),
                 "score": score,
                 "sign": _edge_sign(row),
                 "evidence": "association",
@@ -627,6 +676,7 @@ def _convert_network(
     raw_dir: Path,
     network_csv_path: Path,
     execution: ResolvedExecution,
+    gene_alias_reverse_map: dict[str, str],
 ) -> int:
     if execution.mode == "group_native":
         raw_network_paths = [
@@ -640,6 +690,7 @@ def _convert_network(
                 _network_rows_from_raw(
                     raw_network_path,
                     context=f"group:{raw_network_path.parent.name}",
+                    gene_alias_reverse_map=gene_alias_reverse_map,
                 )
             )
         if not raw_network_paths:
@@ -647,7 +698,11 @@ def _convert_network(
                 f"Raw Inferelator task networks not found under: {raw_dir}"
             )
     else:
-        rows = _network_rows_from_raw(raw_dir / "network.tsv.gz", context="global")
+        rows = _network_rows_from_raw(
+            raw_dir / "network.tsv.gz",
+            context="global",
+            gene_alias_reverse_map=gene_alias_reverse_map,
+        )
 
     if not rows:
         raise ValueError("Inferelator produced no non-zero network edges.")
@@ -751,6 +806,7 @@ def main() -> None:
             raw_dir=raw_dir,
             network_csv_path=args.output_dir / "network.csv",
             execution=execution,
+            gene_alias_reverse_map=prepared.gene_alias_reverse_map,
         )
         _append_log(log_path, f"Wrote network.csv with {row_count} non-zero edges")
 

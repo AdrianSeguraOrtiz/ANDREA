@@ -137,6 +137,12 @@
       "description": "Upstream long-format Inferelator network file before conversion to ANDREA network.csv."
     },
     {
+      "path_pattern": "raw/gene_alias_map.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Wrapper-generated mapping between public ANDREA gene identifiers and safe upstream aliases used to prevent Inferelator from retyping numeric gene IDs."
+    },
+    {
       "path_pattern": "raw/combined_confidences.tsv.gz",
       "kind": "file",
       "require_non_empty": true,
