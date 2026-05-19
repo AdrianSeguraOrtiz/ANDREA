@@ -34,6 +34,10 @@ from andrea.core.commands.infer_network.commons.dataset import (
     _inspect_expression_tsv,
     _load_input_specs,
 )
+from andrea.core.commands.infer_network.commons.execution_state import (
+    execution_state_path,
+    read_execution_state_if_exists,
+)
 from andrea.gui.common.reproducibility import (
     append_cli_option,
     python_literal,
@@ -1043,6 +1047,208 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
     return {"tools": tool_entries, "summary": summary}
 
 
+def _read_execution_state_payload(*, run_dir: Optional[Path]) -> Optional[dict[str, Any]]:
+    if run_dir is None or not run_dir.exists() or not run_dir.is_dir():
+        return None
+    return read_execution_state_if_exists(execution_state_path(run_dir))
+
+
+def _runtime_progress_from_execution_state(
+    execution_state: Optional[dict[str, Any]],
+) -> Optional[dict[str, Any]]:
+    if not isinstance(execution_state, dict):
+        return None
+
+    entries_payload = execution_state.get("logical_runs")
+    if not isinstance(entries_payload, dict) or not entries_payload:
+        entries_payload = execution_state.get("tools")
+    if not isinstance(entries_payload, dict):
+        return None
+
+    def _legacy_status(status: Any) -> str:
+        value = str(status or "").strip().lower()
+        if value == "queued":
+            return "pending"
+        if value == "completed_with_warnings":
+            return "completed"
+        if value in {"pending", "running", "completed", "failed"}:
+            return value
+        return "running" if value else "pending"
+
+    tool_entries: list[dict[str, Any]] = []
+    for fallback_id, entry in sorted(entries_payload.items()):
+        if not isinstance(entry, dict):
+            continue
+        run_id = str(entry.get("run_id") or fallback_id).strip()
+        if not run_id:
+            continue
+        tool_entries.append(
+            {
+                "run_id": run_id,
+                "tool_id": str(entry.get("tool_id", "")).strip(),
+                "percent": max(0, min(100, int(entry.get("percent", 0) or 0))),
+                "status": _legacy_status(entry.get("status")),
+                "phase": str(entry.get("phase", "")).strip(),
+                "message": str(entry.get("message", "")).strip(),
+                "updated_at": execution_state.get("updated_at"),
+                "errors": entry.get("errors", []),
+                "warnings": entry.get("warnings", []),
+            }
+        )
+
+    summary_payload = execution_state.get("summary")
+    if isinstance(summary_payload, dict):
+        summary = {
+            "total": int(summary_payload.get("total", len(tool_entries)) or 0),
+            "completed": int(summary_payload.get("completed", 0) or 0),
+            "failed": int(summary_payload.get("failed", 0) or 0),
+            "running": int(summary_payload.get("running", 0) or 0),
+            "pending": int(summary_payload.get("queued", 0) or 0),
+            "warnings": int(summary_payload.get("warnings", 0) or 0),
+        }
+    else:
+        summary = {
+            "total": len(tool_entries),
+            "completed": sum(
+                1 for item in tool_entries if item["status"] == "completed"
+            ),
+            "failed": sum(1 for item in tool_entries if item["status"] == "failed"),
+            "running": sum(
+                1 for item in tool_entries if item["status"] == "running"
+            ),
+            "pending": sum(
+                1 for item in tool_entries if item["status"] == "pending"
+            ),
+            "warnings": sum(
+                len(item.get("warnings", []))
+                for item in tool_entries
+                if isinstance(item.get("warnings", []), list)
+            ),
+        }
+
+    return {"tools": tool_entries, "summary": summary}
+
+
+def _collect_output_readiness(
+    *,
+    run_dir: Optional[Path],
+    run_report: Optional[dict[str, Any]],
+    execution_state: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    if run_dir is None or not run_dir.exists() or not run_dir.is_dir():
+        return {
+            "explorer_available": False,
+            "csv_ready": False,
+            "final_report_ready": False,
+            "graph_exports_ready": False,
+            "partial": False,
+            "finalizing_artifacts": False,
+            "message": "Results Explorer will be available after execution.",
+            "paths": {},
+        }
+
+    raw_csv = run_dir / "merged_network_raw.csv"
+    normalized_csv = run_dir / "merged_network_normalized.csv"
+    final_report_ready = (
+        isinstance(run_report, dict) and run_report.get("status") == "executed"
+    )
+    csv_ready = raw_csv.is_file() and normalized_csv.is_file()
+
+    graph_paths = {
+        "merged_network_raw_gexf": run_dir / "merged_network_raw.gexf",
+        "merged_network_raw_graphml": run_dir / "merged_network_raw.graphml",
+        "merged_network_normalized_gexf": run_dir / "merged_network_normalized.gexf",
+        "merged_network_normalized_graphml": run_dir
+        / "merged_network_normalized.graphml",
+        "merged_network_normalized_cytoscape_script": run_dir
+        / "merged_network_normalized_cytoscape.py",
+    }
+    graph_exports_ready = bool(csv_ready) and all(
+        path.is_file() for path in graph_paths.values()
+    )
+
+    tools_failed = 0
+    if isinstance(run_report, dict):
+        execution = run_report.get("execution", {})
+        if isinstance(execution, dict):
+            try:
+                tools_failed = int(execution.get("tools_failed", 0) or 0)
+            except (TypeError, ValueError):
+                tools_failed = 0
+        tools = run_report.get("tools", {})
+        if tools_failed == 0 and isinstance(tools, dict):
+            failed = tools.get("failed", {})
+            if isinstance(failed, dict):
+                tools_failed = len(failed)
+
+    state_status = (
+        str(execution_state.get("status", "")).strip()
+        if isinstance(execution_state, dict)
+        else ""
+    )
+    partial = bool(tools_failed > 0 or state_status == "completed_with_failures")
+    finalizing_artifacts = bool(csv_ready and not final_report_ready)
+    explorer_available = bool(csv_ready or final_report_ready)
+
+    if finalizing_artifacts:
+        message = (
+            "Merged CSV outputs are available. ANDREA is still finalizing graph "
+            "artifacts and the final run report."
+        )
+    elif final_report_ready and partial and csv_ready:
+        message = "Partial merged results are available; one or more runs failed."
+    elif final_report_ready and partial:
+        message = (
+            "The final run report is available, but no merged CSV outputs were "
+            "produced."
+        )
+    elif final_report_ready:
+        message = "Execution outputs are available."
+    elif csv_ready:
+        message = "Merged CSV outputs are available."
+    else:
+        phase = (
+            str(execution_state.get("phase", "")).strip()
+            if isinstance(execution_state, dict)
+            else ""
+        )
+        if phase in {"exporting_artifacts", "writing_report"}:
+            message = "ANDREA is finalizing output artifacts."
+        else:
+            message = (
+                "Results Explorer will be available after merged outputs are "
+                "written."
+            )
+
+    paths = {
+        "merged_network_raw": str(raw_csv) if raw_csv.is_file() else None,
+        "merged_network_normalized": (
+            str(normalized_csv) if normalized_csv.is_file() else None
+        ),
+        "run_report": str(run_dir / "run_report.json")
+        if (run_dir / "run_report.json").is_file()
+        else None,
+        **{
+            key: str(path) if path.is_file() else None
+            for key, path in graph_paths.items()
+        },
+    }
+
+    return {
+        "explorer_available": explorer_available,
+        "csv_ready": csv_ready,
+        "raw_csv_ready": raw_csv.is_file(),
+        "normalized_csv_ready": normalized_csv.is_file(),
+        "final_report_ready": final_report_ready,
+        "graph_exports_ready": graph_exports_ready,
+        "partial": partial,
+        "failed_runs": tools_failed,
+        "finalizing_artifacts": finalizing_artifacts,
+        "message": message,
+        "paths": paths,
+    }
+
+
 def _bundle_sources(
     *,
     request_dir: Path,
@@ -1399,17 +1605,30 @@ def create_app() -> FastAPI:
             payload = _job_payload(job)
             reproducibility = _build_reproducibility_payload(job)
 
-        run_report = read_json_if_exists(payload.get("run_report_path"))
-        preflight_report = read_json_if_exists(payload.get("preflight_report_path"))
         run_dir = Path(payload["run_dir"]) if payload.get("run_dir") else None
-        runtime_progress = _collect_runtime_progress(run_dir=run_dir)
+        run_report = read_json_if_exists(payload.get("run_report_path"))
+        if run_report is None and run_dir is not None:
+            run_report = read_json_if_exists(str(run_dir / "run_report.json"))
+        preflight_report = read_json_if_exists(payload.get("preflight_report_path"))
+        execution_state = _read_execution_state_payload(run_dir=run_dir)
+        runtime_progress = (
+            _runtime_progress_from_execution_state(execution_state)
+            or _collect_runtime_progress(run_dir=run_dir)
+        )
+        output_readiness = _collect_output_readiness(
+            run_dir=run_dir,
+            run_report=run_report,
+            execution_state=execution_state,
+        )
 
         return JSONResponse(
             {
                 "job": payload,
                 "run_report": run_report,
                 "preflight_report": preflight_report,
+                "execution_state": execution_state,
                 "runtime_progress": runtime_progress,
+                "output_readiness": output_readiness,
                 "reproducibility": reproducibility,
             }
         )
