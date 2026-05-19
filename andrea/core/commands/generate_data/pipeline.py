@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import csv
 import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -25,6 +24,7 @@ from andrea.core.shared.progress import progress_snapshot as _progress_snapshot
 
 from .backends.registry import run_simulator_backend
 from .catalog import _load_simulator_catalog
+from .output_validation import validate_simulator_output_package
 from .plan import plan_generate_data_request
 from .request import validate_simulation_plan
 from .selection import preflight_generate_data_scenario
@@ -39,7 +39,6 @@ from .shared import (
     _relative_posix,
     _validate_json_instance,
     _write_json,
-    required_truth_context_prefixes_for_profile,
 )
 
 INFERENCE_DATASET_MANIFEST_SCHEMA = (
@@ -297,33 +296,6 @@ def _ground_truth_manifest_payload(
     }
 
 
-def _read_gene_universe(path: Path, *, dataset_id: str) -> set[str]:
-    if not path.exists() or not path.is_file():
-        raise ValueError(f"simulator-output-manifest[{dataset_id}] references missing truth gene_universe: {path}")
-    genes = {
-        line.strip()
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    }
-    if not genes:
-        raise ValueError(f"truth gene_universe is empty for dataset {dataset_id}: {path}")
-    return genes
-
-
-def _required_truth_contexts(
-    *,
-    request: ResolvedSimulatorRun,
-) -> tuple[set[str], list[str]]:
-    exact_contexts: set[str] = set()
-    context_prefixes: list[str] = []
-    for context in required_truth_context_prefixes_for_profile(request.profile):
-        if context.endswith(":"):
-            context_prefixes.append(context)
-        else:
-            exact_contexts.add(context)
-    return exact_contexts, context_prefixes
-
-
 def _validate_truth_outputs(
     *,
     stage_dir: Path,
@@ -331,142 +303,12 @@ def _validate_truth_outputs(
     request: ResolvedSimulatorRun,
     simulator_manifest: dict[str, Any],
 ) -> dict[str, str]:
-    truth = simulator_manifest.get("truth", {})
-    if not isinstance(truth, dict):
-        raise ValueError(f"simulator-output-manifest[{dataset_id}].truth must be an object")
-    gene_universe_rel = truth.get("gene_universe")
-    networks_rel = truth.get("networks")
-    if not isinstance(gene_universe_rel, str) or not gene_universe_rel.strip():
-        raise ValueError(f"simulator-output-manifest[{dataset_id}] is missing truth.gene_universe")
-    if not isinstance(networks_rel, str) or not networks_rel.strip():
-        raise ValueError(f"simulator-output-manifest[{dataset_id}] is missing truth.networks")
-
-    gene_universe_path = stage_dir / gene_universe_rel
-    networks_path = stage_dir / networks_rel
-    genes = _read_gene_universe(gene_universe_path, dataset_id=dataset_id)
-    if not networks_path.exists() or not networks_path.is_file():
-        raise ValueError(f"simulator-output-manifest[{dataset_id}] references missing truth networks: {networks_rel}")
-
-    with networks_path.open("r", encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle)
-        required_columns = {"source", "target", "score", "sign", "evidence", "context"}
-        missing_columns = sorted(required_columns.difference(reader.fieldnames or []))
-        if missing_columns:
-            raise ValueError(
-                f"truth networks for dataset {dataset_id} are missing columns: "
-                + ", ".join(missing_columns)
-            )
-        contexts: set[str] = set()
-        row_count = 0
-        for row_number, row in enumerate(reader, start=2):
-            row_count += 1
-            source = str(row.get("source", "")).strip()
-            target = str(row.get("target", "")).strip()
-            sign = str(row.get("sign", "")).strip()
-            context = str(row.get("context", "")).strip()
-            if not source or not target:
-                raise ValueError(f"truth networks for dataset {dataset_id} contain empty source/target at line {row_number}")
-            if source == target:
-                raise ValueError(f"truth networks for dataset {dataset_id} contain a self-loop at line {row_number}: {source}")
-            if source not in genes or target not in genes:
-                raise ValueError(
-                    f"truth networks for dataset {dataset_id} reference genes outside truth/gene_universe.txt at line {row_number}: {source}, {target}"
-                )
-            try:
-                score = float(str(row.get("score", "")).strip())
-            except ValueError as exc:
-                raise ValueError(
-                    f"truth networks for dataset {dataset_id} contain a non-numeric score at line {row_number}"
-                ) from exc
-            if score <= 0:
-                raise ValueError(
-                    f"truth networks for dataset {dataset_id} contain non-positive score at line {row_number}"
-                )
-            if sign not in {"+", "-", "?"}:
-                raise ValueError(
-                    f"truth networks for dataset {dataset_id} contain invalid sign at line {row_number}: {sign}"
-                )
-            if not context:
-                raise ValueError(
-                    f"truth networks for dataset {dataset_id} contain empty context at line {row_number}"
-                )
-            contexts.add(context)
-    if row_count == 0:
-        raise ValueError(f"truth networks for dataset {dataset_id} contain no edges")
-
-    required_exact, required_prefixes = _required_truth_contexts(request=request)
-    missing_exact = sorted(required_exact.difference(contexts))
-    if missing_exact:
-        raise ValueError(
-            f"truth networks for dataset {dataset_id} are missing required context(s): "
-            + ", ".join(missing_exact)
-        )
-    for prefix in required_prefixes:
-        if not any(context.startswith(prefix) for context in contexts):
-            raise ValueError(
-                f"truth networks for dataset {dataset_id} are missing required context prefix: {prefix}"
-            )
-
-    groups_rel = simulator_manifest.get("extras", {}).get("groups")
-    group_contexts = sorted(
-        context.removeprefix("group:")
-        for context in contexts
-        if context.startswith("group:")
-    )
-    cell_contexts = sorted(
-        context.removeprefix("cell:")
-        for context in contexts
-        if context.startswith("cell:")
-    )
-    if group_contexts and isinstance(groups_rel, str) and groups_rel.strip():
-        groups_path = stage_dir / groups_rel
-        if groups_path.exists():
-            with groups_path.open("r", encoding="utf-8", newline="") as handle:
-                reader = csv.DictReader(handle, delimiter="\t")
-                groups = {
-                    str(row.get("cluster", "")).strip()
-                    for row in reader
-                    if str(row.get("cluster", "")).strip()
-                }
-            missing_groups = sorted(set(group_contexts).difference(groups))
-            if missing_groups:
-                raise ValueError(
-                    f"truth networks for dataset {dataset_id} contain group contexts not present in extras/groups.tsv: "
-                    + ", ".join(missing_groups)
-                )
-    if cell_contexts:
-        expression = simulator_manifest.get("expression", {})
-        expression_rel = expression.get("path") if isinstance(expression, dict) else None
-        if not isinstance(expression_rel, str) or not expression_rel.strip():
-            raise ValueError(
-                f"simulator-output-manifest[{dataset_id}] is missing expression.path"
-            )
-        expression_path = stage_dir / expression_rel
-        if not expression_path.exists() or not expression_path.is_file():
-            raise ValueError(
-                f"simulator-output-manifest[{dataset_id}] references missing expression matrix: {expression_rel}"
-            )
-        with expression_path.open("r", encoding="utf-8", newline="") as handle:
-            reader = csv.reader(handle, delimiter="\t")
-            try:
-                header = next(reader)
-            except StopIteration as exc:
-                raise ValueError(
-                    f"expression matrix is empty for dataset {dataset_id}: {expression_rel}"
-                ) from exc
-        expression_cells = {
-            str(value).strip() for value in header[1:] if str(value).strip()
-        }
-        missing_cells = sorted(set(cell_contexts).difference(expression_cells))
-        if missing_cells:
-            raise ValueError(
-                f"truth networks for dataset {dataset_id} contain cell contexts not present in expression columns: "
-                + ", ".join(missing_cells)
-            )
-    return {
-        "gene_universe": str(gene_universe_rel),
-        "networks": str(networks_rel),
-    }
+    return validate_simulator_output_package(
+        stage_dir=stage_dir,
+        dataset_id=dataset_id,
+        profile=request.profile,
+        simulator_manifest=simulator_manifest,
+    )["truth"]
 
 
 def _simulator_run_payload(

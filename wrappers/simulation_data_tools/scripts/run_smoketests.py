@@ -15,6 +15,11 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from jsonschema import Draft202012Validator
+
+from andrea.core.commands.generate_data.output_validation import (
+    validate_simulator_output_package,
+)
+
 from shared.catalog_simulators import (
     CATALOG_ROOT,
     DEFAULT_CATALOG_SIMULATORS_ROOT,
@@ -287,6 +292,12 @@ def _run_one_config(
             simulator_id=simulator_id,
             out_dir=out_dir,
             prefixes=list(config.get("required_truth_context_prefixes", [])),
+        )
+        validate_simulator_output_package(
+            stage_dir=out_dir,
+            dataset_id=f"{simulator_id}:{config_path.stem}",
+            profile=str(config["request"]["profile"]),
+            simulator_manifest=load_json(out_dir / "simulator-output-manifest.json"),
         )
 
         if show_output:

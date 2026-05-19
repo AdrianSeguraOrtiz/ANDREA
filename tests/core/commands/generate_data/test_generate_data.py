@@ -1509,7 +1509,13 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 },
             )
             manifest = {
-                "expression": {"path": "expression.tsv"},
+                "expression": {
+                    "path": "expression.tsv",
+                    "genes": 2,
+                    "columns": 1,
+                    "column_kind": "cells",
+                    "expression_profile": "scrna",
+                },
                 "truth": {
                     "gene_universe": "truth/gene_universe.txt",
                     "networks": "truth/networks.csv",
@@ -1546,7 +1552,13 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             request = SimpleNamespace(profile="scrna_cell_specific")
             manifest = {
-                "expression": {"path": "expression.tsv"},
+                "expression": {
+                    "path": "expression.tsv",
+                    "genes": 2,
+                    "columns": 1,
+                    "column_kind": "cells",
+                    "expression_profile": "scrna",
+                },
                 "truth": {
                     "gene_universe": "truth/gene_universe.txt",
                     "networks": "truth/networks.csv",
@@ -1565,8 +1577,13 @@ class GenerateDataDyngenTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             stage_dir = Path(tmp)
             (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "extras").mkdir(parents=True, exist_ok=True)
             (stage_dir / "expression.tsv").write_text(
                 "gene\tC1\tC2\nG1\t1\t0\nG2\t2\t3\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "extras" / "groups.tsv").write_text(
+                "cell\tcluster\nC1\tA\nC2\tA\n",
                 encoding="utf-8",
             )
             (stage_dir / "truth" / "gene_universe.txt").write_text(
@@ -1582,7 +1599,14 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             request = SimpleNamespace(profile="scrna_cell_specific")
             manifest = {
-                "expression": {"path": "expression.tsv"},
+                "expression": {
+                    "path": "expression.tsv",
+                    "genes": 2,
+                    "columns": 2,
+                    "column_kind": "cells",
+                    "expression_profile": "scrna",
+                },
+                "extras": {"groups": "extras/groups.tsv"},
                 "truth": {
                     "gene_universe": "truth/gene_universe.txt",
                     "networks": "truth/networks.csv",
@@ -1597,6 +1621,124 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
 
         self.assertEqual(paths["networks"], "truth/networks.csv")
+
+    def test_validate_truth_outputs_accepts_lineage_tree_with_root_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stage_dir = Path(tmp)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "extras").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "expression.tsv").write_text(
+                "gene\tC1\tC2\nG1\t1\t0\nG2\t2\t3\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "extras" / "groups.tsv").write_text(
+                "cell\tcluster\nC1\tA\nC2\tB\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "extras" / "lineage_tree.tsv").write_text(
+                "child\tparent\tgain_rate\tloss_rate\n"
+                "A\t__root__\t0\t0\n"
+                "B\tA\t0.2\t0.1\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "networks.csv").write_text(
+                "source,target,score,sign,evidence,context\n"
+                "G1,G2,1,+,simulated_truth,global\n"
+                "G1,G2,1,+,simulated_truth,group:A\n"
+                "G1,G2,1,+,simulated_truth,group:B\n",
+                encoding="utf-8",
+            )
+            request = SimpleNamespace(profile="scrna_grouped")
+            manifest = {
+                "expression": {
+                    "path": "expression.tsv",
+                    "genes": 2,
+                    "columns": 2,
+                    "column_kind": "cells",
+                    "expression_profile": "scrna",
+                },
+                "extras": {
+                    "groups": "extras/groups.tsv",
+                    "lineage_tree": "extras/lineage_tree.tsv",
+                },
+                "truth": {
+                    "gene_universe": "truth/gene_universe.txt",
+                    "networks": "truth/networks.csv",
+                },
+            }
+
+            paths = _validate_truth_outputs(
+                stage_dir=stage_dir,
+                dataset_id="lineage_ok",
+                request=request,
+                simulator_manifest=manifest,
+            )
+
+        self.assertEqual(paths["gene_universe"], "truth/gene_universe.txt")
+
+    def test_validate_truth_outputs_rejects_lineage_tree_missing_group_child(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stage_dir = Path(tmp)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "extras").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "expression.tsv").write_text(
+                "gene\tC1\tC2\nG1\t1\t0\nG2\t2\t3\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "extras" / "groups.tsv").write_text(
+                "cell\tcluster\nC1\tA\nC2\tB\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "extras" / "lineage_tree.tsv").write_text(
+                "child\tparent\tgain_rate\tloss_rate\n"
+                "B\tA\t0.2\t0.1\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "networks.csv").write_text(
+                "source,target,score,sign,evidence,context\n"
+                "G1,G2,1,+,simulated_truth,global\n"
+                "G1,G2,1,+,simulated_truth,group:A\n"
+                "G1,G2,1,+,simulated_truth,group:B\n",
+                encoding="utf-8",
+            )
+            request = SimpleNamespace(profile="scrna_grouped")
+            manifest = {
+                "expression": {
+                    "path": "expression.tsv",
+                    "genes": 2,
+                    "columns": 2,
+                    "column_kind": "cells",
+                    "expression_profile": "scrna",
+                },
+                "extras": {
+                    "groups": "extras/groups.tsv",
+                    "lineage_tree": "extras/lineage_tree.tsv",
+                },
+                "truth": {
+                    "gene_universe": "truth/gene_universe.txt",
+                    "networks": "truth/networks.csv",
+                },
+            }
+
+            with self.assertRaisesRegex(
+                ValueError, "must include every groups.tsv label as child"
+            ):
+                _validate_truth_outputs(
+                    stage_dir=stage_dir,
+                    dataset_id="lineage_bad",
+                    request=request,
+                    simulator_manifest=manifest,
+                )
 
     def test_validate_truth_outputs_rejects_cell_context_outside_expression_columns(
         self,
@@ -1621,7 +1763,13 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             request = SimpleNamespace(profile="scrna_cell_specific")
             manifest = {
-                "expression": {"path": "expression.tsv"},
+                "expression": {
+                    "path": "expression.tsv",
+                    "genes": 2,
+                    "columns": 1,
+                    "column_kind": "cells",
+                    "expression_profile": "scrna",
+                },
                 "truth": {
                     "gene_universe": "truth/gene_universe.txt",
                     "networks": "truth/networks.csv",
@@ -2039,7 +2187,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
             report = preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=None,
-                strict=False,
             )
             self.assertEqual(
                 report["dataset"]["dataset_id"],
@@ -2127,7 +2274,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
             report = preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             self.assertEqual(
                 report["dataset"]["dataset_id"],
