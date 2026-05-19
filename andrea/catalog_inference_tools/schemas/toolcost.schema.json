@@ -149,7 +149,9 @@
           "enum": [
             "single",
             "native_grouped",
-            "andrea_group_emulated"
+            "andrea_group_emulated",
+            "cell_native",
+            "andrea_group_aggregated"
           ],
           "description": "How the logical run maps to physical wrapper/container tasks."
         },
@@ -157,6 +159,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of groups represented by this profile; must be 0 for global profiles."
+        },
+        "aggregation_step": {
+          "type": "string",
+          "enum": ["none", "cell_to_group"],
+          "description": "Deterministic ANDREA post-processing step represented by this profile, if any."
         }
       }
     },
@@ -227,6 +234,24 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of groups represented in grouped extra inputs."
+        },
+        "has_tf_list": {
+          "type": "boolean",
+          "description": "Whether the benchmark input profile includes the standardized tf_list extra."
+        },
+        "has_chromatin_accessibility_matrix": {
+          "type": "boolean",
+          "description": "Whether the benchmark input profile includes the standardized paired chromatin accessibility matrix extra."
+        },
+        "output_density_class": {
+          "type": "string",
+          "enum": ["sparse", "dense", "unknown"],
+          "description": "Expected output density class for this benchmark profile."
+        },
+        "aggregation_step": {
+          "type": "string",
+          "enum": ["none", "cell_to_group"],
+          "description": "Post-processing aggregation step attached to this benchmark profile."
         },
         "notes": {
           "type": "array",
@@ -417,6 +442,11 @@
               "type": "null"
             }
           ]
+        },
+        "feature_vector": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Resolved cost features for this benchmark point, including execution mode, dimensions, expected context count, expected dense edge upper bound and extra-input flags."
         }
       }
     }

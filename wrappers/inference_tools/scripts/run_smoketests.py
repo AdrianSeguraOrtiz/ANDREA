@@ -459,6 +459,8 @@ def _parse_smoke_config_payload(
         "global",
         "group_native",
         "group_emulated",
+        "cell_native",
+        "group_aggregated",
     }:
         raise ValueError(
             f"Invalid config in {config_path}: execution.mode is unsupported."
@@ -767,6 +769,14 @@ def validate_network(path: Path, config: SmokeConfig) -> int:
             raise RuntimeError("Expected at least one row with context='group:*'.")
 
     for idx, row in enumerate(rows, start=2):
+        if not str(row.get("context", "")).strip():
+            raise RuntimeError(f"network.csv line {idx} has empty context.")
+        sign = str(row.get("sign", "")).strip()
+        if sign not in {"+", "-", "?"}:
+            raise RuntimeError(
+                f"network.csv line {idx} has invalid sign: {sign!r}. "
+                "Expected '+', '-' or '?'."
+            )
         raw_score = row.get("score")
         try:
             score = float(str(raw_score))

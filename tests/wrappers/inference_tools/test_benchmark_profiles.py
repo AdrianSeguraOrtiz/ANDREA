@@ -225,6 +225,107 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             {"tf_list"},
         )
 
+    def test_cell_native_and_group_aggregated_cost_profiles_resolve(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            catalog_root = base / "catalog"
+            tool_root = catalog_root / "fakecell"
+            tool_root.mkdir(parents=True)
+            tool_root.joinpath("toolspec.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "id": "fakecell",
+                        "execution_capabilities": [
+                            "cell_native",
+                            "group_aggregated",
+                        ],
+                        "params": {},
+                        "extra_inputs": {
+                            "required": [],
+                            "optional": [
+                                {
+                                    "input": "tf_list",
+                                    "usage": "Restricts candidate regulators.",
+                                },
+                                {
+                                    "input": "chromatin_accessibility_matrix",
+                                    "usage": "Provides paired accessibility features.",
+                                },
+                            ],
+                            "conditional_required": [
+                                {
+                                    "input": "groups",
+                                    "execution": "mode",
+                                    "op": "eq",
+                                    "value": "group_aggregated",
+                                    "usage": "Maps cell-native outputs to groups.",
+                                }
+                            ],
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            cost_dir = base / "cost_profiles"
+            cost_dir.mkdir()
+            cost_dir.joinpath("fakecell.json").write_text(
+                json.dumps(
+                    {
+                        "profiles": [
+                            {
+                                "id": "cell_native_atac",
+                                "execution": {"mode": "cell_native"},
+                                "optional_inputs": [
+                                    "tf_list",
+                                    "chromatin_accessibility_matrix",
+                                ],
+                            },
+                            {
+                                "id": "group_aggregated_groups_2",
+                                "execution": {"mode": "group_aggregated"},
+                                "group_count": 2,
+                            },
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            profiles = resolve_benchmark_profiles(
+                tool_id="fakecell",
+                catalog_tools_root=catalog_root,
+                param_overrides_dir=base / "param_overrides",
+                cost_profiles_dir=cost_dir,
+            )
+
+        cell_native = profiles[0]
+        self.assertEqual(cell_native.execution_profile["mode"], "cell_native")
+        self.assertEqual(
+            cell_native.execution_profile["physical_task_policy"], "cell_native"
+        )
+        self.assertEqual(cell_native.execution_profile["group_count"], 0)
+        self.assertEqual(cell_native.execution_profile["aggregation_step"], "none")
+        self.assertEqual(cell_native.input_profile["output_density_class"], "dense")
+        self.assertTrue(cell_native.input_profile["has_tf_list"])
+        self.assertTrue(
+            cell_native.input_profile["has_chromatin_accessibility_matrix"]
+        )
+
+        group_aggregated = profiles[1]
+        self.assertEqual(group_aggregated.execution_profile["mode"], "group_aggregated")
+        self.assertEqual(
+            group_aggregated.execution_profile["physical_task_policy"],
+            "andrea_group_aggregated",
+        )
+        self.assertEqual(group_aggregated.execution_profile["group_count"], 2)
+        self.assertEqual(
+            group_aggregated.execution_profile["aggregation_step"], "cell_to_group"
+        )
+        self.assertEqual(
+            group_aggregated.input_profile["conditional_inputs_satisfied"], ["groups"]
+        )
+
     def test_profile_rejects_non_optional_input_selection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "clr.json"

@@ -36,7 +36,9 @@ Cost model written to cost.json:
 
 For `execution.mode=group_emulated`, each runtime point measures one physical
 wrapper task. The logical group count is stored in `execution_profile`; planner
-ETA code applies the group/task multiplier later.
+ETA code applies the group/task multiplier later. For `group_aggregated`, the
+benchmarkable upstream execution is still `cell_native`; ANDREA adds a
+deterministic aggregation overhead during planning.
 """
 
 from __future__ import annotations
@@ -574,7 +576,12 @@ def percentile(values: Sequence[float], q: float) -> float:
     return ordered[lower_idx] * (1.0 - weight) + ordered[upper_idx] * weight
 
 
-def aggregate_runtime_points(all_runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def aggregate_runtime_points(
+    all_runs: list[dict[str, Any]],
+    *,
+    execution_profile: dict[str, Any],
+    input_profile: dict[str, Any],
+) -> list[dict[str, Any]]:
     grouped: dict[tuple[int, int, int, int], list[dict[str, Any]]] = defaultdict(list)
     for run in all_runs:
         key = (
@@ -641,6 +648,14 @@ def aggregate_runtime_points(all_runs: list[dict[str, Any]]) -> list[dict[str, A
             "failure_breakdown": failure_breakdown,
             "seconds_p50": None,
             "seconds_p90": None,
+            "feature_vector": build_feature_vector(
+                execution_profile=execution_profile,
+                input_profile=input_profile,
+                genes=genes,
+                columns=columns,
+                threads=threads,
+                ram_gb=ram_gb,
+            ),
         }
 
         if ok_secs:
@@ -649,6 +664,51 @@ def aggregate_runtime_points(all_runs: list[dict[str, Any]]) -> list[dict[str, A
 
         points.append(point)
     return points
+
+
+def build_feature_vector(
+    *,
+    execution_profile: dict[str, Any],
+    input_profile: dict[str, Any],
+    genes: int,
+    columns: int,
+    threads: int,
+    ram_gb: int,
+) -> dict[str, Any]:
+    mode = str(execution_profile.get("mode") or "")
+    group_count = int(execution_profile.get("group_count") or 0)
+    n_cells = int(columns) if input_profile.get("column_kind") == "cells" else 0
+    if mode == "cell_native":
+        expected_contexts = max(1, n_cells)
+    elif mode in {"group_native", "group_emulated", "group_aggregated"}:
+        expected_contexts = max(1, group_count)
+    else:
+        expected_contexts = 1
+    aggregation_step = str(
+        execution_profile.get("aggregation_step")
+        or input_profile.get("aggregation_step")
+        or ("cell_to_group" if mode == "group_aggregated" else "none")
+    )
+    return {
+        "execution_mode": mode,
+        "n_cells": n_cells,
+        "n_genes": int(genes),
+        "n_groups": group_count,
+        "expected_contexts": int(expected_contexts),
+        "expected_dense_edges": int(max(0, n_cells) * max(0, genes) * max(0, genes - 1)),
+        "has_tf_list": "tf_list" in set(input_profile.get("extras_provided", [])),
+        "has_chromatin_accessibility_matrix": (
+            "chromatin_accessibility_matrix"
+            in set(input_profile.get("extras_provided", []))
+        ),
+        "output_density_class": str(
+            input_profile.get("output_density_class")
+            or ("dense" if mode in {"cell_native", "group_aggregated"} else "sparse")
+        ),
+        "aggregation_step": aggregation_step,
+        "threads": int(threads),
+        "ram_gb": float(ram_gb),
+    }
 
 
 def write_tool_cost_profile(
@@ -973,7 +1033,11 @@ def run(argv: Sequence[str] | None = None) -> int:
                 global_success += profile_summary["successful_runs"]
                 global_fail += profile_summary["failed_runs"]
 
-                runtime_points = aggregate_runtime_points(profile_runs)
+                runtime_points = aggregate_runtime_points(
+                    profile_runs,
+                    execution_profile=profile.execution_profile,
+                    input_profile=profile.input_profile,
+                )
                 if runtime_points:
                     cost_profile_entries.append(
                         make_cost_profile_entry(

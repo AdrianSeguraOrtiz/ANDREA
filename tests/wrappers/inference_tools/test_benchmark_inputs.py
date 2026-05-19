@@ -134,6 +134,8 @@ def _assert_file_matches_input_spec(
         kind = check.get("kind")
         if kind == "first_column_subset_expression_columns":
             testcase.assertTrue(first_column_values.issubset(expression_columns))
+        elif kind == "data_columns_subset_expression_columns":
+            testcase.assertTrue(set(header[1:]).issubset(expression_columns))
         elif kind == "row_count_matches_expression_columns":
             testcase.assertEqual(len(rows), len(expression_columns), input_key)
         elif kind == "column_subset_expression_genes":

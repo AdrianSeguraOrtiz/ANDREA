@@ -29,7 +29,9 @@
           "enum": [
             "global",
             "group_native",
-            "group_emulated"
+            "group_emulated",
+            "cell_native",
+            "group_aggregated"
           ]
         }
       },
@@ -95,7 +97,9 @@
                 "enum": [
                   "global",
                   "group_native",
-                  "group_emulated"
+                  "group_emulated",
+                  "cell_native",
+                  "group_aggregated"
                 ]
               }
             }

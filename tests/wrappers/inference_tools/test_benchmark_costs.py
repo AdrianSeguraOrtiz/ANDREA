@@ -279,6 +279,10 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
             for profile in payload["profiles"]:
                 self.assertEqual(len(profile["runtime_points"]), 1)
                 self.assertEqual(profile["runtime_points"][0]["seconds_p50"], 1.25)
+                feature_vector = profile["runtime_points"][0]["feature_vector"]
+                self.assertEqual(feature_vector["n_genes"], 8)
+                self.assertEqual(feature_vector["n_cells"], 0)
+                self.assertEqual(feature_vector["aggregation_step"], "none")
                 params_profile = profile["benchmark_config"]["params_profile"]
                 self.assertEqual(
                     params_profile["cost_relevant_params"],
