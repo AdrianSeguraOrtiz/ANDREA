@@ -58,6 +58,10 @@
       "runtime": "r",
       "bundles": []
     },
+    "lioness": {
+      "runtime": "r",
+      "bundles": []
+    },
     "miniex3": {
       "runtime": "python",
       "bundles": [

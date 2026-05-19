@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "id": "lioness",
+  "name": "LIONESS",
+  "publication": [
+    "https://doi.org/10.1016/j.isci.2019.03.021"
+  ],
+  "first_author": "Marieke Lydia Kuijjer",
+  "year": 2019,
+  "method_summary": "LIONESS estimates one sample-specific network per input sample by comparing an aggregate network built from all samples with leave-one-sample-out aggregate networks through a linear interpolation equation. The lionessR package implements this framework with a default Pearson-correlation aggregate network function, while allowing other complete weighted adjacency-matrix functions in upstream R code.",
+  "method_keywords": [
+    "single_sample",
+    "single_cell",
+    "linear_interpolation",
+    "aggregate_network",
+    "pearson_correlation",
+    "coexpression",
+    "undirected"
+  ],
+  "implementation_url": "https://www.bioconductor.org/packages/release/bioc/html/lionessR.html",
+  "docker_image": "adriansegura99/inference-tools_lioness:1.0.0",
+  "execution_capabilities": [
+    "cell_native",
+    "group_aggregated"
+  ],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "generic",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_aggregated",
+        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates LIONESS cell-native network rows by group.",
+        "usage": "ANDREA uses groups.tsv after the LIONESS cell-native run to average signed edge effects across cells in each group; lionessR itself does not consume groups.tsv."
+      }
+    ]
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "lioness.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined stdout/stderr log from the LIONESS wrapper and R session."
+    },
+    {
+      "path_pattern": "raw/lioness_result.rds",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw SummarizedExperiment object returned by Bioconductor lionessR::lioness()."
+    },
+    {
+      "path_pattern": "raw/lioness_weights.tsv.gz",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Long-form raw edge-weight table extracted from the lioness assay before conversion to ANDREA network.csv."
+    }
+  ],
+  "outputs": {
+    "directed": false,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "The selected public entrypoint lionessR::lioness() computes aggregate and leave-one-sample-out networks internally and does not expose a stable progress callback; the wrapper should report coarse lifecycle states in progress.json."
+  },
+  "params": {}
+}

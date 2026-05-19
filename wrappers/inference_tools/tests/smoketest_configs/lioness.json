@@ -1,0 +1,20 @@
+{
+  "execution": {
+    "mode": "cell_native"
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "cell_native"
+    },
+    {
+      "name": "group_aggregated",
+      "extra_files": ["groups.tsv"],
+      "execution": {
+        "mode": "group_aggregated"
+      }
+    }
+  ]
+}
