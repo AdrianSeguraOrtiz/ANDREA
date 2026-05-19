@@ -43,6 +43,9 @@ EXPECTED_PARAMS = {
     "wauc_adj_r2_threshold",
 }
 
+SIMIC_TEST_PROPORTION = 0.2
+SIMIC_MIN_CELLS_PER_SPLIT = 2
+
 
 @dataclass(frozen=True)
 class ResolvedParams:
@@ -316,19 +319,99 @@ def _read_cell_phenotypes(
     counts = {label: 0 for label in label_by_assignment}
     for assignment in cell_to_assignment.values():
         counts[assignment] += 1
+    min_cells_per_phenotype = SIMIC_MIN_CELLS_PER_SPLIT * 2
     too_small = [
-        label_by_assignment[label] for label, count in counts.items() if count < 2
+        label_by_assignment[label]
+        for label, count in counts.items()
+        if count < min_cells_per_phenotype
     ]
     if too_small:
         raise ValueError(
-            "Each phenotype must have at least two cells for SimiC train/test splitting. "
+            "Each phenotype must have at least four cells for SimiC's train/test split "
+            "to retain at least two train and two test cells per phenotype. "
             f"Too small: {too_small}"
+        )
+    test_size = int(len(cells) * SIMIC_TEST_PROPORTION)
+    min_test_size = SIMIC_MIN_CELLS_PER_SPLIT * len(counts)
+    max_test_size = len(cells) - min_test_size
+    if test_size < min_test_size:
+        raise ValueError(
+            "SimiC's upstream 20% test split is too small for the number of phenotypes: "
+            f"test_size={test_size}, required_at_least={min_test_size}."
+        )
+    if test_size > max_test_size:
+        raise ValueError(
+            "SimiC's upstream 20% test split is too large to keep at least two train cells per phenotype: "
+            f"test_size={test_size}, allowed_at_most={max_test_size}."
         )
 
     return PhenotypeAssignments(
         cell_to_assignment=cell_to_assignment,
         label_by_assignment=label_by_assignment,
     )
+
+
+def _stratified_split_df_and_assignment(
+    df_in: pd.DataFrame,
+    assignment: Any,
+    test_proportion: float = SIMIC_TEST_PROPORTION,
+) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]:
+    assignment_array = np.asarray(assignment)
+    if len(df_in) != len(assignment_array):
+        raise ValueError(
+            "SimiC split received mismatched expression rows and phenotype assignments."
+        )
+    labels = sorted(set(assignment_array.tolist()))
+    test_size = int(len(assignment_array) * test_proportion)
+    min_test_size = SIMIC_MIN_CELLS_PER_SPLIT * len(labels)
+    max_test_size = len(assignment_array) - min_test_size
+    if test_size < min_test_size:
+        raise ValueError(
+            "SimiC's upstream 20% test split is too small for the number of phenotypes: "
+            f"test_size={test_size}, required_at_least={min_test_size}."
+        )
+    if test_size > max_test_size:
+        raise ValueError(
+            "SimiC's upstream 20% test split is too large to keep at least two train cells per phenotype: "
+            f"test_size={test_size}, allowed_at_most={max_test_size}."
+        )
+
+    test_indices: list[int] = []
+    candidate_extra_indices: list[int] = []
+    for label in labels:
+        label_indices = np.where(assignment_array == label)[0]
+        if len(label_indices) < SIMIC_MIN_CELLS_PER_SPLIT * 2:
+            raise ValueError(
+                "Each phenotype must have at least four cells for SimiC's train/test split "
+                "to retain at least two train and two test cells per phenotype."
+            )
+        permuted = np.random.permutation(label_indices)
+        test_indices.extend(permuted[:SIMIC_MIN_CELLS_PER_SPLIT].tolist())
+        candidate_extra_indices.extend(
+            permuted[SIMIC_MIN_CELLS_PER_SPLIT:-SIMIC_MIN_CELLS_PER_SPLIT].tolist()
+        )
+
+    remaining = test_size - len(test_indices)
+    if remaining > len(candidate_extra_indices):
+        raise ValueError(
+            "SimiC's upstream 20% test split cannot satisfy per-phenotype train/test coverage."
+        )
+    if remaining:
+        extra_permuted = np.random.permutation(candidate_extra_indices)
+        test_indices.extend(extra_permuted[:remaining].tolist())
+
+    test_index_set = set(test_indices)
+    test_idx = np.array(sorted(test_indices), dtype=int)
+    train_idx = np.array(
+        [idx for idx in range(len(assignment_array)) if idx not in test_index_set],
+        dtype=int,
+    )
+
+    train_df = df_in.loc[train_idx]
+    train_assign = assignment_array[train_idx]
+    test_df = df_in.loc[test_idx]
+    test_assign = assignment_array[test_idx]
+    return train_df, test_df, train_assign, test_assign
 
 
 def _prepare_upstream_inputs(
@@ -400,7 +483,7 @@ def _run_simic(
     log_path: Path,
     progress_path: Path,
 ) -> tuple[Path, Path]:
-    from simiclasso.clus_regression import simicLASSO_op
+    import simiclasso.clus_regression as clus_regression
     import simiclasso.evaluation_metric as evaluation_metric
     from simiclasso.weighted_AUC_mat import main_fn
     from sklearn.metrics import r2_score as sklearn_r2_score
@@ -420,6 +503,7 @@ def _run_simic(
         )
 
     evaluation_metric.r2_score = _r2_score_compat
+    clus_regression.split_df_and_assignment = _stratified_split_df_and_assignment
 
     weights_path = raw_dir / "simic_weights.pickle"
     wauc_path = raw_dir / "simic_wauc_matrices.pickle"
@@ -433,7 +517,7 @@ def _run_simic(
     )
     with log_path.open("a", encoding="utf-8") as log_fh:
         with contextlib.redirect_stdout(log_fh), contextlib.redirect_stderr(log_fh):
-            simicLASSO_op(
+            clus_regression.simicLASSO_op(
                 p2df=str(prepared.expression_pickle),
                 p2assignment=str(prepared.assignment_file),
                 similarity=params.similarity,

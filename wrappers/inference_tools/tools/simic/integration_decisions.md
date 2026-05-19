@@ -356,8 +356,12 @@ Upstream Dockerfile decision:
   - every expression cell must appear exactly once in `cell_phenotypes.tsv`
   - every phenotype has exactly one integer order
   - every order maps to exactly one phenotype
-  - each phenotype must have at least two cells before SimiC's internal train/test split
+  - each phenotype must have enough cells for SimiC's train/test diagnostics after the upstream 20% split: at least two train cells and two test cells per phenotype
   - all TFs must exist in expression and at least one non-TF target gene must remain
+- Upstream split handling:
+  - SimiC's public `simicLASSO_op` calls `split_df_and_assignment()` with a fixed 20% test split before fitting and scoring (`clus_regression.py:500`, `common_io.py:141-153`).
+  - The upstream split is random but not stratified, so small or imbalanced phenotype datasets can leave a phenotype with only one test cell; the upstream adjusted-R2 helper then asserts `num_sample > 1` (`evaluation_metric.py:42-43`).
+  - The wrapper now patches the imported split helper to keep the same 20% test-size rule while selecting at least two train and two test cells per phenotype. If this is impossible, it fails early with a clear input-shape error instead of surfacing the upstream assertion.
 - Default preservation:
   - `random_seed=null` does not seed `random` or `numpy.random`
   - integer `random_seed` seeds both Python and NumPy for reproducible wrapper runs
@@ -386,7 +390,16 @@ Upstream Dockerfile decision:
 - SimiC requires meaningful ordering of phenotypes for the similarity constraint. Phase 1 resolves this with a dedicated `cell_phenotypes` input spec instead of overloading `groups.tsv`.
 - The selected upstream public function silently runs RCD without a per-iteration callback, so progress is coarse.
 - Upstream has runtime-dependent randomness from the train/test split and RCD label selection; `random_seed=null` preserves that default, while an integer seed is a wrapper-level reproducibility option.
+- The wrapper preserves runtime-dependent randomness for the stratified 20% train/test split when `random_seed=null`; integer `random_seed` seeds the split and random coordinate descent.
+- Datasets with too many ordered phenotypes for the fixed 20% test split, or with fewer than four cells in any phenotype, are unsupported by this wrapper contract because SimiC's adjusted-R2 diagnostics require at least two train and two test cells per phenotype.
 - `simicLASSO_op` has an undocumented fallback that clusters cells when no assignment file is provided. This integration does not expose it because the tutorial says a correct run requires an assignment file and the fallback does not clearly preserve meaningful phenotype order.
+
+## Failure Semantics Review
+
+- The `simic__01` failure observed in `inferred_networks/gui_dataset_20260519T003127Z` is classified as an unsupported dataset shape exposed through an upstream method limitation.
+- The input files were syntactically valid, but the dataset contained several small phenotype groups. Upstream SimiC's fixed random 20% train/test split is not stratified, and the adjusted-R2 diagnostic asserts that each evaluated phenotype has more than one sample.
+- The wrapper now preserves the upstream 20% split rule while making the split phenotype-aware. It fails early with a clear input-shape error when a phenotype cannot provide at least two train and two test cells.
+- SimiC upstream failures are not broadly converted into successful empty networks. Empty output is not the intended behavior for this failure class.
 
 ## Validation
 
