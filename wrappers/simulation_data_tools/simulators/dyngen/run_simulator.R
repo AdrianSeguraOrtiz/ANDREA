@@ -734,6 +734,17 @@ derive_lineage_tree <- function(dataset, groups_df, active_edges_by_group, path,
       )
     })
   )
+  root_groups <- setdiff(used_groups, lineage_tree$child)
+  if (length(root_groups) > 0) {
+    root_rows <- data.frame(
+      child = root_groups,
+      parent = "__root__",
+      gain_rate = 0,
+      loss_rate = 0,
+      stringsAsFactors = FALSE
+    )
+    lineage_tree <- rbind(root_rows, lineage_tree)
+  }
 
   write.table(
     lineage_tree,

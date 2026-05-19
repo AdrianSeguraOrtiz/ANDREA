@@ -341,7 +341,7 @@
             "groups",
             "regulatory_network_sc"
           ],
-          "method": "Filter dyngen milestone transitions to exported groups, aggregate absolute cell-specific regulatory strengths by group and edge, mark edges active when mean absolute strength is at least 0.1, then compute gain/loss rates between parent and child active-edge sets.",
+          "method": "Filter dyngen milestone transitions to exported groups, aggregate absolute cell-specific regulatory strengths by group and edge, mark edges active when mean absolute strength is at least 0.1, then compute gain/loss rates between parent and child active-edge sets. Exported root groups are included as child rows with parent '__root__' and zero gain/loss rates so lineage_tree.tsv covers every group.",
           "assumptions": [
             "dyngen milestone transitions define the lineage topology for the exported hard groups.",
             "Mean absolute cell-specific regulatory strength >= 0.1 is a stable activity threshold for lineage gain/loss summaries."
@@ -702,7 +702,7 @@
             "groups",
             "regulatory_network_sc"
           ],
-          "method": "Filter dyngen milestone transitions to exported groups, aggregate absolute cell-specific regulatory strengths by group and edge, mark edges active when mean absolute strength is at least 0.1, then compute gain/loss rates between parent and child active-edge sets.",
+          "method": "Filter dyngen milestone transitions to exported groups, aggregate absolute cell-specific regulatory strengths by group and edge, mark edges active when mean absolute strength is at least 0.1, then compute gain/loss rates between parent and child active-edge sets. Exported root groups are included as child rows with parent '__root__' and zero gain/loss rates so lineage_tree.tsv covers every group.",
           "assumptions": [
             "Cell-specific profiles also export group truth, so the same group lineage derivation used for scrna_grouped applies to the group layer of scrna_cell_specific outputs.",
             "dyngen milestone transitions define the lineage topology for the exported hard groups.",

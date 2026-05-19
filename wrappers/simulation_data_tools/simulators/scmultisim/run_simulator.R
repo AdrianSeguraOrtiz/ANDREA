@@ -1079,6 +1079,17 @@ write_lineage_tree <- function(groups_df, group_order, active_edges_by_group, pa
       stringsAsFactors = FALSE
     )
   }))
+  root_groups <- setdiff(names(group_order), lineage_tree$child)
+  if (length(root_groups) > 0) {
+    root_rows <- data.frame(
+      child = root_groups,
+      parent = "__root__",
+      gain_rate = 0,
+      loss_rate = 0,
+      stringsAsFactors = FALSE
+    )
+    lineage_tree <- rbind(root_rows, lineage_tree)
+  }
   write_tsv(lineage_tree, path)
   write_tsv(data.frame(group = names(group_order), order = as.integer(group_order), stringsAsFactors = FALSE), file.path(raw_dir, "lineage_states_used.tsv"))
   write_tsv(lineage_edges, file.path(raw_dir, "lineage_transitions_used.tsv"))

@@ -290,6 +290,7 @@ Runtime resources:
 - The container reads `/work/request/simulator-run-request.json` and writes the normalized output tree directly under `/work/out/`.
 - The wrapper writes `progress.json`, `expression.tsv`, `truth/networks.csv`, `truth/gene_universe.txt`, optional `extras/`, `simulator-output-manifest.json`, and provenance under `provenance/raw/`.
 - Provenance currently includes the wrapper request, resolved wrapper params, scMultiSim options RDS, result RDS, true counts, cell metadata, session info and group derivation tables when requested.
+- `lineage_tree.tsv` root groups are emitted with `parent=__root__`, `gain_rate=0` and `loss_rate=0` so every generated group appears as a `child`.
 - The wrapper requires `runtime_resources.threads` in `/work/request/simulator-run-request.json` and records it in `provenance/raw/wrapper_environment.json`.
 - `batch_effect.enabled=true` hard-errors unless `technical_noise.enabled=true`, because upstream `divide_batches()` operates on observed counts produced by `add_expr_noise()`.
 - `scrna_grouped`, `prior_grn_by_group` and `lineage_tree` hard-error unless `dynamic_grn.enabled=true`, because group truth and those extras depend on native `cell_specific_grn`.
@@ -381,6 +382,14 @@ Implemented smoke tests:
 - The wrapper now normalizes the wrapper working object immediately after the upstream `sim_true_counts()` / optional noise and batch steps, when stripping the `gene` prefix is collision-free.
 - All standardized public files and requested `native/` outputs are therefore written with one naming convention (`1`, `2`, ..., `N`) instead of a mixture of `N` and `gene<N>`.
 - The pre-normalization upstream object is preserved as `provenance/raw/upstream_result.rds`; normalized wrapper provenance remains in `provenance/raw/result.rds`, and the audit rename table is written to `provenance/raw/public_gene_id_normalization.tsv`.
+
+## Failure Semantics Review
+
+- The lineage-related inference failures traced back to scMultiSim outputs are classified as simulator standardized-output bugs, not scMultiSim upstream simulation failures.
+- The affected `lineage_tree.tsv` files described only non-root transitions and omitted root groups that were present in `groups.tsv`. This produced invalid generated input for tools that require complete lineage state coverage, including scMTNI.
+- The wrapper now emits explicit root rows with `parent=__root__`, `gain_rate=0` and `loss_rate=0` for every generated root group.
+- Shared generate-data output validation now checks lineage coverage when `lineage_tree.tsv` is generated, so incomplete lineage extras fail during dataset generation instead of being discovered by inference wrappers.
+- The separate mixed gene-ID issue is a public-output normalization concern: the wrapper normalizes scMultiSim public gene IDs immediately after the upstream simulation/noise steps, before deriving standardized files, so all public outputs share the same gene identifier convention.
 
 ## Remaining Follow-Up
 

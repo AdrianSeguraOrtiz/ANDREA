@@ -113,7 +113,7 @@ Concrete wrapper fix list:
 - `groups.tsv` is derived from dyngen `milestone_percentages` by assigning each cell to the milestone with maximum percentage.
 - Group truth rows in public `truth/networks.csv` are derived from dyngen `regulatory_network_sc` by aggregating cell-specific regulatory strengths within each exported group. Missing cell-edge values are treated as zero; active edges use `mean(abs(strength)) >= 0.1` and use `context=group:<group_id>`.
 - Cell truth rows in public `truth/networks.csv` are normalized directly from dyngen `regulatory_network_sc`. The wrapper exports one row per nonzero non-self-loop cell/regulator/target strength with `context=cell:<cell_id>`, `score=abs(strength)` and `sign` derived from the strength sign. The group-level active-edge threshold is not applied.
-- `lineage_tree.tsv` is derived from dyngen `milestone_network` and the public group truth active-edge sets for both grouped and cell-specific profiles.
+- `lineage_tree.tsv` is derived from dyngen `milestone_network` and the public group truth active-edge sets for both grouped and cell-specific profiles. Root groups are emitted with `parent=__root__`, `gain_rate=0` and `loss_rate=0` so every group appears as a `child`.
 - `tf_list.txt` is derived from `feature_info$is_tf`.
 - `pseudotime.tsv` is derived from dyngen `milestone_percentages` and a deterministic order over `milestone_network`; branching/disconnected/cyclic topologies are projected to a single wrapper-defined order.
 - `cell_phenotypes.tsv` reuses the hard milestone-derived group assignment as an ordered phenotype/state assignment.
@@ -198,3 +198,10 @@ Concrete wrapper fix list:
   - `scrna_cell_specific`: `global` plus derived `group:<group_id>` plus native `cell:<cell_id>`.
 - `truth_contexts` in the spec records the native upstream artifact or wrapper derivation rule, score/sign semantics and limitations for every `global`, `group` and `cell` entry.
 - The cell-specific smoke config requires `global`, `group:` and `cell:` context prefixes, proving the cumulative contract.
+
+## Failure Semantics Review
+
+- The lineage-related inference failures traced back to dyngen outputs are classified as simulator standardized-output bugs, not dyngen scientific simulation failures.
+- The affected `lineage_tree.tsv` files described only parent-child transitions and omitted root groups that were present in `groups.tsv`. Tools such as scMTNI need every exported group to appear as a `child` so the lineage file is a complete state table/tree representation.
+- The wrapper now emits explicit root rows with `parent=__root__`, `gain_rate=0` and `loss_rate=0` for root groups.
+- Shared generate-data output validation now checks `lineage_tree.tsv` coverage when lineage output is requested, so incomplete lineage extras fail during dataset generation instead of surfacing later as tool-specific inference errors.
