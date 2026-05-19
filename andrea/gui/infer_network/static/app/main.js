@@ -60,7 +60,6 @@ function buildOptions() {
     planner: $("planner").value,
     planner_time_limit_seconds: Number($("planner-time").value),
     progress_poll_seconds: Number($("progress-poll").value),
-    strict: $("strict").checked,
   };
 }
 
@@ -201,7 +200,6 @@ async function submitRun() {
       job_id: state.jobId,
       options: {
         progress_poll_seconds: Number($("progress-poll").value),
-        strict: $("strict").checked,
       },
     });
     pushToast({
@@ -228,17 +226,6 @@ async function bootstrap() {
   applyDatasetDefaults();
   populateToolIssueSelect();
   syncExpressionHelpTooltip();
-  const strictInfoBtn = $("strict-info-btn");
-  if (strictInfoBtn) {
-    strictInfoBtn.dataset.help = JSON.stringify(
-      buildInfoTooltip({
-        title: "Strict Mode",
-        description:
-          "Fail fast on incompatibilities and execution failures. Without strict mode, incompatible tools may be skipped during analysis and successful tools can still complete even if others fail.",
-        example: "",
-      })
-    );
-  }
   initExpressionDropzone();
   await handleExpressionSelected(null);
   updateExtrasEmptyState();
@@ -288,12 +275,6 @@ function bindEvents() {
 
   $("expression-info-btn").addEventListener("click", () => {
     const payload = readHelpPayload($("expression-info-btn"));
-    if (payload) {
-      showInfoTooltip(payload);
-    }
-  });
-  $("strict-info-btn").addEventListener("click", () => {
-    const payload = readHelpPayload($("strict-info-btn"));
     if (payload) {
       showInfoTooltip(payload);
     }

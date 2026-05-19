@@ -42,9 +42,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             run_dir = tmp_root / "planned_run"
             run_dir.mkdir(parents=True, exist_ok=True)
 
-            def fake_preflight(
-                *, dataset_manifest_path, tools_params_path, strict
-            ):  # noqa: ANN001
+            def fake_preflight(*, dataset_manifest_path, tools_params_path):  # noqa: ANN001
                 return {
                     "schema_version": "1.0",
                     "catalog": {
@@ -134,7 +132,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                 )
                 return run_dir
 
-            def fake_run(*, run_dir, progress_poll_seconds, strict):  # noqa: ANN001
+            def fake_run(*, run_dir, progress_poll_seconds):  # noqa: ANN001
                 report_path = Path(run_dir) / "run_report.json"
                 payload = json.loads(report_path.read_text(encoding="utf-8"))
                 payload["status"] = "executed"
@@ -264,9 +262,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             tmp_root = Path(tmp)
             expression_content = "gene\tS1\tS2\nG1\t1\t2\nG2\t3\t4\n"
 
-            def fake_preflight(
-                *, dataset_manifest_path, tools_params_path, strict
-            ):  # noqa: ANN001
+            def fake_preflight(*, dataset_manifest_path, tools_params_path):  # noqa: ANN001
                 return {
                     "schema_version": "1.0",
                     "catalog": {"eligible": [], "warning": [], "blocked": []},

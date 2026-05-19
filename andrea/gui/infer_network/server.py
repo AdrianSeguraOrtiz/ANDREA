@@ -624,7 +624,6 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     planner_time_limit_seconds = float(
         planner_payload.get("cp_sat_time_limit_seconds", 10.0)
     )
-    strict = False
     progress_poll_seconds = 0.5
     preflight_output_json = str((run_dir / "preflight_report.json").resolve())
 
@@ -648,7 +647,6 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         str(progress_poll_seconds),
     ]
     append_cli_option(cli_unified_args, "--max-ram-gb", max_ram_gb)
-    append_cli_option(cli_unified_args, "--strict", strict)
 
     cli_preflight_args = [
         "andrea",
@@ -661,7 +659,6 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--output-json",
         preflight_output_json,
     ]
-    append_cli_option(cli_preflight_args, "--strict", strict)
 
     cli_plan_args = [
         "andrea",
@@ -681,7 +678,6 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         str(planner_time_limit_seconds),
     ]
     append_cli_option(cli_plan_args, "--max-ram-gb", max_ram_gb)
-    append_cli_option(cli_plan_args, "--strict", strict)
 
     cli_run_args = [
         "andrea",
@@ -692,7 +688,6 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--progress-poll-seconds",
         str(progress_poll_seconds),
     ]
-    append_cli_option(cli_run_args, "--strict", strict)
 
     python_unified = "\n".join(
         [
@@ -709,7 +704,6 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             f"    planner={python_literal(planner)},",
             f"    planner_time_limit_seconds={planner_time_limit_seconds},",
             f"    progress_poll_seconds={progress_poll_seconds},",
-            f"    strict={python_literal(strict)},",
             ")",
             "",
             "print(run_dir)",
@@ -733,7 +727,6 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "preflight_report = preflight_infer_network(",
             "    dataset_manifest_path=dataset_manifest_path,",
             "    tools_params_path=tools_params_path,",
-            f"    strict={python_literal(strict)},",
             ")",
             "",
             "run_dir = plan_infer_network(",
@@ -744,14 +737,12 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             f"    max_ram_gb={python_literal(max_ram_gb)},",
             f"    planner={python_literal(planner)},",
             f"    planner_time_limit_seconds={planner_time_limit_seconds},",
-            f"    strict={python_literal(strict)},",
             "    preflight_report=preflight_report,",
             ")",
             "",
             "run_dir = run_infer_network_plan(",
             "    run_dir=run_dir,",
             f"    progress_poll_seconds={progress_poll_seconds},",
-            f"    strict={python_literal(strict)},",
             ")",
             "",
             "print(run_dir)",
@@ -1293,7 +1284,6 @@ def _run_job(
             preflight_report = preflight_infer_network(
                 dataset_manifest_path=dataset_manifest_path,
                 tools_params_path=tools_params_path,
-                strict=bool(options.get("strict", False)),
             )
             preflight_path = Path(job.request_dir) / "preflight_report.json"
             preflight_path.write_text(
@@ -1323,7 +1313,6 @@ def _run_job(
                 planner_time_limit_seconds=float(
                     options.get("planner_time_limit_seconds", 10.0)
                 ),
-                strict=bool(options.get("strict", False)),
                 preflight_report=preflight_report,
             )
             run_dir_resolved = run_dir.resolve()
@@ -1348,7 +1337,6 @@ def _run_job(
             run_dir = run_infer_network_plan(
                 run_dir=run_dir_existing,
                 progress_poll_seconds=float(options.get("progress_poll_seconds", 0.5)),
-                strict=bool(options.get("strict", False)),
             )
             run_dir_resolved = run_dir.resolve()
             run_report_path = run_dir_resolved / "run_report.json"

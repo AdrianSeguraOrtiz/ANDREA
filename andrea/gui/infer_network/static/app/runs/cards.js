@@ -37,13 +37,18 @@ function toolExecutionCapabilities(tool) {
 }
 
 function executionModeLabel(mode) {
-  if (mode === "group_native") {
-    return "Group native";
+  const labels = {
+    global: "Global",
+    group_native: "Group native",
+    group_emulated: "Group emulated",
+    cell_native: "Cell native",
+    group_aggregated: "Group aggregated",
+  };
+  const key = String(mode || "").trim();
+  if (labels[key]) {
+    return labels[key];
   }
-  if (mode === "group_emulated") {
-    return "Group emulated";
-  }
-  return "Global";
+  return key ? key.replace(/_/g, " ") : "Global";
 }
 
 function currentDatasetOrganism() {
@@ -347,7 +352,7 @@ export function addRunCard(initial = {}) {
   executionModeInput.title =
     modeOptions.length <= 1
       ? "This tool has a single execution mode."
-      : "Choose whether to run the tool globally, by native group support, or by orchestrator-emulated groups.";
+      : "Choose global, native grouped, ANDREA-emulated grouped, native per-cell, or ANDREA group aggregation from native per-cell output.";
 
   runIdInput.value = initial.run_id || buildRunId(tool.tool_id);
   renderRunParamsForm(node, tool, initial.params || null);

@@ -1052,12 +1052,6 @@ button:disabled {
   align-self: end;
 }
 
-.strict-option {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.45rem;
-}
-
 .inline-input {
   display: flex;
   align-items: center;
