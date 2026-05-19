@@ -128,6 +128,7 @@
                   "column_subset_expression_genes",
                   "column_subset_expression_columns",
                   "column_subset_extra_column",
+                  "data_columns_subset_expression_columns",
                   "first_column_subset_expression_columns",
                   "row_count_matches_expression_columns",
                   "line_subset_expression_genes"

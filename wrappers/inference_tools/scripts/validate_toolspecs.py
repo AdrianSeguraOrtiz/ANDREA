@@ -393,6 +393,29 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                 "tools with execution_capabilities including 'group_emulated' must either require groups directly or declare extra_inputs.conditional_required for groups when execution.mode == 'group_emulated'."
             )
 
+    if "group_aggregated" in execution_modes:
+        if "cell_native" not in execution_modes:
+            errors.append(
+                "tools with execution_capabilities including 'group_aggregated' must also declare 'cell_native'."
+            )
+        has_group_aggregated_requirement = False
+        if isinstance(conditional, list):
+            for rule in conditional:
+                if not isinstance(rule, dict):
+                    continue
+                if (
+                    rule.get("input") == "groups"
+                    and rule.get("execution") == "mode"
+                    and rule.get("op") == "eq"
+                    and rule.get("value") == "group_aggregated"
+                ):
+                    has_group_aggregated_requirement = True
+                    break
+        if not has_group_aggregated_requirement:
+            errors.append(
+                "tools with execution_capabilities including 'group_aggregated' must declare extra_inputs.conditional_required for groups when execution.mode == 'group_aggregated'."
+            )
+
     return errors
 
 

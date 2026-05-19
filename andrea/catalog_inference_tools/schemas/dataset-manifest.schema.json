@@ -205,6 +205,18 @@
           "pattern": ".*\\.tsv$",
           "description": "Optional ordered cell phenotype TSV path. Detailed content validation is defined in input_specs/cell_phenotypes.json."
         },
+        "cell_descriptors": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional cell descriptor TSV path. Detailed content validation is defined in input_specs/cell_descriptors.json."
+        },
+        "chromatin_accessibility_matrix": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional paired chromatin accessibility matrix TSV path. Detailed content validation is defined in input_specs/chromatin_accessibility_matrix.json."
+        },
         "cluster_identities": {
           "type": ["string", "null"],
           "minLength": 1,

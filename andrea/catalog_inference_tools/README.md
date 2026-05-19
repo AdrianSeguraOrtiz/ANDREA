@@ -25,7 +25,15 @@ andrea/catalog_inference_tools/
     expression_matrix.json
     groups.json
     cell_phenotypes.json
+    cell_descriptors.json
+    chromatin_accessibility_matrix.json
+    cluster_identities.json
+    cluster_markers.json
+    enrichment_background.json
+    grnboost_network.json
     lineage_tree.json
+    pseudotime.json
+    terms_of_interest.json
     tf_list.json
     prior_grn.json
     prior_grn_by_group.json
@@ -50,7 +58,25 @@ Each tool container is executed with:
 
 When a plan is executed by the ANDREA orchestrator, `/io/execution.json` is also
 mounted next to `params.json` and contains the selected `execution.mode`
-(`global`, `group_native`, or `group_emulated`). Existing wrappers may ignore it.
+(`global`, `group_native`, `group_emulated`, `cell_native`, or
+`group_aggregated`). Existing wrappers may ignore it.
+
+Execution capabilities:
+- `global`: one network for the whole expression matrix.
+- `group_native`: the upstream tool natively consumes group/task metadata and
+  emits group-level networks from one run.
+- `group_emulated`: ANDREA partitions the expression matrix with `groups.tsv`
+  and runs the tool once per group.
+- `cell_native`: the upstream tool natively emits one network per cell.
+- `group_aggregated`: ANDREA aggregates native `cell:<cell_id>` outputs into
+  `group:<group_id>` outputs using the fixed signed-effect mean rule and
+  `groups.tsv`.
+
+`group_aggregated` is a derived orchestration mode, not an upstream grouped
+run. The container is still executed once through the tool's `cell_native`
+contract; ANDREA then aggregates the resulting `cell:<cell_id>` rows. ToolSpecs
+should only declare `group_aggregated` together with `cell_native`, and should
+not introduce aggregation parameters for this first contract.
 
 Expected outputs:
 - `/io/out/network.csv`
@@ -66,7 +92,18 @@ Expected outputs:
 
 `score` is always a positive raw magnitude/strength value. If an upstream
 method returns signed coefficients, wrappers must write `abs(coefficient)` to
-`score` and store direction only in `sign` (`+` or `-`).
+`score` and store direction only in `sign` (`+` or `-`). Unsigned edges must use
+`sign=?`.
+
+`context` remains a single public field. `global` means one whole-dataset
+network, `group:<id>` means one group-level network, and `cell:<id>` means one
+cell-level network. Unknown non-empty context families remain valid and are
+preserved in raw tables.
+
+Cell-native outputs can be dense and large. Wrappers should preserve the
+upstream raw method score magnitudes, omit zero-score edges, and avoid inventing
+cell-specific outputs when upstream does not provide a native cell-specific
+mode.
 
 ## Schemas
 

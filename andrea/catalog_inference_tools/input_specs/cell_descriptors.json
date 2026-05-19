@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "key": "cell_descriptors",
+  "file_kind": "tsv",
+  "description": "Cell descriptor TSV: first column maps expression cell/sample identifiers to one or more categorical descriptor columns such as batch, donor, condition or cell type.",
+  "example": "cell\tbatch\tcell_type\ncell_1\tbatch_a\tT_cell\ncell_2\tbatch_b\tB_cell",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 2,
+  "first_column_role": "expression_column_id",
+  "unique_first_column": true,
+  "data_columns_type": "any",
+  "data_numeric_min_fraction": 0.0,
+  "required_columns": [],
+  "column_types": {},
+  "cross_checks": [
+    {
+      "kind": "first_column_subset_expression_columns"
+    },
+    {
+      "kind": "row_count_matches_expression_columns"
+    }
+  ]
+}

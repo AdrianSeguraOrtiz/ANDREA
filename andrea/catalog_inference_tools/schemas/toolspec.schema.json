@@ -33,6 +33,8 @@
       "enum": [
         "groups",
         "cell_phenotypes",
+        "cell_descriptors",
+        "chromatin_accessibility_matrix",
         "cluster_identities",
         "cluster_markers",
         "enrichment_background",
@@ -398,10 +400,12 @@
         "enum": [
           "global",
           "group_native",
-          "group_emulated"
+          "group_emulated",
+          "cell_native",
+          "group_aggregated"
         ]
       },
-      "description": "Execution modes supported by the tool wrapper: global, native grouped inference, and/or orchestrator-emulated grouped inference."
+      "description": "Execution modes supported by the tool wrapper: global, native grouped inference, orchestrator-emulated grouped inference, native per-cell inference, and/or ANDREA group aggregation from native per-cell outputs."
     },
     "taxonomic_scope": {
       "type": "object",
