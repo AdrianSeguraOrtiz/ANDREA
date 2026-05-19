@@ -121,7 +121,7 @@ class InferNetworkMergeTests(unittest.TestCase):
         self.assertEqual(norm_rows, [])
         self.assertEqual(updated["signed_tool"].status, "failed")
         self.assertIn("non-positive score", updated["signed_tool"].error or "")
-        self.assertTrue(any("non-positive score" in warning for warning in warnings))
+        self.assertEqual(warnings, [])
 
     def test_preserves_cell_contexts_in_raw_and_normalized_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -221,7 +221,7 @@ class InferNetworkMergeTests(unittest.TestCase):
 
                 self.assertEqual(updated["bad_tool"].status, "failed")
                 self.assertIn(expected, updated["bad_tool"].error or "")
-                self.assertTrue(any(expected in warning for warning in warnings))
+                self.assertEqual(warnings, [])
 
     def _write_network(self, path: Path, rows: list[dict[str, str]]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)

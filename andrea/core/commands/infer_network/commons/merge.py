@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import math
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from andrea.core.shared.network_context import (
     normalize_network_context,
@@ -119,6 +119,7 @@ def _merge_network_outputs(
     run_dir: Path,
     execution_results: dict[str, ToolExecutionResult],
     warnings: list[str],
+    progress_callback: Optional[Callable[[str, int, str], None]] = None,
 ) -> tuple[
     dict[str, ToolExecutionResult], dict[str, int], Optional[Path], Optional[Path]
 ]:
@@ -127,20 +128,28 @@ def _merge_network_outputs(
     merged_norm_rows: list[dict[str, Any]] = []
     per_tool_rows: dict[str, int] = {}
     had_completed_network_output = False
+    valid_rows_by_tool: dict[str, tuple[Path, list[dict[str, Any]]]] = {}
+    completed_results = [
+        (tool_id, updated[tool_id])
+        for tool_id in sorted(updated.keys())
+        if updated[tool_id].status == "completed" and updated[tool_id].network_path
+    ]
+    total_completed = max(1, len(completed_results))
 
-    for tool_id in sorted(updated.keys()):
-        result = updated[tool_id]
-        if result.status != "completed" or not result.network_path:
-            continue
+    for idx, (tool_id, result) in enumerate(completed_results, start=1):
         had_completed_network_output = True
+        merge_percent = min(83, 78 + int(round((idx - 1) / total_completed * 5)))
+        _notify_progress(
+            progress_callback,
+            "merging_raw_networks",
+            merge_percent,
+            f"Reading network.csv for {tool_id}.",
+        )
 
         network_path = Path(result.network_path)
         try:
             rows = _read_network_rows(network_path, tool_id=tool_id)
         except Exception as exc:  # noqa: BLE001
-            warnings.append(
-                f"[{tool_id}] invalid network output, tool marked as failed: {exc}"
-            )
             updated[tool_id] = ToolExecutionResult(
                 tool_id=result.tool_id,
                 status="failed",
@@ -160,6 +169,38 @@ def _merge_network_outputs(
             per_tool_rows[tool_id] = 0
             continue
 
+        for row in rows:
+            raw_row = dict(row)
+            raw_row["tool_id"] = tool_id
+            merged_raw_rows.append(raw_row)
+        valid_rows_by_tool[tool_id] = (network_path, rows)
+
+    merged_raw_path: Optional[Path] = None
+    merged_norm_path: Optional[Path] = None
+
+    if merged_raw_rows or had_completed_network_output:
+        merged_raw_path = run_dir / "merged_network_raw.csv"
+        _notify_progress(
+            progress_callback,
+            "merging_raw_networks",
+            83,
+            "Writing merged_network_raw.csv.",
+        )
+        _write_network_rows(
+            path=merged_raw_path, rows=merged_raw_rows, include_tool_id=True
+        )
+
+    total_valid = max(1, len(valid_rows_by_tool))
+    for idx, (tool_id, (network_path, rows)) in enumerate(
+        valid_rows_by_tool.items(), start=1
+    ):
+        normalize_percent = min(89, 84 + int(round((idx - 1) / total_valid * 5)))
+        _notify_progress(
+            progress_callback,
+            "normalizing_scores",
+            normalize_percent,
+            f"Normalizing network scores for {tool_id}.",
+        )
         scores = [float(row["score"]) for row in rows]
         min_score = min(scores)
         max_score = max(scores)
@@ -172,10 +213,6 @@ def _merge_network_outputs(
 
         tool_norm_rows: list[dict[str, Any]] = []
         for row, normalized in zip(rows, norm_scores):
-            raw_row = dict(row)
-            raw_row["tool_id"] = tool_id
-            merged_raw_rows.append(raw_row)
-
             norm_row = dict(row)
             norm_row["score"] = float(normalized)
             norm_row["tool_id"] = tool_id
@@ -198,19 +235,27 @@ def _merge_network_outputs(
         )
         per_tool_rows[tool_id] = len(rows)
 
-    merged_raw_path: Optional[Path] = None
-    merged_norm_path: Optional[Path] = None
-
-    if merged_raw_rows or had_completed_network_output:
-        merged_raw_path = run_dir / "merged_network_raw.csv"
-        _write_network_rows(
-            path=merged_raw_path, rows=merged_raw_rows, include_tool_id=True
-        )
-
     if merged_norm_rows or had_completed_network_output:
         merged_norm_path = run_dir / "merged_network_normalized.csv"
+        _notify_progress(
+            progress_callback,
+            "normalizing_scores",
+            89,
+            "Writing merged_network_normalized.csv.",
+        )
         _write_network_rows(
             path=merged_norm_path, rows=merged_norm_rows, include_tool_id=True
         )
 
     return updated, per_tool_rows, merged_raw_path, merged_norm_path
+
+
+def _notify_progress(
+    progress_callback: Optional[Callable[[str, int, str], None]],
+    phase: str,
+    percent: int,
+    message: str,
+) -> None:
+    if progress_callback is None:
+        return
+    progress_callback(phase, percent, message)

@@ -6,6 +6,10 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+from andrea.core.commands.infer_network.commons.execution_state import (
+    execution_state_path,
+    read_execution_state,
+)
 from andrea.core.commands.infer_network.commons.shared import ToolExecutionResult
 
 from ._helpers import InferNetworkCoreTestCase
@@ -139,7 +143,13 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 )
 
             def fake_run_wave(
-                *, wave, runtime_io_by_tool, pulled_images, poll_interval_s, warnings
+                *,
+                wave,
+                runtime_io_by_tool,
+                pulled_images,
+                poll_interval_s,
+                warnings,
+                state_writer=None,
             ):
                 out = {}
                 for task in wave.tasks:
@@ -219,6 +229,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 / "network.cell_native.csv"
             )
             cell_network_exists = cell_network.exists()
+            state_payload = read_execution_state(execution_state_path(run_dir))
 
         self.assertIn("cell:C1", contexts)
         self.assertIn("group:A", contexts)
@@ -227,6 +238,12 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
         self.assertAlmostEqual(float(group_b_unknown["score"]), 2.0)
         self.assertEqual(group_b_unknown["sign"], "?")
         self.assertTrue(cell_network_exists)
+        self.assertEqual(state_payload["status"], "completed")
+        self.assertEqual(state_payload["logical_runs"]["cellrun"]["status"], "completed")
+        self.assertEqual(
+            state_payload["tools"]["cellrun__cell_native"]["status"],
+            "completed",
+        )
 
     def test_run_plan_executes_from_frozen_dir_and_updates_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -234,7 +251,13 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             run_dir = self._prepare_planned_run(base)
 
             def fake_run_wave(
-                *, wave, runtime_io_by_tool, pulled_images, poll_interval_s, warnings
+                *,
+                wave,
+                runtime_io_by_tool,
+                pulled_images,
+                poll_interval_s,
+                warnings,
+                state_writer=None,
             ):
                 out = {}
                 for task in wave.tasks:
@@ -261,7 +284,20 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                     )
                 return out
 
-            def fake_merge(*, run_dir, execution_results, warnings):
+            def fake_merge(
+                *, run_dir, execution_results, warnings, progress_callback=None
+            ):
+                if progress_callback is not None:
+                    progress_callback(
+                        "merging_raw_networks",
+                        83,
+                        "Writing merged_network_raw.csv.",
+                    )
+                    progress_callback(
+                        "normalizing_scores",
+                        89,
+                        "Writing merged_network_normalized.csv.",
+                    )
                 raw = run_dir / "merged_network_raw.csv"
                 norm = run_dir / "merged_network_normalized.csv"
                 raw.write_text(
@@ -310,6 +346,24 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                     value = result.get(key)
                     if value is not None:
                         self.assertFalse(Path(value).is_absolute())
+            state_payload = read_execution_state(execution_state_path(run_dir))
+            self.assertEqual(state_payload["status"], "completed")
+            self.assertEqual(state_payload["phase"], "completed")
+            self.assertEqual(state_payload["percent"], 100)
+            self.assertEqual(state_payload["summary"]["completed"], 1)
+            self.assertEqual(state_payload["summary"]["failed"], 0)
+            phase_history = [
+                event["phase"] for event in state_payload["phase_history"]
+            ]
+            for expected_phase in (
+                "collecting_results",
+                "merging_raw_networks",
+                "normalizing_scores",
+                "exporting_artifacts",
+                "writing_report",
+                "completed",
+            ):
+                self.assertIn(expected_phase, phase_history)
 
     def test_run_plan_rejects_input_fingerprint_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -353,7 +407,13 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             )
 
             def fake_run_wave(
-                *, wave, runtime_io_by_tool, pulled_images, poll_interval_s, warnings
+                *,
+                wave,
+                runtime_io_by_tool,
+                pulled_images,
+                poll_interval_s,
+                warnings,
+                state_writer=None,
             ):
                 out = {}
                 for task in wave.tasks:
@@ -388,7 +448,20 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                     )
                 return out
 
-            def fake_merge(*, run_dir, execution_results, warnings):
+            def fake_merge(
+                *, run_dir, execution_results, warnings, progress_callback=None
+            ):
+                if progress_callback is not None:
+                    progress_callback(
+                        "merging_raw_networks",
+                        83,
+                        "Writing merged_network_raw.csv.",
+                    )
+                    progress_callback(
+                        "normalizing_scores",
+                        89,
+                        "Writing merged_network_normalized.csv.",
+                    )
                 raw = run_dir / "merged_network_raw.csv"
                 norm = run_dir / "merged_network_normalized.csv"
                 raw.write_text(
@@ -425,6 +498,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             report_payload = json.loads(
                 (run_dir / "run_report.json").read_text(encoding="utf-8")
             )
+            state_payload = read_execution_state(execution_state_path(run_dir))
 
         self.assertEqual(executed, run_dir)
         self.assertEqual(report_payload["execution"]["tools_completed"], 1)
@@ -432,4 +506,11 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
         self.assertEqual(
             report_payload["tools"]["failed"]["aracne__02"],
             "synthetic test failure",
+        )
+        self.assertEqual(state_payload["status"], "completed_with_failures")
+        self.assertEqual(state_payload["summary"]["completed"], 1)
+        self.assertEqual(state_payload["summary"]["failed"], 1)
+        self.assertEqual(
+            state_payload["logical_runs"]["aracne__02"]["status"],
+            "failed",
         )

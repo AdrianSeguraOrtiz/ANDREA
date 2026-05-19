@@ -308,6 +308,7 @@ def _run_wave(
     pulled_images: set[str],
     poll_interval_s: float,
     warnings: list[str],
+    state_writer: Any = None,
 ) -> dict[str, ToolExecutionResult]:
     results: dict[str, ToolExecutionResult] = {}
     running: dict[str, RunningTool] = {}
@@ -329,13 +330,24 @@ def _run_wave(
                     phase="prepare_image",
                     message=task.image,
                 )
+                if state_writer is not None:
+                    state_writer.update_tool(
+                        task.tool_id,
+                        status="running",
+                        phase="prepare_image",
+                        percent=1,
+                        message=task.image,
+                    )
                 image_source = _ensure_docker_image(
                     image=task.image, pulled_images=pulled_images
                 )
                 if image_source == "pulled":
-                    warnings.append(
+                    warning = (
                         f"[{task.tool_id}] docker image was not local and was pulled: {task.image}"
                     )
+                    warnings.append(warning)
+                    if state_writer is not None:
+                        state_writer.record_warning_message(warning)
 
                 container_id = _docker_run_detached(
                     image=task.image,
@@ -357,10 +369,17 @@ def _run_wave(
                     phase="container_started",
                     message=f"threads={task.threads}, ram={task.ram_gb}GB",
                 )
+                if state_writer is not None:
+                    state_writer.update_tool(
+                        task.tool_id,
+                        status="running",
+                        phase="container_started",
+                        percent=3,
+                        message=f"threads={task.threads}, ram={task.ram_gb}GB",
+                    )
             except Exception as exc:  # noqa: BLE001
                 error = str(exc)
                 _write_text(logs_path, f"{error}\n")
-                warnings.append(f"[{task.tool_id}] failed before execution: {error}")
                 progress.update(
                     task.tool_id,
                     percent=100,
@@ -368,6 +387,15 @@ def _run_wave(
                     phase="failed",
                     message=error,
                 )
+                if state_writer is not None:
+                    state_writer.update_tool(
+                        task.tool_id,
+                        status="failed",
+                        phase="failed",
+                        percent=100,
+                        message=error,
+                        error=error,
+                    )
                 results[task.tool_id] = ToolExecutionResult(
                     tool_id=task.tool_id,
                     status="failed",
@@ -398,6 +426,14 @@ def _run_wave(
                             phase=phase,
                             message=message,
                         )
+                        if state_writer is not None:
+                            state_writer.update_tool(
+                                tool_id,
+                                status=status,
+                                phase=phase,
+                                percent=max(0, min(100, int(percent))),
+                                message=message,
+                            )
                         state.last_snapshot = snapshot
 
                 status = _docker_inspect_status(state.container_id)
@@ -439,7 +475,6 @@ def _run_wave(
                         logs_tail = _tail_lines(logs, max_lines=20)
                         if logs_tail:
                             error = f"{error}\nContainer logs tail:\n{logs_tail}"
-                    warnings.append(f"[{tool_id}] execution failed: {error}")
 
                 results[tool_id] = ToolExecutionResult(
                     tool_id=tool_id,
@@ -463,6 +498,19 @@ def _run_wave(
                     phase="done" if final_status == "completed" else "failed",
                     message=f"{duration:.2f}s",
                 )
+                if state_writer is not None:
+                    state_writer.update_tool(
+                        tool_id,
+                        status=final_status,
+                        phase="done" if final_status == "completed" else "failed",
+                        percent=100,
+                        message=(
+                            f"{duration:.2f}s"
+                            if final_status == "completed"
+                            else error or "Execution failed"
+                        ),
+                        error=error if final_status != "completed" else None,
+                    )
 
                 del running[tool_id]
 

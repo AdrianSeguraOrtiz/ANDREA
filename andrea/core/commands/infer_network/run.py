@@ -27,6 +27,7 @@ from .commons.dataset import (
     _parse_dataset_context,
     _read_expression_axes,
 )
+from .commons.execution_state import ExecutionStateWriter
 from .commons.merge import (
     _merge_network_outputs,
     _read_network_rows,
@@ -110,6 +111,17 @@ def _load_logical_runs_from_plan(
             "physical_tasks": physical_tasks,
         }
     return logical_runs
+
+
+def _sync_warning_messages_to_state(
+    *,
+    state_writer: ExecutionStateWriter,
+    warnings: list[str],
+    cursor: int,
+) -> int:
+    for message in warnings[cursor:]:
+        state_writer.record_warning_message(message)
+    return len(warnings)
 
 
 def _write_expression_subset(
@@ -566,13 +578,32 @@ def run_infer_network_plan(
     preflight_report = _load_json_object(preflight_path, "preflight_report")
     run_report = _load_json_object(run_report_path, "run_report")
 
+    _selected_modes, waves, _total_eta = _load_plan_waves(plan_payload)
+    logical_runs = _load_logical_runs_from_plan(plan_payload)
+    state_writer = ExecutionStateWriter.initialize(
+        run_dir=run_dir,
+        run_id=run_dir.name,
+        waves=waves,
+        logical_runs=logical_runs,
+        message="Execution plan loaded.",
+    )
+    state_writer.update_global(
+        status="running",
+        phase="verifying_inputs",
+        percent=1,
+        message="Verifying frozen run inputs.",
+    )
+
     fingerprints = plan_payload.get("input_fingerprints", {})
     if not isinstance(fingerprints, dict) or not fingerprints:
         raise ValueError("plan.json missing input_fingerprints")
     _verify_input_fingerprints(run_dir=run_dir, fingerprints=fingerprints)
-
-    _selected_modes, waves, _total_eta = _load_plan_waves(plan_payload)
-    logical_runs = _load_logical_runs_from_plan(plan_payload)
+    state_writer.update_global(
+        status="running",
+        phase="preparing_runtime",
+        percent=3,
+        message="Preparing runtime inputs.",
+    )
 
     runs_payload = preflight_report.get("runs", {})
     if not isinstance(runs_payload, dict):
@@ -655,6 +686,12 @@ def run_infer_network_plan(
         for run_id in sorted(compatibility_blocks):
             for message in compatibility_blocks[run_id]:
                 error_lines.append(f"[{run_id}] {message}")
+        state_writer.update_global(
+            status="failed",
+            phase="failed",
+            percent=100,
+            message="Execution blocked by tool compatibility rules.",
+        )
         raise ValueError(
             "Execution blocked by tool compatibility rules:\n" + "\n".join(error_lines)
         )
@@ -664,6 +701,12 @@ def run_infer_network_plan(
         for run_id in sorted(conditional_input_errors):
             for message in conditional_input_errors[run_id]:
                 error_lines.append(f"[{run_id}] {message}")
+        state_writer.update_global(
+            status="failed",
+            phase="failed",
+            percent=100,
+            message="Execution blocked by missing conditional inputs.",
+        )
         raise ValueError(
             "Execution blocked by missing conditional inputs:\n"
             + "\n".join(error_lines)
@@ -675,6 +718,11 @@ def run_infer_network_plan(
         if isinstance(issue, dict) and issue.get("code") != "planning_warning"
     ]
     warnings = list(compatibility_warnings)
+    warning_state_cursor = _sync_warning_messages_to_state(
+        state_writer=state_writer,
+        warnings=warnings,
+        cursor=0,
+    )
     runtime_warnings: list[str] = []
     physical_results: dict[str, ToolExecutionResult] = {}
     merged_raw_path = None
@@ -770,14 +818,26 @@ def run_infer_network_plan(
 
     pulled_images = set()
     for wave in waves:
+        state_writer.start_wave(wave.index)
         wave_results = _run_wave(
             wave=wave,
             runtime_io_by_tool=runtime_io_by_tool,
             pulled_images=pulled_images,
             poll_interval_s=progress_poll_seconds,
             warnings=runtime_warnings,
+            state_writer=state_writer,
         )
+        for result in wave_results.values():
+            state_writer.mark_tool_result(result)
         physical_results.update(wave_results)
+        state_writer.complete_wave(wave.index)
+
+    state_writer.update_global(
+        status="running",
+        phase="collecting_results",
+        percent=70,
+        message="Collecting tool execution results.",
+    )
 
     grouped_child_ids = {
         str(physical.get("task_id", "")).strip()
@@ -794,6 +854,11 @@ def run_infer_network_plan(
                 break
         if not handled:
             warnings.append(message)
+    warning_state_cursor = _sync_warning_messages_to_state(
+        state_writer=state_writer,
+        warnings=warnings,
+        cursor=warning_state_cursor,
+    )
 
     logical_results: dict[str, ToolExecutionResult] = {}
     logical_results_payload: dict[str, Any] = {}
@@ -803,6 +868,12 @@ def run_infer_network_plan(
         physical_tasks = logical_spec["physical_tasks"]
         execution_mode = str(logical_spec["execution"].get("mode", "")).strip()
         if execution_mode == "group_aggregated":
+            state_writer.update_global(
+                status="running",
+                phase="finalizing_group_aggregated",
+                percent=72,
+                message=f"Aggregating cell-native output for {logical_run_id}.",
+            )
             upstream_children = {
                 str(physical.get("task_id", "")).strip(): physical_results.get(
                     str(physical.get("task_id", "")).strip()
@@ -824,6 +895,12 @@ def run_infer_network_plan(
             logical_results[logical_run_id] = logical_result
             logical_results_payload[logical_run_id] = logical_payload
             status_by_tool[logical_run_id] = logical_result.status
+            state_writer.mark_logical_result(logical_result)
+            warning_state_cursor = _sync_warning_messages_to_state(
+                state_writer=state_writer,
+                warnings=warnings,
+                cursor=warning_state_cursor,
+            )
             continue
         if (
             len(physical_tasks) == 1
@@ -849,8 +926,15 @@ def run_infer_network_plan(
                 "child_results": {},
             }
             status_by_tool[logical_run_id] = result.status
+            state_writer.mark_logical_result(result)
             continue
 
+        state_writer.update_global(
+            status="running",
+            phase="finalizing_grouped",
+            percent=72,
+            message=f"Combining grouped outputs for {logical_run_id}.",
+        )
         grouped_children = {
             str(physical.get("task_id", "")).strip(): physical_results.get(
                 str(physical.get("task_id", "")).strip()
@@ -871,13 +955,52 @@ def run_infer_network_plan(
         logical_results[logical_run_id] = logical_result
         logical_results_payload[logical_run_id] = logical_payload
         status_by_tool[logical_run_id] = logical_result.status
+        state_writer.mark_logical_result(logical_result)
+        warning_state_cursor = _sync_warning_messages_to_state(
+            state_writer=state_writer,
+            warnings=warnings,
+            cursor=warning_state_cursor,
+        )
+
+    state_writer.update_global(
+        status="running",
+        phase="merging_raw_networks",
+        percent=78,
+        message="Merging logical network outputs.",
+    )
+
+    def update_postprocessing_progress(
+        phase: str,
+        percent: int,
+        message: str,
+    ) -> None:
+        state_writer.update_global(
+            status="running",
+            phase=phase,
+            percent=percent,
+            message=message,
+        )
 
     execution_results, per_tool_rows, merged_raw_path, merged_norm_path = (
         _merge_network_outputs(
             run_dir=run_dir,
             execution_results=logical_results,
             warnings=warnings,
+            progress_callback=update_postprocessing_progress,
         )
+    )
+    for result in execution_results.values():
+        state_writer.mark_logical_result(result)
+    warning_state_cursor = _sync_warning_messages_to_state(
+        state_writer=state_writer,
+        warnings=warnings,
+        cursor=warning_state_cursor,
+    )
+    state_writer.update_global(
+        status="running",
+        phase="normalizing_scores",
+        percent=90,
+        message="Merged raw outputs and normalized tool scores.",
     )
 
     merged_raw_gexf_path: Path | None = None
@@ -888,24 +1011,60 @@ def run_infer_network_plan(
 
     if merged_raw_path is not None:
         merged_raw_gexf_path = run_dir / "merged_network_raw.gexf"
-        merged_raw_graphml_path = run_dir / "merged_network_raw.graphml"
+        state_writer.update_global(
+            status="running",
+            phase="exporting_artifacts",
+            percent=90,
+            message=f"Exporting {merged_raw_gexf_path.name}.",
+        )
         export_network_gexf(merged_raw_path, merged_raw_gexf_path)
+        merged_raw_graphml_path = run_dir / "merged_network_raw.graphml"
+        state_writer.update_global(
+            status="running",
+            phase="exporting_artifacts",
+            percent=91,
+            message=f"Exporting {merged_raw_graphml_path.name}.",
+        )
         export_network_graphml(merged_raw_path, merged_raw_graphml_path)
 
     if merged_norm_path is not None:
         merged_norm_gexf_path = run_dir / "merged_network_normalized.gexf"
+        state_writer.update_global(
+            status="running",
+            phase="exporting_artifacts",
+            percent=93,
+            message=f"Exporting {merged_norm_gexf_path.name}.",
+        )
+        export_network_gexf(merged_norm_path, merged_norm_gexf_path)
         merged_norm_graphml_path = run_dir / "merged_network_normalized.graphml"
+        state_writer.update_global(
+            status="running",
+            phase="exporting_artifacts",
+            percent=94,
+            message=f"Exporting {merged_norm_graphml_path.name}.",
+        )
+        export_network_graphml(merged_norm_path, merged_norm_graphml_path)
         merged_norm_cytoscape_script_path = (
             run_dir / "merged_network_normalized_cytoscape.py"
         )
-        export_network_gexf(merged_norm_path, merged_norm_gexf_path)
-        export_network_graphml(merged_norm_path, merged_norm_graphml_path)
+        state_writer.update_global(
+            status="running",
+            phase="exporting_artifacts",
+            percent=96,
+            message=f"Exporting {merged_norm_cytoscape_script_path.name}.",
+        )
         export_cytoscape_style_script(
             csv_path=merged_norm_path,
             graphml_path=merged_norm_graphml_path,
             out_path=merged_norm_cytoscape_script_path,
         )
 
+    state_writer.update_global(
+        status="running",
+        phase="writing_report",
+        percent=97,
+        message="Writing final run_report.json.",
+    )
     completed_tools = sorted(
         tool_id
         for tool_id, result in execution_results.items()
@@ -990,6 +1149,16 @@ def run_infer_network_plan(
     )
     run_report["execution"] = execution_info
     _write_json(run_report_path, run_report)
+    state_writer.update_global(
+        status="completed" if not failed_tools else "completed_with_failures",
+        phase="completed" if not failed_tools else "completed_with_failures",
+        percent=100,
+        message=(
+            "Execution completed."
+            if not failed_tools
+            else f"Execution completed with {len(failed_tools)} failed run(s)."
+        ),
+    )
 
     print(f"infer-network execution completed: {run_dir}")
     print(f"  selected tools: {len(selected_tools)}")
@@ -1029,6 +1198,12 @@ def run_infer_network_plan(
         print(f"  warnings: {warning_count} (see run_report.json)")
 
     if not completed_tools:
+        state_writer.update_global(
+            status="failed",
+            phase="failed",
+            percent=100,
+            message="All tool executions failed.",
+        )
         raise ValueError(
             "All tool executions failed. See run_report.json and per-tool container.log files."
         )
