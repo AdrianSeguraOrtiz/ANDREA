@@ -9,6 +9,12 @@ from textwrap import dedent
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from andrea.core.shared.network_context import (
+    network_context_sort_key,
+    normalize_network_context,
+    normalize_network_sign,
+)
+
 MERGED_NETWORK_REQUIRED_COLUMNS = [
     "source",
     "target",
@@ -55,16 +61,24 @@ def _load_merged_network_rows(csv_path: Path) -> list[dict[str, Any]]:
             )
 
         for idx, row in enumerate(reader, start=1):
+            context = normalize_network_context(
+                row["context"],
+                source=f"Merged network CSV line {idx}",
+            )
+            sign = normalize_network_sign(
+                row["sign"],
+                source=f"Merged network CSV line {idx}",
+            )
             rows.append(
                 {
                     "row_index": idx,
-                    "source": str(row["source"]),
-                    "target": str(row["target"]),
+                    "source": str(row["source"]).strip(),
+                    "target": str(row["target"]).strip(),
                     "score": float(row["score"]),
-                    "sign": str(row["sign"]),
-                    "evidence": str(row["evidence"]),
-                    "context": str(row["context"]),
-                    "tool_id": str(row["tool_id"]),
+                    "sign": sign,
+                    "evidence": str(row["evidence"]).strip(),
+                    "context": context,
+                    "tool_id": str(row["tool_id"]).strip(),
                 }
             )
     return rows
@@ -230,7 +244,8 @@ def export_cytoscape_style_script(
         for idx, tool_id in enumerate(tool_ids)
     }
     contexts = sorted(
-        {str(row["context"]).strip() for row in rows if str(row["context"]).strip()}
+        {str(row["context"]).strip() for row in rows if str(row["context"]).strip()},
+        key=network_context_sort_key,
     )
     style_name = f"ANDREA :: {graphml_path.stem}"
 
@@ -287,7 +302,13 @@ def export_cytoscape_style_script(
 
 
         def _line_style_for_context(context: str, alternate_line_style: str) -> str:
-            return "SOLID" if context == "global" else alternate_line_style
+            if context == "global":
+                return "SOLID"
+            if context.startswith("cell:"):
+                return "DOT"
+            if context.startswith("group:"):
+                return alternate_line_style
+            return "EQUAL_DASH"
 
 
         def _pick_layout_name(base_url: str) -> str | None:

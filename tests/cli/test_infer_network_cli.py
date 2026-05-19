@@ -76,7 +76,6 @@ class InferNetworkCliTests(unittest.TestCase):
         kwargs = run_mock.call_args.kwargs
         self.assertEqual(kwargs["run_dir"], run_dir)
         self.assertEqual(kwargs["progress_poll_seconds"], 0.5)
-        self.assertFalse(kwargs["strict"])
 
     def test_execute_subcommand_calls_core_execute(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

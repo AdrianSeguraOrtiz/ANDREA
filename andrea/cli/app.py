@@ -194,16 +194,12 @@ def infer_network_preflight(
         help=(
             "Optional tools_params.json to pre-validate requested runs "
             "({'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated'}}, ...]})."
+            "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]})."
         ),
     ),
     output_json: Optional[Path] = typer.Option(
         None,
         help="Optional output path to persist preflight report JSON.",
-    ),
-    strict: bool = typer.Option(
-        False,
-        help="If true, incompatible tools/params raise an error during preflight.",
     ),
 ):
     """Validate dataset inputs and compute tool eligibility before planning."""
@@ -211,7 +207,6 @@ def infer_network_preflight(
         core_preflight_infer_network,
         dataset_manifest_path=dataset_manifest,
         tools_params_path=tools_params,
-        strict=strict,
     )
     if output_json is not None:
         output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -269,7 +264,7 @@ def infer_network_plan(
         help=(
             "Path to tools_params.json in runs format: "
             "{'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated'}}, ...]}."
+            "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]}."
         ),
     ),
     output_dir: Path = typer.Option(
@@ -292,10 +287,6 @@ def infer_network_plan(
         10.0,
         help="Time limit in seconds for cp_sat planning attempts.",
     ),
-    strict: bool = typer.Option(
-        False,
-        help="If true, incompatible tools/params raise an error.",
-    ),
 ):
     """Generate a frozen run directory and plan.json without executing containers."""
     _run_core(
@@ -307,7 +298,6 @@ def infer_network_plan(
         max_ram_gb=max_ram_gb,
         planner=planner,
         planner_time_limit_seconds=planner_time_limit_seconds,
-        strict=strict,
     )
 
 
@@ -324,17 +314,12 @@ def infer_network_run(
         0.5,
         help="Polling interval in seconds for reading per-tool progress.json during execution.",
     ),
-    strict: bool = typer.Option(
-        False,
-        help="If true, runtime tool failures raise an error.",
-    ),
 ):
     """Execute a previously generated plan from run_dir."""
     _run_core(
         core_run_infer_network_plan,
         run_dir=run_dir,
         progress_poll_seconds=progress_poll_seconds,
-        strict=strict,
     )
 
 
@@ -353,7 +338,7 @@ def infer_network_execute(
         help=(
             "Path to tools_params.json in runs format: "
             "{'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated'}}, ...]}."
+            "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]}."
         ),
     ),
     output_dir: Path = typer.Option(
@@ -380,10 +365,6 @@ def infer_network_execute(
         0.5,
         help="Polling interval in seconds for reading per-tool progress.json during execution.",
     ),
-    strict: bool = typer.Option(
-        False,
-        help="If true, incompatible tools/params and runtime tool failures raise an error.",
-    ),
 ):
     """End-to-end execution wrapper (preflight + plan + run)."""
     _run_core(
@@ -396,7 +377,6 @@ def infer_network_execute(
         planner=planner,
         planner_time_limit_seconds=planner_time_limit_seconds,
         progress_poll_seconds=progress_poll_seconds,
-        strict=strict,
     )
 
 

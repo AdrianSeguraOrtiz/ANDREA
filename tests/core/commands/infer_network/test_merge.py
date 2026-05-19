@@ -123,6 +123,106 @@ class InferNetworkMergeTests(unittest.TestCase):
         self.assertIn("non-positive score", updated["signed_tool"].error or "")
         self.assertTrue(any("non-positive score" in warning for warning in warnings))
 
+    def test_preserves_cell_contexts_in_raw_and_normalized_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            tool_dir = run_dir / "tools" / "cell_tool" / "io" / "out"
+            network_path = tool_dir / "network.csv"
+            self._write_network(
+                network_path,
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "4",
+                        "sign": "+",
+                        "evidence": "association",
+                        "context": "cell:C1",
+                    },
+                    {
+                        "source": "A",
+                        "target": "C",
+                        "score": "2",
+                        "sign": "?",
+                        "evidence": "association",
+                        "context": "cell:C2",
+                    },
+                ],
+            )
+            warnings: list[str] = []
+
+            _updated, _per_tool_rows, merged_raw, merged_norm = _merge_network_outputs(
+                run_dir=run_dir,
+                execution_results={
+                    "cell_tool": ToolExecutionResult(
+                        tool_id="cell_tool",
+                        status="completed",
+                        exit_code=0,
+                        duration_seconds=1.0,
+                        network_path=str(network_path),
+                        progress_path=None,
+                        logs_path=None,
+                        error=None,
+                    )
+                },
+                warnings=warnings,
+            )
+            raw_rows = self._read_network(merged_raw)
+            norm_rows = self._read_network(merged_norm)
+
+        self.assertEqual(warnings, [])
+        self.assertEqual([row["context"] for row in raw_rows], ["cell:C1", "cell:C2"])
+        self.assertEqual([row["context"] for row in norm_rows], ["cell:C1", "cell:C2"])
+
+    def test_invalid_context_or_sign_marks_tool_output_invalid(self) -> None:
+        cases = [
+            ("", "+", "empty context"),
+            ("global", "activation", "invalid sign"),
+        ]
+        for context, sign, expected in cases:
+            with self.subTest(expected=expected):
+                with tempfile.TemporaryDirectory() as tmp:
+                    run_dir = Path(tmp)
+                    tool_dir = run_dir / "tools" / "bad_tool" / "io" / "out"
+                    network_path = tool_dir / "network.csv"
+                    self._write_network(
+                        network_path,
+                        [
+                            {
+                                "source": "A",
+                                "target": "B",
+                                "score": "1",
+                                "sign": sign,
+                                "evidence": "association",
+                                "context": context,
+                            }
+                        ],
+                    )
+                    warnings: list[str] = []
+
+                    updated, _per_tool_rows, _merged_raw, _merged_norm = (
+                        _merge_network_outputs(
+                            run_dir=run_dir,
+                            execution_results={
+                                "bad_tool": ToolExecutionResult(
+                                    tool_id="bad_tool",
+                                    status="completed",
+                                    exit_code=0,
+                                    duration_seconds=1.0,
+                                    network_path=str(network_path),
+                                    progress_path=None,
+                                    logs_path=None,
+                                    error=None,
+                                )
+                            },
+                            warnings=warnings,
+                        )
+                    )
+
+                self.assertEqual(updated["bad_tool"].status, "failed")
+                self.assertIn(expected, updated["bad_tool"].error or "")
+                self.assertTrue(any(expected in warning for warning in warnings))
+
     def _write_network(self, path: Path, rows: list[dict[str, str]]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8", newline="") as fh:

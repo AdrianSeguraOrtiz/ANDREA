@@ -39,10 +39,9 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 self.mod.preflight_infer_network(
                     dataset_manifest_path=manifest_path,
                     tools_params_path=None,
-                    strict=False,
                 )
 
-    def test_preflight_invalid_tool_params_non_strict_skips_and_strict_raises(
+    def test_preflight_invalid_tool_params_are_blocked_and_skipped(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -61,17 +60,13 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             preflight_report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             self.assertEqual(preflight_report["runs"]["selected"], [])
             self.assertIn("aracne__01", preflight_report["runs"]["skipped"])
-
-            with self.assertRaisesRegex(ValueError, "invalid parameter set"):
-                self.mod.preflight_infer_network(
-                    dataset_manifest_path=manifest_path,
-                    tools_params_path=tools_params_path,
-                    strict=True,
-                )
+            issues = preflight_report["runs"]["issues"]["aracne__01"]
+            self.assertTrue(
+                any(issue.get("code") == "invalid_params" for issue in issues)
+            )
 
     def test_preflight_fails_when_groups_file_has_wrong_columns(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -105,7 +100,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 self.mod.preflight_infer_network(
                     dataset_manifest_path=manifest_path,
                     tools_params_path=None,
-                    strict=False,
                 )
 
     def test_preflight_accepts_groups_with_sample_column_name(self) -> None:
@@ -140,11 +134,83 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             preflight = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=None,
-                strict=False,
             )
             extras_validation = preflight["input_validation"]["extras"]["groups"]
             self.assertEqual(extras_validation["status"], "ok")
             self.assertFalse(extras_validation["errors"])
+
+    def test_preflight_accepts_cell_native_extra_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2",
+                    "G1\t1\t2",
+                    "G2\t3\t4",
+                ],
+            )
+            (base / "cell_descriptors.tsv").write_text(
+                "cell\tbatch\tcell_type\nC1\tbatch_a\troot\nC2\tbatch_b\tleaf\n",
+                encoding="utf-8",
+            )
+            (base / "chromatin_accessibility_matrix.tsv").write_text(
+                "region\tC1\tC2\nchr1:100-250\t0\t3\nchr1:400-520\t1\t0\n",
+                encoding="utf-8",
+            )
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                column_kind="cells",
+                expression_profile="scrna",
+                extras={
+                    "cell_descriptors": "cell_descriptors.tsv",
+                    "chromatin_accessibility_matrix": "chromatin_accessibility_matrix.tsv",
+                },
+            )
+
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=None,
+            )
+            extras_validation = preflight["input_validation"]["extras"]
+            self.assertEqual(extras_validation["cell_descriptors"]["status"], "ok")
+            self.assertEqual(
+                extras_validation["chromatin_accessibility_matrix"]["status"], "ok"
+            )
+
+    def test_preflight_fails_when_accessibility_columns_do_not_match_expression(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2",
+                    "G1\t1\t2",
+                    "G2\t3\t4",
+                ],
+            )
+            (base / "chromatin_accessibility_matrix.tsv").write_text(
+                "region\tC1\tC3\nchr1:100-250\t0\t3\n",
+                encoding="utf-8",
+            )
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                column_kind="cells",
+                expression_profile="scrna",
+                extras={
+                    "chromatin_accessibility_matrix": "chromatin_accessibility_matrix.tsv"
+                },
+            )
+
+            with self.assertRaisesRegex(ValueError, "Input validation failed"):
+                self.mod.preflight_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=None,
+                )
 
     def test_preflight_fails_when_expression_first_header_is_not_gene_like(
         self,
@@ -169,7 +235,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 self.mod.preflight_infer_network(
                     dataset_manifest_path=manifest_path,
                     tools_params_path=None,
-                    strict=False,
                 )
 
     def test_preflight_fails_when_expression_has_duplicated_gene_ids(self) -> None:
@@ -191,7 +256,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 self.mod.preflight_infer_network(
                     dataset_manifest_path=manifest_path,
                     tools_params_path=None,
-                    strict=False,
                 )
 
     def test_preflight_fails_when_expression_has_non_numeric_data_cells(self) -> None:
@@ -213,7 +277,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 self.mod.preflight_infer_network(
                     dataset_manifest_path=manifest_path,
                     tools_params_path=None,
-                    strict=False,
                 )
 
     def test_preflight_accepts_valid_expression_matrix_spec(self) -> None:
@@ -234,7 +297,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             preflight = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=None,
-                strict=False,
             )
             expr_validation = preflight["input_validation"]["expression_matrix"]
             self.assertEqual(expr_validation["status"], "ok")
@@ -323,7 +385,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=None,
-                strict=False,
             )
             blocked = {
                 item["tool_id"]: item
@@ -349,7 +410,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             self.assertEqual(report["runs"]["selected"], ["miniex3__01"])
             self.assertEqual(report["runs"]["skipped"], {})
@@ -366,7 +426,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             self.assertEqual(report["runs"]["selected"], [])
             self.assertIn("miniex3__01", report["runs"]["skipped"])
@@ -383,7 +442,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=None,
-                strict=False,
             )
             self.assertFalse(
                 any(
@@ -415,7 +473,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             self.assertEqual(report["runs"]["selected"], [])
             self.assertIn("reference_species=ath", report["runs"]["skipped"]["miniex3__01"])
@@ -431,7 +488,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=None,
-                strict=False,
             )
             self.assertFalse(
                 any(
@@ -464,7 +520,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             self.assertEqual(report["runs"]["selected"], ["miniex3__01"])
             run_issues = {"issues": report["runs"]["issues"]["miniex3__01"]}
@@ -487,7 +542,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             report = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             self.assertEqual(report["runs"]["selected"], [])
             self.assertIn(

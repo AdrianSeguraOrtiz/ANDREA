@@ -417,6 +417,7 @@ def _validate_tsv_file_with_spec(
     values_by_column: dict[str, set[str]] = {}
     first_column_seen: set[str] = set()
     first_column_values: set[str] = set()
+    data_column_names: set[str] = set()
     data_cells_total = 0
     data_cells_numeric = 0
     data_non_numeric_samples: list[str] = []
@@ -435,6 +436,10 @@ def _validate_tsv_file_with_spec(
                 )
             if any(not name for name in fieldnames):
                 errors.append(f"{path}: header contains empty column names")
+            if columns_count > 1:
+                data_column_names = {
+                    str(name).strip() for name in fieldnames[1:] if str(name).strip()
+                }
             if first_column_role == "gene_id" and fieldnames:
                 first_header = str(fieldnames[0]).strip().lower()
                 if first_header in first_column_disallowed_names:
@@ -656,6 +661,13 @@ def _validate_tsv_file_with_spec(
                 sample = unknown[:5]
                 errors.append(
                     f"{path}: first column contains identifiers not present in expression columns: {sample}"
+                )
+        elif kind == "data_columns_subset_expression_columns":
+            unknown = sorted(data_column_names.difference(expression_columns))
+            if unknown:
+                sample = unknown[:5]
+                errors.append(
+                    f"{path}: data column headers contain identifiers not present in expression columns: {sample}"
                 )
         elif kind == "column_subset_extra_column":
             other_input = str(rule.get("other_input", "")).strip()

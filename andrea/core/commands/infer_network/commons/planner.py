@@ -225,6 +225,45 @@ def _runtime_points(profile: dict[str, Any]) -> list[dict[str, Any]]:
     return [point for point in raw_points if isinstance(point, dict)]
 
 
+def _inference_cost_features(
+    *,
+    execution_mode: str,
+    dataset: DatasetContext,
+    extras_present: set[str],
+    logical_group_count: Optional[int],
+) -> dict[str, Any]:
+    n_cells = int(dataset.columns) if dataset.column_kind == "cells" else 0
+    n_genes = int(dataset.genes)
+    n_groups = int(logical_group_count or 0)
+    if execution_mode == "cell_native":
+        expected_contexts = max(1, n_cells)
+    elif execution_mode in {"group_native", "group_emulated", "group_aggregated"}:
+        expected_contexts = max(1, n_groups)
+    else:
+        expected_contexts = 1
+    aggregation_step = (
+        "cell_to_group" if execution_mode == "group_aggregated" else "none"
+    )
+    return {
+        "execution_mode": execution_mode,
+        "n_cells": n_cells,
+        "n_genes": n_genes,
+        "n_groups": n_groups,
+        "expected_contexts": int(expected_contexts),
+        "expected_dense_edges": int(n_cells * n_genes * max(0, n_genes - 1)),
+        "has_tf_list": "tf_list" in extras_present,
+        "has_chromatin_accessibility_matrix": (
+            "chromatin_accessibility_matrix" in extras_present
+        ),
+        "output_density_class": (
+            "dense"
+            if execution_mode in {"cell_native", "group_aggregated"}
+            else "sparse"
+        ),
+        "aggregation_step": aggregation_step,
+    }
+
+
 def _valid_runtime_points(profile: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         p
@@ -418,6 +457,7 @@ def _fallback_plan_item(
     run_id: str,
     image: str,
     dataset: DatasetContext,
+    execution_mode: str,
     max_cores: int,
     max_ram_gb: float,
     eta_source: str,
@@ -426,6 +466,9 @@ def _fallback_plan_item(
     eta_provenance: Optional[dict[str, Any]] = None,
 ) -> ToolPlanItem:
     fallback_eta = max(10.0, 0.02 * dataset.genes * dataset.columns)
+    if execution_mode == "cell_native":
+        dense_cell_edges = max(0, dataset.genes * (dataset.genes - 1)) * dataset.columns
+        fallback_eta = max(fallback_eta, 10.0 + (0.0000001 * dense_cell_edges))
     return ToolPlanItem(
         tool_id=tool_id,
         run_id=run_id,
@@ -524,6 +567,12 @@ def _estimate_tool_mode_options(
         raise ValueError(f"[{tool_id}] toolspec.docker_image is missing")
 
     cost = cost_profile
+    cost_features = _inference_cost_features(
+        execution_mode=execution_mode,
+        dataset=dataset,
+        extras_present=extras_present,
+        logical_group_count=logical_group_count,
+    )
     if not isinstance(cost, dict):
         return (
             [
@@ -532,6 +581,7 @@ def _estimate_tool_mode_options(
                     run_id=run_id,
                     image=image,
                     dataset=dataset,
+                    execution_mode=execution_mode,
                     max_cores=max_cores,
                     max_ram_gb=max_ram_gb,
                     eta_source="fallback_no_cost",
@@ -540,6 +590,7 @@ def _estimate_tool_mode_options(
                     eta_provenance={
                         "eta_source": "fallback",
                         "warnings": ["no cost.json payload available"],
+                        "cost_features": cost_features,
                     },
                 )
             ],
@@ -564,6 +615,7 @@ def _estimate_tool_mode_options(
                     run_id=run_id,
                     image=image,
                     dataset=dataset,
+                    execution_mode=execution_mode,
                     max_cores=max_cores,
                     max_ram_gb=max_ram_gb,
                     eta_source="fallback_no_matching_cost_profile",
@@ -573,6 +625,7 @@ def _estimate_tool_mode_options(
                         "eta_source": "fallback",
                         "warnings": profile_warnings,
                         "execution_mode": execution_mode,
+                        "cost_features": cost_features,
                     },
                 )
             ],
@@ -644,6 +697,7 @@ def _estimate_tool_mode_options(
                 group_label=group_label,
                 eta_provenance={
                     "eta_source": "cost_profile",
+                    "cost_features": cost_features,
                     "cost_profile": {
                         "tool_id": str(toolspec.get("id", tool_id)),
                         "profile_id": profile_id,
@@ -669,6 +723,7 @@ def _estimate_tool_mode_options(
                                 else None
                             ),
                         },
+                        "cost_features": cost_features,
                         "warnings": provenance_warnings,
                     },
                 },
@@ -693,6 +748,7 @@ def _estimate_tool_mode_options(
                 run_id=run_id,
                 image=image,
                 dataset=dataset,
+                execution_mode=execution_mode,
                 max_cores=max_cores,
                 max_ram_gb=max_ram_gb,
                 eta_source="fallback_no_usable_runtime_point",
@@ -700,6 +756,7 @@ def _estimate_tool_mode_options(
                 group_label=group_label,
                 eta_provenance={
                     "eta_source": "fallback",
+                    "cost_features": cost_features,
                     "cost_profile": {
                         "profile_id": profile_match.get("profile_id"),
                         "match_quality": profile_match.get("match_quality"),

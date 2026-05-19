@@ -9,6 +9,203 @@ from ._helpers import InferNetworkCoreTestCase
 
 
 class InferNetworkPlanTests(InferNetworkCoreTestCase):
+    def _cell_aggregated_toolspec(self) -> dict:
+        return {
+            "id": "fakecell",
+            "docker_image": "fake/cell:latest",
+            "execution_capabilities": ["cell_native", "group_aggregated"],
+            "params": {},
+            "extra_inputs": {
+                "required": [],
+                "optional": [],
+                "conditional_required": [
+                    {
+                        "input": "groups",
+                        "execution": "mode",
+                        "op": "eq",
+                        "value": "group_aggregated",
+                        "usage": "Used by ANDREA to aggregate cell-native network rows by group.",
+                        "message": "groups is required when execution.mode=group_aggregated.",
+                    }
+                ],
+            },
+        }
+
+    def _cell_aggregated_preflight(
+        self,
+        *,
+        expression_path: Path,
+        groups_path: Path,
+    ) -> dict:
+        return {
+            "dataset": {
+                "dataset_id": "toy_cell_ds",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "organism": {"taxonomic_group": "animal", "ncbi_taxon_id": 9606},
+                "genes": 2,
+                "columns": 3,
+                "expression_matrix_path": str(expression_path),
+                "extras": {"groups": str(groups_path)},
+            },
+            "runs": {
+                "selected": ["cellrun"],
+                "catalog_tool_ids": {"cellrun": "fakecell"},
+                "resolved_params": {"cellrun": {}},
+                "resolved_execution": {"cellrun": {"mode": "group_aggregated"}},
+                "issues": {"cellrun": []},
+                "skipped": {},
+            },
+        }
+
+    def test_group_aggregated_plan_uses_cell_native_physical_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            output_dir = base / "out"
+            expression_path = self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2\tC3",
+                    "G1\t1\t2\t3",
+                    "G2\t4\t5\t6",
+                ],
+            )
+            groups_path = base / "groups.tsv"
+            groups_path.write_text(
+                "cell\tcluster\nC1\tA\nC2\tA\nC3\tB\n",
+                encoding="utf-8",
+            )
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                genes=2,
+                columns=3,
+                column_kind="cells",
+                expression_profile="scrna",
+                extras={"groups": "groups.tsv"},
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "cellrun",
+                        "tool_id": "fakecell",
+                        "execution": {"mode": "group_aggregated"},
+                        "params": {},
+                    }
+                ],
+            )
+            preflight = self._cell_aggregated_preflight(
+                expression_path=expression_path,
+                groups_path=groups_path,
+            )
+
+            with patch(
+                "andrea.core.commands.infer_network.plan._load_toolspec",
+                return_value=self._cell_aggregated_toolspec(),
+            ):
+                run_dir = self.mod.plan_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                    output_dir=output_dir,
+                    planner="heuristic",
+                    preflight_report=preflight,
+                )
+
+            plan_payload = json.loads(
+                (run_dir / "plan.json").read_text(encoding="utf-8")
+            )
+
+        logical_run = plan_payload["runs"][0]
+        self.assertEqual(logical_run["execution"]["mode"], "group_aggregated")
+        physical = logical_run["physical_tasks"][0]
+        self.assertEqual(physical["task_id"], "cellrun__cell_native")
+        self.assertEqual(physical["postprocess"], "group_aggregated_mean_signed_effect")
+        self.assertIn("upstream_cell_native", physical["output_dir"])
+        wave_task = plan_payload["waves"][0]["tasks"][0]
+        self.assertEqual(wave_task["tool_id"], "cellrun__cell_native")
+        self.assertEqual(wave_task["run_id"], "cellrun")
+        self.assertEqual(
+            wave_task["eta_provenance"]["group_aggregation"]["rule"],
+            "mean_signed_effect_by_group",
+        )
+        self.assertEqual(
+            wave_task["eta_provenance"]["cost_features"]["execution_mode"],
+            "group_aggregated",
+        )
+        self.assertEqual(
+            wave_task["eta_provenance"]["cost_features"]["aggregation_step"],
+            "cell_to_group",
+        )
+        self.assertEqual(
+            wave_task["eta_provenance"]["cost_features"][
+                "upstream_cost_execution_mode"
+            ],
+            "cell_native",
+        )
+
+    def test_group_aggregated_plan_rejects_toolspec_without_cell_native(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            output_dir = base / "out"
+            expression_path = self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2\tC3",
+                    "G1\t1\t2\t3",
+                    "G2\t4\t5\t6",
+                ],
+            )
+            groups_path = base / "groups.tsv"
+            groups_path.write_text(
+                "cell\tcluster\nC1\tA\nC2\tA\nC3\tB\n",
+                encoding="utf-8",
+            )
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                genes=2,
+                columns=3,
+                column_kind="cells",
+                expression_profile="scrna",
+                extras={"groups": "groups.tsv"},
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "cellrun",
+                        "tool_id": "fakecell",
+                        "execution": {"mode": "group_aggregated"},
+                        "params": {},
+                    }
+                ],
+            )
+            preflight = self._cell_aggregated_preflight(
+                expression_path=expression_path,
+                groups_path=groups_path,
+            )
+            malformed = self._cell_aggregated_toolspec()
+            malformed["execution_capabilities"] = ["group_aggregated"]
+
+            with (
+                patch(
+                    "andrea.core.commands.infer_network.plan._load_toolspec",
+                    return_value=malformed,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "execution_capabilities includes 'group_aggregated'.*'cell_native'",
+                ),
+            ):
+                self.mod.plan_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                    output_dir=output_dir,
+                    planner="heuristic",
+                    preflight_report=preflight,
+                )
+
     def test_preflight_and_plan_generate_frozen_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -21,7 +218,6 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             preflight = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             self.assertIn("catalog", preflight)
             self.assertIn("runs", preflight)
@@ -36,7 +232,6 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 tools_params_path=tools_params_path,
                 output_dir=output_dir,
                 planner="heuristic",
-                strict=False,
                 preflight_report=preflight,
             )
             self.assertTrue((run_dir / "plan.json").exists())
@@ -92,7 +287,6 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             preflight = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             warning = "[aracne3] no cost.json found; using fallback estimation."
             with patch(
@@ -104,7 +298,6 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                     tools_params_path=tools_params_path,
                     output_dir=output_dir,
                     planner="heuristic",
-                    strict=False,
                     preflight_report=preflight,
                 )
 
@@ -129,7 +322,6 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             preflight = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
             preflight.setdefault("runs", {}).setdefault("issues", {}).setdefault(
                 "aracne__01", []
@@ -146,7 +338,6 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 tools_params_path=tools_params_path,
                 output_dir=output_dir,
                 planner="heuristic",
-                strict=False,
                 preflight_report=preflight,
             )
 
@@ -178,7 +369,6 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             preflight = self.mod.preflight_infer_network(
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
-                strict=False,
             )
 
             with self.assertRaisesRegex(ValueError, "max_cores must be >= 1"):
@@ -188,7 +378,6 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                     output_dir=output_dir,
                     max_cores=0,
                     planner="heuristic",
-                    strict=False,
                     preflight_report=preflight,
                 )
 
@@ -198,6 +387,5 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                     tools_params_path=tools_params_path,
                     output_dir=output_dir,
                     planner="unknown_planner",
-                    strict=False,
                     preflight_report=preflight,
                 )

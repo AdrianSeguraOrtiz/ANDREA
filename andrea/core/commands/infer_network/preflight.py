@@ -38,7 +38,6 @@ def preflight_infer_network(
     *,
     dataset_manifest_path: Path,
     tools_params_path: Optional[Path] = None,
-    strict: bool = False,
 ) -> dict[str, Any]:
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
@@ -102,10 +101,6 @@ def preflight_infer_network(
             user_params = run_spec.get("params", {})
             user_execution = run_spec.get("execution", {})
             if not catalog_tool_id:
-                if strict:
-                    raise ValueError(
-                        f"[{run_id}] invalid tool request: missing tool_id"
-                    )
                 add_run_issue(
                     run_id,
                     severity="block",
@@ -115,10 +110,6 @@ def preflight_infer_network(
                 skipped_tools[run_id] = "invalid tool request: missing tool_id"
                 continue
             if not isinstance(user_params, dict):
-                if strict:
-                    raise ValueError(
-                        f"[{run_id}] invalid tool request: params must be object"
-                    )
                 add_run_issue(
                     run_id,
                     severity="block",
@@ -128,10 +119,6 @@ def preflight_infer_network(
                 skipped_tools[run_id] = "invalid tool request: params must be object"
                 continue
             if not isinstance(user_execution, dict):
-                if strict:
-                    raise ValueError(
-                        f"[{run_id}] invalid tool request: execution must be object"
-                    )
                 add_run_issue(
                     run_id,
                     severity="block",
@@ -149,7 +136,6 @@ def preflight_infer_network(
                     toolspec=toolspec,
                     dataset=dataset,
                     constraints=constraints,
-                    strict=strict,
                     warnings=compatibility_warnings,
                 )
             )
@@ -167,8 +153,6 @@ def preflight_infer_network(
 
             toolspec_params = toolspec.get("params", {})
             if not isinstance(toolspec_params, dict):
-                if strict:
-                    raise ValueError(f"[{run_id}] toolspec.params must be an object")
                 add_run_issue(
                     run_id,
                     severity="block",
@@ -183,7 +167,6 @@ def preflight_infer_network(
                 tool_id=run_id,
                 user_params=user_params,
                 toolspec_params=toolspec_params,
-                strict=strict,
                 warnings=param_warnings,
             )
             add_run_warnings(run_id, "param_warning", param_warnings)
@@ -204,7 +187,6 @@ def preflight_infer_network(
                     run_id=run_id,
                     toolspec=toolspec,
                     user_execution=user_execution,
-                    strict=strict,
                     warnings=execution_warnings,
                 )
             )
@@ -233,8 +215,6 @@ def preflight_infer_network(
                 message = "; ".join(
                     f"invalid compatibility rule: {item}" for item in rule_errors
                 )
-                if strict:
-                    raise ValueError(f"[{run_id}] {message}")
                 add_run_issue(
                     run_id,
                     severity="block",
@@ -245,8 +225,6 @@ def preflight_infer_network(
                 continue
             if rule_blocks:
                 message = "; ".join(rule_blocks)
-                if strict:
-                    raise ValueError(f"[{run_id}] incompatible with dataset: {message}")
                 add_run_issue(
                     run_id,
                     severity="block",

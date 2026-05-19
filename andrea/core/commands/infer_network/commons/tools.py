@@ -19,7 +19,34 @@ from .tool_rule_eval import (
     _compare_values,
 )
 
-EXECUTION_CAPABILITIES = {"global", "group_native", "group_emulated"}
+EXECUTION_CAPABILITIES = {
+    "global",
+    "group_native",
+    "group_emulated",
+    "cell_native",
+    "group_aggregated",
+}
+EXECUTION_CAPABILITY_ORDER = (
+    "global",
+    "group_native",
+    "group_emulated",
+    "cell_native",
+    "group_aggregated",
+)
+
+
+def _execution_capability_choices() -> str:
+    return ", ".join(EXECUTION_CAPABILITY_ORDER)
+
+
+def _validate_execution_capability_contract(
+    *, tool_id: str, capabilities: list[str]
+) -> None:
+    if "group_aggregated" in capabilities and "cell_native" not in capabilities:
+        raise ValueError(
+            f"[{tool_id}] toolspec.execution_capabilities includes 'group_aggregated' "
+            "but does not include required companion mode 'cell_native'"
+        )
 
 
 def _parse_extra_inputs_spec(
@@ -245,11 +272,15 @@ def _parse_execution_capabilities(
             )
         if mode not in capabilities:
             capabilities.append(mode)
+    _validate_execution_capability_contract(
+        tool_id=tool_id,
+        capabilities=capabilities,
+    )
     return capabilities
 
 
 def _default_execution_mode(capabilities: list[str]) -> str:
-    for mode in ("global", "group_native", "group_emulated"):
+    for mode in EXECUTION_CAPABILITY_ORDER:
         if mode in capabilities:
             return mode
     return capabilities[0]
@@ -260,7 +291,6 @@ def _resolve_run_execution(
     run_id: str,
     toolspec: dict[str, Any],
     user_execution: dict[str, Any],
-    strict: bool,
     warnings: list[str],
 ) -> tuple[bool, dict[str, Any], list[str]]:
     errors: list[str] = []
@@ -283,7 +313,8 @@ def _resolve_run_execution(
             mode = mode_raw.strip()
             if mode not in EXECUTION_CAPABILITIES:
                 errors.append(
-                    "execution.mode must be one of: global, group_native, group_emulated"
+                    "execution.mode must be one of: "
+                    f"{_execution_capability_choices()}"
                 )
     else:
         mode = _default_execution_mode(capabilities)
@@ -294,10 +325,6 @@ def _resolve_run_execution(
         )
 
     if errors:
-        if strict:
-            raise ValueError(
-                f"[{run_id}] invalid execution config: {'; '.join(errors)}"
-            )
         warnings.append(
             f"[{run_id}] skipped due to invalid execution config: {'; '.join(errors)}"
         )
@@ -312,7 +339,6 @@ def _check_tool_compatibility(
     toolspec: dict[str, Any],
     dataset: DatasetContext,
     constraints: SchemaConstraints,
-    strict: bool,
     warnings: list[str],
     warning_prefix: str | None = None,
 ) -> tuple[bool, list[str], list[str]]:
@@ -415,9 +441,6 @@ def _check_tool_compatibility(
             conditional_messages.append(message)
 
     if errors:
-        message = "; ".join(errors)
-        if strict:
-            raise ValueError(f"[{tool_id}] incompatible with dataset: {message}")
         return False, errors, []
 
     return True, [], conditional_messages
@@ -428,7 +451,6 @@ def _resolve_tool_params(
     tool_id: str,
     user_params: dict[str, Any],
     toolspec_params: dict[str, Any],
-    strict: bool,
     warnings: list[str],
 ) -> tuple[bool, dict[str, Any], list[str]]:
     errors: list[str] = []
@@ -467,8 +489,6 @@ def _resolve_tool_params(
             errors.append(str(exc))
 
     if errors:
-        if strict:
-            raise ValueError(f"[{tool_id}] invalid parameter set: {'; '.join(errors)}")
         warnings.append(
             f"[{tool_id}] skipped due to invalid params: {'; '.join(errors)}"
         )
@@ -571,7 +591,6 @@ def _scan_catalog_compatibility(
             toolspec=toolspec,
             dataset=dataset,
             constraints=constraints,
-            strict=False,
             warnings=local_warnings,
         )
         conditional_messages: list[str] = []
@@ -585,7 +604,6 @@ def _scan_catalog_compatibility(
                     tool_id=tool_id,
                     user_params={},
                     toolspec_params=toolspec_params,
-                    strict=False,
                     warnings=local_warnings,
                 )
                 execution_ok, resolved_execution, execution_errors = (
@@ -593,7 +611,6 @@ def _scan_catalog_compatibility(
                         run_id=tool_id,
                         toolspec=toolspec,
                         user_execution={},
-                        strict=False,
                         warnings=local_warnings,
                     )
                 )

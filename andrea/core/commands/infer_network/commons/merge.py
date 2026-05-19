@@ -7,6 +7,11 @@ import math
 from pathlib import Path
 from typing import Any, Optional
 
+from andrea.core.shared.network_context import (
+    normalize_network_context,
+    normalize_network_sign,
+)
+
 from .shared import NETWORK_REQUIRED_COLUMNS, ToolExecutionResult
 
 
@@ -47,14 +52,34 @@ def _read_network_rows(path: Path, tool_id: str) -> list[dict[str, Any]]:
                     "network.csv score must be a positive magnitude and sign must be stored in the sign column"
                 )
 
+            source = str(row["source"]).strip()
+            target = str(row["target"]).strip()
+            evidence = str(row["evidence"]).strip()
+            context = normalize_network_context(
+                row["context"],
+                source=f"[{tool_id}] network.csv line {idx}",
+            )
+            if not source or not target:
+                raise ValueError(
+                    f"[{tool_id}] network.csv has empty source or target at line {idx}"
+                )
+            if not evidence:
+                raise ValueError(
+                    f"[{tool_id}] network.csv has empty evidence at line {idx}"
+                )
+            sign = normalize_network_sign(
+                row["sign"],
+                source=f"[{tool_id}] network.csv line {idx}",
+            )
+
             rows.append(
                 {
-                    "source": str(row["source"]),
-                    "target": str(row["target"]),
+                    "source": source,
+                    "target": target,
                     "score": score,
-                    "sign": str(row["sign"]),
-                    "evidence": str(row["evidence"]),
-                    "context": str(row["context"]),
+                    "sign": sign,
+                    "evidence": evidence,
+                    "context": context,
                 }
             )
 

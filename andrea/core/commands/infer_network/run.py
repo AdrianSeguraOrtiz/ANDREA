@@ -50,9 +50,11 @@ from .commons.shared import (
     _write_json,
 )
 from .commons.tools import (
+    EXECUTION_CAPABILITIES,
     _collect_compatibility_rule_issues,
     _collect_conditional_input_issues,
     _load_toolspec,
+    _parse_execution_capabilities,
 )
 
 _REPORT_PATH_KEYS = {"network_path", "progress_path", "logs_path"}
@@ -95,7 +97,7 @@ def _load_logical_runs_from_plan(
         if (
             not run_id
             or not tool_id
-            or execution_mode not in {"global", "group_native", "group_emulated"}
+            or execution_mode not in EXECUTION_CAPABILITIES
             or not isinstance(execution, dict)
             or not isinstance(physical_tasks, list)
             or not physical_tasks
@@ -176,13 +178,236 @@ def _prepare_group_expression_sources(
     return prepared
 
 
+def _cell_context_id(context: str) -> str | None:
+    prefix = "cell:"
+    if not context.startswith(prefix):
+        return None
+    cell_id = context.removeprefix(prefix).strip()
+    return cell_id or None
+
+
+def _aggregate_cell_rows_by_group(
+    *,
+    rows: list[dict[str, Any]],
+    group_to_columns: dict[str, list[str]],
+) -> list[dict[str, Any]]:
+    cell_to_group: dict[str, str] = {}
+    for group_label, columns in group_to_columns.items():
+        for column in columns:
+            cell_to_group[str(column)] = group_label
+
+    aggregate: dict[
+        tuple[str, str, str],
+        dict[str, Any],
+    ] = {}
+    for row in rows:
+        cell_id = _cell_context_id(str(row.get("context", "")))
+        if cell_id is None:
+            continue
+        group_label = cell_to_group.get(cell_id)
+        if group_label is None:
+            raise ValueError(
+                f"cell context '{cell_id}' is not present in groups.tsv"
+            )
+        key = (group_label, str(row["source"]), str(row["target"]))
+        state = aggregate.setdefault(
+            key,
+            {
+                "signed_sum": 0.0,
+                "has_signed": False,
+                "unknown_sum": 0.0,
+            },
+        )
+        score = float(row["score"])
+        sign = str(row["sign"])
+        if sign == "+":
+            state["signed_sum"] = float(state["signed_sum"]) + score
+            state["has_signed"] = True
+        elif sign == "-":
+            state["signed_sum"] = float(state["signed_sum"]) - score
+            state["has_signed"] = True
+        else:
+            state["unknown_sum"] = float(state["unknown_sum"]) + score
+
+    aggregated_rows: list[dict[str, Any]] = []
+    for (group_label, source, target), state in sorted(aggregate.items()):
+        denominator = max(1, len(group_to_columns[group_label]))
+        signed_sum = float(state["signed_sum"])
+        unknown_sum = float(state["unknown_sum"])
+        if bool(state["has_signed"]):
+            mean_signed = signed_sum / denominator
+            if mean_signed > 0:
+                score = mean_signed
+                sign = "+"
+            elif mean_signed < 0:
+                score = abs(mean_signed)
+                sign = "-"
+            elif unknown_sum > 0:
+                score = unknown_sum / denominator
+                sign = "?"
+            else:
+                continue
+        else:
+            score = unknown_sum / denominator
+            sign = "?"
+        if score <= 0:
+            continue
+        aggregated_rows.append(
+            {
+                "source": source,
+                "target": target,
+                "score": score,
+                "sign": sign,
+                "evidence": "andrea_group_aggregated_mean_signed_effect",
+                "context": f"group:{group_label}",
+            }
+        )
+    return aggregated_rows
+
+
+def _finalize_group_aggregated_logical_run(
+    *,
+    run_dir: Path,
+    run_id: str,
+    logical_spec: dict[str, Any],
+    child_results: dict[str, ToolExecutionResult],
+    group_to_columns: dict[str, list[str]],
+    warnings: list[str],
+) -> tuple[ToolExecutionResult, dict[str, Any]]:
+    started_at = time.perf_counter()
+    tool_dir = run_dir / "tools" / run_id
+    out_dir = tool_dir / "io" / "out"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    progress_path = out_dir / "progress.json"
+    logs_path = tool_dir / "group_aggregation.log"
+
+    physical_tasks = logical_spec["physical_tasks"]
+    child_task_id = str(physical_tasks[0].get("task_id", "")).strip()
+    child_result = child_results.get(child_task_id)
+    child_payload: dict[str, Any] = {}
+    network_path: str | None = None
+    status = "failed"
+    error: str | None = None
+    cell_row_count = 0
+    aggregated_row_count = 0
+
+    if child_result is None:
+        child_result = ToolExecutionResult(
+            tool_id=child_task_id or run_id,
+            status="failed",
+            exit_code=127,
+            duration_seconds=0.0,
+            network_path=None,
+            progress_path=None,
+            logs_path=None,
+            error="Internal cell-native task result is missing.",
+        )
+    child_payload[child_task_id] = {
+        **asdict(child_result),
+        "output_dir": str(physical_tasks[0].get("output_dir", "")),
+    }
+
+    if child_result.status != "completed" or not child_result.network_path:
+        error = child_result.error or "Cell-native upstream execution failed."
+    else:
+        try:
+            rows = _read_network_rows(
+                Path(child_result.network_path),
+                tool_id=child_task_id,
+            )
+            cell_rows = [
+                row for row in rows if _cell_context_id(str(row["context"])) is not None
+            ]
+            if not cell_rows:
+                raise ValueError(
+                    "group_aggregated requires upstream network rows with cell:<id> contexts"
+                )
+            aggregated_rows = _aggregate_cell_rows_by_group(
+                rows=cell_rows,
+                group_to_columns=group_to_columns,
+            )
+            if not aggregated_rows:
+                warnings.append(
+                    f"[{run_id}] group_aggregated produced no non-zero aggregated group edges."
+                )
+            cell_row_count = len(cell_rows)
+            aggregated_row_count = len(aggregated_rows)
+
+            cell_network_path = out_dir / "network.cell_native.csv"
+            parent_network = out_dir / "network.csv"
+            _write_network_rows(
+                path=cell_network_path,
+                rows=rows,
+                include_tool_id=False,
+            )
+            _write_network_rows(
+                path=parent_network,
+                rows=rows + aggregated_rows,
+                include_tool_id=False,
+            )
+            network_path = str(parent_network.resolve())
+            status = "completed"
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+
+    duration = round(
+        float(child_result.duration_seconds) + time.perf_counter() - started_at,
+        3,
+    )
+    progress_payload = {
+        "percent": 100,
+        "status": status,
+        "phase": "done" if status == "completed" else "failed",
+        "message": (
+            f"Aggregated {cell_row_count} cell-context row(s) into "
+            f"{aggregated_row_count} group-context row(s)"
+            if status == "completed"
+            else error or "Aggregation failed"
+        ),
+    }
+    _write_json(progress_path, progress_payload)
+
+    log_lines = [
+        f"run_id={run_id}",
+        f"status={status}",
+        f"upstream_task={child_task_id}",
+        f"cell_rows={cell_row_count}",
+        f"aggregated_group_rows={aggregated_row_count}",
+    ]
+    if error:
+        log_lines.append(f"error={error}")
+    logs_path.write_text("\n".join(log_lines) + "\n", encoding="utf-8")
+
+    logical_result = ToolExecutionResult(
+        tool_id=run_id,
+        status=status,
+        exit_code=0 if status == "completed" else 1,
+        duration_seconds=duration,
+        network_path=network_path,
+        progress_path=str(progress_path.resolve()),
+        logs_path=str(logs_path.resolve()),
+        error=error,
+    )
+    logical_payload = {
+        **asdict(logical_result),
+        "execution": logical_spec["execution"],
+        "physical_tasks_total": len(logical_spec["physical_tasks"]),
+        "child_results": child_payload,
+        "aggregation": {
+            "rule": "mean_signed_effect_by_group",
+            "cell_rows": cell_row_count,
+            "aggregated_group_rows": aggregated_row_count,
+        },
+    }
+    return logical_result, logical_payload
+
+
 def _finalize_grouped_logical_run(
     *,
     run_dir: Path,
     run_id: str,
     logical_spec: dict[str, Any],
     child_results: dict[str, ToolExecutionResult],
-    strict: bool,
     warnings: list[str],
 ) -> tuple[ToolExecutionResult, dict[str, Any]]:
     tool_dir = run_dir / "tools" / run_id
@@ -257,8 +482,8 @@ def _finalize_grouped_logical_run(
         if failed_groups:
             failure_summary += f" ({', '.join(failed_groups)})"
         warnings.append(f"[{run_id}] {failure_summary}.")
-        status = "failed" if strict else "completed"
-        error = failure_summary if strict else None
+        status = "completed"
+        error = None
     elif child_failures:
         failure_summary = "All grouped executions failed"
         if failed_groups:
@@ -318,7 +543,6 @@ def run_infer_network_plan(
     *,
     run_dir: Path,
     progress_poll_seconds: float = 0.5,
-    strict: bool = False,
 ) -> Path:
     started_at = time.perf_counter()
     if progress_poll_seconds <= 0:
@@ -400,6 +624,7 @@ def run_infer_network_plan(
                 f"preflight report is missing catalog mapping for run '{run_id}'"
             )
         toolspec = _load_toolspec(tools_root, catalog_tool_id)
+        _parse_execution_capabilities(tool_id=run_id, toolspec=toolspec)
         rule_blocks, rule_warnings, rule_errors = _collect_compatibility_rule_issues(
             tool_id=run_id,
             toolspec=toolspec,
@@ -467,6 +692,10 @@ def run_infer_network_plan(
         constraints=constraints,
     )
 
+    has_group_aggregated = any(
+        str(logical_spec["execution"].get("mode", "")).strip() == "group_aggregated"
+        for logical_spec in logical_runs.values()
+    )
     required_group_labels = {
         str(physical.get("group_label", "")).strip()
         for logical_spec in logical_runs.values()
@@ -475,6 +704,7 @@ def run_infer_network_plan(
         if physical.get("group_label") is not None
     }
     group_expression_sources: dict[str, Path] = {}
+    group_to_columns: dict[str, list[str]] = {}
     if required_group_labels:
         groups_path = dataset.extras.get("groups")
         if groups_path is None:
@@ -486,6 +716,17 @@ def run_infer_network_plan(
             shared_expression=shared_expression,
             groups_path=groups_path,
             required_group_labels=required_group_labels,
+        )
+    if has_group_aggregated:
+        groups_path = dataset.extras.get("groups")
+        if groups_path is None:
+            raise ValueError(
+                "Execution requires groups.tsv because at least one run uses execution.mode=group_aggregated."
+            )
+        _genes, expression_columns = _read_expression_axes(shared_expression)
+        _group_order, group_to_columns = _load_groups_by_column(
+            groups_path=groups_path,
+            expression_columns=expression_columns,
         )
 
     runtime_io_by_tool = {}
@@ -509,13 +750,19 @@ def run_infer_network_plan(
                 expression_source = group_expression_sources[
                     str(physical.get("group_label", "")).strip()
                 ]
+            physical_execution = dict(logical_spec["execution"])
+            if (
+                str(logical_spec["execution"].get("mode", "")).strip()
+                == "group_aggregated"
+            ):
+                physical_execution["mode"] = "cell_native"
             runtime_io_by_tool[task_id] = _prepare_tool_runtime_io(
                 run_dir=run_dir,
                 tool_id=task_id,
                 run_id=logical_run_id,
                 output_dir=str(physical.get("output_dir", "")),
                 resolved_params=resolved_params,
-                resolved_execution=logical_spec["execution"],
+                resolved_execution=physical_execution,
                 shared_expression=shared_expression,
                 shared_extras=shared_extras,
                 expression_source=expression_source,
@@ -554,6 +801,30 @@ def run_infer_network_plan(
     for logical_run_id in selected_tools:
         logical_spec = logical_runs[logical_run_id]
         physical_tasks = logical_spec["physical_tasks"]
+        execution_mode = str(logical_spec["execution"].get("mode", "")).strip()
+        if execution_mode == "group_aggregated":
+            upstream_children = {
+                str(physical.get("task_id", "")).strip(): physical_results.get(
+                    str(physical.get("task_id", "")).strip()
+                )
+                for physical in physical_tasks
+            }
+            logical_result, logical_payload = _finalize_group_aggregated_logical_run(
+                run_dir=run_dir,
+                run_id=logical_run_id,
+                logical_spec=logical_spec,
+                child_results={
+                    task_id: result
+                    for task_id, result in upstream_children.items()
+                    if result is not None
+                },
+                group_to_columns=group_to_columns,
+                warnings=warnings,
+            )
+            logical_results[logical_run_id] = logical_result
+            logical_results_payload[logical_run_id] = logical_payload
+            status_by_tool[logical_run_id] = logical_result.status
+            continue
         if (
             len(physical_tasks) == 1
             and str(physical_tasks[0].get("task_id", "")).strip() == logical_run_id
@@ -595,7 +866,6 @@ def run_infer_network_plan(
                 for task_id, result in grouped_children.items()
                 if result is not None
             },
-            strict=strict,
             warnings=warnings,
         )
         logical_results[logical_run_id] = logical_result
@@ -762,6 +1032,4 @@ def run_infer_network_plan(
         raise ValueError(
             "All tool executions failed. See run_report.json and per-tool container.log files."
         )
-    if strict and failed_tools:
-        raise ValueError("One or more tools failed during execution (strict mode).")
     return run_dir
