@@ -546,6 +546,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         self.assertFalse(readiness["final_report_ready"])
         self.assertFalse(readiness["graph_exports_ready"])
         self.assertTrue(readiness["finalizing_artifacts"])
+        self.assertIn("Merged CSV outputs are available", readiness["message"])
+        self.assertIsNotNone(readiness["paths"]["merged_network_raw"])
+        self.assertIsNotNone(readiness["paths"]["merged_network_normalized"])
 
     def test_output_readiness_marks_partial_final_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,5 +1,4 @@
 import { $ } from "/static-common/app/core/dom.js?v=20260428a";
-import { pushToast } from "/static-common/app/ui/toasts.js?v=20260428a";
 import { state } from "../core/state.js";
 import {
   pushRuntimeFailureToasts,
@@ -66,6 +65,33 @@ function executionStatePlaceholder(job = null) {
   return "ANDREA execution progress will appear after execution starts.";
 }
 
+function shouldRenderRuntimeWaitingState(job = null) {
+  if (!job || !job.run_dir) {
+    return false;
+  }
+  const status = String(job.status || "").trim();
+  const stage = String(job.stage || "").trim();
+  if (status === "queued" || status === "running") {
+    return true;
+  }
+  return stage === "planned" && status !== "failed";
+}
+
+function renderRuntimeWaitingState(root, job = null) {
+  root.innerHTML = "";
+  root.className = "runtime-progress runtime-progress-waiting muted-box step3-status-panel";
+
+  const title = document.createElement("div");
+  title.className = "runtime-progress-waiting-title";
+  title.textContent = "Execution progress";
+  root.appendChild(title);
+
+  const body = document.createElement("div");
+  body.className = "runtime-progress-waiting-body";
+  body.textContent = executionStatePlaceholder(job);
+  root.appendChild(body);
+}
+
 function phaseLabel(phase) {
   const key = String(phase || "").trim();
   return PHASE_LABELS[key] || key.replaceAll("_", " ") || "Execution";
@@ -97,16 +123,141 @@ function normalizeTopStatus(status) {
   return "pending";
 }
 
-function appendCounter(parent, label, value, className = "") {
-  const item = document.createElement("div");
-  item.className = `andrea-progress-kpi ${className}`.trim();
-  const number = document.createElement("span");
+function emptyUnitSummary() {
+  return {
+    total: 0,
+    queued: 0,
+    running: 0,
+    completed: 0,
+    failed: 0,
+    warnings: 0,
+    errors: 0,
+  };
+}
+
+function entryIssueCount(entry = {}, key = "warnings") {
+  const values = Array.isArray(entry[key]) ? entry[key] : [];
+  return values.length;
+}
+
+function summarizeEntries(entries = []) {
+  const summary = emptyUnitSummary();
+  summary.total = entries.length;
+  for (const entry of entries) {
+    const status = String(entry?.status || "queued");
+    if (status === "queued") {
+      summary.queued += 1;
+    } else if (status === "running") {
+      summary.running += 1;
+    } else if (status === "failed") {
+      summary.failed += 1;
+    } else if (status === "completed" || status === "completed_with_warnings") {
+      summary.completed += 1;
+    }
+    summary.warnings += entryIssueCount(entry, "warnings");
+    summary.errors += entryIssueCount(entry, "errors");
+  }
+  return summary;
+}
+
+function summarizeWaves(waves = []) {
+  const summary = emptyUnitSummary();
+  summary.total = waves.length;
+  for (const wave of waves) {
+    const status = String(wave?.status || "queued");
+    if (status === "queued") {
+      summary.queued += 1;
+    } else if (status === "running") {
+      summary.running += 1;
+    } else if (status === "failed") {
+      summary.failed += 1;
+      summary.errors += 1;
+    } else if (
+      status === "completed"
+      || status === "completed_with_warnings"
+      || status === "completed_with_failures"
+    ) {
+      summary.completed += 1;
+      if (status === "completed_with_warnings") {
+        summary.warnings += 1;
+      } else if (status === "completed_with_failures") {
+        summary.errors += 1;
+      }
+    }
+  }
+  return summary;
+}
+
+function unitSummaries(executionState = {}) {
+  const payload = executionState?.unit_summaries;
+  if (payload && typeof payload === "object") {
+    return {
+      waves: { ...emptyUnitSummary(), ...(payload.waves || {}) },
+      configurations: { ...emptyUnitSummary(), ...(payload.configurations || {}) },
+      executions: { ...emptyUnitSummary(), ...(payload.executions || {}) },
+    };
+  }
+
+  const waves = Array.isArray(executionState?.waves) ? executionState.waves : [];
+  const tools = executionState?.tools && typeof executionState.tools === "object"
+    ? Object.values(executionState.tools)
+    : [];
+  const logicalRuns =
+    executionState?.logical_runs && typeof executionState.logical_runs === "object"
+      ? Object.values(executionState.logical_runs)
+      : [];
+  return {
+    waves: summarizeWaves(waves),
+    configurations: summarizeEntries(logicalRuns.length ? logicalRuns : tools),
+    executions: summarizeEntries(tools),
+  };
+}
+
+function appendUnitSummaryItem(parent, label, value, className = "") {
+  const item = document.createElement("span");
+  item.className = `andrea-progress-unit-item ${className}`.trim();
+  const number = document.createElement("strong");
   number.textContent = String(value ?? 0);
-  const caption = document.createElement("small");
+  const caption = document.createElement("span");
   caption.textContent = label;
   item.appendChild(number);
   item.appendChild(caption);
   parent.appendChild(item);
+}
+
+function appendCompactProgressSummary(parent, summaries) {
+  const summary = document.createElement("div");
+  summary.className = "andrea-progress-compact-summary";
+
+  const executions = summaries.executions || emptyUnitSummary();
+  const executionRow = document.createElement("div");
+  executionRow.className = "andrea-progress-execution-row";
+  const label = document.createElement("div");
+  label.className = "andrea-progress-execution-label";
+  label.textContent = `Executions · ${executions.total || 0} total`;
+  executionRow.appendChild(label);
+  appendUnitSummaryItem(executionRow, "completed", executions.completed, "ok");
+  appendUnitSummaryItem(executionRow, "running", executions.running, "running");
+  appendUnitSummaryItem(executionRow, "queued", executions.queued, "queued");
+  appendUnitSummaryItem(executionRow, "failed", executions.failed, "failed");
+  appendUnitSummaryItem(
+    executionRow,
+    "issues",
+    Number(executions.warnings || 0) + Number(executions.errors || 0),
+    "warning"
+  );
+  summary.appendChild(executionRow);
+
+  const waves = summaries.waves || emptyUnitSummary();
+  const configurations = summaries.configurations || emptyUnitSummary();
+  const context = document.createElement("div");
+  context.className = "andrea-progress-context";
+  context.textContent = [
+    `Waves ${waves.completed || 0}/${waves.total || 0} done`,
+    `Configurations ${configurations.completed || 0}/${configurations.total || 0} completed`,
+  ].join(" · ");
+  summary.appendChild(context);
+  parent.appendChild(summary);
 }
 
 function normalizeRuntimeStatus(status) {
@@ -158,10 +309,9 @@ function entryWarnings(entry = {}) {
     : [];
 }
 
-function waveIssueBlocks(wave = {}, tools = {}, logicalRuns = {}) {
+function waveIssueBlocks(wave = {}, tools = {}) {
   const toolIds = Array.isArray(wave.tools) ? wave.tools : [];
   const blocks = [];
-  const seen = new Set();
 
   for (const toolId of toolIds) {
     const tool = tools[toolId];
@@ -179,10 +329,28 @@ function waveIssueBlocks(wave = {}, tools = {}, logicalRuns = {}) {
         errors,
         warnings,
       });
-      seen.add(`tool:${toolId}`);
     }
   }
 
+  return blocks;
+}
+
+function childIssueMessages(physicalTasks = [], tools = {}) {
+  const messages = new Set();
+  for (const toolId of physicalTasks) {
+    const tool = tools[toolId];
+    if (!tool || typeof tool !== "object") {
+      continue;
+    }
+    for (const message of [...entryErrors(tool), ...entryWarnings(tool)]) {
+      messages.add(message);
+    }
+  }
+  return messages;
+}
+
+function logicalIssueBlocks(logicalRuns = {}, tools = {}) {
+  const blocks = [];
   for (const [runId, logical] of Object.entries(logicalRuns || {})) {
     if (!logical || typeof logical !== "object") {
       continue;
@@ -190,34 +358,198 @@ function waveIssueBlocks(wave = {}, tools = {}, logicalRuns = {}) {
     const physicalTasks = Array.isArray(logical.physical_tasks)
       ? logical.physical_tasks.map((item) => String(item || "").trim())
       : [];
-    if (!physicalTasks.some((taskId) => toolIds.includes(taskId))) {
-      continue;
-    }
-    const errors = entryErrors(logical);
-    const warnings = entryWarnings(logical);
+    const childMessages = childIssueMessages(physicalTasks, tools);
+    const errors = entryErrors(logical).filter((message) => !childMessages.has(message));
+    const warnings = entryWarnings(logical).filter((message) => !childMessages.has(message));
     if (!errors.length && !warnings.length && String(logical.status || "") !== "failed") {
-      continue;
-    }
-    const key = `logical:${runId}`;
-    if (seen.has(key)) {
       continue;
     }
     blocks.push({
       id: runId,
       kind: "run",
-      title: `${runId} · logical run`,
+      title: `${runId} · configuration`,
       status: logical.status,
       errors,
       warnings,
     });
-    seen.add(key);
   }
-
   return blocks;
 }
 
-function waveHasIssues(wave = {}, tools = {}, logicalRuns = {}) {
-  return waveIssueBlocks(wave, tools, logicalRuns).length > 0;
+function ensureIssueUiState() {
+  if (!state.runtimeWaveUi || typeof state.runtimeWaveUi !== "object") {
+    state.runtimeWaveUi = {};
+  }
+  if (!(state.runtimeWaveUi.openIssueKeys instanceof Set)) {
+    state.runtimeWaveUi.openIssueKeys = new Set();
+  }
+  if (!(state.runtimeWaveUi.closedIssueKeys instanceof Set)) {
+    state.runtimeWaveUi.closedIssueKeys = new Set();
+  }
+  if (!state.runtimeWaveUi.scrollTops || typeof state.runtimeWaveUi.scrollTops !== "object") {
+    state.runtimeWaveUi.scrollTops = {};
+  }
+  return state.runtimeWaveUi;
+}
+
+function issueBlockKey(block = {}) {
+  return `${String(block.kind || "issue")}:${String(block.id || block.title || "unknown")}`;
+}
+
+function rememberRuntimeUiFromDom(root) {
+  const ui = ensureIssueUiState();
+  root.querySelectorAll("[data-runtime-scroll-key]").forEach((node) => {
+    const key = node.dataset.runtimeScrollKey || "";
+    if (key) {
+      ui.scrollTops[key] = node.scrollTop || 0;
+    }
+  });
+  root.querySelectorAll("details[data-runtime-issue-key]").forEach((node) => {
+    const key = node.dataset.runtimeIssueKey || "";
+    if (!key) {
+      return;
+    }
+    if (node.open) {
+      ui.openIssueKeys.add(key);
+      ui.closedIssueKeys.delete(key);
+    } else {
+      ui.openIssueKeys.delete(key);
+      ui.closedIssueKeys.add(key);
+    }
+  });
+}
+
+function restoreRuntimeUiToDom(root) {
+  const ui = ensureIssueUiState();
+  root.querySelectorAll("[data-runtime-scroll-key]").forEach((node) => {
+    const key = node.dataset.runtimeScrollKey || "";
+    if (!key || !(key in ui.scrollTops)) {
+      return;
+    }
+    node.scrollTop = Number(ui.scrollTops[key] || 0);
+  });
+}
+
+function setRuntimeScrollKey(node, key) {
+  node.dataset.runtimeScrollKey = key;
+  node.addEventListener("scroll", () => {
+    const ui = ensureIssueUiState();
+    ui.scrollTops[key] = node.scrollTop || 0;
+  });
+}
+
+function waveHasIssues(wave = {}, tools = {}) {
+  return waveIssueBlocks(wave, tools).length > 0;
+}
+
+function toolStatusBucket(status) {
+  const value = String(status || "queued").trim().toLowerCase();
+  if (value === "running") {
+    return "running";
+  }
+  if (value === "failed") {
+    return "failed";
+  }
+  if (value === "completed" || value === "completed_with_warnings") {
+    return "completed";
+  }
+  return "queued";
+}
+
+function summarizeWaveTools(toolIds = [], tools = {}) {
+  const counts = {
+    total: toolIds.length,
+    completed: 0,
+    running: 0,
+    queued: 0,
+    failed: 0,
+    warnings: 0,
+    errors: 0,
+  };
+  for (const toolId of toolIds) {
+    const tool = tools[toolId];
+    const bucket = toolStatusBucket(tool?.status);
+    counts[bucket] += 1;
+    if (tool && typeof tool === "object") {
+      counts.warnings += entryWarnings(tool).length;
+      counts.errors += entryErrors(tool).length;
+    }
+  }
+  return counts;
+}
+
+function isFinalWaveStatus(status) {
+  return [
+    "completed",
+    "completed_with_warnings",
+    "completed_with_failures",
+    "failed",
+  ].includes(String(status || "").trim().toLowerCase());
+}
+
+function waveHasModelIssues({ wave, tools, counts }) {
+  const status = String(wave?.status || "").trim().toLowerCase();
+  return Boolean(
+    waveHasIssues(wave, tools)
+    || status === "completed_with_warnings"
+    || status === "completed_with_failures"
+    || status === "failed"
+    || counts.failed
+    || counts.warnings
+    || counts.errors
+  );
+}
+
+function buildWaveModel(wave = {}, executionState = {}, tools = {}) {
+  const index = Number(wave.index || 0);
+  const toolIds = Array.isArray(wave.tools) ? wave.tools : [];
+  const counts = summarizeWaveTools(toolIds, tools);
+  const status = String(wave.status || "queued").trim().toLowerCase();
+  const statusClass = normalizeRuntimeStatus(status);
+  const isCurrent = Number(executionState.current_wave || 0) === index;
+  const hasIssues = waveHasModelIssues({ wave, tools, counts });
+  let pool = "active";
+  if (status === "queued") {
+    pool = "queued";
+  } else if (isCurrent || status === "running") {
+    pool = "active";
+  } else if (isFinalWaveStatus(status)) {
+    pool = hasIssues ? "completedIssue" : "completedClean";
+  }
+  return {
+    wave,
+    index,
+    toolIds,
+    counts,
+    status,
+    statusClass,
+    percent: Math.max(0, Math.min(100, Math.round(Number(wave.percent || 0)))),
+    isCurrent,
+    hasIssues,
+    pool,
+  };
+}
+
+export function buildRuntimePoolViewModel(executionState = {}) {
+  const tools = executionState?.tools && typeof executionState.tools === "object"
+    ? executionState.tools
+    : {};
+  const logicalRuns =
+    executionState?.logical_runs && typeof executionState.logical_runs === "object"
+      ? executionState.logical_runs
+      : {};
+  const waveModels = (Array.isArray(executionState?.waves) ? executionState.waves : [])
+    .map((wave) => buildWaveModel(wave, executionState, tools));
+  return {
+    waves: waveModels,
+    completedCleanWaves: waveModels.filter((wave) => wave.pool === "completedClean"),
+    completedIssueWaves: waveModels.filter((wave) => wave.pool === "completedIssue"),
+    activeWaves: waveModels.filter((wave) => wave.pool === "active"),
+    queuedWaves: waveModels.filter((wave) => wave.pool === "queued"),
+    logicalIssueRuns: logicalIssueBlocks(logicalRuns, tools),
+    tools,
+    logicalRuns,
+  };
 }
 
 function appendWaveToolChip(parent, toolId, tool = {}) {
@@ -253,7 +585,7 @@ function appendWaveToolChip(parent, toolId, tool = {}) {
   parent.appendChild(chip);
 }
 
-function appendIssueList(parent, title, messages, className) {
+function appendIssueList(parent, title, messages, className, scrollKey = "") {
   if (!messages.length) {
     return;
   }
@@ -265,6 +597,9 @@ function appendIssueList(parent, title, messages, className) {
   section.appendChild(heading);
   const list = document.createElement("div");
   list.className = "runtime-wave-issue-list";
+  if (scrollKey) {
+    setRuntimeScrollKey(list, scrollKey);
+  }
   for (const message of messages) {
     const line = document.createElement("div");
     line.className = "runtime-wave-issue-line";
@@ -275,18 +610,45 @@ function appendIssueList(parent, title, messages, className) {
   parent.appendChild(section);
 }
 
-function appendWaveIssues(parent, wave = {}, tools = {}, logicalRuns = {}) {
-  const issueBlocks = waveIssueBlocks(wave, tools, logicalRuns);
+function appendIssueBlocks(
+  parent,
+  issueBlocks = [],
+  {
+    heading = "",
+    openByDefault = false,
+  } = {}
+) {
   if (!issueBlocks.length) {
     return;
   }
 
   const issuesRoot = document.createElement("div");
   issuesRoot.className = "runtime-wave-issues";
+  if (heading) {
+    const headingNode = document.createElement("div");
+    headingNode.className = "runtime-wave-issues-heading";
+    headingNode.textContent = heading;
+    issuesRoot.appendChild(headingNode);
+  }
   for (const block of issueBlocks) {
+    const key = issueBlockKey(block);
     const section = document.createElement("details");
     section.className = "runtime-wave-issue-block";
-    section.open = normalizeRuntimeStatus(block.status) === "failed";
+    section.dataset.runtimeIssueKey = key;
+    section.open = Boolean(
+      ensureIssueUiState().openIssueKeys.has(key) ||
+      (openByDefault && !ensureIssueUiState().closedIssueKeys.has(key))
+    );
+    section.addEventListener("toggle", () => {
+      const ui = ensureIssueUiState();
+      if (section.open) {
+        ui.openIssueKeys.add(key);
+        ui.closedIssueKeys.delete(key);
+      } else {
+        ui.openIssueKeys.delete(key);
+        ui.closedIssueKeys.add(key);
+      }
+    });
     const title = document.createElement("summary");
     title.className = "runtime-wave-issue-title";
     const titleText = document.createElement("span");
@@ -299,10 +661,10 @@ function appendWaveIssues(parent, wave = {}, tools = {}, logicalRuns = {}) {
     section.appendChild(title);
     const body = document.createElement("div");
     body.className = "runtime-wave-issue-body";
-    appendIssueList(body, "Errors", block.errors, "errors");
-    appendIssueList(body, "Warnings", block.warnings, "warnings");
+    appendIssueList(body, "Errors", block.errors, "errors", `${key}:errors`);
+    appendIssueList(body, "Warnings", block.warnings, "warnings", `${key}:warnings`);
     if (!block.errors.length && !block.warnings.length) {
-      appendIssueList(body, "Status", [statusLabel(block.status)], "errors");
+      appendIssueList(body, "Status", [statusLabel(block.status)], "errors", `${key}:status`);
     }
     section.appendChild(body);
     issuesRoot.appendChild(section);
@@ -310,14 +672,31 @@ function appendWaveIssues(parent, wave = {}, tools = {}, logicalRuns = {}) {
   parent.appendChild(issuesRoot);
 }
 
-function runningToolEntries(tools = {}) {
-  return Object.entries(tools)
-    .filter(([_toolId, tool]) => (
-      tool &&
-      typeof tool === "object" &&
-      normalizeRuntimeStatus(tool.status) === "running"
-    ))
-    .sort(([leftId], [rightId]) => leftId.localeCompare(rightId));
+function appendLogicalRunIssues(parent, issueBlocks = []) {
+  if (!issueBlocks.length) {
+    return;
+  }
+
+  const section = document.createElement("section");
+  section.className = "runtime-logical-issues";
+
+  const header = document.createElement("div");
+  header.className = "runtime-logical-issues-head";
+  const title = document.createElement("div");
+  title.className = "runtime-logical-issues-title";
+  title.textContent = "Configuration Issues";
+  const count = document.createElement("span");
+  count.className = "runtime-logical-issues-count";
+  count.textContent = `${issueBlocks.length} configuration${issueBlocks.length === 1 ? "" : "s"}`;
+  header.appendChild(title);
+  header.appendChild(count);
+  section.appendChild(header);
+
+  appendIssueBlocks(section, issueBlocks, {
+    heading: "Configuration Summaries",
+    openByDefault: false,
+  });
+  parent.appendChild(section);
 }
 
 function appendActiveToolRow(parent, toolId, tool = {}) {
@@ -359,132 +738,497 @@ function appendActiveToolRow(parent, toolId, tool = {}) {
   parent.appendChild(row);
 }
 
-function appendActiveToolsPanel(root, executionState, tools = {}) {
-  const running = runningToolEntries(tools);
-  const phase = String(executionState?.phase || "").trim();
-  const status = String(executionState?.status || "").trim();
-  const shouldShowPostProcessingNote =
-    running.length === 0 &&
-    status === "running" &&
-    POST_PROCESSING_PHASES.has(phase);
+function toolMatchesBucket(tool = {}, bucket) {
+  return toolStatusBucket(tool.status) === bucket;
+}
 
-  if (!running.length && !shouldShowPostProcessingNote) {
+function appendFocusToolChips(parent, title, toolIds = [], tools = {}) {
+  if (!toolIds.length) {
     return;
   }
+  const section = document.createElement("div");
+  section.className = "runtime-focus-section";
+  const heading = document.createElement("div");
+  heading.className = "runtime-focus-section-title";
+  heading.textContent = title;
+  section.appendChild(heading);
+  const chips = document.createElement("div");
+  chips.className = "runtime-wave-tools";
+  for (const toolId of toolIds) {
+    appendWaveToolChip(chips, toolId, tools[toolId] || {});
+  }
+  section.appendChild(chips);
+  parent.appendChild(section);
+}
 
+function appendFocusRunningTools(parent, toolIds = [], tools = {}) {
+  const running = toolIds.filter((toolId) => toolMatchesBucket(tools[toolId] || {}, "running"));
+  if (!running.length) {
+    return;
+  }
+  const section = document.createElement("div");
+  section.className = "runtime-focus-section";
+  const heading = document.createElement("div");
+  heading.className = "runtime-focus-section-title";
+  heading.textContent = "Running";
+  section.appendChild(heading);
+  const list = document.createElement("div");
+  list.className = "runtime-active-tools-list";
+  for (const toolId of running) {
+    appendActiveToolRow(list, toolId, tools[toolId] || {});
+  }
+  section.appendChild(list);
+  parent.appendChild(section);
+}
+
+function appendFocusProgressBar(parent, percent, statusClass = "running") {
+  const bar = document.createElement("div");
+  bar.className = "runtime-focus-progress-bar";
+  const fill = document.createElement("div");
+  fill.className = `runtime-focus-progress-fill status-${statusClass}`;
+  fill.style.width = `${Math.max(0, Math.min(100, Number(percent || 0)))}%`;
+  bar.appendChild(fill);
+  parent.appendChild(bar);
+}
+
+function appendFocusCounts(parent, counts = {}) {
+  const row = document.createElement("div");
+  row.className = "runtime-focus-counts";
+  const items = [
+    ["done", counts.completed || 0, "ok"],
+    ["running", counts.running || 0, "running"],
+    ["queued", counts.queued || 0, "queued"],
+    ["failed", counts.failed || 0, "failed"],
+    ["issues", Number(counts.warnings || 0) + Number(counts.errors || 0), "warning"],
+  ];
+  for (const [label, value, className] of items) {
+    appendUnitSummaryItem(row, label, value, className);
+  }
+  parent.appendChild(row);
+}
+
+function appendActiveWaveFocus(parent, waveModel, tools = {}, { onBackToActive = null } = {}) {
+  const wave = waveModel.wave;
   const panel = document.createElement("section");
-  panel.className = "runtime-active-tools-panel";
+  panel.className = `runtime-active-tools-panel runtime-focus-panel status-${waveModel.statusClass}`;
 
   const header = document.createElement("div");
   header.className = "runtime-active-tools-head";
   const title = document.createElement("div");
   title.className = "runtime-active-tools-title";
-  title.textContent = "Currently Running";
+  title.textContent = waveModel.isCurrent
+    ? `Active Wave ${waveModel.index || "-"}`
+    : `Inspecting Wave ${waveModel.index || "-"}`;
+  const actions = document.createElement("div");
+  actions.className = "runtime-active-tools-actions";
   const count = document.createElement("span");
   count.className = "runtime-active-tools-count";
-  count.textContent = `${running.length} active`;
+  count.textContent = `${waveModel.counts.total} tool${waveModel.counts.total === 1 ? "" : "s"}`;
+  actions.appendChild(count);
+  if (typeof onBackToActive === "function") {
+    const backButton = document.createElement("button");
+    backButton.type = "button";
+    backButton.className = "runtime-focus-back-button";
+    backButton.textContent = "Back to active";
+    backButton.addEventListener("click", onBackToActive);
+    actions.appendChild(backButton);
+  }
+  header.appendChild(title);
+  header.appendChild(actions);
+  panel.appendChild(header);
+
+  const message = document.createElement("div");
+  message.className = "runtime-focus-message";
+  message.textContent = [
+    statusLabel(wave.status),
+    `${waveModel.percent}%`,
+    `${waveModel.counts.completed}/${waveModel.counts.total} completed`,
+  ].filter(Boolean).join(" · ");
+  panel.appendChild(message);
+  appendFocusProgressBar(panel, waveModel.percent, waveModel.statusClass);
+  appendFocusCounts(panel, waveModel.counts);
+
+  appendFocusRunningTools(panel, waveModel.toolIds, tools);
+  appendFocusToolChips(
+    panel,
+    "Completed",
+    waveModel.toolIds.filter((toolId) => (
+      toolMatchesBucket(tools[toolId] || {}, "completed") &&
+      !entryWarnings(tools[toolId] || {}).length
+    )),
+    tools
+  );
+  appendFocusToolChips(
+    panel,
+    "Queued",
+    waveModel.toolIds.filter((toolId) => toolMatchesBucket(tools[toolId] || {}, "queued")),
+    tools
+  );
+  appendIssueBlocks(panel, waveIssueBlocks(wave, tools), {
+    heading: "Physical Tool Issues",
+    openByDefault: true,
+  });
+
+  parent.appendChild(panel);
+}
+
+function appendPostProcessingFocus(parent, executionState = {}) {
+  const phase = String(executionState?.phase || "").trim();
+  const status = String(executionState?.status || "").trim();
+  const panel = document.createElement("section");
+  panel.className = "runtime-active-tools-panel runtime-focus-panel status-running";
+
+  const header = document.createElement("div");
+  header.className = "runtime-active-tools-head";
+  const title = document.createElement("div");
+  title.className = "runtime-active-tools-title";
+  title.textContent = "ANDREA Post-processing";
+  const count = document.createElement("span");
+  count.className = "runtime-active-tools-count";
+  count.textContent = `${Math.max(0, Math.min(100, Math.round(Number(executionState.percent || 0))))}%`;
   header.appendChild(title);
   header.appendChild(count);
   panel.appendChild(header);
 
-  if (running.length) {
-    const list = document.createElement("div");
-    list.className = "runtime-active-tools-list";
-    for (const [toolId, tool] of running) {
-      appendActiveToolRow(list, toolId, tool);
-    }
-    panel.appendChild(list);
-  } else {
+  const phaseNode = document.createElement("div");
+  phaseNode.className = "runtime-focus-phase";
+  phaseNode.textContent = phaseLabel(phase);
+  panel.appendChild(phaseNode);
+  appendFocusProgressBar(panel, Number(executionState.percent || 0), "running");
+
+  const note = document.createElement("div");
+  note.className = "runtime-active-tools-note";
+  note.textContent = String(executionState.message || "").trim()
+    || PHASE_MESSAGES[phase]
+    || "ANDREA is preparing output artifacts.";
+  panel.appendChild(note);
+
+  if (status && status !== "running") {
+    const statusNode = document.createElement("div");
+    statusNode.className = "runtime-focus-message";
+    statusNode.textContent = statusLabel(status);
+    panel.appendChild(statusNode);
+  }
+
+  parent.appendChild(panel);
+}
+
+function appendFinalFocus(parent, executionState = {}, viewModel = {}) {
+  const statusClass = normalizeTopStatus(executionState.status);
+  const summaries = unitSummaries(executionState);
+  const panel = document.createElement("section");
+  panel.className = `runtime-active-tools-panel runtime-focus-panel status-${statusClass}`;
+
+  const header = document.createElement("div");
+  header.className = "runtime-active-tools-head";
+  const title = document.createElement("div");
+  title.className = "runtime-active-tools-title";
+  title.textContent =
+    statusClass === "failed"
+      ? "Execution Failed"
+      : statusClass === "warning"
+        ? "Execution Finished With Issues"
+        : "Execution Complete";
+  const count = document.createElement("span");
+  count.className = "runtime-active-tools-count";
+  count.textContent = `${viewModel.waves?.length || 0} wave${(viewModel.waves?.length || 0) === 1 ? "" : "s"}`;
+  header.appendChild(title);
+  header.appendChild(count);
+  panel.appendChild(header);
+
+  const message = document.createElement("div");
+  message.className = "runtime-focus-message";
+  message.textContent = phaseMessage(executionState);
+  panel.appendChild(message);
+  appendFocusProgressBar(panel, Number(executionState.percent || 100), statusClass);
+  appendFocusCounts(panel, summaries.configurations || emptyUnitSummary());
+
+  if (viewModel.completedIssueWaves?.length || viewModel.logicalIssueRuns?.length) {
     const note = document.createElement("div");
     note.className = "runtime-active-tools-note";
-    note.textContent = `${phaseLabel(phase)} is running. No tool containers are active; follow the ANDREA Progress card above.`;
+    note.textContent = "Review the execution pools and Configuration Issues section for failed or warning-producing runs.";
     panel.appendChild(note);
   }
 
-  root.appendChild(panel);
+  parent.appendChild(panel);
+}
+
+function appendExecutionFocusPanel(root, executionState, viewModel, { onBackToActive = null } = {}) {
+  const inspectedIndex = Number(state.runtimeWaveUi?.inspectedWaveIndex || 0);
+  const inspectedWave = inspectedIndex
+    ? viewModel.waves.find((wave) => wave.index === inspectedIndex)
+    : null;
+  if (inspectedWave) {
+    appendActiveWaveFocus(root, inspectedWave, viewModel.tools, { onBackToActive });
+    return;
+  }
+
+  const activeWave =
+    viewModel.activeWaves.find((wave) => wave.isCurrent || wave.status === "running")
+    || viewModel.activeWaves[0];
+  if (activeWave) {
+    appendActiveWaveFocus(root, activeWave, viewModel.tools);
+    return;
+  }
+
+  const phase = String(executionState?.phase || "").trim();
+  const status = String(executionState?.status || "").trim();
+  if (status === "running" && POST_PROCESSING_PHASES.has(phase)) {
+    appendPostProcessingFocus(root, executionState);
+    return;
+  }
+
+  if (["completed", "completed_with_failures", "failed"].includes(status)) {
+    appendFinalFocus(root, executionState, viewModel);
+  }
+}
+
+function ensureRuntimeWaveUi(executionState = {}) {
+  if (!state.runtimeWaveUi || typeof state.runtimeWaveUi !== "object") {
+    state.runtimeWaveUi = {
+      runId: null,
+      inspectedWaveIndex: null,
+      openIssueKeys: new Set(),
+      scrollTops: {},
+    };
+  }
+  ensureIssueUiState();
+  const runId = String(executionState?.run_id || "").trim();
+  if (state.runtimeWaveUi.runId !== runId) {
+    state.runtimeWaveUi.runId = runId;
+    state.runtimeWaveUi.inspectedWaveIndex = null;
+    state.runtimeWaveUi.openIssueKeys.clear();
+    state.runtimeWaveUi.scrollTops = {};
+  }
+  return state.runtimeWaveUi;
+}
+
+function clearInspectedWave(root, executionState) {
+  if (state.runtimeWaveUi) {
+    state.runtimeWaveUi.inspectedWaveIndex = null;
+  }
+  renderWaveTimeline(executionState, root);
+}
+
+function inspectWave(root, executionState, waveIndex) {
+  if (state.runtimeWaveUi) {
+    state.runtimeWaveUi.inspectedWaveIndex = Number(waveIndex || 0) || null;
+  }
+  renderWaveTimeline(executionState, root);
+}
+
+function compactWaveMeta(waveModel) {
+  const counts = waveModel.counts || {};
+  if (waveModel.pool === "queued") {
+    return `${counts.total || 0} tool${counts.total === 1 ? "" : "s"} queued`;
+  }
+  const bits = [
+    `${counts.completed || 0}/${counts.total || 0} done`,
+    counts.running ? `${counts.running} running` : "",
+    counts.failed ? `${counts.failed} failed` : "",
+    counts.warnings ? `${counts.warnings} warning${counts.warnings === 1 ? "" : "s"}` : "",
+  ].filter(Boolean);
+  return bits.join(" · ") || `${waveModel.percent || 0}%`;
+}
+
+function appendCompactWaveRow(parent, waveModel, { selected = false, onInspect = null } = {}) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = `runtime-compact-wave status-${waveModel.statusClass}`;
+  if (selected) {
+    row.classList.add("is-selected");
+  }
+  if (waveModel.hasIssues) {
+    row.classList.add("has-issues");
+  }
+  row.addEventListener("click", () => {
+    if (typeof onInspect === "function") {
+      onInspect(waveModel.index);
+    }
+  });
+
+  const top = document.createElement("div");
+  top.className = "runtime-compact-wave-top";
+  const title = document.createElement("span");
+  title.className = "runtime-compact-wave-title";
+  title.textContent = `Wave ${waveModel.index || "-"}`;
+  const status = document.createElement("span");
+  status.className = `runtime-wave-status status-${waveModel.statusClass}`;
+  status.textContent = statusLabel(waveModel.status);
+  top.appendChild(title);
+  top.appendChild(status);
+  row.appendChild(top);
+
+  const meta = document.createElement("div");
+  meta.className = "runtime-compact-wave-meta";
+  meta.textContent = compactWaveMeta(waveModel);
+  row.appendChild(meta);
+
+  if (waveModel.hasIssues) {
+    const issueMeta = document.createElement("div");
+    issueMeta.className = "runtime-compact-wave-issues";
+    const issueCount = Number(waveModel.counts.failed || 0)
+      + Number(waveModel.counts.errors || 0)
+      + Number(waveModel.counts.warnings || 0);
+    issueMeta.textContent = `${issueCount} issue${issueCount === 1 ? "" : "s"}`;
+    row.appendChild(issueMeta);
+  }
+
+  parent.appendChild(row);
+}
+
+function appendPoolSection(parent, {
+  title,
+  subtitle = "",
+  waves = [],
+  empty = "No waves.",
+  onInspect = null,
+  inspectedIndex = null,
+  scrollKey = "",
+}) {
+  const section = document.createElement("section");
+  section.className = "runtime-pool-section";
+
+  const head = document.createElement("div");
+  head.className = "runtime-pool-section-head";
+  const titleNode = document.createElement("div");
+  titleNode.className = "runtime-pool-section-title";
+  titleNode.textContent = title;
+  const count = document.createElement("span");
+  count.className = "runtime-pool-section-count";
+  count.textContent = String(waves.length);
+  head.appendChild(titleNode);
+  head.appendChild(count);
+  section.appendChild(head);
+
+  if (subtitle) {
+    const sub = document.createElement("div");
+    sub.className = "runtime-pool-section-subtitle";
+    sub.textContent = subtitle;
+    section.appendChild(sub);
+  }
+
+  const list = document.createElement("div");
+  list.className = "runtime-compact-wave-list";
+  if (scrollKey) {
+    section.classList.add("is-scrollable");
+    setRuntimeScrollKey(list, scrollKey);
+  }
+  if (!waves.length) {
+    const emptyNode = document.createElement("div");
+    emptyNode.className = "runtime-pool-empty";
+    emptyNode.textContent = empty;
+    list.appendChild(emptyNode);
+  } else {
+    for (const waveModel of waves) {
+      appendCompactWaveRow(list, waveModel, {
+        selected: Number(inspectedIndex || 0) === waveModel.index,
+        onInspect,
+      });
+    }
+  }
+  section.appendChild(list);
+  parent.appendChild(section);
+}
+
+function appendPoolColumn(parent, className, title, sections) {
+  const column = document.createElement("aside");
+  column.className = `runtime-pool-column ${className}`;
+  const heading = document.createElement("div");
+  heading.className = "runtime-pool-column-title";
+  heading.textContent = title;
+  column.appendChild(heading);
+  for (const section of sections) {
+    appendPoolSection(column, section);
+  }
+  parent.appendChild(column);
 }
 
 function renderWaveTimeline(executionState, root) {
-  const waves = Array.isArray(executionState?.waves) ? executionState.waves : [];
-  const tools = executionState?.tools && typeof executionState.tools === "object"
-    ? executionState.tools
-    : {};
-  const logicalRuns =
-    executionState?.logical_runs && typeof executionState.logical_runs === "object"
-      ? executionState.logical_runs
-      : {};
+  rememberRuntimeUiFromDom(root);
+  const viewModel = buildRuntimePoolViewModel(executionState);
+  const { waves } = viewModel;
   if (!waves.length) {
     renderCommonRuntimeProgress(state.runtimeProgress, "runtime-progress");
     return;
   }
-
+  ensureRuntimeWaveUi(executionState);
+  const inspectedIndex = Number(state.runtimeWaveUi?.inspectedWaveIndex || 0);
+  if (
+    inspectedIndex
+    && !viewModel.waves.some((waveModel) => waveModel.index === inspectedIndex)
+  ) {
+    state.runtimeWaveUi.inspectedWaveIndex = null;
+  }
   root.innerHTML = "";
-  root.className = "runtime-progress runtime-wave-timeline";
+  root.className = "runtime-progress runtime-execution-pools";
 
   const title = document.createElement("div");
-  title.className = "runtime-wave-timeline-title";
-  title.textContent = `Wave timeline · ${waves.length} wave${waves.length === 1 ? "" : "s"}`;
+  title.className = "runtime-pools-title";
+  title.textContent = [
+    `Execution pools · ${waves.length} wave${waves.length === 1 ? "" : "s"}`,
+    `${viewModel.activeWaves.length} active`,
+    `${viewModel.queuedWaves.length} queued`,
+    `${viewModel.completedIssueWaves.length} with issues`,
+  ].join(" · ");
   root.appendChild(title);
 
-  const grid = document.createElement("div");
-  grid.className = "runtime-wave-grid";
+  const layout = document.createElement("div");
+  layout.className = "runtime-pools-layout";
 
-  for (const wave of waves) {
-    const waveIndex = Number(wave.index || 0);
-    const statusClass = normalizeRuntimeStatus(wave.status);
-    const hasIssues = waveHasIssues(wave, tools, logicalRuns);
-    const isCurrent = Number(executionState.current_wave || 0) === waveIndex;
-    const details = document.createElement("details");
-    details.className = `runtime-wave-card status-${statusClass}`;
-    if (isCurrent) {
-      details.classList.add("is-current");
-    }
-    if (hasIssues) {
-      details.classList.add("has-issues");
-    }
-    details.open = isCurrent || hasIssues || statusClass === "running" || statusClass === "pending";
+  appendPoolColumn(layout, "runtime-pool-history", "Completed", [
+    {
+      title: "Clean",
+      subtitle: "Finished waves without physical issues.",
+      waves: viewModel.completedCleanWaves,
+      empty: "No clean completed waves yet.",
+      onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
+      inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
+      scrollKey: "completed-clean-waves",
+    },
+    {
+      title: "With Issues",
+      subtitle: "Finished waves with failed or warning-producing executions.",
+      waves: viewModel.completedIssueWaves,
+      empty: "No completed waves with issues.",
+      onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
+      inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
+      scrollKey: "completed-issue-waves",
+    },
+  ]);
 
-    const summary = document.createElement("summary");
-    summary.className = "runtime-wave-summary";
-
-    const heading = document.createElement("div");
-    heading.className = "runtime-wave-heading";
-    const waveTitle = document.createElement("span");
-    waveTitle.className = "runtime-wave-name";
-    waveTitle.textContent = `Wave ${waveIndex || "-"}`;
-    const waveStatus = document.createElement("span");
-    waveStatus.className = `runtime-wave-status status-${statusClass}`;
-    waveStatus.textContent = statusLabel(wave.status);
-    heading.appendChild(waveTitle);
-    heading.appendChild(waveStatus);
-
-    const meta = document.createElement("div");
-    meta.className = "runtime-wave-meta";
-    meta.textContent =
-      `${Array.isArray(wave.tools) ? wave.tools.length : 0} tool(s) · ` +
-      `${Math.max(0, Math.min(100, Math.round(Number(wave.percent || 0))))}%`;
-
-    summary.appendChild(heading);
-    summary.appendChild(meta);
-    details.appendChild(summary);
-
-    const body = document.createElement("div");
-    body.className = "runtime-wave-body";
-
-    const chipGrid = document.createElement("div");
-    chipGrid.className = "runtime-wave-tools";
-    for (const toolId of Array.isArray(wave.tools) ? wave.tools : []) {
-      appendWaveToolChip(chipGrid, toolId, tools[toolId] || {});
-    }
-    body.appendChild(chipGrid);
-    appendWaveIssues(body, wave, tools, logicalRuns);
-
-    details.appendChild(body);
-    grid.appendChild(details);
+  const center = document.createElement("section");
+  center.className = "runtime-pool-column runtime-pool-active";
+  const centerHeading = document.createElement("div");
+  centerHeading.className = "runtime-pool-column-title";
+  centerHeading.textContent = state.runtimeWaveUi?.inspectedWaveIndex ? "Inspecting" : "Active";
+  center.appendChild(centerHeading);
+  appendExecutionFocusPanel(center, executionState, viewModel, {
+    onBackToActive: () => clearInspectedWave(root, executionState),
+  });
+  if (center.children.length === 1) {
+    const emptyNode = document.createElement("div");
+    emptyNode.className = "runtime-pool-empty";
+    emptyNode.textContent = "No active wave is currently available.";
+    center.appendChild(emptyNode);
   }
+  layout.appendChild(center);
 
-  root.appendChild(grid);
-  appendActiveToolsPanel(root, executionState, tools);
+  appendPoolColumn(layout, "runtime-pool-queued", "Queued", [
+    {
+      title: "Future Waves",
+      subtitle: "Compact list of work not started yet.",
+      waves: viewModel.queuedWaves,
+      empty: "No queued waves.",
+      onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
+      inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
+      scrollKey: "queued-waves",
+    },
+  ]);
+
+  root.appendChild(layout);
+  appendLogicalRunIssues(root, viewModel.logicalIssueRuns);
+  restoreRuntimeUiToDom(root);
 }
 
 export function renderAndreaExecutionProgress(executionState = null, job = null) {
@@ -495,8 +1239,14 @@ export function renderAndreaExecutionProgress(executionState = null, job = null)
   root.innerHTML = "";
 
   if (!executionState || typeof executionState !== "object") {
-    root.className = "andrea-progress-card muted-box is-empty";
-    root.textContent = executionStatePlaceholder(job);
+    root.className = "andrea-progress-card muted-box is-empty step3-status-panel";
+    const title = document.createElement("div");
+    title.className = "step3-status-title";
+    title.textContent = "ANDREA Progress";
+    const body = document.createElement("div");
+    body.className = "step3-status-message";
+    body.textContent = executionStatePlaceholder(job);
+    root.append(title, body);
     return;
   }
 
@@ -538,15 +1288,8 @@ export function renderAndreaExecutionProgress(executionState = null, job = null)
   bar.appendChild(fill);
   root.appendChild(bar);
 
-  const summary = executionState.summary || {};
-  const counters = document.createElement("div");
-  counters.className = "andrea-progress-kpis";
-  appendCounter(counters, "completed", summary.completed, "ok");
-  appendCounter(counters, "running", summary.running, "running");
-  appendCounter(counters, "queued", summary.queued, "queued");
-  appendCounter(counters, "failed", summary.failed, "failed");
-  appendCounter(counters, "warnings", summary.warnings, "warning");
-  root.appendChild(counters);
+  const summaries = unitSummaries(executionState);
+  appendCompactProgressSummary(root, summaries);
 }
 
 export function renderRuntimeProgress(runtimeProgress = null, rootId = "runtime-progress") {
@@ -558,186 +1301,9 @@ export function renderRuntimeProgress(runtimeProgress = null, rootId = "runtime-
     renderWaveTimeline(state.executionState, root);
     return;
   }
+  if (shouldRenderRuntimeWaitingState(state.currentJob)) {
+    renderRuntimeWaitingState(root, state.currentJob);
+    return;
+  }
   renderCommonRuntimeProgress(runtimeProgress, rootId);
-}
-
-function normalizeExecutionAlertMessage(message) {
-  let normalized = String(message || "").trim();
-  normalized = normalized.replace(/^\[([^\]]+)\]\s+execution failed:\s*/i, "");
-  normalized = normalized.replace(/^[A-Za-z0-9_]+:\s*/i, "");
-  return normalized.trim();
-}
-
-function isPlanningWarning(issue) {
-  return String(issue?.code || "") === "planning_warning";
-}
-
-function countStateIssues(executionState = null) {
-  if (!executionState || typeof executionState !== "object") {
-    return null;
-  }
-  const entriesPayload =
-    executionState.logical_runs && typeof executionState.logical_runs === "object"
-      ? executionState.logical_runs
-      : executionState.tools && typeof executionState.tools === "object"
-        ? executionState.tools
-        : {};
-  const entries = Object.values(entriesPayload).filter((item) => (
-    item && typeof item === "object"
-  ));
-  const failed = entries.filter((entry) => (
-    normalizeRuntimeStatus(entry.status) === "failed"
-  )).length;
-  const warnings = entries.reduce(
-    (total, entry) => total + entryWarnings(entry).length,
-    0
-  );
-  return { failed, warnings };
-}
-
-function renderExecutionAlertSummary(root, job = null, executionState = null) {
-  const counts = countStateIssues(executionState);
-  if (counts === null) {
-    return false;
-  }
-  const jobFailed = String(job?.status || "") === "failed";
-  if (!counts.failed && !counts.warnings && !jobFailed) {
-    root.textContent = "No execution errors or warnings.";
-    return true;
-  }
-
-  const title = document.createElement("div");
-  title.className = "execution-alerts-title";
-  title.textContent =
-    `Execution summary: ${counts.failed} failed run(s), ` +
-    `${counts.warnings} warning(s)`;
-  root.appendChild(title);
-
-  const summary = document.createElement("div");
-  summary.className =
-    counts.failed || jobFailed
-      ? "execution-alert-summary error"
-      : "execution-alert-summary warning";
-  summary.textContent =
-    counts.failed || jobFailed
-      ? "Review the highlighted wave/tool entries below for failure details."
-      : "Review the highlighted wave/tool entries below for warning details.";
-  root.appendChild(summary);
-  return true;
-}
-
-export function renderExecutionAlerts(job = null, runReport = null, executionState = null) {
-  const root = $("execution-alerts");
-  if (!root) {
-    return;
-  }
-  root.innerHTML = "";
-
-  if (renderExecutionAlertSummary(root, job, executionState)) {
-    return;
-  }
-
-  const errors = [];
-  const executionWarnings = [];
-  const rawWarningIssues =
-    runReport && Array.isArray(runReport.issues)
-      ? runReport.issues
-          .filter(
-            (issue) =>
-              String(issue?.severity || "") === "warn" &&
-              !isPlanningWarning(issue) &&
-              String(issue?.message || "").trim()
-          )
-      : [];
-  const errorSignatures = new Set();
-
-  const failedMap = runReport?.tools?.failed;
-  if (failedMap && typeof failedMap === "object") {
-    for (const [runId, reason] of Object.entries(failedMap)) {
-      const message = `${runId}: ${String(reason || "failed")}`;
-      errors.push(message);
-      errorSignatures.add(normalizeExecutionAlertMessage(message));
-    }
-  }
-
-  const jobError = String(job?.error || "").trim();
-  if (jobError) {
-    errors.push(jobError);
-    errorSignatures.add(normalizeExecutionAlertMessage(jobError));
-    const signature = `${job?.job_id || ""}:${jobError}`;
-    if (state.notifiedJobError !== signature) {
-      state.notifiedJobError = signature;
-      pushToast({
-        title: "Job failed",
-        message: jobError,
-        kind: "error",
-        ttlMs: 10000,
-      });
-    }
-  }
-
-  const warningSeen = new Set();
-  for (const issue of rawWarningIssues) {
-    const message = String(issue?.message || "").trim();
-    const signature = normalizeExecutionAlertMessage(message);
-    if (errorSignatures.has(signature)) {
-      continue;
-    }
-    const dedupeKey = `exec:${signature}`;
-    if (warningSeen.has(dedupeKey)) {
-      continue;
-    }
-    warningSeen.add(dedupeKey);
-    executionWarnings.push(message);
-  }
-
-  if (!errors.length && !executionWarnings.length) {
-    root.textContent = "No execution errors or warnings.";
-    return;
-  }
-
-  const title = document.createElement("div");
-  title.className = "execution-alerts-title";
-  title.textContent =
-    `Execution alerts: ${errors.length} error(s), ` +
-    `${executionWarnings.length} execution warning(s)`;
-  root.appendChild(title);
-
-  const renderAlertSection = (sectionTitle, messages, className) => {
-    if (!messages.length) {
-      return;
-    }
-    const section = document.createElement("section");
-    section.className = "execution-alerts-section";
-    const heading = document.createElement("div");
-    heading.className = "execution-alerts-section-title";
-    heading.textContent = sectionTitle;
-    section.appendChild(heading);
-    for (const message of messages.slice(0, 8)) {
-      const line = document.createElement("div");
-      line.className = `execution-alert ${className}`;
-      line.textContent = message;
-      section.appendChild(line);
-    }
-    root.appendChild(section);
-  };
-
-  renderAlertSection("Execution errors", errors, "error");
-  renderAlertSection("Execution warnings", executionWarnings, "warning");
-
-  const hiddenErrors = Math.max(0, errors.length - 8);
-  const hiddenExecutionWarnings = Math.max(0, executionWarnings.length - 8);
-  if (hiddenErrors || hiddenExecutionWarnings) {
-    const parts = [];
-    if (hiddenErrors) {
-      parts.push(`${hiddenErrors} more error(s)`);
-    }
-    if (hiddenExecutionWarnings) {
-      parts.push(`${hiddenExecutionWarnings} more execution warning(s)`);
-    }
-    const more = document.createElement("div");
-    more.className = "execution-alert";
-    more.textContent = `... and ${parts.join(", ")}`;
-    root.appendChild(more);
-  }
 }

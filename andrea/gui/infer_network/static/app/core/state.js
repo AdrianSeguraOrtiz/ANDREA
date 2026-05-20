@@ -8,6 +8,13 @@ export const state = {
   executionState: null,
   outputReadiness: null,
   runtimeProgress: null,
+  runtimeWaveUi: {
+    runId: null,
+    inspectedWaveIndex: null,
+    openIssueKeys: new Set(),
+    closedIssueKeys: new Set(),
+    scrollTops: {},
+  },
   pollTimer: null,
   loadedPlanKey: null,
   loadedFilesKey: null,
@@ -19,5 +26,4 @@ export const state = {
   activeStep: 1,
   paramsModalCard: null,
   notifiedFailures: new Set(),
-  notifiedJobError: "",
 };

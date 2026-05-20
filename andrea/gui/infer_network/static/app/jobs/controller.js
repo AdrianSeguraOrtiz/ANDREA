@@ -7,7 +7,6 @@ import { renderPlan } from "../plan/view.js";
 import { resetReproducibility, renderReproducibility } from "../repro/view.js";
 import {
   renderAndreaExecutionProgress,
-  renderExecutionAlerts,
   pushRuntimeFailureToasts,
   renderRuntimeProgress,
 } from "../runtime/view.js";
@@ -82,6 +81,24 @@ function resultsExplorerWaitingMessage(job = null, executionState = null, output
   return "Results Explorer will be available after execution.";
 }
 
+function renderResultsExplorerPlaceholder(node, message) {
+  node.replaceChildren();
+  const title = document.createElement("div");
+  title.className = "results-placeholder-title";
+  title.textContent = "Results Explorer";
+  const body = document.createElement("div");
+  body.className = "results-placeholder-message";
+  body.textContent = message;
+  node.append(title, body);
+}
+
+function appendReadinessChip(parent, label, ready) {
+  const chip = document.createElement("span");
+  chip.className = `results-readiness-chip ${ready ? "is-ready" : "is-pending"}`;
+  chip.textContent = `${label}: ${ready ? "ready" : "pending"}`;
+  parent.appendChild(chip);
+}
+
 function renderResultsExplorerStatus(outputReadiness = null) {
   const statusNode = $("results-explorer-status");
   if (!statusNode) {
@@ -103,20 +120,23 @@ function renderResultsExplorerStatus(outputReadiness = null) {
   } else {
     classes.push("status-ready");
   }
-  const bits = [];
-  if (outputReadiness.csv_ready) {
-    bits.push("merged CSVs ready");
-  }
-  if (outputReadiness.final_report_ready) {
-    bits.push("final report ready");
-  }
-  if (outputReadiness.graph_exports_ready) {
-    bits.push("graph exports ready");
-  } else if (outputReadiness.csv_ready) {
-    bits.push("graph exports pending");
-  }
   statusNode.className = classes.join(" ");
-  statusNode.textContent = bits.length ? `${message} (${bits.join(" · ")})` : message;
+  statusNode.replaceChildren();
+  const main = document.createElement("div");
+  main.className = "results-explorer-status-main";
+  main.textContent = message;
+  const chips = document.createElement("div");
+  chips.className = "results-explorer-status-chips";
+  appendReadinessChip(chips, "Merged CSVs", Boolean(outputReadiness.csv_ready));
+  appendReadinessChip(chips, "Run report", Boolean(outputReadiness.final_report_ready));
+  appendReadinessChip(chips, "Graph exports", Boolean(outputReadiness.graph_exports_ready));
+  statusNode.append(main, chips);
+  if (outputReadiness.finalizing_artifacts && outputReadiness.csv_ready) {
+    const note = document.createElement("div");
+    note.className = "results-explorer-status-note";
+    note.textContent = "CSV inspection is available while ANDREA finishes report and graph artifacts.";
+    statusNode.appendChild(note);
+  }
   statusNode.hidden = false;
 }
 
@@ -131,7 +151,7 @@ export function updateResultsExplorerVisibility(job = null, executionState = nul
   if (placeholder) {
     placeholder.hidden = visible;
     if (!visible) {
-      placeholder.textContent = waitingMessage;
+      renderResultsExplorerPlaceholder(placeholder, waitingMessage);
     }
   }
   if (!visible) {
@@ -180,7 +200,6 @@ export async function pollJob(jobId) {
   const payload = await fetchJobData(jobId);
   const job = payload.job;
   state.currentJob = job;
-  const runReport = payload.run_report;
   const preflightReport = payload.preflight_report;
   const executionState = payload.execution_state;
   const outputReadiness = payload.output_readiness;
@@ -205,7 +224,6 @@ export async function pollJob(jobId) {
   renderAndreaExecutionProgress(executionState, job);
   renderRuntimeProgress(runtimeProgress);
   pushRuntimeFailureToasts(runtimeProgress, state.notifiedFailures);
-  renderExecutionAlerts(job, runReport, executionState);
   renderReproducibility(reproducibility);
   updateResultsExplorerVisibility(job, executionState, outputReadiness);
 

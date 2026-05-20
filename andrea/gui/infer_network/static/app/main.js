@@ -5,7 +5,7 @@ import { buildToolIssueReportUrl, buildToolRequestIssueUrl, defaultGroupModeForT
 import { initCatalogView, updateToolEligibilityView } from "./catalog/view.js";
 import { applyDatasetDefaults, handleExpressionSelected, initExpressionDropzone, syncExpressionHelpTooltip } from "./dataset/expression.js";
 import { closeExtraInputModal, getExtraRows, initExtras, listProvidedExtraKeys, openExtraInputModal, updateExtrasEmptyState } from "./dataset/extras.js";
-import { renderAndreaExecutionProgress, renderRuntimeProgress, renderExecutionAlerts } from "./runtime/view.js";
+import { renderAndreaExecutionProgress, renderRuntimeProgress } from "./runtime/view.js";
 import { fetchFiles, resetFilesView } from "./files/explorer.js";
 import { freezeActions, startPolling, syncActionButtons, updateResultsExplorerVisibility } from "./jobs/controller.js";
 import { resetPlanView } from "./plan/view.js";
@@ -121,9 +121,13 @@ async function submitPreflight() {
     state.executionState = null;
     state.outputReadiness = null;
     state.runtimeProgress = null;
+    state.runtimeWaveUi.runId = null;
+    state.runtimeWaveUi.inspectedWaveIndex = null;
+    state.runtimeWaveUi.openIssueKeys.clear();
+    state.runtimeWaveUi.closedIssueKeys.clear();
+    state.runtimeWaveUi.scrollTops = {};
     state.currentJob = null;
     state.notifiedFailures.clear();
-    state.notifiedJobError = "";
     setActiveStep(1, { scroll: false });
     $("runs-container").innerHTML = "";
     updateRunsEmptyState();
@@ -133,7 +137,6 @@ async function submitPreflight() {
     resetReproducibility();
     renderAndreaExecutionProgress(null);
     renderRuntimeProgress(null);
-    renderExecutionAlerts(null, null);
 
     const payload = await submitPreflightRequest(formData);
     state.jobId = payload.job_id;
@@ -239,9 +242,12 @@ async function bootstrap() {
   resetReproducibility();
   renderAndreaExecutionProgress(null);
   renderRuntimeProgress(null);
-  renderExecutionAlerts(null, null);
   state.notifiedFailures.clear();
-  state.notifiedJobError = "";
+  state.runtimeWaveUi.runId = null;
+  state.runtimeWaveUi.inspectedWaveIndex = null;
+  state.runtimeWaveUi.openIssueKeys.clear();
+  state.runtimeWaveUi.closedIssueKeys.clear();
+  state.runtimeWaveUi.scrollTops = {};
   state.currentJob = null;
   setActiveStep(1, { scroll: false });
   syncActionButtons();

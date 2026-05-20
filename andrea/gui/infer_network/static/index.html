@@ -187,15 +187,19 @@
               <input id="progress-poll" type="number" min="0.1" step="0.1" value="0.5" />
             </label>
           </div>
-          <div id="andrea-execution-progress" class="andrea-progress-card muted-box">
-            ANDREA execution progress will appear after execution starts.
+          <div id="andrea-execution-progress" class="andrea-progress-card muted-box is-empty step3-status-panel">
+            <div class="step3-status-title">ANDREA Progress</div>
+            <div class="step3-status-message">ANDREA execution progress will appear after execution starts.</div>
           </div>
-          <div id="execution-alerts" class="execution-alerts muted-box">
-            No execution errors or warnings.
+          <div id="runtime-progress" class="runtime-progress runtime-progress-waiting muted-box step3-status-panel">
+            <div class="runtime-progress-waiting-title">Execution progress</div>
+            <div class="runtime-progress-waiting-body">Execution progress will appear after execution starts.</div>
           </div>
-          <div id="runtime-progress" class="runtime-progress muted-box">No runtime progress yet.</div>
 
-          <div id="results-explorer-placeholder" class="muted-box results-placeholder">Results Explorer will be available after execution.</div>
+          <div id="results-explorer-placeholder" class="muted-box results-placeholder results-explorer-placeholder">
+            <div class="results-placeholder-title">Results Explorer</div>
+            <div class="results-placeholder-message">Results Explorer will be available after execution.</div>
+          </div>
           <div id="results-explorer-section" hidden>
             <div class="panel-head compact-head">
               <h3>Results Explorer</h3>
@@ -224,7 +228,10 @@
             </div>
           </div>
 
-          <div id="reproducibility-placeholder" class="muted-box results-placeholder">Reproducibility snippets will be available after execution.</div>
+          <div id="reproducibility-placeholder" class="muted-box results-placeholder">
+            <div class="results-placeholder-title">Reproducibility</div>
+            <div class="results-placeholder-message">Reproducibility snippets will be available after execution.</div>
+          </div>
           <section id="reproducibility-section" hidden>
             <div class="panel-head compact-head">
               <h3>Reproduce This Run</h3>
