@@ -35,6 +35,15 @@ TOP_LEVEL_STATUSES = {
     "failed",
 }
 
+WAVE_STATUSES = {
+    "queued",
+    "running",
+    "completed",
+    "completed_with_warnings",
+    "completed_with_failures",
+    "failed",
+}
+
 TOOL_STATUSES = {
     "queued",
     "running",
@@ -62,6 +71,111 @@ EXECUTION_PHASES = {
 
 FINAL_TOOL_STATUSES = {"completed", "completed_with_warnings", "failed"}
 ISSUE_PREFIX_RE = re.compile(r"^\[([^\]]+)\]\s*(.*)$")
+FINAL_WAVE_STATUSES = {
+    "completed",
+    "completed_with_warnings",
+    "completed_with_failures",
+    "failed",
+}
+
+
+def _derive_wave_status(tool_entries: list[dict[str, Any]]) -> str:
+    if not tool_entries:
+        return "queued"
+
+    statuses = [str(entry.get("status", "queued")) for entry in tool_entries]
+    if any(status == "running" for status in statuses):
+        return "running"
+    if all(status == "queued" for status in statuses):
+        return "queued"
+    if all(status in FINAL_TOOL_STATUSES for status in statuses):
+        if all(status == "failed" for status in statuses):
+            return "failed"
+        if any(status == "failed" for status in statuses):
+            return "completed_with_failures"
+        if any(
+            status == "completed_with_warnings"
+            or bool(entry.get("warnings"))
+            for status, entry in zip(statuses, tool_entries)
+        ):
+            return "completed_with_warnings"
+        return "completed"
+    return "running"
+
+
+def _empty_summary() -> dict[str, int]:
+    return {
+        "total": 0,
+        "queued": 0,
+        "running": 0,
+        "completed": 0,
+        "failed": 0,
+        "warnings": 0,
+        "errors": 0,
+    }
+
+
+def _entry_warning_count(entry: dict[str, Any]) -> int:
+    warnings = entry.get("warnings", [])
+    return len(warnings) if isinstance(warnings, list) else 0
+
+
+def _entry_error_count(entry: dict[str, Any]) -> int:
+    errors = entry.get("errors", [])
+    return len(errors) if isinstance(errors, list) else 0
+
+
+def _summarize_runtime_entries(entries: list[dict[str, Any]]) -> dict[str, int]:
+    summary = _empty_summary()
+    summary["total"] = len(entries)
+    for entry in entries:
+        status = str(entry.get("status", "queued"))
+        if status == "queued":
+            summary["queued"] += 1
+        elif status == "running":
+            summary["running"] += 1
+        elif status == "failed":
+            summary["failed"] += 1
+        elif status in {"completed", "completed_with_warnings"}:
+            summary["completed"] += 1
+        summary["warnings"] += _entry_warning_count(entry)
+        summary["errors"] += _entry_error_count(entry)
+    return summary
+
+
+def _summarize_wave_entries(waves: list[dict[str, Any]]) -> dict[str, int]:
+    summary = _empty_summary()
+    summary["total"] = len(waves)
+    for wave in waves:
+        status = str(wave.get("status", "queued"))
+        if status == "queued":
+            summary["queued"] += 1
+        elif status == "running":
+            summary["running"] += 1
+        elif status == "failed":
+            summary["failed"] += 1
+            summary["errors"] += 1
+        elif status in FINAL_WAVE_STATUSES:
+            summary["completed"] += 1
+            if status == "completed_with_warnings":
+                summary["warnings"] += 1
+            elif status == "completed_with_failures":
+                summary["errors"] += 1
+    return summary
+
+
+def _build_unit_summaries(
+    *,
+    waves: list[dict[str, Any]],
+    logical_runs: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+) -> dict[str, dict[str, int]]:
+    configuration_entries = logical_runs or tools
+    return {
+        "waves": _summarize_wave_entries(waves),
+        "configurations": _summarize_runtime_entries(configuration_entries),
+        "executions": _summarize_runtime_entries(tools),
+    }
 
 
 def utc_timestamp() -> str:
@@ -155,6 +269,11 @@ def build_initial_execution_state(
     summary_entries = (
         list(logical_entries.values()) if logical_entries else list(tool_entries.values())
     )
+    unit_summaries = _build_unit_summaries(
+        waves=wave_entries,
+        logical_runs=list(logical_entries.values()),
+        tools=list(tool_entries.values()),
+    )
     now = utc_timestamp()
     payload = {
         "schema_version": EXECUTION_STATE_SCHEMA_VERSION,
@@ -173,6 +292,7 @@ def build_initial_execution_state(
             "failed": 0,
             "warnings": 0,
         },
+        "unit_summaries": unit_summaries,
         "waves": wave_entries,
         "tools": tool_entries,
         "logical_runs": logical_entries,
@@ -224,6 +344,12 @@ def validate_execution_state(payload: dict[str, Any]) -> None:
             raise ValueError(
                 f"execution_state.summary.{key} must be a non-negative integer"
             )
+
+    unit_summaries = payload.get("unit_summaries")
+    if not isinstance(unit_summaries, dict):
+        raise ValueError("execution_state.unit_summaries must be an object")
+    for unit_key in ("waves", "configurations", "executions"):
+        _validate_unit_summary(unit_summaries.get(unit_key), key=unit_key)
 
     waves = payload.get("waves")
     if not isinstance(waves, list):
@@ -298,7 +424,7 @@ def _validate_wave(wave: Any, *, idx: int) -> None:
         raise ValueError(
             f"execution_state.waves[{idx}].index must be a positive integer"
         )
-    _require_enum(wave, "status", TOP_LEVEL_STATUSES, prefix=f"waves[{idx}]")
+    _require_enum(wave, "status", WAVE_STATUSES, prefix=f"waves[{idx}]")
     _require_percent(wave, "percent", prefix=f"waves[{idx}]")
     for key in ("threads_used",):
         value = wave.get(key)
@@ -319,6 +445,26 @@ def _validate_wave(wave: Any, *, idx: int) -> None:
         raise ValueError(
             f"execution_state.waves[{idx}].tools must be a list of non-empty strings"
         )
+
+
+def _validate_unit_summary(summary: Any, *, key: str) -> None:
+    if not isinstance(summary, dict):
+        raise ValueError(f"execution_state.unit_summaries.{key} must be an object")
+    for metric in (
+        "total",
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "warnings",
+        "errors",
+    ):
+        value = summary.get(metric)
+        if not isinstance(value, int) or value < 0:
+            raise ValueError(
+                f"execution_state.unit_summaries.{key}.{metric} "
+                "must be a non-negative integer"
+            )
 
 
 def _validate_tool(tool: Any, *, expected_tool_id: str) -> None:
@@ -481,17 +627,13 @@ class ExecutionStateWriter:
     def complete_wave(self, wave_index: int) -> None:
         wave = self._wave_by_index(wave_index)
         waves_total = max(1, int(self.payload.get("waves_total", 0) or 0))
-        statuses = [
-            str(self.payload["tools"].get(tool_id, {}).get("status", "queued"))
+        tool_entries = [
+            self.payload["tools"].get(tool_id, {})
             for tool_id in wave["tools"]
+            if isinstance(self.payload["tools"].get(tool_id, {}), dict)
         ]
         wave["percent"] = 100
-        if statuses and all(status == "failed" for status in statuses):
-            wave["status"] = "failed"
-        elif any(status == "failed" for status in statuses):
-            wave["status"] = "completed_with_failures"
-        else:
-            wave["status"] = "completed"
+        wave["status"] = _derive_wave_status(tool_entries)
         self.payload["current_wave"] = None
         self.payload["percent"] = max(
             int(self.payload.get("percent", 0) or 0),
@@ -666,28 +808,17 @@ class ExecutionStateWriter:
     def _sync_wave_for_tool(self, tool_id: str) -> None:
         tool = self._tool(tool_id)
         wave = self._wave_by_index(int(tool["wave"]))
-        statuses = [
-            str(self.payload["tools"].get(candidate, {}).get("status", "queued"))
+        tool_entries = [
+            self.payload["tools"].get(candidate, {})
             for candidate in wave["tools"]
+            if isinstance(self.payload["tools"].get(candidate, {}), dict)
         ]
         percents = [
-            int(self.payload["tools"].get(candidate, {}).get("percent", 0) or 0)
-            for candidate in wave["tools"]
+            int(entry.get("percent", 0) or 0)
+            for entry in tool_entries
         ]
         wave["percent"] = int(round(sum(percents) / max(1, len(percents))))
-        if any(status == "running" for status in statuses):
-            wave["status"] = "running"
-        elif statuses and all(status in FINAL_TOOL_STATUSES for status in statuses):
-            if all(status == "failed" for status in statuses):
-                wave["status"] = "failed"
-            elif any(status == "failed" for status in statuses):
-                wave["status"] = "completed_with_failures"
-            else:
-                wave["status"] = "completed"
-        elif any(status in FINAL_TOOL_STATUSES for status in statuses):
-            wave["status"] = "running"
-        else:
-            wave["status"] = "queued"
+        wave["status"] = _derive_wave_status(tool_entries)
 
     def _sync_logical_runs(self) -> None:
         logical_runs = self.payload.get("logical_runs", {})
@@ -753,6 +884,11 @@ class ExecutionStateWriter:
             for tool in self.payload.get("tools", {}).values()
             if isinstance(tool, dict)
         ]
+        waves = [
+            wave
+            for wave in self.payload.get("waves", [])
+            if isinstance(wave, dict)
+        ]
         entries = logical_runs or tools
         summary = {
             "total": len(entries),
@@ -772,6 +908,11 @@ class ExecutionStateWriter:
             ),
         }
         self.payload["summary"] = summary
+        self.payload["unit_summaries"] = _build_unit_summaries(
+            waves=waves,
+            logical_runs=logical_runs,
+            tools=tools,
+        )
 
 
 def _require_enum(

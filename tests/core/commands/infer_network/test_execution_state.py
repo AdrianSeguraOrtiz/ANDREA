@@ -92,6 +92,38 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
                 "warnings": 0,
             },
         )
+        self.assertEqual(
+            payload["unit_summaries"],
+            {
+                "waves": {
+                    "total": 2,
+                    "queued": 2,
+                    "running": 0,
+                    "completed": 0,
+                    "failed": 0,
+                    "warnings": 0,
+                    "errors": 0,
+                },
+                "configurations": {
+                    "total": 3,
+                    "queued": 3,
+                    "running": 0,
+                    "completed": 0,
+                    "failed": 0,
+                    "warnings": 0,
+                    "errors": 0,
+                },
+                "executions": {
+                    "total": 3,
+                    "queued": 3,
+                    "running": 0,
+                    "completed": 0,
+                    "failed": 0,
+                    "warnings": 0,
+                    "errors": 0,
+                },
+            },
+        )
         self.assertEqual(payload["waves"][0]["tools"], ["genie3_01", "lioness_01__cell_native"])
         self.assertEqual(payload["tools"]["lioness_01__cell_native"]["run_id"], "lioness_01")
         self.assertEqual(payload["tools"]["lioness_01__cell_native"]["wave"], 1)
@@ -183,6 +215,27 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
         self.assertEqual(loaded["summary"]["failed"], 1)
         self.assertEqual(loaded["summary"]["warnings"], 1)
         self.assertEqual(
+            loaded["unit_summaries"]["waves"],
+            {
+                "total": 2,
+                "queued": 1,
+                "running": 0,
+                "completed": 1,
+                "failed": 0,
+                "warnings": 0,
+                "errors": 1,
+            },
+        )
+        self.assertEqual(loaded["unit_summaries"]["configurations"]["total"], 2)
+        self.assertEqual(loaded["unit_summaries"]["configurations"]["completed"], 1)
+        self.assertEqual(loaded["unit_summaries"]["configurations"]["failed"], 1)
+        self.assertEqual(loaded["unit_summaries"]["configurations"]["warnings"], 1)
+        self.assertEqual(loaded["unit_summaries"]["executions"]["total"], 3)
+        self.assertEqual(loaded["unit_summaries"]["executions"]["completed"], 1)
+        self.assertEqual(loaded["unit_summaries"]["executions"]["failed"], 1)
+        self.assertEqual(loaded["unit_summaries"]["executions"]["warnings"], 1)
+        self.assertEqual(loaded["unit_summaries"]["executions"]["errors"], 1)
+        self.assertEqual(
             loaded["logical_runs"]["genie3_01"]["status"],
             "completed_with_warnings",
         )
@@ -214,3 +267,91 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
                 "Completed wave 1 of 2.",
             ],
         )
+
+    def test_wave_completed_with_warnings_is_distinct_from_clean_completed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            writer = ExecutionStateWriter.initialize(
+                run_dir=Path(tmp),
+                run_id="run_a",
+                waves=self._waves(),
+            )
+
+            writer.start_wave(2)
+            writer.update_tool(
+                "clr_01",
+                status="completed",
+                phase="done",
+                percent=100,
+                message="Finished",
+            )
+            writer.record_warning_message("[clr_01] output network is empty")
+            writer.complete_wave(2)
+            loaded = read_execution_state(execution_state_path(Path(tmp)))
+
+        self.assertEqual(loaded["waves"][1]["status"], "completed_with_warnings")
+        self.assertEqual(
+            loaded["tools"]["clr_01"]["status"],
+            "completed_with_warnings",
+        )
+
+    def test_wave_fails_only_when_all_physical_tasks_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            writer = ExecutionStateWriter.initialize(
+                run_dir=Path(tmp),
+                run_id="run_a",
+                waves=self._waves(),
+            )
+
+            writer.start_wave(1)
+            writer.update_tool(
+                "genie3_01",
+                status="failed",
+                phase="failed",
+                percent=100,
+                message="failed",
+                error="failed",
+            )
+            running_state = read_execution_state(execution_state_path(Path(tmp)))
+            self.assertEqual(running_state["waves"][0]["status"], "running")
+
+            writer.update_tool(
+                "lioness_01__cell_native",
+                status="failed",
+                phase="failed",
+                percent=100,
+                message="failed",
+                error="failed",
+            )
+            writer.complete_wave(1)
+            loaded = read_execution_state(execution_state_path(Path(tmp)))
+
+        self.assertEqual(loaded["waves"][0]["status"], "failed")
+
+    def test_wave_with_mixed_success_and_failure_is_completed_with_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            writer = ExecutionStateWriter.initialize(
+                run_dir=Path(tmp),
+                run_id="run_a",
+                waves=self._waves(),
+            )
+
+            writer.start_wave(1)
+            writer.update_tool(
+                "genie3_01",
+                status="completed",
+                phase="done",
+                percent=100,
+                message="Finished",
+            )
+            writer.update_tool(
+                "lioness_01__cell_native",
+                status="failed",
+                phase="failed",
+                percent=100,
+                message="failed",
+                error="failed",
+            )
+            writer.complete_wave(1)
+            loaded = read_execution_state(execution_state_path(Path(tmp)))
+
+        self.assertEqual(loaded["waves"][0]["status"], "completed_with_failures")
