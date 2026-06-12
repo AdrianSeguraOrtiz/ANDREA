@@ -73,9 +73,15 @@ function openStepsModal(card) {
 function buildCard(card) {
   const article = document.createElement("article");
   article.className = "repro-card";
+  const head = document.createElement("div");
+  head.className = "repro-card-head";
   const title = document.createElement("h4");
   title.textContent = String(card?.title || "Snippet");
-  article.appendChild(title);
+  const tag = document.createElement("span");
+  tag.className = "repro-card-tag";
+  tag.textContent = String(card?.primary_language || "text");
+  head.append(title, tag);
+  article.appendChild(head);
   const summary = document.createElement("p");
   summary.className = "repro-summary";
   summary.textContent = String(card?.summary || "");
@@ -152,4 +158,3 @@ export function renderReproducibility(payload = null) {
     }
   }
 }
-

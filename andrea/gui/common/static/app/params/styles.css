@@ -1,0 +1,66 @@
+.param-field {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.95);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.param-field.invalid {
+  border-color: var(--blocked-brd, rgba(185, 28, 28, 0.35));
+  background: var(--blocked-bg, rgba(254, 242, 242, 0.96));
+}
+
+.param-field-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.param-field-title {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.param-field-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.param-field-meta {
+  color: var(--muted, #64748b);
+  font-size: 0.76rem;
+}
+
+.param-input-wrap {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.param-input-wrap > input,
+.param-input-wrap > select,
+.param-input-wrap > textarea,
+.param-input {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.param-object-fields {
+  display: grid;
+  gap: 0.65rem;
+  padding-left: 0.6rem;
+  border-left: 2px solid rgba(15, 23, 42, 0.08);
+}
+
+.param-union-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.param-error {
+  font-size: 0.78rem;
+  color: #991b1b;
+}

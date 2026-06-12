@@ -1,4 +1,4 @@
-import { $, currentBundleMode, formatBytes } from "../core/dom.js";
+import { $, formatBytes } from "../core/dom.js";
 import { pushToast } from "../ui/toasts.js";
 
 const DEFAULT_IDS = {
@@ -6,7 +6,6 @@ const DEFAULT_IDS = {
   tree: "files-tree",
   header: "file-preview-header",
   preview: "file-preview",
-  bundleMode: "bundle-mode",
 };
 
 function targetId(ids, key) {
@@ -23,6 +22,18 @@ function ensureFileState(state) {
   }
   if (!Array.isArray(state.filesEntries)) {
     state.filesEntries = [];
+  }
+  if (!Number.isInteger(state.filePreviewRequestSeq)) {
+    state.filePreviewRequestSeq = 0;
+  }
+  if (!("filePreviewLoadedKey" in state)) {
+    state.filePreviewLoadedKey = null;
+  }
+  if (!("filePreviewPendingKey" in state)) {
+    state.filePreviewPendingKey = null;
+  }
+  if (!("filePreviewAbortController" in state)) {
+    state.filePreviewAbortController = null;
   }
 }
 
@@ -48,9 +59,13 @@ function viewerLabel(viewer) {
 
 export function resetFilesView(state, message, ids = {}) {
   ensureFileState(state);
+  abortPendingPreview(state);
+  state.filePreviewRequestSeq += 1;
+  state.filePreviewLoadedKey = null;
+  state.filePreviewPendingKey = null;
   state.selectedFilePath = null;
   state.filesEntries = [];
-  state.filesMode = currentBundleMode(targetId(ids, "bundleMode"));
+  state.filesMode = String(state.filesMode || "report");
   target(ids, "summary").textContent = message || "No files loaded yet.";
   target(ids, "tree").innerHTML = "";
   target(ids, "header").textContent = "Select a file to preview.";
@@ -58,9 +73,27 @@ export function resetFilesView(state, message, ids = {}) {
 }
 
 function appendGuide(card, guide) {
+  const head = document.createElement("div");
+  head.className = "artifact-guide-head";
+
   const title = document.createElement("h4");
   title.textContent = String(guide.title || "Artifact guide");
-  card.appendChild(title);
+  head.appendChild(title);
+
+  const badges = Array.isArray(guide.badges) ? guide.badges : [];
+  if (badges.length) {
+    const badgeRow = document.createElement("div");
+    badgeRow.className = "artifact-guide-badges";
+    for (const badge of badges) {
+      const chip = document.createElement("span");
+      chip.className = "artifact-guide-badge";
+      chip.textContent = String(badge);
+      badgeRow.appendChild(chip);
+    }
+    head.appendChild(badgeRow);
+  }
+
+  card.appendChild(head);
 
   const summary = document.createElement("p");
   summary.textContent = String(guide.summary || "");
@@ -339,8 +372,28 @@ function buildEntriesTree(entries) {
   return root;
 }
 
-function activeMode(ids) {
-  return currentBundleMode(targetId(ids, "bundleMode"));
+function activeMode(state) {
+  return String(state.filesMode || "report");
+}
+
+function previewKey(path, mode) {
+  return `${String(mode || "")}:${String(path || "")}`;
+}
+
+function abortPendingPreview(state) {
+  const controller = state?.filePreviewAbortController;
+  if (controller && typeof controller.abort === "function") {
+    controller.abort();
+  }
+  if (state) {
+    state.filePreviewAbortController = null;
+    state.filePreviewPendingKey = null;
+  }
+}
+
+function isAbortError(error) {
+  const abortCode = typeof DOMException !== "undefined" ? DOMException.ABORT_ERR : 20;
+  return Boolean(error && (error.name === "AbortError" || error.code === abortCode));
 }
 
 function previewErrorToast(error) {
@@ -357,13 +410,56 @@ async function openFileEntry(entry, state, api, mode, ids = {}, options = {}) {
     return;
   }
 
+  abortPendingPreview(state);
+  const requestId = Number(state.filePreviewRequestSeq || 0) + 1;
+  state.filePreviewRequestSeq = requestId;
+  const key = previewKey(entry.path, mode);
+  state.filePreviewPendingKey = key;
+  state.filePreviewLoadedKey = null;
+
   if (entry.viewer === "plan" && typeof options.renderPlanPreview === "function") {
     options.renderPlanPreview(entry.path);
+    state.filePreviewLoadedKey = key;
+    state.filePreviewPendingKey = null;
     return;
   }
 
-  const payload = await api.fetchFileContent(entry.path, mode);
-  renderFilePreview(payload, ids);
+  const header = target(ids, "header");
+  const previewRoot = target(ids, "preview");
+  header.textContent = `${entry.path || "-"} · loading`;
+  previewRoot.innerHTML = "";
+  const loading = document.createElement("div");
+  loading.className = "muted-box";
+  loading.textContent = "Loading preview...";
+  previewRoot.appendChild(loading);
+
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  state.filePreviewAbortController = controller;
+
+  try {
+    const payload = await api.fetchFileContent(entry.path, mode, {
+      signal: controller?.signal,
+    });
+    const stillCurrent =
+      requestId === state.filePreviewRequestSeq &&
+      String(state.selectedFilePath || "") === String(entry.path || "") &&
+      String(state.filesMode || "") === String(mode || "");
+    if (!stillCurrent) {
+      return;
+    }
+    renderFilePreview(payload, ids);
+    state.filePreviewLoadedKey = key;
+  } catch (err) {
+    if (isAbortError(err)) {
+      return;
+    }
+    throw err;
+  } finally {
+    if (requestId === state.filePreviewRequestSeq) {
+      state.filePreviewAbortController = null;
+      state.filePreviewPendingKey = null;
+    }
+  }
 }
 
 function renderTreeNode({ node, depth, state, api, mode, ids, options }) {
@@ -438,7 +534,7 @@ function renderTreeNode({ node, depth, state, api, mode, ids, options }) {
     state.selectedFilePath = node.path;
     renderFilesTree(state, api, ids, options);
     try {
-      await openFileEntry(node, state, api, mode || activeMode(ids), ids, options);
+      await openFileEntry(node, state, api, mode || activeMode(state), ids, options);
     } catch (err) {
       previewErrorToast(err);
     }
@@ -471,7 +567,7 @@ export function renderFilesTree(state, api, ids = {}, options = {}) {
       depth: 0,
       state,
       api,
-      mode: state.filesMode || activeMode(ids),
+      mode: state.filesMode || activeMode(state),
       ids,
       options,
     });
@@ -527,7 +623,7 @@ function selectPreferredEntry(entries, preferredPathSuffixes = []) {
 
 export async function fetchFiles(state, api, ids = {}, options = {}) {
   ensureFileState(state);
-  const mode = activeMode(ids);
+  const mode = activeMode(state);
   const payload = await api.fetchFiles(mode);
   const entries = Array.isArray(payload.entries) ? payload.entries : [];
 
@@ -552,14 +648,21 @@ export async function fetchFiles(state, api, ids = {}, options = {}) {
       (item) => item.kind === "file" && String(item.path) === String(state.selectedFilePath)
     );
     if (selected) {
-      try {
-        await openFileEntry(selected, state, api, mode, ids, options);
-      } catch (err) {
-        previewErrorToast(err);
+      const key = previewKey(selected.path, mode);
+      if (state.filePreviewLoadedKey !== key && state.filePreviewPendingKey !== key) {
+        try {
+          await openFileEntry(selected, state, api, mode, ids, options);
+        } catch (err) {
+          previewErrorToast(err);
+        }
       }
     }
     return payload;
   }
+
+  state.selectedFilePath = null;
+  state.filePreviewLoadedKey = null;
+  state.filePreviewPendingKey = null;
 
   const targetEntry = selectPreferredEntry(entries, options.preferredPathSuffixes || []);
   if (targetEntry) {

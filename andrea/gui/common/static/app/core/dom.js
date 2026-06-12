@@ -22,12 +22,6 @@ export function formatBytes(value) {
   return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
-export function currentBundleMode(id = "bundle-mode") {
-  const node = $(id);
-  const mode = String(node?.value || "full");
-  return mode === "light" ? "light" : "full";
-}
-
 export function fillSelect(id, values) {
   const select = $(id);
   if (!select) {

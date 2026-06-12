@@ -1,0 +1,121 @@
+.repro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 0.75rem;
+}
+
+.repro-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 100%;
+  border: 1px solid rgba(125, 211, 252, 0.58);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(240, 249, 255, 0.9), rgba(255, 255, 255, 0.98));
+  box-shadow: inset 3px 0 0 rgba(2, 132, 199, 0.55);
+  padding: 14px;
+}
+
+.repro-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.repro-card-head h4,
+.repro-card h4,
+.repro-summary {
+  margin: 0;
+}
+
+.repro-card-head h4 {
+  font-size: 1rem;
+}
+
+.repro-card-tag {
+  border: 1px solid rgba(2, 132, 199, 0.28);
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #075985;
+  padding: 0.16rem 0.48rem;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.repro-summary {
+  color: #475569;
+  line-height: 1.45;
+}
+
+.repro-code-block {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+}
+
+.repro-code-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.repro-code-head button {
+  padding: 0.32rem 0.55rem;
+  font-size: 0.74rem;
+}
+
+.repro-code-wrap {
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.repro-code-lang {
+  padding: 0.35rem 0.65rem;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.repro-code-wrap pre {
+  margin: 0;
+  padding: 0.85rem;
+  overflow: auto;
+  color: #e2e8f0;
+  background: #0f172a;
+  font-family: "IBM Plex Mono", "Fira Code", monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.repro-steps-trigger {
+  justify-self: start;
+  margin-top: 0.1rem;
+}
+
+.repro-steps-modal-card {
+  width: min(940px, calc(100vw - 2rem));
+  max-height: min(82vh, 920px);
+  overflow: auto;
+}
+
+.repro-steps-modal-body {
+  display: grid;
+  gap: 0.8rem;
+}
+
+#repro-steps-modal .repro-code-wrap {
+  background: #0f172a;
+}
+
+#repro-steps-modal .repro-code-wrap pre {
+  border: 0;
+  border-radius: 0;
+}

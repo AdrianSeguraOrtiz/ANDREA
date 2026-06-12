@@ -1,0 +1,381 @@
+/* Shared ANDREA button system.
+   The goal is a light, modern command language:
+   - text commands are tonal buttons;
+   - icon actions are compact circles;
+   - tabs are segmented pills;
+   - table/context chips keep their local semantics. */
+
+:where(button, .button, .extra-file-button):not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)) {
+  --andrea-button-bg: #ecfdf5;
+  --andrea-button-bg-hover: #d1fae5;
+  --andrea-button-border: #99f6e4;
+  --andrea-button-border-hover: #5eead4;
+  --andrea-button-text: #0f766e;
+
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  min-height: 2.08rem;
+  border: 1px solid var(--andrea-button-border);
+  border-radius: 8px;
+  background: var(--andrea-button-bg);
+  background-image: none;
+  color: var(--andrea-button-text);
+  padding: 0.46rem 0.72rem;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.16;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease,
+    opacity 0.14s ease,
+    transform 0.14s ease;
+}
+
+:where(button, .button, .extra-file-button):not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)):hover:not(:disabled) {
+  background: var(--andrea-button-bg-hover);
+  border-color: var(--andrea-button-border-hover);
+}
+
+:where(button, .button, .extra-file-button):not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)):active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+:where(button, .button, .extra-file-button):not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)):focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.24);
+  outline-offset: 2px;
+}
+
+button.secondary:not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)),
+.button.secondary,
+.extra-file-button.secondary {
+  --andrea-button-bg: #eff6ff;
+  --andrea-button-bg-hover: #dbeafe;
+  --andrea-button-border: #bfdbfe;
+  --andrea-button-border-hover: #93c5fd;
+  --andrea-button-text: #075985;
+}
+
+button.neutral:not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)),
+.button.neutral {
+  --andrea-button-bg: #f8fafc;
+  --andrea-button-bg-hover: #f1f5f9;
+  --andrea-button-border: #cbd5e1;
+  --andrea-button-border-hover: #94a3b8;
+  --andrea-button-text: #334155;
+}
+
+button.danger:not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)),
+.button.danger {
+  --andrea-button-bg: #fff7f7;
+  --andrea-button-bg-hover: #fee2e2;
+  --andrea-button-border: #fecaca;
+  --andrea-button-border-hover: #fca5a5;
+  --andrea-button-text: #b91c1c;
+}
+
+button.warning:not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)),
+.button.warning {
+  --andrea-button-bg: #fff7ed;
+  --andrea-button-bg-hover: #ffedd5;
+  --andrea-button-border: #fed7aa;
+  --andrea-button-border-hover: #fdba74;
+  --andrea-button-text: #9a3412;
+}
+
+:where(button, .button, .extra-file-button):not(:where(
+  .step-toggle,
+  .icon-btn,
+  .icon-button,
+  .info-icon,
+  .info-popover-close,
+  .toast-close,
+  .tab-button,
+  .level-tab,
+  .file-node,
+  .input-tool-tag,
+  .distance-context-clear,
+  .edge-row-toggle,
+  .edge-column-toggle,
+  .simulator-derivation-close,
+  .runtime-focus-back-button
+)):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+:where(.repro-code-head button, .bundle-card-actions button) {
+  min-height: 1.86rem;
+  padding: 0.36rem 0.6rem;
+  font-size: 0.82rem;
+}
+
+:where(.step-toggle) {
+  border-radius: 6px;
+  color: #0f172a;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+
+:where(.step-toggle):hover {
+  color: #075985;
+}
+
+:where(.step-toggle):focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.24);
+  outline-offset: 2px;
+}
+
+:where(.runtime-focus-back-button) {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.7rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #075985;
+  padding: 0.26rem 0.58rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.12;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+:where(.runtime-focus-back-button):hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+:where(.icon-btn, .icon-button, .info-popover-close, .toast-close, .simulator-derivation-close) {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease,
+    opacity 0.14s ease;
+}
+
+:where(.icon-btn, .icon-button, .info-popover-close, .toast-close, .simulator-derivation-close):hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+:where(.icon-btn.danger, .icon-button.danger, .remove-run, .remove-input, .remove-extra) {
+  background: #fff7f7;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+:where(.icon-btn.danger, .icon-button.danger, .remove-run, .remove-input, .remove-extra):hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+:where(.info-icon) {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.42rem;
+  height: 1.42rem;
+  min-width: 1.42rem;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  background: #f0f9ff;
+  color: #075985;
+  padding: 0;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+:where(.info-icon):hover:not(:disabled) {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
+:where(.tab-button, .level-tab, .distance-context-clear) {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  padding: 0.42rem 0.72rem;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.12;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+:where(.tab-button, .level-tab, .distance-context-clear):hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+:where(.tab-button.active, .level-tab.active, .distance-context-clear.active) {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #075985;
+}

@@ -47,8 +47,16 @@ def extract_zip_upload(upload: Any, *, zip_path: Path, extract_dir: Path) -> Non
             f"Uploaded file must be a ZIP archive: {filename or 'unnamed'}"
         )
     save_upload(upload, zip_path)
+    extract_zip_path(zip_path=zip_path, extract_dir=extract_dir, filename=filename)
+
+
+def extract_zip_path(
+    *, zip_path: Path, extract_dir: Path, filename: str | None = None
+) -> None:
+    """Safely extract a ZIP archive already saved on disk."""
+    display_name = filename or zip_path.name
     if not zipfile.is_zipfile(zip_path):
-        raise ValueError(f"Uploaded file is not a valid ZIP archive: {filename}")
+        raise ValueError(f"Uploaded file is not a valid ZIP archive: {display_name}")
 
     extract_dir.mkdir(parents=True, exist_ok=True)
     root = extract_dir.resolve()
@@ -65,6 +73,53 @@ def extract_zip_upload(upload: Any, *, zip_path: Path, extract_dir: Path) -> Non
             destination.parent.mkdir(parents=True, exist_ok=True)
             with zf.open(info) as in_fh, destination.open("wb") as out_fh:
                 shutil.copyfileobj(in_fh, out_fh)
+
+
+def require_root_file(
+    *,
+    root: Path,
+    rel_path: str,
+    bundle_label: str,
+    source_label: str | None = None,
+) -> Path:
+    """Resolve a required file inside an extracted strict GUI bundle root."""
+    path = (root / rel_path).resolve()
+    root_resolved = root.resolve()
+    try:
+        path.relative_to(root_resolved)
+    except ValueError as exc:
+        if source_label:
+            raise ValueError(
+                f"Invalid {bundle_label} ZIP for {source_label}: "
+                f"unsafe required path {rel_path}"
+            ) from exc
+        raise ValueError(
+            f"Invalid {bundle_label} ZIP: unsafe required path {rel_path}"
+        ) from exc
+    if not path.is_file():
+        if source_label:
+            raise ValueError(
+                f"Invalid {bundle_label} ZIP for {source_label}: "
+                f"missing required root file {rel_path}"
+            )
+        raise ValueError(
+            f"Invalid {bundle_label} ZIP: missing required root file {rel_path}"
+        )
+    return path
+
+
+def load_strict_json_object(
+    path: Path, *, label: str, source_label: str | None = None
+) -> dict[str, Any]:
+    """Load a required strict bundle JSON object with GUI-friendly errors."""
+    payload = read_json_if_exists(path)
+    if payload is not None:
+        return payload
+    if source_label:
+        raise ValueError(
+            f"Invalid {label} for {source_label}: expected JSON object at {path.name}"
+        )
+    raise ValueError(f"Invalid {label}: expected JSON object at {path.name}")
 
 
 def uploaded_file(form: Any, key: str) -> Any:
@@ -148,6 +203,106 @@ def build_bundle_entries(
         entries.values(),
         key=lambda item: (item["kind"] != "dir", item["path"]),
     )
+
+
+def bundle_spec_payload(spec: Any) -> dict[str, Any]:
+    """Serialize user-facing bundle metadata from a core BundleSpec."""
+    return {
+        "id": str(spec.id),
+        "label": str(spec.label),
+        "purpose": str(spec.purpose),
+        "intended_downstream_commands": list(spec.intended_downstream_commands),
+        "cli_note": str(spec.cli_note),
+        "contents_summary": list(spec.contents_summary),
+    }
+
+
+def bundle_unavailable_payload(spec: Any, *, reason: str) -> dict[str, Any]:
+    payload = bundle_spec_payload(spec)
+    payload.update(
+        {
+            "available": False,
+            "output_ready": False,
+            "missing_required": [reason],
+            "skipped_optional": [],
+            "file_count": 0,
+            "total_size_bytes": 0,
+            "files": [],
+        }
+    )
+    return payload
+
+
+def bundle_resolution_payload(resolution: Any) -> dict[str, Any]:
+    files: list[dict[str, Any]] = []
+    total_size = 0
+    for source in resolution.sources:
+        size = source.source_path.stat().st_size if source.source_path.exists() else 0
+        total_size += size
+        files.append({"path": source.virtual_path, "size_bytes": size})
+
+    payload = bundle_spec_payload(resolution.spec)
+    payload.update(
+        {
+            "available": bool(resolution.available and resolution.sources),
+            "output_ready": True,
+            "missing_required": list(resolution.missing_required),
+            "skipped_optional": list(resolution.skipped_optional),
+            "file_count": len(files),
+            "total_size_bytes": total_size,
+            "files": files,
+        }
+    )
+    return payload
+
+
+def build_bundle_metadata(
+    *,
+    specs: list[Any] | tuple[Any, ...],
+    resolver: Any | None,
+    unavailable_reason: str,
+) -> list[dict[str, Any]]:
+    bundles: list[dict[str, Any]] = []
+    for spec in specs:
+        if resolver is None:
+            bundles.append(bundle_unavailable_payload(spec, reason=unavailable_reason))
+            continue
+        try:
+            bundles.append(bundle_resolution_payload(resolver(spec.id)))
+        except Exception as exc:  # noqa: BLE001
+            payload = bundle_spec_payload(spec)
+            payload.update(
+                {
+                    "available": False,
+                    "output_ready": True,
+                    "missing_required": [str(exc)],
+                    "skipped_optional": [],
+                    "file_count": 0,
+                    "total_size_bytes": 0,
+                    "files": [],
+                }
+            )
+            bundles.append(payload)
+    return bundles
+
+
+def bundle_status_payload(bundles: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Build a compact readiness map shared by GUI job/bundle endpoints."""
+    status: dict[str, dict[str, Any]] = {}
+    for bundle in bundles:
+        bundle_id = str(bundle.get("id") or "").strip()
+        if not bundle_id:
+            continue
+        available = bool(bundle.get("available"))
+        missing = list(bundle.get("missing_required") or [])
+        readiness = list(bundle.get("readiness") or [])
+        status[bundle_id] = {
+            "available": available,
+            "state": "ready" if available else "blocked",
+            "missing_required": missing,
+            "readiness": readiness,
+        }
+    return status
 
 
 def resolve_virtual_source(
