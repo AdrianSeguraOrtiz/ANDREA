@@ -16,7 +16,14 @@ from typing import Any, Iterable, Optional
 
 from andrea.core.shared.json_io import load_json_object as _load_json_object
 from andrea.core.shared.issues import issue_messages
+from andrea.core.shared.network_context import (
+    network_context_family,
+    network_context_sort_key,
+    normalize_network_context,
+    normalize_network_sign,
+)
 from andrea.core.shared.paths import report_path
+from andrea.core.shared.runtime_profile import ProgressCallback, RuntimeProfile
 
 MERGED_NETWORK_REQUIRED_COLUMNS = [
     "source",
@@ -65,6 +72,14 @@ class TruthNetwork:
 
 
 @dataclass(frozen=True)
+class TruthLevelCache:
+    truth_scores: dict[tuple[str, ...], float]
+    truth_keys: set[tuple[str, ...]]
+    candidate_genes: set[str]
+    n_candidates: int
+
+
+@dataclass(frozen=True)
 class ToolCapabilities:
     catalog_tool_id: str
     directed: bool
@@ -77,91 +92,138 @@ def evaluate_inference(
     ground_truth_manifest_path: Path,
     output_dir: Path,
     generate_view: bool = True,
+    progress_callback: Optional[ProgressCallback] = None,
 ) -> dict[str, Any]:
     """Evaluate merged inferred networks against a ground-truth manifest."""
+    runtime_profile = RuntimeProfile(progress_callback)
     run_report_path = run_report_path.resolve()
     ground_truth_manifest_path = ground_truth_manifest_path.resolve()
     output_root = output_dir.resolve()
     created_at = datetime.now(timezone.utc)
 
-    run_report = _load_json_object(run_report_path, "Run report")
-    merged_network_path = _resolve_merged_network_path_from_run_report(
-        run_report_path=run_report_path,
-        run_report=run_report,
-    )
-    inferred_rows = _load_inferred_rows(merged_network_path)
-    truth_networks, manifest = _load_truth_networks(ground_truth_manifest_path)
-    tool_capabilities = _resolve_tool_capabilities(
-        inferred_rows=inferred_rows,
-        run_report=run_report,
-    )
-    evaluation_dir = _create_evaluation_dir(
-        output_root=output_root,
-        run_report_path=run_report_path,
-        run_report=run_report,
-        truth_manifest=manifest,
-        created_at=created_at,
-    )
+    with runtime_profile.stage(
+        "loading_run_report",
+        label="Loading run report",
+        detail="Reading infer-network run_report.json.",
+    ):
+        run_report = _load_json_object(run_report_path, "Run report")
+        merged_network_path = _resolve_merged_network_path_from_run_report(
+            run_report_path=run_report_path,
+            run_report=run_report,
+        )
+
+    with runtime_profile.stage(
+        "loading_inferred_network",
+        label="Loading inferred network",
+        detail="Reading merged inferred network CSV.",
+    ):
+        inferred_rows = _load_inferred_rows(merged_network_path)
+
+    with runtime_profile.stage(
+        "loading_truth_networks",
+        label="Loading ground truth",
+        detail="Reading ground-truth manifest and truth networks.",
+    ):
+        truth_networks, manifest = _load_truth_networks(ground_truth_manifest_path)
+
+    with runtime_profile.stage(
+        "preparing_evaluation_inputs",
+        label="Preparing evaluation inputs",
+        detail="Resolving tool capabilities and output directory.",
+    ):
+        tool_capabilities = _resolve_tool_capabilities(
+            inferred_rows=inferred_rows,
+            run_report=run_report,
+        )
+        evaluation_dir = _create_evaluation_dir(
+            output_root=output_root,
+            run_report_path=run_report_path,
+            run_report=run_report,
+            truth_manifest=manifest,
+            created_at=created_at,
+        )
 
     metrics: list[dict[str, Any]] = []
     pairings: list[dict[str, Any]] = []
-    grouped_predictions = _group_inferred_rows(inferred_rows)
+    with runtime_profile.stage(
+        "computing",
+        label="Evaluating metrics",
+        detail="Scoring inferred networks against matching truth contexts.",
+    ):
+        grouped_predictions = _group_inferred_rows(inferred_rows)
+        truth_level_cache: dict[tuple[str, str], TruthLevelCache] = {}
 
-    for (tool_id, context), prediction_rows in sorted(grouped_predictions.items()):
-        truth = truth_networks.get(context)
-        if truth is None:
-            reason = f"no ground-truth network for context {context!r}"
+        for (tool_id, context), prediction_rows in sorted(grouped_predictions.items()):
+            truth = truth_networks.get(context)
+            if truth is None:
+                reason = f"no ground-truth network for context {context!r}"
+                pairings.append(
+                    {
+                        "tool_id": tool_id,
+                        "catalog_tool_id": tool_capabilities[tool_id].catalog_tool_id,
+                        "context": context,
+                        "status": "skipped",
+                        "reason": reason,
+                    }
+                )
+                for level in EVALUATION_LEVELS:
+                    metrics.append(
+                        _empty_metric_row(
+                            tool_id=tool_id,
+                            capabilities=tool_capabilities[tool_id],
+                            context=context,
+                            truth_context=context,
+                            level=level,
+                            status="not_applicable",
+                            reason=reason,
+                        )
+                    )
+                continue
+
             pairings.append(
                 {
                     "tool_id": tool_id,
                     "catalog_tool_id": tool_capabilities[tool_id].catalog_tool_id,
                     "context": context,
-                    "status": "skipped",
-                    "reason": reason,
+                    "truth_context": truth.context,
+                    "status": "evaluated",
+                    "reason": None,
                 }
             )
             for level in EVALUATION_LEVELS:
                 metrics.append(
-                    _empty_metric_row(
+                    _evaluate_pairing(
                         tool_id=tool_id,
                         capabilities=tool_capabilities[tool_id],
-                        context=context,
-                        truth_context=context,
+                        prediction_rows=prediction_rows,
+                        truth=truth,
                         level=level,
-                        status="not_applicable",
-                        reason=reason,
+                        truth_cache=_truth_level_cache(
+                            truth=truth,
+                            level=level,
+                            cache=truth_level_cache,
+                        ),
                     )
                 )
-            continue
 
-        pairings.append(
-            {
-                "tool_id": tool_id,
-                "catalog_tool_id": tool_capabilities[tool_id].catalog_tool_id,
-                "context": context,
-                "truth_context": truth.context,
-                "status": "evaluated",
-                "reason": None,
-            }
+        context_matching = _context_matching_summary(
+            truth_networks=truth_networks,
+            grouped_predictions=grouped_predictions,
+            tool_capabilities=tool_capabilities,
+            pairings=pairings,
         )
-        for level in EVALUATION_LEVELS:
-            metrics.append(
-                _evaluate_pairing(
-                    tool_id=tool_id,
-                    capabilities=tool_capabilities[tool_id],
-                    prediction_rows=prediction_rows,
-                    truth=truth,
-                    level=level,
-                )
-            )
-
     metrics_csv_path = evaluation_dir / "metrics.csv"
     pairings_csv_path = evaluation_dir / "pairings.csv"
     report_json_path = evaluation_dir / "evaluation_report.json"
     view_html_path = evaluation_dir / "evaluation_view.html"
 
-    _write_csv(metrics_csv_path, metrics)
-    _write_csv(pairings_csv_path, pairings)
+    with runtime_profile.stage(
+        "writing_outputs",
+        label="Writing outputs",
+        detail="Writing metrics, report and HTML view.",
+    ):
+        _write_csv(metrics_csv_path, metrics)
+        _write_csv(pairings_csv_path, pairings)
 
     report = {
         "schema_version": "1.0",
@@ -188,13 +250,17 @@ def evaluate_inference(
             "dataset_id": manifest.get("dataset_id"),
             "simulator_id": manifest.get("simulator_id"),
             "profile": manifest.get("profile"),
-            "contexts": sorted(truth_networks.keys()),
+            "contexts": sorted(truth_networks.keys(), key=network_context_sort_key),
+            "context_counts_by_family": _context_counts_by_family(
+                truth_networks.keys()
+            ),
             "gene_universe_size": (
                 len(next(iter(truth_networks.values())).candidate_genes)
                 if truth_networks
                 else 0
             ),
         },
+        "context_matching": context_matching,
         "outputs": {
             "output_root": ".",
             "evaluation_dir": report_path(evaluation_dir, base_dir=output_root),
@@ -207,6 +273,7 @@ def evaluate_inference(
                 else None
             ),
         },
+        "runtime_profile": runtime_profile.timings(),
         "pairings": pairings,
         "metrics": metrics,
     }
@@ -216,6 +283,85 @@ def evaluate_inference(
     if generate_view:
         _write_evaluation_view(view_html_path, report)
     return report
+
+
+def _context_matching_summary(
+    *,
+    truth_networks: dict[str, TruthNetwork],
+    grouped_predictions: dict[tuple[str, str], list[NetworkRow]],
+    tool_capabilities: dict[str, ToolCapabilities],
+    pairings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    truth_contexts = set(truth_networks)
+    predicted_contexts_by_tool: dict[str, set[str]] = defaultdict(set)
+    for tool_id, context in grouped_predictions:
+        predicted_contexts_by_tool[tool_id].add(context)
+    all_predicted_contexts = {
+        context
+        for contexts in predicted_contexts_by_tool.values()
+        for context in contexts
+    }
+    unmatched_prediction_contexts = [
+        {
+            "tool_id": str(pairing.get("tool_id")),
+            "catalog_tool_id": str(pairing.get("catalog_tool_id")),
+            "context": str(pairing.get("context")),
+            "reason": str(pairing.get("reason") or ""),
+        }
+        for pairing in pairings
+        if pairing.get("status") == "skipped"
+    ]
+    truth_without_any_prediction = sorted(
+        truth_contexts - all_predicted_contexts,
+        key=network_context_sort_key,
+    )
+    missing_by_tool = []
+    for tool_id in sorted(predicted_contexts_by_tool):
+        missing = sorted(
+            truth_contexts - predicted_contexts_by_tool[tool_id],
+            key=network_context_sort_key,
+        )
+        if not missing:
+            continue
+        capabilities = tool_capabilities[tool_id]
+        missing_by_tool.append(
+            {
+                "tool_id": tool_id,
+                "catalog_tool_id": capabilities.catalog_tool_id,
+                "missing_context_count": len(missing),
+                "missing_context_counts_by_family": _context_counts_by_family(missing),
+                "sample_contexts": missing[:25],
+            }
+        )
+    return {
+        "truth_context_count": len(truth_contexts),
+        "prediction_context_count": len(all_predicted_contexts),
+        "truth_context_counts_by_family": _context_counts_by_family(truth_contexts),
+        "prediction_context_counts_by_family": _context_counts_by_family(
+            all_predicted_contexts
+        ),
+        "prediction_contexts_without_truth_count": len(unmatched_prediction_contexts),
+        "prediction_contexts_without_truth": unmatched_prediction_contexts[:25],
+        "truth_contexts_without_any_prediction_count": len(
+            truth_without_any_prediction
+        ),
+        "truth_contexts_without_any_prediction_sample": truth_without_any_prediction[
+            :25
+        ],
+        "missing_truth_contexts_by_tool": missing_by_tool,
+    }
+
+
+def _context_counts_by_family(contexts: Iterable[str]) -> dict[str, int]:
+    counts = {
+        "global": 0,
+        "group": 0,
+        "cell": 0,
+        "other": 0,
+    }
+    for context in contexts:
+        counts[network_context_family(context)] += 1
+    return counts
 
 
 def _resolve_merged_network_path_from_run_report(
@@ -297,14 +443,38 @@ def _load_inferred_rows(path: Path) -> list[NetworkRow]:
                     f"Inferred network CSV has non-positive score at line {line_number}: "
                     f"{row.get('score')!r}; score must be a positive magnitude and sign must be stored in the sign column"
                 )
+            source = str(row["source"]).strip()
+            target = str(row["target"]).strip()
+            evidence = str(row["evidence"]).strip()
+            context = normalize_network_context(
+                row["context"],
+                source=f"Inferred network CSV line {line_number}",
+            )
+            tool_id = str(row["tool_id"]).strip()
+            if not source or not target:
+                raise ValueError(
+                    f"Inferred network CSV has empty source or target at line {line_number}: {path}"
+                )
+            if not evidence:
+                raise ValueError(
+                    f"Inferred network CSV has empty evidence at line {line_number}: {path}"
+                )
+            if not tool_id:
+                raise ValueError(
+                    f"Inferred network CSV has empty tool_id at line {line_number}: {path}"
+                )
+            sign = normalize_network_sign(
+                row["sign"],
+                source=f"Inferred network CSV line {line_number}",
+            )
             rows.append(
                 NetworkRow(
-                    source=str(row["source"]).strip(),
-                    target=str(row["target"]).strip(),
+                    source=source,
+                    target=target,
                     score=score,
-                    sign=_normalize_sign(str(row["sign"])),
-                    context=str(row["context"]).strip(),
-                    tool_id=str(row["tool_id"]).strip(),
+                    sign=sign,
+                    context=context,
+                    tool_id=tool_id,
                 )
             )
     if not rows:
@@ -400,7 +570,10 @@ def _load_truth_network_table(
                 )
             source = str(row["source"]).strip()
             target = str(row["target"]).strip()
-            context = str(row["context"]).strip()
+            context = normalize_network_context(
+                row["context"],
+                source=f"Ground-truth network CSV line {line_number}",
+            )
             evidence = str(row["evidence"]).strip()
             if not source or not target:
                 raise ValueError(
@@ -415,20 +588,20 @@ def _load_truth_network_table(
                     f"Ground-truth network CSV line {line_number} references genes outside outputs.gene_universe: "
                     f"{source!r}, {target!r}"
                 )
-            if not context:
-                raise ValueError(
-                    f"Ground-truth network CSV has empty context at line {line_number}: {path}"
-                )
             if not evidence:
                 raise ValueError(
                     f"Ground-truth network CSV has empty evidence at line {line_number}: {path}"
                 )
+            sign = normalize_network_sign(
+                row["sign"],
+                source=f"Ground-truth network CSV line {line_number}",
+            )
             rows_by_context[context].append(
                 NetworkRow(
                     source=source,
                     target=target,
                     score=score,
-                    sign=_normalize_sign(str(row["sign"])),
+                    sign=sign,
                     context=context,
                 )
             )
@@ -529,6 +702,7 @@ def _evaluate_pairing(
     prediction_rows: list[NetworkRow],
     truth: TruthNetwork,
     level: str,
+    truth_cache: Optional[TruthLevelCache] = None,
 ) -> dict[str, Any]:
     not_applicable_reason = _not_applicable_reason(
         level=level,
@@ -536,6 +710,13 @@ def _evaluate_pairing(
         capabilities=capabilities,
     )
     if not_applicable_reason is not None:
+        truth_count_cache = None
+        if _truth_supports_level(truth=truth, level=level):
+            truth_count_cache = (
+                truth_cache
+                if truth_cache is not None
+                else _build_truth_level_cache(truth=truth, level=level)
+            )
         return _empty_metric_row(
             tool_id=tool_id,
             capabilities=capabilities,
@@ -544,20 +725,30 @@ def _evaluate_pairing(
             level=level,
             status="not_applicable",
             reason=not_applicable_reason,
+            truth=truth,
+            truth_cache=truth_count_cache,
         )
 
-    truth_scores = _aggregate_rows(truth.rows, level=level)
+    if truth_cache is None:
+        truth_cache = _build_truth_level_cache(truth=truth, level=level)
     prediction_scores = _aggregate_rows(prediction_rows, level=level)
-    truth_keys = set(truth_scores)
+    truth_keys = truth_cache.truth_keys
     predicted_keys = set(prediction_scores)
-    candidates = _candidate_keys(nodes=truth.candidate_genes, level=level)
-    truth_outside = truth_keys - candidates
+    truth_outside = [
+        key
+        for key in truth_keys
+        if not _is_candidate_key(key, candidate_genes=truth_cache.candidate_genes, level=level)
+    ]
     if truth_outside:
         raise ValueError(
             "Ground-truth edges include genes outside outputs.gene_universe for "
             f"context {truth.context!r}, level {level!r}"
         )
-    predicted_outside = predicted_keys - candidates
+    predicted_outside = [
+        key
+        for key in predicted_keys
+        if not _is_candidate_key(key, candidate_genes=truth_cache.candidate_genes, level=level)
+    ]
     if predicted_outside:
         example = next(iter(sorted(predicted_outside)))
         raise ValueError(
@@ -565,16 +756,22 @@ def _evaluate_pairing(
             f"for context {prediction_rows[0].context!r}, level {level!r}; example edge: {example}"
         )
 
-    y_true = [1 if key in truth_keys else 0 for key in candidates]
-    y_score = [float(prediction_scores.get(key, 0.0)) for key in candidates]
     top_k_stats = _top_truth_count_stats(
         prediction_scores=prediction_scores,
         truth_keys=truth_keys,
-        n_candidates=len(candidates),
+        n_candidates=truth_cache.n_candidates,
     )
 
-    auroc = _auroc(y_true, y_score)
-    aupr = _average_precision(y_true, y_score)
+    auroc = _sparse_auroc(
+        truth_keys=truth_keys,
+        prediction_scores=prediction_scores,
+        n_candidates=truth_cache.n_candidates,
+    )
+    aupr = _sparse_average_precision(
+        truth_keys=truth_keys,
+        prediction_scores=prediction_scores,
+        n_candidates=truth_cache.n_candidates,
+    )
     status = "ok"
     reason = None
     if auroc is None or aupr is None:
@@ -593,7 +790,7 @@ def _evaluate_pairing(
         "aupr": aupr,
         "f1_at_truth_count": top_k_stats["f1_at_truth_count"],
         "epr_at_truth_count": top_k_stats["epr_at_truth_count"],
-        "n_candidates": len(candidates),
+        "n_candidates": truth_cache.n_candidates,
         "n_candidate_genes": len(truth.candidate_genes),
         "n_truth_edges": len(truth_keys),
         "n_predicted_edges": len(predicted_keys),
@@ -605,6 +802,32 @@ def _evaluate_pairing(
         "prediction_directed": capabilities.directed,
         "prediction_signed": capabilities.signed,
     }
+
+
+def _truth_level_cache(
+    *,
+    truth: TruthNetwork,
+    level: str,
+    cache: dict[tuple[str, str], TruthLevelCache],
+) -> TruthLevelCache:
+    key = (truth.context, level)
+    cached = cache.get(key)
+    if cached is None:
+        cached = _build_truth_level_cache(truth=truth, level=level)
+        cache[key] = cached
+    return cached
+
+
+def _build_truth_level_cache(*, truth: TruthNetwork, level: str) -> TruthLevelCache:
+    truth_scores = _aggregate_rows(truth.rows, level=level)
+    truth_keys = set(truth_scores)
+    n_candidates = _candidate_count(nodes=truth.candidate_genes, level=level)
+    return TruthLevelCache(
+        truth_scores=truth_scores,
+        truth_keys=truth_keys,
+        candidate_genes=set(truth.candidate_genes),
+        n_candidates=n_candidates,
+    )
 
 
 def _not_applicable_reason(
@@ -634,6 +857,16 @@ def _not_applicable_reason(
     raise ValueError(f"Unknown evaluation level: {level}")
 
 
+def _truth_supports_level(*, truth: TruthNetwork, level: str) -> bool:
+    if level == "topology":
+        return True
+    if level == "directed":
+        return truth.directed
+    if level == "signed":
+        return truth.directed and truth.signed
+    raise ValueError(f"Unknown evaluation level: {level}")
+
+
 def _empty_metric_row(
     *,
     tool_id: str,
@@ -643,6 +876,8 @@ def _empty_metric_row(
     level: str,
     status: str,
     reason: str,
+    truth: Optional[TruthNetwork] = None,
+    truth_cache: Optional[TruthLevelCache] = None,
 ) -> dict[str, Any]:
     return {
         "tool_id": tool_id,
@@ -656,15 +891,15 @@ def _empty_metric_row(
         "aupr": None,
         "f1_at_truth_count": None,
         "epr_at_truth_count": None,
-        "n_candidates": 0,
-        "n_candidate_genes": 0,
-        "n_truth_edges": 0,
+        "n_candidates": truth_cache.n_candidates if truth_cache else 0,
+        "n_candidate_genes": len(truth.candidate_genes) if truth else 0,
+        "n_truth_edges": len(truth_cache.truth_keys) if truth_cache else 0,
         "n_predicted_edges": 0,
         "tp_at_truth_count": 0,
         "fp_at_truth_count": 0,
         "fn_at_truth_count": 0,
-        "truth_directed": None,
-        "truth_signed": None,
+        "truth_directed": truth.directed if truth else None,
+        "truth_signed": truth.signed if truth else None,
         "prediction_directed": capabilities.directed,
         "prediction_signed": capabilities.signed,
     }
@@ -726,6 +961,137 @@ def _candidate_keys(
                     candidates.add((source, target, sign))
         return candidates
     raise ValueError(f"Unknown evaluation level: {level}")
+
+
+def _candidate_count(*, nodes: set[str], level: str) -> int:
+    n = len(nodes)
+    if level == "topology":
+        return n * (n - 1) // 2
+    if level == "directed":
+        return n * (n - 1)
+    if level == "signed":
+        return n * (n - 1) * len(VALID_SIGNS)
+    raise ValueError(f"Unknown evaluation level: {level}")
+
+
+def _is_candidate_key(
+    key: tuple[str, ...],
+    *,
+    candidate_genes: set[str],
+    level: str,
+) -> bool:
+    if level == "topology":
+        return (
+            len(key) == 2
+            and key[0] in candidate_genes
+            and key[1] in candidate_genes
+            and key[0] != key[1]
+        )
+    if level == "directed":
+        return (
+            len(key) == 2
+            and key[0] in candidate_genes
+            and key[1] in candidate_genes
+            and key[0] != key[1]
+        )
+    if level == "signed":
+        return (
+            len(key) == 3
+            and key[0] in candidate_genes
+            and key[1] in candidate_genes
+            and key[0] != key[1]
+            and key[2] in VALID_SIGNS
+        )
+    raise ValueError(f"Unknown evaluation level: {level}")
+
+
+def _score_groups(
+    *,
+    truth_keys: set[tuple[str, ...]],
+    prediction_scores: dict[tuple[str, ...], float],
+    n_candidates: int,
+    ascending: bool,
+) -> list[tuple[float, int, int]]:
+    grouped: dict[float, list[int]] = defaultdict(lambda: [0, 0])
+    nonzero_tp = 0
+    for key, score in prediction_scores.items():
+        group = grouped[float(score)]
+        group[1] += 1
+        if key in truth_keys:
+            group[0] += 1
+            nonzero_tp += 1
+
+    zero_total = n_candidates - len(prediction_scores)
+    if zero_total > 0:
+        zero_tp = len(truth_keys) - nonzero_tp
+        group = grouped[0.0]
+        group[0] += zero_tp
+        group[1] += zero_total
+
+    return [
+        (score, counts[0], counts[1])
+        for score, counts in sorted(grouped.items(), reverse=not ascending)
+        if counts[1] > 0
+    ]
+
+
+def _sparse_auroc(
+    *,
+    truth_keys: set[tuple[str, ...]],
+    prediction_scores: dict[tuple[str, ...], float],
+    n_candidates: int,
+) -> Optional[float]:
+    positives = len(truth_keys)
+    negatives = n_candidates - positives
+    if positives == 0 or negatives == 0:
+        return None
+
+    positive_rank_sum = 0.0
+    next_rank = 1
+    for _score, group_tp, group_total in _score_groups(
+        truth_keys=truth_keys,
+        prediction_scores=prediction_scores,
+        n_candidates=n_candidates,
+        ascending=True,
+    ):
+        average_rank = (next_rank + next_rank + group_total - 1) / 2.0
+        positive_rank_sum += group_tp * average_rank
+        next_rank += group_total
+
+    return (positive_rank_sum - (positives * (positives + 1) / 2.0)) / (
+        positives * negatives
+    )
+
+
+def _sparse_average_precision(
+    *,
+    truth_keys: set[tuple[str, ...]],
+    prediction_scores: dict[tuple[str, ...], float],
+    n_candidates: int,
+) -> Optional[float]:
+    positives = len(truth_keys)
+    negatives = n_candidates - positives
+    if positives == 0 or negatives == 0:
+        return None
+
+    tp = 0
+    fp = 0
+    previous_recall = 0.0
+    ap = 0.0
+    for _score, group_tp, group_total in _score_groups(
+        truth_keys=truth_keys,
+        prediction_scores=prediction_scores,
+        n_candidates=n_candidates,
+        ascending=False,
+    ):
+        group_fp = group_total - group_tp
+        tp += group_tp
+        fp += group_fp
+        recall = tp / positives
+        precision = tp / (tp + fp)
+        ap += (recall - previous_recall) * precision
+        previous_recall = recall
+    return ap
 
 
 def _top_truth_count_stats(
@@ -850,15 +1216,6 @@ def _read_view_asset(name: str) -> str:
         .joinpath(name)
         .read_text(encoding="utf-8")
     )
-
-
-def _normalize_sign(value: str) -> str:
-    normalized = value.strip()
-    if normalized in {"+", "1", "activation", "positive"}:
-        return "+"
-    if normalized in {"-", "-1", "repression", "negative"}:
-        return "-"
-    return "?"
 
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:

@@ -6,6 +6,7 @@
     { key: "epr_at_truth_count", label: "EPR@truth-count" }
   ];
   const levels = ["topology", "directed", "signed"];
+  let activeLevel = "topology";
   const tableColumns = [
     "tool_id", "catalog_tool_id", "context", "level", "status",
     "auroc", "aupr", "f1_at_truth_count", "epr_at_truth_count",
@@ -19,6 +20,12 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
+
+  function svgIdPart(value) {
+    return String(value ?? "")
+      .replace(/[^A-Za-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "item";
   }
 
   function metricLabel(metricKey) {
@@ -40,12 +47,32 @@
 
   function contextLabel(context) {
     const text = String(context || "");
-    return text.startsWith("group:") ? text.slice(6) : text;
+    if (text === "global") return "global";
+    const prefixes = [
+      ["group:", "group"],
+      ["cell:", "cell"]
+    ];
+    for (const [prefix, label] of prefixes) {
+      if (text.startsWith(prefix)) {
+        const value = text.slice(prefix.length);
+        return value ? `${label} ${value}` : label;
+      }
+    }
+    return text;
+  }
+
+  function contextFamily(context) {
+    const text = String(context || "");
+    if (text === "global") return "global";
+    if (text.startsWith("group:")) return "group";
+    if (text.startsWith("cell:")) return "cell";
+    return "other";
   }
 
   function sortContext(a, b) {
-    if (a === "global" && b !== "global") return -1;
-    if (b === "global" && a !== "global") return 1;
+    const order = { global: 0, group: 1, cell: 2, other: 3 };
+    const familyDiff = order[contextFamily(a)] - order[contextFamily(b)];
+    if (familyDiff !== 0) return familyDiff;
     return contextLabel(a).localeCompare(contextLabel(b), undefined, { numeric: true });
   }
 
@@ -117,6 +144,42 @@
     return scaledWidth(value, metricKey, maxValue) >= 0.62 ? "#ffffff" : "#0f172a";
   }
 
+  function quantile(sortedValues, probability) {
+    if (!sortedValues.length) return null;
+    if (sortedValues.length === 1) return sortedValues[0];
+    const idx = (sortedValues.length - 1) * probability;
+    const lower = Math.floor(idx);
+    const upper = Math.ceil(idx);
+    if (lower === upper) return sortedValues[lower];
+    const ratio = idx - lower;
+    return sortedValues[lower] + ((sortedValues[upper] - sortedValues[lower]) * ratio);
+  }
+
+  function summarizeValues(values) {
+    const sorted = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+    if (!sorted.length) return null;
+    return {
+      min: sorted[0],
+      q1: quantile(sorted, 0.25),
+      median: quantile(sorted, 0.5),
+      q3: quantile(sorted, 0.75),
+      max: sorted[sorted.length - 1]
+    };
+  }
+
+  function plotPosition(value, metricKey, maxValue) {
+    return scaledWidth(value, metricKey, maxValue) * 100;
+  }
+
+  function cellMissingByTool(report) {
+    const entries = report?.context_matching?.missing_truth_contexts_by_tool;
+    if (!Array.isArray(entries)) return new Map();
+    return new Map(entries.map((entry) => [
+      String(entry.tool_id || ""),
+      Number(entry.missing_context_counts_by_family?.cell || 0)
+    ]).filter(([tool]) => tool));
+  }
+
   function buildShell() {
     return `
       <main class="andrea-evaluation-view">
@@ -133,6 +196,7 @@
           </div>
         </header>
         <section class="summary" data-role="summary"></section>
+        <section class="level-tabs" data-role="level-tabs" role="tablist" aria-label="Evaluation levels"></section>
         <section class="level-grid" data-role="levels"></section>
         <section class="table-card">
           <div class="table-controls">
@@ -219,11 +283,135 @@
     return `<div class="matrix-wrap"><table class="matrix">${head}${body}</table></div>`;
   }
 
+  function violinDensityPath(values, metricKey, maxValue) {
+    const positions = values
+      .map((value) => scaledWidth(value, metricKey, maxValue))
+      .filter((value) => Number.isFinite(value))
+      .map((value) => Math.max(0, Math.min(1, value)));
+    if (!positions.length) return "";
+    const sampleCount = 48;
+    const bandwidth = Math.max(0.035, Math.min(0.16, 0.55 / Math.sqrt(Math.max(1, positions.length))));
+    const samples = Array.from({ length: sampleCount }, (_item, idx) => {
+      const x = sampleCount === 1 ? 0 : idx / (sampleCount - 1);
+      const density = positions.reduce((sum, pos) => {
+        const z = (x - pos) / bandwidth;
+        return sum + Math.exp(-0.5 * z * z);
+      }, 0);
+      return { x, density };
+    });
+    const maxDensity = Math.max(...samples.map((sample) => sample.density));
+    if (!Number.isFinite(maxDensity) || maxDensity <= 0) return "";
+    const top = samples.map((sample) => {
+      const radius = Math.max(0.8, (sample.density / maxDensity) * 11.5);
+      return `${(sample.x * 100).toFixed(2)},${(15 - radius).toFixed(2)}`;
+    });
+    const bottom = samples.slice().reverse().map((sample) => {
+      const radius = Math.max(0.8, (sample.density / maxDensity) * 11.5);
+      return `${(sample.x * 100).toFixed(2)},${(15 + radius).toFixed(2)}`;
+    });
+    return `M ${top.concat(bottom).join(" L ")} Z`;
+  }
+
+  function violinGradientStops(metricKey, maxValue) {
+    const stops = metricKey === "epr_at_truth_count"
+      ? (() => {
+        const neutral = Math.max(0, Math.min(100, scaledWidth(1, metricKey, maxValue) * 100));
+        if (neutral >= 99.5) return [[0, "#b91c1c"], [100, "#f8fafc"]];
+        if (neutral <= 0.5) return [[0, "#f8fafc"], [100, "#075985"]];
+        return [[0, "#b91c1c"], [neutral, "#f8fafc"], [100, "#075985"]];
+      })()
+      : [
+        [0, "#f7fbff"],
+        [35, "#c6dbef"],
+        [70, "#6baed6"],
+        [100, "#08519c"]
+      ];
+    return stops.map(([offset, color]) => (
+      `<stop offset="${offset.toFixed(2)}%" stop-color="${color}" stop-opacity="0.58"></stop>`
+    )).join("");
+  }
+
+  function renderCellViolin(values, summary, metricKey, maxValue, gradientId) {
+    const min = plotPosition(summary.min, metricKey, maxValue);
+    const q1 = plotPosition(summary.q1, metricKey, maxValue);
+    const median = plotPosition(summary.median, metricKey, maxValue);
+    const q3 = plotPosition(summary.q3, metricKey, maxValue);
+    const max = plotPosition(summary.max, metricKey, maxValue);
+    const path = violinDensityPath(values, metricKey, maxValue);
+    return `
+      <div class="cell-violin" title="min ${formatValue(summary.min)}, q1 ${formatValue(summary.q1)}, median ${formatValue(summary.median)}, q3 ${formatValue(summary.q3)}, max ${formatValue(summary.max)}">
+        <svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="${gradientId}" x1="0%" x2="100%" y1="0%" y2="0%">
+              ${violinGradientStops(metricKey, maxValue)}
+            </linearGradient>
+          </defs>
+          ${path ? `<path class="cell-violin-shape" d="${path}" fill="url(#${gradientId})"></path>` : ""}
+          <line class="cell-violin-range" x1="${min}" x2="${max}" y1="15" y2="15"></line>
+          <line class="cell-violin-iqr" x1="${q1}" x2="${q3}" y1="15" y2="15"></line>
+          <line class="cell-violin-median" x1="${median}" x2="${median}" y1="4" y2="26"></line>
+        </svg>
+      </div>
+    `;
+  }
+
+  function renderCells(rows, metricKey, maxValue, report, level) {
+    const cellRows = rows.filter((row) => contextFamily(row.context) === "cell");
+    const missingByTool = cellMissingByTool(report);
+    const tools = [...new Set(cellRows
+      .filter(statusOk)
+      .filter((row) => metricValue(row, metricKey) !== null)
+      .map((row) => row.tool_id)
+      .filter(Boolean)
+    )].sort((a, b) => String(a).localeCompare(String(b)));
+    if (!tools.length) return '<div class="empty">No applicable cell contexts.</div>';
+
+    const rowsHtml = tools.map((tool, index) => {
+      const toolRows = cellRows.filter((row) => row.tool_id === tool);
+      const values = toolRows
+        .filter(statusOk)
+        .map((row) => metricValue(row, metricKey))
+        .filter((value) => value !== null);
+      const summary = summarizeValues(values);
+      const nUnavailable = toolRows.filter((row) => !statusOk(row)).length;
+      const nMissing = missingByTool.get(tool) || 0;
+      const unavailable = nUnavailable + nMissing;
+      const stats = summary ? [
+        ["cells", values.length],
+        ["unmatched", unavailable],
+        ["median", formatValue(summary.median)],
+        ["q1-q3", `${formatValue(summary.q1)}-${formatValue(summary.q3)}`],
+        ["min-max", `${formatValue(summary.min)}-${formatValue(summary.max)}`]
+      ] : [
+        ["cells", 0],
+        ["unmatched", unavailable]
+      ];
+      return `
+        <div class="cell-dist-row">
+          <div class="tool-label" title="${escapeHtml(tool)}">${escapeHtml(tool)}</div>
+          ${summary ? renderCellViolin(
+            values,
+            summary,
+            metricKey,
+            maxValue,
+            `cell-violin-gradient-${svgIdPart(level)}-${svgIdPart(metricKey)}-${svgIdPart(tool)}-${index}`
+          ) : '<div class="empty compact">No evaluated cells.</div>'}
+          <div class="cell-stats">
+            ${stats.map(([label, value]) => `
+              <span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(label)}</small></span>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }).join("");
+    return `<div class="cell-dist-list">${rowsHtml}</div>`;
+  }
+
   function renderOtherContexts(rows, metricKey, maxValue) {
     const otherRows = rows
       .filter((row) => {
         const context = String(row.context || "");
-        return context && context !== "global" && !context.startsWith("group:");
+        return context && contextFamily(context) !== "global" && contextFamily(context) !== "group" && contextFamily(context) !== "cell";
       })
       .sort((a, b) => sortContext(a.context, b.context) || String(a.tool_id).localeCompare(String(b.tool_id)));
     if (!otherRows.length) return "";
@@ -234,7 +422,7 @@
       const reason = row.reason || row.status || "";
       return `
         <tr>
-          <td>${escapeHtml(row.context)}</td>
+          <td>${escapeHtml(contextLabel(row.context))}</td>
           <td>${escapeHtml(row.tool_id)}</td>
           <td style="background:${color}; color:${textColor}">${value === null ? "N/A" : formatValue(value)}</td>
           <td>${escapeHtml(reason)}</td>
@@ -245,7 +433,7 @@
       <section class="other-contexts">
         <div class="panel-title">
           <h3>Other Contexts</h3>
-          <span class="subtle">generic table</span>
+          <span class="subtle">compact table</span>
         </div>
         <div class="matrix-wrap">
           <table class="matrix other-context-table">
@@ -257,48 +445,89 @@
     `;
   }
 
-  function renderLevels(root, metrics) {
-    const metricKey = root.querySelector('[data-role="metric-select"]').value;
-    const target = root.querySelector('[data-role="levels"]');
-    target.innerHTML = levels.map((level) => {
-      const rows = metrics.filter((row) => row.level === level);
-      const values = rows.map((row) => metricValue(row, metricKey)).filter((value) => value !== null);
-      const maxValue = scaleMax(values, metricKey);
+  function renderLevelCard({ level, rows, metricKey, maxValue, report }) {
+    const evaluated = rows.filter(statusOk).length;
+    const na = rows.filter((row) => row.status === "not_applicable").length;
+    const otherContexts = renderOtherContexts(rows, metricKey, maxValue);
+    return `
+      <article class="level-card">
+        <div class="level-head">
+          <div>
+            <h2>${escapeHtml(level[0].toUpperCase() + level.slice(1))}</h2>
+            <div class="subtle">${escapeHtml(metricLabel(metricKey))}</div>
+          </div>
+          <div class="badges">
+            <span class="badge">${evaluated} evaluated</span>
+            <span class="badge">${na} N/A</span>
+            ${metricKey === "epr_at_truth_count" ? '<span class="badge">1 = random baseline</span>' : ''}
+          </div>
+        </div>
+        <div class="viz-grid">
+          <section>
+            <div class="panel-title"><h3>Global</h3><span class="subtle">bars</span></div>
+            ${renderGlobal(rows, metricKey, maxValue)}
+          </section>
+          <section>
+            <div class="panel-title"><h3>Groups</h3><span class="subtle">heatmap</span></div>
+            ${renderGroups(rows, metricKey, maxValue)}
+          </section>
+        </div>
+        <section class="cell-contexts">
+          <div class="panel-title"><h3>Cells</h3><span class="subtle">violins by tool</span></div>
+          ${renderCells(rows, metricKey, maxValue, report, level)}
+        </section>
+        ${otherContexts}
+        <div class="legend">
+          <span>Scale</span>
+          <span class="legend-ramp ${metricKey === "epr_at_truth_count" ? "epr" : ""}"></span>
+          <span>${metricKey === "epr_at_truth_count" ? "log2 EPR, centered at 1" : "0 to 1"}</span>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderLevelTabs(root, levelRows) {
+    const tabs = root.querySelector('[data-role="level-tabs"]');
+    tabs.innerHTML = levels.map((level) => {
+      const active = level === activeLevel;
+      const rows = levelRows.get(level) || [];
       const evaluated = rows.filter(statusOk).length;
-      const na = rows.filter((row) => row.status === "not_applicable").length;
-      const otherContexts = renderOtherContexts(rows, metricKey, maxValue);
       return `
-        <article class="level-card">
-          <div class="level-head">
-            <div>
-              <h2>${escapeHtml(level[0].toUpperCase() + level.slice(1))}</h2>
-              <div class="subtle">${escapeHtml(metricLabel(metricKey))}</div>
-            </div>
-            <div class="badges">
-              <span class="badge">${evaluated} evaluated</span>
-              <span class="badge">${na} N/A</span>
-              ${metricKey === "epr_at_truth_count" ? '<span class="badge">1 = random baseline</span>' : ''}
-            </div>
-          </div>
-          <div class="viz-grid">
-            <section>
-              <div class="panel-title"><h3>Global</h3><span class="subtle">bars</span></div>
-              ${renderGlobal(rows, metricKey, maxValue)}
-            </section>
-            <section>
-              <div class="panel-title"><h3>Groups</h3><span class="subtle">heatmap</span></div>
-              ${renderGroups(rows, metricKey, maxValue)}
-            </section>
-          </div>
-          ${otherContexts}
-          <div class="legend">
-            <span>Scale</span>
-            <span class="legend-ramp ${metricKey === "epr_at_truth_count" ? "epr" : ""}"></span>
-            <span>${metricKey === "epr_at_truth_count" ? "log2 EPR, centered at 1" : "0 to 1"}</span>
-          </div>
-        </article>
+        <button type="button" class="level-tab ${active ? "active" : ""}" data-level="${escapeHtml(level)}" role="tab" aria-selected="${active ? "true" : "false"}">
+          <span>${escapeHtml(level[0].toUpperCase() + level.slice(1))}</span>
+          <small>${evaluated} evaluated</small>
+        </button>
       `;
     }).join("");
+    for (const button of tabs.querySelectorAll("[data-level]")) {
+      button.addEventListener("click", () => {
+        activeLevel = button.dataset.level;
+        renderLevels(root, root.__andreaEvaluationReport || {}, root.__andreaEvaluationMetrics || []);
+      });
+    }
+  }
+
+  function renderLevels(root, report, metrics) {
+    const metricKey = root.querySelector('[data-role="metric-select"]').value;
+    const target = root.querySelector('[data-role="levels"]');
+    const levelRows = new Map(levels.map((level) => [
+      level,
+      metrics.filter((row) => row.level === level)
+    ]));
+    if (!levels.includes(activeLevel)) {
+      activeLevel = levels[0];
+    }
+    renderLevelTabs(root, levelRows);
+    const rows = levelRows.get(activeLevel) || [];
+    const values = rows.map((row) => metricValue(row, metricKey)).filter((value) => value !== null);
+    const maxValue = scaleMax(values, metricKey);
+    target.innerHTML = renderLevelCard({
+      level: activeLevel,
+      rows,
+      metricKey,
+      maxValue,
+      report,
+    });
   }
 
   function renderMetricsTable(root, metrics) {
@@ -321,6 +550,9 @@
   function render(root, report) {
     const metrics = Array.isArray(report?.metrics) ? report.metrics : [];
     root.innerHTML = buildShell();
+    root.__andreaEvaluationReport = report || {};
+    root.__andreaEvaluationMetrics = metrics;
+    activeLevel = levels.includes(activeLevel) ? activeLevel : "topology";
     const metricSelect = root.querySelector('[data-role="metric-select"]');
     for (const metric of metricDefs) {
       const option = document.createElement("option");
@@ -329,9 +561,9 @@
       metricSelect.appendChild(option);
     }
     renderSummary(root, report || {}, metrics);
-    renderLevels(root, metrics);
+    renderLevels(root, report || {}, metrics);
     renderMetricsTable(root, metrics);
-    metricSelect.addEventListener("change", () => renderLevels(root, metrics));
+    metricSelect.addEventListener("change", () => renderLevels(root, report || {}, metrics));
     root.querySelector('[data-role="metric-search"]').addEventListener("input", () => renderMetricsTable(root, metrics));
   }
 

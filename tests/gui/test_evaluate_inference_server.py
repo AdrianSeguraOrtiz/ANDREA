@@ -31,6 +31,9 @@ class _ImmediateThread:
         if self._target is not None:
             self._target(**self._kwargs)
 
+    def join(self, timeout=None) -> None:  # noqa: ANN001
+        return None
+
 
 def _zip_bytes(entries: dict[str, str]) -> bytes:
     buf = io.BytesIO()
@@ -45,7 +48,63 @@ def _zip_bytes(entries: dict[str, str]) -> bytes:
     "GUI test dependencies are not installed",
 )
 class EvaluateInferenceGuiServerTests(unittest.TestCase):
-    def test_uploads_auto_detect_single_pair_and_runs_evaluation(self) -> None:
+    def test_static_gui_recommends_analysis_bundles(self) -> None:
+        index = (Path(gui_server.STATIC_DIR) / "index.html").read_text(encoding="utf-8")
+        style = (Path(gui_server.STATIC_DIR) / "styles.css").read_text(encoding="utf-8")
+        repro_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "repro" / "styles.css"
+        ).read_text(encoding="utf-8")
+        toast_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "ui" / "toasts.css"
+        ).read_text(encoding="utf-8")
+        popover_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "ui" / "popovers.css"
+        ).read_text(encoding="utf-8")
+        uploads_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "uploads" / "styles.css"
+        ).read_text(encoding="utf-8")
+        script = (Path(gui_server.STATIC_DIR) / "app" / "main.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Required Analysis ZIPs", index)
+        self.assertIn("Infer-network analysis ZIP", index)
+        self.assertIn("Generate-data analysis ZIP", index)
+        self.assertIn("Full archives and nested benchmark/run ZIPs are rejected", index)
+        self.assertIn("run_report.json", index)
+        self.assertIn("merged_network_raw.csv", index)
+        self.assertIn("truth/networks.csv", index)
+        self.assertIn("CLI and Python users do not need ZIP handoff", index)
+        self.assertIn("/static-common/app/bundles/styles.css", index)
+        self.assertIn("/static-common/app/uploads/styles.css", index)
+        self.assertIn("/static-common/app/repro/styles.css", index)
+        self.assertIn("/static-common/app/ui/popovers.css", index)
+        self.assertIn("/static-common/app/ui/toasts.css", index)
+        self.assertIn(".repro-card {", repro_style)
+        self.assertNotIn(".repro-card {", style)
+        self.assertIn(".toast {", toast_style)
+        self.assertIn(".info-popover {", popover_style)
+        self.assertIn(".handoff-card {", uploads_style)
+        self.assertIn(".file-card {", uploads_style)
+        self.assertNotIn(".toast {", style)
+        self.assertNotIn(".info-popover {", style)
+        self.assertNotIn(".handoff-card {", style)
+        self.assertNotIn(".file-card {", style)
+        self.assertIn("bundle-modal", index)
+        self.assertIn("upload-progress-panel", index)
+        self.assertIn("openBundleDownloadModal", script)
+        self.assertIn("/bundles", script)
+        self.assertIn("bundle_id=", script)
+        self.assertIn("uploadFormDataWithProgress", script)
+        legacy_bundle_name = "light " + "bundle"
+        legacy_bundle_adjective = "light" + "weight"
+        self.assertNotIn(legacy_bundle_name, index.lower())
+        self.assertNotIn(legacy_bundle_adjective, index.lower())
+        self.assertNotIn(legacy_bundle_adjective, script.lower())
+        self.assertIn("XMLHttpRequest", (Path(gui_server.COMMON_STATIC_DIR) / "app" / "uploads" / "progress.js").read_text(encoding="utf-8"))
+        self.assertNotIn("readAs", script)
+
+    def test_strict_analysis_uploads_run_evaluation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
             calls: list[dict[str, Path]] = []
@@ -83,7 +142,7 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
 
             inference_zip = _zip_bytes(
                 {
-                    "run/run_report.json": json.dumps(
+                    "run_report.json": json.dumps(
                         {
                             "run_id": "run_001",
                             "status": "completed",
@@ -91,12 +150,12 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                             "outputs": {"merged_network_raw": "merged_network_raw.csv"},
                         }
                     ),
-                    "run/merged_network_raw.csv": "source,target,score,sign,evidence,context,tool_id\n",
+                    "merged_network_raw.csv": "source,target,score,sign,evidence,context,tool_id\n",
                 }
             )
             truth_zip = _zip_bytes(
                 {
-                    "benchmark/datasets/dataset_a/ground-truth-manifest.json": json.dumps(
+                    "ground-truth-manifest.json": json.dumps(
                         {
                             "schema_version": "1.0",
                             "dataset_id": "dataset_a",
@@ -108,14 +167,15 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                             },
                         }
                     ),
-                    "benchmark/datasets/dataset_a/truth/gene_universe.txt": "G1\nG2\n",
-                    "benchmark/datasets/dataset_a/truth/networks.csv": "source,target,score,sign,evidence,context\n",
+                    "truth/gene_universe.txt": "G1\nG2\n",
+                    "truth/networks.csv": "source,target,score,sign,evidence,context\n",
                 }
             )
 
+            state = gui_server.GuiState()
             with (
                 patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
-                patch.object(gui_server, "STATE", gui_server.GuiState()),
+                patch.object(gui_server, "STATE", state),
                 patch.object(gui_server.threading, "Thread", _ImmediateThread),
                 patch.object(
                     gui_server,
@@ -136,10 +196,23 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                         "truth_zip": ("truth.zip", truth_zip, "application/zip"),
                     },
                 )
+                bundles_response = client.get(
+                    f"/api/evaluate-inference/jobs/{response.json()['job']['job_id']}/bundles"
+                )
+                analysis_bundle_response = client.get(
+                    f"/api/evaluate-inference/jobs/{response.json()['job']['job_id']}/bundle",
+                    params={"bundle_id": "analysis"},
+                )
+                invalid_bundle_response = client.get(
+                    f"/api/evaluate-inference/jobs/{response.json()['job']['job_id']}/bundle",
+                    params={"bundle_id": "not_a_bundle"},
+                )
 
             self.assertEqual(response.status_code, 200, msg=response.text)
             payload = response.json()
             self.assertEqual(payload["job"]["status"], "completed")
+            self.assertEqual(payload["job"]["progress_percent"], 100)
+            self.assertGreaterEqual(len(payload["job"]["timings"]), 3)
             self.assertEqual(payload["evaluation_report"]["metrics"][0]["tool_id"], "genie3")
             self.assertTrue(payload["reproducibility"]["available"])
             self.assertIn(
@@ -164,22 +237,44 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                     tmp_root / "evaluations"
                 )
             )
+            self.assertEqual(
+                bundles_response.status_code, 200, msg=bundles_response.text
+            )
+            bundles_by_id = {
+                item["id"]: item for item in bundles_response.json()["bundles"]
+            }
+            self.assertEqual(sorted(bundles_by_id), ["analysis", "full", "report"])
+            self.assertTrue(bundles_by_id["analysis"]["available"])
+            self.assertEqual(bundles_by_id["analysis"]["file_count"], 1)
+            self.assertIn(
+                "compare-networks",
+                bundles_by_id["analysis"]["intended_downstream_commands"],
+            )
+            self.assertEqual(
+                analysis_bundle_response.status_code,
+                200,
+                msg=analysis_bundle_response.text,
+            )
+            with zipfile.ZipFile(io.BytesIO(analysis_bundle_response.content)) as zf:
+                self.assertEqual(zf.namelist(), ["evaluation_report.json"])
+            self.assertEqual(invalid_bundle_response.status_code, 400)
 
-    def test_multiple_candidates_require_selection(self) -> None:
+    def test_nested_full_zip_layout_upload_is_rejected_server_side(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
+            calls: list[dict[str, Path]] = []
 
             def fake_evaluate_inference(**kwargs):  # noqa: ANN003
-                output_dir = Path(kwargs["output_dir"])
-                evaluation_dir = output_dir / "evaluation_selected"
+                calls.append(dict(kwargs))
+                evaluation_dir = Path(kwargs["output_dir"]) / "evaluation_full_zip"
                 evaluation_dir.mkdir(parents=True)
                 report = {
                     "schema_version": "1.0",
                     "outputs": {
-                        "evaluation_dir": "evaluation_selected",
-                        "evaluation_report": "evaluation_selected/evaluation_report.json",
+                        "evaluation_dir": "evaluation_full_zip",
+                        "evaluation_report": "evaluation_full_zip/evaluation_report.json",
                     },
-                    "metrics": [{"tool_id": "clr", "status": "ok"}],
+                    "metrics": [],
                 }
                 (evaluation_dir / "evaluation_report.json").write_text(
                     json.dumps(report, indent=2, ensure_ascii=True) + "\n",
@@ -189,7 +284,7 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
 
             inference_zip = _zip_bytes(
                 {
-                    "run/run_report.json": json.dumps(
+                    "inferred/run_001/run_report.json": json.dumps(
                         {
                             "run_id": "run_001",
                             "status": "completed",
@@ -197,33 +292,26 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                             "outputs": {"merged_network_raw": "merged_network_raw.csv"},
                         }
                     ),
-                    "run/merged_network_raw.csv": "source,target,score,sign,evidence,context,tool_id\n",
+                    "inferred/run_001/merged_network_raw.csv": "source,target,score,sign,evidence,context,tool_id\n",
+                    "inferred/run_001/provenance/raw/native.log": "large raw log\n",
                 }
             )
             truth_zip = _zip_bytes(
                 {
-                    "datasets/a/ground-truth-manifest.json": json.dumps(
+                    "benchmark-manifest.json": "{}",
+                    "datasets/dataset_a/ground-truth-manifest.json": json.dumps(
                         {
-                            "dataset_id": "dataset_x",
+                            "dataset_id": "dataset_a",
                             "outputs": {
                                 "gene_universe": "truth/gene_universe.txt",
                                 "networks": "truth/networks.csv",
                             },
                         }
                     ),
-                    "datasets/a/truth/gene_universe.txt": "G1\nG2\n",
-                    "datasets/a/truth/networks.csv": "source,target,score,sign,evidence,context\n",
-                    "datasets/b/ground-truth-manifest.json": json.dumps(
-                        {
-                            "dataset_id": "dataset_y",
-                            "outputs": {
-                                "gene_universe": "truth/gene_universe.txt",
-                                "networks": "truth/networks.csv",
-                            },
-                        }
-                    ),
-                    "datasets/b/truth/gene_universe.txt": "G1\nG2\n",
-                    "datasets/b/truth/networks.csv": "source,target,score,sign,evidence,context\n",
+                    "datasets/dataset_a/expression.tsv": "gene\tc1\nG1\t1\n",
+                    "datasets/dataset_a/truth/gene_universe.txt": "G1\nG2\n",
+                    "datasets/dataset_a/truth/networks.csv": "source,target,score,sign,evidence,context\n",
+                    "datasets/dataset_a/provenance/raw/native.tsv": "raw\n",
                 }
             )
 
@@ -243,35 +331,73 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                     data={"output_dir": str(tmp_root / "evaluations")},
                     files={
                         "inference_zip": (
-                            "inference.zip",
+                            "inference_full.zip",
                             inference_zip,
                             "application/zip",
                         ),
-                        "truth_zip": ("truth.zip", truth_zip, "application/zip"),
-                    },
-                )
-                self.assertEqual(response.status_code, 200, msg=response.text)
-                payload = response.json()
-                self.assertEqual(payload["job"]["status"], "needs_selection")
-                self.assertEqual(len(payload["job"]["truth_candidates"]), 2)
-
-                selected_truth = payload["job"]["truth_candidates"][1]["path"]
-                selected_run = payload["job"]["run_candidates"][0]["path"]
-                run_response = client.post(
-                    f"/api/evaluate-inference/jobs/{payload['job']['job_id']}/run",
-                    json={
-                        "run_report": selected_run,
-                        "ground_truth_manifest": selected_truth,
+                        "truth_zip": ("truth_full.zip", truth_zip, "application/zip"),
                     },
                 )
 
-            self.assertEqual(run_response.status_code, 200, msg=run_response.text)
-            self.assertEqual(run_response.json()["job"]["status"], "completed")
-            self.assertTrue(run_response.json()["reproducibility"]["available"])
-            self.assertNotIn(
-                "/gui_tmp/",
-                run_response.json()["reproducibility"]["cli"]["primary_code"],
+            self.assertEqual(response.status_code, 200, msg=response.text)
+            payload = response.json()
+            self.assertEqual(payload["job"]["status"], "failed")
+            self.assertEqual(payload["job"]["progress_percent"], 100)
+            self.assertIn(
+                "missing required root file run_report.json",
+                payload["job"]["error"],
             )
+            self.assertEqual(calls, [])
+
+    def test_missing_analysis_files_return_specific_upload_error(self) -> None:
+        inference_zip = _zip_bytes(
+            {
+                "run_report.json": json.dumps(
+                    {
+                        "run_id": "run_001",
+                        "dataset": {"id": "dataset_a"},
+                        "outputs": {"merged_network_raw": "merged_network_raw.csv"},
+                    }
+                )
+            }
+        )
+        truth_zip = _zip_bytes(
+            {
+                "ground-truth-manifest.json": json.dumps(
+                    {
+                        "dataset_id": "dataset_a",
+                        "outputs": {
+                            "gene_universe": "truth/gene_universe.txt",
+                            "networks": "truth/networks.csv",
+                        },
+                    }
+                ),
+                "truth/gene_universe.txt": "G1\nG2\n",
+                "truth/networks.csv": "source,target,score,sign,evidence,context\n",
+            }
+        )
+
+        with (
+            patch.object(gui_server, "STATE", gui_server.GuiState()),
+            patch.object(gui_server.threading, "Thread", _ImmediateThread),
+        ):
+            client = TestClient(gui_server.create_app())
+            response = client.post(
+                "/api/evaluate-inference/run",
+                data={"output_dir": "./evaluations"},
+                files={
+                    "inference_zip": ("inference.zip", inference_zip, "application/zip"),
+                    "truth_zip": ("truth.zip", truth_zip, "application/zip"),
+                },
+            )
+
+        self.assertEqual(response.status_code, 200, msg=response.text)
+        payload = response.json()
+        self.assertEqual(payload["job"]["status"], "failed")
+        self.assertIn(
+            "missing required root file merged_network_raw.csv",
+            payload["job"]["error"],
+        )
 
     def test_static_gui_contains_reproducibility_section(self) -> None:
         index = (Path(gui_server.STATIC_DIR) / "index.html").read_text(encoding="utf-8")

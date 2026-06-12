@@ -11,6 +11,11 @@ from andrea.core.commands.evaluate_inference import evaluate_inference
 from andrea.core.commands.evaluate_inference.evaluation import (
     NetworkRow,
     _aggregate_rows,
+    _auroc,
+    _average_precision,
+    _load_inferred_rows,
+    _sparse_auroc,
+    _sparse_average_precision,
     _top_truth_count_stats,
 )
 
@@ -94,7 +99,99 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             (1, 1, 1),
         )
 
-    def test_evaluates_topology_directed_and_signed_levels(self) -> None:
+    def test_rank_metrics_handle_perfect_reversed_and_tied_rankings(self) -> None:
+        self.assertEqual(
+            _auroc([1, 1, 0, 0], [0.9, 0.8, 0.2, 0.1]),
+            1.0,
+        )
+        self.assertEqual(
+            _average_precision([1, 1, 0, 0], [0.9, 0.8, 0.2, 0.1]),
+            1.0,
+        )
+        self.assertEqual(
+            _auroc([1, 1, 0, 0], [0.1, 0.2, 0.8, 0.9]),
+            0.0,
+        )
+        self.assertAlmostEqual(
+            _auroc([1, 0, 1, 0], [0.5, 0.5, 0.5, 0.5]),
+            0.5,
+        )
+        self.assertAlmostEqual(
+            _average_precision([1, 0, 1, 0], [0.5, 0.5, 0.5, 0.5]),
+            0.5,
+        )
+
+    def test_rank_metrics_treat_unreported_candidate_edges_as_zero_scores(self) -> None:
+        y_true = [1] + [0] * 99
+        y_score = [1.0] + [0.0] * 99
+
+        self.assertEqual(_auroc(y_true, y_score), 1.0)
+        self.assertEqual(_average_precision(y_true, y_score), 1.0)
+
+    def test_sparse_rank_metrics_match_dense_zero_filled_candidates(self) -> None:
+        candidate_keys = [
+            ("A", "B"),
+            ("A", "C"),
+            ("A", "D"),
+            ("B", "C"),
+            ("B", "D"),
+            ("C", "D"),
+        ]
+        truth_keys = {("A", "B"), ("B", "D"), ("C", "D")}
+        prediction_scores = {
+            ("A", "B"): 0.9,
+            ("A", "D"): 0.6,
+            ("B", "C"): 0.6,
+            ("B", "D"): 0.1,
+        }
+        y_true = [1 if key in truth_keys else 0 for key in candidate_keys]
+        y_score = [prediction_scores.get(key, 0.0) for key in candidate_keys]
+
+        self.assertAlmostEqual(
+            _sparse_auroc(
+                truth_keys=truth_keys,
+                prediction_scores=prediction_scores,
+                n_candidates=len(candidate_keys),
+            ) or 0.0,
+            _auroc(y_true, y_score) or 0.0,
+        )
+        self.assertAlmostEqual(
+            _sparse_average_precision(
+                truth_keys=truth_keys,
+                prediction_scores=prediction_scores,
+                n_candidates=len(candidate_keys),
+            ) or 0.0,
+            _average_precision(y_true, y_score) or 0.0,
+        )
+
+    def test_rejects_inferred_rows_with_empty_context_or_invalid_sign(self) -> None:
+        cases = [
+            ("", "+", "empty context"),
+            ("global", "activation", "invalid sign"),
+        ]
+        for context, sign, expected in cases:
+            with self.subTest(expected=expected):
+                with tempfile.TemporaryDirectory() as tmp:
+                    path = Path(tmp) / "merged_network_raw.csv"
+                    self._write_csv(
+                        path,
+                        [
+                            {
+                                "source": "A",
+                                "target": "B",
+                                "score": "1",
+                                "sign": sign,
+                                "evidence": "association",
+                                "context": context,
+                                "tool_id": "tool_01",
+                            }
+                        ],
+                    )
+
+                    with self.assertRaisesRegex(ValueError, expected):
+                        _load_inferred_rows(path)
+
+    def test_evaluates_cumulative_global_group_and_cell_truth_contexts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             truth_dir = base / "truth"
@@ -123,6 +220,14 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "context": "global",
                     },
                     {
+                        "source": "C",
+                        "target": "D",
+                        "score": "1",
+                        "sign": "+",
+                        "evidence": "simulated_truth",
+                        "context": "group:sA",
+                    },
+                    {
                         "source": "A",
                         "target": "C",
                         "score": "1",
@@ -139,7 +244,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "schema_version": "1.0",
                         "dataset_id": "toy",
                         "simulator_id": "toy_sim",
-                        "profile": "scrna_grouped",
+                        "profile": "scrna_cell_specific",
                         "outputs": {
                             "gene_universe": "truth/gene_universe.txt",
                             "networks": "truth/networks.csv",
@@ -159,6 +264,15 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "sign": "?",
                         "evidence": "association",
                         "context": "global",
+                        "tool_id": "genie3__01",
+                    },
+                    {
+                        "source": "C",
+                        "target": "D",
+                        "score": "0.7",
+                        "sign": "?",
+                        "evidence": "association",
+                        "context": "group:sA",
                         "tool_id": "genie3__01",
                     },
                     {
@@ -195,6 +309,15 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "sign": "-",
                         "evidence": "association",
                         "context": "global",
+                        "tool_id": "signed_tool",
+                    },
+                    {
+                        "source": "C",
+                        "target": "D",
+                        "score": "0.7",
+                        "sign": "+",
+                        "evidence": "association",
+                        "context": "group:sA",
                         "tool_id": "signed_tool",
                     },
                     {
@@ -270,7 +393,12 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             metrics[("genie3__01", "global", "directed")]["epr_at_truth_count"], 3.0
         )
         self.assertEqual(metrics[("genie3__01", "global", "signed")]["status"], "not_applicable")
+        self.assertEqual(metrics[("genie3__01", "global", "signed")]["n_truth_edges"], 2)
+        self.assertEqual(metrics[("genie3__01", "global", "signed")]["truth_signed"], True)
+        self.assertEqual(metrics[("genie3__01", "group:sA", "topology")]["status"], "ok")
+        self.assertEqual(metrics[("genie3__01", "group:sA", "directed")]["status"], "ok")
         self.assertEqual(metrics[("genie3__01", "cell:cell_a", "topology")]["status"], "ok")
+        self.assertEqual(metrics[("signed_tool", "group:sA", "signed")]["status"], "ok")
         self.assertEqual(metrics[("signed_tool", "global", "signed")]["status"], "ok")
         self.assertAlmostEqual(
             metrics[("signed_tool", "global", "signed")]["f1_at_truth_count"], 1.0
@@ -293,10 +421,48 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         self.assertEqual(report["inputs"]["ground_truth_dataset_id"], "toy")
         self.assertEqual(report["inputs"]["ground_truth_simulator_id"], "toy_sim")
         self.assertEqual(report["inputs"]["merged_network"], "merged_network_raw")
+        self.assertIn("runtime_profile", report)
+        self.assertEqual(
+            [entry["stage"] for entry in report["runtime_profile"]],
+            [
+                "loading_run_report",
+                "loading_inferred_network",
+                "loading_truth_networks",
+                "preparing_evaluation_inputs",
+                "computing",
+                "writing_outputs",
+            ],
+        )
         self.assertEqual(report["ground_truth"]["gene_universe_size"], 4)
+        self.assertEqual(
+            report["ground_truth"]["context_counts_by_family"],
+            {"global": 1, "group": 1, "cell": 1, "other": 0},
+        )
         self.assertEqual(metrics[("genie3__01", "global", "topology")]["n_candidate_genes"], 4)
+        self.assertEqual(report["ground_truth"]["contexts"], ["global", "group:sA", "cell:cell_a"])
+        self.assertEqual(
+            report["context_matching"]["truth_context_counts_by_family"]["group"],
+            1,
+        )
         self.assertIn("cell:cell_a", report["ground_truth"]["contexts"])
-        self.assertIn("Other Contexts", view_html)
+        self.assertEqual(
+            report["context_matching"]["truth_context_counts_by_family"]["cell"],
+            1,
+        )
+        missing_by_tool = {
+            row["tool_id"]: row
+            for row in report["context_matching"]["missing_truth_contexts_by_tool"]
+        }
+        self.assertEqual(
+            missing_by_tool["signed_tool"]["missing_context_counts_by_family"]["cell"],
+            1,
+        )
+        self.assertIn("Global", view_html)
+        self.assertIn("bars", view_html)
+        self.assertIn("Groups", view_html)
+        self.assertIn("heatmap", view_html)
+        self.assertIn("Cells", view_html)
+        self.assertIn("violins by tool", view_html)
         self.assertNotIn("run_report", report["inputs"])
         self.assertNotIn("ground_truth_manifest", report["inputs"])
         self.assertNotIn("derived_inputs", report)
@@ -381,6 +547,214 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
 
         self.assertEqual(report["pairings"][0]["status"], "skipped")
         self.assertIn("no ground-truth network", report["pairings"][0]["reason"])
+        self.assertEqual(
+            report["context_matching"]["prediction_contexts_without_truth_count"],
+            1,
+        )
+        self.assertEqual(
+            report["context_matching"]["truth_contexts_without_any_prediction_count"],
+            1,
+        )
+
+    def test_evaluates_group_aggregated_rows_against_group_truth(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            truth_dir = base / "truth"
+            truth_dir.mkdir(parents=True)
+            (truth_dir / "gene_universe.txt").write_text(
+                "A\nB\nC\n",
+                encoding="utf-8",
+            )
+            self._write_csv(
+                truth_dir / "networks.csv",
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "1",
+                        "sign": "+",
+                        "evidence": "simulated_truth",
+                        "context": "group:sA",
+                    },
+                    {
+                        "source": "B",
+                        "target": "C",
+                        "score": "1",
+                        "sign": "-",
+                        "evidence": "simulated_truth",
+                        "context": "group:sA",
+                    },
+                ],
+            )
+            manifest_path = base / "ground-truth-manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "dataset_id": "toy_grouped",
+                        "simulator_id": "toy_sim",
+                        "profile": "scrna_grouped",
+                        "outputs": {
+                            "gene_universe": "truth/gene_universe.txt",
+                            "networks": "truth/networks.csv",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            inferred_path = base / "merged_network_raw.csv"
+            self._write_csv(
+                inferred_path,
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "0.9",
+                        "sign": "+",
+                        "evidence": "andrea_group_aggregated_mean_signed_effect",
+                        "context": "group:sA",
+                        "tool_id": "cellrun_01",
+                    },
+                    {
+                        "source": "B",
+                        "target": "C",
+                        "score": "0.7",
+                        "sign": "-",
+                        "evidence": "andrea_group_aggregated_mean_signed_effect",
+                        "context": "group:sA",
+                        "tool_id": "cellrun_01",
+                    },
+                ],
+            )
+            run_report_path = base / "run_report.json"
+            run_report_path.write_text(
+                json.dumps(
+                    {
+                        "outputs": {"merged_network_raw": inferred_path.name},
+                        "tools": {
+                            "catalog_tool_ids": {
+                                "cellrun_01": "signed_tool",
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            catalog_root = self._write_tool_catalog(base)
+            with patch(
+                "andrea.core.commands.evaluate_inference.evaluation.CATALOG_TOOLS_ROOT",
+                catalog_root,
+            ):
+                report = evaluate_inference(
+                    run_report_path=run_report_path,
+                    ground_truth_manifest_path=manifest_path,
+                    output_dir=base / "evaluation",
+                    generate_view=False,
+                )
+
+        metrics = {
+            (row["tool_id"], row["context"], row["level"]): row
+            for row in report["metrics"]
+        }
+        self.assertEqual(report["pairings"][0]["status"], "evaluated")
+        self.assertEqual(report["pairings"][0]["truth_context"], "group:sA")
+        self.assertEqual(
+            report["ground_truth"]["context_counts_by_family"],
+            {"global": 0, "group": 1, "cell": 0, "other": 0},
+        )
+        self.assertEqual(metrics[("cellrun_01", "group:sA", "topology")]["status"], "ok")
+        self.assertEqual(metrics[("cellrun_01", "group:sA", "directed")]["status"], "ok")
+        self.assertEqual(metrics[("cellrun_01", "group:sA", "signed")]["status"], "ok")
+        self.assertAlmostEqual(
+            metrics[("cellrun_01", "group:sA", "signed")]["f1_at_truth_count"],
+            1.0,
+        )
+
+    def test_other_context_is_evaluated_and_kept_as_public_context_value(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            truth_dir = base / "truth"
+            truth_dir.mkdir(parents=True)
+            (truth_dir / "gene_universe.txt").write_text(
+                "A\nB\n",
+                encoding="utf-8",
+            )
+            self._write_csv(
+                truth_dir / "networks.csv",
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "1",
+                        "sign": "+",
+                        "evidence": "simulated_truth",
+                        "context": "condition:stim",
+                    }
+                ],
+            )
+            manifest_path = base / "ground-truth-manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "dataset_id": "toy_other_context",
+                        "simulator_id": "toy_sim",
+                        "profile": "scrna_global",
+                        "outputs": {
+                            "gene_universe": "truth/gene_universe.txt",
+                            "networks": "truth/networks.csv",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            inferred_path = base / "merged_network_raw.csv"
+            self._write_csv(
+                inferred_path,
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "0.9",
+                        "sign": "?",
+                        "evidence": "association",
+                        "context": "condition:stim",
+                        "tool_id": "genie3__01",
+                    }
+                ],
+            )
+            run_report_path = base / "run_report.json"
+            run_report_path.write_text(
+                json.dumps(
+                    {
+                        "outputs": {"merged_network_raw": inferred_path.name},
+                        "tools": {
+                            "catalog_tool_ids": {
+                                "genie3__01": "genie3",
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            report = evaluate_inference(
+                run_report_path=run_report_path,
+                ground_truth_manifest_path=manifest_path,
+                output_dir=base / "evaluation",
+                generate_view=False,
+            )
+
+        self.assertEqual(report["ground_truth"]["contexts"], ["condition:stim"])
+        self.assertEqual(
+            report["ground_truth"]["context_counts_by_family"],
+            {"global": 0, "group": 0, "cell": 0, "other": 1},
+        )
+        self.assertEqual(report["pairings"][0]["status"], "evaluated")
+        self.assertEqual(report["metrics"][0]["context"], "condition:stim")
+        self.assertNotIn("context_type", report["metrics"][0])
+        self.assertNotIn("context_family", report["metrics"][0])
 
     def test_requires_explicit_ground_truth_gene_universe(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

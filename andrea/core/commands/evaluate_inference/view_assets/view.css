@@ -91,6 +91,35 @@ body {
   grid-template-columns: 1fr;
   gap: 14px;
 }
+.andrea-evaluation-view .level-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.andrea-evaluation-view .level-tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  padding: 7px 12px;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+.andrea-evaluation-view .level-tab small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.andrea-evaluation-view .level-tab.active {
+  border-color: #7dd3fc;
+  background: #e0f2fe;
+  color: #075985;
+}
 .andrea-evaluation-view .level-card {
   padding: 14px;
   overflow: hidden;
@@ -178,6 +207,82 @@ body {
 .andrea-evaluation-view .other-contexts {
   margin-top: 14px;
 }
+.andrea-evaluation-view .cell-contexts {
+  margin-top: 14px;
+}
+.andrea-evaluation-view .cell-dist-list {
+  display: grid;
+  gap: 8px;
+}
+.andrea-evaluation-view .cell-dist-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.32fr) minmax(260px, 1fr) minmax(280px, 0.8fr);
+  gap: 12px;
+  align-items: center;
+  padding: 9px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fbfdff;
+}
+.andrea-evaluation-view .cell-violin {
+  position: relative;
+  height: 30px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f8fafc, #eef6fb);
+  border: 1px solid #dbe3ea;
+  overflow: hidden;
+}
+
+.andrea-evaluation-view .cell-violin svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.andrea-evaluation-view .cell-violin-shape {
+  stroke: #0369a1;
+  stroke-width: 0.55;
+}
+
+.andrea-evaluation-view .cell-violin-range {
+  stroke: #64748b;
+  stroke-linecap: round;
+  stroke-width: 0.55;
+}
+
+.andrea-evaluation-view .cell-violin-iqr {
+  stroke: #075985;
+  stroke-linecap: round;
+  stroke-width: 2.6;
+}
+
+.andrea-evaluation-view .cell-violin-median {
+  stroke: #0f172a;
+  stroke-width: 0.9;
+}
+.andrea-evaluation-view .cell-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(48px, 1fr));
+  gap: 6px;
+}
+.andrea-evaluation-view .cell-stats span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.andrea-evaluation-view .cell-stats strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.andrea-evaluation-view .cell-stats small {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
 .andrea-evaluation-view table.matrix {
   border-collapse: separate;
   border-spacing: 0;
@@ -236,6 +341,10 @@ body {
   color: var(--muted);
   background: #f8fafc;
   font-size: 13px;
+}
+.andrea-evaluation-view .empty.compact {
+  padding: 8px 10px;
+  font-size: 12px;
 }
 .andrea-evaluation-view .legend {
   margin-top: 8px;
@@ -318,6 +427,12 @@ body {
   }
   .andrea-evaluation-view .viz-grid {
     grid-template-columns: 1fr;
+  }
+  .andrea-evaluation-view .cell-dist-row {
+    grid-template-columns: 1fr;
+  }
+  .andrea-evaluation-view .cell-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .andrea-evaluation-view .toolbar {
     justify-content: space-between;

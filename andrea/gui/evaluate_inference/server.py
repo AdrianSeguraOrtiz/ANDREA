@@ -10,7 +10,6 @@ import traceback
 import uuid
 import webbrowser
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -19,6 +18,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from andrea.core.commands.evaluate_inference import bundles as evaluation_bundles
 from andrea.core.commands.evaluate_inference import evaluate_inference
 from andrea.gui.common.reproducibility import (
     build_single_step_reproducibility_payload,
@@ -26,11 +26,23 @@ from andrea.gui.common.reproducibility import (
     unavailable_reproducibility,
 )
 from andrea.gui.common.server_files import (
+    build_bundle_metadata,
     build_zip_bundle,
-    extract_zip_upload,
+    bundle_status_payload,
+    extract_zip_path,
+    load_strict_json_object,
     output_dir_from_form,
     read_json_if_exists,
+    require_root_file,
     resolve_report_path,
+    save_upload,
+)
+from andrea.gui.common.server_jobs import (
+    make_core_progress_callback,
+    run_parallel,
+    set_job_progress,
+    timed_job_stage,
+    utc_now,
 )
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -45,10 +57,6 @@ EVALUATION_VIEW_ASSETS_DIR = (
 GUI_TMP_ROOT = Path(tempfile.gettempdir()) / "andrea_gui" / "evaluate_inference"
 
 
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
 @dataclass
 class GuiJob:
     job_id: str
@@ -57,10 +65,6 @@ class GuiJob:
     stage: str
     request_dir: str
     output_dir: str
-    run_candidates: list[dict[str, Any]] = field(default_factory=list)
-    truth_candidates: list[dict[str, Any]] = field(default_factory=list)
-    selected_run_report: Optional[str] = None
-    selected_ground_truth_manifest: Optional[str] = None
     frozen_run_report_path: Optional[str] = None
     frozen_ground_truth_manifest_path: Optional[str] = None
     evaluation_report_path: Optional[str] = None
@@ -69,6 +73,10 @@ class GuiJob:
     traceback: Optional[str] = None
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
+    progress_percent: int = 0
+    progress_label: str = "Queued"
+    progress_detail: str = ""
+    timings: list[dict[str, Any]] = field(default_factory=list)
 
 
 class GuiState:
@@ -79,6 +87,15 @@ class GuiState:
 
 STATE = GuiState()
 
+EVALUATION_STAGE_PROGRESS = {
+    "loading_run_report": 52,
+    "loading_inferred_network": 58,
+    "loading_truth_networks": 64,
+    "preparing_evaluation_inputs": 68,
+    "computing": 75,
+    "writing_outputs": 92,
+}
+
 
 def _job_payload(job: GuiJob) -> dict[str, Any]:
     return {
@@ -88,10 +105,6 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
         "stage": job.stage,
         "request_dir": job.request_dir,
         "output_dir": job.output_dir,
-        "run_candidates": job.run_candidates,
-        "truth_candidates": job.truth_candidates,
-        "selected_run_report": job.selected_run_report,
-        "selected_ground_truth_manifest": job.selected_ground_truth_manifest,
         "frozen_run_report_path": job.frozen_run_report_path,
         "frozen_ground_truth_manifest_path": job.frozen_ground_truth_manifest_path,
         "evaluation_report_path": job.evaluation_report_path,
@@ -100,6 +113,12 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
         "traceback": job.traceback,
         "started_at": job.started_at,
         "finished_at": job.finished_at,
+        "progress_percent": job.progress_percent,
+        "progress_label": job.progress_label,
+        "progress_detail": job.progress_detail,
+        "timings": list(job.timings),
+        "artifact_errors": [],
+        "bundle_status": _job_bundle_status(job),
     }
 
 
@@ -115,110 +134,80 @@ def _job_response(job_id: str) -> dict[str, Any]:
         "reproducibility": _build_reproducibility_payload(job),
     }
 
-
-def _discover_run_candidates(root: Path) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    for path in sorted(root.rglob("run_report.json")):
-        if not path.is_file():
-            continue
-        payload = read_json_if_exists(path)
-        if not payload:
-            continue
-        outputs = payload.get("outputs")
-        if not isinstance(outputs, dict) or not outputs.get("merged_network_raw"):
-            continue
-        dataset = payload.get("dataset") if isinstance(payload.get("dataset"), dict) else {}
-        rel = path.relative_to(root).as_posix()
-        candidates.append(
-            {
-                "path": rel,
-                "label": rel,
-                "run_id": payload.get("run_id"),
-                "status": payload.get("status"),
-                "dataset_id": dataset.get("id") if isinstance(dataset, dict) else None,
-            }
-        )
-    return candidates
-
-
-def _discover_truth_candidates(root: Path) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    for path in sorted(root.rglob("ground-truth-manifest.json")):
-        if not path.is_file():
-            continue
-        payload = read_json_if_exists(path)
-        if not payload:
-            continue
-        outputs = payload.get("outputs")
-        if not isinstance(outputs, dict):
-            continue
-        if not outputs.get("networks"):
-            continue
-        rel = path.relative_to(root).as_posix()
-        candidates.append(
-            {
-                "path": rel,
-                "label": rel,
-                "dataset_id": payload.get("dataset_id"),
-                "simulator_id": payload.get("simulator_id"),
-                "profile": payload.get("profile"),
-            }
-        )
-    return candidates
+def _prepare_strict_inference_bundle(root: Path) -> Path:
+    run_report_path = require_root_file(
+        root=root,
+        rel_path="run_report.json",
+        bundle_label="infer-network analysis",
+    )
+    require_root_file(
+        root=root,
+        rel_path="merged_network_raw.csv",
+        bundle_label="infer-network analysis",
+    )
+    run_report = load_strict_json_object(
+        run_report_path, label="infer-network analysis run_report.json"
+    )
+    outputs = run_report.setdefault("outputs", {})
+    if not isinstance(outputs, dict):
+        outputs = {}
+        run_report["outputs"] = outputs
+    outputs["merged_network_raw"] = "merged_network_raw.csv"
+    run_report_path.write_text(
+        json.dumps(run_report, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    return run_report_path
 
 
-def _auto_selection(
-    *,
-    run_candidates: list[dict[str, Any]],
-    truth_candidates: list[dict[str, Any]],
-) -> Optional[tuple[str, str]]:
-    if len(run_candidates) == 1 and len(truth_candidates) == 1:
-        return str(run_candidates[0]["path"]), str(truth_candidates[0]["path"])
+def _prepare_strict_truth_bundle(root: Path) -> Path:
+    truth_manifest_path = require_root_file(
+        root=root,
+        rel_path="ground-truth-manifest.json",
+        bundle_label="generate-data analysis",
+    )
+    require_root_file(
+        root=root,
+        rel_path="truth/networks.csv",
+        bundle_label="generate-data analysis",
+    )
+    require_root_file(
+        root=root,
+        rel_path="truth/gene_universe.txt",
+        bundle_label="generate-data analysis",
+    )
+    manifest = load_strict_json_object(
+        truth_manifest_path, label="generate-data analysis ground-truth-manifest.json"
+    )
+    outputs = manifest.setdefault("outputs", {})
+    if not isinstance(outputs, dict):
+        outputs = {}
+        manifest["outputs"] = outputs
+    outputs["networks"] = "truth/networks.csv"
+    outputs["gene_universe"] = "truth/gene_universe.txt"
+    truth_manifest_path.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    return truth_manifest_path
 
-    pairs: list[tuple[str, str]] = []
-    for run in run_candidates:
-        run_dataset = run.get("dataset_id")
-        if not run_dataset:
-            continue
-        for truth in truth_candidates:
-            if run_dataset == truth.get("dataset_id"):
-                pairs.append((str(run["path"]), str(truth["path"])))
-    unique_pairs = sorted(set(pairs))
-    if len(unique_pairs) == 1:
-        return unique_pairs[0]
-    return None
 
-
-def _candidate_path(
-    *,
-    request_dir: Path,
-    kind: str,
-    selected_path: str,
-    candidates: list[dict[str, Any]],
-) -> Path:
-    allowed = {str(candidate["path"]) for candidate in candidates}
-    if selected_path not in allowed:
-        raise ValueError(f"Selected {kind} path is not one of the detected candidates")
-    root = request_dir / kind
-    path = (root / selected_path).resolve()
-    if not path.is_relative_to(root.resolve()):
-        raise ValueError(f"Selected {kind} path escapes the extracted archive")
-    if not path.exists() or not path.is_file():
-        raise ValueError(f"Selected {kind} file no longer exists: {selected_path}")
-    return path
+def _validate_strict_uploads(request_dir: Path) -> tuple[Path, Path]:
+    run_report_path = _prepare_strict_inference_bundle(request_dir / "inference")
+    truth_manifest_path = _prepare_strict_truth_bundle(request_dir / "truth")
+    return run_report_path, truth_manifest_path
 
 def _start_evaluation_job(
     *,
     job_id: str,
-    run_report: str,
-    ground_truth_manifest: str,
 ) -> None:
     with STATE.lock:
         job = STATE.jobs[job_id]
         job.status = "queued"
         job.stage = "queued"
-        job.selected_run_report = run_report
-        job.selected_ground_truth_manifest = ground_truth_manifest
+        job.progress_percent = max(job.progress_percent, 10)
+        job.progress_label = "Queued"
+        job.progress_detail = "Waiting to start evaluation."
         job.frozen_run_report_path = None
         job.frozen_ground_truth_manifest_path = None
         job.error = None
@@ -227,51 +216,74 @@ def _start_evaluation_job(
         job.finished_at = None
     threading.Thread(
         target=_run_evaluation_job,
-        kwargs={
-            "job_id": job_id,
-            "run_report": run_report,
-            "ground_truth_manifest": ground_truth_manifest,
-        },
+        kwargs={"job_id": job_id},
         daemon=True,
     ).start()
 
 
-def _run_evaluation_job(
-    *,
-    job_id: str,
-    run_report: str,
-    ground_truth_manifest: str,
-) -> None:
+def _run_evaluation_job(*, job_id: str) -> None:
     with STATE.lock:
         job = STATE.jobs[job_id]
         job.status = "running"
-        job.stage = "evaluating"
-        job.started_at = _utc_now()
+        job.stage = "extracting_uploads"
+        job.started_at = utc_now()
         request_dir = Path(job.request_dir)
         output_dir = Path(job.output_dir)
-        run_candidates = list(job.run_candidates)
-        truth_candidates = list(job.truth_candidates)
     try:
-        run_report_path = _candidate_path(
-            request_dir=request_dir,
-            kind="inference",
-            selected_path=run_report,
-            candidates=run_candidates,
-        )
-        truth_manifest_path = _candidate_path(
-            request_dir=request_dir,
-            kind="truth",
-            selected_path=ground_truth_manifest,
-            candidates=truth_candidates,
-        )
+        with timed_job_stage(
+            state=STATE,
+            job_id=job_id,
+            stage="extracting_uploads",
+            label="Extracting uploads",
+            detail="Extracting infer-network and generate-data analysis ZIPs.",
+            percent=25,
+        ):
+            run_parallel(
+                [
+                    lambda: extract_zip_path(
+                        zip_path=request_dir / "uploads" / "inference.zip",
+                        extract_dir=request_dir / "inference",
+                    ),
+                    lambda: extract_zip_path(
+                        zip_path=request_dir / "uploads" / "truth.zip",
+                        extract_dir=request_dir / "truth",
+                    ),
+                ],
+                max_workers=2,
+            )
+        with timed_job_stage(
+            state=STATE,
+            job_id=job_id,
+            stage="validating_inputs",
+            label="Validating inputs",
+            detail="Checking strict analysis bundle layouts.",
+            percent=45,
+        ):
+            _validate_strict_uploads(request_dir)
+        run_report_path = request_dir / "inference" / "run_report.json"
+        truth_manifest_path = request_dir / "truth" / "ground-truth-manifest.json"
         report = evaluate_inference(
             run_report_path=run_report_path,
             ground_truth_manifest_path=truth_manifest_path,
             output_dir=output_dir,
             generate_view=True,
+            progress_callback=make_core_progress_callback(
+                state=STATE,
+                job_id=job_id,
+                stage_progress=EVALUATION_STAGE_PROGRESS,
+                default_percent=70,
+            ),
         )
         evaluation_report = output_dir / str(report["outputs"]["evaluation_report"])
         evaluation_dir = output_dir / str(report["outputs"]["evaluation_dir"])
+        set_job_progress(
+            state=STATE,
+            job_id=job_id,
+            stage="writing_outputs",
+            label="Finalizing output",
+            detail="Freezing reproducibility inputs.",
+            percent=96,
+        )
         frozen_run_report_path, frozen_truth_manifest_path = _freeze_evaluation_inputs(
             evaluation_dir=evaluation_dir,
             run_report_path=run_report_path,
@@ -281,21 +293,27 @@ def _run_evaluation_job(
             job = STATE.jobs[job_id]
             job.status = "completed"
             job.stage = "completed"
+            job.progress_percent = 100
+            job.progress_label = "Ready"
+            job.progress_detail = "Evaluation results are ready."
             job.frozen_run_report_path = str(frozen_run_report_path.resolve())
             job.frozen_ground_truth_manifest_path = str(
                 frozen_truth_manifest_path.resolve()
             )
             job.evaluation_report_path = str(evaluation_report.resolve())
             job.evaluation_dir = str(evaluation_dir.resolve())
-            job.finished_at = _utc_now()
+            job.finished_at = utc_now()
     except Exception as exc:  # noqa: BLE001
         with STATE.lock:
             job = STATE.jobs[job_id]
             job.status = "failed"
             job.stage = "failed"
+            job.progress_percent = 100
+            job.progress_label = "Failed"
+            job.progress_detail = str(exc)
             job.error = str(exc)
             job.traceback = traceback.format_exc(limit=30)
-            job.finished_at = _utc_now()
+            job.finished_at = utc_now()
 
 
 def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
@@ -433,14 +451,43 @@ def _freeze_truth_manifest(*, truth_manifest_path: Path, destination_dir: Path) 
     return frozen_manifest
 
 
-def _bundle_sources(*, evaluation_dir: Optional[Path]) -> list[tuple[str, Path]]:
+def _resolve_bundle(*, evaluation_dir: Optional[Path], bundle_id: str) -> Any:
     if evaluation_dir is None or not evaluation_dir.exists():
-        return []
-    return [
-        (path.relative_to(evaluation_dir).as_posix(), path)
-        for path in sorted(evaluation_dir.rglob("*"))
-        if path.is_file()
-    ]
+        raise ValueError("Evaluation output is not ready")
+    return evaluation_bundles.resolve_bundle(
+        bundle_id=bundle_id,
+        evaluation_dir=evaluation_dir,
+    )
+
+
+def _require_bundle_available(resolution: Any) -> None:
+    if resolution.available and resolution.sources:
+        return
+    missing = ", ".join(resolution.missing_required) or "no files"
+    raise ValueError(
+        f"Bundle '{resolution.spec.id}' is not available; missing required files: {missing}"
+    )
+
+
+def _job_bundle_status(job: GuiJob) -> dict[str, dict[str, Any]]:
+    evaluation_dir = Path(job.evaluation_dir) if job.evaluation_dir else None
+    output_ready = bool(evaluation_dir and evaluation_dir.exists())
+    resolver = (
+        (
+            lambda bundle_id: evaluation_bundles.resolve_bundle(
+                bundle_id=bundle_id,
+                evaluation_dir=evaluation_dir,  # type: ignore[arg-type]
+            )
+        )
+        if output_ready
+        else None
+    )
+    bundles = build_bundle_metadata(
+        specs=evaluation_bundles.bundle_specs(),
+        resolver=resolver,
+        unavailable_reason="Evaluation output is not ready",
+    )
+    return bundle_status_payload(bundles)
 
 
 def create_app() -> FastAPI:
@@ -465,6 +512,39 @@ def create_app() -> FastAPI:
     async def api_job(job_id: str) -> JSONResponse:
         return JSONResponse(_job_response(job_id))
 
+    @app.get("/api/evaluate-inference/jobs/{job_id}/bundles")
+    async def api_job_bundles(job_id: str) -> JSONResponse:
+        with STATE.lock:
+            job = STATE.jobs.get(job_id)
+            if job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            evaluation_dir = Path(job.evaluation_dir) if job.evaluation_dir else None
+            status = job.status
+        output_ready = bool(evaluation_dir and evaluation_dir.exists())
+        resolver = (
+            (
+                lambda bundle_id: evaluation_bundles.resolve_bundle(
+                    bundle_id=bundle_id,
+                    evaluation_dir=evaluation_dir,  # type: ignore[arg-type]
+                )
+            )
+            if output_ready
+            else None
+        )
+        bundles = build_bundle_metadata(
+            specs=evaluation_bundles.bundle_specs(),
+            resolver=resolver,
+            unavailable_reason="Evaluation output is not ready",
+        )
+        return JSONResponse(
+            {
+                "status": status,
+                "output_ready": output_ready,
+                "bundles": bundles,
+                "bundle_status": bundle_status_payload(bundles),
+            }
+        )
+
     @app.post("/api/evaluate-inference/run")
     async def api_run(request: Request) -> JSONResponse:
         form = await request.form()
@@ -480,99 +560,70 @@ def create_app() -> FastAPI:
         output_dir = output_dir_from_form(form, default="./evaluations")
         request_dir.mkdir(parents=True, exist_ok=True)
 
-        try:
-            extract_zip_upload(
-                inference_upload,
-                zip_path=request_dir / "uploads" / "inference.zip",
-                extract_dir=request_dir / "inference",
-            )
-            extract_zip_upload(
-                truth_upload,
-                zip_path=request_dir / "uploads" / "truth.zip",
-                extract_dir=request_dir / "truth",
-            )
-            run_candidates = _discover_run_candidates(request_dir / "inference")
-            truth_candidates = _discover_truth_candidates(request_dir / "truth")
-            if not run_candidates:
-                raise ValueError("No valid run_report.json was found in inference ZIP")
-            if not truth_candidates:
-                raise ValueError(
-                    "No valid ground-truth-manifest.json was found in truth ZIP"
-                )
-        except ValueError as exc:
-            shutil.rmtree(request_dir, ignore_errors=True)
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
         job = GuiJob(
             job_id=job_id,
-            created_at=_utc_now(),
-            status="needs_selection",
-            stage="select_inputs",
+            created_at=utc_now(),
+            status="queued",
+            stage="saving_uploads",
             request_dir=str(request_dir),
             output_dir=str(output_dir),
-            run_candidates=run_candidates,
-            truth_candidates=truth_candidates,
+            progress_percent=0,
+            progress_label="Saving uploads",
         )
         with STATE.lock:
             STATE.jobs[job_id] = job
-
-        selection = _auto_selection(
-            run_candidates=run_candidates, truth_candidates=truth_candidates
-        )
-        if selection is not None:
-            run_report, truth_manifest = selection
-            _start_evaluation_job(
-                job_id=job_id,
-                run_report=run_report,
-                ground_truth_manifest=truth_manifest,
-            )
-        return JSONResponse(_job_response(job_id))
-
-    @app.post("/api/evaluate-inference/jobs/{job_id}/run")
-    async def api_run_selected(job_id: str, request: Request) -> JSONResponse:
         try:
-            payload = await request.json()
+            with timed_job_stage(
+                state=STATE,
+                job_id=job_id,
+                stage="saving_uploads",
+                label="Saving uploads",
+                detail="Saving uploaded ZIPs to the local request directory.",
+                percent=10,
+            ):
+                save_upload(inference_upload, request_dir / "uploads" / "inference.zip")
+                save_upload(truth_upload, request_dir / "uploads" / "truth.zip")
         except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=400, detail="JSON body is required") from exc
-        if not isinstance(payload, dict):
-            raise HTTPException(status_code=400, detail="JSON body must be an object")
-        run_report = str(payload.get("run_report") or "").strip()
-        truth_manifest = str(payload.get("ground_truth_manifest") or "").strip()
-        if not run_report or not truth_manifest:
-            raise HTTPException(
-                status_code=400,
-                detail="run_report and ground_truth_manifest are required",
-            )
-        with STATE.lock:
-            if job_id not in STATE.jobs:
-                raise HTTPException(status_code=404, detail="Job not found")
-        try:
-            _start_evaluation_job(
-                job_id=job_id,
-                run_report=run_report,
-                ground_truth_manifest=truth_manifest,
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            with STATE.lock:
+                job = STATE.jobs[job_id]
+                job.status = "failed"
+                job.stage = "failed"
+                job.progress_percent = 100
+                job.progress_label = "Failed"
+                job.progress_detail = str(exc)
+                job.error = str(exc)
+                job.traceback = traceback.format_exc(limit=30)
+                job.finished_at = utc_now()
+            return JSONResponse(_job_response(job_id))
+
+        _start_evaluation_job(job_id=job_id)
         return JSONResponse(_job_response(job_id))
 
     @app.get("/api/evaluate-inference/jobs/{job_id}/bundle")
-    async def api_job_bundle(job_id: str) -> FileResponse:
+    async def api_job_bundle(
+        job_id: str,
+        bundle_id: str = "full",
+    ) -> FileResponse:
         with STATE.lock:
             job = STATE.jobs.get(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
             evaluation_dir = Path(job.evaluation_dir) if job.evaluation_dir else None
             request_dir = Path(job.request_dir)
-        sources = _bundle_sources(evaluation_dir=evaluation_dir)
-        if not sources:
-            raise HTTPException(status_code=400, detail="Evaluation output is not ready")
-        zip_path = request_dir / f"{job_id}_evaluation.zip"
-        build_zip_bundle(zip_path=zip_path, sources=sources)
+        try:
+            resolution = _resolve_bundle(
+                evaluation_dir=evaluation_dir,
+                bundle_id=bundle_id,
+            )
+            _require_bundle_available(resolution)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        zip_path = request_dir / f"{job_id}_evaluation_{resolution.spec.id}.zip"
+        build_zip_bundle(zip_path=zip_path, sources=resolution.source_tuples)
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"andrea_evaluation_{job_id}.zip",
+            filename=f"andrea_evaluation_{job_id}_{resolution.spec.id}.zip",
         )
 
     return app
