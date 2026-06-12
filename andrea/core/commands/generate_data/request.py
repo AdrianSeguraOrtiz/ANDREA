@@ -12,6 +12,12 @@ from andrea.core.shared.param_validation import (
     validate_param_value,
 )
 from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
+from andrea.core.shared.compatibility_rules import (
+    COMPATIBILITY_ACTIONS,
+    compare_compatibility_values,
+    condition_expected_value,
+    match_compatibility_conditions,
+)
 
 from .catalog import (
     _load_simulator_catalog,
@@ -27,10 +33,6 @@ from .shared import (
     _validate_json_instance,
     required_truth_outputs_for_profile,
 )
-
-COMPATIBILITY_ACTIONS = {"block", "warn"}
-COMPATIBILITY_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
-
 
 def _supported_requested_artifacts(
     profile_capability: dict[str, Any],
@@ -225,29 +227,13 @@ def _param_lookup(params: dict[str, Any], path: str) -> Any:
 
 
 def _compare_condition_value(actual: Any, op: str, expected: Any) -> bool:
-    if op == "eq":
-        return actual == expected
-    if op == "ne":
-        return actual != expected
-    if op == "in":
-        return isinstance(expected, list) and actual in expected
-    if op == "not_in":
-        return isinstance(expected, list) and actual not in expected
-    if op in {"gt", "gte", "lt", "lte"}:
-        try:
-            actual_num = float(actual)
-            expected_num = float(expected)
-        except (TypeError, ValueError):
-            return False
-        if op == "gt":
-            return actual_num > expected_num
-        if op == "gte":
-            return actual_num >= expected_num
-        if op == "lt":
-            return actual_num < expected_num
-        if op == "lte":
-            return actual_num <= expected_num
-    return False
+    return compare_compatibility_values(
+        actual=actual,
+        op=op,
+        expected=expected,
+        coerce_numeric=True,
+        allow_bool_numeric=True,
+    )
 
 
 def _condition_actual_value(
@@ -449,29 +435,18 @@ def _compatibility_condition_matches(
     simulator_params: dict[str, Any],
     resolved_input_paths: dict[str, Path] | None,
 ) -> bool:
-    field = str(condition.get("field", "")).strip()
-    op = str(condition.get("op", "")).strip()
-    if not field:
-        raise ValueError("compatibility condition field is required")
-    if op not in COMPATIBILITY_OPS:
-        raise ValueError("compatibility condition op is invalid")
-    has_value = "value" in condition
-    has_value_from = "value_from" in condition
-    if has_value == has_value_from:
-        raise ValueError(
-            "compatibility condition must define exactly one of value or value_from"
-        )
-    expected = (
-        _compatibility_condition_value(
-            field=str(condition.get("value_from", "")).strip(),
+    field, op, expected = condition_expected_value(
+        condition=condition,
+        condition_label="compatibility condition",
+        attribute_separator=" ",
+        value_from_resolver=lambda value_from: _compatibility_condition_value(
+            field=value_from,
             profile=profile,
             requested_extras=requested_extras,
             native_outputs=native_outputs,
             simulator_params=simulator_params,
             resolved_input_paths=resolved_input_paths,
-        )
-        if has_value_from
-        else condition.get("value")
+        ),
     )
     actual = _compatibility_condition_value(
         field=field,
@@ -507,22 +482,24 @@ def _compatibility_rule_matches(
     simulator_params: dict[str, Any],
     resolved_input_paths: dict[str, Path] | None,
 ) -> bool:
-    conditions = rule.get("conditions", [])
-    if not isinstance(conditions, list) or not conditions:
-        raise ValueError("compatibility rule must include non-empty conditions")
-    for condition in conditions:
-        if not isinstance(condition, dict):
-            raise ValueError("compatibility rule conditions must be objects")
-        if not _compatibility_condition_matches(
+    def _condition_matches(condition: dict[str, Any], _index: int) -> bool:
+        return _compatibility_condition_matches(
             condition=condition,
             profile=profile,
             requested_extras=requested_extras,
             native_outputs=native_outputs,
             simulator_params=simulator_params,
             resolved_input_paths=resolved_input_paths,
-        ):
-            return False
-    return True
+        )
+
+    return match_compatibility_conditions(
+        rule=rule,
+        condition_matcher=_condition_matches,
+        empty_conditions_message="compatibility rule must include non-empty conditions",
+        non_object_condition_message=lambda _index: (
+            "compatibility rule conditions must be objects"
+        ),
+    )
 
 
 def collect_simulator_compatibility_rule_issues(

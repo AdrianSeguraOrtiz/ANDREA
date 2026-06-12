@@ -1,5 +1,10 @@
 import { $, formatBytes } from "/static-common/app/core/dom.js";
-import { fetchFiles, resetFilesView } from "/static-common/app/files/explorer.js?v=20260423b";
+import {
+  closeBundleDownloadModal,
+  initBundleDownloadModal,
+  openBundleDownloadModal,
+} from "/static-common/app/bundles/modal.js?v=20260612a";
+import { fetchFiles, resetFilesView } from "/static-common/app/files/explorer.js?v=20260611a";
 import {
   deepEqualJson,
   readParamsFromHost,
@@ -92,13 +97,16 @@ async function fetchPlan(jobId) {
 
 function fileApi() {
   return {
-    fetchFiles: async (mode) => {
-      const response = await fetch(`/api/generate-data/jobs/${state.jobId}/files?mode=${encodeURIComponent(mode)}`);
+    fetchFiles: async (bundleId) => {
+      const response = await fetch(`/api/generate-data/jobs/${state.jobId}/files?bundle_id=${encodeURIComponent(bundleId)}`);
       return readJson(response, "Failed to load files");
     },
-    fetchFileContent: async (path, mode) => {
+    fetchFileContent: async (path, bundleId, options = {}) => {
       const response = await fetch(
-        `/api/generate-data/jobs/${state.jobId}/file-content?mode=${encodeURIComponent(mode)}&path=${encodeURIComponent(path)}`
+        `/api/generate-data/jobs/${state.jobId}/file-content?bundle_id=${encodeURIComponent(bundleId)}&path=${encodeURIComponent(path)}`,
+        {
+          signal: options.signal,
+        }
       );
       return readJson(response, "Failed to load file preview");
     },
@@ -107,7 +115,7 @@ function fileApi() {
 
 function fileExplorerOptions() {
   return {
-    preferredPathSuffixes: ["benchmark/benchmark-manifest.json"],
+    preferredPathSuffixes: ["benchmark-manifest.json"],
     renderSummary: renderGenerateFilesSummary,
   };
 }
@@ -469,19 +477,6 @@ function simulatorInputById(inputId) {
 
 function checkedExtras() {
   return Array.from(document.querySelectorAll(".extra-checkbox:checked")).map((node) => node.value);
-}
-
-function truthContextPattern(outputId) {
-  if (outputId === "global") {
-    return "global";
-  }
-  if (outputId === "group") {
-    return "group:<group_id>";
-  }
-  if (outputId === "cell") {
-    return "cell:<cell_id>";
-  }
-  return String(outputId || "");
 }
 
 function resetScenarioDerivedState() {
@@ -2321,13 +2316,32 @@ function appendPreflightExtrasBand(parent, scenario) {
   heading.textContent = "Standardized Extras";
   const grid = document.createElement("div");
   grid.className = "preflight-extra-grid";
-  appendPreflightExtraSet(grid, "Requested", scenario.requested_extras || []);
-  appendPreflightExtraSet(grid, "Effective", scenario.effective_extras || []);
+  const requested = normalizedExtraList(scenario.requested_extras || []);
+  const required = normalizedExtraList(profileRequiredExtras(scenario.profile || selectedProfileId()));
+  const requiredSet = new Set(required);
+  const selected = requested.filter((item) => !requiredSet.has(item));
+  appendPreflightExtraSet(grid, "Selected", selected);
+  appendPreflightExtraSet(
+    grid,
+    "Added automatically",
+    required,
+    required.length ? "Required by the selected canonical profile." : ""
+  );
   section.append(heading, grid);
   parent.appendChild(section);
 }
 
-function appendPreflightExtraSet(parent, title, items) {
+function normalizedExtraList(items) {
+  return [
+    ...new Set(
+      (Array.isArray(items) ? items : [])
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+    ),
+  ].sort();
+}
+
+function appendPreflightExtraSet(parent, title, items, note = "") {
   const block = document.createElement("div");
   block.className = "preflight-extra-set";
   const head = document.createElement("div");
@@ -2342,7 +2356,7 @@ function appendPreflightExtraSet(parent, title, items) {
   if (!items.length) {
     const empty = document.createElement("span");
     empty.className = "preflight-chip muted";
-    empty.textContent = "none";
+    empty.textContent = "-";
     chips.appendChild(empty);
   } else {
     for (const item of items) {
@@ -2353,6 +2367,12 @@ function appendPreflightExtraSet(parent, title, items) {
     }
   }
   block.append(head, chips);
+  if (note) {
+    const noteNode = document.createElement("small");
+    noteNode.className = "preflight-extra-note";
+    noteNode.textContent = note;
+    block.appendChild(noteNode);
+  }
   parent.appendChild(block);
 }
 
@@ -2397,8 +2417,20 @@ function renderSimulatorList(containerId, entries, kind) {
       continue;
     }
     const node = template.content.firstElementChild.cloneNode(true);
+    node.dataset.simulatorId = simulator.simulator_id;
     node.querySelector(".tool-item-name").textContent = simulator.name;
-    node.querySelector(".tool-item-badge").textContent = kind;
+    const statusBadge = node.querySelector(".tool-item-badge");
+    statusBadge.textContent = kind;
+    const badgeWrap = document.createElement("div");
+    badgeWrap.className = "tool-item-badges";
+    statusBadge.replaceWith(badgeWrap);
+    badgeWrap.appendChild(statusBadge);
+    const countBadge = document.createElement("span");
+    countBadge.className = "selection-count-badge";
+    countBadge.dataset.selectionCountFor = simulator.simulator_id;
+    countBadge.title = "Selected runs for this simulator";
+    countBadge.textContent = "0";
+    badgeWrap.appendChild(countBadge);
     const meta = node.querySelector(".tool-item-meta");
     meta.innerHTML = "";
     const byline = document.createElement("span");
@@ -2408,7 +2440,7 @@ function renderSimulatorList(containerId, entries, kind) {
     appendSimulatorTruthContextChips(meta, entry);
     const infoBtn = document.createElement("button");
     infoBtn.type = "button";
-    infoBtn.className = "secondary";
+    infoBtn.className = "neutral";
     infoBtn.textContent = "Simulator Info";
     infoBtn.addEventListener("click", () => showSimulatorInfo(simulator));
     actions.appendChild(infoBtn);
@@ -2430,7 +2462,7 @@ function renderSimulatorList(containerId, entries, kind) {
     if (issues.length) {
       const detailsBtn = document.createElement("button");
       detailsBtn.type = "button";
-      detailsBtn.className = "secondary";
+      detailsBtn.className = kind === "blocked" ? "danger" : "warning";
       detailsBtn.textContent = kind === "blocked" ? "Why Blocked" : "Why Warned";
       detailsBtn.addEventListener("click", () =>
         showInfoTooltip({
@@ -2443,6 +2475,7 @@ function renderSimulatorList(containerId, entries, kind) {
     }
     host.appendChild(node);
   }
+  refreshSimulatorCatalogRunCounts();
 }
 
 function renderSimulatorEligibility(report) {
@@ -2457,6 +2490,38 @@ function renderSimulatorEligibility(report) {
   renderSimulatorList("simulators-eligible-list", eligible, "eligible");
   renderSimulatorList("simulators-warning-list", warning, "warning");
   renderSimulatorList("simulators-blocked-list", blocked, "blocked");
+  refreshSimulatorCatalogRunCounts();
+}
+
+function selectedSimulatorRunCounts() {
+  const counts = new Map();
+  document.querySelectorAll(".run-card .simulator-id").forEach((input) => {
+    const simulatorId = String(input?.value || "").trim();
+    if (!simulatorId) {
+      return;
+    }
+    counts.set(simulatorId, (counts.get(simulatorId) || 0) + 1);
+  });
+  return counts;
+}
+
+function refreshSimulatorCatalogRunCounts() {
+  const counts = selectedSimulatorRunCounts();
+  document.querySelectorAll(".tool-item[data-simulator-id]").forEach((card) => {
+    const simulatorId = String(card.dataset.simulatorId || "").trim();
+    const count = counts.get(simulatorId) || 0;
+    card.classList.toggle("has-selected-runs", count > 0);
+    const badge = card.querySelector(".selection-count-badge");
+    if (!badge) {
+      return;
+    }
+    badge.textContent = String(count);
+    badge.classList.toggle("is-active", count > 0);
+    badge.setAttribute(
+      "aria-label",
+      `${count} selected ${count === 1 ? "run" : "runs"} for ${simulatorId}`
+    );
+  });
 }
 
 function availableSimulatorIds() {
@@ -2523,11 +2588,13 @@ function addRunCard(initial = {}) {
     updateRunsEmptyState();
     refreshRunCardsValidation();
     syncButtons();
+    refreshSimulatorCatalogRunCounts();
   });
   $("runs-container").appendChild(node);
   updateRunsEmptyState();
   refreshRunCardsValidation();
   syncButtons();
+  refreshSimulatorCatalogRunCounts();
 }
 
 function updateRunsEmptyState() {
@@ -2834,7 +2901,7 @@ async function refreshFilesIfNeeded(job) {
   if (!hasExecutionArtifacts(job)) {
     return;
   }
-  const key = `${job.job_id}:${$("bundle-mode").value}:${job.status}:${job.benchmark_root}`;
+  const key = `${job.job_id}:${state.filesMode}:${job.status}:${job.benchmark_root}`;
   if (state.loadedFilesKey === key) {
     return;
   }
@@ -2860,6 +2927,7 @@ function syncButtons() {
   setStepState(1, preflightReady ? "ready" : busy ? "running" : "draft");
   setStepState(2, planReady ? "ready" : preflightReady ? "ready" : "blocked");
   setStepState(3, executed ? "ready" : planReady ? "ready" : "blocked");
+  refreshSimulatorCatalogRunCounts();
 }
 
 async function pollJob(jobId) {
@@ -2970,6 +3038,7 @@ function initEvents() {
       for (const simulatorId of availableSimulatorIds()) {
         addRunCard({ simulator_id: simulatorId });
       }
+      refreshSimulatorCatalogRunCounts();
     } catch (err) {
       pushToast({ title: "Run configuration error", message: err.message, kind: "error", ttlMs: 8000 });
     }
@@ -2979,6 +3048,7 @@ function initEvents() {
     updateRunsEmptyState();
     refreshRunCardsValidation();
     syncButtons();
+    refreshSimulatorCatalogRunCounts();
   });
   $("open-simulator-request-modal-btn").addEventListener("click", () => openModal("simulator-request-modal"));
   $("open-simulator-issue-modal-btn").addEventListener("click", () => openModal("simulator-issue-modal"));
@@ -3045,20 +3115,31 @@ function initEvents() {
       closeParamsModal();
     }
   });
-  $("refresh-files-btn").addEventListener("click", () => fetchFiles(state, fileApi(), {}, fileExplorerOptions()).catch((err) => {
-    pushToast({ title: "Files error", message: err.message, kind: "error" });
-  }));
-  $("bundle-mode").addEventListener("change", () => {
+  $("refresh-files-btn").addEventListener("click", () => {
     state.loadedFilesKey = null;
-    if (state.currentJob) {
-      refreshFilesIfNeeded(state.currentJob).catch((err) => pushToast({ title: "Files error", message: err.message, kind: "error" }));
-    }
+    state.filePreviewLoadedKey = null;
+    state.filePreviewPendingKey = null;
+    fetchFiles(state, fileApi(), {}, fileExplorerOptions()).catch((err) => {
+      pushToast({ title: "Files error", message: err.message, kind: "error" });
+    });
   });
   $("download-bundle-btn").addEventListener("click", () => {
     if (!state.jobId) {
       return;
     }
-    window.location.href = `/api/generate-data/jobs/${state.jobId}/bundle?mode=${encodeURIComponent($("bundle-mode").value)}`;
+    openBundleDownloadModal({
+      title: "Download Generate-data ZIP",
+      metadataUrl: `/api/generate-data/jobs/${state.jobId}/bundles`,
+      downloadUrlForBundle: (bundleId, bundle = {}) => {
+        const params = new URLSearchParams({ bundle_id: bundleId });
+        if (bundle.dataset_id) {
+          params.set("dataset_id", bundle.dataset_id);
+        }
+        return `/api/generate-data/jobs/${state.jobId}/bundle?${params.toString()}`;
+      },
+    }).catch((err) => {
+      pushToast({ title: "Bundle options error", message: err.message, kind: "error" });
+    });
   });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
@@ -3068,6 +3149,7 @@ function initEvents() {
     closeInputModal();
     closeModal("simulator-request-modal");
     closeModal("simulator-issue-modal");
+    closeBundleDownloadModal();
   });
 }
 
@@ -3075,6 +3157,7 @@ async function main() {
   initSteps(3);
   initInfoPopover();
   initReproducibility();
+  initBundleDownloadModal();
   initEvents();
   state.bootstrap = await fetchBootstrapData();
   state.simulatorsById = new Map((state.bootstrap.simulators || []).map((item) => [item.simulator_id, item]));

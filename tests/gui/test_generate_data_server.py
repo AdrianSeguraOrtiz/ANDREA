@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import io
 import json
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -94,6 +96,44 @@ def _add_eta_contract(plan_payload: dict[str, object], *, max_parallel_tasks: in
     "GUI test dependencies are not installed",
 )
 class GenerateDataV2GuiServerTests(unittest.TestCase):
+    def test_static_gui_uses_bundle_download_modal(self) -> None:
+        index = (Path(gui_server.STATIC_DIR) / "index.html").read_text(encoding="utf-8")
+        style = (Path(gui_server.STATIC_DIR) / "styles.css").read_text(encoding="utf-8")
+        repro_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "repro" / "styles.css"
+        ).read_text(encoding="utf-8")
+        params_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "params" / "styles.css"
+        ).read_text(encoding="utf-8")
+        toast_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "ui" / "toasts.css"
+        ).read_text(encoding="utf-8")
+        popover_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "ui" / "popovers.css"
+        ).read_text(encoding="utf-8")
+        script = (Path(gui_server.STATIC_DIR) / "app" / "main.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("bundle-modal", index)
+        self.assertIn("Explorer view: full archive", index)
+        self.assertIn("/static-common/app/params/styles.css", index)
+        self.assertIn("/static-common/app/repro/styles.css", index)
+        self.assertIn("/static-common/app/ui/popovers.css", index)
+        self.assertIn("/static-common/app/ui/toasts.css", index)
+        self.assertIn(".repro-card {", repro_style)
+        self.assertNotIn(".repro-card {", style)
+        self.assertIn(".param-field {", params_style)
+        self.assertNotIn(".param-field {", style)
+        self.assertIn(".toast {", toast_style)
+        self.assertIn(".info-popover {", popover_style)
+        self.assertNotIn(".toast {", style)
+        self.assertNotIn(".info-popover {", style)
+        self.assertIn("openBundleDownloadModal", script)
+        self.assertIn("/bundles", script)
+        self.assertIn("bundle_id=", script)
+        self.assertIn("dataset_id", script)
+
     def test_bootstrap_exposes_profile_extras_and_simulation_inputs(self) -> None:
         client = TestClient(gui_server.create_app())
         payload = client.get("/api/generate-data/bootstrap").json()
@@ -570,7 +610,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 )
 
                 files_response = client.get(
-                    f"/api/generate-data/jobs/{job_id}/files?mode=light"
+                    f"/api/generate-data/jobs/{job_id}/files?bundle_id=report"
                 )
                 self.assertEqual(
                     files_response.status_code, 200, msg=files_response.text
@@ -578,27 +618,36 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 entries = files_response.json()["entries"]
                 self.assertTrue(
                     any(
-                        item["path"] == "benchmark/benchmark-manifest.json"
+                        item["path"] == "benchmark-manifest.json"
                         for item in entries
                     )
                 )
                 self.assertTrue(
                     any(
-                        item["path"] == "benchmark/input/scenario-request.json"
+                        item["path"] == "input/scenario-request.json"
                         for item in entries
                     )
                 )
+                dataset_id = "gui_generate_test__dyngen_a__r01"
+                analysis_response = client.get(
+                    f"/api/generate-data/jobs/{job_id}/files",
+                    params={"bundle_id": "analysis", "dataset_id": dataset_id},
+                )
+                self.assertEqual(
+                    analysis_response.status_code, 200, msg=analysis_response.text
+                )
+                analysis_entries = analysis_response.json()["entries"]
                 truth_network_entry = next(
                     item
-                    for item in entries
-                    if item["path"].endswith("/truth/networks.csv")
+                    for item in analysis_entries
+                    if item["path"] == "truth/networks.csv"
                 )
 
                 content_response = client.get(
                     f"/api/generate-data/jobs/{job_id}/file-content",
                     params={
-                        "mode": "light",
-                        "path": "benchmark/benchmark-manifest.json",
+                        "bundle_id": "report",
+                        "path": "benchmark-manifest.json",
                     },
                 )
                 self.assertEqual(
@@ -610,7 +659,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 truth_response = client.get(
                     f"/api/generate-data/jobs/{job_id}/file-content",
                     params={
-                        "mode": "light",
+                        "bundle_id": "analysis",
+                        "dataset_id": dataset_id,
                         "path": truth_network_entry["path"],
                     },
                 )
@@ -625,9 +675,62 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 )
 
                 bundle_response = client.get(
-                    f"/api/generate-data/jobs/{job_id}/bundle?mode=light"
+                    f"/api/generate-data/jobs/{job_id}/bundle",
+                    params={"bundle_id": "analysis", "dataset_id": dataset_id},
                 )
                 self.assertEqual(bundle_response.status_code, 200)
+                with zipfile.ZipFile(io.BytesIO(bundle_response.content)) as zf:
+                    self.assertEqual(
+                        sorted(zf.namelist()),
+                        [
+                            "ground-truth-manifest.json",
+                            "truth/gene_universe.txt",
+                            "truth/networks.csv",
+                        ],
+                    )
+                bundles_response = client.get(
+                    f"/api/generate-data/jobs/{job_id}/bundles"
+                )
+                self.assertEqual(
+                    bundles_response.status_code, 200, msg=bundles_response.text
+                )
+                bundles_payload = bundles_response.json()
+                self.assertTrue(bundles_payload["output_ready"])
+                bundles_by_id = {
+                    item["id"]: item for item in bundles_payload["bundles"]
+                }
+                self.assertEqual(
+                    sorted(bundles_by_id), ["analysis", "full", "report"]
+                )
+                analysis_bundles = [
+                    item
+                    for item in bundles_payload["bundles"]
+                    if item["id"] == "analysis"
+                ]
+                self.assertEqual(len(analysis_bundles), 1)
+                analysis_bundle = analysis_bundles[0]
+                self.assertTrue(analysis_bundle["available"])
+                self.assertEqual(analysis_bundle["dataset_id"], dataset_id)
+                self.assertEqual(
+                    analysis_bundle["display_id"],
+                    f"analysis · {dataset_id}",
+                )
+                self.assertEqual(
+                    [item["path"] for item in analysis_bundle["files"]],
+                    [
+                        "ground-truth-manifest.json",
+                        "truth/gene_universe.txt",
+                        "truth/networks.csv",
+                    ],
+                )
+                self.assertIn(
+                    "evaluate-inference",
+                    analysis_bundle["intended_downstream_commands"],
+                )
+                invalid_bundle_response = client.get(
+                    f"/api/generate-data/jobs/{job_id}/bundle?bundle_id=not_a_bundle"
+                )
+                self.assertEqual(invalid_bundle_response.status_code, 400)
 
 
 if __name__ == "__main__":

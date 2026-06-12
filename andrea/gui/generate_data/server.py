@@ -20,6 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from andrea.core.commands.generate_data import (
+    bundles as generate_data_bundles,
     plan_generate_data_request,
     preflight_generate_data_scenario,
     run_generate_data,
@@ -45,7 +46,9 @@ from andrea.gui.common.server_files import (
     MAX_TABLE_PREVIEW_ROWS,
     MAX_TEXT_PREVIEW_BYTES,
     build_bundle_entries,
+    build_bundle_metadata,
     build_zip_bundle,
+    bundle_resolution_payload,
     default_viewer_for_path,
     is_probably_text,
     preview_table,
@@ -832,85 +835,106 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     }
 
 
-def _bundle_sources(
+def _resolve_bundle(
     *,
-    request_dir: Path,
     benchmark_root: Optional[Path],
-    mode: str,
-    include_inputs: bool = True,
-) -> list[tuple[str, Path]]:
-    if mode not in {"light", "full"}:
-        raise ValueError("mode must be one of: light, full")
-    sources: list[tuple[str, Path]] = []
+    bundle_id: str,
+    dataset_id: str | None = None,
+) -> Any:
     if benchmark_root is None or not benchmark_root.exists():
-        request_candidates = [
-            request_dir / "scenario-request.json",
-            request_dir / "simulator-runs.json",
-            request_dir / "preflight-report.json",
-            request_dir / "simulation-plan.json",
-        ]
-        for path in request_candidates:
-            if path.exists() and path.is_file():
-                sources.append((f"input/{path.name}", path))
-        if include_inputs and mode == "full":
-            inputs_dir = request_dir / "inputs"
-            if inputs_dir.exists():
-                for path in sorted(inputs_dir.rglob("*")):
-                    if path.is_file():
-                        sources.append(
-                            (f"input/{path.relative_to(request_dir).as_posix()}", path)
-                        )
-        return sorted(dict(sources).items())
-    if mode == "full":
-        for path in sorted(benchmark_root.rglob("*")):
-            if path.is_file():
-                sources.append(
-                    (f"benchmark/{path.relative_to(benchmark_root).as_posix()}", path)
+        raise ValueError("Benchmark output is not ready")
+    return generate_data_bundles.resolve_bundle(
+        bundle_id=bundle_id,
+        benchmark_root=benchmark_root,
+        dataset_id=dataset_id,
+    )
+
+
+def _unavailable_bundle_payload(spec: Any, *, message: str) -> dict[str, Any]:
+    return {
+        "id": str(spec.id),
+        "label": str(spec.label),
+        "purpose": str(spec.purpose),
+        "intended_downstream_commands": list(spec.intended_downstream_commands),
+        "cli_note": str(spec.cli_note),
+        "contents_summary": list(spec.contents_summary),
+        "available": False,
+        "output_ready": True,
+        "missing_required": [message],
+        "skipped_optional": [],
+        "file_count": 0,
+        "total_size_bytes": 0,
+        "files": [],
+    }
+
+
+def _bundle_metadata_for_generate_data(
+    *, benchmark_root: Optional[Path]
+) -> list[dict[str, Any]]:
+    if benchmark_root is None or not benchmark_root.exists():
+        return build_bundle_metadata(
+            specs=generate_data_bundles.bundle_specs(),
+            resolver=None,
+            unavailable_reason="Benchmark output is not ready",
+        )
+
+    bundles: list[dict[str, Any]] = []
+    for spec in generate_data_bundles.bundle_specs():
+        if spec.id != "analysis":
+            try:
+                resolution = generate_data_bundles.resolve_bundle(
+                    bundle_id=spec.id,
+                    benchmark_root=benchmark_root,
                 )
-    else:
-        candidates = [
-            benchmark_root / "benchmark-manifest.json",
-            benchmark_root / "preflight-report.json",
-            benchmark_root / "simulation-plan.json",
-            benchmark_root / "input" / "scenario-request.json",
-            benchmark_root / "input" / "simulator-runs.json",
-        ]
-        input_root = benchmark_root / "input" / "inputs"
-        if include_inputs and input_root.exists():
-            candidates.extend(
-                path for path in sorted(input_root.rglob("*")) if path.is_file()
+                bundles.append(bundle_resolution_payload(resolution))
+            except Exception as exc:  # noqa: BLE001
+                bundles.append(_unavailable_bundle_payload(spec, message=str(exc)))
+            continue
+
+        dataset_ids = generate_data_bundles.analysis_dataset_ids(
+            benchmark_root=benchmark_root
+        )
+        if not dataset_ids:
+            payload = _unavailable_bundle_payload(spec, message="datasets/*")
+            payload["display_id"] = "analysis"
+            bundles.append(payload)
+            continue
+
+        for dataset_id in dataset_ids:
+            resolution = generate_data_bundles.resolve_bundle(
+                bundle_id="analysis",
+                benchmark_root=benchmark_root,
+                dataset_id=dataset_id,
             )
-        for dataset_dir in sorted((benchmark_root / "datasets").glob("*")):
-            if not dataset_dir.is_dir():
-                continue
-            candidates.extend(
-                [
-                    dataset_dir / "dataset-manifest.json",
-                    dataset_dir / "ground-truth-manifest.json",
-                    dataset_dir / "expression.tsv",
-                    dataset_dir / "truth" / "networks.csv",
-                    dataset_dir / "truth" / "gene_universe.txt",
-                    dataset_dir / "provenance" / "simulator-output-manifest.json",
-                    dataset_dir / "provenance" / "simulator-run.json",
-                    dataset_dir / "provenance" / "progress.json",
-                ]
+            payload = bundle_resolution_payload(resolution)
+            payload.update(
+                {
+                    "dataset_id": dataset_id,
+                    "variant_id": dataset_id,
+                    "display_id": f"analysis · {dataset_id}",
+                    "label": f"Analysis Bundle - {dataset_id}",
+                    "purpose": (
+                        "Minimal ground-truth handoff for this dataset. Upload this ZIP "
+                        "directly as the generate-data input in evaluate-inference."
+                    ),
+                    "contents_summary": [
+                        "ground-truth-manifest.json",
+                        "truth/networks.csv",
+                        "truth/gene_universe.txt",
+                    ],
+                }
             )
-            for folder in [
-                dataset_dir / "extras",
-            ]:
-                if folder.exists():
-                    candidates.extend(
-                        path for path in sorted(folder.rglob("*")) if path.is_file()
-                    )
-        for path in candidates:
-            if path.exists() and path.is_file():
-                sources.append(
-                    (f"benchmark/{path.relative_to(benchmark_root).as_posix()}", path)
-                )
-    unique: dict[str, Path] = {}
-    for virtual_path, source_path in sources:
-        unique[virtual_path] = source_path
-    return sorted(unique.items(), key=lambda item: item[0])
+            bundles.append(payload)
+    return bundles
+
+
+def _require_bundle_available(resolution: Any) -> None:
+    if resolution.available and resolution.sources:
+        return
+    missing = ", ".join(resolution.missing_required) or "no files"
+    raise ValueError(
+        f"Bundle '{resolution.spec.id}' is not available; missing required files: {missing}"
+    )
 
 
 def _viewer_for_virtual_path(path: str) -> str:
@@ -922,64 +946,249 @@ def _viewer_for_virtual_path(path: str) -> str:
 def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
     normalized = path.lower()
     basename = Path(normalized).name
+    extras_guides: dict[str, dict[str, Any]] = {
+        "groups.tsv": {
+            "title": "Groups",
+            "summary": (
+                "Cell-to-group assignment table. The first column contains expression "
+                "cell identifiers and the cluster column stores the exported group label."
+            ),
+            "badges": ["standardized extra", "group context"],
+            "tips": [
+                "Referenced by dataset-manifest.json when group-aware tools are run.",
+                "Required by profiles or methods that derive one network per group.",
+            ],
+        },
+        "cell_phenotypes.tsv": {
+            "title": "Cell phenotypes",
+            "summary": (
+                "Ordered cell-to-phenotype assignment table for methods that model "
+                "transitions between cell states."
+            ),
+            "badges": ["standardized extra", "ordered states"],
+            "tips": [
+                "Each expression cell appears once with a phenotype label and integer order.",
+                "This is stricter than groups.tsv because the order column carries state progression.",
+            ],
+        },
+        "cluster_identities.tsv": {
+            "title": "Cluster identities",
+            "summary": (
+                "Cluster annotation table mapping group identifiers to readable labels "
+                "and, when available, an ordering column."
+            ),
+            "badges": ["standardized extra", "group annotation"],
+            "tips": [
+                "Cluster IDs should match labels from groups.tsv.",
+                "Used by tools that need named or ordered cluster annotations.",
+            ],
+        },
+        "enrichment_background.txt": {
+            "title": "Enrichment background",
+            "summary": (
+                "Gene universe for enrichment-style analyses, stored as one gene "
+                "identifier per line."
+            ),
+            "badges": ["standardized extra", "gene list"],
+            "tips": [
+                "Tools that perform enrichment can use this instead of their internal background.",
+                "When absent, compatible tools may fall back to the expression gene universe.",
+            ],
+        },
+        "lineage_tree.tsv": {
+            "title": "Lineage tree",
+            "summary": (
+                "Group-level lineage table with child, parent, gain_rate and loss_rate "
+                "columns."
+            ),
+            "badges": ["standardized extra", "trajectory"],
+            "tips": [
+                "Root groups use parent __root__ with zero gain and loss rates.",
+                "Used by methods that model regulatory changes across a group lineage.",
+            ],
+        },
+        "prior_grn.tsv": {
+            "title": "Global prior GRN",
+            "summary": (
+                "Prior regulatory network with source regulator, target gene and score "
+                "columns."
+            ),
+            "badges": ["standardized extra", "prior network"],
+            "tips": [
+                "Scores can encode confidence, sign or magnitude depending on the source.",
+                "Used by prior-informed inference tools; it is not the benchmark truth network.",
+            ],
+        },
+        "prior_grn_by_group.tsv": {
+            "title": "Group-specific prior GRN",
+            "summary": (
+                "Group-resolved prior regulatory edges with group, source, target and "
+                "score columns."
+            ),
+            "badges": ["standardized extra", "group prior"],
+            "tips": [
+                "Group labels should match groups.tsv.",
+                "Used by tools that accept a different prior regulatory network per group.",
+            ],
+        },
+        "pseudotime.tsv": {
+            "title": "Pseudotime",
+            "summary": (
+                "Cell-level pseudotime table mapping each expression cell to a numeric "
+                "trajectory value."
+            ),
+            "badges": ["standardized extra", "trajectory"],
+            "tips": [
+                "Each expression cell should appear once.",
+                "Used by trajectory-aware tools or filters that depend on cell ordering.",
+            ],
+        },
+        "tf_list.txt": {
+            "title": "TF list",
+            "summary": "Candidate regulator list stored as one TF identifier per line.",
+            "badges": ["standardized extra", "gene list"],
+            "tips": [
+                "Entries should be present in expression.tsv gene identifiers.",
+                "Used to restrict inference to regulator candidates.",
+            ],
+        },
+    }
     if basename == "benchmark-manifest.json":
         return {
             "title": "Benchmark manifest",
-            "summary": "Top-level index of generated datasets, simulator runs, seeds and benchmark artifacts.",
+            "summary": (
+                "Top-level index of generated datasets, simulator runs, seeds and "
+                "benchmark artifacts."
+            ),
+            "badges": ["benchmark index", "provenance"],
             "tips": [
-                "Use this file to audit which simulator configuration produced each dataset."
+                "Use this file to audit which simulator configuration produced each dataset.",
+                "Full archives keep this file at the root so every dataset can be traced back to the request.",
+            ],
+        }
+    if basename == "scenario-request.json":
+        return {
+            "title": "Scenario request",
+            "summary": (
+                "Frozen generate-data request created by the GUI before preflight and "
+                "planning."
+            ),
+            "badges": ["input contract", "scenario"],
+            "tips": [
+                "Contains the canonical profile, benchmark ID, requested extras and scenario-level settings.",
+                "Use this with simulator-runs.json to reproduce planning from the CLI.",
+            ],
+        }
+    if basename == "simulator-runs.json":
+        return {
+            "title": "Simulator runs",
+            "summary": (
+                "Frozen list of selected simulator configurations, run IDs, replicates "
+                "and parameter overrides."
+            ),
+            "badges": ["input contract", "simulator selection"],
+            "tips": [
+                "This is the generate-data counterpart of selected tool parameters in infer-network.",
+                "Each entry becomes one or more planned simulator tasks.",
+            ],
+        }
+    if basename == "preflight-report.json":
+        return {
+            "title": "Preflight report",
+            "summary": (
+                "Simulator compatibility report generated before building the execution plan."
+            ),
+            "badges": ["preflight", "simulator eligibility"],
+            "tips": [
+                "Shows eligible, warning and blocked simulators for the requested profile and extras.",
+                "Use it to understand why a simulator did or did not enter the plan.",
+            ],
+        }
+    if basename == "simulation-plan.json":
+        return {
+            "title": "Simulation plan",
+            "summary": (
+                "Frozen resource plan used to schedule simulator runs and output assembly."
+            ),
+            "badges": ["planning", "resource waves"],
+            "tips": [
+                "Contains planned simulator tasks, resources and output locations.",
+                "This file is for reproducibility and debugging, not an infer-network input.",
             ],
         }
     if basename == "dataset-manifest.json":
         return {
             "title": "Dataset manifest",
-            "summary": "Input contract consumed directly by infer-network.",
+            "summary": (
+                "Frozen input contract for one generated dataset. It points to "
+                "expression.tsv and any standardized extras available for inference."
+            ),
+            "badges": ["infer-network handoff", "dataset contract"],
             "tips": [
-                "Pass this file to infer-network preflight/plan/run for one generated dataset."
+                "Pass this file to infer-network preflight, plan or run for this dataset.",
+                "The manifest references files; it does not duplicate expression or extra-input contents.",
             ],
         }
     if basename == "ground-truth-manifest.json":
         return {
             "title": "Ground-truth manifest",
-            "summary": "Index of truth artifacts generated for this dataset.",
+            "summary": (
+                "Strict evaluation handoff for one generated dataset. It indexes the "
+                "truth network table and the gene universe used by evaluation."
+            ),
+            "badges": ["evaluate-inference handoff", "truth index"],
             "tips": [
-                "Evaluation flows should use this manifest rather than guessing truth file paths."
+                "Evaluation flows should use this manifest rather than guessing truth file paths.",
+                "The analysis bundle contains this file at the ZIP root for direct GUI upload.",
             ],
         }
     if basename == "expression.tsv":
         return {
             "title": "Expression matrix",
-            "summary": "Normalized simulated expression table with genes in rows.",
+            "summary": (
+                "Normalized simulated expression matrix with genes in rows and cells or "
+                "samples in columns."
+            ),
+            "badges": ["required input", "TSV matrix"],
             "tips": [
-                "This is the expression input referenced by dataset-manifest.json."
+                "This is the expression input referenced by dataset-manifest.json.",
+                "Column names are the cell/sample identifiers used by extras such as groups.tsv.",
             ],
         }
-    if basename in {
-        "groups.tsv",
-        "lineage_tree.tsv",
-        "tf_list.txt",
-        "prior_grn_by_group.tsv",
-    }:
-        return {
-            "title": f"Extra input: {basename}",
-            "summary": "Additional dataset layer requested for compatible inference tools.",
-            "tips": [
-                "This file is referenced from dataset-manifest.json when present."
-            ],
-        }
+    if basename in extras_guides:
+        return extras_guides[basename]
     if "truth/" in normalized and basename == "networks.csv":
         return {
             "title": "Truth networks",
-            "summary": "Unified public ground-truth edge list used by evaluate-inference.",
+            "summary": (
+                "Unified public ground-truth edge list used by evaluate-inference. "
+                "All truth granularities are represented in this single table."
+            ),
+            "badges": ["ground truth", "network table"],
             "tips": [
                 "The context column distinguishes global, group:<group_id> and cell:<cell_id> truth networks.",
                 "Cell-specific profiles store one cell-level network per cell context in this single file.",
+                "Scores are positive magnitudes and direction is stored separately in sign.",
+            ],
+        }
+    if "truth/" in normalized and basename == "gene_universe.txt":
+        return {
+            "title": "Truth gene universe",
+            "summary": (
+                "Gene identifiers covered by the exported ground-truth networks, one "
+                "identifier per line."
+            ),
+            "badges": ["ground truth", "gene list"],
+            "tips": [
+                "Evaluation uses this universe to keep inferred and truth networks comparable.",
+                "The file is referenced by ground-truth-manifest.json.",
             ],
         }
     if "truth/" in normalized:
         return {
             "title": "Truth artifact",
             "summary": "Public simulated ground truth for benchmark evaluation.",
+            "badges": ["ground truth"],
             "tips": [
                 "Use the normalized truth artifacts through ground-truth-manifest.json for evaluation."
             ],
@@ -987,8 +1196,61 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
     if basename == "simulator-output-manifest.json":
         return {
             "title": "Simulator output manifest",
-            "summary": "Adapter-level normalized output contract produced before final package assembly.",
+            "summary": (
+                "Adapter-level output contract produced by the simulator wrapper before "
+                "ANDREA assembles the public dataset bundle."
+            ),
+            "badges": ["provenance", "debug"],
             "tips": ["This is provenance/debug metadata, not an infer-network input."],
+        }
+    if basename == "simulator-run.json":
+        return {
+            "title": "Simulator run metadata",
+            "summary": (
+                "Per-dataset simulator invocation record with the resolved simulator "
+                "configuration and wrapper metadata."
+            ),
+            "badges": ["provenance", "debug"],
+            "tips": [
+                "Use this to trace a generated dataset back to a concrete simulator run.",
+                "Public handoff should use dataset-manifest.json and ground-truth-manifest.json instead.",
+            ],
+        }
+    if basename == "progress.json":
+        return {
+            "title": "Wrapper progress",
+            "summary": "Progress/status file emitted by a simulator wrapper while running.",
+            "badges": ["runtime", "debug"],
+            "tips": [
+                "Useful for diagnosing failed or interrupted simulator executions.",
+                "It is not a public analysis input.",
+            ],
+        }
+    if basename in {
+        "observed_counts.tsv",
+        "true_counts.tsv",
+        "cell_meta.tsv",
+        "velocity.tsv",
+        "rna_velocity.tsv",
+        "atac_counts.tsv",
+        "milestone_network.tsv",
+        "milestone_percentages.tsv",
+        "progressions.tsv",
+        "regulatory_network_sc.tsv",
+        "cell_specific_grn.rds",
+    }:
+        return {
+            "title": f"Native simulator output: {basename}",
+            "summary": (
+                "Simulator-native artifact kept for inspection and provenance. ANDREA "
+                "derives public files such as expression.tsv, truth/networks.csv and "
+                "standardized extras from these outputs when applicable."
+            ),
+            "badges": ["native output", "provenance"],
+            "tips": [
+                "Use public standardized files for downstream ANDREA commands.",
+                "Use native outputs when auditing how the wrapper translated simulator-specific data.",
+            ],
         }
     return None
 
@@ -1062,28 +1324,55 @@ def create_app() -> FastAPI:
             }
         )
 
-    @app.get("/api/generate-data/jobs/{job_id}/files")
-    async def api_job_files(job_id: str, mode: str = "light") -> JSONResponse:
+    @app.get("/api/generate-data/jobs/{job_id}/bundles")
+    async def api_job_bundles(job_id: str) -> JSONResponse:
         with STATE.lock:
             job = STATE.jobs.get(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
-            request_dir = Path(job.request_dir)
             benchmark_root = Path(job.benchmark_root) if job.benchmark_root else None
             status = job.status
-        try:
-            sources = _bundle_sources(
-                request_dir=request_dir,
-                benchmark_root=benchmark_root,
-                mode=mode,
-                include_inputs=False,
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        output_ready = bool(benchmark_root and benchmark_root.exists())
         return JSONResponse(
             {
                 "status": status,
-                "mode": mode,
+                "output_ready": output_ready,
+                "bundles": _bundle_metadata_for_generate_data(
+                    benchmark_root=benchmark_root
+                ),
+            }
+        )
+
+    @app.get("/api/generate-data/jobs/{job_id}/files")
+    async def api_job_files(
+        job_id: str,
+        bundle_id: str = "report",
+        dataset_id: Optional[str] = None,
+    ) -> JSONResponse:
+        with STATE.lock:
+            job = STATE.jobs.get(job_id)
+            if job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            benchmark_root = Path(job.benchmark_root) if job.benchmark_root else None
+            status = job.status
+        try:
+            resolution = _resolve_bundle(
+                benchmark_root=benchmark_root,
+                bundle_id=bundle_id,
+                dataset_id=dataset_id,
+            )
+            _require_bundle_available(resolution)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        sources = resolution.source_tuples
+        return JSONResponse(
+            {
+                "status": status,
+                "bundle_id": resolution.spec.id,
+                "dataset_id": dataset_id,
+                "mode": resolution.spec.id,
+                "missing_required": list(resolution.missing_required),
+                "skipped_optional": list(resolution.skipped_optional),
                 "entries": build_bundle_entries(
                     sources, viewer_for_path=_viewer_for_virtual_path
                 ),
@@ -1094,7 +1383,8 @@ def create_app() -> FastAPI:
     async def api_job_file_content(
         job_id: str,
         path: str,
-        mode: str = "light",
+        bundle_id: str = "report",
+        dataset_id: Optional[str] = None,
         max_rows: int = MAX_TABLE_PREVIEW_ROWS,
     ) -> JSONResponse:
         requested_path = str(path or "").strip().lstrip("/")
@@ -1104,14 +1394,17 @@ def create_app() -> FastAPI:
             job = STATE.jobs.get(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
-            request_dir = Path(job.request_dir)
             benchmark_root = Path(job.benchmark_root) if job.benchmark_root else None
         try:
-            sources = _bundle_sources(
-                request_dir=request_dir, benchmark_root=benchmark_root, mode=mode
+            resolution = _resolve_bundle(
+                benchmark_root=benchmark_root,
+                bundle_id=bundle_id,
+                dataset_id=dataset_id,
             )
+            _require_bundle_available(resolution)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        sources = resolution.source_tuples
         source = resolve_virtual_source(sources=sources, virtual_path=requested_path)
         if source is None or not source.exists() or not source.is_file():
             raise HTTPException(
@@ -1192,7 +1485,11 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/api/generate-data/jobs/{job_id}/bundle")
-    async def api_job_bundle(job_id: str, mode: str = "light") -> FileResponse:
+    async def api_job_bundle(
+        job_id: str,
+        bundle_id: str = "full",
+        dataset_id: Optional[str] = None,
+    ) -> FileResponse:
         with STATE.lock:
             job = STATE.jobs.get(job_id)
             if job is None:
@@ -1200,17 +1497,25 @@ def create_app() -> FastAPI:
             request_dir = Path(job.request_dir)
             benchmark_root = Path(job.benchmark_root) if job.benchmark_root else None
         try:
-            sources = _bundle_sources(
-                request_dir=request_dir, benchmark_root=benchmark_root, mode=mode
+            resolution = _resolve_bundle(
+                benchmark_root=benchmark_root,
+                bundle_id=bundle_id,
+                dataset_id=dataset_id,
             )
+            _require_bundle_available(resolution)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        zip_path = request_dir / f"{job_id}_bundle_{mode}.zip"
-        build_zip_bundle(zip_path=zip_path, sources=sources)
+        suffix = (
+            f"{resolution.spec.id}_{dataset_id}"
+            if resolution.spec.id == "analysis" and dataset_id
+            else resolution.spec.id
+        )
+        zip_path = request_dir / f"{job_id}_bundle_{suffix}.zip"
+        build_zip_bundle(zip_path=zip_path, sources=resolution.source_tuples)
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"andrea_generate_{job_id}_{mode}.zip",
+            filename=f"andrea_generate_{job_id}_{suffix}.zip",
         )
 
     @app.post("/api/generate-data/preflight")

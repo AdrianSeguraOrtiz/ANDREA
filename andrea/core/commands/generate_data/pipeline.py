@@ -21,6 +21,7 @@ from rich.progress import (
 )
 
 from andrea.core.shared.progress import progress_snapshot as _progress_snapshot
+from andrea.core.shared.runtime_profile import RuntimeProfile
 
 from .backends.registry import run_simulator_backend
 from .catalog import _load_simulator_catalog
@@ -865,10 +866,16 @@ def run_generate_data(
     show_progress: bool = True,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> Path:
+    runtime_profile = RuntimeProfile()
     if progress_poll_seconds <= 0:
         raise ValueError("progress_poll_seconds must be > 0")
-    resolved = validate_simulation_plan(plan_path)
-    schemas, _catalog = _load_simulator_catalog()
+    with runtime_profile.stage(
+        "validating_plan",
+        label="Validating plan",
+        detail="Reading simulation plan and simulator catalog.",
+    ):
+        resolved = validate_simulation_plan(plan_path)
+        schemas, _catalog = _load_simulator_catalog()
     run_id = (
         f"{resolved.request_id}_"
         f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
@@ -897,89 +904,99 @@ def run_generate_data(
         resolved=resolved,
         max_parallel_tasks=max_parallel_tasks,
     )
-    with tempfile.TemporaryDirectory(prefix="andrea_generate_data_") as tmp:
-        staging_root = Path(tmp) / "staging"
-        staging_root.mkdir(parents=True, exist_ok=True)
-        with _GenerateProgress(
-            tasks=resolved.tasks,
-            max_parallel_tasks=max_parallel_tasks,
-            enabled=show_progress,
-        ) as progress_reporter:
-            if progress_callback is not None:
-                for task in resolved.tasks:
-                    progress_callback(
-                        _normalized_progress_event(
-                            task=task,
-                            payload={
-                                "status": "pending",
-                                "phase": "queued",
-                                "percent": 0,
-                                "message": "Queued",
-                            },
-                        )
-                    )
-            completed: list[tuple[dict[str, Any], dict[str, Any]]] = []
-            for task_group in planned_task_groups:
-                with ThreadPoolExecutor(
-                    max_workers=max(1, min(max_parallel_tasks, len(task_group)))
-                ) as executor:
-                    future_to_task = {
-                        executor.submit(
-                            _execute_simulation_task,
-                            task=task,
-                            resolved=resolved,
-                            schemas=schemas,
-                            staging_root=staging_root,
-                            datasets_root=datasets_root,
-                            benchmark_root=benchmark_root,
-                            progress_poll_seconds=progress_poll_seconds,
-                            show_progress=show_progress,
-                            progress_callback=_combine_progress_callbacks(
+    with runtime_profile.stage(
+        "executing_simulators",
+        label="Executing simulators",
+        detail="Running simulator tasks and packaging datasets.",
+    ):
+        with tempfile.TemporaryDirectory(prefix="andrea_generate_data_") as tmp:
+            staging_root = Path(tmp) / "staging"
+            staging_root.mkdir(parents=True, exist_ok=True)
+            with _GenerateProgress(
+                tasks=resolved.tasks,
+                max_parallel_tasks=max_parallel_tasks,
+                enabled=show_progress,
+            ) as progress_reporter:
+                if progress_callback is not None:
+                    for task in resolved.tasks:
+                        progress_callback(
+                            _normalized_progress_event(
                                 task=task,
-                                terminal_callback=progress_reporter.callback_for(
-                                    str(task["task_id"])
-                                ),
-                                external_callback=progress_callback,
-                            ),
-                        ): task
-                        for task in task_group
-                    }
-                    for future in as_completed(future_to_task):
-                        task = future_to_task[future]
-                        try:
-                            completed.append(future.result())
-                        except Exception as exc:  # noqa: BLE001
-                            failure_payload = {
-                                "status": "failed",
-                                "phase": "failed",
-                                "message": str(exc),
-                            }
-                            progress_reporter.update(
-                                str(task["task_id"]),
-                                failure_payload,
+                                payload={
+                                    "status": "pending",
+                                    "phase": "queued",
+                                    "percent": 0,
+                                    "message": "Queued",
+                                },
                             )
-                            if progress_callback is not None:
-                                progress_callback(
-                                    _normalized_progress_event(
-                                        task=task,
-                                        payload=failure_payload,
-                                    )
+                        )
+                completed: list[tuple[dict[str, Any], dict[str, Any]]] = []
+                for task_group in planned_task_groups:
+                    with ThreadPoolExecutor(
+                        max_workers=max(1, min(max_parallel_tasks, len(task_group)))
+                    ) as executor:
+                        future_to_task = {
+                            executor.submit(
+                                _execute_simulation_task,
+                                task=task,
+                                resolved=resolved,
+                                schemas=schemas,
+                                staging_root=staging_root,
+                                datasets_root=datasets_root,
+                                benchmark_root=benchmark_root,
+                                progress_poll_seconds=progress_poll_seconds,
+                                show_progress=show_progress,
+                                progress_callback=_combine_progress_callbacks(
+                                    task=task,
+                                    terminal_callback=progress_reporter.callback_for(
+                                        str(task["task_id"])
+                                    ),
+                                    external_callback=progress_callback,
+                                ),
+                            ): task
+                            for task in task_group
+                        }
+                        for future in as_completed(future_to_task):
+                            task = future_to_task[future]
+                            try:
+                                completed.append(future.result())
+                            except Exception as exc:  # noqa: BLE001
+                                failure_payload = {
+                                    "status": "failed",
+                                    "phase": "failed",
+                                    "message": str(exc),
+                                }
+                                progress_reporter.update(
+                                    str(task["task_id"]),
+                                    failure_payload,
                                 )
-                            raise
-            completed.sort(
-                key=lambda item: task_order[
-                    item[0]["dataset_id"].removeprefix(f"{resolved.request_id}__")
-                ]
-            )
-            for dataset_entry, artifact_entry in completed:
-                benchmark_datasets.append(dataset_entry)
-                benchmark_artifacts.append(artifact_entry)
+                                if progress_callback is not None:
+                                    progress_callback(
+                                        _normalized_progress_event(
+                                            task=task,
+                                            payload=failure_payload,
+                                        )
+                                    )
+                                raise
+                completed.sort(
+                    key=lambda item: task_order[
+                        item[0]["dataset_id"].removeprefix(f"{resolved.request_id}__")
+                    ]
+                )
+                for dataset_entry, artifact_entry in completed:
+                    benchmark_datasets.append(dataset_entry)
+                    benchmark_artifacts.append(artifact_entry)
 
-    frozen_assets = _write_frozen_benchmark_request_assets(
-        resolved=resolved,
-        benchmark_root=benchmark_root,
-        schemas=schemas,
-    )
+    with runtime_profile.stage(
+        "writing_benchmark_manifest",
+        label="Writing benchmark manifest",
+        detail="Writing frozen request assets and benchmark-manifest.json.",
+    ):
+        frozen_assets = _write_frozen_benchmark_request_assets(
+            resolved=resolved,
+            benchmark_root=benchmark_root,
+            schemas=schemas,
+        )
 
     benchmark_manifest = {
         "schema_version": "1.0",
@@ -1021,6 +1038,7 @@ def run_generate_data(
         "execution": resolved.execution,
         "datasets": benchmark_datasets,
         "artifacts": benchmark_artifacts,
+        "runtime_profile": runtime_profile.timings(),
     }
     if resolved.notes:
         benchmark_manifest["notes"] = resolved.notes

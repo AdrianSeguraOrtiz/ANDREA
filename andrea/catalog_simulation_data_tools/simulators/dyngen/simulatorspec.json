@@ -231,11 +231,11 @@
           "upstream_configuration": [
             "simulation_params.compute_cellwise_grn is enabled and dyngen::generate_dataset(..., store_cellwise_grn=TRUE) stores dataset$regulatory_network_sc."
           ],
-          "generation": "For each exported group, the wrapper aggregates dyngen cell-specific regulatory strengths by regulator-target edge across group cells and writes active edges as context=group:<group_id>.",
+          "generation": "The wrapper first derives groups.tsv by assigning each exported cell to the dyngen milestone with the highest milestone_percentages value, resolving ties deterministically by milestone identifier. For each derived group, it then aggregates dyngen cell-specific regulatory strengths by regulator-target edge across group cells and writes active edges as context=group:<group_id>.",
           "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
           "limitations": [
             "Group truth is an ANDREA-derived summary, not a native dyngen object.",
-            "The active-edge set depends on the hard group assignment and the fixed 0.1 mean-absolute-strength threshold."
+            "The active-edge set depends on the milestone maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold."
           ]
         },
         {

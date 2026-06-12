@@ -284,6 +284,29 @@
         }
       }
     },
+    "runtime_profile": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stage",
+          "label",
+          "detail",
+          "started_at",
+          "finished_at",
+          "elapsed_s"
+        ],
+        "properties": {
+          "stage": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "detail": { "type": "string" },
+          "started_at": { "type": "string", "minLength": 1 },
+          "finished_at": { "type": "string", "minLength": 1 },
+          "elapsed_s": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
     "notes": {
       "type": "string",
       "minLength": 1
