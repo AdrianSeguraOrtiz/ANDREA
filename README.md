@@ -2,29 +2,21 @@
 
 Aggregated Network Discovery through Regulatory Ensemble Analysis.
 
-ANDREA is being built as the platform home for:
+ANDREA is a catalog-driven platform for synthetic benchmark generation,
+network inference, inference evaluation and network comparison. It exposes the
+same workflows through a CLI and local browser GUIs, while keeping public
+artifacts as plain JSON, CSV, SQLite and ZIP files.
 
-- network inference workflows
-- synthetic data generation workflows
-- catalog-driven tool and simulator integration
-- reproducible benchmarking assets and GUIs
+## Workflows
 
-The intent is to separate this platform scope from `GENECI`, which will be
-reduced back to the published consensus algorithm it was originally built
-around.
+- `generate-data`: build benchmark datasets from simulator catalogs.
+- `infer-network`: run inference tools against standardized dataset inputs.
+- `evaluate-inference`: compare inferred networks with generated ground truth.
+- `compare-networks`: compare inferred networks across runs, contexts and
+  tools.
 
-## Current Status
-
-This repository is currently in migration bootstrap phase.
-
-The installable package and top-level CLI already exist, but the mature
-workflows are still being ported in phases from `GENECI`.
-
-Planned public namespaces:
-
-- `andrea infer-network ...`
-- `andrea generate-data ...`
-- `andrea gui ...`
+Each workflow has a local GUI under `andrea gui ...`. ZIP bundles are mainly
+for GUI handoff; CLI and Python users can pass report JSON paths directly.
 
 ## Installation
 
@@ -32,21 +24,72 @@ Planned public namespaces:
 pip install -e .
 ```
 
+For development:
+
+```sh
+make install-dev-deps
+```
+
 ## CLI
 
 ```sh
 andrea --help
-andrea infer-network --help
 andrea generate-data --help
-andrea gui --help
+andrea infer-network --help
+andrea evaluate-inference --help
+andrea compare-networks --help
 ```
 
-## Migration Order
+The CLI writes complete public artifacts by default. For example,
+`compare-networks` writes `comparison_report.json`, `comparison.sqlite`,
+`network_index.csv`, `distances.csv`, `distance_coordinates.csv`,
+`edge_scores.csv` and a lightweight `comparison_view.html`.
 
-1. Bootstrap ANDREA as an installable project.
-2. Port the `infer-network` slice first.
-3. Port the `generate-data` slice second.
-4. Reduce `GENECI` to the consensus scope.
+## GUIs
 
-The neutral planning documents for the split live outside both repositories
-under `../decisions/`.
+```sh
+andrea gui generate-data
+andrea gui infer-network
+andrea gui evaluate-inference
+andrea gui compare-networks
+```
+
+The GUIs use strict analysis bundles for handoff between commands:
+
+- generate-data analysis bundles feed `evaluate-inference`;
+- infer-network analysis bundles feed `evaluate-inference` and
+  `compare-networks`;
+- evaluate-inference analysis bundles can optionally enrich
+  `compare-networks` with metric overlays.
+
+Available bundle families are `analysis`, `report`, `graphs` where applicable,
+and `full`. Heavy artifacts may be finalized after results are already
+explorable; each bundle reports its own readiness.
+
+## Catalogs And Wrappers
+
+Inference tools and simulators are described by JSON specs under
+`andrea/catalog_inference_tools` and `andrea/catalog_simulation_data_tools`.
+Wrappers live under `wrappers/` and are validated by catalog, smoketest and cost
+profile scripts.
+
+Useful validation targets:
+
+```sh
+make validate-inference-catalog
+make validate-generation-catalog
+make run-tool-smoketests
+make run-simulator-smoketests
+```
+
+## Runtime Profiling
+
+Reports can include additive `runtime_profile` entries. Existing outputs can be
+summarized with:
+
+```sh
+python scripts/profile_andrea_runtime.py inferred_networks evaluations comparisons
+```
+
+This is useful for comparing before/after performance without rerunning full
+benchmarks.

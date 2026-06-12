@@ -16,6 +16,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS_ROOT = REPO_ROOT / "wrappers" / "simulation_data_tools" / "scripts"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
+for module_name in list(sys.modules):
+    if module_name == "shared" or module_name.startswith("shared."):
+        del sys.modules[module_name]
 
 CATALOG_SIMULATORS_ROOT = (
     REPO_ROOT / "andrea" / "catalog_simulation_data_tools" / "simulators"
