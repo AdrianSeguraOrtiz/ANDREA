@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import io
 import json
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -42,6 +44,47 @@ class _ImmediateThread:
     "GUI test dependencies are not installed",
 )
 class InferNetworkGuiServerTests(unittest.TestCase):
+    def test_static_gui_uses_bundle_download_modal(self) -> None:
+        index = (Path(gui_server.STATIC_DIR) / "index.html").read_text(encoding="utf-8")
+        style = (Path(gui_server.STATIC_DIR) / "styles.css").read_text(encoding="utf-8")
+        repro_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "repro" / "styles.css"
+        ).read_text(encoding="utf-8")
+        params_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "params" / "styles.css"
+        ).read_text(encoding="utf-8")
+        toast_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "ui" / "toasts.css"
+        ).read_text(encoding="utf-8")
+        popover_style = (
+            Path(gui_server.COMMON_STATIC_DIR) / "app" / "ui" / "popovers.css"
+        ).read_text(encoding="utf-8")
+        script = (Path(gui_server.STATIC_DIR) / "app" / "main.js").read_text(
+            encoding="utf-8"
+        )
+        jobs_controller = (
+            Path(gui_server.STATIC_DIR) / "app" / "jobs" / "controller.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("bundle-modal", index)
+        self.assertIn("Explorer view: available output files", index)
+        self.assertIn("/static-common/app/params/styles.css", index)
+        self.assertIn("/static-common/app/repro/styles.css", index)
+        self.assertIn("/static-common/app/ui/popovers.css", index)
+        self.assertIn("/static-common/app/ui/toasts.css", index)
+        self.assertIn(".repro-card {", repro_style)
+        self.assertNotIn(".repro-card {", style)
+        self.assertIn(".param-field {", params_style)
+        self.assertNotIn(".param-field {", style)
+        self.assertIn(".toast {", toast_style)
+        self.assertIn(".info-popover {", popover_style)
+        self.assertNotIn(".toast {", style)
+        self.assertNotIn(".info-popover {", style)
+        self.assertIn("openBundleDownloadModal", script)
+        self.assertIn("/bundles", script)
+        self.assertIn("bundle_id=", script)
+        self.assertIn("available_outputs", jobs_controller)
+
     def _planned_wave(self) -> PlanWave:
         return PlanWave(
             index=1,
@@ -378,28 +421,66 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                 )
 
                 files_response = client.get(
-                    f"/api/infer-network/jobs/{job_id}/files?mode=light"
+                    f"/api/infer-network/jobs/{job_id}/files?bundle_id=report"
                 )
                 self.assertEqual(
                     files_response.status_code, 200, msg=files_response.text
                 )
                 entries = files_response.json()["entries"]
-                self.assertTrue(
-                    any(item["path"] == "run/plan.json" for item in entries)
-                )
+                self.assertTrue(any(item["path"] == "plan.json" for item in entries))
 
                 file_content = client.get(
                     f"/api/infer-network/jobs/{job_id}/file-content",
-                    params={"mode": "light", "path": "run/run_report.json"},
+                    params={"bundle_id": "report", "path": "run_report.json"},
                 )
                 self.assertEqual(file_content.status_code, 200, msg=file_content.text)
                 self.assertEqual(file_content.json()["viewer"], "json")
 
                 file_missing = client.get(
                     f"/api/infer-network/jobs/{job_id}/file-content",
-                    params={"mode": "light", "path": "run/missing_file.txt"},
+                    params={"bundle_id": "report", "path": "missing_file.txt"},
                 )
                 self.assertEqual(file_missing.status_code, 404)
+
+                bundles_response = client.get(
+                    f"/api/infer-network/jobs/{job_id}/bundles"
+                )
+                self.assertEqual(
+                    bundles_response.status_code, 200, msg=bundles_response.text
+                )
+                bundles_payload = bundles_response.json()
+                self.assertTrue(bundles_payload["output_ready"])
+                bundles_by_id = {
+                    item["id"]: item for item in bundles_payload["bundles"]
+                }
+                self.assertEqual(
+                    sorted(bundles_by_id),
+                    ["analysis", "full", "graphs", "report"],
+                )
+                self.assertTrue(bundles_by_id["report"]["available"])
+                self.assertFalse(bundles_by_id["analysis"]["available"])
+                self.assertEqual(
+                    sorted(bundles_by_id["analysis"]["intended_downstream_commands"]),
+                    ["compare-networks", "evaluate-inference"],
+                )
+                self.assertIn(
+                    "merged_network_raw.csv",
+                    bundles_by_id["analysis"]["missing_required"],
+                )
+                report_bundle = client.get(
+                    f"/api/infer-network/jobs/{job_id}/bundle",
+                    params={"bundle_id": "report"},
+                )
+                self.assertEqual(report_bundle.status_code, 200, msg=report_bundle.text)
+                with zipfile.ZipFile(io.BytesIO(report_bundle.content)) as zf:
+                    self.assertIn("run_report.json", zf.namelist())
+                    self.assertIn("plan.json", zf.namelist())
+
+                invalid_bundle = client.get(
+                    f"/api/infer-network/jobs/{job_id}/bundle",
+                    params={"bundle_id": "not_a_bundle"},
+                )
+                self.assertEqual(invalid_bundle.status_code, 400)
 
     def test_job_payload_includes_running_execution_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -431,6 +512,141 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             payload["runtime_progress"]["tools"][0]["message"],
             "Writing merged_network_raw.csv.",
         )
+
+    def test_bundle_metadata_blocks_report_dependent_bundles_during_finalization(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "run"
+            self._write_merged_csvs(run_dir)
+            (run_dir / "run_report.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "run",
+                        "status": "planned",
+                        "tools": {
+                            "catalog_tool_ids": {"run_01": "dummy"},
+                        },
+                        "outputs": {
+                            "merged_network_raw": None,
+                            "merged_network_normalized": None,
+                        },
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            for rel in (
+                "merged_network_raw.gexf",
+                "merged_network_raw.graphml",
+                "merged_network_normalized.gexf",
+                "merged_network_normalized.graphml",
+                "merged_network_normalized_cytoscape.py",
+            ):
+                (run_dir / rel).write_text("graph\n", encoding="utf-8")
+            logs_dir = run_dir / "tools" / "dummy_tool"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            (logs_dir / "stderr.log").write_text("log\n", encoding="utf-8")
+            self._register_job(
+                job_id="job_finalizing_bundles",
+                run_dir=run_dir,
+                status="running",
+                stage="executing",
+            )
+
+            client = TestClient(gui_server.create_app())
+            payload = client.get(
+                "/api/infer-network/jobs/job_finalizing_bundles/bundles"
+            ).json()
+            full_bundle = next(item for item in payload["bundles"] if item["id"] == "full")
+            analysis_bundle = next(
+                item for item in payload["bundles"] if item["id"] == "analysis"
+            )
+            report_bundle = next(
+                item for item in payload["bundles"] if item["id"] == "report"
+            )
+            graphs_bundle = next(
+                item for item in payload["bundles"] if item["id"] == "graphs"
+            )
+            analysis_download = client.get(
+                "/api/infer-network/jobs/job_finalizing_bundles/bundle",
+                params={"bundle_id": "analysis"},
+            )
+            explorer_files = client.get(
+                "/api/infer-network/jobs/job_finalizing_bundles/files",
+                params={"bundle_id": "available_outputs"},
+            )
+
+        self.assertTrue(payload["output_ready"])
+        self.assertTrue(payload["output_readiness"]["finalizing_artifacts"])
+        self.assertTrue(payload["output_readiness"]["run_report_file_ready"])
+        self.assertFalse(full_bundle["available"])
+        self.assertTrue(analysis_bundle["available"])
+        self.assertFalse(report_bundle["available"])
+        self.assertTrue(graphs_bundle["available"])
+        self.assertIn(
+            "run_report.json final report is not complete",
+            full_bundle["missing_required"],
+        )
+        self.assertIn(
+            "run_report.json final report is not complete",
+            report_bundle["missing_required"],
+        )
+        self.assertEqual(analysis_download.status_code, 200)
+        self.assertEqual(explorer_files.status_code, 200, msg=explorer_files.text)
+        explorer_payload = explorer_files.json()
+        self.assertEqual(explorer_payload["bundle_id"], "available_outputs")
+        explorer_paths = {item["path"] for item in explorer_payload["entries"]}
+        self.assertIn("merged_network_raw.csv", explorer_paths)
+        self.assertIn("tools", explorer_paths)
+        self.assertIn("tools/dummy_tool/stderr.log", explorer_paths)
+        self.assertEqual(
+            full_bundle["readiness"],
+            [
+                {"label": "Merged CSVs", "status": "ready"},
+                {"label": "Run report", "status": "pending"},
+                {"label": "Graph exports", "status": "ready"},
+            ],
+        )
+        self.assertEqual(
+            analysis_bundle["readiness"],
+            [
+                {"label": "Merged CSVs", "status": "ready"},
+                {"label": "Run report snapshot", "status": "ready"},
+            ],
+        )
+
+    def test_file_preview_adds_artifact_guide_without_changing_csv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "run"
+            self._write_merged_csvs(run_dir)
+            self._register_job(
+                job_id="job_file_guide",
+                run_dir=run_dir,
+                status="running",
+                stage="executing",
+            )
+
+            client = TestClient(gui_server.create_app())
+            response = client.get(
+                "/api/infer-network/jobs/job_file_guide/file-content",
+                params={
+                    "bundle_id": "available_outputs",
+                    "path": "merged_network_normalized.csv",
+                },
+            )
+            csv_text = (run_dir / "merged_network_normalized.csv").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertEqual(response.status_code, 200, msg=response.text)
+        payload = response.json()
+        self.assertEqual(payload["viewer"], "table_csv")
+        self.assertEqual(payload["guide"]["title"], "Normalized merged network")
+        self.assertEqual(payload["headers"][0], "source")
+        self.assertTrue(csv_text.startswith("source,target,score"))
 
     def test_job_payload_keeps_final_report_with_execution_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

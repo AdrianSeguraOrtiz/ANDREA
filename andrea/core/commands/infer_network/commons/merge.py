@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import math
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 from andrea.core.shared.network_context import (
     normalize_network_context,
@@ -19,13 +19,12 @@ def _format_score(value: float) -> str:
     return format(float(value), ".12g")
 
 
-def _read_network_rows(path: Path, tool_id: str) -> list[dict[str, Any]]:
+def _iter_network_rows(path: Path, tool_id: str) -> Iterable[dict[str, Any]]:
     if not path.exists() or path.stat().st_size <= 0:
         raise ValueError(
             f"[{tool_id}] network.csv was not generated or is empty: {path}"
         )
 
-    rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8", newline="") as fh:
         reader = csv.DictReader(fh)
         headers = reader.fieldnames or []
@@ -72,24 +71,24 @@ def _read_network_rows(path: Path, tool_id: str) -> list[dict[str, Any]]:
                 source=f"[{tool_id}] network.csv line {idx}",
             )
 
-            rows.append(
-                {
-                    "source": source,
-                    "target": target,
-                    "score": score,
-                    "sign": sign,
-                    "evidence": evidence,
-                    "context": context,
-                }
-            )
+            yield {
+                "source": source,
+                "target": target,
+                "score": score,
+                "sign": sign,
+                "evidence": evidence,
+                "context": context,
+            }
 
-    return rows
+
+def _read_network_rows(path: Path, tool_id: str) -> list[dict[str, Any]]:
+    return list(_iter_network_rows(path, tool_id=tool_id))
 
 
 def _write_network_rows(
     *,
     path: Path,
-    rows: list[dict[str, Any]],
+    rows: Iterable[dict[str, Any]],
     include_tool_id: bool,
 ) -> None:
     fieldnames = list(NETWORK_REQUIRED_COLUMNS)
@@ -124,11 +123,9 @@ def _merge_network_outputs(
     dict[str, ToolExecutionResult], dict[str, int], Optional[Path], Optional[Path]
 ]:
     updated = dict(execution_results)
-    merged_raw_rows: list[dict[str, Any]] = []
-    merged_norm_rows: list[dict[str, Any]] = []
     per_tool_rows: dict[str, int] = {}
     had_completed_network_output = False
-    valid_rows_by_tool: dict[str, tuple[Path, list[dict[str, Any]]]] = {}
+    valid_stats_by_tool: dict[str, dict[str, Any]] = {}
     completed_results = [
         (tool_id, updated[tool_id])
         for tool_id in sorted(updated.keys())
@@ -148,7 +145,7 @@ def _merge_network_outputs(
 
         network_path = Path(result.network_path)
         try:
-            rows = _read_network_rows(network_path, tool_id=tool_id)
+            stats = _network_row_stats(network_path, tool_id=tool_id)
         except Exception as exc:  # noqa: BLE001
             updated[tool_id] = ToolExecutionResult(
                 tool_id=result.tool_id,
@@ -162,23 +159,19 @@ def _merge_network_outputs(
             )
             continue
 
-        if not rows:
+        if int(stats["rows"]) == 0:
             warnings.append(
                 f"[{tool_id}] network output contains no non-zero edges; empty network kept as a valid result."
             )
             per_tool_rows[tool_id] = 0
             continue
 
-        for row in rows:
-            raw_row = dict(row)
-            raw_row["tool_id"] = tool_id
-            merged_raw_rows.append(raw_row)
-        valid_rows_by_tool[tool_id] = (network_path, rows)
+        valid_stats_by_tool[tool_id] = {"network_path": network_path, **stats}
 
     merged_raw_path: Optional[Path] = None
     merged_norm_path: Optional[Path] = None
 
-    if merged_raw_rows or had_completed_network_output:
+    if valid_stats_by_tool or had_completed_network_output:
         merged_raw_path = run_dir / "merged_network_raw.csv"
         _notify_progress(
             progress_callback,
@@ -187,13 +180,13 @@ def _merge_network_outputs(
             "Writing merged_network_raw.csv.",
         )
         _write_network_rows(
-            path=merged_raw_path, rows=merged_raw_rows, include_tool_id=True
+            path=merged_raw_path,
+            rows=_iter_merged_raw_rows(valid_stats_by_tool),
+            include_tool_id=True,
         )
 
-    total_valid = max(1, len(valid_rows_by_tool))
-    for idx, (tool_id, (network_path, rows)) in enumerate(
-        valid_rows_by_tool.items(), start=1
-    ):
+    total_valid = max(1, len(valid_stats_by_tool))
+    for idx, (tool_id, stats) in enumerate(valid_stats_by_tool.items(), start=1):
         normalize_percent = min(89, 84 + int(round((idx - 1) / total_valid * 5)))
         _notify_progress(
             progress_callback,
@@ -201,41 +194,22 @@ def _merge_network_outputs(
             normalize_percent,
             f"Normalizing network scores for {tool_id}.",
         )
-        scores = [float(row["score"]) for row in rows]
-        min_score = min(scores)
-        max_score = max(scores)
-        if max_score > min_score:
-            norm_scores = [
-                (score - min_score) / (max_score - min_score) for score in scores
-            ]
-        else:
-            norm_scores = [1.0 for _ in scores]
-
-        tool_norm_rows: list[dict[str, Any]] = []
-        for row, normalized in zip(rows, norm_scores):
-            norm_row = dict(row)
-            norm_row["score"] = float(normalized)
-            norm_row["tool_id"] = tool_id
-            merged_norm_rows.append(norm_row)
-
-            tool_norm_rows.append(
-                {
-                    "source": row["source"],
-                    "target": row["target"],
-                    "score": float(normalized),
-                    "sign": row["sign"],
-                    "evidence": row["evidence"],
-                    "context": row["context"],
-                }
-            )
-
+        network_path = Path(stats["network_path"])
         tool_norm_path = network_path.parent / "network.normalized.csv"
         _write_network_rows(
-            path=tool_norm_path, rows=tool_norm_rows, include_tool_id=False
+            path=tool_norm_path,
+            rows=_iter_normalized_rows(
+                path=network_path,
+                tool_id=tool_id,
+                min_score=float(stats["min_score"]),
+                max_score=float(stats["max_score"]),
+                include_tool_id=False,
+            ),
+            include_tool_id=False,
         )
-        per_tool_rows[tool_id] = len(rows)
+        per_tool_rows[tool_id] = int(stats["rows"])
 
-    if merged_norm_rows or had_completed_network_output:
+    if valid_stats_by_tool or had_completed_network_output:
         merged_norm_path = run_dir / "merged_network_normalized.csv"
         _notify_progress(
             progress_callback,
@@ -244,10 +218,72 @@ def _merge_network_outputs(
             "Writing merged_network_normalized.csv.",
         )
         _write_network_rows(
-            path=merged_norm_path, rows=merged_norm_rows, include_tool_id=True
+            path=merged_norm_path,
+            rows=_iter_merged_normalized_rows(valid_stats_by_tool),
+            include_tool_id=True,
         )
 
     return updated, per_tool_rows, merged_raw_path, merged_norm_path
+
+
+def _network_row_stats(path: Path, tool_id: str) -> dict[str, Any]:
+    count = 0
+    min_score: Optional[float] = None
+    max_score: Optional[float] = None
+    for row in _iter_network_rows(path, tool_id=tool_id):
+        score = float(row["score"])
+        count += 1
+        min_score = score if min_score is None else min(min_score, score)
+        max_score = score if max_score is None else max(max_score, score)
+    return {
+        "rows": count,
+        "min_score": min_score if min_score is not None else 0.0,
+        "max_score": max_score if max_score is not None else 0.0,
+    }
+
+
+def _iter_merged_raw_rows(
+    valid_stats_by_tool: dict[str, dict[str, Any]],
+) -> Iterable[dict[str, Any]]:
+    for tool_id, stats in valid_stats_by_tool.items():
+        for row in _iter_network_rows(Path(stats["network_path"]), tool_id=tool_id):
+            out_row = dict(row)
+            out_row["tool_id"] = tool_id
+            yield out_row
+
+
+def _iter_normalized_rows(
+    *,
+    path: Path,
+    tool_id: str,
+    min_score: float,
+    max_score: float,
+    include_tool_id: bool,
+) -> Iterable[dict[str, Any]]:
+    for row in _iter_network_rows(path, tool_id=tool_id):
+        out_row = dict(row)
+        if max_score > min_score:
+            out_row["score"] = (float(row["score"]) - min_score) / (
+                max_score - min_score
+            )
+        else:
+            out_row["score"] = 1.0
+        if include_tool_id:
+            out_row["tool_id"] = tool_id
+        yield out_row
+
+
+def _iter_merged_normalized_rows(
+    valid_stats_by_tool: dict[str, dict[str, Any]],
+) -> Iterable[dict[str, Any]]:
+    for tool_id, stats in valid_stats_by_tool.items():
+        yield from _iter_normalized_rows(
+            path=Path(stats["network_path"]),
+            tool_id=tool_id,
+            min_score=float(stats["min_score"]),
+            max_score=float(stats["max_score"]),
+            include_tool_id=True,
+        )
 
 
 def _notify_progress(

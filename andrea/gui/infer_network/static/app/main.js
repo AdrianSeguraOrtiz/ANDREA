@@ -1,12 +1,17 @@
 import { fetchBootstrapData, submitPlanRequest, submitPreflightRequest, submitRunRequest } from "./core/api.js";
 import { $, fillSelect } from "./core/dom.js";
 import { state } from "./core/state.js";
+import {
+  closeBundleDownloadModal,
+  initBundleDownloadModal,
+  openBundleDownloadModal,
+} from "/static-common/app/bundles/modal.js?v=20260612a";
 import { buildToolIssueReportUrl, buildToolRequestIssueUrl, defaultGroupModeForTool, listAvailableTools, populateToolIssueSelect, toolById } from "./catalog/model.js";
-import { initCatalogView, updateToolEligibilityView } from "./catalog/view.js";
+import { initCatalogView, refreshToolCatalogRunCounts, updateToolEligibilityView } from "./catalog/view.js";
 import { applyDatasetDefaults, handleExpressionSelected, initExpressionDropzone, syncExpressionHelpTooltip } from "./dataset/expression.js";
 import { closeExtraInputModal, getExtraRows, initExtras, listProvidedExtraKeys, openExtraInputModal, updateExtrasEmptyState } from "./dataset/extras.js";
 import { renderAndreaExecutionProgress, renderRuntimeProgress } from "./runtime/view.js";
-import { fetchFiles, resetFilesView } from "./files/explorer.js";
+import { fetchFiles, resetFilesView } from "./files/explorer.js?v=20260611a";
 import { freezeActions, startPolling, syncActionButtons, updateResultsExplorerVisibility } from "./jobs/controller.js";
 import { resetPlanView } from "./plan/view.js";
 import { closeReproducibilityStepsModal, initReproducibility, resetReproducibility } from "./repro/view.js";
@@ -128,6 +133,7 @@ async function submitPreflight() {
     state.runtimeWaveUi.scrollTops = {};
     state.currentJob = null;
     state.notifiedFailures.clear();
+    state.autoFollowExecutionStep = true;
     setActiveStep(1, { scroll: false });
     $("runs-container").innerHTML = "";
     updateRunsEmptyState();
@@ -198,6 +204,7 @@ async function submitRun() {
     if (!state.jobId) {
       throw new Error("No planned job found. Generate a plan first.");
     }
+    state.autoFollowExecutionStep = true;
     setActiveStep(3, { scroll: false });
     freezeActions(true);
     setStepState(3, "running");
@@ -249,6 +256,7 @@ async function bootstrap() {
   state.runtimeWaveUi.closedIssueKeys.clear();
   state.runtimeWaveUi.scrollTops = {};
   state.currentJob = null;
+  state.autoFollowExecutionStep = true;
   setActiveStep(1, { scroll: false });
   syncActionButtons();
 }
@@ -279,6 +287,9 @@ function bindEvents() {
         ttlMs: 5000,
       });
       return;
+    }
+    if (state.currentJob?.status === "running") {
+      state.autoFollowExecutionStep = false;
     }
     setActiveStep(stepNumber);
   };
@@ -311,6 +322,7 @@ function bindEvents() {
           tool_id: tool.tool_id,
         });
       }
+      refreshToolCatalogRunCounts();
     } catch (err) {
       pushToast({ title: "Run configuration error", message: err.message, kind: "error", ttlMs: 8000 });
     }
@@ -320,6 +332,7 @@ function bindEvents() {
     updateRunsEmptyState();
     refreshRunCardsValidation();
     syncActionButtons();
+    refreshToolCatalogRunCounts();
   });
   $("open-tool-request-modal-btn").addEventListener("click", () => openModal("tool-request-modal"));
   $("open-tool-issue-modal-btn").addEventListener("click", () => openModal("tool-issue-modal"));
@@ -385,6 +398,8 @@ function bindEvents() {
     }
     try {
       state.loadedFilesKey = null;
+      state.filePreviewLoadedKey = null;
+      state.filePreviewPendingKey = null;
       await fetchFiles(state.jobId);
     } catch (err) {
       pushToast({ title: "Files refresh error", message: err.message, kind: "warning", ttlMs: 7000 });
@@ -400,22 +415,15 @@ function bindEvents() {
       });
       return;
     }
-    const mode = String($("bundle-mode")?.value || "full");
-    const url = `/api/infer-network/jobs/${state.jobId}/bundle?mode=${encodeURIComponent(mode)}`;
-    window.open(url, "_blank", "noopener");
-  });
-  $("bundle-mode").addEventListener("change", async () => {
-    state.loadedFilesKey = null;
-    state.collapsedDirs.clear();
-    if (!state.jobId) {
-      resetFilesView("No files loaded yet.");
-      return;
-    }
-    try {
-      await fetchFiles(state.jobId);
-    } catch (err) {
-      pushToast({ title: "Bundle mode error", message: err.message, kind: "warning", ttlMs: 7000 });
-    }
+    openBundleDownloadModal({
+      title: "Download Inference ZIP",
+      metadataUrl: `/api/infer-network/jobs/${state.jobId}/bundles`,
+      downloadUrlForBundle: (bundleId) => (
+        `/api/infer-network/jobs/${state.jobId}/bundle?bundle_id=${encodeURIComponent(bundleId)}`
+      ),
+    }).catch((err) => {
+      pushToast({ title: "Bundle options error", message: err.message, kind: "warning", ttlMs: 7000 });
+    });
   });
 
   $("info-popover-close").addEventListener("click", () => hideInfoTooltip());
@@ -464,6 +472,7 @@ function bindEvents() {
       closeModal("tool-issue-modal");
       closeExtraInputModal();
       closeReproducibilityStepsModal();
+      closeBundleDownloadModal();
     }
   });
 }
@@ -498,12 +507,14 @@ function initModules() {
     },
     onRunsChanged: () => {
       syncActionButtons();
+      refreshToolCatalogRunCounts();
     },
   });
   initCatalogView({
     onAddRun: addRunCard,
   });
   initReproducibility();
+  initBundleDownloadModal();
 }
 
 window.addEventListener("DOMContentLoaded", async () => {

@@ -31,15 +31,27 @@ function renderToolCatalogList(containerId, entries, kind) {
     }
 
     const node = template.content.firstElementChild.cloneNode(true);
+    node.dataset.toolId = tool.tool_id;
     node.querySelector(".tool-item-name").textContent = tool.name;
-    node.querySelector(".tool-item-badge").textContent = kind;
+    const statusBadge = node.querySelector(".tool-item-badge");
+    statusBadge.textContent = kind;
+    const badgeWrap = document.createElement("div");
+    badgeWrap.className = "tool-item-badges";
+    statusBadge.replaceWith(badgeWrap);
+    badgeWrap.appendChild(statusBadge);
+    const countBadge = document.createElement("span");
+    countBadge.className = "selection-count-badge";
+    countBadge.dataset.selectionCountFor = tool.tool_id;
+    countBadge.title = "Selected runs for this tool";
+    countBadge.textContent = "0";
+    badgeWrap.appendChild(countBadge);
     node.querySelector(".tool-item-meta").textContent =
       String(tool.assumes || "").trim() || `tool_id=${tool.tool_id}`;
     const actions = node.querySelector(".tool-item-actions");
 
     const specBtn = document.createElement("button");
     specBtn.type = "button";
-    specBtn.className = "secondary";
+    specBtn.className = "neutral";
     specBtn.textContent = "Tool Info";
     specBtn.addEventListener("click", () => {
       showInfoTooltip(toolSpecInfoPayload(tool));
@@ -61,6 +73,7 @@ function renderToolCatalogList(containerId, entries, kind) {
 
     const infoBtn = document.createElement("button");
     infoBtn.type = "button";
+    infoBtn.className = kind === "blocked" ? "danger" : "warning";
     infoBtn.textContent = kind === "blocked" ? "Why Blocked" : "Why Warned";
     infoBtn.addEventListener("click", () => {
       showInfoTooltip(toolIssuePayload(tool, entry, kind));
@@ -79,6 +92,38 @@ function renderToolCatalogList(containerId, entries, kind) {
     }
     host.appendChild(node);
   }
+  refreshToolCatalogRunCounts();
+}
+
+function selectedToolRunCounts() {
+  const counts = new Map();
+  document.querySelectorAll(".run-card .tool-id").forEach((input) => {
+    const toolId = String(input?.value || "").trim();
+    if (!toolId) {
+      return;
+    }
+    counts.set(toolId, (counts.get(toolId) || 0) + 1);
+  });
+  return counts;
+}
+
+export function refreshToolCatalogRunCounts() {
+  const counts = selectedToolRunCounts();
+  document.querySelectorAll(".tool-item[data-tool-id]").forEach((card) => {
+    const toolId = String(card.dataset.toolId || "").trim();
+    const count = counts.get(toolId) || 0;
+    card.classList.toggle("has-selected-runs", count > 0);
+    const badge = card.querySelector(".selection-count-badge");
+    if (!badge) {
+      return;
+    }
+    badge.textContent = String(count);
+    badge.classList.toggle("is-active", count > 0);
+    badge.setAttribute(
+      "aria-label",
+      `${count} selected ${count === 1 ? "run" : "runs"} for ${toolId}`
+    );
+  });
 }
 
 export function updateToolEligibilityView(preflightReport = null) {
@@ -119,4 +164,5 @@ export function updateToolEligibilityView(preflightReport = null) {
   renderToolCatalogList("tools-eligible-list", eligible, "eligible");
   renderToolCatalogList("tools-warning-list", warning, "warning");
   renderToolCatalogList("tools-blocked-list", blocked, "blocked");
+  refreshToolCatalogRunCounts();
 }

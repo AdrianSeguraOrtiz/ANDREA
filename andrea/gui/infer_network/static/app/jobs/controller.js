@@ -2,8 +2,8 @@ import { $ } from "../core/dom.js";
 import { fetchJobData, fetchPlanData } from "../core/api.js";
 import { state } from "../core/state.js";
 import { updateToolEligibilityView } from "../catalog/view.js";
-import { fetchFiles, resetFilesView } from "../files/explorer.js";
-import { renderPlan } from "../plan/view.js";
+import { fetchFiles, resetFilesView } from "../files/explorer.js?v=20260611a";
+import { renderPlan, renderPlanningProgress, stopPlanningProgress } from "../plan/view.js";
 import { resetReproducibility, renderReproducibility } from "../repro/view.js";
 import {
   renderAndreaExecutionProgress,
@@ -13,6 +13,8 @@ import {
 import { setStepState, setActiveStep } from "../ui/steps.js";
 import { pushToast } from "../ui/toasts.js";
 import { refreshRunCardsValidation } from "../runs/cards.js";
+
+const EXPLORER_FILES_MODE = "available_outputs";
 
 export function freezeActions(disabled) {
   const ids = [
@@ -24,7 +26,6 @@ export function freezeActions(disabled) {
     "step-1-next-btn",
     "step-2-next-btn",
     "refresh-files-btn",
-    "download-bundle-btn",
   ];
   for (const id of ids) {
     const node = $(id);
@@ -161,6 +162,14 @@ export function updateResultsExplorerVisibility(job = null, executionState = nul
   renderResultsExplorerStatus(visible ? outputReadiness : null);
 }
 
+function updateExplorerViewLabel() {
+  const node = $("results-explorer-view-label");
+  if (!node) {
+    return;
+  }
+  node.textContent = "Explorer view: available output files";
+}
+
 export async function fetchPlan(jobId) {
   const payload = await fetchPlanData(jobId);
   renderPlan(payload.plan);
@@ -181,17 +190,32 @@ export async function refreshArtifacts(job, outputReadiness = null) {
   }
 
   if (hasExecutionArtifacts(job, outputReadiness)) {
-    const bundleMode = String($("bundle-mode")?.value || "full");
+    if (outputReadiness && !outputReadiness.explorer_available) {
+      state.filesMode = EXPLORER_FILES_MODE;
+      resetFilesView(outputReadiness?.message || "Merged output files are still being prepared.");
+      return;
+    }
+    state.filesMode = EXPLORER_FILES_MODE;
+    updateExplorerViewLabel();
     const readinessKey = [
       outputReadiness?.csv_ready ? "csv" : "no-csv",
       outputReadiness?.final_report_ready ? "report" : "no-report",
       outputReadiness?.graph_exports_ready ? "graphs" : "no-graphs",
       outputReadiness?.partial ? "partial" : "complete",
+      Object.entries(outputReadiness?.paths || {})
+        .filter(([, value]) => value)
+        .map(([key]) => key)
+        .sort()
+        .join(","),
     ].join(":");
-    const desiredFilesKey = `${job.job_id}:${bundleMode}:${job.status}:${job.run_dir || ""}:${readinessKey}`;
+    const desiredFilesKey = `${job.job_id}:${EXPLORER_FILES_MODE}:${job.status}:${job.run_dir || ""}:${readinessKey}`;
     if (state.loadedFilesKey !== desiredFilesKey) {
-      await fetchFiles(job.job_id);
-      state.loadedFilesKey = desiredFilesKey;
+      try {
+        await fetchFiles(job.job_id);
+        state.loadedFilesKey = desiredFilesKey;
+      } catch (err) {
+        resetFilesView(err.message || "Result files are not ready yet.");
+      }
     }
   }
 }
@@ -209,15 +233,21 @@ export async function pollJob(jobId) {
   state.executionState = executionState || null;
   state.outputReadiness = outputReadiness || null;
   state.runtimeProgress = runtimeProgress || null;
-  if (job.stage === "planned" && state.activeStep < 3) {
+  if (job.stage === "planned" && job.status !== "running" && state.activeStep < 3) {
     setActiveStep(2, { scroll: false });
   }
   if (
     job.status === "running" &&
     (job.stage === "planned" || job.stage === "executed") &&
-    state.activeStep < 3
+    state.activeStep < 3 &&
+    state.autoFollowExecutionStep !== false
   ) {
     setActiveStep(3, { scroll: false });
+  }
+  if (job.active_action === "plan" && ["queued", "running"].includes(String(job.status || ""))) {
+    renderPlanningProgress(job);
+  } else {
+    stopPlanningProgress();
   }
 
   updateToolEligibilityView(preflightReport);

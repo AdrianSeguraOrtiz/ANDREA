@@ -1,10 +1,84 @@
 import { $ } from "../core/dom.js";
 import { state } from "../core/state.js";
 
+let planningProgressTimer = null;
+let planningProgressJob = null;
+
+export function stopPlanningProgress() {
+  if (planningProgressTimer) {
+    window.clearInterval(planningProgressTimer);
+    planningProgressTimer = null;
+  }
+  planningProgressJob = null;
+}
+
 export function resetPlanView(message) {
+  stopPlanningProgress();
   state.lastPlan = null;
+  $("plan-summary").classList.remove("planning-progress-card", "is-over-limit");
   $("plan-summary").textContent = message || "No plan loaded yet.";
   $("plan-waves").innerHTML = "";
+}
+
+function elapsedSecondsFromIso(value) {
+  const startedAt = Date.parse(String(value || ""));
+  if (!Number.isFinite(startedAt)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+}
+
+export function renderPlanningProgress(job = {}) {
+  planningProgressJob = job;
+  if (!planningProgressTimer) {
+    planningProgressTimer = window.setInterval(() => {
+      if (planningProgressJob) {
+        renderPlanningProgress(planningProgressJob);
+      }
+    }, 1000);
+  }
+
+  const summary = $("plan-summary");
+  const wavesRoot = $("plan-waves");
+  if (!summary || !wavesRoot) {
+    return;
+  }
+  const elapsed = elapsedSecondsFromIso(job.started_at);
+  const limitRaw = Number(job.planner_time_limit_seconds || 0);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.round(limitRaw) : null;
+  const planner = String(job.planner || "auto").toLowerCase();
+  const usesCpSatBudget = planner !== "heuristic";
+  const overLimit = Boolean(usesCpSatBudget && limit && elapsed >= limit);
+
+  summary.replaceChildren();
+  summary.classList.toggle("planning-progress-card", true);
+  summary.classList.toggle("is-over-limit", overLimit);
+
+  const head = document.createElement("div");
+  head.className = "planning-progress-head";
+  const title = document.createElement("strong");
+  title.textContent = String(job.progress_label || "Planning execution");
+  const counter = document.createElement("span");
+  counter.textContent = usesCpSatBudget && limit ? `${elapsed}s / ${limit}s` : `${elapsed}s`;
+  head.append(title, counter);
+
+  const detail = document.createElement("div");
+  detail.className = "planning-progress-detail";
+  if (planner === "heuristic") {
+    detail.textContent =
+      "The heuristic planner is building execution waves directly. The CP-SAT time limit is not used in this mode.";
+  } else if (overLimit) {
+    detail.textContent =
+      "The CP-SAT search budget has been consumed. ANDREA will use a feasible CP-SAT plan if one was found, otherwise it will fall back to the heuristic planner.";
+  } else {
+    detail.textContent = String(
+      job.progress_detail ||
+        "ANDREA is selecting tool resources and scheduling execution waves. A larger CP-SAT budget can improve the plan and reduce later compute time."
+    );
+  }
+
+  summary.append(head, detail);
+  wavesRoot.innerHTML = "";
 }
 
 export function renderPlan(plan) {
@@ -13,7 +87,9 @@ export function renderPlan(plan) {
     state.lastPlan = null;
     return;
   }
+  stopPlanningProgress();
   state.lastPlan = plan;
+  $("plan-summary").classList.remove("planning-progress-card", "is-over-limit");
 
   const planner = plan.planner || {};
   const totals = plan.totals || {};

@@ -10,7 +10,6 @@ import threading
 import traceback
 import uuid
 import webbrowser
-import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,9 +21,15 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from andrea.core.commands.infer_network import (
+    bundles as infer_network_bundles,
     plan_infer_network,
     preflight_infer_network,
     run_infer_network_plan,
+)
+from andrea.core.shared.bundles import (
+    BundleResolution,
+    BundleSpec,
+    all_files,
 )
 from andrea.core.commands.infer_network.commons.catalog import (
     _load_schema_constraints,
@@ -45,7 +50,15 @@ from andrea.gui.common.reproducibility import (
     shell_join_pretty,
     unavailable_reproducibility,
 )
-from andrea.gui.common.server_files import read_json_if_exists, save_upload
+from andrea.gui.common.server_files import (
+    build_bundle_entries,
+    build_bundle_metadata,
+    build_zip_bundle,
+    bundle_status_payload,
+    read_json_if_exists,
+    resolve_virtual_source,
+    save_upload,
+)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 COMMON_STATIC_DIR = Path(__file__).resolve().parents[1] / "common" / "static"
@@ -72,6 +85,12 @@ class GuiJob:
     traceback: Optional[str] = None
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
+    active_action: Optional[str] = None
+    progress_percent: int = 0
+    progress_label: str = ""
+    progress_detail: str = ""
+    planner: Optional[str] = None
+    planner_time_limit_seconds: Optional[float] = None
 
 
 @dataclass
@@ -588,6 +607,14 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
         "traceback": job.traceback,
         "started_at": job.started_at,
         "finished_at": job.finished_at,
+        "active_action": job.active_action,
+        "progress_percent": job.progress_percent,
+        "progress_label": job.progress_label,
+        "progress_detail": job.progress_detail,
+        "planner": job.planner,
+        "planner_time_limit_seconds": job.planner_time_limit_seconds,
+        "artifact_errors": [],
+        "bundle_status": _job_bundle_status(job),
     }
 
 
@@ -626,7 +653,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     max_ram_gb = resource_limits.get("max_ram_gb")
     planner = str(planner_payload.get("requested", "auto") or "auto")
     planner_time_limit_seconds = float(
-        planner_payload.get("cp_sat_time_limit_seconds", 10.0)
+        planner_payload.get("cp_sat_time_limit_seconds", 100.0)
     )
     progress_poll_seconds = 0.5
     preflight_output_json = str((run_dir / "preflight_report.json").resolve())
@@ -1065,7 +1092,7 @@ def _runtime_progress_from_execution_state(
     if not isinstance(entries_payload, dict):
         return None
 
-    def _legacy_status(status: Any) -> str:
+    def _normalize_execution_status(status: Any) -> str:
         value = str(status or "").strip().lower()
         if value == "queued":
             return "pending"
@@ -1087,7 +1114,7 @@ def _runtime_progress_from_execution_state(
                 "run_id": run_id,
                 "tool_id": str(entry.get("tool_id", "")).strip(),
                 "percent": max(0, min(100, int(entry.get("percent", 0) or 0))),
-                "status": _legacy_status(entry.get("status")),
+                "status": _normalize_execution_status(entry.get("status")),
                 "phase": str(entry.get("phase", "")).strip(),
                 "message": str(entry.get("message", "")).strip(),
                 "updated_at": execution_state.get("updated_at"),
@@ -1139,9 +1166,13 @@ def _collect_output_readiness(
         return {
             "explorer_available": False,
             "csv_ready": False,
+            "raw_csv_ready": False,
+            "normalized_csv_ready": False,
+            "run_report_file_ready": False,
             "final_report_ready": False,
             "graph_exports_ready": False,
             "partial": False,
+            "failed_runs": 0,
             "finalizing_artifacts": False,
             "message": "Results Explorer will be available after execution.",
             "paths": {},
@@ -1149,6 +1180,8 @@ def _collect_output_readiness(
 
     raw_csv = run_dir / "merged_network_raw.csv"
     normalized_csv = run_dir / "merged_network_normalized.csv"
+    run_report_file = run_dir / "run_report.json"
+    run_report_file_ready = run_report_file.is_file()
     final_report_ready = (
         isinstance(run_report, dict) and run_report.get("status") == "executed"
     )
@@ -1225,9 +1258,7 @@ def _collect_output_readiness(
         "merged_network_normalized": (
             str(normalized_csv) if normalized_csv.is_file() else None
         ),
-        "run_report": str(run_dir / "run_report.json")
-        if (run_dir / "run_report.json").is_file()
-        else None,
+        "run_report": str(run_report_file) if run_report_file_ready else None,
         **{
             key: str(path) if path.is_file() else None
             for key, path in graph_paths.items()
@@ -1239,6 +1270,7 @@ def _collect_output_readiness(
         "csv_ready": csv_ready,
         "raw_csv_ready": raw_csv.is_file(),
         "normalized_csv_ready": normalized_csv.is_file(),
+        "run_report_file_ready": run_report_file_ready,
         "final_report_ready": final_report_ready,
         "graph_exports_ready": graph_exports_ready,
         "partial": partial,
@@ -1249,79 +1281,175 @@ def _collect_output_readiness(
     }
 
 
-def _bundle_sources(
-    *,
-    request_dir: Path,
-    run_dir: Optional[Path],
-    mode: str,
-    include_inputs: bool = True,
-) -> list[tuple[str, Path]]:
-    if mode not in {"light", "full"}:
-        raise ValueError("mode must be one of: light, full")
-
-    sources: list[tuple[str, Path]] = []
-
-    if include_inputs:
-        request_candidates = [
-            request_dir / "dataset-manifest.json",
-            request_dir / "tools_params.json",
-            request_dir / "preflight_report.json",
-        ]
-        for path in request_candidates:
-            if path.exists() and path.is_file():
-                sources.append((f"input/{path.name}", path))
-
-        if mode == "full":
-            inputs_dir = request_dir / "inputs"
-            if inputs_dir.exists() and inputs_dir.is_dir():
-                for path in sorted(inputs_dir.rglob("*")):
-                    if not path.is_file():
-                        continue
-                    rel = path.relative_to(request_dir)
-                    sources.append((f"input/{rel.as_posix()}", path))
-
+def _resolve_bundle(*, run_dir: Optional[Path], bundle_id: str) -> Any:
     if run_dir is None or not run_dir.exists() or not run_dir.is_dir():
-        return sources
+        raise ValueError("Inference output is not ready")
+    return infer_network_bundles.resolve_bundle(bundle_id=bundle_id, run_dir=run_dir)
 
-    if mode == "full":
-        for path in sorted(run_dir.rglob("*")):
-            if not path.is_file():
-                continue
-            rel = path.relative_to(run_dir)
-            sources.append((f"run/{rel.as_posix()}", path))
-    else:
-        run_candidates = [
-            run_dir / "plan.json",
-            run_dir / "run_report.json",
-            run_dir / "merged_network_raw.csv",
-            run_dir / "merged_network_normalized.csv",
-            run_dir / "merged_network_raw.gexf",
-            run_dir / "merged_network_raw.graphml",
-            run_dir / "merged_network_normalized.gexf",
-            run_dir / "merged_network_normalized.graphml",
-            run_dir / "merged_network_normalized_cytoscape.py",
+
+def _resolve_available_output_files(*, run_dir: Optional[Path]) -> BundleResolution:
+    if run_dir is None or not run_dir.exists() or not run_dir.is_dir():
+        raise ValueError("Inference output is not ready")
+    root = run_dir.resolve()
+    sources = all_files(root)
+    spec = BundleSpec(
+        id="available_outputs",
+        label="Available Output Files",
+        purpose=(
+            "Live view of files currently present in the inference output "
+            "directory. This is for exploration only; download bundles keep "
+            "their own strict readiness rules."
+        ),
+        contents_summary=(
+            "All currently generated files under the run directory, preserving "
+            "their relative folder layout.",
+        ),
+    )
+    return BundleResolution(
+        spec=spec,
+        root=root,
+        sources=sources,
+        missing_required=() if sources else ("no output files are available yet",),
+    )
+
+
+def _resolve_files_bundle(*, run_dir: Optional[Path], bundle_id: str) -> Any:
+    if bundle_id == "available_outputs":
+        return _resolve_available_output_files(run_dir=run_dir)
+    return _resolve_bundle(run_dir=run_dir, bundle_id=bundle_id)
+
+
+def _infer_bundle_readiness(
+    *, bundle_id: str, output_readiness: dict[str, Any]
+) -> list[dict[str, str]]:
+    csv_status = "ready" if output_readiness.get("csv_ready") else "pending"
+    report_file_status = (
+        "ready" if output_readiness.get("run_report_file_ready") else "pending"
+    )
+    report_status = (
+        "ready" if output_readiness.get("final_report_ready") else "pending"
+    )
+    graphs_status = (
+        "ready" if output_readiness.get("graph_exports_ready") else "pending"
+    )
+    if bundle_id == "full":
+        return [
+            {"label": "Merged CSVs", "status": csv_status},
+            {"label": "Run report", "status": report_status},
+            {"label": "Graph exports", "status": graphs_status},
         ]
-        for path in run_candidates:
-            if path.exists() and path.is_file():
-                rel = path.relative_to(run_dir)
-                sources.append((f"run/{rel.as_posix()}", path))
+    if bundle_id == "analysis":
+        return [
+            {"label": "Merged CSVs", "status": csv_status},
+            {"label": "Run report snapshot", "status": report_file_status},
+        ]
+    if bundle_id == "report":
+        return [{"label": "Run report", "status": report_status}]
+    if bundle_id == "graphs":
+        return [{"label": "Graph exports", "status": graphs_status}]
+    return []
 
-        for path in sorted(run_dir.glob("tools/*/resolved_params.json")):
-            if not path.is_file():
-                continue
-            rel = path.relative_to(run_dir)
-            sources.append((f"run/{rel.as_posix()}", path))
 
-    unique: dict[str, Path] = {}
-    for virtual_path, source_path in sources:
-        unique[virtual_path] = source_path
-    return sorted(unique.items(), key=lambda item: item[0])
+def _infer_bundle_runtime_missing(
+    *, bundle_id: str, output_readiness: dict[str, Any]
+) -> list[str]:
+    missing: list[str] = []
+    report_ready = bool(output_readiness.get("final_report_ready"))
+    report_file_ready = bool(output_readiness.get("run_report_file_ready"))
+    csv_ready = bool(output_readiness.get("csv_ready"))
+    graphs_ready = bool(output_readiness.get("graph_exports_ready"))
+    if bundle_id in {"full", "report"} and not report_ready:
+        missing.append("run_report.json final report is not complete")
+    if bundle_id == "analysis" and not report_file_ready:
+        missing.append("run_report.json is not available")
+    if bundle_id in {"full", "analysis"} and not csv_ready:
+        missing.append("merged CSV outputs are not complete")
+    if bundle_id == "full" and csv_ready and not graphs_ready:
+        missing.append("graph exports are not complete")
+    if bundle_id == "graphs" and not graphs_ready:
+        missing.append("graph exports are not complete")
+    return missing
+
+
+def _apply_infer_bundle_runtime_status(
+    *, bundles: list[dict[str, Any]], output_readiness: dict[str, Any]
+) -> list[dict[str, Any]]:
+    for bundle in bundles:
+        bundle_id = str(bundle.get("id") or "")
+        bundle["readiness"] = _infer_bundle_readiness(
+            bundle_id=bundle_id,
+            output_readiness=output_readiness,
+        )
+        runtime_missing = _infer_bundle_runtime_missing(
+            bundle_id=bundle_id,
+            output_readiness=output_readiness,
+        )
+        if runtime_missing:
+            bundle["available"] = False
+            missing = list(bundle.get("missing_required") or [])
+            for reason in runtime_missing:
+                if reason not in missing:
+                    missing.append(reason)
+            bundle["missing_required"] = missing
+    return bundles
+
+
+def _build_infer_bundle_metadata(
+    *, run_dir: Optional[Path], output_readiness: dict[str, Any]
+) -> list[dict[str, Any]]:
+    output_ready = bool(run_dir and run_dir.exists() and run_dir.is_dir())
+    resolver = (
+        (
+            lambda bundle_id: infer_network_bundles.resolve_bundle(
+                bundle_id=bundle_id,
+                run_dir=run_dir,  # type: ignore[arg-type]
+            )
+        )
+        if output_ready
+        else None
+    )
+    bundles = build_bundle_metadata(
+        specs=infer_network_bundles.bundle_specs(),
+        resolver=resolver,
+        unavailable_reason="Inference output is not ready",
+    )
+    return _apply_infer_bundle_runtime_status(
+        bundles=bundles,
+        output_readiness=output_readiness,
+    )
+
+
+def _job_bundle_status(job: GuiJob) -> dict[str, dict[str, Any]]:
+    run_dir = Path(job.run_dir) if job.run_dir else None
+    run_report = read_json_if_exists(job.run_report_path or "")
+    if run_report is None and run_dir is not None:
+        run_report = read_json_if_exists(run_dir / "run_report.json")
+    execution_state = _read_execution_state_payload(run_dir=run_dir)
+    output_readiness = _collect_output_readiness(
+        run_dir=run_dir,
+        run_report=run_report,
+        execution_state=execution_state,
+    )
+    bundles = _build_infer_bundle_metadata(
+        run_dir=run_dir,
+        output_readiness=output_readiness,
+    )
+    return bundle_status_payload(bundles)
+
+
+def _require_bundle_available(resolution: Any) -> None:
+    if resolution.available and resolution.sources:
+        return
+    missing = ", ".join(resolution.missing_required) or "no files"
+    raise ValueError(
+        f"Bundle '{resolution.spec.id}' is not available; missing required files: {missing}"
+    )
 
 
 def _viewer_for_virtual_path(path: str) -> str:
     normalized = path.lower()
     basename = Path(normalized).name
-    if normalized == "run/plan.json":
+    if normalized == "plan.json":
         return "plan"
     if normalized.endswith("_cytoscape.py") or ".cytoscape." in basename:
         return "network_cytoscape_script"
@@ -1348,48 +1476,206 @@ def _viewer_for_virtual_path(path: str) -> str:
     return "none"
 
 
-def _build_bundle_entries(sources: list[tuple[str, Path]]) -> list[dict[str, Any]]:
-    entries: dict[str, dict[str, Any]] = {}
-    for virtual_path, source in sources:
-        parts = virtual_path.split("/")
-        for idx in range(1, len(parts)):
-            dir_path = "/".join(parts[:idx])
-            entries.setdefault(
-                dir_path,
-                {
-                    "path": dir_path,
-                    "kind": "dir",
-                    "size_bytes": None,
-                    "viewer": "none",
-                    "visualizable": False,
-                    "depth": max(0, len(parts[:idx]) - 1),
-                },
-            )
-
-        viewer = _viewer_for_virtual_path(virtual_path)
-        entries[virtual_path] = {
-            "path": virtual_path,
-            "kind": "file",
-            "size_bytes": source.stat().st_size if source.exists() else None,
-            "viewer": viewer,
-            "visualizable": viewer != "none",
-            "depth": max(0, len(parts) - 1),
+def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
+    normalized = path.lower()
+    basename = Path(normalized).name
+    if basename == "merged_network_normalized.csv":
+        return {
+            "title": "Normalized merged network",
+            "summary": (
+                "Merged inferred network after ANDREA score normalization. This is "
+                "the canonical handoff for evaluate-inference and compare-networks."
+            ),
+            "badges": ["analysis handoff", "normalized scores"],
+            "tips": [
+                "Use this file for downstream evaluation and network comparison.",
+                "Rows keep the unified schema: source, target, score, sign, evidence, context and tool_id.",
+                "The context column identifies global, group or cell-specific inferred networks.",
+            ],
         }
-
-    return sorted(
-        entries.values(),
-        key=lambda item: (item["kind"] != "dir", item["path"]),
-    )
-
-
-def _resolve_virtual_source(
-    *,
-    sources: list[tuple[str, Path]],
-    virtual_path: str,
-) -> Optional[Path]:
-    for candidate_path, source in sources:
-        if candidate_path == virtual_path:
-            return source
+    if basename == "merged_network_raw.csv":
+        return {
+            "title": "Raw merged network",
+            "summary": (
+                "Merged inferred network before ANDREA score normalization. It preserves "
+                "wrapper-exported score magnitudes in the same public edge-table schema."
+            ),
+            "badges": ["debug", "raw scores"],
+            "tips": [
+                "Use this file for debugging wrapper outputs or method score scales.",
+                "Prefer merged_network_normalized.csv for benchmark evaluation and comparison.",
+            ],
+        }
+    if basename == "network.csv":
+        return {
+            "title": "Tool network output",
+            "summary": (
+                "Raw public network emitted by one physical wrapper execution before "
+                "ANDREA merges it into the run-level outputs."
+            ),
+            "badges": ["tool workspace", "raw output"],
+            "tips": [
+                "Use this when debugging one tool run in isolation.",
+                "The run-level handoff remains merged_network_normalized.csv.",
+            ],
+        }
+    if basename in {"network.normalized.csv", "network.cell_native.csv"}:
+        return {
+            "title": "Tool normalized network",
+            "summary": (
+                "Per-tool normalized network emitted or derived inside a tool workspace "
+                "before run-level merging."
+            ),
+            "badges": ["tool workspace", "normalized output"],
+            "tips": [
+                "This is useful for inspecting one wrapper execution before merge.",
+                "Use merged_network_normalized.csv for downstream ANDREA commands.",
+            ],
+        }
+    if basename == "expression.tsv":
+        return {
+            "title": "Runtime expression input",
+            "summary": (
+                "Expression matrix copy staged for a specific wrapper execution. Genes "
+                "are rows and cells or samples are columns."
+            ),
+            "badges": ["tool workspace", "runtime input"],
+            "tips": [
+                "This may be a prepared copy of the dataset expression matrix.",
+                "Use dataset-manifest.json to identify the original input contract.",
+            ],
+        }
+    if basename == "run_report.json":
+        return {
+            "title": "Run report",
+            "summary": (
+                "Execution report for this infer-network job, including status, selected "
+                "runs, output paths and runtime metadata."
+            ),
+            "badges": ["report", "reproducibility"],
+            "tips": [
+                "This is the compact machine-readable summary used by report bundles.",
+                "During artifact finalization, this may be a snapshot until the final report is written.",
+            ],
+        }
+    if basename == "plan.json":
+        return {
+            "title": "Execution plan",
+            "summary": "Frozen plan used to schedule tool runs and resource waves.",
+            "badges": ["planning", "resource waves"],
+            "tips": [
+                "Use this file to audit how ANDREA mapped selected configurations to physical executions.",
+                "Grouped and aggregated modes may expand one logical run into multiple physical tasks.",
+            ],
+        }
+    if basename == "preflight_report.json":
+        return {
+            "title": "Preflight report",
+            "summary": "Compatibility report generated before planning the inference run.",
+            "badges": ["preflight", "tool eligibility"],
+            "tips": [
+                "Shows eligible, warning and blocked tools for the uploaded dataset and requested inputs.",
+                "Useful when a tool is absent from the generated plan.",
+            ],
+        }
+    if basename == "dataset-manifest.json":
+        return {
+            "title": "Dataset manifest",
+            "summary": (
+                "Frozen dataset input contract used by this infer-network run. It "
+                "references the expression matrix and standardized extra inputs."
+            ),
+            "badges": ["input contract", "dataset"],
+            "tips": [
+                "This is the same manifest consumed by infer-network core commands.",
+                "Paths are resolved at run time; the manifest does not duplicate file contents.",
+            ],
+        }
+    if basename == "tools_params.json":
+        return {
+            "title": "Tool parameters",
+            "summary": "Frozen selected tool configurations and parameter overrides.",
+            "badges": ["input contract", "tool selection"],
+            "tips": [
+                "Use this file with dataset-manifest.json to reproduce the planned inference run.",
+                "The final per-run values are also written as resolved_params.json files under each tool workspace.",
+            ],
+        }
+    if basename == "resolved_params.json":
+        return {
+            "title": "Resolved tool parameters",
+            "summary": "Per-run parameter values after applying defaults and GUI overrides.",
+            "badges": ["tool workspace", "resolved params"],
+            "tips": [
+                "Useful for auditing the exact parameters sent to a wrapper.",
+                "This file is per physical tool execution, not a global run summary.",
+            ],
+        }
+    if basename == "execution.json":
+        return {
+            "title": "Execution metadata",
+            "summary": "Per-run execution contract produced by the planner.",
+            "badges": ["tool workspace", "execution contract"],
+            "tips": [
+                "Contains the execution mode and task metadata used by the runtime.",
+                "For grouped emulation, one logical configuration may correspond to multiple execution tasks.",
+            ],
+        }
+    if basename == "resolved_execution.json":
+        return {
+            "title": "Resolved execution metadata",
+            "summary": (
+                "Planner-resolved execution metadata for a physical wrapper task."
+            ),
+            "badges": ["tool workspace", "execution contract"],
+            "tips": [
+                "Use this alongside resolved_params.json to audit the exact task sent to the runtime.",
+            ],
+        }
+    if basename == "params.json":
+        return {
+            "title": "Wrapper params",
+            "summary": (
+                "Parameter file mounted into one wrapper container for execution."
+            ),
+            "badges": ["tool workspace", "runtime input"],
+            "tips": [
+                "This is the container-facing parameter contract, after GUI/core resolution.",
+                "For a cleaner audit view, inspect resolved_params.json when available.",
+            ],
+        }
+    if basename == "progress.json":
+        return {
+            "title": "Wrapper progress",
+            "summary": "Progress/status file emitted by a wrapper during execution.",
+            "badges": ["tool workspace", "runtime"],
+            "tips": [
+                "Useful when a run is still active or failed before writing a final network.",
+                "The run-level progress view aggregates these files when available.",
+            ],
+        }
+    if basename == "execution_state.json":
+        return {
+            "title": "Execution state",
+            "summary": (
+                "Run-level runtime state used by the GUI to render waves, logical runs, "
+                "physical tasks and finalization progress."
+            ),
+            "badges": ["runtime", "GUI state"],
+            "tips": [
+                "This file is operational state, not a downstream analysis input.",
+                "It is useful for debugging progress rendering or failed executions.",
+            ],
+        }
+    if basename.endswith(".log"):
+        return {
+            "title": "Execution log",
+            "summary": "Wrapper/runtime log captured during execution.",
+            "badges": ["tool workspace", "log"],
+            "tips": [
+                "Use logs to debug tool failures, warnings or unexpected empty outputs.",
+            ],
+        }
     return None
 
 
@@ -1444,23 +1730,6 @@ def _is_probably_text(source: Path, sample_bytes: int = 4096) -> bool:
         return False
     return True
 
-
-def _build_zip_bundle(
-    *,
-    zip_path: Path,
-    sources: list[tuple[str, Path]],
-) -> Path:
-    zip_path.parent.mkdir(parents=True, exist_ok=True)
-    if zip_path.exists():
-        zip_path.unlink()
-
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        for virtual_path, source in sources:
-            if source.exists() and source.is_file():
-                zf.write(source, arcname=virtual_path)
-    return zip_path
-
-
 def _run_job(
     *,
     job_id: str,
@@ -1471,6 +1740,24 @@ def _run_job(
         job = STATE.jobs[job_id]
         job.status = "running"
         job.started_at = _utc_now()
+        job.finished_at = None
+        job.active_action = action
+        if action == "preflight":
+            job.progress_percent = 15
+            job.progress_label = "Running preflight"
+            job.progress_detail = "Validating dataset inputs and tool compatibility."
+        elif action == "plan":
+            job.progress_percent = 20
+            job.progress_label = "Planning execution"
+            job.progress_detail = "Preparing planner inputs."
+            job.planner = str(options.get("planner", "auto") or "auto")
+            job.planner_time_limit_seconds = float(
+                options.get("planner_time_limit_seconds", 100.0)
+            )
+        elif action == "run":
+            job.progress_percent = 5
+            job.progress_label = "Starting execution"
+            job.progress_detail = "Preparing planned tool runs."
 
     try:
         with STATE.lock:
@@ -1501,6 +1788,10 @@ def _run_job(
                 job.status = "completed"
                 job.stage = "preflight_ok"
                 job.preflight_report_path = str(preflight_path)
+                job.active_action = None
+                job.progress_percent = 100
+                job.progress_label = "Preflight completed"
+                job.progress_detail = "Dataset inputs and catalog compatibility were validated."
                 job.finished_at = _utc_now()
             return
 
@@ -1509,6 +1800,13 @@ def _run_job(
                 raise ValueError("Job is missing dataset/tools paths for planning")
             preflight_path = Path(job.request_dir) / "preflight_report.json"
             preflight_report = read_json_if_exists(str(preflight_path))
+            with STATE.lock:
+                job = STATE.jobs[job_id]
+                job.progress_percent = 40
+                job.progress_label = "Solving execution plan"
+                job.progress_detail = (
+                    "ANDREA is selecting tool resources and scheduling execution waves."
+                )
             run_dir = plan_infer_network(
                 dataset_manifest_path=dataset_manifest_path,
                 tools_params_path=tools_params_path,
@@ -1517,7 +1815,7 @@ def _run_job(
                 max_ram_gb=_safe_float(options.get("max_ram_gb")),
                 planner=str(options.get("planner", "auto") or "auto"),
                 planner_time_limit_seconds=float(
-                    options.get("planner_time_limit_seconds", 10.0)
+                    options.get("planner_time_limit_seconds", 100.0)
                 ),
                 preflight_report=preflight_report,
             )
@@ -1534,6 +1832,10 @@ def _run_job(
                     str(run_report_path) if run_report_path.exists() else None
                 )
                 job.plan_path = str(plan_path) if plan_path.exists() else None
+                job.active_action = None
+                job.progress_percent = 100
+                job.progress_label = "Plan generated"
+                job.progress_detail = "The execution plan is ready."
                 job.finished_at = _utc_now()
             return
 
@@ -1556,6 +1858,10 @@ def _run_job(
                     str(run_report_path) if run_report_path.exists() else None
                 )
                 job.plan_path = str(plan_path) if plan_path.exists() else None
+                job.active_action = None
+                job.progress_percent = 100
+                job.progress_label = "Execution completed"
+                job.progress_detail = "Inference outputs were written."
                 job.finished_at = _utc_now()
             return
 
@@ -1566,6 +1872,9 @@ def _run_job(
             job.status = "failed"
             job.error = str(exc)
             job.traceback = traceback.format_exc(limit=30)
+            job.active_action = None
+            job.progress_label = "Job failed"
+            job.progress_detail = str(exc)
             job.finished_at = _utc_now()
 
 
@@ -1647,34 +1956,69 @@ def create_app() -> FastAPI:
             return JSONResponse({"status": status, "plan": None})
         return JSONResponse({"status": status, "plan": plan, "plan_path": plan_path})
 
+    @app.get("/api/infer-network/jobs/{job_id}/bundles")
+    async def api_job_bundles(job_id: str) -> JSONResponse:
+        with STATE.lock:
+            job = STATE.jobs.get(job_id)
+            if job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            run_dir = Path(job.run_dir) if job.run_dir else None
+            status = job.status
+            run_report_path = job.run_report_path
+        output_ready = bool(run_dir and run_dir.exists() and run_dir.is_dir())
+        run_report = read_json_if_exists(run_report_path)
+        if run_report is None and run_dir is not None:
+            run_report = read_json_if_exists(run_dir / "run_report.json")
+        execution_state = _read_execution_state_payload(run_dir=run_dir)
+        output_readiness = _collect_output_readiness(
+            run_dir=run_dir,
+            run_report=run_report,
+            execution_state=execution_state,
+        )
+        bundles = _build_infer_bundle_metadata(
+            run_dir=run_dir,
+            output_readiness=output_readiness,
+        )
+        return JSONResponse(
+            {
+                "status": status,
+                "output_ready": output_ready,
+                "output_readiness": output_readiness,
+                "bundles": bundles,
+                "bundle_status": bundle_status_payload(bundles),
+            }
+        )
+
     @app.get("/api/infer-network/jobs/{job_id}/files")
     async def api_job_files(
         job_id: str,
-        mode: str = "light",
+        bundle_id: str = "report",
     ) -> JSONResponse:
         with STATE.lock:
             job = STATE.jobs.get(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
-            request_dir = Path(job.request_dir)
             run_dir = Path(job.run_dir) if job.run_dir else None
             status = job.status
 
         try:
-            sources = _bundle_sources(
-                request_dir=request_dir,
+            resolution = _resolve_files_bundle(
                 run_dir=run_dir,
-                mode=mode,
-                include_inputs=False,
+                bundle_id=bundle_id,
             )
+            _require_bundle_available(resolution)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        entries = _build_bundle_entries(sources)
+        sources = resolution.source_tuples
+        entries = build_bundle_entries(sources, viewer_for_path=_viewer_for_virtual_path)
         return JSONResponse(
             {
                 "status": status,
-                "mode": mode,
+                "bundle_id": resolution.spec.id,
+                "mode": resolution.spec.id,
+                "missing_required": list(resolution.missing_required),
+                "skipped_optional": list(resolution.skipped_optional),
                 "entries": entries,
             }
         )
@@ -1683,7 +2027,7 @@ def create_app() -> FastAPI:
     async def api_job_file_content(
         job_id: str,
         path: str,
-        mode: str = "light",
+        bundle_id: str = "report",
         max_rows: int = MAX_TABLE_PREVIEW_ROWS,
     ) -> JSONResponse:
         requested_path = str(path or "").strip().lstrip("/")
@@ -1694,29 +2038,31 @@ def create_app() -> FastAPI:
             job = STATE.jobs.get(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
-            request_dir = Path(job.request_dir)
             run_dir = Path(job.run_dir) if job.run_dir else None
 
         try:
-            sources = _bundle_sources(
-                request_dir=request_dir, run_dir=run_dir, mode=mode
-            )
+            resolution = _resolve_files_bundle(run_dir=run_dir, bundle_id=bundle_id)
+            _require_bundle_available(resolution)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        source = _resolve_virtual_source(sources=sources, virtual_path=requested_path)
+        source = resolve_virtual_source(
+            sources=resolution.source_tuples, virtual_path=requested_path
+        )
         if source is None or not source.exists() or not source.is_file():
             raise HTTPException(
                 status_code=404, detail=f"File not found in bundle: {requested_path}"
             )
 
         viewer = _viewer_for_virtual_path(requested_path)
+        guide = _artifact_guide(requested_path)
         if viewer == "plan":
             return JSONResponse(
                 {
                     "path": requested_path,
-                    "viewer": viewer,
+                    "viewer": "plan",
                     "note": "Use the dedicated plan viewer panel.",
+                    "guide": guide,
                 }
             )
         if viewer == "json":
@@ -1731,6 +2077,7 @@ def create_app() -> FastAPI:
                     "viewer": "json",
                     "text": text,
                     "truncated": False,
+                    "guide": guide,
                 }
             )
 
@@ -1812,6 +2159,7 @@ def create_app() -> FastAPI:
                     "path": requested_path,
                     "viewer": "table_csv",
                     **table,
+                    "guide": guide,
                 }
             )
 
@@ -1826,6 +2174,7 @@ def create_app() -> FastAPI:
                     "path": requested_path,
                     "viewer": "table_tsv",
                     **table,
+                    "guide": guide,
                 }
             )
 
@@ -1838,6 +2187,7 @@ def create_app() -> FastAPI:
                     "path": requested_path,
                     "viewer": "text",
                     **text_preview,
+                    "guide": guide,
                 }
             )
 
@@ -1851,7 +2201,13 @@ def create_app() -> FastAPI:
                     "path": requested_path,
                     "viewer": "text",
                     **text_preview,
+                    "guide": guide,
                 }
+            )
+
+        if guide:
+            return JSONResponse(
+                {"path": requested_path, "viewer": "artifact_guide", **guide}
             )
 
         raise HTTPException(
@@ -1862,7 +2218,7 @@ def create_app() -> FastAPI:
     @app.get("/api/infer-network/jobs/{job_id}/bundle")
     async def api_job_bundle(
         job_id: str,
-        mode: str = "light",
+        bundle_id: str = "full",
     ) -> FileResponse:
         with STATE.lock:
             job = STATE.jobs.get(job_id)
@@ -1870,20 +2226,34 @@ def create_app() -> FastAPI:
                 raise HTTPException(status_code=404, detail="Job not found")
             request_dir = Path(job.request_dir)
             run_dir = Path(job.run_dir) if job.run_dir else None
+            run_report_path = job.run_report_path
+        run_report = read_json_if_exists(run_report_path)
+        if run_report is None and run_dir is not None:
+            run_report = read_json_if_exists(run_dir / "run_report.json")
+        output_readiness = _collect_output_readiness(
+            run_dir=run_dir,
+            run_report=run_report,
+            execution_state=_read_execution_state_payload(run_dir=run_dir),
+        )
 
         try:
-            sources = _bundle_sources(
-                request_dir=request_dir, run_dir=run_dir, mode=mode
+            resolution = _resolve_bundle(run_dir=run_dir, bundle_id=bundle_id)
+            runtime_missing = _infer_bundle_runtime_missing(
+                bundle_id=bundle_id,
+                output_readiness=output_readiness,
             )
+            if runtime_missing:
+                raise ValueError(", ".join(runtime_missing))
+            _require_bundle_available(resolution)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        zip_path = request_dir / f"{job_id}_bundle_{mode}.zip"
-        _build_zip_bundle(zip_path=zip_path, sources=sources)
+        zip_path = request_dir / f"{job_id}_bundle_{resolution.spec.id}.zip"
+        build_zip_bundle(zip_path=zip_path, sources=resolution.source_tuples)
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"andrea_{job_id}_{mode}.zip",
+            filename=f"andrea_{job_id}_{resolution.spec.id}.zip",
         )
 
     @app.post("/api/infer-network/preflight")
@@ -2013,10 +2383,19 @@ def create_app() -> FastAPI:
 
         options_cfg = dict(options)
         options_cfg.setdefault("output_dir", str(output_dir))
+        planner_time_limit_seconds = float(
+            options_cfg.get("planner_time_limit_seconds", 100.0)
+        )
         with STATE.lock:
             job = STATE.jobs[job_id]
             job.status = "queued"
             job.stage = "preflight_ok"
+            job.active_action = "plan"
+            job.progress_percent = 5
+            job.progress_label = "Planning queued"
+            job.progress_detail = "Waiting for the planner worker to start."
+            job.planner = str(options_cfg.get("planner", "auto") or "auto")
+            job.planner_time_limit_seconds = planner_time_limit_seconds
             job.tools_params_path = str(tools_params_path)
             job.error = None
             job.traceback = None

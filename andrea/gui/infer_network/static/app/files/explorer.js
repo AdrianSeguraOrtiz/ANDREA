@@ -3,7 +3,7 @@ import {
   renderFilePreview,
   renderFiles as renderCommonFiles,
   resetFilesView as resetCommonFilesView,
-} from "/static-common/app/files/explorer.js?v=20260423a";
+} from "/static-common/app/files/explorer.js?v=20260611a";
 import { fetchFileContentData, fetchFilesData } from "../core/api.js";
 import { state } from "../core/state.js";
 import { renderPlanInlinePreview } from "../plan/view.js";
@@ -11,14 +11,18 @@ import { renderPlanInlinePreview } from "../plan/view.js";
 function fileApi(jobId) {
   return {
     fetchFiles: (mode) => fetchFilesData(jobId, mode),
-    fetchFileContent: (path, mode) => fetchFileContentData(jobId, path, mode),
+    fetchFileContent: (path, mode, options) => fetchFileContentData(jobId, path, mode, options),
   };
 }
 
 function explorerOptions() {
   return {
-    preferredPathSuffixes: ["run/merged_network_normalized.csv"],
+    preferredPathSuffixes: ["merged_network_normalized.csv"],
     renderPlanPreview: (path) => renderPlanInlinePreview(state.lastPlan, path),
+    renderSummary: ({ summaryEl, mode, filesCount, dirsCount }) => {
+      const label = mode === "available_outputs" ? "available outputs" : `bundle=${mode}`;
+      summaryEl.textContent = `${label} | files=${filesCount} | dirs=${dirsCount}`;
+    },
   };
 }
 

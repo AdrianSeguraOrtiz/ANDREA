@@ -130,7 +130,7 @@ def plan_infer_network(
     max_cores: int = multiprocessing.cpu_count(),
     max_ram_gb: Optional[float] = None,
     planner: str = "auto",
-    planner_time_limit_seconds: float = 10.0,
+    planner_time_limit_seconds: float = 100.0,
     preflight_report: Optional[dict[str, Any]] = None,
 ) -> Path:
     if max_cores < 1:

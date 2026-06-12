@@ -284,7 +284,7 @@ def infer_network_plan(
         help="Planning strategy: auto, cp_sat, heuristic.",
     ),
     planner_time_limit_seconds: float = typer.Option(
-        10.0,
+        100.0,
         help="Time limit in seconds for cp_sat planning attempts.",
     ),
 ):
@@ -358,7 +358,7 @@ def infer_network_execute(
         help="Planning strategy: auto, cp_sat, heuristic.",
     ),
     planner_time_limit_seconds: float = typer.Option(
-        10.0,
+        100.0,
         help="Time limit in seconds for cp_sat planning attempts.",
     ),
     progress_poll_seconds: float = typer.Option(

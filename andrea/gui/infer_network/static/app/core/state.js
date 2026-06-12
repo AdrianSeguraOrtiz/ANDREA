@@ -20,10 +20,11 @@ export const state = {
   loadedFilesKey: null,
   selectedFilePath: null,
   filesEntries: [],
-  filesMode: "full",
+  filesMode: "available_outputs",
   collapsedDirs: new Set(),
   eligibleToolIds: null,
   activeStep: 1,
+  autoFollowExecutionStep: true,
   paramsModalCard: null,
   notifiedFailures: new Set(),
 };

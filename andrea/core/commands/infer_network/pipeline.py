@@ -26,7 +26,7 @@ def infer_network(
     max_cores: int = multiprocessing.cpu_count(),
     max_ram_gb: Optional[float] = None,
     planner: str = "auto",
-    planner_time_limit_seconds: float = 10.0,
+    planner_time_limit_seconds: float = 100.0,
     progress_poll_seconds: float = 0.5,
 ) -> Path:
     """Execute preflight + plan + run for infer-network."""

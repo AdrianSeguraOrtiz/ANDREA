@@ -4,41 +4,25 @@ from __future__ import annotations
 
 from typing import Any
 
-from .shared import DatasetContext
+from andrea.core.shared.compatibility_rules import (
+    COMPATIBILITY_ACTIONS,
+    COMPATIBILITY_OPS,
+    compare_compatibility_values,
+    condition_expected_value,
+    match_compatibility_conditions,
+)
 
-COMPATIBILITY_ACTIONS = {"block", "warn"}
-COMPATIBILITY_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
+from .shared import DatasetContext
 
 
 def _compare_values(*, actual: Any, op: str, expected: Any) -> bool:
-    if op == "eq":
-        return actual == expected
-    if op == "ne":
-        return actual != expected
-    if op == "in":
-        return isinstance(expected, list) and actual in expected
-    if op == "not_in":
-        return isinstance(expected, list) and actual not in expected
-
-    if (
-        isinstance(actual, bool)
-        or isinstance(expected, bool)
-        or not isinstance(actual, (int, float))
-        or not isinstance(expected, (int, float))
-    ):
-        return False
-
-    actual_num = float(actual)
-    expected_num = float(expected)
-    if op == "gt":
-        return actual_num > expected_num
-    if op == "gte":
-        return actual_num >= expected_num
-    if op == "lt":
-        return actual_num < expected_num
-    if op == "lte":
-        return actual_num <= expected_num
-    return False
+    return compare_compatibility_values(
+        actual=actual,
+        op=op,
+        expected=expected,
+        coerce_numeric=False,
+        allow_bool_numeric=False,
+    )
 
 
 def _condition_value_from(*, toolspec: dict[str, Any], value_from: str) -> Any:
@@ -82,32 +66,14 @@ def _compatibility_rule_matches(
     resolved_params: dict[str, Any],
     resolved_execution: dict[str, Any],
 ) -> bool:
-    raw_conditions = rule.get("conditions", [])
-    if not isinstance(raw_conditions, list) or not raw_conditions:
-        raise ValueError("compatibility rule must include non-empty conditions")
-
-    for idx, condition in enumerate(raw_conditions, start=1):
-        if not isinstance(condition, dict):
-            raise ValueError(f"compatibility rule condition[{idx}] must be an object")
-        field = str(condition.get("field", "")).strip()
-        op = str(condition.get("op", "")).strip()
-        if not field:
-            raise ValueError(f"compatibility rule condition[{idx}].field is required")
-        if op not in COMPATIBILITY_OPS:
-            raise ValueError(f"compatibility rule condition[{idx}].op is invalid")
-        has_value = "value" in condition
-        has_value_from = "value_from" in condition
-        if has_value == has_value_from:
-            raise ValueError(
-                f"compatibility rule condition[{idx}] must define exactly one of value or value_from"
-            )
-        expected = (
-            _condition_value_from(
+    def _condition_matches(condition: dict[str, Any], idx: int) -> bool:
+        field, op, expected = condition_expected_value(
+            condition=condition,
+            condition_label=f"compatibility rule condition[{idx}]",
+            value_from_resolver=lambda value_from: _condition_value_from(
                 toolspec=toolspec,
-                value_from=str(condition.get("value_from", "")).strip(),
-            )
-            if has_value_from
-            else condition.get("value")
+                value_from=value_from,
+            ),
         )
         actual = _condition_actual_value(
             field=field,
@@ -115,9 +81,22 @@ def _compatibility_rule_matches(
             resolved_params=resolved_params,
             resolved_execution=resolved_execution,
         )
-        if not _compare_values(actual=actual, op=op, expected=expected):
-            return False
-    return True
+        return compare_compatibility_values(
+            actual=actual,
+            op=op,
+            expected=expected,
+            coerce_numeric=False,
+            allow_bool_numeric=False,
+        )
+
+    return match_compatibility_conditions(
+        rule=rule,
+        condition_matcher=_condition_matches,
+        empty_conditions_message="compatibility rule must include non-empty conditions",
+        non_object_condition_message=lambda idx: (
+            f"compatibility rule condition[{idx}] must be an object"
+        ),
+    )
 
 
 def _collect_compatibility_rule_issues(

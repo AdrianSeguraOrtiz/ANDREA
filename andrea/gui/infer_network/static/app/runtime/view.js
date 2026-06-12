@@ -426,7 +426,11 @@ function restoreRuntimeUiToDom(root) {
     if (!key || !(key in ui.scrollTops)) {
       return;
     }
-    node.scrollTop = Number(ui.scrollTops[key] || 0);
+    const scrollTop = Number(ui.scrollTops[key] || 0);
+    node.scrollTop = scrollTop;
+    window.requestAnimationFrame(() => {
+      node.scrollTop = scrollTop;
+    });
   });
 }
 
@@ -508,6 +512,11 @@ function buildWaveModel(wave = {}, executionState = {}, tools = {}) {
   const statusClass = normalizeRuntimeStatus(status);
   const isCurrent = Number(executionState.current_wave || 0) === index;
   const hasIssues = waveHasModelIssues({ wave, tools, counts });
+  const rawPercent = Number(wave.percent);
+  let percent = Number.isFinite(rawPercent) ? rawPercent : 0;
+  if (isFinalWaveStatus(status) && percent <= 0) {
+    percent = 100;
+  }
   let pool = "active";
   if (status === "queued") {
     pool = "queued";
@@ -523,7 +532,7 @@ function buildWaveModel(wave = {}, executionState = {}, tools = {}) {
     counts,
     status,
     statusClass,
-    percent: Math.max(0, Math.min(100, Math.round(Number(wave.percent || 0)))),
+    percent: Math.max(0, Math.min(100, Math.round(percent))),
     isCurrent,
     hasIssues,
     pool,
@@ -1047,22 +1056,37 @@ function appendCompactWaveRow(parent, waveModel, { selected = false, onInspect =
     }
   });
 
-  const top = document.createElement("div");
-  top.className = "runtime-compact-wave-top";
+  const main = document.createElement("div");
+  main.className = "runtime-compact-wave-main";
+
   const title = document.createElement("span");
   title.className = "runtime-compact-wave-title";
   title.textContent = `Wave ${waveModel.index || "-"}`;
+
   const status = document.createElement("span");
   status.className = `runtime-wave-status status-${waveModel.statusClass}`;
   status.textContent = statusLabel(waveModel.status);
-  top.appendChild(title);
-  top.appendChild(status);
-  row.appendChild(top);
+
+  main.appendChild(title);
 
   const meta = document.createElement("div");
   meta.className = "runtime-compact-wave-meta";
   meta.textContent = compactWaveMeta(waveModel);
-  row.appendChild(meta);
+
+  main.appendChild(meta);
+
+  row.appendChild(main);
+  row.appendChild(status);
+
+  if (waveModel.statusClass === "running") {
+    const strip = document.createElement("div");
+    strip.className = "runtime-compact-wave-progress";
+    const fill = document.createElement("div");
+    fill.className = `runtime-compact-wave-progress-fill status-${waveModel.statusClass}`;
+    fill.style.width = `${Math.max(0, Math.min(100, Number(waveModel.percent || 0)))}%`;
+    strip.appendChild(fill);
+    row.appendChild(strip);
+  }
 
   if (waveModel.hasIssues) {
     const issueMeta = document.createElement("div");
@@ -1131,9 +1155,12 @@ function appendPoolSection(parent, {
   parent.appendChild(section);
 }
 
-function appendPoolColumn(parent, className, title, sections) {
+function appendPoolColumn(parent, className, title, sections, { scrollKey = "" } = {}) {
   const column = document.createElement("aside");
   column.className = `runtime-pool-column ${className}`;
+  if (scrollKey) {
+    setRuntimeScrollKey(column, scrollKey);
+  }
   const heading = document.createElement("div");
   heading.className = "runtime-pool-column-title";
   heading.textContent = title;
@@ -1176,29 +1203,34 @@ function renderWaveTimeline(executionState, root) {
   const layout = document.createElement("div");
   layout.className = "runtime-pools-layout";
 
-  appendPoolColumn(layout, "runtime-pool-history", "Completed", [
-    {
-      title: "Clean",
-      subtitle: "Finished waves without physical issues.",
-      waves: viewModel.completedCleanWaves,
-      empty: "No clean completed waves yet.",
-      onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
-      inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
-      scrollKey: "completed-clean-waves",
-    },
-    {
-      title: "With Issues",
-      subtitle: "Finished waves with failed or warning-producing executions.",
-      waves: viewModel.completedIssueWaves,
-      empty: "No completed waves with issues.",
-      onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
-      inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
-      scrollKey: "completed-issue-waves",
-    },
-  ]);
+  appendPoolColumn(
+    layout,
+    "runtime-pool-history",
+    "Completed",
+    [
+      {
+        title: "Clean",
+        subtitle: "Finished waves without physical issues.",
+        waves: viewModel.completedCleanWaves,
+        empty: "No clean completed waves yet.",
+        onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
+        inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
+      },
+      {
+        title: "With Issues",
+        subtitle: "Finished waves with failed or warning-producing executions.",
+        waves: viewModel.completedIssueWaves,
+        empty: "No completed waves with issues.",
+        onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
+        inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
+      },
+    ],
+    { scrollKey: "completed-column" }
+  );
 
   const center = document.createElement("section");
   center.className = "runtime-pool-column runtime-pool-active";
+  setRuntimeScrollKey(center, "active-column");
   const centerHeading = document.createElement("div");
   centerHeading.className = "runtime-pool-column-title";
   centerHeading.textContent = state.runtimeWaveUi?.inspectedWaveIndex ? "Inspecting" : "Active";
@@ -1214,17 +1246,22 @@ function renderWaveTimeline(executionState, root) {
   }
   layout.appendChild(center);
 
-  appendPoolColumn(layout, "runtime-pool-queued", "Queued", [
-    {
-      title: "Future Waves",
-      subtitle: "Compact list of work not started yet.",
-      waves: viewModel.queuedWaves,
-      empty: "No queued waves.",
-      onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
-      inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
-      scrollKey: "queued-waves",
-    },
-  ]);
+  appendPoolColumn(
+    layout,
+    "runtime-pool-queued",
+    "Queued",
+    [
+      {
+        title: "Future Waves",
+        subtitle: "Compact list of work not started yet.",
+        waves: viewModel.queuedWaves,
+        empty: "No queued waves.",
+        onInspect: (waveIndex) => inspectWave(root, executionState, waveIndex),
+        inspectedIndex: state.runtimeWaveUi?.inspectedWaveIndex,
+      },
+    ],
+    { scrollKey: "queued-column" }
+  );
 
   root.appendChild(layout);
   appendLogicalRunIssues(root, viewModel.logicalIssueRuns);

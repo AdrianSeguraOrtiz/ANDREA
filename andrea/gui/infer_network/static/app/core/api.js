@@ -52,16 +52,19 @@ export async function fetchPlanData(jobId) {
   return readJson(response, `Failed to load plan (${response.status})`);
 }
 
-export async function fetchFilesData(jobId, mode) {
-  const response = await fetch(`/api/infer-network/jobs/${jobId}/files?mode=${encodeURIComponent(mode)}`);
+export async function fetchFilesData(jobId, bundleId) {
+  const response = await fetch(`/api/infer-network/jobs/${jobId}/files?bundle_id=${encodeURIComponent(bundleId)}`);
   return readJson(response, `Failed to load files (${response.status})`);
 }
 
-export async function fetchFileContentData(jobId, virtualPath, mode) {
+export async function fetchFileContentData(jobId, virtualPath, bundleId, options = {}) {
   const response = await fetch(
-    `/api/infer-network/jobs/${jobId}/file-content?mode=${encodeURIComponent(mode)}&path=${encodeURIComponent(
+    `/api/infer-network/jobs/${jobId}/file-content?bundle_id=${encodeURIComponent(bundleId)}&path=${encodeURIComponent(
       virtualPath
-    )}`
+    )}`,
+    {
+      signal: options.signal,
+    }
   );
   return readJson(response, `Failed to load file preview (${response.status})`);
 }
