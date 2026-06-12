@@ -16,6 +16,10 @@ from andrea.core.commands.compare_networks.models import (
 )
 from andrea.core.commands.compare_networks.utils import slugify
 from andrea.core.shared.json_io import load_json_object, write_json
+from andrea.core.shared.network_context import (
+    normalize_network_context,
+    normalize_network_sign,
+)
 
 
 def load_source_data(source: ComparisonSource) -> SourceData:
@@ -188,18 +192,25 @@ def load_normalized_network_rows(*, path: Path, source_id: str) -> list[NetworkR
             )
             source = str(raw.get("source", "")).strip()
             target = str(raw.get("target", "")).strip()
-            context = str(raw.get("context", "")).strip()
+            context = normalize_network_context(
+                raw.get("context", ""),
+                source=f"[{source_id}] merged_network_normalized.csv line {line_no}",
+            )
             tool_id = str(raw.get("tool_id", "")).strip()
             if not source or not target or not context or not tool_id:
                 raise ValueError(
                     f"[{source_id}] merged_network_normalized.csv line {line_no} has empty source, target, context or tool_id"
                 )
+            sign = normalize_network_sign(
+                raw.get("sign", ""),
+                source=f"[{source_id}] merged_network_normalized.csv line {line_no}",
+            )
             rows.append(
                 NetworkRow(
                     source=source,
                     target=target,
                     score=score,
-                    sign=str(raw.get("sign", "")).strip(),
+                    sign=sign,
                     evidence=str(raw.get("evidence", "")),
                     context=context,
                     tool_id=tool_id,

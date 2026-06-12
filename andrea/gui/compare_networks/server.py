@@ -18,7 +18,16 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from andrea.core.commands.compare_networks import compare_networks
+from andrea.core.commands.compare_networks import bundles as comparison_bundles
+from andrea.core.commands.compare_networks import (
+    compare_networks,
+    export_edge_scores_csv_from_sqlite,
+)
+from andrea.core.commands.compare_networks.store import (
+    distance_view,
+    edge_variability,
+    list_contexts,
+)
 from andrea.core.shared.json_io import write_json
 from andrea.gui.common.reproducibility import (
     build_single_step_reproducibility_payload,
@@ -26,12 +35,24 @@ from andrea.gui.common.reproducibility import (
     unavailable_reproducibility,
 )
 from andrea.gui.common.server_files import (
+    build_bundle_metadata,
     build_zip_bundle,
-    extract_zip_upload,
+    bundle_status_payload,
+    extract_zip_path,
+    load_strict_json_object,
     output_dir_from_form,
     read_json_if_exists,
+    require_root_file,
     resolve_report_path,
+    save_upload,
     uploaded_file,
+)
+from andrea.gui.common.server_jobs import (
+    make_core_progress_callback,
+    run_parallel,
+    set_job_progress,
+    timed_job_stage,
+    utc_now,
 )
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -44,10 +65,6 @@ COMPARISON_VIEW_ASSETS_DIR = (
     / "view_assets"
 )
 GUI_TMP_ROOT = Path(tempfile.gettempdir()) / "andrea_gui" / "compare_networks"
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 @dataclass
@@ -68,6 +85,12 @@ class GuiJob:
     traceback: Optional[str] = None
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
+    progress_percent: int = 0
+    progress_label: str = "Queued"
+    progress_detail: str = ""
+    timings: list[dict[str, Any]] = field(default_factory=list)
+    artifact_status: dict[str, str] = field(default_factory=dict)
+    artifact_errors: list[str] = field(default_factory=list)
 
 
 class GuiState:
@@ -77,6 +100,23 @@ class GuiState:
 
 
 STATE = GuiState()
+
+COMPARISON_STAGE_PROGRESS = {
+    "loading_request": 52,
+    "loading_source_networks": 58,
+    "freezing_inputs": 62,
+    "building_network_tables": 68,
+    "computing_distances": 74,
+    "computing_coordinates": 78,
+    "writing_request": 78,
+    "writing_network_index_csv": 80,
+    "writing_edge_scores_csv": 84,
+    "writing_distances_csv": 88,
+    "writing_distance_coordinates_csv": 90,
+    "writing_comparison_sqlite": 94,
+    "writing_report": 95,
+    "exporting_edge_scores_csv": 98,
+}
 
 
 def _job_payload(job: GuiJob) -> dict[str, Any]:
@@ -97,6 +137,13 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
         "traceback": job.traceback,
         "started_at": job.started_at,
         "finished_at": job.finished_at,
+        "progress_percent": job.progress_percent,
+        "progress_label": job.progress_label,
+        "progress_detail": job.progress_detail,
+        "timings": list(job.timings),
+        "artifact_status": dict(job.artifact_status),
+        "artifact_errors": list(job.artifact_errors),
+        "bundle_status": _job_bundle_status(job),
     }
 
 
@@ -112,172 +159,97 @@ def _job_response(job_id: str) -> dict[str, Any]:
         "reproducibility": _build_reproducibility_payload(job),
     }
 
-
-def _discover_run_candidates(root: Path) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    for path in sorted(root.rglob("run_report.json")):
-        if not path.is_file():
-            continue
-        payload = read_json_if_exists(path)
-        if not payload:
-            continue
-        outputs = payload.get("outputs")
-        if not isinstance(outputs, dict):
-            continue
-        normalized_path = resolve_report_path(
-            path, outputs.get("merged_network_normalized")
-        )
-        if normalized_path is None or not normalized_path.exists():
-            continue
-        dataset = (
-            payload.get("dataset") if isinstance(payload.get("dataset"), dict) else {}
-        )
-        tools = payload.get("tools") if isinstance(payload.get("tools"), dict) else {}
-        rel = path.relative_to(root).as_posix()
-        candidates.append(
-            {
-                "path": rel,
-                "label": rel,
-                "run_id": payload.get("run_id"),
-                "status": payload.get("status"),
-                "dataset_id": dataset.get("id") if isinstance(dataset, dict) else None,
-                "tools_completed": (
-                    tools.get("completed") if isinstance(tools, dict) else None
-                ),
-            }
-        )
-    return candidates
-
-
-def _discover_evaluation_candidates(root: Path) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    for path in sorted(root.rglob("evaluation_report.json")):
-        if not path.is_file():
-            continue
-        payload = read_json_if_exists(path)
-        if not payload or not isinstance(payload.get("metrics"), list):
-            continue
-        inputs = (
-            payload.get("inputs") if isinstance(payload.get("inputs"), dict) else {}
-        )
-        rel = path.relative_to(root).as_posix()
-        candidates.append(
-            {
-                "path": rel,
-                "label": rel,
-                "inference_run_id": inputs.get("inference_run_id"),
-                "inference_dataset_id": inputs.get("inference_dataset_id"),
-                "metrics": len(payload.get("metrics", [])),
-            }
-        )
-    return candidates
+def _update_comparison_report_artifacts(
+    *,
+    report_path: Path,
+    artifact_status: dict[str, str],
+    artifact_errors: list[str],
+) -> None:
+    report = read_json_if_exists(str(report_path)) or {}
+    if not isinstance(report, dict):
+        return
+    report["artifact_status"] = dict(artifact_status)
+    report["artifact_errors"] = list(artifact_errors)
+    write_json(report_path, report)
 
 
 def _source_root(*, request_dir: Path, source_id: str, kind: str) -> Path:
     return request_dir / "sources" / source_id / kind
 
 
-def _candidate_path(
-    *,
-    request_dir: Path,
-    source: dict[str, Any],
-    kind: str,
-    selected_path: str,
+def _prepare_strict_inference_bundle(
+    *, root: Path, source_label: str
 ) -> Path:
-    candidate_key = "run_candidates" if kind == "inference" else "evaluation_candidates"
-    allowed = {str(candidate["path"]) for candidate in source.get(candidate_key, [])}
-    if selected_path not in allowed:
-        raise ValueError(
-            f"Selected {kind} path for {source['source_id']} is not one of the detected candidates"
-        )
-    root = _source_root(
-        request_dir=request_dir, source_id=str(source["source_id"]), kind=kind
+    run_report_path = require_root_file(
+        root=root,
+        rel_path="run_report.json",
+        bundle_label="infer-network analysis",
+        source_label=source_label,
     )
-    path = (root / selected_path).resolve()
-    if not path.is_relative_to(root.resolve()):
-        raise ValueError(
-            f"Selected {kind} path for {source['source_id']} escapes the extracted archive"
+    require_root_file(
+        root=root,
+        rel_path="merged_network_normalized.csv",
+        bundle_label="infer-network analysis",
+        source_label=source_label,
+    )
+    run_report = load_strict_json_object(
+        run_report_path,
+        label="infer-network analysis run_report.json",
+        source_label=source_label,
+    )
+    outputs = run_report.setdefault("outputs", {})
+    if not isinstance(outputs, dict):
+        outputs = {}
+        run_report["outputs"] = outputs
+    outputs["merged_network_normalized"] = "merged_network_normalized.csv"
+    write_json(run_report_path, run_report)
+    return run_report_path
+
+
+def _prepare_strict_evaluation_bundle(
+    *, root: Path, source_label: str
+) -> Path:
+    evaluation_report_path = require_root_file(
+        root=root,
+        rel_path="evaluation_report.json",
+        bundle_label="evaluate-inference analysis",
+        source_label=source_label,
+    )
+    load_strict_json_object(
+        evaluation_report_path,
+        label="evaluate-inference analysis evaluation_report.json",
+        source_label=source_label,
+    )
+    return evaluation_report_path
+
+
+def _extract_source_uploads(*, request_dir: Path, source: dict[str, Any]) -> None:
+    source_id = str(source["source_id"])
+    source_dir = request_dir / "sources" / source_id
+    extract_zip_path(
+        zip_path=source_dir / "uploads" / "inference.zip",
+        extract_dir=source_dir / "inference",
+    )
+    if source.get("evaluation_uploaded"):
+        extract_zip_path(
+            zip_path=source_dir / "uploads" / "evaluation.zip",
+            extract_dir=source_dir / "evaluation",
         )
-    if not path.exists() or not path.is_file():
-        raise ValueError(
-            f"Selected {kind} file no longer exists for {source['source_id']}: {selected_path}"
+
+
+def _validate_source_uploads(*, request_dir: Path, source: dict[str, Any]) -> None:
+    source_id = str(source["source_id"])
+    source_label = str(source.get("label") or source_id)
+    source_dir = request_dir / "sources" / source_id
+    _prepare_strict_inference_bundle(
+        root=source_dir / "inference",
+        source_label=source_label,
+    )
+    if source.get("evaluation_uploaded"):
+        _prepare_strict_evaluation_bundle(
+            root=source_dir / "evaluation",
+            source_label=source_label,
         )
-    return path
-
-
-def _needs_selection(source: dict[str, Any]) -> bool:
-    if len(source.get("run_candidates", [])) != 1:
-        return True
-    if (
-        source.get("evaluation_uploaded")
-        and len(source.get("evaluation_candidates", [])) != 1
-    ):
-        return True
-    return False
-
-
-def _auto_selected_sources(
-    sources: list[dict[str, Any]]
-) -> Optional[list[dict[str, Any]]]:
-    if any(_needs_selection(source) for source in sources):
-        return None
-    selected: list[dict[str, Any]] = []
-    for source in sources:
-        selection = {
-            "source_id": source["source_id"],
-            "label": source["label"],
-            "run_report": source["run_candidates"][0]["path"],
-            "evaluation_report": None,
-        }
-        if source.get("evaluation_uploaded"):
-            selection["evaluation_report"] = source["evaluation_candidates"][0]["path"]
-        selected.append(selection)
-    return selected
-
-
-def _normalize_selected_sources(
-    *,
-    sources: list[dict[str, Any]],
-    raw_selected: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    by_source = {source["source_id"]: source for source in sources}
-    selected_by_source = {
-        str(item.get("source_id", "")): item
-        for item in raw_selected
-        if isinstance(item, dict)
-    }
-    selected: list[dict[str, Any]] = []
-    for source in sources:
-        source_id = source["source_id"]
-        raw = selected_by_source.get(source_id, {})
-        run_report = str(raw.get("run_report") or "").strip()
-        if not run_report and len(source.get("run_candidates", [])) == 1:
-            run_report = str(source["run_candidates"][0]["path"])
-        if not run_report:
-            raise ValueError(f"run_report is required for {source_id}")
-
-        evaluation_report_raw = raw.get("evaluation_report")
-        evaluation_report = (
-            str(evaluation_report_raw).strip()
-            if evaluation_report_raw is not None
-            else ""
-        )
-        if (
-            not evaluation_report
-            and source.get("evaluation_uploaded")
-            and len(source.get("evaluation_candidates", [])) == 1
-        ):
-            evaluation_report = str(source["evaluation_candidates"][0]["path"])
-
-        selected.append(
-            {
-                "source_id": source_id,
-                "label": by_source[source_id]["label"],
-                "run_report": run_report,
-                "evaluation_report": evaluation_report or None,
-            }
-        )
-    return selected
 
 
 def _start_comparison_job(
@@ -289,12 +261,17 @@ def _start_comparison_job(
         job = STATE.jobs[job_id]
         job.status = "queued"
         job.stage = "queued"
+        job.progress_percent = max(job.progress_percent, 10)
+        job.progress_label = "Queued"
+        job.progress_detail = "Waiting to start comparison."
         job.selected_sources = selected_sources
         job.frozen_comparison_request_path = None
         job.error = None
         job.traceback = None
         job.started_at = None
         job.finished_at = None
+        job.artifact_status = {}
+        job.artifact_errors = []
     threading.Thread(
         target=_run_comparison_job,
         kwargs={"job_id": job_id, "selected_sources": selected_sources},
@@ -310,20 +287,64 @@ def _run_comparison_job(
     with STATE.lock:
         job = STATE.jobs[job_id]
         job.status = "running"
-        job.stage = "comparing"
-        job.started_at = _utc_now()
+        job.stage = "extracting_uploads"
+        job.started_at = utc_now()
         request_dir = Path(job.request_dir)
         output_dir = Path(job.output_dir)
-        source_defs = list(job.sources)
+        sources = [dict(item) for item in job.sources]
     try:
+        max_workers = max(1, min(4, len(sources) or 1))
+        with timed_job_stage(
+            state=STATE,
+            job_id=job_id,
+            stage="extracting_uploads",
+            label="Extracting uploads",
+            detail="Extracting source analysis ZIPs.",
+            percent=25,
+        ):
+            run_parallel(
+                [
+                    lambda source=source: _extract_source_uploads(
+                        request_dir=request_dir,
+                        source=source,
+                    )
+                    for source in sources
+                ],
+                max_workers=max_workers,
+            )
+        with timed_job_stage(
+            state=STATE,
+            job_id=job_id,
+            stage="validating_inputs",
+            label="Validating inputs",
+            detail="Checking strict analysis bundle layouts.",
+            percent=45,
+        ):
+            run_parallel(
+                [
+                    lambda source=source: _validate_source_uploads(
+                        request_dir=request_dir,
+                        source=source,
+                    )
+                    for source in sources
+                ],
+                max_workers=max_workers,
+            )
         request_id = f"gui_compare_{job_id}"
         comparison_dir = _create_gui_comparison_dir(
             output_dir=output_dir,
             request_id=request_id,
         )
+        set_job_progress(
+            state=STATE,
+            job_id=job_id,
+            stage="loading_inputs",
+            label="Preparing comparison inputs",
+            detail="Freezing validated source reports for comparison.",
+            percent=50,
+        )
         frozen_request_path = _freeze_comparison_inputs(
             request_dir=request_dir,
-            source_defs=source_defs,
             selected_sources=selected_sources,
             comparison_dir=comparison_dir,
             request_id=request_id,
@@ -332,6 +353,13 @@ def _run_comparison_job(
             request_path=frozen_request_path,
             output_dir=output_dir,
             comparison_dir=comparison_dir,
+            progress_callback=make_core_progress_callback(
+                state=STATE,
+                job_id=job_id,
+                stage_progress=COMPARISON_STAGE_PROGRESS,
+                default_percent=70,
+            ),
+            write_edge_scores_csv=False,
         )
         comparison_report_path = output_dir / str(
             report["outputs"]["comparison_report"]
@@ -339,25 +367,77 @@ def _run_comparison_job(
         comparison_dir = output_dir / str(report["outputs"]["comparison_dir"])
         with STATE.lock:
             job = STATE.jobs[job_id]
-            job.status = "completed"
-            job.stage = "completed"
+            job.status = "finalizing_artifacts"
+            job.stage = "exporting_edge_scores_csv"
+            job.progress_percent = 96
+            job.progress_label = "Explorer Ready"
+            job.progress_detail = "Comparison explorer is ready while edge_scores.csv is exported."
             job.comparison_request_path = str(frozen_request_path.resolve())
             job.frozen_comparison_request_path = str(frozen_request_path.resolve())
             job.comparison_report_path = str(comparison_report_path.resolve())
             job.comparison_dir = str(comparison_dir.resolve())
-            job.finished_at = _utc_now()
+            job.artifact_status = {"edge_scores_csv": "exporting"}
+        edge_scores_path = output_dir / str(report["outputs"]["edge_scores_csv"])
+        if edge_scores_path.exists():
+            edge_scores_path.unlink()
+        try:
+            with timed_job_stage(
+                state=STATE,
+                job_id=job_id,
+                stage="exporting_edge_scores_csv",
+                label="Exporting edge-score CSV",
+                detail="Writing full edge_scores.csv artifact for full-archive downloads.",
+                percent=98,
+            ):
+                export_edge_scores_csv_from_sqlite(
+                    sqlite_path=output_dir / str(report["outputs"]["comparison_sqlite"]),
+                    output_path=edge_scores_path,
+                )
+            with STATE.lock:
+                job = STATE.jobs[job_id]
+                job.artifact_status["edge_scores_csv"] = "ready"
+        except Exception as exc:  # noqa: BLE001
+            with STATE.lock:
+                job = STATE.jobs[job_id]
+                job.artifact_status["edge_scores_csv"] = "failed"
+                job.artifact_errors.append(f"edge_scores.csv export failed: {exc}")
+            _update_comparison_report_artifacts(
+                report_path=comparison_report_path,
+                artifact_status={"edge_scores_csv": "failed"},
+                artifact_errors=[f"edge_scores.csv export failed: {exc}"],
+            )
+        else:
+            _update_comparison_report_artifacts(
+                report_path=comparison_report_path,
+                artifact_status={"edge_scores_csv": "ready"},
+                artifact_errors=[],
+            )
+        with STATE.lock:
+            job = STATE.jobs[job_id]
+            job.status = "completed"
+            job.stage = "completed"
+            job.progress_percent = 100
+            job.progress_label = "Ready"
+            if job.artifact_errors:
+                job.progress_detail = "Comparison results are ready; one optional artifact failed."
+            else:
+                job.progress_detail = "Comparison results and downloadable artifacts are ready."
+            job.finished_at = utc_now()
     except Exception as exc:  # noqa: BLE001
         with STATE.lock:
             job = STATE.jobs[job_id]
             job.status = "failed"
             job.stage = "failed"
+            job.progress_percent = 100
+            job.progress_label = "Failed"
+            job.progress_detail = str(exc)
             job.error = str(exc)
             job.traceback = traceback.format_exc(limit=30)
-            job.finished_at = _utc_now()
+            job.finished_at = utc_now()
 
 
 def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
-    if job.status != "completed":
+    if job.status not in {"completed", "finalizing_artifacts"}:
         return unavailable_reproducibility(
             "Reproducibility snippets will be available after execution."
         )
@@ -423,26 +503,19 @@ def _create_gui_comparison_dir(*, output_dir: Path, request_id: str) -> Path:
 def _freeze_comparison_inputs(
     *,
     request_dir: Path,
-    source_defs: list[dict[str, Any]],
     selected_sources: list[dict[str, Any]],
     comparison_dir: Path,
     request_id: str,
 ) -> Path:
-    source_by_id = {source["source_id"]: source for source in source_defs}
     input_dir = comparison_dir / "input"
     frozen_sources: list[dict[str, Any]] = []
     for selection in selected_sources:
         source_id = str(selection.get("source_id") or "")
-        source = source_by_id.get(source_id)
-        if source is None:
-            raise ValueError(f"Unknown source_id: {source_id}")
         source_dir = input_dir / "sources" / source_id
         source_dir.mkdir(parents=True, exist_ok=True)
-        run_report_path = _candidate_path(
-            request_dir=request_dir,
-            source=source,
-            kind="inference",
-            selected_path=str(selection.get("run_report") or ""),
+        run_report_path = (
+            _source_root(request_dir=request_dir, source_id=source_id, kind="inference")
+            / "run_report.json"
         )
         frozen_run_report_path = _freeze_run_report(
             run_report_path=run_report_path,
@@ -450,16 +523,18 @@ def _freeze_comparison_inputs(
         )
         frozen_source: dict[str, Any] = {
             "source_id": source_id,
-            "label": str(selection.get("label") or source.get("label") or source_id),
+            "label": str(selection.get("label") or source_id),
             "run_report": frozen_run_report_path.relative_to(comparison_dir).as_posix(),
         }
         evaluation_report = selection.get("evaluation_report")
         if isinstance(evaluation_report, str) and evaluation_report.strip():
-            evaluation_path = _candidate_path(
-                request_dir=request_dir,
-                source=source,
-                kind="evaluation",
-                selected_path=evaluation_report,
+            evaluation_path = (
+                _source_root(
+                    request_dir=request_dir,
+                    source_id=source_id,
+                    kind="evaluation",
+                )
+                / "evaluation_report.json"
             )
             frozen_evaluation_path = source_dir / "evaluation_report.json"
             shutil.copy2(evaluation_path, frozen_evaluation_path)
@@ -501,16 +576,145 @@ def _freeze_run_report(*, run_report_path: Path, destination_dir: Path) -> Path:
     return frozen_report
 
 
-def _comparison_bundle_sources(
-    *, comparison_dir: Optional[Path]
-) -> list[tuple[str, Path]]:
+def _resolve_bundle(*, comparison_dir: Optional[Path], bundle_id: str) -> Any:
     if comparison_dir is None or not comparison_dir.exists():
-        return []
-    return [
-        (path.relative_to(comparison_dir).as_posix(), path)
-        for path in sorted(comparison_dir.rglob("*"))
-        if path.is_file()
-    ]
+        raise ValueError("Comparison output is not ready")
+    return comparison_bundles.resolve_bundle(
+        bundle_id=bundle_id,
+        comparison_dir=comparison_dir,
+    )
+
+
+def _edge_scores_artifact_status(job: GuiJob, comparison_dir: Optional[Path]) -> str:
+    explicit = str(job.artifact_status.get("edge_scores_csv") or "").strip()
+    if explicit:
+        return explicit
+    if comparison_dir is not None and (comparison_dir / "edge_scores.csv").is_file():
+        return "ready"
+    if job.status == "completed" and job.artifact_errors:
+        return "failed"
+    if job.status == "finalizing_artifacts":
+        return "exporting"
+    return "pending"
+
+
+def _compare_bundle_readiness(
+    *, bundle_id: str, job: GuiJob, comparison_dir: Optional[Path]
+) -> list[dict[str, str]]:
+    explorer_ready = bool(
+        comparison_dir
+        and job.comparison_report_path
+        and (comparison_dir / "comparison.sqlite").is_file()
+    )
+    edge_status = _edge_scores_artifact_status(job, comparison_dir)
+    if bundle_id == "full":
+        return [
+            {"label": "Explorer", "status": "ready" if explorer_ready else "pending"},
+            {"label": "edge_scores.csv", "status": edge_status},
+        ]
+    if bundle_id == "report":
+        return [
+            {"label": "Explorer", "status": "ready" if explorer_ready else "pending"},
+            {"label": "edge_scores.csv", "status": "not required"},
+        ]
+    return []
+
+
+def _apply_compare_bundle_runtime_status(
+    *,
+    bundles: list[dict[str, Any]],
+    job: GuiJob,
+    comparison_dir: Optional[Path],
+) -> list[dict[str, Any]]:
+    edge_status = _edge_scores_artifact_status(job, comparison_dir)
+    for bundle in bundles:
+        bundle_id = str(bundle.get("id") or "")
+        bundle["readiness"] = _compare_bundle_readiness(
+            bundle_id=bundle_id,
+            job=job,
+            comparison_dir=comparison_dir,
+        )
+        if bundle_id == "full" and edge_status != "ready":
+            bundle["available"] = False
+            missing = list(bundle.get("missing_required") or [])
+            reason = (
+                "edge_scores.csv export failed"
+                if edge_status == "failed"
+                else "edge_scores.csv export is not complete"
+            )
+            if reason not in missing:
+                missing.append(reason)
+            bundle["missing_required"] = missing
+    return bundles
+
+
+def _job_bundle_status(job: GuiJob) -> dict[str, dict[str, Any]]:
+    comparison_dir = Path(job.comparison_dir) if job.comparison_dir else None
+    explorer_ready = bool(
+        comparison_dir
+        and job.comparison_report_path
+        and (comparison_dir / "comparison.sqlite").is_file()
+    )
+    edge_status = _edge_scores_artifact_status(job, comparison_dir)
+    return {
+        "full": {
+            "available": explorer_ready and edge_status == "ready",
+            "state": "ready" if explorer_ready and edge_status == "ready" else "blocked",
+            "missing_required": []
+            if edge_status == "ready"
+            else ["edge_scores.csv export is not complete"],
+            "readiness": _compare_bundle_readiness(
+                bundle_id="full",
+                job=job,
+                comparison_dir=comparison_dir,
+            ),
+        },
+        "report": {
+            "available": explorer_ready,
+            "state": "ready" if explorer_ready else "blocked",
+            "missing_required": [] if explorer_ready else ["Comparison output is not ready"],
+            "readiness": _compare_bundle_readiness(
+                bundle_id="report",
+                job=job,
+                comparison_dir=comparison_dir,
+            ),
+        },
+    }
+
+
+def _comparison_sqlite_path(job: GuiJob) -> Path:
+    if job.status not in {"completed", "finalizing_artifacts"} or not job.comparison_report_path:
+        raise ValueError("Comparison output is not ready")
+    report = read_json_if_exists(job.comparison_report_path) or {}
+    sqlite_rel = report.get("outputs", {}).get("comparison_sqlite")
+    if not sqlite_rel:
+        raise ValueError("Comparison SQLite store is not available")
+    sqlite_path = Path(sqlite_rel)
+    if not sqlite_path.is_absolute():
+        sqlite_path = Path(job.output_dir) / sqlite_path
+    sqlite_path = sqlite_path.resolve()
+    if not sqlite_path.exists():
+        raise ValueError("Comparison SQLite store no longer exists")
+    return sqlite_path
+
+
+def _get_completed_job(job_id: str) -> GuiJob:
+    with STATE.lock:
+        job = STATE.jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        if job.status not in {"completed", "finalizing_artifacts"}:
+            raise HTTPException(status_code=400, detail="Comparison output is not ready")
+        return job
+
+
+def _require_bundle_available(resolution: Any) -> None:
+    if resolution.available and resolution.sources:
+        return
+    missing = ", ".join(resolution.missing_required) or "no files"
+    raise ValueError(
+        f"Bundle '{resolution.spec.id}' is not available; missing required files: {missing}"
+    )
 
 
 def _parse_source_count(form: Any) -> int:
@@ -545,6 +749,108 @@ def create_app() -> FastAPI:
     async def api_job(job_id: str) -> JSONResponse:
         return JSONResponse(_job_response(job_id))
 
+    @app.get("/api/compare-networks/jobs/{job_id}/bundles")
+    async def api_job_bundles(job_id: str) -> JSONResponse:
+        with STATE.lock:
+            job = STATE.jobs.get(job_id)
+            if job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            comparison_dir = Path(job.comparison_dir) if job.comparison_dir else None
+            status = job.status
+        output_ready = bool(comparison_dir and comparison_dir.exists())
+        resolver = (
+            (
+                lambda bundle_id: comparison_bundles.resolve_bundle(
+                    bundle_id=bundle_id,
+                    comparison_dir=comparison_dir,  # type: ignore[arg-type]
+                )
+            )
+            if output_ready
+            else None
+        )
+        bundles = build_bundle_metadata(
+            specs=comparison_bundles.bundle_specs(),
+            resolver=resolver,
+            unavailable_reason="Comparison output is not ready",
+        )
+        bundles = _apply_compare_bundle_runtime_status(
+            bundles=bundles,
+            job=job,
+            comparison_dir=comparison_dir,
+        )
+        return JSONResponse(
+            {
+                "status": status,
+                "output_ready": output_ready,
+                "bundles": bundles,
+                "bundle_status": bundle_status_payload(bundles),
+            }
+        )
+
+    @app.get("/api/compare-networks/jobs/{job_id}/contexts")
+    async def api_job_contexts(
+        job_id: str,
+        source_id: str,
+        family: str,
+        query: str = "",
+        limit: int = 100,
+    ) -> JSONResponse:
+        try:
+            sqlite_path = _comparison_sqlite_path(_get_completed_job(job_id))
+            payload = list_contexts(
+                sqlite_path,
+                source_id=source_id,
+                family=family,
+                query=query,
+                limit=limit,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return JSONResponse(payload)
+
+    @app.get("/api/compare-networks/jobs/{job_id}/distance-view")
+    async def api_job_distance_view(
+        job_id: str,
+        source_id: str,
+        context_family: str,
+        distance_metric: str,
+        evaluation_metric: Optional[str] = None,
+        contexts: Optional[str] = None,
+    ) -> JSONResponse:
+        try:
+            sqlite_path = _comparison_sqlite_path(_get_completed_job(job_id))
+            selected_contexts = (
+                [item.strip() for item in contexts.split(",") if item.strip()]
+                if contexts
+                else None
+            )
+            payload = distance_view(
+                sqlite_path,
+                source_id=source_id,
+                context_family=context_family,
+                distance_metric=distance_metric,
+                evaluation_metric=evaluation_metric,
+                contexts=selected_contexts,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return JSONResponse(payload)
+
+    @app.post("/api/compare-networks/jobs/{job_id}/edge-variability")
+    async def api_job_edge_variability(job_id: str, request: Request) -> JSONResponse:
+        try:
+            body = await request.json()
+            sqlite_path = _comparison_sqlite_path(_get_completed_job(job_id))
+            payload = edge_variability(
+                sqlite_path,
+                selected_networks=list(body.get("selected_networks") or []),
+                limit=int(body.get("limit") or 100),
+                evaluation_metric=body.get("evaluation_metric"),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return JSONResponse(payload)
+
     @app.post("/api/compare-networks/run")
     async def api_run(request: Request) -> JSONResponse:
         form = await request.form()
@@ -558,50 +864,44 @@ def create_app() -> FastAPI:
         output_dir = output_dir_from_form(form, default="./comparisons")
         request_dir.mkdir(parents=True, exist_ok=True)
         sources: list[dict[str, Any]] = []
+        selected_sources: list[dict[str, Any]] = []
+        uploads_to_save: list[tuple[Any, Path]] = []
 
         try:
             for idx in range(source_count):
                 source_id = f"source_{idx + 1}"
                 label = str(form.get(f"source_{idx}_label") or source_id).strip()
+                source_label = label or source_id
                 inference_upload = uploaded_file(form, f"source_{idx}_inference_zip")
                 evaluation_upload = uploaded_file(form, f"source_{idx}_evaluation_zip")
                 if inference_upload is None:
                     raise ValueError(f"source_{idx}_inference_zip is required")
 
                 source_dir = request_dir / "sources" / source_id
-                extract_zip_upload(
-                    inference_upload,
-                    zip_path=source_dir / "uploads" / "inference.zip",
-                    extract_dir=source_dir / "inference",
+                uploads_to_save.append(
+                    (inference_upload, source_dir / "uploads" / "inference.zip")
                 )
-                run_candidates = _discover_run_candidates(source_dir / "inference")
-                if not run_candidates:
-                    raise ValueError(
-                        f"No valid run_report.json with merged_network_normalized was found in source {idx + 1}"
-                    )
 
-                evaluation_candidates: list[dict[str, Any]] = []
+                selected_evaluation_report = None
                 if evaluation_upload is not None:
-                    extract_zip_upload(
-                        evaluation_upload,
-                        zip_path=source_dir / "uploads" / "evaluation.zip",
-                        extract_dir=source_dir / "evaluation",
+                    uploads_to_save.append(
+                        (evaluation_upload, source_dir / "uploads" / "evaluation.zip")
                     )
-                    evaluation_candidates = _discover_evaluation_candidates(
-                        source_dir / "evaluation"
-                    )
-                    if not evaluation_candidates:
-                        raise ValueError(
-                            f"No valid evaluation_report.json was found in source {idx + 1}"
-                        )
+                    selected_evaluation_report = "evaluation_report.json"
 
                 sources.append(
                     {
                         "source_id": source_id,
-                        "label": label or source_id,
+                        "label": source_label,
                         "evaluation_uploaded": evaluation_upload is not None,
-                        "run_candidates": run_candidates,
-                        "evaluation_candidates": evaluation_candidates,
+                    }
+                )
+                selected_sources.append(
+                    {
+                        "source_id": source_id,
+                        "label": source_label,
+                        "run_report": "run_report.json",
+                        "evaluation_report": selected_evaluation_report,
                     }
                 )
         except ValueError as exc:
@@ -610,68 +910,74 @@ def create_app() -> FastAPI:
 
         job = GuiJob(
             job_id=job_id,
-            created_at=_utc_now(),
-            status="needs_selection",
-            stage="select_sources",
+            created_at=utc_now(),
+            status="queued",
+            stage="saving_uploads",
             request_dir=str(request_dir),
             output_dir=str(output_dir),
             sources=sources,
+            progress_percent=0,
+            progress_label="Saving uploads",
         )
         with STATE.lock:
             STATE.jobs[job_id] = job
-
-        selected_sources = _auto_selected_sources(sources)
-        if selected_sources is not None:
-            _start_comparison_job(job_id=job_id, selected_sources=selected_sources)
-        return JSONResponse(_job_response(job_id))
-
-    @app.post("/api/compare-networks/jobs/{job_id}/run")
-    async def api_run_selected(job_id: str, request: Request) -> JSONResponse:
         try:
-            payload = await request.json()
+            with timed_job_stage(
+                state=STATE,
+                job_id=job_id,
+                stage="saving_uploads",
+                label="Saving uploads",
+                detail="Saving source ZIPs to the local request directory.",
+                percent=10,
+            ):
+                for upload, destination in uploads_to_save:
+                    save_upload(upload, destination)
         except Exception as exc:  # noqa: BLE001
-            raise HTTPException(
-                status_code=400, detail="JSON body is required"
-            ) from exc
-        if not isinstance(payload, dict):
-            raise HTTPException(status_code=400, detail="JSON body must be an object")
-        raw_sources = payload.get("sources")
-        if not isinstance(raw_sources, list):
-            raise HTTPException(status_code=400, detail="sources array is required")
-        with STATE.lock:
-            job = STATE.jobs.get(job_id)
-            if job is None:
-                raise HTTPException(status_code=404, detail="Job not found")
-            source_defs = list(job.sources)
-        try:
-            selected_sources = _normalize_selected_sources(
-                sources=source_defs,
-                raw_selected=raw_sources,
-            )
-            _start_comparison_job(job_id=job_id, selected_sources=selected_sources)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            with STATE.lock:
+                job = STATE.jobs[job_id]
+                job.status = "failed"
+                job.stage = "failed"
+                job.progress_percent = 100
+                job.progress_label = "Failed"
+                job.progress_detail = str(exc)
+                job.error = str(exc)
+                job.traceback = traceback.format_exc(limit=30)
+                job.finished_at = utc_now()
+            return JSONResponse(_job_response(job_id))
+
+        _start_comparison_job(job_id=job_id, selected_sources=selected_sources)
         return JSONResponse(_job_response(job_id))
 
     @app.get("/api/compare-networks/jobs/{job_id}/bundle")
-    async def api_job_bundle(job_id: str) -> FileResponse:
+    async def api_job_bundle(
+        job_id: str,
+        bundle_id: str = "full",
+    ) -> FileResponse:
         with STATE.lock:
             job = STATE.jobs.get(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
             comparison_dir = Path(job.comparison_dir) if job.comparison_dir else None
             request_dir = Path(job.request_dir)
-        sources = _comparison_bundle_sources(comparison_dir=comparison_dir)
-        if not sources:
-            raise HTTPException(
-                status_code=400, detail="Comparison output is not ready"
+        try:
+            resolution = _resolve_bundle(
+                comparison_dir=comparison_dir,
+                bundle_id=bundle_id,
             )
-        zip_path = request_dir / f"{job_id}_comparison.zip"
-        build_zip_bundle(zip_path=zip_path, sources=sources)
+            if (
+                bundle_id == "full"
+                and _edge_scores_artifact_status(job, comparison_dir) != "ready"
+            ):
+                raise ValueError("edge_scores.csv export is not complete")
+            _require_bundle_available(resolution)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        zip_path = request_dir / f"{job_id}_comparison_{resolution.spec.id}.zip"
+        build_zip_bundle(zip_path=zip_path, sources=resolution.source_tuples)
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"andrea_comparison_{job_id}.zip",
+            filename=f"andrea_comparison_{job_id}_{resolution.spec.id}.zip",
         )
 
     return app

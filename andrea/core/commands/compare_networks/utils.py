@@ -7,7 +7,7 @@ import math
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 
 def create_comparison_dir(
@@ -66,7 +66,7 @@ def unique_preserve_order(values: list[str]) -> list[str]:
 
 def write_csv(
     path: Path,
-    rows: list[dict[str, Any]],
+    rows: Iterable[dict[str, Any]],
     *,
     fieldnames: list[str],
 ) -> None:

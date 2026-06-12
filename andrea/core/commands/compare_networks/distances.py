@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import math
+import os
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from andrea.core.commands.compare_networks.models import (
@@ -26,61 +29,144 @@ def build_distance_rows(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     rows: list[dict[str, Any]] = []
     warnings: list[str] = []
+    truth_counts, truth_count_warnings = truth_counts_by_group(evaluation_metrics)
+    warnings.extend(truth_count_warnings)
     grouped: dict[tuple[str, str, str], list[NetworkInstance]] = defaultdict(list)
     for instance in network_instances:
         grouped[(instance.source_id, instance.context, instance.level)].append(instance)
 
-    for (source_id, context, level), instances in sorted(grouped.items()):
-        instances = sorted(instances, key=lambda item: item.network_id)
-        if len(instances) < 2:
-            continue
-        common_nodes = common_nodes_for_instances(instances)
-        if not common_nodes:
-            warning = f"[{source_id}] no common genes for context={context!r}, level={level!r}"
-            warnings.append(warning)
-        truth_count, truth_warning = truth_count_for_group(
-            source_id=source_id,
-            context=context,
-            level=level,
-            evaluation_metrics=evaluation_metrics,
+    work_items = [
+        (
+            source_id,
+            context,
+            level,
+            instances,
+            truth_counts.get((source_id, context, level)),
         )
-        if truth_warning:
-            warnings.append(truth_warning)
-
-        filtered = {
-            instance.network_id: filter_scores_by_nodes(instance.scores, common_nodes)
-            for instance in instances
-        }
-        for left_idx, network_a in enumerate(instances):
-            for network_b in instances[left_idx + 1 :]:
-                scores_a = filtered[network_a.network_id]
-                scores_b = filtered[network_b.network_id]
-                rows.append(
-                    weighted_jaccard_row(
-                        source_id=source_id,
-                        context=context,
-                        level=level,
-                        network_a=network_a.network_id,
-                        network_b=network_b.network_id,
-                        scores_a=scores_a,
-                        scores_b=scores_b,
-                        n_common_genes=len(common_nodes),
-                    )
-                )
-                rows.append(
-                    rank_overlap_row(
-                        source_id=source_id,
-                        context=context,
-                        level=level,
-                        network_a=network_a.network_id,
-                        network_b=network_b.network_id,
-                        scores_a=scores_a,
-                        scores_b=scores_b,
-                        n_common_genes=len(common_nodes),
-                        truth_count=truth_count,
-                    )
-                )
+        for (source_id, context, level), instances in sorted(grouped.items())
+    ]
+    worker_count = _distance_group_worker_count(work_items)
+    if worker_count > 1:
+        with ProcessPoolExecutor(max_workers=worker_count) as executor:
+            results = executor.map(_build_distance_rows_for_group_item, work_items)
+            for group_rows, group_warnings in results:
+                rows.extend(group_rows)
+                warnings.extend(group_warnings)
+    else:
+        for item in work_items:
+            group_rows, group_warnings = _build_distance_rows_for_group_item(item)
+            rows.extend(group_rows)
+            warnings.extend(group_warnings)
     return rows, unique_preserve_order(warnings)
+
+
+def _distance_group_worker_count(
+    work_items: list[
+        tuple[str, str, str, list[NetworkInstance], Optional[int]]
+    ],
+) -> int:
+    pair_count = sum(
+        (len(instances) * (len(instances) - 1)) // 2
+        for _source_id, _context, _level, instances, _truth_count in work_items
+    )
+    if len(work_items) < 4 or pair_count < 200:
+        return 1
+    return max(1, min(os.cpu_count() or 1, len(work_items)))
+
+
+def _build_distance_rows_for_group_item(
+    item: tuple[str, str, str, list[NetworkInstance], Optional[int]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    source_id, context, level, instances, truth_count = item
+    return _build_distance_rows_for_group(
+        source_id=source_id,
+        context=context,
+        level=level,
+        instances=instances,
+        truth_count=truth_count,
+    )
+
+
+@dataclass(frozen=True)
+class _PreparedNetwork:
+    network_id: str
+    scores: dict[tuple[str, ...], float]
+    keys: set[tuple[str, ...]]
+    score_sum: float
+    top_edges: Optional[set[tuple[str, ...]]]
+
+
+def _build_distance_rows_for_group(
+    *,
+    source_id: str,
+    context: str,
+    level: str,
+    instances: list[NetworkInstance],
+    truth_count: Optional[int],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    rows: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    instances = sorted(instances, key=lambda item: item.network_id)
+    if len(instances) < 2:
+        return rows, warnings
+    common_nodes = common_nodes_for_instances(instances)
+    if not common_nodes:
+        warnings.append(
+            f"[{source_id}] no common genes for context={context!r}, level={level!r}"
+        )
+
+    prepared = [
+        _prepare_network_for_distance(
+            instance=instance,
+            common_nodes=common_nodes,
+            truth_count=truth_count,
+        )
+        for instance in instances
+    ]
+
+    n_common_genes = len(common_nodes)
+    for left_idx, network_a in enumerate(prepared):
+        for network_b in prepared[left_idx + 1 :]:
+            rows.append(
+                weighted_jaccard_prepared_row(
+                    source_id=source_id,
+                    context=context,
+                    level=level,
+                    network_a=network_a,
+                    network_b=network_b,
+                    n_common_genes=n_common_genes,
+                )
+            )
+            rows.append(
+                rank_overlap_prepared_row(
+                    source_id=source_id,
+                    context=context,
+                    level=level,
+                    network_a=network_a,
+                    network_b=network_b,
+                    n_common_genes=n_common_genes,
+                    truth_count=truth_count,
+                )
+            )
+    return rows, warnings
+
+
+def _prepare_network_for_distance(
+    *,
+    instance: NetworkInstance,
+    common_nodes: set[str],
+    truth_count: Optional[int],
+) -> _PreparedNetwork:
+    scores = filter_scores_by_nodes(instance.scores, common_nodes)
+    keys = set(scores)
+    top_edges = top_k_edges(scores, truth_count) if truth_count and truth_count > 0 else None
+    return _PreparedNetwork(
+        network_id=instance.network_id,
+        scores=scores,
+        keys=keys,
+        score_sum=sum(scores.values()),
+        top_edges=top_edges,
+    )
 
 
 def build_distance_coordinates(
@@ -388,6 +474,77 @@ def weighted_jaccard_row(
     )
 
 
+def weighted_jaccard_prepared_row(
+    *,
+    source_id: str,
+    context: str,
+    level: str,
+    network_a: _PreparedNetwork,
+    network_b: _PreparedNetwork,
+    n_common_genes: int,
+) -> dict[str, Any]:
+    if not network_a.keys and not network_b.keys:
+        warning = "weighted jaccard is not available because both networks have no comparable edges"
+        return distance_row(
+            source_id=source_id,
+            context=context,
+            level=level,
+            metric="weighted_jaccard_distance",
+            network_a=network_a.network_id,
+            network_b=network_b.network_id,
+            distance=None,
+            n_common_genes=n_common_genes,
+            n_edges_considered=0,
+            status="not_available",
+            warning=warning,
+        )
+
+    if len(network_a.keys) <= len(network_b.keys):
+        smaller, other_scores = network_a.keys, network_b.scores
+        smaller_scores = network_a.scores
+    else:
+        smaller, other_scores = network_b.keys, network_a.scores
+        smaller_scores = network_b.scores
+
+    numerator = 0.0
+    intersection_count = 0
+    for key in smaller:
+        other_score = other_scores.get(key)
+        if other_score is not None:
+            intersection_count += 1
+            numerator += min(smaller_scores[key], other_score)
+    n_edges_considered = len(network_a.keys) + len(network_b.keys) - intersection_count
+    denominator = network_a.score_sum + network_b.score_sum - numerator
+    if denominator <= 0.0:
+        warning = "weighted jaccard is not available because comparable edge weights sum to zero"
+        return distance_row(
+            source_id=source_id,
+            context=context,
+            level=level,
+            metric="weighted_jaccard_distance",
+            network_a=network_a.network_id,
+            network_b=network_b.network_id,
+            distance=None,
+            n_common_genes=n_common_genes,
+            n_edges_considered=n_edges_considered,
+            status="not_available",
+            warning=warning,
+        )
+    return distance_row(
+        source_id=source_id,
+        context=context,
+        level=level,
+        metric="weighted_jaccard_distance",
+        network_a=network_a.network_id,
+        network_b=network_b.network_id,
+        distance=1.0 - (numerator / denominator),
+        n_common_genes=n_common_genes,
+        n_edges_considered=n_edges_considered,
+        status="ok",
+        warning="",
+    )
+
+
 def rank_overlap_row(
     *,
     source_id: str,
@@ -430,6 +587,23 @@ def rank_overlap_row(
             status="not_available",
             warning=warning,
         )
+    if not scores_a and not scores_b:
+        warning = (
+            "rank overlap is not available because both networks have no ranked edges"
+        )
+        return distance_row(
+            source_id=source_id,
+            context=context,
+            level=level,
+            metric="rank_overlap_distance_at_truth_count",
+            network_a=network_a,
+            network_b=network_b,
+            distance=None,
+            n_common_genes=n_common_genes,
+            n_edges_considered=0,
+            status="not_available",
+            warning=warning,
+        )
     top_a = top_k_edges(scores_a, truth_count)
     top_b = top_k_edges(scores_b, truth_count)
     overlap = len(top_a & top_b) / truth_count
@@ -440,6 +614,82 @@ def rank_overlap_row(
         metric="rank_overlap_distance_at_truth_count",
         network_a=network_a,
         network_b=network_b,
+        distance=1.0 - overlap,
+        n_common_genes=n_common_genes,
+        n_edges_considered=truth_count,
+        status="ok",
+        warning="",
+    )
+
+
+def rank_overlap_prepared_row(
+    *,
+    source_id: str,
+    context: str,
+    level: str,
+    network_a: _PreparedNetwork,
+    network_b: _PreparedNetwork,
+    n_common_genes: int,
+    truth_count: Optional[int],
+) -> dict[str, Any]:
+    if truth_count is None:
+        warning = "rank overlap is not available because truth_count is unavailable"
+        return distance_row(
+            source_id=source_id,
+            context=context,
+            level=level,
+            metric="rank_overlap_distance_at_truth_count",
+            network_a=network_a.network_id,
+            network_b=network_b.network_id,
+            distance=None,
+            n_common_genes=n_common_genes,
+            n_edges_considered=0,
+            status="not_available",
+            warning=warning,
+        )
+    if truth_count <= 0:
+        warning = "rank overlap is not available because truth_count is zero"
+        return distance_row(
+            source_id=source_id,
+            context=context,
+            level=level,
+            metric="rank_overlap_distance_at_truth_count",
+            network_a=network_a.network_id,
+            network_b=network_b.network_id,
+            distance=None,
+            n_common_genes=n_common_genes,
+            n_edges_considered=0,
+            status="not_available",
+            warning=warning,
+        )
+    if not network_a.scores and not network_b.scores:
+        warning = (
+            "rank overlap is not available because both networks have no ranked edges"
+        )
+        return distance_row(
+            source_id=source_id,
+            context=context,
+            level=level,
+            metric="rank_overlap_distance_at_truth_count",
+            network_a=network_a.network_id,
+            network_b=network_b.network_id,
+            distance=None,
+            n_common_genes=n_common_genes,
+            n_edges_considered=0,
+            status="not_available",
+            warning=warning,
+        )
+
+    top_a = network_a.top_edges if network_a.top_edges is not None else set()
+    top_b = network_b.top_edges if network_b.top_edges is not None else set()
+    overlap = len(top_a & top_b) / truth_count
+    return distance_row(
+        source_id=source_id,
+        context=context,
+        level=level,
+        metric="rank_overlap_distance_at_truth_count",
+        network_a=network_a.network_id,
+        network_b=network_b.network_id,
         distance=1.0 - overlap,
         n_common_genes=n_common_genes,
         n_edges_considered=truth_count,
@@ -511,25 +761,39 @@ def truth_count_for_group(
     level: str,
     evaluation_metrics: dict[tuple[str, str, str, str], EvaluationMetric],
 ) -> tuple[Optional[int], Optional[str]]:
-    values = sorted(
-        {
-            metric.n_truth_edges
-            for metric in evaluation_metrics.values()
-            if metric.source_id == source_id
-            and metric.context == context
-            and metric.level == level
-            and has_usable_truth_count(metric)
-        }
+    values_by_group, warnings = truth_counts_by_group(evaluation_metrics)
+    value = values_by_group.get((source_id, context, level))
+    warning_prefix = (
+        f"[{source_id}] discordant truth_count values for context={context!r}, "
+        f"level={level!r};"
     )
-    if not values:
-        return None, None
-    if len(values) > 1:
-        return values[0], (
-            f"[{source_id}] discordant truth_count values for context={context!r}, "
-            f"level={level!r}; using minimum value {values[0]}"
-        )
-    return values[0], None
+    warning = next((item for item in warnings if item.startswith(warning_prefix)), None)
+    return value, warning
 
+
+def truth_counts_by_group(
+    evaluation_metrics: dict[tuple[str, str, str, str], EvaluationMetric],
+) -> tuple[dict[tuple[str, str, str], int], list[str]]:
+    grouped: dict[tuple[str, str, str], set[int]] = defaultdict(set)
+    for metric in evaluation_metrics.values():
+        if has_usable_truth_count(metric) and metric.n_truth_edges is not None:
+            grouped[(metric.source_id, metric.context, metric.level)].add(
+                metric.n_truth_edges
+            )
+
+    values_by_group: dict[tuple[str, str, str], int] = {}
+    warnings: list[str] = []
+    for (source_id, context, level), raw_values in sorted(grouped.items()):
+        values = sorted(raw_values)
+        if not values:
+            continue
+        values_by_group[(source_id, context, level)] = values[0]
+        if len(values) > 1:
+            warnings.append(
+                f"[{source_id}] discordant truth_count values for context={context!r}, "
+                f"level={level!r}; using minimum value {values[0]}"
+            )
+    return values_by_group, warnings
 
 def distances_available(rows: list[dict[str, Any]]) -> list[str]:
     available = {

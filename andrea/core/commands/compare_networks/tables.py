@@ -25,9 +25,8 @@ from andrea.core.commands.compare_networks.utils import (
 
 def build_network_tables(
     source_data: list[SourceData],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[NetworkInstance]]:
+) -> tuple[list[dict[str, Any]], list[NetworkInstance]]:
     network_index: list[dict[str, Any]] = []
-    edge_scores: list[dict[str, Any]] = []
     instances: list[NetworkInstance] = []
     for data in source_data:
         catalog_ids = catalog_ids_from_run_report(data.run_report)
@@ -70,21 +69,29 @@ def build_network_tables(
                         nodes=nodes,
                     )
                 )
-                for key, score in sorted(aggregated.items()):
-                    edge_scores.append(
-                        edge_score_row(
-                            network_id=network_id,
-                            source_id=data.source.source_id,
-                            run_id=run_id,
-                            tool_id=tool_id,
-                            catalog_tool_id=catalog_tool_id,
-                            context=context,
-                            level=level,
-                            key=key,
-                            score=score,
-                        )
-                    )
-    return network_index, edge_scores, instances
+    return network_index, instances
+
+
+def iter_edge_score_rows(
+    network_instances: Iterable[NetworkInstance],
+) -> Iterable[dict[str, Any]]:
+    for instance in network_instances:
+        for key, score in sorted(instance.scores.items()):
+            yield edge_score_row(
+                network_id=instance.network_id,
+                source_id=instance.source_id,
+                run_id=instance.run_id,
+                tool_id=instance.tool_id,
+                catalog_tool_id=instance.catalog_tool_id,
+                context=instance.context,
+                level=instance.level,
+                key=key,
+                score=score,
+            )
+
+
+def edge_score_row_count(network_instances: Iterable[NetworkInstance]) -> int:
+    return sum(len(instance.scores) for instance in network_instances)
 
 
 def build_evaluation_metrics(
@@ -144,7 +151,7 @@ def metrics_available(
 def has_usable_truth_count(metric: EvaluationMetric) -> bool:
     if metric.n_truth_edges is None or metric.n_truth_edges <= 0:
         return False
-    if metric.status and metric.status not in {"ok", "partial"}:
+    if metric.status and metric.status in {"skipped", "failed", "error"}:
         return False
     return True
 
