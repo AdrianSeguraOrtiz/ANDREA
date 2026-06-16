@@ -215,6 +215,10 @@
         "message"
       ],
       "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["scenario_and_run", "run"]
+        },
         "action": {
           "type": "string",
           "enum": ["block", "warn"]

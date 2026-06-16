@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "id": "sergio_master_regulators",
+  "name": "SERGIO master-regulator rates",
+  "format": "txt",
+  "accepted_extensions": [".txt", ".csv"],
+  "description": "Comma-separated SERGIO master-regulator production-rate file consumed by sergio.build_graph(input_file_regs). Each row defines one master regulator and its basal production rate in every simulated cell type/bin.",
+  "example": "0,0.5,1.5,3\n4,1.0,0.2,0.8",
+  "delimiter": ",",
+  "header": false,
+  "min_rows": 1,
+  "validation_notes": [
+    "Rows have width number_bins + 1: master_regulator_id followed by one production rate per simulated bin.",
+    "Master-regulator identifiers must be zero-based numeric SERGIO IDs and must match the target interaction file and number_genes parameter.",
+    "Every gene must be represented either as a master regulator in this file or as a target in sergio_target_interactions.",
+    "Production rates must be finite numeric values."
+  ]
+}

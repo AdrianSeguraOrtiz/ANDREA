@@ -50,7 +50,16 @@ class SimulationInputSpecCatalogTests(unittest.TestCase):
         cls.specs = {path.stem: _load_json(path) for path in cls.spec_paths}
 
     def test_catalog_contains_current_simulator_inputs(self) -> None:
-        self.assertEqual(set(self.specs), {"regulatory_network", "tree_newick"})
+        self.assertEqual(
+            set(self.specs),
+            {
+                "regulatory_network",
+                "sergio_bifurcation_matrix",
+                "sergio_master_regulators",
+                "sergio_target_interactions",
+                "tree_newick",
+            },
+        )
 
     def test_all_simulation_input_specs_validate_against_schema(self) -> None:
         for input_id, spec in self.specs.items():

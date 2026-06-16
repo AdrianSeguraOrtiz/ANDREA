@@ -511,12 +511,15 @@ def collect_simulator_compatibility_rule_issues(
     simulator_params: dict[str, Any],
     native_outputs: list[str] | None = None,
     resolved_input_paths: dict[str, Path] | None = None,
+    scope: str = "run",
 ) -> tuple[list[str], list[str], list[str]]:
     raw_rules = simulator_spec.get("compatibility_rules", [])
     if raw_rules is None:
         raw_rules = []
     if not isinstance(raw_rules, list):
         return [], [], ["simulatorspec.compatibility_rules must be an array"]
+    if scope not in {"scenario", "run"}:
+        return [], [], [f"unsupported compatibility rule evaluation scope: {scope}"]
 
     requested_extra_set = set(requested_extras)
     native_output_set = set(native_outputs or [])
@@ -531,6 +534,12 @@ def collect_simulator_compatibility_rule_issues(
         message = str(rule.get("message", "")).strip()
         if action not in COMPATIBILITY_ACTIONS:
             errors.append(f"compatibility_rules[{index}].action is invalid")
+            continue
+        rule_scope = str(rule.get("scope", "scenario_and_run")).strip()
+        if rule_scope not in {"scenario_and_run", "run"}:
+            errors.append(f"compatibility_rules[{index}].scope is invalid")
+            continue
+        if scope == "scenario" and rule_scope == "run":
             continue
         if not message:
             errors.append(f"compatibility_rules[{index}].message is required")

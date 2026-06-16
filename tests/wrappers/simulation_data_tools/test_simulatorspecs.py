@@ -291,7 +291,16 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
                         msg=f"{simulator_id} extra_inputs.{bucket}.{input_id}",
                     )
 
-        self.assertEqual(referenced, {"regulatory_network", "tree_newick"})
+        self.assertEqual(
+            referenced,
+            {
+                "regulatory_network",
+                "sergio_bifurcation_matrix",
+                "sergio_master_regulators",
+                "sergio_target_interactions",
+                "tree_newick",
+            },
+        )
 
     def test_dyngen_exposes_broad_serializable_parameter_surface(self) -> None:
         dyngen = self.specs["dyngen"]

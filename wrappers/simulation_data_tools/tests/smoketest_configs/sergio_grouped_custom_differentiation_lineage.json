@@ -1,0 +1,67 @@
+{
+  "simulator_id": "sergio",
+  "request": {
+    "profile": "scrna_grouped",
+    "seed": 204,
+    "effective_extras": [
+      "groups",
+      "cell_phenotypes",
+      "cluster_identities",
+      "enrichment_background",
+      "lineage_tree",
+      "prior_grn",
+      "tf_list",
+      "prior_grn_by_group"
+    ],
+    "inputs": {
+      "sergio_target_interactions": "../fixtures/sergio/target_interactions.csv",
+      "sergio_master_regulators": "../fixtures/sergio/master_regulators.csv",
+      "sergio_bifurcation_matrix": "../fixtures/sergio/bifurcation_matrix.tsv"
+    },
+    "params": {
+      "input_preset": "custom_files",
+      "simulation_mode": "differentiation",
+      "number_genes": 3,
+      "number_bins": 2,
+      "number_sc": 2,
+      "noise_params": 0.1,
+      "noise_params_splice": 0.05,
+      "decays": 0.8,
+      "sampling_state": 1,
+      "window_length": 3,
+      "dt": 0.01,
+      "dt_splice": 0.01,
+      "shared_coop_state": 2.0,
+      "splice_ratio": 1.5,
+      "differentiation_expression": "total"
+    },
+    "runtime_resources": {"threads": 1}
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "extras/cell_phenotypes.tsv",
+    "extras/cluster_identities.tsv",
+    "extras/enrichment_background.txt",
+    "extras/lineage_tree.tsv",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "extras/prior_grn_by_group.tsv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/bifurcation_matrix.npy",
+    "provenance/raw/input_bifurcation.tsv",
+    "provenance/raw/unspliced_expression.npy",
+    "provenance/raw/spliced_expression.npy",
+    "provenance/raw/final_unspliced_expression.npy",
+    "provenance/raw/final_spliced_expression.npy",
+    "provenance/raw/public_gene_id_map.tsv",
+    "provenance/raw/public_cell_id_map.tsv",
+    "provenance/raw/truth_source_edges.tsv",
+    "provenance/raw/session_info.txt"
+  ],
+  "required_truth_context_prefixes": ["global", "group:"]
+}

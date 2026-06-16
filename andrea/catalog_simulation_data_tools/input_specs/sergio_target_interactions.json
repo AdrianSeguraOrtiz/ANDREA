@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "sergio_target_interactions",
+  "name": "SERGIO target interaction parameters",
+  "format": "txt",
+  "accepted_extensions": [".txt", ".csv"],
+  "description": "Comma-separated SERGIO target interaction file consumed by sergio.build_graph(input_file_taregts). Each row defines all regulators and Hill-function parameters for one non-master target gene.",
+  "example": "1,1,0,2.5,2\n2,1,1,-1.3,2",
+  "delimiter": ",",
+  "header": false,
+  "min_rows": 1,
+  "validation_notes": [
+    "Rows have variable width: target_id, regulator_count, regulator_id_1..regulator_id_n, K_1..K_n, hill_coeff_1..hill_coeff_n.",
+    "Gene identifiers must be zero-based numeric SERGIO IDs and must match the master-regulator file and number_genes parameter.",
+    "K values are signed maximum interaction strengths; positive values represent activation and negative values represent repression.",
+    "Master regulators must not be included as target rows in this file.",
+    "When shared_coop_state is greater than zero, SERGIO ignores per-row hill_coeff values but the file may still include them."
+  ]
+}

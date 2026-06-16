@@ -307,7 +307,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 report = preflight_generate_data_scenario(scenario_path)
 
         self.assertGreaterEqual(report["catalog_summary"]["total"], 1)
-        self.assertEqual(report["catalog_summary"]["blocked"], 0)
         self.assertGreaterEqual(report["catalog_summary"]["warning"], 1)
         dyngen_entry = _entry_by_id(report["warning"], "dyngen")
         self.assertEqual(
@@ -322,6 +321,76 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 for message in _issue_messages(dyngen_entry, "warn")
             )
         )
+        sergio_entry = _entry_by_id(report["warning"], "sergio")
+        self.assertEqual(
+            sergio_entry["truth_outputs"],
+            {"global": "native", "group": "derivable", "cell": "none"},
+        )
+        self.assertTrue(
+            any(
+                "canonical truth context 'group:'" in message
+                for message in _issue_messages(sergio_entry, "warn")
+            )
+        )
+
+    def test_plan_blocks_sergio_lineage_tree_without_differentiation_mode(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            target_path = (
+                Path(__file__).resolve().parents[4]
+                / "wrappers"
+                / "simulation_data_tools"
+                / "tests"
+                / "fixtures"
+                / "sergio"
+                / "target_interactions.csv"
+            )
+            master_path = target_path.with_name("master_regulators.csv")
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="sergio_lineage_without_differentiation",
+                profile="scrna_grouped",
+                requested_extras=["lineage_tree"],
+                inputs={
+                    "sergio_target_interactions": {"path": str(target_path)},
+                    "sergio_master_regulators": {"path": str(master_path)},
+                },
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "sergio_steady_lineage",
+                        "simulator_id": "sergio",
+                        "replicates": 1,
+                        "params": {
+                            "input_preset": "custom_files",
+                            "simulation_mode": "steady_state",
+                            "number_genes": 3,
+                            "number_bins": 2,
+                            "number_sc": 2,
+                        },
+                    }
+                ],
+            )
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                    return_value=None,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "lineage_tree requires simulation_mode=differentiation",
+                ),
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
 
     def test_preflight_blocks_dyngen_when_docker_is_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

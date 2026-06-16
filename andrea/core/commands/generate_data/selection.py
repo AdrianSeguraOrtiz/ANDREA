@@ -137,6 +137,7 @@ def evaluate_simulator_for_scenario(
                 simulator_params=resolved_params,
                 native_outputs=[],
                 resolved_input_paths=scenario.resolved_input_paths,
+                scope="scenario",
             )
         )
         issues.extend(

@@ -1,0 +1,57 @@
+{
+  "simulator_id": "sergio",
+  "request": {
+    "profile": "scrna_global",
+    "seed": 202,
+    "effective_extras": [
+      "enrichment_background",
+      "prior_grn",
+      "tf_list"
+    ],
+    "inputs": {
+      "sergio_target_interactions": "../fixtures/sergio/target_interactions.csv",
+      "sergio_master_regulators": "../fixtures/sergio/master_regulators.csv"
+    },
+    "params": {
+      "input_preset": "custom_files",
+      "simulation_mode": "steady_state",
+      "number_genes": 3,
+      "number_bins": 2,
+      "number_sc": 2,
+      "noise_params": 0.1,
+      "decays": 0.8,
+      "sampling_state": 1,
+      "window_length": 3,
+      "dt": 0.01,
+      "shared_coop_state": 2.0,
+      "technical_noise": {
+        "outlier_enabled": true,
+        "outlier_prob": 0.5,
+        "outlier_mean": 0.2,
+        "outlier_scale": 0.1,
+        "dropout_enabled": true,
+        "dropout_shape": 2.0,
+        "dropout_percentile": 50.0,
+        "convert_to_umi": true
+      }
+    },
+    "runtime_resources": {"threads": 1}
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/enrichment_background.txt",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/clean_expression.npy",
+    "provenance/raw/dropout_indicator.npy",
+    "provenance/raw/umi_counts.npy",
+    "provenance/raw/public_gene_id_map.tsv",
+    "provenance/raw/session_info.txt"
+  ],
+  "required_truth_context_prefixes": ["global"]
+}

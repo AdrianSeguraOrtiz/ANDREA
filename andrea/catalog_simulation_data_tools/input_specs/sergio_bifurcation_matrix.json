@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "id": "sergio_bifurcation_matrix",
+  "name": "SERGIO bifurcation matrix",
+  "format": "txt",
+  "accepted_extensions": [".tab", ".tsv", ".txt", ".csv"],
+  "description": "SERGIO differentiation graph matrix consumed as bifurcation_matrix when dynamics=True. Entry i,j is the non-negative migration rate from source bin i to child bin j.",
+  "example": "0\t0.8\t0\n0\t0\t1.1\n0\t0\t0",
+  "delimiter": "\t",
+  "header": false,
+  "min_rows": 1,
+  "validation_notes": [
+    "The file must contain a square number_bins by number_bins numeric matrix.",
+    "Entries must be non-negative; zero means no differentiation transition.",
+    "SERGIO assumes an acyclic differentiation graph and at most one parent per bin.",
+    "The matrix dimensions must match the number_bins simulator parameter and the number of rate columns in sergio_master_regulators."
+  ]
+}
