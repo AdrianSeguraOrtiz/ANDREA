@@ -70,6 +70,15 @@ adriansegura99/simulator_<simulator_id>:1.0.0
     in `truth/networks.csv`, and `groups` is a profile-required standardized
     extra because the group truth layer must be traceable to cell-to-group
     assignments.
+16. Preserve public identifiers consistently across all normalized outputs.
+    Gene ids in `expression.tsv`, `truth/networks.csv`, `truth/gene_universe.txt`
+    and extras must refer to the same public ids. Cell and group ids must also
+    be consistent across expression columns, `groups.tsv`, other extras and
+    truth contexts.
+17. Keep packaging separate from wrapper behavior. The simulator wrapper emits
+    the normalized dataset tree and manifests; `generate-data` core owns ZIP
+    bundle families such as `analysis`, `report` and `full`, including strict
+    GUI handoff bundles for downstream commands.
 
 ## Required Integration Order
 
@@ -197,6 +206,30 @@ Each derivation entry must state:
 - `limitations`: what information is lost or where the derivation can be misleading
 - `implemented_in`: wrapper path where the rule is implemented
 
+### Public Manifests And GUI Handoff
+
+The normalized simulator output tree is consumed in two ways:
+
+- `dataset-manifest.json` describes the generated expression dataset and is
+  the strict input descriptor used by `infer-network`.
+- `ground-truth-manifest.json` describes the truth artifacts needed by
+  `evaluate-inference`, including `truth/networks.csv` and
+  `truth/gene_universe.txt`.
+
+The simulator wrapper must provide enough normalized outputs and
+`simulator-output-manifest.json` metadata for `generate-data` to build both
+manifests. The wrapper must not decide which files belong to GUI ZIP bundles.
+Bundle definitions and readiness belong to `generate-data` core.
+
+Current GUI handoff convention:
+
+- `analysis` bundles are minimal strict ZIPs designed for downstream GUI
+  upload. Per-dataset generate-data analysis bundles must contain
+  `ground-truth-manifest.json` at the ZIP root plus the referenced truth files.
+- `report` bundles are compact human/machine-readable summaries.
+- `full` bundles contain the complete generated benchmark archive for storage
+  and debugging.
+
 ## Official End-To-End Procedure
 
 Follow these steps in order. A simulator is not considered integrated until the Docker image and smoke-test matrix pass.
@@ -314,6 +347,9 @@ Focus especially on:
 7. smoke-test matrix needed to cover the declared contract
 8. profile-specific truth context evidence, including score/sign semantics and
    limitations
+9. public id consistency across expression, truth, gene universe and extras
+10. which normalized outputs are needed to build `dataset-manifest.json` for
+    `infer-network` and `ground-truth-manifest.json` for `evaluate-inference`
 ```
 
 ### Step 3. Review Phase 1
@@ -369,6 +405,8 @@ Requirements:
   - `scrna_global`: `global`
   - `scrna_grouped`: `global` and `group:`
   - `scrna_cell_specific`: `global`, `group:` and `cell:`
+- The smoke-test matrix must prove public id consistency across expression,
+  truth, gene universe and generated extras
 - Build the image and run the smoke tests during this phase
 - If implementation constraints require changing the spec, update `simulatorspec.json` and document why in `integration_decisions.md`
 ```
@@ -707,6 +745,10 @@ Rules:
 - remaining columns are samples/cells/timepoints/perturbations
 - column semantics must match the selected canonical profile
 - preserve simulator count/abundance scale unless a documented upstream export requires transformation
+- do not rename genes opportunistically. If the upstream simulator emits
+  numeric ids or prefixed ids, choose one public convention at the earliest
+  normalized export point and apply it consistently to every normalized file
+  and truth context
 
 ### `groups.tsv`
 
@@ -790,6 +832,7 @@ Use one TF id per line.
 Rules:
 - ids must be a subset of expression genes
 - if the simulator does not distinguish TFs natively, document the derivation rule
+- ids must use the same public gene-id convention as `expression.tsv`
 
 ### `enrichment_background.txt`
 
@@ -798,6 +841,7 @@ Use one gene id per line.
 Rules:
 - ids should be a subset of expression genes
 - document whether the background is all simulated genes, assay-specific detected genes, or an external universe
+- ids must use the same public gene-id convention as `expression.tsv`
 
 ### `prior_grn.tsv`
 
@@ -814,6 +858,8 @@ Rules:
 - document whether `score` is unsigned confidence, signed effect, or another method-specific value
 - document whether the prior is modality-grounded, truth-derived, or heuristic
 - avoid deriving a prior directly from clean truth unless the benchmark explicitly intends that
+- `source` and `target` must use the same public gene-id convention as
+  `expression.tsv`
 
 ### `prior_grn_by_group.tsv`
 
@@ -830,6 +876,8 @@ Rules:
 - document whether `score` is unsigned confidence, signed effect, or another method-specific value
 - document whether the prior is modality-grounded, truth-derived, or heuristic
 - avoid deriving a prior directly from clean truth unless the benchmark explicitly intends that
+- `source` and `target` must use the same public gene-id convention as
+  `expression.tsv`
 
 ### `truth/networks.csv`
 
@@ -852,6 +900,8 @@ Rules:
 - `context=cell:<cell_id>` for cell-specific truth
 - every group context must correspond to a group in `groups.tsv`
 - every cell context must correspond to an expression column identifier
+- `source` and `target` must use the same public gene-id convention as
+  `expression.tsv`
 - when deriving group truth from cell-specific simulator state, document the fixed aggregation rule and whether missing cell-edge values contribute zero
 - when exporting native cell truth, do not apply group-level thresholds unless they are also native to the cell-level simulator output
 - dense cell-specific truth can be very large; keep smoke-test matrices small but representative, and preserve full native objects under provenance/raw when useful for audit
@@ -873,6 +923,7 @@ The matrix must cover:
 - conditional-input behavior when supported
 - the presence of `progress.json`
 - required public output files
+- public id consistency across expression, truth, gene universe and extras
 - important provenance files
 
 For `dyngen`, this currently means:
@@ -1039,6 +1090,8 @@ Before considering a simulator integrated, confirm:
 - `progress.json` is written
 - `simulator-output-manifest.json` validates
 - generated `dataset-manifest.json` passes `infer-network preflight`
+- generated `ground-truth-manifest.json` is sufficient for an
+  `evaluate-inference` analysis handoff bundle
 - truth outputs are consistent
 - provenance contains enough raw simulator state to debug or audit the run
 - no incomplete simulator appears in `andrea/catalog_simulation_data_tools/simulators/`

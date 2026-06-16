@@ -41,6 +41,14 @@ The goal of an integration is to produce:
    - never depend on an unpinned floating source if avoidable
 7. Audit all relevant upstream public modes before choosing the wrapper contract.
 8. Treat execution capabilities as dataset-routing semantics, not as algorithm-variant names.
+9. Preserve public identifiers exactly in public outputs. Expression gene ids,
+   cell ids and group ids must not be renamed, prefixed or normalized in
+   `network.csv` unless every public artifact is mapped back consistently and
+   the mapping is recorded as an auxiliary artifact.
+10. Keep ANDREA-owned orchestration out of wrappers. The wrapper produces raw
+    method outputs; `infer-network` core owns downstream score normalization,
+    `group_emulated` orchestration, `group_aggregated` aggregation and ZIP
+    bundles such as `analysis`, `report`, `graphs` and `full`.
 
 ## Official End-to-End Procedure
 
@@ -177,7 +185,11 @@ Focus especially on:
 3. parameter mapping and defaults
 4. output semantics and how they should map to raw `network.csv` with positive `score` magnitudes and direction stored only in `sign`
 5. installation source preference: package first, pinned upstream source second; inspect the installable package/version when it differs from the local repo snapshot
-6. explicit evidence for `accepts`, `assumes`, `extra_inputs`, `outputs`, `progress`, `params` and `artifacts_aux`
+6. preserving public expression/cell/group ids in wrapper outputs, including any
+   upstream alias map needed to round-trip internal ids back to ANDREA ids
+7. whether any apparent parameter is actually a fixed implementation choice
+   that should be documented instead of exposed as a single-value user param
+8. explicit evidence for `accepts`, `assumes`, `extra_inputs`, `outputs`, `progress`, `params` and `artifacts_aux`
 ```
 
 ### Step 6. Review the Phase 1 outputs
@@ -215,8 +227,14 @@ Requirements:
 - Make the wrapper produce raw positive `network.csv` score magnitudes for the chosen upstream interface and `progress.json`
 - Do not apply ANDREA-specific score normalization in the wrapper; downstream normalization is handled later by [merge.py](andrea/core/commands/infer_network/commons/merge.py)
 - Do not write rows with `score <= 0` to `network.csv`; if the upstream method produces a dense matrix, filter zero-magnitude edges in the wrapper before export
+- Preserve expression gene ids, cell ids and group ids exactly in `network.csv`.
+  If the upstream runtime requires internal aliases, write an auxiliary alias
+  map and convert all public wrapper outputs back to the original ANDREA ids.
 - For undirected methods, export one row per unordered pair and exclude self-loops unless stronger primary evidence clearly requires another edge convention
 - Add or update [smoketest config](wrappers/inference_tools/tests/smoketest_configs/<tool_id>.json) and any needed fixtures under [tests/fixtures/](wrappers/inference_tools/tests/fixtures/)
+- Cover every declared execution capability in smoketests when feasible,
+  including small representative checks for `cell_native` and
+  `group_aggregated` contracts.
 - Build the image and run the smoketest during this phase; if it fails, fix the implementation and repeat until it passes
 - Keep [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json) aligned with the implemented behavior
 - Update [integration_decisions.md](wrappers/inference_tools/tools/<tool_id>/integration_decisions.md) so it reflects implemented behavior and records the smoketest outcome
@@ -543,6 +561,9 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - when the upstream score is a signed coefficient, write `score = abs(coefficient)` and encode the coefficient direction only in `sign` as `+` or `-`
     - when no sign is available, write `sign = "?"`
     - never encode direction by making `score` negative
+    - preserve source and target ids exactly as they appear in the normalized
+      expression input; do not add prefixes such as `gene` to numeric ids, and
+      do not mix upstream aliases with public ANDREA ids
     - every row must have a non-empty `context`; use `global`, `group:<id>`, `cell:<id>`, or a documented tool-specific non-empty context family
     - for `cell_native`, `cell:<id>` values must correspond to expression column identifiers unless stronger upstream evidence documents a different cell/sample identifier mapping and the wrapper records that mapping as an auxiliary artifact
     - for `group_aggregated`, the wrapper's native `network.csv` should preserve `cell:<id>` rows; ANDREA adds derived `group:<id>` rows during orchestration
@@ -582,6 +603,13 @@ If an upstream default depends on the dataset or runtime state, do not silently 
   - rule:
     - prefer upstream parameter names unless there is a strong normalization reason not to
     - if defaults conflict across sources, document the conflict and justify the chosen value
+    - do not expose a parameter just to encode a fixed wrapper decision or a
+      single allowed implementation preset; use `params: {}` when the wrapper
+      intentionally mirrors one upstream public preset, and document the fixed
+      choice in `method_summary`, `method_keywords` and
+      `integration_decisions.md`
+    - do not add params for ANDREA-owned behavior such as
+      `group_aggregated` aggregation, merge normalization or bundle creation
 
 ### Auxiliary artifacts
 
@@ -639,10 +667,15 @@ Before considering a tool integrated, confirm:
 - conditional inputs are modeled in the catalog when needed
 - required inputs are modeled by always-required, execution-mode-required, or parameter-required rules as appropriate
 - no normalized input is being reused with the wrong semantics
+- no fixed single-value implementation choice is exposed as a user parameter
 - the wrapper does not rely on the local `repo/`
 - the `Dockerfile` uses a stable public source
 - the output mapping to raw `network.csv` is documented in `integration_decisions.md`
+- public ids in `network.csv` match normalized input ids, or an explicit
+  auxiliary alias map proves how upstream aliases were mapped back
 - any per-tool normalization is left to downstream runtime merge, not silently added by the wrapper unless the chosen upstream public interface itself defines that scale
+- `group_emulated`, `group_aggregated`, merge normalization and ZIP bundle
+  availability are treated as ANDREA core behavior, not wrapper-specific logic
 - smoketest passes
 - `cost.json` exists and validates if planner support is expected for the tool
 - the packaged image can be built, and pushed if publication is part of the integration task
