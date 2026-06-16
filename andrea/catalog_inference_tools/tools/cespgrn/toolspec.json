@@ -1,0 +1,234 @@
+{
+  "schema_version": "1.0",
+  "id": "cespgrn",
+  "name": "CeSpGRN",
+  "publication": [
+    "https://doi.org/10.1093/bioinformatics/btag324",
+    "https://doi.org/10.1101/2022.03.03.482887"
+  ],
+  "first_author": "Ziqi Zhang",
+  "year": 2026,
+  "method_summary": "CeSpGRN infers cell-specific gene regulatory networks from scRNA-seq, paired scRNA-seq and scATAC-seq, or spatial transcriptomic data using a kernel-weighted Gaussian Copula Graphical Model. The selected expression and spatial-coordinate paths construct a cell-cell Gaussian kernel, estimate cell-specific precision matrices with ADMM, and transform them to signed partial-correlation networks.",
+  "method_keywords": [
+    "single_cell",
+    "cell_specific_network",
+    "gaussian_copula_graphical_model",
+    "kernel_weighting",
+    "partial_correlation",
+    "spatial_transcriptomics"
+  ],
+  "implementation_url": "https://github.com/PeterZZQ/CeSpGRN",
+  "docker_image": "adriansegura99/inference-tools_cespgrn:1.0.0",
+  "execution_capabilities": [
+    "cell_native",
+    "group_aggregated"
+  ],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_aggregated",
+        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates CeSpGRN cell-native network rows by group.",
+        "usage": "ANDREA uses groups.tsv after the native CeSpGRN per-cell run to aggregate cell:<cell_id> rows into group:<group_id> rows; CeSpGRN itself does not consume groups.tsv."
+      },
+      {
+        "input": "spatial_coordinates",
+        "param": "kernel_source",
+        "op": "eq",
+        "value": "spatial",
+        "message": "spatial_coordinates is required when kernel_source=spatial because CeSpGRN builds the Gaussian kernel from cell locations instead of expression PCA coordinates.",
+        "usage": "The wrapper should pass the numeric spatial coordinate matrix to kernel.calc_kernel_neigh() when kernel_source=spatial, preserving expression cell identifiers by row alignment."
+      },
+      {
+        "input": "tf_list",
+        "param": "prior_mode",
+        "op": "eq",
+        "value": "tf_list",
+        "message": "tf_list is required when prior_mode=tf_list because CeSpGRN builds a TF-target mask from known transcription factors.",
+        "usage": "The wrapper should convert tf_list.txt to CeSpGRN TF gene indices, pass them to G_admm_minibatch(), and use prior_beta to penalize target-target entries outside the TF prior."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": false,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "iterations",
+    "note": "CeSpGRN trains minibatches with an ADMM loop and prints batch and n_iter diagnostics; the wrapper reports coarse runtime phases in progress.json and records upstream ADMM diagnostics in cespgrn.log."
+  },
+  "params": {
+    "kernel_source": {
+      "type": "enum",
+      "required": false,
+      "default": "expression",
+      "enum": [
+        "expression",
+        "spatial"
+      ],
+      "description": "Source used to construct CeSpGRN's cell-cell Gaussian kernel. expression uses PCA coordinates from the expression matrix; spatial uses spatial_coordinates.tsv."
+    },
+    "prior_mode": {
+      "type": "enum",
+      "required": false,
+      "default": "none",
+      "enum": [
+        "none",
+        "tf_list"
+      ],
+      "description": "Optional prior-mask mode. none runs the expression/spatial CeSpGRN path without a prior; tf_list uses known TFs to construct the TF-target mask described by the paper."
+    },
+    "expression_preprocessing": {
+      "type": "enum",
+      "required": false,
+      "default": "library_size_log1p",
+      "enum": [
+        "library_size_log1p",
+        "none"
+      ],
+      "description": "Preprocessing applied before PCA, covariance estimation and ADMM. library_size_log1p mirrors upstream examples by scaling each cell to the median library size and applying log1p; none passes the mounted expression values through unchanged."
+    },
+    "pca_components": {
+      "type": "int",
+      "required": false,
+      "default": 20,
+      "min": 1,
+      "description": "Number of PCA components used when kernel_source=expression. Upstream examples use 10 or 20 components; the wrapper should require this to be no larger than the available cells and genes."
+    },
+    "bandwidth": {
+      "type": "float",
+      "required": false,
+      "default": 0.1,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "Gaussian kernel bandwidth. Smaller values allow cell GRNs to vary more quickly; larger values smooth GRNs across more neighboring cells."
+    },
+    "n_neigh": {
+      "type": "int",
+      "required": false,
+      "default": 30,
+      "min": 1,
+      "description": "Number of neighbors retained in the truncated kernel used for cell-specific covariance estimation."
+    },
+    "lamb": {
+      "type": "float",
+      "required": false,
+      "default": 0.1,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "L1 sparsity regularization weight passed to G_admm_minibatch.train(); larger values produce sparser networks."
+    },
+    "prior_beta": {
+      "type": "float",
+      "required": false,
+      "default": 1.0,
+      "min": 0,
+      "description": "Prior regularization weight used only when prior_mode=tf_list. The wrapper should pass beta=0 when prior_mode=none and prior_beta when prior_mode=tf_list."
+    },
+    "max_iters": {
+      "type": "int",
+      "required": false,
+      "default": 1000,
+      "min": 1,
+      "description": "Maximum ADMM iterations per minibatch passed to G_admm_minibatch.train(). The upstream demo uses 1000; benchmark scripts often use smaller values."
+    },
+    "n_intervals": {
+      "type": "int",
+      "required": false,
+      "default": 100,
+      "min": 1,
+      "description": "Iteration interval for ADMM diagnostics and convergence checks."
+    },
+    "batch_size": {
+      "type": "union",
+      "required": false,
+      "default": null,
+      "description": "Minibatch size for G_admm_minibatch. Null preserves the upstream constructor default int(ncells/10); an integer passes an explicit batchsize.",
+      "oneOf": [
+        {
+          "type": "int",
+          "required": false,
+          "default": 120,
+          "min": 1,
+          "description": "Explicit number of cells per ADMM minibatch."
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null to omit batchsize and preserve CeSpGRN's data-dependent int(ncells/10) constructor rule."
+        }
+      ]
+    },
+    "random_seed": {
+      "type": "union",
+      "required": false,
+      "default": 0,
+      "description": "Torch random seed passed to G_admm_minibatch. Use null to omit seeding.",
+      "oneOf": [
+        {
+          "type": "int",
+          "required": false,
+          "default": 0,
+          "description": "Explicit torch seed."
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null to pass seed=None and preserve unseeded torch runtime behavior."
+        }
+      ]
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "cespgrn.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined stdout/stderr log from preprocessing, kernel construction, covariance estimation and ADMM training."
+    },
+    {
+      "path_pattern": "raw/partial_correlations.npy",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw signed cell-specific partial-correlation tensor returned by CeSpGRN before conversion to ANDREA network.csv."
+    },
+    {
+      "path_pattern": "raw/precision_matrices.npy",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw cell-specific precision matrices estimated by the ADMM optimizer."
+    },
+    {
+      "path_pattern": "raw/kernel.npy",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Cell-cell Gaussian kernel matrix used by CeSpGRN."
+    }
+  ]
+}

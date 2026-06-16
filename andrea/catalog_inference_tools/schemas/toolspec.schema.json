@@ -41,6 +41,7 @@
         "grnboost_network",
         "lineage_tree",
         "pseudotime",
+        "spatial_coordinates",
         "terms_of_interest",
         "tf_list",
         "prior_grn",

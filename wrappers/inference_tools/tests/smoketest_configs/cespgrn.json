@@ -1,0 +1,34 @@
+{
+  "execution": {
+    "mode": "cell_native"
+  },
+  "param_overrides": {
+    "pca_components": 3,
+    "n_neigh": 6,
+    "lamb": 0.01,
+    "max_iters": 1,
+    "n_intervals": 1,
+    "batch_size": 30
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "cell_native"
+    },
+    {
+      "name": "group_aggregated_spatial",
+      "extra_files": [
+        "groups.tsv",
+        "spatial_coordinates.tsv"
+      ],
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "param_overrides": {
+        "kernel_source": "spatial"
+      }
+    }
+  ]
+}

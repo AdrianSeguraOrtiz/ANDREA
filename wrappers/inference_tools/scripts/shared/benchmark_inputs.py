@@ -23,6 +23,7 @@ GENERATED_EXTRA_INPUTS = {
     "prior_grn",
     "prior_grn_by_group",
     "pseudotime",
+    "spatial_coordinates",
     "terms_of_interest",
     "tf_list",
 }
@@ -40,6 +41,7 @@ EXTRA_FILENAMES = {
     "prior_grn": "prior_grn.tsv",
     "prior_grn_by_group": "prior_grn_by_group.tsv",
     "pseudotime": "pseudotime.tsv",
+    "spatial_coordinates": "spatial_coordinates.tsv",
     "terms_of_interest": "terms_of_interest.txt",
     "tf_list": "tf_list.txt",
 }
@@ -185,6 +187,8 @@ def write_benchmark_io_dir(
             )
         elif input_key == "pseudotime":
             write_pseudotime(path, columns=columns, assignments=assignments)
+        elif input_key == "spatial_coordinates":
+            write_spatial_coordinates(path, columns=columns)
         elif input_key == "terms_of_interest":
             write_terms_of_interest(path, profile.terms_of_interest)
         elif input_key == "tf_list":
@@ -373,6 +377,16 @@ def write_pseudotime(
         writer.writerow(["cell", "pseudotime"])
         for column in columns:
             writer.writerow([column, f"{pseudotime_by_column[column]:.6f}"])
+
+
+def write_spatial_coordinates(path: Path, *, columns: Sequence[str]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["cell", "x", "y"])
+        for idx, column in enumerate(columns):
+            row = idx // 8
+            col = idx % 8
+            writer.writerow([column, f"{col:.6f}", f"{row:.6f}"])
 
 
 def write_cluster_identities(path: Path, groups: Sequence[str]) -> None:
