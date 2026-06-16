@@ -566,7 +566,7 @@ If an upstream default depends on the dataset or runtime state, do not silently 
       do not mix upstream aliases with public ANDREA ids
     - every row must have a non-empty `context`; use `global`, `group:<id>`, `cell:<id>`, or a documented tool-specific non-empty context family
     - for `cell_native`, `cell:<id>` values must correspond to expression column identifiers unless stronger upstream evidence documents a different cell/sample identifier mapping and the wrapper records that mapping as an auxiliary artifact
-    - for `group_aggregated`, the wrapper's native `network.csv` should preserve `cell:<id>` rows; ANDREA adds derived `group:<id>` rows during orchestration
+    - for `group_aggregated`, the wrapper's physical `cell_native` `network.csv` should preserve `cell:<id>` rows; ANDREA keeps those rows as an auxiliary `network.cell_native.csv` artifact and writes only derived `group:<id>` rows to the logical `group_aggregated` `network.csv`
     - downstream normalized networks and `evaluate-inference` rank by the positive `score`, with sign handled separately by the `sign` column
     - do not add an extra ANDREA-specific score normalization layer in the wrapper; downstream normalization is handled later by `infer_network`
     - exact zero-magnitude edges should be omitted from `network.csv`; zero means "no retained interaction", not a useful stored edge

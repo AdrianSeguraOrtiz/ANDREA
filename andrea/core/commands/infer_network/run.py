@@ -375,7 +375,7 @@ def _finalize_group_aggregated_logical_run(
             )
             _write_network_rows(
                 path=parent_network,
-                rows=rows + aggregated_rows,
+                rows=aggregated_rows,
                 include_tool_id=False,
             )
             network_path = str(parent_network.resolve())

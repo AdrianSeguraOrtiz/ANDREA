@@ -76,7 +76,9 @@ Execution capabilities:
 run. The container is still executed once through the tool's `cell_native`
 contract; ANDREA then aggregates the resulting `cell:<cell_id>` rows. ToolSpecs
 should only declare `group_aggregated` together with `cell_native`, and should
-not introduce aggregation parameters for this first contract.
+not introduce aggregation parameters for this first contract. The final logical
+`group_aggregated` network contains only `group:<group_id>` rows; the physical
+cell-native rows are retained separately as an auxiliary provenance artifact.
 
 Expected outputs:
 - `/io/out/network.csv`

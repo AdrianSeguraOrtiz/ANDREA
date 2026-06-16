@@ -212,7 +212,9 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             self.assertTrue((unfiltered.io_dir / "extra" / "tf_list.txt").exists())
             self.assertTrue((unfiltered.io_dir / "extra" / "groups.tsv").exists())
 
-    def test_group_aggregated_run_preserves_cell_rows_and_adds_group_rows(self) -> None:
+    def test_group_aggregated_run_writes_group_rows_and_keeps_cell_auxiliary(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             output_dir = base / "out"
@@ -318,10 +320,14 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 / "network.cell_native.csv"
             )
             cell_network_exists = cell_network.exists()
+            with cell_network.open("r", encoding="utf-8", newline="") as handle:
+                cell_rows = list(csv.DictReader(handle))
+            cell_contexts = {row["context"] for row in cell_rows}
             state_payload = read_execution_state(execution_state_path(run_dir))
 
-        self.assertIn("cell:C1", contexts)
-        self.assertIn("group:A", contexts)
+        self.assertEqual(contexts, {"group:A", "group:B"})
+        self.assertNotIn("cell:C1", contexts)
+        self.assertEqual(cell_contexts, {"cell:C1", "cell:C2", "cell:C3"})
         self.assertAlmostEqual(float(group_a["score"]), 0.25)
         self.assertEqual(group_a["sign"], "+")
         self.assertAlmostEqual(float(group_b_unknown["score"]), 2.0)

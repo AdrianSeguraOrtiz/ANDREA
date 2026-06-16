@@ -246,7 +246,7 @@ Runtime behavior:
 - Preserves the raw signed upstream object and extracted long-form signed weights under `raw/`.
 - Captures the informational stdout emitted by `lionessR::lioness()` into `lioness.log`.
 - Exports `network.csv` as undirected unordered gene pairs, excludes self-loops, filters `score <= 0`, writes `score=abs(weight)`, writes `sign` from the raw signed weight, and emits `context=cell:<cell_id>`.
-- Does not pass `groups.tsv` to lionessR. `group_aggregated` remains ANDREA-managed aggregation from the emitted cell-native rows.
+- Does not pass `groups.tsv` to lionessR. `group_aggregated` remains ANDREA-managed aggregation from the emitted cell-native rows; the logical result exposes only aggregated `group:<id>` rows while the physical cell-native rows remain in `network.cell_native.csv`.
 
 ## Phase 2 Validation
 
