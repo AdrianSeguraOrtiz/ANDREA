@@ -131,8 +131,17 @@ function showExternalDockerToolGuide() {
           "Run the inference method inside the container and write /io/out/network.csv.",
           "network.csv must include source,target,score,sign,evidence,context.",
           "score must be a positive magnitude. Activation/repression direction must be stored only in sign.",
-          "context must match the selected execution mode: global, group:<group_id> or cell:<cell_id>.",
           "/io/out/progress.json is optional but recommended for live progress updates.",
+        ],
+      },
+      {
+        title: "How execution mode changes orchestration",
+        items: [
+          "global: ANDREA launches one Docker run on the full expression matrix; write context=global.",
+          "group native: ANDREA launches one Docker run on the full dataset; the image must write group:<group_id> contexts.",
+          "group emulated: ANDREA launches one Docker run per group using group-filtered expression data and relabels each output as that group.",
+          "cell native: ANDREA launches one Docker run on the full dataset; the image must write cell:<cell_id> contexts.",
+          "group aggregated: the image writes cell:<cell_id> contexts and ANDREA aggregates them into group:<group_id> rows.",
         ],
       },
     ],

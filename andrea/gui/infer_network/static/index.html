@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ANDREA GUI · infer-network</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260615b" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260616a" />
     <link rel="stylesheet" href="/static-common/app/bundles/styles.css?v=20260522a" />
     <link rel="stylesheet" href="/static-common/app/buttons/styles.css?v=20260612c" />
     <link rel="stylesheet" href="/static-common/app/params/styles.css?v=20260612a" />
@@ -411,6 +411,88 @@
                 <label><input name="custom-tool-execution-mode" type="radio" value="cell_native" /> cell native</label>
                 <label><input name="custom-tool-execution-mode" type="radio" value="group_aggregated" /> group aggregated</label>
               </div>
+              <details class="custom-tool-mode-guide">
+                <summary>
+                  <span>
+                    <strong>How this choice changes execution</strong>
+                    <small>What ANDREA orchestrates and what your image must return.</small>
+                  </span>
+                </summary>
+                <div class="custom-tool-mode-guide-body">
+                  <p>
+                    The selected mode is not just metadata: ANDREA uses it to build the plan, decide how many Docker
+                    runs are launched, select the expression data mounted at <code>/io/expression.tsv</code>, require
+                    compatible Step 1 extras, and validate or derive <code>network.csv</code> contexts.
+                  </p>
+                  <div class="mode-guide-cards" aria-label="External Docker execution mode expectations">
+                    <article class="mode-guide-card">
+                      <span class="mode-guide-mode-pill">global</span>
+                      <div class="mode-guide-flow">
+                        <div>
+                          <strong>Image receives</strong>
+                          <p>One Docker run with the full Step 1 expression matrix.</p>
+                        </div>
+                        <div>
+                          <strong>Image returns</strong>
+                          <p><code>network.csv</code> rows with <code>context=global</code>.</p>
+                        </div>
+                      </div>
+                    </article>
+                    <article class="mode-guide-card">
+                      <span class="mode-guide-mode-pill">group native</span>
+                      <div class="mode-guide-flow">
+                        <div>
+                          <strong>Image receives</strong>
+                          <p>One Docker run with the full expression matrix and any selected Step 1 extras.</p>
+                        </div>
+                        <div>
+                          <strong>Image returns</strong>
+                          <p>Group-level rows using <code>context=group:&lt;group_id&gt;</code>.</p>
+                        </div>
+                      </div>
+                    </article>
+                    <article class="mode-guide-card">
+                      <span class="mode-guide-mode-pill">group emulated</span>
+                      <div class="mode-guide-flow">
+                        <div>
+                          <strong>Image receives</strong>
+                          <p>One Docker run per group, each with expression columns filtered to that group.</p>
+                        </div>
+                        <div>
+                          <strong>Image returns</strong>
+                          <p>Rows for that subset, usually <code>context=global</code>; ANDREA relabels them to the group.</p>
+                        </div>
+                      </div>
+                    </article>
+                    <article class="mode-guide-card">
+                      <span class="mode-guide-mode-pill">cell native</span>
+                      <div class="mode-guide-flow">
+                        <div>
+                          <strong>Image receives</strong>
+                          <p>One Docker run with the full Step 1 expression matrix.</p>
+                        </div>
+                        <div>
+                          <strong>Image returns</strong>
+                          <p>Cell-level rows using <code>context=cell:&lt;cell_id&gt;</code>.</p>
+                        </div>
+                      </div>
+                    </article>
+                    <article class="mode-guide-card">
+                      <span class="mode-guide-mode-pill">group aggregated</span>
+                      <div class="mode-guide-flow">
+                        <div>
+                          <strong>Image receives</strong>
+                          <p>One cell-native Docker run on the full expression matrix. ANDREA requires <code>groups.tsv</code>.</p>
+                        </div>
+                        <div>
+                          <strong>Image returns</strong>
+                          <p><code>cell:&lt;cell_id&gt;</code> rows; ANDREA aggregates them into group-level rows.</p>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </details>
             </section>
             <section class="external-tool-form-section">
               <div class="external-tool-section-head">
