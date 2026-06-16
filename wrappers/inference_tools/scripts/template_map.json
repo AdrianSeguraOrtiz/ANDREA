@@ -34,6 +34,12 @@
         "python_runtime_contract"
       ]
     },
+    "scgenerai": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ]
+    },
     "inferelator3": {
       "runtime": "python",
       "bundles": [

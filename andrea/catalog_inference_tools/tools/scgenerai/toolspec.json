@@ -1,0 +1,138 @@
+{
+  "schema_version": "1.0",
+  "id": "scgenerai",
+  "name": "scGeneRAI",
+  "publication": [
+    "https://doi.org/10.1093/nar/gkac1212"
+  ],
+  "first_author": "Philipp Keyl",
+  "year": 2023,
+  "method_summary": "scGeneRAI trains a neural network on static scRNA-seq data to impute masked gene expression values from arbitrary sets of other genes, then applies layer-wise relevance propagation to estimate gene-gene relevance for individual cells. The selected public score is LRPau, an absolute undirected average of reciprocal raw LRP scores for each gene pair.",
+  "method_keywords": [
+    "single_cell",
+    "explainable_ai",
+    "layer_wise_relevance_propagation",
+    "deep_learning",
+    "cell_specific_network",
+    "undirected"
+  ],
+  "implementation_url": "https://github.com/PhGK/scGeneRAI",
+  "docker_image": "adriansegura99/inference-tools_scgenerai:1.0.0",
+  "execution_capabilities": [
+    "cell_native",
+    "group_aggregated"
+  ],
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [],
+    "optional": [
+      {
+        "input": "cell_descriptors",
+        "usage": "Optional categorical cell/sample descriptors such as batch, donor, condition or cell type. When provided, the wrapper aligns them to expression columns and passes them as scGeneRAI descriptors during both fit() and predict_networks(); when absent, descriptors are omitted to preserve upstream default behavior."
+      }
+    ],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_aggregated",
+        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates scGeneRAI cell-native network rows by group.",
+        "usage": "ANDREA uses groups.tsv after the native scGeneRAI per-cell run to aggregate cell:<cell_id> rows into group:<group_id> rows; scGeneRAI itself does not consume groups.tsv."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": false,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "scGeneRAI trains over epochs and predicts by iterating over cells and target genes, but the selected public Python API does not expose a stable progress callback; the wrapper should report coarse lifecycle states in progress.json."
+  },
+  "params": {
+    "nepochs": {
+      "type": "int",
+      "required": false,
+      "default": 1500,
+      "min": 1,
+      "description": "Maximum number of neural-network training epochs passed to scGeneRAI.fit(). The method paper used 1500 with early stopping."
+    },
+    "model_depth": {
+      "type": "int",
+      "required": false,
+      "default": 2,
+      "min": 0,
+      "description": "Model depth argument passed to scGeneRAI.fit(). Upstream README and example use 2 as the public default."
+    },
+    "lr": {
+      "type": "float",
+      "required": false,
+      "default": 0.02,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "Learning rate for the stochastic gradient descent optimizer passed to scGeneRAI.fit()."
+    },
+    "batch_size": {
+      "type": "int",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "description": "Training minibatch size passed to scGeneRAI.fit()."
+    },
+    "lr_decay": {
+      "type": "float",
+      "required": false,
+      "default": 0.995,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "description": "Exponential learning-rate scheduler gamma passed to scGeneRAI.fit(); code and paper use 0.995."
+    },
+    "early_stopping": {
+      "type": "bool",
+      "required": false,
+      "default": true,
+      "description": "Whether scGeneRAI.fit() reloads the model checkpoint with the smallest internal test loss."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "scgenerai.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined stdout/stderr log from scGeneRAI training and prediction."
+    },
+    {
+      "path_pattern": "raw/results/LRP_*.csv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw per-cell CSV files written by scGeneRAI predict_networks() before conversion to ANDREA network.csv."
+    },
+    {
+      "path_pattern": "raw/cell_alias_map.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Mapping from file-safe internal cell aliases used for upstream result filenames back to original ANDREA expression column identifiers."
+    }
+  ]
+}

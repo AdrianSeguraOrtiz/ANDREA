@@ -1,0 +1,13 @@
+cell	batch	cell_type
+cell.01	batch_a	type_alpha
+cell-02	batch_a	type_alpha
+cell_03	batch_a	type_alpha
+cell04	batch_a	type_beta
+cell05	batch_b	type_beta
+cell06	batch_b	type_beta
+cell07	batch_b	type_alpha
+cell08	batch_b	type_alpha
+cell09	batch_c	type_beta
+cell10	batch_c	type_beta
+cell11	batch_c	type_alpha
+cell12	batch_c	type_alpha
