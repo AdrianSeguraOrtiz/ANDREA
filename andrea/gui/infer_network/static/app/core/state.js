@@ -27,4 +27,5 @@ export const state = {
   autoFollowExecutionStep: true,
   paramsModalCard: null,
   notifiedFailures: new Set(),
+  customTools: [],
 };

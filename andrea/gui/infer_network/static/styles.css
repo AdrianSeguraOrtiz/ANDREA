@@ -957,6 +957,18 @@ textarea {
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.12);
 }
 
+.tool-item-custom-badge {
+  border: 1px solid rgba(20, 184, 166, 0.5);
+  border-radius: 999px;
+  padding: 0.12rem 0.42rem;
+  background: #ccfbf1;
+  color: #0f766e;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .tool-item-meta {
   font-size: 0.76rem;
   color: #475569;
@@ -1019,6 +1031,304 @@ textarea {
 
 .tool-request-modal-card {
   width: min(760px, calc(100vw - 2rem));
+}
+
+.external-tool-modal-card {
+  width: min(920px, calc(100vw - 2rem));
+}
+
+.external-tool-identity-grid,
+.external-tool-docker-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.external-tool-identity-grid {
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+}
+
+.external-tool-docker-grid {
+  grid-template-columns: minmax(220px, 1.35fr) minmax(155px, 0.65fr) minmax(10.5rem, auto);
+  align-items: end;
+}
+
+.external-tool-callout,
+.external-tool-warning {
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+}
+
+.external-tool-callout {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgba(14, 165, 233, 0.28);
+  background: #f0f9ff;
+  color: #0f172a;
+}
+
+.external-tool-callout span,
+.external-tool-warning {
+  color: #475569;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.external-tool-callout button {
+  width: fit-content;
+}
+
+.external-tool-warning {
+  border: 1px solid rgba(245, 158, 11, 0.36);
+  background: #fffbeb;
+}
+
+.external-tool-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.external-tool-field-head-inline {
+  justify-content: flex-start;
+}
+
+.external-tool-field-title {
+  display: inline-flex;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.external-tool-field-head .info-icon,
+.external-tool-field-head-inline .info-icon {
+  flex: 0 0 auto;
+  width: 1.65rem;
+  height: 1.65rem;
+  min-height: 1.65rem;
+  padding: 0;
+}
+
+.external-tool-label-stack {
+  display: grid;
+  align-content: end;
+  gap: 0.28rem;
+}
+
+.external-tool-label-stack input {
+  width: 100%;
+  height: 2.5rem;
+  min-height: 2.5rem;
+}
+
+.external-tool-image-check {
+  display: grid;
+  gap: 0.28rem;
+  align-content: end;
+  min-width: 10.5rem;
+}
+
+.external-tool-image-check button {
+  width: 100%;
+  min-height: 2.5rem;
+  white-space: nowrap;
+}
+
+.custom-tool-image-status {
+  grid-column: 1 / -1;
+  min-height: 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 0.42rem 0.65rem;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.custom-tool-image-status.valid {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: #f0fdf4;
+  color: #047857;
+}
+
+.custom-tool-image-status.invalid {
+  border-color: rgba(248, 113, 113, 0.58);
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.external-tool-docker-grid.image-valid input {
+  border-color: rgba(34, 197, 94, 0.65);
+  background: #f0fdf4;
+}
+
+.external-tool-docker-grid.image-invalid input {
+  border-color: rgba(248, 113, 113, 0.75);
+  background: #fff1f2;
+}
+
+.field-hint code {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: #fff;
+  padding: 0.05rem 0.32rem;
+  color: #334155;
+  font-size: 0.78em;
+}
+
+.field-hint {
+  margin-top: 0.28rem;
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.external-tool-form-section {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.external-tool-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.external-tool-section-head strong {
+  color: #0f172a;
+}
+
+.external-tool-section-head span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.custom-tool-extra-options {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.custom-tool-extra-choice {
+  min-height: 1.9rem;
+  border: 1px solid rgba(14, 165, 233, 0.32);
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 0.18rem 0.58rem;
+  color: #075985;
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.custom-tool-extra-choice input {
+  margin: 0;
+}
+
+.custom-tool-extra-choice.selected {
+  border-color: rgba(20, 184, 166, 0.7);
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.custom-tool-extra-empty {
+  border: 1px dashed rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 0.26rem 0.7rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.custom-tool-capability-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.custom-tool-capability-grid label {
+  margin: 0;
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(14, 165, 233, 0.26);
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  background: #f0f9ff;
+  color: #075985;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.custom-tool-capability-grid input {
+  margin: 0;
+}
+
+.custom-tool-capability-grid label:has(input:checked) {
+  border-color: rgba(14, 165, 233, 0.72);
+  background: #e0f2fe;
+  color: #075985;
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.26);
+}
+
+.custom-tool-capability-grid label.disabled {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: #f8fafc;
+  color: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.custom-tool-param-rows {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.custom-tool-param-empty {
+  border: 1px dashed rgba(148, 163, 184, 0.55);
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 0.65rem 0.75rem;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.custom-tool-param-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.9fr) minmax(210px, 1.35fr) minmax(120px, 0.5fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.custom-tool-param-row input,
+.custom-tool-param-row select {
+  min-height: 2.35rem;
+}
+
+.custom-tool-param-row .remove-param-row {
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  padding: 0;
+}
+
+@media (max-width: 760px) {
+  .external-tool-identity-grid,
+  .external-tool-docker-grid,
+  .custom-tool-param-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.full-span {
+  grid-column: 1 / -1;
 }
 
 .tool-request-box h3,

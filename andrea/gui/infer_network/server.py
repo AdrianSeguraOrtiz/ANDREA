@@ -5,6 +5,8 @@ from __future__ import annotations
 import copy
 import csv
 import json
+import shutil
+import subprocess
 import tempfile
 import threading
 import traceback
@@ -78,6 +80,7 @@ class GuiJob:
     run_dir: Optional[str] = None
     dataset_manifest_path: Optional[str] = None
     tools_params_path: Optional[str] = None
+    custom_tools_path: Optional[str] = None
     preflight_report_path: Optional[str] = None
     run_report_path: Optional[str] = None
     plan_path: Optional[str] = None
@@ -589,6 +592,38 @@ def _write_tools_params_file(
     return tools_params_path
 
 
+def _write_custom_tools_file(
+    *,
+    request_dir: Path,
+    raw_custom_tools: Any,
+) -> Optional[Path]:
+    if raw_custom_tools is None:
+        return None
+    if isinstance(raw_custom_tools, str):
+        if not raw_custom_tools.strip():
+            return None
+        try:
+            payload = json.loads(raw_custom_tools)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "custom_tools JSON is malformed at line "
+                f"{exc.lineno}, column {exc.colno}: {exc.msg}"
+            ) from exc
+    elif isinstance(raw_custom_tools, dict):
+        payload = raw_custom_tools
+    else:
+        raise ValueError("custom_tools must be a JSON object when provided")
+
+    if not isinstance(payload, dict):
+        raise ValueError("custom_tools must be a JSON object")
+    custom_tools_path = request_dir / "custom_tools.json"
+    custom_tools_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    return custom_tools_path
+
+
 def _job_payload(job: GuiJob) -> dict[str, Any]:
     return {
         "job_id": job.job_id,
@@ -600,6 +635,7 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
         "run_dir": job.run_dir,
         "dataset_manifest_path": job.dataset_manifest_path,
         "tools_params_path": job.tools_params_path,
+        "custom_tools_path": job.custom_tools_path,
         "preflight_report_path": job.preflight_report_path,
         "run_report_path": job.run_report_path,
         "plan_path": job.plan_path,
@@ -627,6 +663,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     run_dir = Path(run_dir_raw).resolve()
     dataset_manifest = (run_dir / "input" / "dataset-manifest.json").resolve()
     tools_params = (run_dir / "input" / "tools_params.json").resolve()
+    custom_tools = (run_dir / "input" / "custom_tools.json").resolve()
     if not dataset_manifest.exists() or not tools_params.exists():
         return unavailable_reproducibility(
             "Frozen run inputs are not available yet in the output directory."
@@ -634,6 +671,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
 
     dataset_manifest_path = str(dataset_manifest)
     tools_params_path = str(tools_params)
+    custom_tools_path = str(custom_tools) if custom_tools.exists() else None
     plan_payload = (
         read_json_if_exists(job.plan_path or str(run_dir / "plan.json")) or {}
     )
@@ -677,6 +715,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--progress-poll-seconds",
         str(progress_poll_seconds),
     ]
+    append_cli_option(cli_unified_args, "--custom-tools", custom_tools_path)
     append_cli_option(cli_unified_args, "--max-ram-gb", max_ram_gb)
 
     cli_preflight_args = [
@@ -690,6 +729,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--output-json",
         preflight_output_json,
     ]
+    append_cli_option(cli_preflight_args, "--custom-tools", custom_tools_path)
 
     cli_plan_args = [
         "andrea",
@@ -708,6 +748,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         "--planner-time-limit-seconds",
         str(planner_time_limit_seconds),
     ]
+    append_cli_option(cli_plan_args, "--custom-tools", custom_tools_path)
     append_cli_option(cli_plan_args, "--max-ram-gb", max_ram_gb)
 
     cli_run_args = [
@@ -729,6 +770,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "run_dir = infer_network(",
             f"    dataset_manifest_path={python_path_expr(dataset_manifest_path)},",
             f"    tools_params_path={python_path_expr(tools_params_path)},",
+            f"    custom_tools_path={python_path_expr(custom_tools_path) if custom_tools_path else 'None'},",
             f"    output_dir={python_path_expr(output_dir)},",
             f"    max_cores={int(max_cores)},",
             f"    max_ram_gb={python_literal(max_ram_gb)},",
@@ -753,16 +795,19 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             "",
             f"dataset_manifest_path = {python_path_expr(dataset_manifest_path)}",
             f"tools_params_path = {python_path_expr(tools_params_path)}",
+            f"custom_tools_path = {python_path_expr(custom_tools_path) if custom_tools_path else 'None'}",
             f"output_dir = {python_path_expr(output_dir)}",
             "",
             "preflight_report = preflight_infer_network(",
             "    dataset_manifest_path=dataset_manifest_path,",
             "    tools_params_path=tools_params_path,",
+            "    custom_tools_path=custom_tools_path,",
             ")",
             "",
             "run_dir = plan_infer_network(",
             "    dataset_manifest_path=dataset_manifest_path,",
             "    tools_params_path=tools_params_path,",
+            "    custom_tools_path=custom_tools_path,",
             "    output_dir=output_dir,",
             f"    max_cores={int(max_cores)},",
             f"    max_ram_gb={python_literal(max_ram_gb)},",
@@ -1768,6 +1813,9 @@ def _run_job(
             tools_params_path = (
                 Path(job.tools_params_path) if job.tools_params_path else None
             )
+            custom_tools_path = (
+                Path(job.custom_tools_path) if job.custom_tools_path else None
+            )
             output_dir = Path(job.output_dir)
             run_dir_existing = Path(job.run_dir) if job.run_dir else None
 
@@ -1777,6 +1825,7 @@ def _run_job(
             preflight_report = preflight_infer_network(
                 dataset_manifest_path=dataset_manifest_path,
                 tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
             )
             preflight_path = Path(job.request_dir) / "preflight_report.json"
             preflight_path.write_text(
@@ -1799,9 +1848,25 @@ def _run_job(
             if dataset_manifest_path is None or tools_params_path is None:
                 raise ValueError("Job is missing dataset/tools paths for planning")
             preflight_path = Path(job.request_dir) / "preflight_report.json"
-            preflight_report = read_json_if_exists(str(preflight_path))
             with STATE.lock:
                 job = STATE.jobs[job_id]
+                job.progress_percent = 25
+                job.progress_label = "Refreshing preflight"
+                job.progress_detail = (
+                    "Validating selected catalog and external Docker tools."
+                )
+            preflight_report = preflight_infer_network(
+                dataset_manifest_path=dataset_manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+            )
+            preflight_path.write_text(
+                json.dumps(preflight_report, indent=2, ensure_ascii=True) + "\n",
+                encoding="utf-8",
+            )
+            with STATE.lock:
+                job = STATE.jobs[job_id]
+                job.preflight_report_path = str(preflight_path)
                 job.progress_percent = 40
                 job.progress_label = "Solving execution plan"
                 job.progress_detail = (
@@ -1810,6 +1875,7 @@ def _run_job(
             run_dir = plan_infer_network(
                 dataset_manifest_path=dataset_manifest_path,
                 tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
                 output_dir=output_dir,
                 max_cores=_safe_int(options.get("max_cores"), default=4),
                 max_ram_gb=_safe_float(options.get("max_ram_gb")),
@@ -1878,6 +1944,55 @@ def _run_job(
             job.finished_at = _utc_now()
 
 
+def _check_docker_image_access(image: str) -> dict[str, Any]:
+    image = str(image or "").strip()
+    if not image:
+        raise ValueError("Docker image is required")
+    if shutil.which("docker") is None:
+        return {
+            "available": False,
+            "source": "none",
+            "message": "Docker CLI is not available in this environment.",
+        }
+
+    inspect = subprocess.run(
+        ["docker", "image", "inspect", image],
+        capture_output=True,
+        text=True,
+        timeout=8,
+        check=False,
+    )
+    if inspect.returncode == 0:
+        return {
+            "available": True,
+            "source": "local",
+            "message": "Image is available locally.",
+        }
+
+    manifest = subprocess.run(
+        ["docker", "manifest", "inspect", image],
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    if manifest.returncode == 0:
+        return {
+            "available": True,
+            "source": "registry",
+            "message": "Image manifest is accessible from the registry.",
+        }
+
+    detail = (manifest.stderr or inspect.stderr or "").strip().splitlines()
+    suffix = f" ({detail[-1]})" if detail else ""
+    return {
+        "available": False,
+        "source": "none",
+        "message": "Image was not found locally and no remote manifest was accessible."
+        + suffix,
+    }
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="ANDREA GUI - infer-network")
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -1897,6 +2012,33 @@ def create_app() -> FastAPI:
     @app.get("/api/infer-network/bootstrap")
     async def api_bootstrap() -> JSONResponse:
         return JSONResponse(bootstrap)
+
+    @app.post("/api/infer-network/docker-image/check")
+    async def api_check_docker_image(request: Request) -> JSONResponse:
+        payload = await request.json()
+        if not isinstance(payload, dict):
+            raise HTTPException(
+                status_code=400, detail="Request body must be a JSON object"
+            )
+        image = str(payload.get("image", "")).strip()
+        if not image:
+            raise HTTPException(status_code=400, detail="Docker image is required")
+        try:
+            result = _check_docker_image_access(image)
+        except subprocess.TimeoutExpired as exc:
+            timeout = exc.timeout if exc.timeout is not None else "unknown"
+            result = {
+                "available": False,
+                "source": "none",
+                "message": f"Docker image check timed out after {timeout}s.",
+            }
+        except Exception as exc:  # noqa: BLE001
+            result = {
+                "available": False,
+                "source": "none",
+                "message": str(exc),
+            }
+        return JSONResponse(result)
 
     @app.get("/api/infer-network/jobs")
     async def api_jobs() -> JSONResponse:
@@ -2301,6 +2443,10 @@ def create_app() -> FastAPI:
                     bootstrap=bootstrap,
                 )
             )
+            custom_tools_path = _write_custom_tools_file(
+                request_dir=request_dir,
+                raw_custom_tools=form.get("custom_tools"),
+            )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -2313,6 +2459,7 @@ def create_app() -> FastAPI:
             output_dir=str(output_dir),
             dataset_manifest_path=str(dataset_manifest_path),
             tools_params_path=None,
+            custom_tools_path=str(custom_tools_path) if custom_tools_path else None,
             preflight_report_path=None,
         )
         with STATE.lock:
@@ -2335,6 +2482,7 @@ def create_app() -> FastAPI:
                 "stage": "draft",
                 "request_dir": str(request_dir),
                 "dataset_manifest_path": str(dataset_manifest_path),
+                "custom_tools_path": str(custom_tools_path) if custom_tools_path else None,
             }
         )
 
@@ -2349,6 +2497,7 @@ def create_app() -> FastAPI:
         if not job_id:
             raise HTTPException(status_code=400, detail="job_id is required")
         runs_raw = payload.get("runs")
+        custom_tools_raw = payload.get("custom_tools")
         options = payload.get("options")
         if options is None:
             options = {}
@@ -2378,6 +2527,10 @@ def create_app() -> FastAPI:
                 request_dir=request_dir,
                 runs_raw=runs_raw,
             )
+            custom_tools_path = _write_custom_tools_file(
+                request_dir=request_dir,
+                raw_custom_tools=custom_tools_raw,
+            )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -2397,6 +2550,7 @@ def create_app() -> FastAPI:
             job.planner = str(options_cfg.get("planner", "auto") or "auto")
             job.planner_time_limit_seconds = planner_time_limit_seconds
             job.tools_params_path = str(tools_params_path)
+            job.custom_tools_path = str(custom_tools_path) if custom_tools_path else None
             job.error = None
             job.traceback = None
             job.run_dir = None

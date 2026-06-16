@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ANDREA GUI · infer-network</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260612f" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260615b" />
     <link rel="stylesheet" href="/static-common/app/bundles/styles.css?v=20260522a" />
     <link rel="stylesheet" href="/static-common/app/buttons/styles.css?v=20260612c" />
     <link rel="stylesheet" href="/static-common/app/params/styles.css?v=20260612a" />
@@ -123,6 +123,7 @@
           </div>
 
           <div class="tool-request-actions">
+            <button id="open-external-tool-modal-btn" class="secondary" type="button">Add External Docker Tool</button>
             <button id="open-tool-request-modal-btn" class="secondary" type="button">Request New Tool</button>
             <button id="open-tool-issue-modal-btn" class="secondary" type="button">Report Tool Issue</button>
           </div>
@@ -347,6 +348,93 @@
           </div>
         </div>
       </div>
+
+      <div id="external-tool-modal" class="info-popover hidden" role="dialog" aria-modal="true" aria-labelledby="external-tool-modal-title">
+        <div class="info-popover-card tool-request-modal-card external-tool-modal-card">
+          <button id="external-tool-modal-close" class="info-popover-close" type="button" aria-label="Close external tool form">×</button>
+          <h4 id="external-tool-modal-title">Add External Docker Tool</h4>
+          <div class="tool-request-body">
+            <div class="external-tool-callout">
+              <strong>Run-local external tool</strong>
+              <span>
+                This definition is used only for the current plan/run; it does not register the tool in ANDREA.
+                Already published and ready for broader use?
+              </span>
+              <button id="external-tool-request-formal-btn" class="secondary" type="button">Request New Tool</button>
+            </div>
+            <div class="external-tool-warning">
+              External Docker images run arbitrary code. Use only images you trust. ANDREA will run custom tools with Docker networking disabled.
+            </div>
+            <div class="external-tool-identity-grid">
+              <label>
+                Tool Name
+                <input id="custom-tool-name" type="text" placeholder="My GRN method" />
+              </label>
+              <label>
+                Run ID
+                <input id="custom-tool-run-id" type="text" placeholder="my_method_01" />
+              </label>
+            </div>
+            <div class="external-tool-docker-grid">
+              <div class="external-tool-label-stack external-tool-image-name-field">
+                <span class="external-tool-field-head external-tool-field-head-inline">
+                  <label class="external-tool-field-title" for="custom-tool-image-name">Docker Image Name</label>
+                  <button
+                    id="custom-tool-image-help-btn"
+                    class="info-icon"
+                    type="button"
+                    aria-label="Docker image compatibility guide"
+                  >i</button>
+                </span>
+                <span class="field-hint">Use a local image name, Docker Hub image, registry image or digest.</span>
+                <input id="custom-tool-image-name" type="text" placeholder="registry.example.org/user/tool" />
+              </div>
+              <div class="external-tool-label-stack external-tool-image-tag-field">
+                <label class="external-tool-field-title" for="custom-tool-image-tag">Docker Image Tag</label>
+                <span class="field-hint">Defaults to <code>latest</code> when left unchanged.</span>
+                <input id="custom-tool-image-tag" type="text" value="latest" placeholder="latest" />
+              </div>
+              <div class="external-tool-image-check">
+                <button id="custom-tool-check-image-btn" class="secondary" type="button">Validate image</button>
+              </div>
+              <span id="custom-tool-image-status" class="custom-tool-image-status">Not checked</span>
+            </div>
+            <section class="external-tool-form-section">
+              <div class="external-tool-section-head">
+                <strong>Execution mode for this run</strong>
+                <span>Select the single ANDREA execution mode used by this run.</span>
+              </div>
+              <div class="custom-tool-capability-grid" aria-label="Execution mode for this run">
+                <label><input name="custom-tool-execution-mode" type="radio" value="global" checked /> global</label>
+                <label><input name="custom-tool-execution-mode" type="radio" value="group_native" /> group native</label>
+                <label><input name="custom-tool-execution-mode" type="radio" value="group_emulated" /> group emulated</label>
+                <label><input name="custom-tool-execution-mode" type="radio" value="cell_native" /> cell native</label>
+                <label><input name="custom-tool-execution-mode" type="radio" value="group_aggregated" /> group aggregated</label>
+              </div>
+            </section>
+            <section class="external-tool-form-section">
+              <div class="external-tool-section-head">
+                <strong>Extra inputs needed by this image</strong>
+                <span>Choose from files already provided in Step 1.</span>
+              </div>
+              <input id="custom-tool-needed-extras" type="hidden" value="" />
+              <div id="custom-tool-extra-options" class="custom-tool-extra-options"></div>
+              <span class="field-hint">Choose standardized extra input names from the files provided in Step 1. At execution, <code>/io/extra</code> contains only the intersection between Step 1 extras and this list.</span>
+            </section>
+            <section class="external-tool-form-section">
+              <div class="external-tool-section-head">
+                <strong>Image parameters</strong>
+                <button id="custom-tool-add-param-row" class="secondary" type="button">Add parameter</button>
+              </div>
+              <div id="custom-tool-param-rows" class="custom-tool-param-rows"></div>
+              <span class="field-hint"><code>/io/params.json</code> is the key-value configuration space for your image's own internal parameters. Leave <code>{}</code> when the image needs no parameters.</span>
+            </section>
+            <div class="actions-inline">
+              <button id="custom-tool-add-btn" type="button">Add External Run</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <div id="info-popover" class="info-popover hidden" role="dialog" aria-live="polite" aria-modal="false">
@@ -463,6 +551,6 @@
       </article>
     </template>
 
-    <script type="module" src="/static/app/main.js?v=20260612a"></script>
+    <script type="module" src="/static/app/main.js?v=20260615b"></script>
   </body>
 </html>

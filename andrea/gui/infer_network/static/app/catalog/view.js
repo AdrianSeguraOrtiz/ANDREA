@@ -39,6 +39,12 @@ function renderToolCatalogList(containerId, entries, kind) {
     badgeWrap.className = "tool-item-badges";
     statusBadge.replaceWith(badgeWrap);
     badgeWrap.appendChild(statusBadge);
+    if (tool.tool_origin === "custom" || entry.tool_origin === "custom") {
+      const customBadge = document.createElement("span");
+      customBadge.className = "tool-item-custom-badge";
+      customBadge.textContent = "custom";
+      badgeWrap.appendChild(customBadge);
+    }
     const countBadge = document.createElement("span");
     countBadge.className = "selection-count-badge";
     countBadge.dataset.selectionCountFor = tool.tool_id;

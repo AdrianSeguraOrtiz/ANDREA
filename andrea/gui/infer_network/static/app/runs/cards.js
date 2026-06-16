@@ -1,5 +1,6 @@
 import { $ } from "../core/dom.js";
-import { conditionalRuleMatches, deepEqualJson, readParamsFromHost, renderParamsHost, resolvedDefaultParams, setParamFieldError } from "/static-common/app/params/schema_form.js?v=20260423c";
+import { conditionalRuleMatches, deepEqualJson, readParamsFromHost, renderParamsHost, resolvedDefaultParams, setParamFieldError } from "/static-common/app/params/schema_form.js?v=20260615a";
+import { executionModeAvailability, executionModeLabel } from "./execution_modes.js";
 
 let getToolByIdFn = null;
 let listAvailableToolsFn = null;
@@ -7,6 +8,7 @@ let listProvidedExtraKeysFn = null;
 let defaultGroupModeForToolFn = null;
 let openParamsModalFn = null;
 let onRunsChangedFn = null;
+let onRunRemovedFn = null;
 
 export function initRunCards({
   getToolById,
@@ -15,6 +17,7 @@ export function initRunCards({
   defaultGroupModeForTool,
   openParamsModal,
   onRunsChanged,
+  onRunRemoved,
 }) {
   getToolByIdFn = getToolById;
   listAvailableToolsFn = listAvailableTools;
@@ -22,6 +25,7 @@ export function initRunCards({
   defaultGroupModeForToolFn = defaultGroupModeForTool;
   openParamsModalFn = openParamsModal;
   onRunsChangedFn = onRunsChanged;
+  onRunRemovedFn = onRunRemoved;
 }
 
 function notifyRunsChanged() {
@@ -34,21 +38,6 @@ function toolExecutionCapabilities(tool) {
   return Array.isArray(tool?.execution_capabilities)
     ? tool.execution_capabilities.map((item) => String(item || "").trim()).filter(Boolean)
     : [];
-}
-
-function executionModeLabel(mode) {
-  const labels = {
-    global: "Global",
-    group_native: "Group native",
-    group_emulated: "Group emulated",
-    cell_native: "Cell native",
-    group_aggregated: "Group aggregated",
-  };
-  const key = String(mode || "").trim();
-  if (labels[key]) {
-    return labels[key];
-  }
-  return key ? key.replace(/_/g, " ") : "Global";
 }
 
 function currentDatasetOrganism() {
@@ -230,6 +219,17 @@ function validateRunCard(card) {
     }
 
     const providedExtras = listProvidedExtraKeysFn ? listProvidedExtraKeysFn() : new Set();
+    const executionModeInput = card.querySelector(".execution-group-mode");
+    if (executionModeInput) {
+      Array.from(executionModeInput.options).forEach((option) => {
+        const availability = executionModeAvailability({
+          mode: option.value,
+          providedExtras,
+        });
+        option.disabled = !availability.available;
+        option.title = availability.reason;
+      });
+    }
     const missingRequired = (Array.isArray(tool.required_extras) ? tool.required_extras : [])
       .filter((key) => !providedExtras.has(String(key)));
     for (const key of missingRequired) {
@@ -258,6 +258,13 @@ function validateRunCard(card) {
 
     const executionMode = String(card.querySelector(".execution-group-mode")?.value || "").trim();
     const execution = { mode: executionMode };
+    const modeAvailability = executionModeAvailability({
+      mode: executionMode,
+      providedExtras,
+    });
+    if (!modeAvailability.available) {
+      messages.push(modeAvailability.reason);
+    }
     const compatibilityRules = Array.isArray(tool.compatibility_rules) ? tool.compatibility_rules : [];
     for (const rule of compatibilityRules) {
       if (String(rule?.action || "").trim() !== "block") {
@@ -343,11 +350,22 @@ export function addRunCard(initial = {}) {
     const option = document.createElement("option");
     option.value = optionMeta.value;
     option.textContent = optionMeta.label;
+    const availability = executionModeAvailability({
+      mode: optionMeta.value,
+      providedExtras: listProvidedExtraKeysFn ? listProvidedExtraKeysFn() : new Set(),
+    });
+    option.disabled = !availability.available;
+    option.title = availability.reason;
     executionModeInput.appendChild(option);
   }
-  executionModeInput.value = modeOptions.some((item) => item.value === selectedExecutionMode)
-    ? selectedExecutionMode
-    : modeOptions[0].value;
+  const selectableOptions = Array.from(executionModeInput.options).filter(
+    (option) => !option.disabled
+  );
+  const selectedOption = Array.from(executionModeInput.options).find(
+    (option) => option.value === selectedExecutionMode && !option.disabled
+  );
+  executionModeInput.value =
+    selectedOption?.value || selectableOptions[0]?.value || modeOptions[0].value;
   executionModeInput.disabled = modeOptions.length <= 1;
   executionModeInput.title =
     modeOptions.length <= 1
@@ -377,9 +395,14 @@ export function addRunCard(initial = {}) {
   });
 
   removeBtn.addEventListener("click", () => {
+    const removedToolId = String(toolInput.value || "").trim();
+    const removedRunId = String(runIdInput.value || "").trim();
     node.remove();
     updateRunsEmptyState();
     refreshRunCardsValidation();
+    if (typeof onRunRemovedFn === "function") {
+      onRunRemovedFn({ toolId: removedToolId, runId: removedRunId });
+    }
     notifyRunsChanged();
   });
 

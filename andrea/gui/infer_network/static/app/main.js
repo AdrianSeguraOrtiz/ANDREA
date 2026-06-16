@@ -8,6 +8,16 @@ import {
 } from "/static-common/app/bundles/modal.js?v=20260612a";
 import { buildToolIssueReportUrl, buildToolRequestIssueUrl, defaultGroupModeForTool, listAvailableTools, populateToolIssueSelect, toolById } from "./catalog/model.js";
 import { initCatalogView, refreshToolCatalogRunCounts, updateToolEligibilityView } from "./catalog/view.js";
+import {
+  addCustomToolParamRow,
+  addCustomToolDefinition,
+  buildSimpleCustomToolFromForm,
+  customToolDockerImageFromForm,
+  customToolsPayload,
+  pruneCustomToolsToSelectedToolIds,
+  removeCustomToolDefinition,
+  resetCustomToolParamRows,
+} from "./catalog/external_tools.js";
 import { applyDatasetDefaults, handleExpressionSelected, initExpressionDropzone, syncExpressionHelpTooltip } from "./dataset/expression.js";
 import { closeExtraInputModal, getExtraRows, initExtras, listProvidedExtraKeys, openExtraInputModal, updateExtrasEmptyState } from "./dataset/extras.js";
 import { renderAndreaExecutionProgress, renderRuntimeProgress } from "./runtime/view.js";
@@ -17,7 +27,8 @@ import { resetPlanView } from "./plan/view.js";
 import { closeReproducibilityStepsModal, initReproducibility, resetReproducibility } from "./repro/view.js";
 import { closeParamsModal, initParamsModal, openParamsModal, applyParamsModal, setParamsModalStatus } from "./runs/params_modal.js";
 import { addRunCard, collectRuns, initRunCards, readParamsFromCard, refreshRunCardsValidation, renderRunParamsForm, updateRunsEmptyState } from "./runs/cards.js";
-import { readParamsFromHost, renderParamsHost, resolvedDefaultParams } from "/static-common/app/params/schema_form.js?v=20260423c";
+import { executionModeAvailability } from "./runs/execution_modes.js";
+import { readParamsFromHost, renderParamsHost, resolvedDefaultParams } from "/static-common/app/params/schema_form.js?v=20260615a";
 import { buildInfoTooltip, hideInfoTooltip, readHelpPayload, showInfoTooltip } from "./ui/popovers.js";
 import { setActiveStep, setStepState } from "./ui/steps.js";
 import { pushToast } from "./ui/toasts.js";
@@ -68,9 +79,202 @@ function buildOptions() {
   };
 }
 
+function selectedRunToolIds() {
+  return new Set(
+    Array.from(document.querySelectorAll(".run-card .tool-id"))
+      .map((input) => String(input?.value || "").trim())
+      .filter(Boolean)
+  );
+}
+
+function purgeUnreferencedCustomTools() {
+  const removed = pruneCustomToolsToSelectedToolIds(selectedRunToolIds());
+  if (removed > 0) {
+    updateToolEligibilityView(state.preflightReport);
+  }
+}
+
+function maybeRemoveCustomToolForDeletedRun(toolId) {
+  const normalizedToolId = String(toolId || "").trim();
+  if (!normalizedToolId.startsWith("custom_")) {
+    return;
+  }
+  if (selectedRunToolIds().has(normalizedToolId)) {
+    return;
+  }
+  if (removeCustomToolDefinition(normalizedToolId)) {
+    updateToolEligibilityView(state.preflightReport);
+  }
+}
+
+function showExternalDockerToolGuide() {
+  showInfoTooltip(buildInfoTooltip({
+    title: "External Docker image contract",
+    description: "The image can be local, from Docker Hub, from another registry, or pinned by digest. ANDREA only requires that its entrypoint follows this command-line contract.",
+    sections: [
+      {
+        title: "How ANDREA runs the image",
+        text: "Your image entrypoint must accept these flags. ANDREA mounts a writable run folder at /io, disables networking for custom tools and applies Docker CPU/RAM limits.",
+        json: "docker run --network none \\\n  --cpus <threads> --memory <ram>g \\\n  -v <run>/io:/io IMAGE:TAG \\\n  --input /io/expression.tsv \\\n  --params /io/params.json \\\n  --extra /io/extra \\\n  --output-dir /io/out \\\n  --threads <threads>",
+      },
+      {
+        title: "What the image receives",
+        items: [
+          "/io/expression.tsv is the normalized expression matrix provided in Step 1.",
+          "/io/params.json is a key-value JSON object for the image's own internal parameters. The image implementation must parse it; ANDREA only writes it.",
+          "/io/extra contains the Step 1 extra files whose standardized names are also listed in this external-tool form.",
+        ],
+      },
+      {
+        title: "What the image must write",
+        items: [
+          "Run the inference method inside the container and write /io/out/network.csv.",
+          "network.csv must include source,target,score,sign,evidence,context.",
+          "score must be a positive magnitude. Activation/repression direction must be stored only in sign.",
+          "context must match the selected execution mode: global, group:<group_id> or cell:<cell_id>.",
+          "/io/out/progress.json is optional but recommended for live progress updates.",
+        ],
+      },
+    ],
+  }));
+}
+
+function parseExternalExtraInputKeys(value) {
+  return String(value || "")
+    .split(/[\s,;]+/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function syncExternalToolExtraOptions() {
+  const host = $("custom-tool-extra-options");
+  const input = $("custom-tool-needed-extras");
+  const provided = Array.from(listProvidedExtraKeys()).sort((left, right) =>
+    String(left).localeCompare(String(right))
+  );
+  const selected = new Set(parseExternalExtraInputKeys(input.value));
+  host.innerHTML = "";
+  if (!provided.length) {
+    const empty = document.createElement("span");
+    empty.className = "custom-tool-extra-empty";
+    empty.textContent = "No Step 1 extra inputs have been provided yet.";
+    host.appendChild(empty);
+    return;
+  }
+  for (const key of provided) {
+    const label = document.createElement("label");
+    label.className = `custom-tool-extra-choice${selected.has(key) ? " selected" : ""}`;
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selected.has(key);
+    const text = document.createElement("span");
+    text.textContent = key;
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        selected.add(key);
+      } else {
+        selected.delete(key);
+      }
+      input.value = Array.from(selected).sort().join(", ");
+      syncExternalToolExtraOptions();
+    });
+    label.append(checkbox, text);
+    host.appendChild(label);
+  }
+}
+
+function syncExternalToolExecutionModes() {
+  const providedExtras = listProvidedExtraKeys();
+  const radios = Array.from(document.querySelectorAll("input[name='custom-tool-execution-mode']"));
+  let checkedIsDisabled = false;
+  for (const radio of radios) {
+    const availability = executionModeAvailability({
+      mode: radio.value,
+      providedExtras,
+    });
+    radio.disabled = !availability.available;
+    const label = radio.closest("label");
+    if (label) {
+      label.classList.toggle("disabled", !availability.available);
+      label.title = availability.reason || "";
+    }
+    if (radio.checked && radio.disabled) {
+      checkedIsDisabled = true;
+    }
+  }
+  if (checkedIsDisabled) {
+    const firstAvailable = radios.find((radio) => !radio.disabled);
+    if (firstAvailable) {
+      firstAvailable.checked = true;
+    }
+  }
+}
+
+function setCustomToolImageCheckState(kind, message) {
+  const grid = document.querySelector(".external-tool-docker-grid");
+  const status = $("custom-tool-image-status");
+  if (grid) {
+    grid.classList.toggle("image-valid", kind === "valid");
+    grid.classList.toggle("image-invalid", kind === "invalid");
+  }
+  if (status) {
+    status.className = "custom-tool-image-status";
+    if (kind === "valid") {
+      status.classList.add("valid");
+    } else if (kind === "invalid") {
+      status.classList.add("invalid");
+    }
+    status.textContent = message || "Not checked";
+  }
+}
+
+async function validateCustomToolDockerImage() {
+  const button = $("custom-tool-check-image-btn");
+  const image = customToolDockerImageFromForm();
+  if (!image) {
+    setCustomToolImageCheckState("invalid", "Image name is required.");
+    pushToast({
+      title: "Docker image missing",
+      message: "Enter a Docker image name before validating access.",
+      kind: "warning",
+      ttlMs: 6000,
+    });
+    return;
+  }
+  button.disabled = true;
+  setCustomToolImageCheckState("checking", "Checking image...");
+  try {
+    const response = await fetch("/api/infer-network/docker-image/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail || "Docker image check failed.");
+    }
+    if (payload.available) {
+      setCustomToolImageCheckState(
+        "valid",
+        payload.source === "local" ? "Valid: local image." : "Valid: registry image."
+      );
+      return;
+    }
+    setCustomToolImageCheckState("invalid", payload.message || "Image not found.");
+  } catch (err) {
+    setCustomToolImageCheckState("invalid", err.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function buildPreflightFormData(config) {
   const formData = new FormData();
   formData.append("config", JSON.stringify(config));
+  const customTools = customToolsPayload();
+  if (customTools) {
+    formData.append("custom_tools", JSON.stringify(customTools));
+  }
 
   const expressionInput = $("expression-file");
   if (!expressionInput.files || !expressionInput.files[0]) {
@@ -183,6 +387,7 @@ async function submitPlan() {
     const payload = await submitPlanRequest({
       job_id: state.jobId,
       runs,
+      custom_tools: customToolsPayload(new Set(runs.map((run) => run.tool_id))),
       options: buildOptions(),
     });
     pushToast({
@@ -329,6 +534,7 @@ function bindEvents() {
   });
   $("clear-runs-btn").addEventListener("click", () => {
     $("runs-container").innerHTML = "";
+    purgeUnreferencedCustomTools();
     updateRunsEmptyState();
     refreshRunCardsValidation();
     syncActionButtons();
@@ -336,8 +542,16 @@ function bindEvents() {
   });
   $("open-tool-request-modal-btn").addEventListener("click", () => openModal("tool-request-modal"));
   $("open-tool-issue-modal-btn").addEventListener("click", () => openModal("tool-issue-modal"));
+  $("open-external-tool-modal-btn").addEventListener("click", () => {
+    syncExternalToolExtraOptions();
+    syncExternalToolExecutionModes();
+    resetCustomToolParamRows();
+    setCustomToolImageCheckState(null, "Not checked");
+    openModal("external-tool-modal");
+  });
   $("tool-request-modal-close").addEventListener("click", () => closeModal("tool-request-modal"));
   $("tool-issue-modal-close").addEventListener("click", () => closeModal("tool-issue-modal"));
+  $("external-tool-modal-close").addEventListener("click", () => closeModal("external-tool-modal"));
   $("tool-request-modal").addEventListener("click", (event) => {
     if (event.target && event.target.id === "tool-request-modal") {
       closeModal("tool-request-modal");
@@ -346,6 +560,53 @@ function bindEvents() {
   $("tool-issue-modal").addEventListener("click", (event) => {
     if (event.target && event.target.id === "tool-issue-modal") {
       closeModal("tool-issue-modal");
+    }
+  });
+  $("external-tool-modal").addEventListener("click", (event) => {
+    if (event.target && event.target.id === "external-tool-modal") {
+      closeModal("external-tool-modal");
+    }
+  });
+  $("external-tool-request-formal-btn").addEventListener("click", () => {
+    closeModal("external-tool-modal");
+    openModal("tool-request-modal");
+  });
+  $("custom-tool-image-help-btn").addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showExternalDockerToolGuide();
+  });
+  $("custom-tool-check-image-btn").addEventListener("click", () => {
+    validateCustomToolDockerImage();
+  });
+  ["custom-tool-image-name", "custom-tool-image-tag"].forEach((fieldId) => {
+    $(fieldId).addEventListener("input", () => {
+      setCustomToolImageCheckState(null, "Not checked");
+    });
+  });
+  $("custom-tool-needed-extras").addEventListener("input", () => {
+    syncExternalToolExtraOptions();
+  });
+  $("custom-tool-add-param-row").addEventListener("click", () => {
+    addCustomToolParamRow();
+  });
+  $("custom-tool-add-btn").addEventListener("click", () => {
+    try {
+      const { tool, run } = buildSimpleCustomToolFromForm();
+      const toolId = addCustomToolDefinition(tool);
+      updateToolEligibilityView(state.preflightReport);
+      addRunCard({ ...run, tool_id: toolId });
+      refreshRunCardsValidation();
+      syncActionButtons();
+      pushToast({
+        title: "External run added",
+        message: `${run.run_id} will execute ${toolId} as a custom Docker image.`,
+        kind: "success",
+        ttlMs: 6000,
+      });
+      closeModal("external-tool-modal");
+    } catch (err) {
+      pushToast({ title: "External tool error", message: err.message, kind: "error", ttlMs: 9000 });
     }
   });
   $("open-tool-request-issue-btn").addEventListener("click", () => {
@@ -470,6 +731,7 @@ function bindEvents() {
       closeParamsModal();
       closeModal("tool-request-modal");
       closeModal("tool-issue-modal");
+      closeModal("external-tool-modal");
       closeExtraInputModal();
       closeReproducibilityStepsModal();
       closeBundleDownloadModal();
@@ -508,6 +770,9 @@ function initModules() {
     onRunsChanged: () => {
       syncActionButtons();
       refreshToolCatalogRunCounts();
+    },
+    onRunRemoved: ({ toolId }) => {
+      maybeRemoveCustomToolForDeletedRun(toolId);
     },
   });
   initCatalogView({

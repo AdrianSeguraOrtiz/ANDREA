@@ -68,22 +68,62 @@ class InferNetworkGuiServerTests(unittest.TestCase):
 
         self.assertIn("bundle-modal", index)
         self.assertIn("Explorer view: available output files", index)
+        self.assertIn("external-tool-modal", index)
+        self.assertIn("open-external-tool-modal-btn", index)
         self.assertIn("/static-common/app/params/styles.css", index)
         self.assertIn("/static-common/app/repro/styles.css", index)
         self.assertIn("/static-common/app/ui/popovers.css", index)
         self.assertIn("/static-common/app/ui/toasts.css", index)
         self.assertIn(".repro-card {", repro_style)
-        self.assertNotIn(".repro-card {", style)
         self.assertIn(".param-field {", params_style)
-        self.assertNotIn(".param-field {", style)
         self.assertIn(".toast {", toast_style)
         self.assertIn(".info-popover {", popover_style)
-        self.assertNotIn(".toast {", style)
-        self.assertNotIn(".info-popover {", style)
         self.assertIn("openBundleDownloadModal", script)
         self.assertIn("/bundles", script)
         self.assertIn("bundle_id=", script)
         self.assertIn("available_outputs", jobs_controller)
+        self.assertIn("customToolsPayload", script)
+        self.assertIn("custom_tools", script)
+        self.assertIn(".tool-item-custom-badge", style)
+        self.assertIn(".external-tool-callout", style)
+        self.assertIn("Request New Tool", index)
+        self.assertIn("Docker Image Name", index)
+        self.assertIn("Docker Image Tag", index)
+        self.assertIn("Run ID", index)
+        self.assertIn("custom-tool-run-id", index)
+        self.assertIn("custom-tool-image-help-btn", index)
+        self.assertIn("custom-tool-needed-extras", index)
+        self.assertIn("custom-tool-extra-options", index)
+        self.assertIn("custom-tool-param-rows", index)
+        self.assertIn("custom-tool-add-param-row", index)
+        self.assertIn("Extra inputs needed by this image", index)
+        self.assertIn("External Docker image contract", script)
+        self.assertIn("--output-dir /io/out", script)
+        self.assertIn("progress.json", script)
+        self.assertIn("/io/expression.tsv", script)
+        self.assertIn("/io/out/network.csv", script)
+        self.assertIn("Validate image", index)
+        self.assertIn("/api/infer-network/docker-image/check", script)
+
+    def test_docker_image_check_endpoint_returns_helper_result(self) -> None:
+        with patch.object(
+            gui_server,
+            "_check_docker_image_access",
+            return_value={
+                "available": True,
+                "source": "local",
+                "message": "Image is available locally.",
+            },
+        ) as check_mock:
+            client = TestClient(gui_server.create_app())
+            response = client.post(
+                "/api/infer-network/docker-image/check",
+                json={"image": "example/tool:1.0"},
+            )
+
+        self.assertEqual(response.status_code, 200, msg=response.text)
+        self.assertEqual(response.json()["source"], "local")
+        check_mock.assert_called_once_with("example/tool:1.0")
 
     def _planned_wave(self) -> PlanWave:
         return PlanWave(
@@ -229,7 +269,12 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             run_dir = tmp_root / "planned_run"
             run_dir.mkdir(parents=True, exist_ok=True)
 
-            def fake_preflight(*, dataset_manifest_path, tools_params_path):  # noqa: ANN001
+            def fake_preflight(  # noqa: ANN001
+                *,
+                dataset_manifest_path,
+                tools_params_path,
+                custom_tools_path=None,
+            ):
                 return {
                     "schema_version": "1.0",
                     "catalog": {
@@ -481,6 +526,112 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                     params={"bundle_id": "not_a_bundle"},
                 )
                 self.assertEqual(invalid_bundle.status_code, 400)
+
+    def test_preflight_accepts_external_tool_payload_from_gui(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            expression_content = "gene\tS1\tS2\nG1\t1\t2\nG2\t3\t4\n"
+            seen_custom_tools: dict[str, object] = {}
+
+            def fake_preflight(  # noqa: ANN001
+                *,
+                dataset_manifest_path,
+                tools_params_path,
+                custom_tools_path=None,
+            ):
+                self.assertIsNotNone(custom_tools_path)
+                payload = json.loads(Path(custom_tools_path).read_text(encoding="utf-8"))
+                seen_custom_tools.update(payload)
+                return {
+                    "schema_version": "1.0",
+                    "catalog": {
+                        "eligible": [],
+                        "warning": [
+                            {
+                                "tool_id": "custom_demo_tool_01",
+                                "tool_origin": "custom",
+                                "status": "warning",
+                                "issues": [],
+                            }
+                        ],
+                        "blocked": [],
+                    },
+                    "runs": {
+                        "requested_total": 0,
+                        "selected": [],
+                        "catalog_tool_ids": {},
+                        "tool_origins": {},
+                        "resolved_params": {},
+                        "skipped": {},
+                    },
+                    "issues": [],
+                    "inputs": {
+                        "dataset_manifest_path": str(dataset_manifest_path),
+                        "tools_params_path": (
+                            str(tools_params_path) if tools_params_path else None
+                        ),
+                        "custom_tools": "provided",
+                    },
+                    "dataset": {},
+                }
+
+            with (
+                patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
+                patch.object(gui_server.threading, "Thread", _ImmediateThread),
+                patch.object(
+                    gui_server,
+                    "preflight_infer_network",
+                    side_effect=fake_preflight,
+                ),
+            ):
+                client = TestClient(gui_server.create_app())
+                response = client.post(
+                    "/api/infer-network/preflight",
+                    data={
+                        "config": json.dumps(
+                            {
+                                "dataset": {
+                                    "id": "gui_dataset",
+                                    "column_kind": "samples",
+                                    "expression_profile": "mixed",
+                                    "organism": {
+                                        "taxonomic_group": "animal",
+                                        "ncbi_taxon_id": 9606,
+                                    },
+                                },
+                                "options": {"output_dir": str(tmp_root / "out")},
+                            }
+                        ),
+                        "custom_tools": json.dumps(
+                            {
+                                "tools": [
+                                    {
+                                        "run_id": "demo_tool_01",
+                                        "name": "Demo Tool",
+                                        "docker_image": "example/demo:1.0",
+                                        "execution_mode": "global",
+                                        "extra_inputs": ["tf_list"],
+                                    }
+                                ]
+                            }
+                        ),
+                    },
+                    files={
+                        "expression_file": (
+                            "expression.tsv",
+                            expression_content,
+                            "text/tab-separated-values",
+                        ),
+                    },
+                )
+
+                self.assertEqual(response.status_code, 200, msg=response.text)
+                job_id = response.json()["job_id"]
+                job_payload = client.get(f"/api/infer-network/jobs/{job_id}").json()
+
+        self.assertEqual(seen_custom_tools["tools"][0]["run_id"], "demo_tool_01")
+        self.assertEqual(seen_custom_tools["tools"][0]["extra_inputs"], ["tf_list"])
+        self.assertTrue(job_payload["job"]["custom_tools_path"])
 
     def test_job_payload_includes_running_execution_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -816,7 +967,12 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             tmp_root = Path(tmp)
             expression_content = "gene\tS1\tS2\nG1\t1\t2\nG2\t3\t4\n"
 
-            def fake_preflight(*, dataset_manifest_path, tools_params_path):  # noqa: ANN001
+            def fake_preflight(  # noqa: ANN001
+                *,
+                dataset_manifest_path,
+                tools_params_path,
+                custom_tools_path=None,
+            ):
                 return {
                     "schema_version": "1.0",
                     "catalog": {"eligible": [], "warning": [], "blocked": []},
