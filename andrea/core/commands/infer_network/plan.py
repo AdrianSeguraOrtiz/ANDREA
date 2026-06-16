@@ -25,6 +25,7 @@ from .commons.artifacts import (
     _materialize_frozen_inputs,
 )
 from .commons.catalog import _load_schema_constraints, _resolve_catalog_paths
+from .commons.custom_tools import load_custom_tool_registry, serialize_custom_tools
 from .commons.dataset import _load_groups_by_column, _read_expression_axes
 from .commons.planner import (
     _estimate_tool_mode_options,
@@ -126,6 +127,7 @@ def plan_infer_network(
     *,
     dataset_manifest_path: Path,
     tools_params_path: Path,
+    custom_tools_path: Optional[Path] = None,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     max_cores: int = multiprocessing.cpu_count(),
     max_ram_gb: Optional[float] = None,
@@ -150,6 +152,7 @@ def plan_infer_network(
         preflight_report = preflight_infer_network(
             dataset_manifest_path=dataset_manifest_path,
             tools_params_path=tools_params_path,
+            custom_tools_path=custom_tools_path,
         )
 
     dataset_payload = preflight_report.get("dataset", {})
@@ -159,6 +162,11 @@ def plan_infer_network(
 
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
+    custom_tools, _custom_aliases, _custom_blocked_entries = load_custom_tool_registry(
+        custom_tools_path=custom_tools_path,
+        tools_root=tools_root,
+        constraints=constraints,
+    )
 
     warnings: list[str] = []
     runs_payload = preflight_report.get("runs", {})
@@ -168,6 +176,11 @@ def plan_infer_network(
     selected_tool_catalog_ids = {
         str(k): str(v)
         for k, v in runs_payload.get("catalog_tool_ids", {}).items()
+        if isinstance(k, str) and isinstance(v, str)
+    }
+    selected_tool_origins = {
+        str(k): str(v)
+        for k, v in runs_payload.get("tool_origins", {}).items()
         if isinstance(k, str) and isinstance(v, str)
     }
     resolved_params_by_tool = {
@@ -195,6 +208,7 @@ def plan_infer_network(
         refreshed_preflight = preflight_infer_network(
             dataset_manifest_path=dataset_manifest_path,
             tools_params_path=tools_params_path,
+            custom_tools_path=custom_tools_path,
         )
         preflight_report = refreshed_preflight
         dataset_payload = refreshed_preflight.get("dataset", {})
@@ -211,6 +225,11 @@ def plan_infer_network(
         selected_tool_catalog_ids = {
             str(k): str(v)
             for k, v in runs_payload.get("catalog_tool_ids", {}).items()
+            if isinstance(k, str) and isinstance(v, str)
+        }
+        selected_tool_origins = {
+            str(k): str(v)
+            for k, v in runs_payload.get("tool_origins", {}).items()
             if isinstance(k, str) and isinstance(v, str)
         }
         resolved_params_by_tool = {
@@ -267,7 +286,11 @@ def plan_infer_network(
             raise ValueError(
                 f"preflight report is missing catalog mapping for run '{run_id}'"
             )
-        toolspec = _load_toolspec(tools_root, catalog_tool_id)
+        toolspec = (
+            custom_tools[catalog_tool_id]
+            if catalog_tool_id in custom_tools
+            else _load_toolspec(tools_root, catalog_tool_id)
+        )
         catalog_toolspec_by_run[run_id] = toolspec
 
     group_order: list[str] = []
@@ -319,6 +342,10 @@ def plan_infer_network(
     }
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids[run_id]
+        tool_origin = selected_tool_origins.get(
+            run_id,
+            "custom" if catalog_tool_id in custom_tools else "catalog",
+        )
         toolspec = catalog_toolspec_by_run[run_id]
         execution_capabilities = _parse_execution_capabilities(
             tool_id=run_id,
@@ -329,10 +356,16 @@ def plan_infer_network(
         if not execution_mode:
             execution_mode = _default_execution_mode(execution_capabilities)
 
-        cost_profile, cost_warnings = _load_tool_cost_profile(
-            tools_root=tools_root,
-            tool_id=catalog_tool_id,
-        )
+        if tool_origin == "custom":
+            cost_profile = None
+            cost_warnings = [
+                f"[{catalog_tool_id}] no cost.json for external Docker tool; fallback estimation will be used."
+            ]
+        else:
+            cost_profile, cost_warnings = _load_tool_cost_profile(
+                tools_root=tools_root,
+                tool_id=catalog_tool_id,
+            )
         warnings.extend(cost_warnings)
         _append_cell_native_output_warning(
             warnings=warnings,
@@ -376,6 +409,10 @@ def plan_infer_network(
                     group_label=group_label,
                 )
                 warnings.extend(plan_warnings)
+                if tool_origin == "custom":
+                    mode_options = [
+                        replace(item, network_disabled=True) for item in mode_options
+                    ]
                 mode_options_by_tool[physical_task_id] = mode_options
                 physical_tasks.append(
                     {
@@ -420,6 +457,10 @@ def plan_infer_network(
                 output_dir=task_output_dir,
             )
             warnings.extend(plan_warnings)
+            if tool_origin == "custom":
+                mode_options = [
+                    replace(item, network_disabled=True) for item in mode_options
+                ]
             if execution_mode == "group_aggregated":
                 group_count = len(group_order)
                 mode_options = [
@@ -448,6 +489,7 @@ def plan_infer_network(
         logical_run_specs[run_id] = {
             "run_id": run_id,
             "tool_id": catalog_tool_id,
+            "tool_origin": tool_origin,
             "execution": {**resolved_execution, "mode": execution_mode},
             "physical_tasks": physical_tasks,
         }
@@ -496,11 +538,13 @@ def plan_infer_network(
             resolved_execution_by_tool.get(tool_id, {}),
         )
 
-    frozen_manifest, frozen_tools_params, frozen_expression, frozen_extras = (
+    custom_tools_payload = serialize_custom_tools(custom_tools) if custom_tools else None
+    frozen_manifest, frozen_tools_params, frozen_custom_tools, frozen_expression, frozen_extras = (
         _materialize_frozen_inputs(
             run_dir=run_dir,
             dataset_manifest_path=dataset_manifest_path,
             tools_params_path=tools_params_path,
+            custom_tools_payload=custom_tools_payload,
             dataset=dataset,
             constraints=constraints,
         )
@@ -509,6 +553,7 @@ def plan_infer_network(
         run_dir=run_dir,
         frozen_manifest=frozen_manifest,
         frozen_tools_params=frozen_tools_params,
+        frozen_custom_tools=frozen_custom_tools,
         frozen_expression=frozen_expression,
         frozen_extras=frozen_extras,
     )
@@ -596,6 +641,7 @@ def plan_infer_network(
             {
                 "run_id": run_id,
                 "tool_id": logical_spec["tool_id"],
+                "tool_origin": logical_spec.get("tool_origin", "catalog"),
                 "execution": logical_spec["execution"],
                 "physical_tasks_total": len(physical_tasks_payload),
                 "eta_start_seconds": logical_eta_start,
@@ -638,12 +684,27 @@ def plan_infer_network(
     _write_json(run_dir / "plan.json", plan_payload)
     _write_json(run_dir / "preflight_report.json", preflight_report)
 
+    planned_tool_origins = {
+        str(run["run_id"]): str(run.get("tool_origin", "catalog"))
+        for run in logical_runs_payload
+        if isinstance(run, dict) and run.get("run_id")
+    }
     report_payload = {
         "run_id": run_id,
         "status": "planned",
         "inputs": {
             "dataset_manifest_path": report_path(frozen_manifest, base_dir=run_dir),
             "tools_params_path": report_path(frozen_tools_params, base_dir=run_dir),
+            **(
+                {
+                    "custom_tools_path": report_path(
+                        frozen_custom_tools,
+                        base_dir=run_dir,
+                    )
+                }
+                if frozen_custom_tools is not None
+                else {}
+            ),
         },
         "dataset": {
             "id": dataset.dataset_id,
@@ -656,6 +717,7 @@ def plan_infer_network(
         "tools": {
             "selected": selected_tools,
             "catalog_tool_ids": selected_tool_catalog_ids,
+            "tool_origins": planned_tool_origins,
             "skipped": skipped_tools,
             "status_by_tool": {tool_id: "pending" for tool_id in selected_tools},
             "completed": [],

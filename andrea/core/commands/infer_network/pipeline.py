@@ -22,6 +22,7 @@ def infer_network(
     *,
     dataset_manifest_path: Path,
     tools_params_path: Path,
+    custom_tools_path: Optional[Path] = None,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     max_cores: int = multiprocessing.cpu_count(),
     max_ram_gb: Optional[float] = None,
@@ -33,10 +34,12 @@ def infer_network(
     preflight_report = preflight_infer_network(
         dataset_manifest_path=dataset_manifest_path,
         tools_params_path=tools_params_path,
+        custom_tools_path=custom_tools_path,
     )
     run_dir = plan_infer_network(
         dataset_manifest_path=dataset_manifest_path,
         tools_params_path=tools_params_path,
+        custom_tools_path=custom_tools_path,
         output_dir=output_dir,
         max_cores=max_cores,
         max_ram_gb=max_ram_gb,

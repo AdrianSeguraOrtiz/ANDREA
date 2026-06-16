@@ -78,6 +78,19 @@ class InferNetworkCoreTestCase(unittest.TestCase):
         )
         return tools_params_path
 
+    def _write_custom_tools(
+        self,
+        base: Path,
+        *,
+        tools: list[dict[str, Any]],
+    ) -> Path:
+        custom_tools_path = base / "custom_tools.json"
+        custom_tools_path.write_text(
+            json.dumps({"tools": tools}, indent=2, ensure_ascii=True) + "\n",
+            encoding="utf-8",
+        )
+        return custom_tools_path
+
     def _write_dataset_bundle(
         self,
         base: Path,

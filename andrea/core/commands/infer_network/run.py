@@ -22,6 +22,7 @@ from andrea.core.shared.paths import report_path as _report_path
 
 from .commons.artifacts import _load_plan_waves, _verify_input_fingerprints
 from .commons.catalog import _load_schema_constraints, _resolve_catalog_paths
+from .commons.custom_tools import is_custom_toolspec, load_custom_tool_registry
 from .commons.dataset import (
     _load_groups_by_column,
     _parse_dataset_context,
@@ -59,6 +60,26 @@ from .commons.tools import (
 )
 
 _REPORT_PATH_KEYS = {"network_path", "progress_path", "logs_path"}
+
+
+def _declared_extra_input_keys(toolspec: dict[str, Any]) -> set[str]:
+    raw_extra_inputs = toolspec.get("extra_inputs", {})
+    if not isinstance(raw_extra_inputs, dict):
+        return set()
+    keys: set[str] = set()
+    for field in ("required", "optional", "conditional_required"):
+        raw_items = raw_extra_inputs.get(field, [])
+        if not isinstance(raw_items, list):
+            continue
+        for item in raw_items:
+            if isinstance(item, dict):
+                value = item.get("input")
+            else:
+                value = item
+            key = str(value or "").strip()
+            if key:
+                keys.add(key)
+    return keys
 
 
 def _relativize_result_payload(payload: Any, *, base_dir: Path) -> Any:
@@ -614,6 +635,11 @@ def run_infer_network_plan(
         for k, v in runs_payload.get("catalog_tool_ids", {}).items()
         if isinstance(k, str) and isinstance(v, str)
     }
+    selected_tool_origins = {
+        str(k): str(v)
+        for k, v in runs_payload.get("tool_origins", {}).items()
+        if isinstance(k, str) and isinstance(v, str)
+    }
     resolved_execution_by_tool = {
         str(k): v
         for k, v in runs_payload.get("resolved_execution", {}).items()
@@ -627,6 +653,18 @@ def run_infer_network_plan(
 
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
+    frozen_custom_tools = run_dir / "input" / "custom_tools.json"
+    custom_tools, _custom_aliases, _custom_blocked_entries = load_custom_tool_registry(
+        custom_tools_path=frozen_custom_tools if frozen_custom_tools.exists() else None,
+        tools_root=tools_root,
+        constraints=constraints,
+    )
+    for run_id in selected_tools:
+        if run_id not in selected_tool_origins:
+            catalog_tool_id = selected_tool_catalog_ids.get(run_id, "")
+            selected_tool_origins[run_id] = (
+                "custom" if catalog_tool_id in custom_tools else "catalog"
+            )
     frozen_manifest = run_dir / "input" / "dataset-manifest.json"
     dataset = _parse_dataset_context(
         dataset_manifest_path=frozen_manifest,
@@ -648,13 +686,23 @@ def run_infer_network_plan(
     conditional_input_errors: dict[str, list[str]] = {}
     compatibility_blocks: dict[str, list[str]] = {}
     compatibility_warnings: list[str] = []
+    runtime_extra_input_keys_by_run: dict[str, set[str] | None] = {}
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids.get(run_id, "").strip()
         if not catalog_tool_id:
             raise ValueError(
                 f"preflight report is missing catalog mapping for run '{run_id}'"
             )
-        toolspec = _load_toolspec(tools_root, catalog_tool_id)
+        toolspec = (
+            custom_tools[catalog_tool_id]
+            if catalog_tool_id in custom_tools
+            else _load_toolspec(tools_root, catalog_tool_id)
+        )
+        runtime_extra_input_keys_by_run[run_id] = (
+            _declared_extra_input_keys(toolspec)
+            if is_custom_toolspec(toolspec)
+            else None
+        )
         _parse_execution_capabilities(tool_id=run_id, toolspec=toolspec)
         rule_blocks, rule_warnings, rule_errors = _collect_compatibility_rule_issues(
             tool_id=run_id,
@@ -813,6 +861,7 @@ def run_infer_network_plan(
                 resolved_execution=physical_execution,
                 shared_expression=shared_expression,
                 shared_extras=shared_extras,
+                extra_input_keys=runtime_extra_input_keys_by_run.get(logical_run_id),
                 expression_source=expression_source,
             )
 
@@ -1089,6 +1138,7 @@ def run_infer_network_plan(
     run_report["tools"] = {
         "selected": selected_tools,
         "catalog_tool_ids": selected_tool_catalog_ids,
+        "tool_origins": selected_tool_origins,
         "skipped": skipped_tools,
         "status_by_tool": status_by_tool,
         "completed": completed_tools,

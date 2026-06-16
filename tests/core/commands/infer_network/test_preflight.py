@@ -68,6 +68,131 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 any(issue.get("code") == "invalid_params" for issue in issues)
             )
 
+    def test_preflight_accepts_custom_docker_tool_and_passes_free_params(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path, tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1", "G2"],
+            )
+            self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "demo_tool_01",
+                        "tool_id": "custom_demo_tool_01",
+                        "execution": {"mode": "global"},
+                        "params": {"alpha": 0.7, "nested": {"flag": True}},
+                    }
+                ],
+            )
+            custom_tools_path = self._write_custom_tools(
+                base,
+                tools=[
+                    {
+                        "run_id": "demo_tool_01",
+                        "name": "Demo Tool",
+                        "docker_image": "example/demo-tool:1.0",
+                        "execution_mode": "global",
+                    }
+                ],
+            )
+
+            preflight_report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+            )
+
+        self.assertEqual(preflight_report["inputs"]["custom_tools"], "provided")
+        self.assertEqual(preflight_report["runs"]["selected"], ["demo_tool_01"])
+        self.assertEqual(
+            preflight_report["runs"]["catalog_tool_ids"]["demo_tool_01"],
+            "custom_demo_tool_01",
+        )
+        self.assertEqual(
+            preflight_report["runs"]["tool_origins"]["demo_tool_01"],
+            "custom",
+        )
+        self.assertEqual(
+            preflight_report["runs"]["resolved_params"]["demo_tool_01"],
+            {"alpha": 0.7, "nested": {"flag": True}},
+        )
+        warning_entry = next(
+            item
+            for item in preflight_report["catalog"]["warning"]
+            if item["tool_id"] == "custom_demo_tool_01"
+        )
+        self.assertEqual(warning_entry["tool_origin"], "custom")
+        self.assertTrue(
+            any(
+                issue.get("code") == "custom_tool_warning"
+                and "external Docker tool" in issue.get("message", "")
+                for issue in warning_entry["issues"]
+            )
+        )
+
+    def test_preflight_blocks_invalid_custom_tool_definition(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path, _tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1", "G2"],
+            )
+            custom_tools_path = self._write_custom_tools(
+                base,
+                tools=[
+                    {
+                        "run_id": "missing_image",
+                        "name": "Broken",
+                        "docker_image": "",
+                        "execution_mode": "global",
+                    },
+                    {
+                        "name": "Missing Run ID",
+                        "docker_image": "example/missing-run-id:1.0",
+                        "execution_mode": "global",
+                    },
+                    {
+                        "run_id": "bad_mode",
+                        "name": "Bad Mode",
+                        "docker_image": "example/bad-mode:1.0",
+                        "execution_mode": "unsupported_mode",
+                    },
+                ],
+            )
+
+            preflight_report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=None,
+                custom_tools_path=custom_tools_path,
+            )
+
+        blocked = preflight_report["catalog"]["blocked"]
+        self.assertTrue(
+            any(
+                item["tool_id"] == "custom_missing_image"
+                and "docker_image is required" in item["issues"][0]["message"]
+                for item in blocked
+            )
+        )
+        self.assertTrue(
+            any(
+                item["tool_id"] == "custom_tool_2"
+                and "run_id is required" in item["issues"][0]["message"]
+                for item in blocked
+            )
+        )
+        self.assertTrue(
+            any(
+                item["tool_id"] == "custom_bad_mode"
+                and "unsupported execution_mode" in item["issues"][0]["message"]
+                for item in blocked
+            )
+        )
+
     def test_preflight_fails_when_groups_file_has_wrong_columns(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

@@ -28,9 +28,11 @@ class InferNetworkCliTests(unittest.TestCase):
             base = Path(tmp)
             dataset_manifest = base / "dataset-manifest.json"
             tools_params = base / "tools_params.json"
+            custom_tools = base / "custom_tools.json"
             output_dir = base / "out"
             dataset_manifest.write_text("{}", encoding="utf-8")
             tools_params.write_text("{}", encoding="utf-8")
+            custom_tools.write_text('{"tools": []}', encoding="utf-8")
 
             with patch.object(
                 CLI_MODULE,
@@ -46,6 +48,8 @@ class InferNetworkCliTests(unittest.TestCase):
                         str(dataset_manifest),
                         "--tools-params",
                         str(tools_params),
+                        "--custom-tools",
+                        str(custom_tools),
                         "--output-dir",
                         str(output_dir),
                     ],
@@ -53,6 +57,7 @@ class InferNetworkCliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
         plan_mock.assert_called_once()
+        self.assertEqual(plan_mock.call_args.kwargs["custom_tools_path"], custom_tools)
 
     def test_run_subcommand_calls_core_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -82,9 +87,11 @@ class InferNetworkCliTests(unittest.TestCase):
             base = Path(tmp)
             dataset_manifest = base / "dataset-manifest.json"
             tools_params = base / "tools_params.json"
+            custom_tools = base / "custom_tools.json"
             output_dir = base / "out"
             dataset_manifest.write_text("{}", encoding="utf-8")
             tools_params.write_text("{}", encoding="utf-8")
+            custom_tools.write_text('{"tools": []}', encoding="utf-8")
 
             with patch.object(
                 CLI_MODULE, "core_infer_network", return_value=output_dir / "run_1"
@@ -98,6 +105,8 @@ class InferNetworkCliTests(unittest.TestCase):
                         str(dataset_manifest),
                         "--tools-params",
                         str(tools_params),
+                        "--custom-tools",
+                        str(custom_tools),
                         "--output-dir",
                         str(output_dir),
                     ],
@@ -105,15 +114,18 @@ class InferNetworkCliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
         exec_mock.assert_called_once()
+        self.assertEqual(exec_mock.call_args.kwargs["custom_tools_path"], custom_tools)
 
     def test_preflight_subcommand_writes_output_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             dataset_manifest = base / "dataset-manifest.json"
             tools_params = base / "tools_params.json"
+            custom_tools = base / "custom_tools.json"
             output_json = base / "preflight-report.json"
             dataset_manifest.write_text("{}", encoding="utf-8")
             tools_params.write_text("{}", encoding="utf-8")
+            custom_tools.write_text('{"tools": []}', encoding="utf-8")
 
             fake_report = {
                 "catalog": {"eligible": [], "warning": [], "blocked": []},
@@ -131,6 +143,8 @@ class InferNetworkCliTests(unittest.TestCase):
                         str(dataset_manifest),
                         "--tools-params",
                         str(tools_params),
+                        "--custom-tools",
+                        str(custom_tools),
                         "--output-json",
                         str(output_json),
                     ],
@@ -138,6 +152,10 @@ class InferNetworkCliTests(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, msg=result.output)
             preflight_mock.assert_called_once()
+            self.assertEqual(
+                preflight_mock.call_args.kwargs["custom_tools_path"],
+                custom_tools,
+            )
             self.assertTrue(output_json.exists())
 
     def test_run_subcommand_returns_exit_1_on_core_value_error(self) -> None:

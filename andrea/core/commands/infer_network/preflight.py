@@ -16,6 +16,7 @@ from andrea.core.shared.issues import make_issue
 
 from .commons.artifacts import _serialize_dataset_context
 from .commons.catalog import _load_schema_constraints, _resolve_catalog_paths
+from .commons.custom_tools import custom_tool_warnings, load_custom_tool_registry
 from .commons.dataset import (
     _load_input_specs,
     _parse_dataset_context,
@@ -38,9 +39,15 @@ def preflight_infer_network(
     *,
     dataset_manifest_path: Path,
     tools_params_path: Optional[Path] = None,
+    custom_tools_path: Optional[Path] = None,
 ) -> dict[str, Any]:
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
+    custom_tools, custom_aliases, custom_blocked_entries = load_custom_tool_registry(
+        custom_tools_path=custom_tools_path,
+        tools_root=tools_root,
+        constraints=constraints,
+    )
     dataset = _parse_dataset_context(
         dataset_manifest_path=dataset_manifest_path,
         constraints=constraints,
@@ -63,10 +70,13 @@ def preflight_infer_network(
         tools_root=tools_root,
         dataset=dataset,
         constraints=constraints,
+        custom_tools=custom_tools,
+        custom_blocked_entries=custom_blocked_entries,
     )
 
     selected_tools: list[str] = []
     selected_tool_catalog_ids: dict[str, str] = {}
+    selected_tool_origins: dict[str, str] = {}
     skipped_tools: dict[str, str] = {}
     resolved_params_by_tool: dict[str, dict[str, Any]] = {}
     resolved_execution_by_tool: dict[str, dict[str, Any]] = {}
@@ -97,7 +107,8 @@ def preflight_infer_network(
         tools_params = _load_tools_params(tools_params_path)
         requested_total = len(tools_params)
         for run_id, run_spec in tools_params.items():
-            catalog_tool_id = str(run_spec.get("tool_id", "")).strip()
+            requested_tool_id = str(run_spec.get("tool_id", "")).strip()
+            catalog_tool_id = custom_aliases.get(requested_tool_id, requested_tool_id)
             user_params = run_spec.get("params", {})
             user_execution = run_spec.get("execution", {})
             if not catalog_tool_id:
@@ -128,7 +139,22 @@ def preflight_infer_network(
                 skipped_tools[run_id] = "invalid tool request: execution must be object"
                 continue
 
-            toolspec = _load_toolspec(tools_root, catalog_tool_id)
+            tool_origin = "custom" if catalog_tool_id in custom_tools else "catalog"
+            try:
+                toolspec = (
+                    custom_tools[catalog_tool_id]
+                    if tool_origin == "custom"
+                    else _load_toolspec(tools_root, catalog_tool_id)
+                )
+            except ValueError as exc:
+                add_run_issue(
+                    run_id,
+                    severity="block",
+                    code="unknown_tool",
+                    message=str(exc),
+                )
+                skipped_tools[run_id] = str(exc)
+                continue
             compatibility_warnings: list[str] = []
             compatible, compat_errors, _conditional_messages = (
                 _check_tool_compatibility(
@@ -138,6 +164,9 @@ def preflight_infer_network(
                     constraints=constraints,
                     warnings=compatibility_warnings,
                 )
+            )
+            compatibility_warnings.extend(
+                custom_tool_warnings(catalog_tool_id, toolspec)
             )
             add_run_warnings(run_id, "compatibility_warning", compatibility_warnings)
             if not compatible:
@@ -168,6 +197,9 @@ def preflight_infer_network(
                 user_params=user_params,
                 toolspec_params=toolspec_params,
                 warnings=param_warnings,
+                passthrough_unknown_params=bool(
+                    toolspec.get("_andrea_custom_tool") and not toolspec_params
+                ),
             )
             add_run_warnings(run_id, "param_warning", param_warnings)
             if not valid_params:
@@ -237,6 +269,7 @@ def preflight_infer_network(
 
             selected_tools.append(run_id)
             selected_tool_catalog_ids[run_id] = catalog_tool_id
+            selected_tool_origins[run_id] = tool_origin
             resolved_params_by_tool[run_id] = resolved_params
             resolved_execution_by_tool[run_id] = resolved_execution
             conditional_input_messages = _collect_conditional_input_issues(
@@ -262,6 +295,7 @@ def preflight_infer_network(
         "inputs": {
             "dataset_id": dataset.dataset_id,
             "tools_params": "provided" if tools_params_path else "catalog_defaults",
+            "custom_tools": "provided" if custom_tools_path else "none",
         },
         "dataset": _serialize_dataset_context(dataset),
         "input_validation": input_validation,
@@ -270,6 +304,7 @@ def preflight_infer_network(
             "requested_total": requested_total,
             "selected": selected_tools,
             "catalog_tool_ids": selected_tool_catalog_ids,
+            "tool_origins": selected_tool_origins,
             "resolved_params": resolved_params_by_tool,
             "resolved_execution": resolved_execution_by_tool,
             "issues": run_issues,

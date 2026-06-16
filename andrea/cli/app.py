@@ -197,6 +197,12 @@ def infer_network_preflight(
             "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]})."
         ),
     ),
+    custom_tools: Optional[Path] = typer.Option(
+        None,
+        exists=True,
+        file_okay=True,
+        help="Optional custom_tools.json with run-local external Docker tool definitions.",
+    ),
     output_json: Optional[Path] = typer.Option(
         None,
         help="Optional output path to persist preflight report JSON.",
@@ -207,6 +213,7 @@ def infer_network_preflight(
         core_preflight_infer_network,
         dataset_manifest_path=dataset_manifest,
         tools_params_path=tools_params,
+        custom_tools_path=custom_tools,
     )
     if output_json is not None:
         output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -267,6 +274,12 @@ def infer_network_plan(
             "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]}."
         ),
     ),
+    custom_tools: Optional[Path] = typer.Option(
+        None,
+        exists=True,
+        file_okay=True,
+        help="Optional custom_tools.json with run-local external Docker tool definitions.",
+    ),
     output_dir: Path = typer.Option(
         Path("./inferred_networks"),
         help="Output root directory for this orchestration run.",
@@ -293,6 +306,7 @@ def infer_network_plan(
         core_plan_infer_network,
         dataset_manifest_path=dataset_manifest,
         tools_params_path=tools_params,
+        custom_tools_path=custom_tools,
         output_dir=output_dir,
         max_cores=max_cores,
         max_ram_gb=max_ram_gb,
@@ -341,6 +355,12 @@ def infer_network_execute(
             "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]}."
         ),
     ),
+    custom_tools: Optional[Path] = typer.Option(
+        None,
+        exists=True,
+        file_okay=True,
+        help="Optional custom_tools.json with run-local external Docker tool definitions.",
+    ),
     output_dir: Path = typer.Option(
         Path("./inferred_networks"),
         help="Output root directory for this orchestration run.",
@@ -371,6 +391,7 @@ def infer_network_execute(
         core_infer_network,
         dataset_manifest_path=dataset_manifest,
         tools_params_path=tools_params,
+        custom_tools_path=custom_tools,
         output_dir=output_dir,
         max_cores=max_cores,
         max_ram_gb=max_ram_gb,

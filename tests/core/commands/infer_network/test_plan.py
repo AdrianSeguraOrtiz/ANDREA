@@ -276,6 +276,154 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             self.assertNotIn("tools_root", report_payload["inputs"])
             self.assertNotIn("schemas_dir", report_payload["inputs"])
 
+    def test_plan_freezes_custom_tool_registry_and_marks_custom_tasks(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            output_dir = base / "out"
+            manifest_path, tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1", "G2"],
+            )
+            self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "demo_tool_01",
+                        "tool_id": "custom_demo_tool_01",
+                        "execution": {"mode": "global"},
+                        "params": {"threshold": 0.25},
+                    }
+                ],
+            )
+            custom_tools_path = self._write_custom_tools(
+                base,
+                tools=[
+                    {
+                        "run_id": "demo_tool_01",
+                        "name": "Demo Tool",
+                        "docker_image": "example/demo-tool:1.0",
+                        "execution_mode": "global",
+                    }
+                ],
+            )
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+            )
+
+            run_dir = self.mod.plan_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+                output_dir=output_dir,
+                planner="heuristic",
+                preflight_report=preflight,
+            )
+
+            frozen_custom_tools = json.loads(
+                (run_dir / "input" / "custom_tools.json").read_text(encoding="utf-8")
+            )
+            plan_payload = json.loads(
+                (run_dir / "plan.json").read_text(encoding="utf-8")
+            )
+            report_payload = json.loads(
+                (run_dir / "run_report.json").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(frozen_custom_tools["tools"][0]["run_id"], "demo_tool_01")
+        self.assertEqual(
+            report_payload["inputs"]["custom_tools_path"],
+            "input/custom_tools.json",
+        )
+        self.assertEqual(
+            report_payload["tools"]["tool_origins"]["demo_tool_01"],
+            "custom",
+        )
+        logical_run = plan_payload["runs"][0]
+        self.assertEqual(logical_run["tool_id"], "custom_demo_tool_01")
+        self.assertEqual(logical_run["tool_origin"], "custom")
+        first_task = plan_payload["waves"][0]["tasks"][0]
+        self.assertTrue(first_task["network_disabled"])
+        self.assertEqual(first_task["eta_source"], "fallback_no_cost")
+        self.assertTrue(
+            any(
+                "external Docker tool" in warning
+                or "no cost.json for external Docker tool" in warning
+                for warning in plan_payload["warnings"]
+            )
+        )
+
+    def test_plan_accepts_minimal_custom_tool_schema_with_run_id(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            output_dir = base / "out"
+            manifest_path, _default_tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1", "G2"],
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "my_method_01",
+                        "tool_id": "custom_my_method_01",
+                        "execution": {"mode": "global"},
+                        "params": {"alpha": 0.1, "use_prior": True},
+                    }
+                ],
+            )
+            custom_tools_path = self._write_custom_tools(
+                base,
+                tools=[
+                    {
+                        "run_id": "my_method_01",
+                        "name": "My GRN method",
+                        "docker_image": "registry.example.org/user/tool:1.0.0",
+                        "execution_mode": "global",
+                        "extra_inputs": ["tf_list"],
+                    }
+                ],
+            )
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+            )
+
+            run_dir = self.mod.plan_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+                output_dir=output_dir,
+                planner="heuristic",
+                preflight_report=preflight,
+            )
+
+            frozen_custom_tools = json.loads(
+                (run_dir / "input" / "custom_tools.json").read_text(encoding="utf-8")
+            )
+            frozen_tools_params = json.loads(
+                (run_dir / "input" / "tools_params.json").read_text(encoding="utf-8")
+            )
+            plan_payload = json.loads(
+                (run_dir / "plan.json").read_text(encoding="utf-8")
+            )
+
+        frozen_tool = frozen_custom_tools["tools"][0]
+        self.assertEqual(frozen_tool["run_id"], "my_method_01")
+        self.assertEqual(frozen_tool["name"], "My GRN method")
+        self.assertEqual(frozen_tool["extra_inputs"], ["tf_list"])
+        self.assertEqual(
+            frozen_tools_params["runs"][0]["params"],
+            {"alpha": 0.1, "use_prior": True},
+        )
+        self.assertEqual(plan_payload["runs"][0]["tool_id"], "custom_my_method_01")
+
     def test_cost_profile_warnings_are_planning_warnings(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

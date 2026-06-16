@@ -452,8 +452,12 @@ def _resolve_tool_params(
     user_params: dict[str, Any],
     toolspec_params: dict[str, Any],
     warnings: list[str],
+    passthrough_unknown_params: bool = False,
 ) -> tuple[bool, dict[str, Any], list[str]]:
     errors: list[str] = []
+    if passthrough_unknown_params and not toolspec_params:
+        return True, copy.deepcopy(user_params), []
+
     unknown_keys = sorted(set(user_params.keys()).difference(toolspec_params.keys()))
     for key in unknown_keys:
         warnings.append(f"[{tool_id}] unknown parameter key ignored: {key}")
@@ -557,11 +561,128 @@ def _collect_conditional_input_issues(
     return list(dict.fromkeys(issues))
 
 
+def _build_tool_compatibility_entry(
+    *,
+    tool_id: str,
+    toolspec: dict[str, Any],
+    dataset: DatasetContext,
+    constraints: SchemaConstraints,
+    tool_origin: str,
+    warning_code: str,
+    post_compatibility_warnings: list[str] | None = None,
+) -> dict[str, Any]:
+    local_warnings: list[str] = []
+    compatible, block_messages, _conditional_messages = _check_tool_compatibility(
+        tool_id=tool_id,
+        toolspec=toolspec,
+        dataset=dataset,
+        constraints=constraints,
+        warnings=local_warnings,
+    )
+    local_warnings.extend(post_compatibility_warnings or [])
+
+    conditional_messages: list[str] = []
+    if compatible:
+        toolspec_params = toolspec.get("params", {})
+        if not isinstance(toolspec_params, dict):
+            compatible = False
+            block_messages = ["toolspec.params must be an object"]
+        else:
+            params_ok, resolved_params, param_errors = _resolve_tool_params(
+                tool_id=tool_id,
+                user_params={},
+                toolspec_params=toolspec_params,
+                warnings=local_warnings,
+            )
+            execution_ok, resolved_execution, execution_errors = (
+                _resolve_run_execution(
+                    run_id=tool_id,
+                    toolspec=toolspec,
+                    user_execution={},
+                    warnings=local_warnings,
+                )
+            )
+            if not params_ok or not execution_ok:
+                compatible = False
+                block_messages = param_errors + execution_errors
+            else:
+                rule_blocks, rule_warnings, rule_errors = (
+                    _collect_compatibility_rule_issues(
+                        tool_id=tool_id,
+                        toolspec=toolspec,
+                        dataset=dataset,
+                        resolved_params=resolved_params,
+                        resolved_execution=resolved_execution,
+                        catalog_scan=True,
+                    )
+                )
+                if rule_errors:
+                    compatible = False
+                    block_messages = [
+                        f"invalid compatibility rule: {msg}" for msg in rule_errors
+                    ]
+                elif rule_blocks:
+                    compatible = False
+                    block_messages = rule_blocks
+                else:
+                    local_warnings.extend(rule_warnings)
+                    conditional_messages = _collect_conditional_input_issues(
+                        tool_id=tool_id,
+                        toolspec=toolspec,
+                        dataset=dataset,
+                        resolved_params=resolved_params,
+                        resolved_execution=resolved_execution,
+                    )
+
+    status = "eligible"
+    if not compatible:
+        status = "blocked"
+    elif local_warnings or conditional_messages:
+        status = "warning"
+
+    return {
+        "tool_id": tool_id,
+        "status": status,
+        "tool_origin": tool_origin,
+        "issues": [
+            *[
+                make_issue(
+                    severity="block",
+                    code="compatibility",
+                    message=message,
+                    tool_id=tool_id,
+                )
+                for message in block_messages
+            ],
+            *[
+                make_issue(
+                    severity="warn",
+                    code=warning_code,
+                    message=message,
+                    tool_id=tool_id,
+                )
+                for message in local_warnings
+            ],
+            *[
+                make_issue(
+                    severity="warn",
+                    code="conditional_required",
+                    message=message,
+                    tool_id=tool_id,
+                )
+                for message in conditional_messages
+            ],
+        ],
+    }
+
+
 def _scan_catalog_compatibility(
     *,
     tools_root: Path,
     dataset: DatasetContext,
     constraints: SchemaConstraints,
+    custom_tools: dict[str, dict[str, Any]] | None = None,
+    custom_blocked_entries: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     for toolspec_path in sorted(tools_root.glob("*/toolspec.json")):
@@ -585,108 +706,36 @@ def _scan_catalog_compatibility(
             )
             continue
 
-        local_warnings: list[str] = []
-        compatible, block_messages, _conditional_messages = _check_tool_compatibility(
-            tool_id=tool_id,
-            toolspec=toolspec,
-            dataset=dataset,
-            constraints=constraints,
-            warnings=local_warnings,
-        )
-        conditional_messages: list[str] = []
-        if compatible:
-            toolspec_params = toolspec.get("params", {})
-            if not isinstance(toolspec_params, dict):
-                compatible = False
-                block_messages = ["toolspec.params must be an object"]
-            else:
-                params_ok, resolved_params, param_errors = _resolve_tool_params(
-                    tool_id=tool_id,
-                    user_params={},
-                    toolspec_params=toolspec_params,
-                    warnings=local_warnings,
-                )
-                execution_ok, resolved_execution, execution_errors = (
-                    _resolve_run_execution(
-                        run_id=tool_id,
-                        toolspec=toolspec,
-                        user_execution={},
-                        warnings=local_warnings,
-                    )
-                )
-                if not params_ok or not execution_ok:
-                    compatible = False
-                    block_messages = param_errors + execution_errors
-                else:
-                    rule_blocks, rule_warnings, rule_errors = (
-                        _collect_compatibility_rule_issues(
-                            tool_id=tool_id,
-                            toolspec=toolspec,
-                            dataset=dataset,
-                            resolved_params=resolved_params,
-                            resolved_execution=resolved_execution,
-                            catalog_scan=True,
-                        )
-                    )
-                    if rule_errors:
-                        compatible = False
-                        block_messages = [
-                            f"invalid compatibility rule: {msg}" for msg in rule_errors
-                        ]
-                    elif rule_blocks:
-                        compatible = False
-                        block_messages = rule_blocks
-                    else:
-                        local_warnings.extend(rule_warnings)
-                        conditional_messages = _collect_conditional_input_issues(
-                            tool_id=tool_id,
-                            toolspec=toolspec,
-                            dataset=dataset,
-                            resolved_params=resolved_params,
-                            resolved_execution=resolved_execution,
-                        )
-
-        status = "eligible"
-        if not compatible:
-            status = "blocked"
-        elif local_warnings or conditional_messages:
-            status = "warning"
-
         entries.append(
-            {
-                "tool_id": tool_id,
-                "status": status,
-                "issues": [
-                    *[
-                        make_issue(
-                            severity="block",
-                            code="compatibility",
-                            message=message,
-                            tool_id=tool_id,
-                        )
-                        for message in block_messages
-                    ],
-                    *[
-                        make_issue(
-                            severity="warn",
-                            code="catalog_warning",
-                            message=message,
-                            tool_id=tool_id,
-                        )
-                        for message in local_warnings
-                    ],
-                    *[
-                        make_issue(
-                            severity="warn",
-                            code="conditional_required",
-                            message=message,
-                            tool_id=tool_id,
-                        )
-                        for message in conditional_messages
-                    ],
-                ],
-            }
+            _build_tool_compatibility_entry(
+                tool_id=tool_id,
+                tool_origin="catalog",
+                toolspec=toolspec,
+                dataset=dataset,
+                constraints=constraints,
+                warning_code="catalog_warning",
+            )
         )
+
+    for tool_id, toolspec in sorted((custom_tools or {}).items()):
+        post_compatibility_warnings: list[str] = []
+        if toolspec.get("_andrea_custom_tool"):
+            from .custom_tools import custom_tool_warnings
+
+            post_compatibility_warnings = custom_tool_warnings(tool_id, toolspec)
+        entries.append(
+            _build_tool_compatibility_entry(
+                tool_id=tool_id,
+                tool_origin="custom",
+                toolspec=toolspec,
+                dataset=dataset,
+                constraints=constraints,
+                warning_code="custom_tool_warning",
+                post_compatibility_warnings=post_compatibility_warnings,
+            )
+        )
+
+    entries.extend(custom_blocked_entries or [])
 
     eligible = [item for item in entries if item["status"] == "eligible"]
     warning = [item for item in entries if item["status"] == "warning"]

@@ -137,11 +137,14 @@ def _docker_run_detached(
     io_dir: Path,
     threads: int,
     ram_gb: float,
+    network_disabled: bool = False,
 ) -> str:
     cmd = ["docker", "run", "-d"]
 
     if hasattr(os, "getuid") and hasattr(os, "getgid"):
         cmd.extend(["--user", f"{os.getuid()}:{os.getgid()}"])
+    if network_disabled:
+        cmd.extend(["--network", "none"])
 
     cmd.extend(
         [
@@ -269,6 +272,7 @@ def _prepare_tool_runtime_io(
     resolved_execution: dict[str, Any],
     shared_expression: Path,
     shared_extras: dict[str, Path],
+    extra_input_keys: set[str] | None = None,
     expression_source: Optional[Path] = None,
 ) -> ToolRuntimeIO:
     tool_dir = run_dir / output_dir
@@ -286,7 +290,12 @@ def _prepare_tool_runtime_io(
     _write_json(params_file, resolved_params)
     _write_json(io_dir / "execution.json", resolved_execution)
 
-    for extra_path in shared_extras.values():
+    extra_items = (
+        shared_extras.items()
+        if extra_input_keys is None
+        else ((key, path) for key, path in shared_extras.items() if key in extra_input_keys)
+    )
+    for _key, extra_path in extra_items:
         dest = extra_dir / extra_path.name
         _link_or_copy_file(extra_path, dest)
 
@@ -354,6 +363,7 @@ def _run_wave(
                     io_dir=tool_io.io_dir,
                     threads=task.threads,
                     ram_gb=task.ram_gb,
+                    network_disabled=task.network_disabled,
                 )
                 running[task.tool_id] = RunningTool(
                     tool_id=task.tool_id,

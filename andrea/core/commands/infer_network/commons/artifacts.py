@@ -97,9 +97,10 @@ def _materialize_frozen_inputs(
     run_dir: Path,
     dataset_manifest_path: Path,
     tools_params_path: Path,
+    custom_tools_payload: dict[str, Any] | None = None,
     dataset: DatasetContext,
     constraints: SchemaConstraints,
-) -> tuple[Path, Path, Path, dict[str, Path]]:
+) -> tuple[Path, Path, Path | None, Path, dict[str, Path]]:
     input_dir = run_dir / "input"
     extra_dir = input_dir / "extra"
     input_dir.mkdir(parents=True, exist_ok=True)
@@ -139,7 +140,18 @@ def _materialize_frozen_inputs(
     tools_payload = _load_json_object(tools_params_path, "tools-params")
     _write_json(frozen_tools_params, tools_payload)
 
-    return frozen_manifest, frozen_tools_params, frozen_expression, frozen_extras
+    frozen_custom_tools: Path | None = None
+    if custom_tools_payload is not None:
+        frozen_custom_tools = input_dir / "custom_tools.json"
+        _write_json(frozen_custom_tools, custom_tools_payload)
+
+    return (
+        frozen_manifest,
+        frozen_tools_params,
+        frozen_custom_tools,
+        frozen_expression,
+        frozen_extras,
+    )
 
 
 def _build_input_fingerprints(
@@ -147,6 +159,7 @@ def _build_input_fingerprints(
     run_dir: Path,
     frozen_manifest: Path,
     frozen_tools_params: Path,
+    frozen_custom_tools: Path | None = None,
     frozen_expression: Path,
     frozen_extras: dict[str, Path],
 ) -> dict[str, dict[str, Any]]:
@@ -159,6 +172,8 @@ def _build_input_fingerprints(
 
     add(frozen_manifest)
     add(frozen_tools_params)
+    if frozen_custom_tools is not None:
+        add(frozen_custom_tools)
     add(frozen_expression)
     for key in sorted(frozen_extras):
         add(frozen_extras[key])
@@ -226,6 +241,7 @@ def _load_plan_waves(
                     if isinstance(raw_task.get("eta_provenance"), dict)
                     else None
                 ),
+                network_disabled=bool(raw_task.get("network_disabled")),
             )
             if (
                 not task.tool_id

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -122,6 +123,94 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             planner="heuristic",
             preflight_report=preflight,
         )
+
+    def test_docker_run_detached_disables_network_only_when_requested(self) -> None:
+        from andrea.core.commands.infer_network.commons import runtime_helpers
+
+        with tempfile.TemporaryDirectory() as tmp:
+            io_dir = Path(tmp)
+            with patch.object(
+                runtime_helpers,
+                "_run_cmd",
+                return_value=subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout="container-123\n",
+                    stderr="",
+                ),
+            ) as run_cmd:
+                container_id = runtime_helpers._docker_run_detached(
+                    image="example/custom:1.0",
+                    io_dir=io_dir,
+                    threads=2,
+                    ram_gb=4.0,
+                    network_disabled=True,
+                )
+                custom_cmd = run_cmd.call_args.args[0]
+
+            with patch.object(
+                runtime_helpers,
+                "_run_cmd",
+                return_value=subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout="container-456\n",
+                    stderr="",
+                ),
+            ) as run_cmd:
+                runtime_helpers._docker_run_detached(
+                    image="example/catalog:1.0",
+                    io_dir=io_dir,
+                    threads=2,
+                    ram_gb=4.0,
+                    network_disabled=False,
+                )
+                catalog_cmd = run_cmd.call_args.args[0]
+
+        self.assertEqual(container_id, "container-123")
+        self.assertIn("--network", custom_cmd)
+        self.assertIn("none", custom_cmd)
+        self.assertNotIn("--network", catalog_cmd)
+
+    def test_runtime_io_can_filter_extra_inputs_for_custom_tools(self) -> None:
+        from andrea.core.commands.infer_network.commons import runtime_helpers
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            shared_expression = base / "expression.tsv"
+            shared_expression.write_text("gene\tS1\nG1\t1\n", encoding="utf-8")
+            tf_list = base / "tf_list.txt"
+            tf_list.write_text("G1\n", encoding="utf-8")
+            groups = base / "groups.tsv"
+            groups.write_text("cell\tcluster\nS1\tA\n", encoding="utf-8")
+
+            filtered = runtime_helpers._prepare_tool_runtime_io(
+                run_dir=base / "filtered",
+                tool_id="custom_tool",
+                run_id="custom_tool",
+                output_dir="tools/custom_tool",
+                resolved_params={},
+                resolved_execution={"mode": "global"},
+                shared_expression=shared_expression,
+                shared_extras={"tf_list": tf_list, "groups": groups},
+                extra_input_keys={"tf_list"},
+            )
+            unfiltered = runtime_helpers._prepare_tool_runtime_io(
+                run_dir=base / "unfiltered",
+                tool_id="catalog_tool",
+                run_id="catalog_tool",
+                output_dir="tools/catalog_tool",
+                resolved_params={},
+                resolved_execution={"mode": "global"},
+                shared_expression=shared_expression,
+                shared_extras={"tf_list": tf_list, "groups": groups},
+                extra_input_keys=None,
+            )
+
+            self.assertTrue((filtered.io_dir / "extra" / "tf_list.txt").exists())
+            self.assertFalse((filtered.io_dir / "extra" / "groups.tsv").exists())
+            self.assertTrue((unfiltered.io_dir / "extra" / "tf_list.txt").exists())
+            self.assertTrue((unfiltered.io_dir / "extra" / "groups.tsv").exists())
 
     def test_group_aggregated_run_preserves_cell_rows_and_adds_group_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

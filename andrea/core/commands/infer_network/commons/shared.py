@@ -56,6 +56,7 @@ class ToolPlanItem:
     output_dir: str
     group_label: Optional[str] = None
     eta_provenance: Optional[dict[str, Any]] = None
+    network_disabled: bool = False
 
 
 @dataclass(frozen=True)
