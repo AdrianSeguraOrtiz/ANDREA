@@ -292,7 +292,7 @@ def _aggregate_cell_rows_by_group(
                 "target": target,
                 "score": score,
                 "sign": sign,
-                "evidence": "andrea_group_aggregated_mean_signed_effect",
+                "evidence": "andrea_group_agg_mean_effect",
                 "context": f"group:{group_label}",
             }
         )
