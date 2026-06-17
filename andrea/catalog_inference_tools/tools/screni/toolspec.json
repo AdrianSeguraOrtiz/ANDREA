@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "id": "screni",
+  "name": "ScReNI (kScReNI)",
+  "publication": [
+    "https://doi.org/10.1093/gpbjnl/qzaf060"
+  ],
+  "first_author": "Xueli Xu",
+  "year": 2025,
+  "method_summary": "ScReNI infers cell-specific regulatory networks by identifying neighboring cells with k-nearest neighbors and estimating random-forest importance scores as regulatory weights. kScReNI is the transcriptome-only ScReNI variant for scRNA-seq data alone, producing directed cell-specific regulator-target networks.",
+  "method_keywords": [
+    "single_cell",
+    "cell_specific_network",
+    "k_nearest_neighbors",
+    "random_forest",
+    "genie3",
+    "directed"
+  ],
+  "implementation_url": "https://github.com/Xuxl2020/ScReNI",
+  "docker_image": "adriansegura99/inference-tools_screni:1.0.0",
+  "execution_capabilities": [
+    "cell_native",
+    "group_aggregated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "Wrapper maps ANDREA --threads to the kScReNI nthread execution pattern from Infer_kScReNI_scNetworks(): create parallel::makeCluster(threads), register doParallel, and run foreach over cells. The upstream per-cell GENIE3 call is fixed to nCores=1, so assigned threads control the outer cell-level worker pool rather than nested GENIE3 parallelism."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_aggregated",
+        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates ScReNI cell-native network rows by group.",
+        "usage": "ANDREA uses groups.tsv after the native kScReNI per-cell run to aggregate cell:<cell_id> rows into group:<group_id> rows; ScReNI itself does not consume groups.tsv."
+      }
+    ]
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "screni.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined stdout/stderr log from Seurat preprocessing, neighbor-graph construction, and per-cell GENIE3 runs."
+    },
+    {
+      "path_pattern": "raw/kscreni_networks.rds",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw kScReNI-compatible R list of per-cell weight matrices before conversion to ANDREA network.csv."
+    }
+  ],
+  "outputs": {
+    "directed": true,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "The kScReNI public entrypoint runs Seurat preprocessing followed by an internal foreach loop over cells and GENIE3 verbose output, but it does not expose a stable progress callback; the wrapper reports coarse lifecycle states in progress.json and records upstream diagnostics in screni.log."
+  },
+  "params": {
+    "nfeatures": {
+      "type": "int",
+      "required": false,
+      "default": 4000,
+      "min": 1,
+      "description": "Number of variable features passed to Seurat FindVariableFeatures(selection.method=\"vst\", nfeatures=nfeatures) before PCA and neighbor graph construction."
+    },
+    "knn": {
+      "type": "int",
+      "required": false,
+      "default": 20,
+      "min": 1,
+      "description": "Number of nearest neighbors passed to Seurat FindNeighbors(k.param=knn); each per-cell GENIE3 run uses the cell plus the top knn neighbors from the SNN graph, and the wrapper requires knn + 1 to be no greater than the number of expression cells."
+    }
+  }
+}

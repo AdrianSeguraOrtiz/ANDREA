@@ -1,0 +1,26 @@
+{
+  "execution": {
+    "mode": "cell_native"
+  },
+  "param_overrides": {
+    "nfeatures": 15,
+    "knn": 2
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "cell_native"
+    },
+    {
+      "name": "group_aggregated",
+      "extra_files": [
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_aggregated"
+      }
+    }
+  ]
+}

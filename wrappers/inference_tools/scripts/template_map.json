@@ -74,6 +74,10 @@
       "runtime": "r",
       "bundles": []
     },
+    "screni": {
+      "runtime": "r",
+      "bundles": []
+    },
     "miniex3": {
       "runtime": "python",
       "bundles": [
