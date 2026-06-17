@@ -299,6 +299,20 @@ If you need a smaller or custom benchmark matrix, customize `ARGS`, for example:
 make benchmark-tool-costs ARGS="--tool <tool_id> --size 50x20 --size 100x40 --threads 1,2 --ram-gb 8,16 --repeats 1"
 ```
 
+Each benchmarked Docker run has a timeout guard. The default is 1800 seconds
+per run; override it with `--timeout <seconds>` or use `--timeout 0` only when
+you intentionally want no timeout.
+
+```bash
+make benchmark-tool-costs ARGS="--tool <tool_id> --timeout 3600"
+```
+
+Timeouts are stored in `cost.json` as `status=timeout` when no repeat succeeds,
+or inside `failure_breakdown.timeout` when a benchmark point is only partially
+successful. The planner does not use fully timed-out points as runtime evidence.
+Partially successful points remain usable, but their ETA receives a conservative
+risk penalty and carries a provenance warning.
+
 The requested `--threads` matrix must be compatible with
 `toolspec.runtime_resources.threading`. Tools with `supported=false` may only
 benchmark `threads=1`; tools with `supported=true` may benchmark values up to

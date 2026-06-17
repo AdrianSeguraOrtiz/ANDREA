@@ -950,6 +950,20 @@ make benchmark-simulator-costs ARGS="--simulator <simulator_id>"
 make validate-simulator-costs ARGS="--simulator <simulator_id> --require"
 ```
 
+Each benchmarked Docker run has a timeout guard. The default is 1800 seconds
+per run; override it with `--timeout <seconds>` or use `--timeout 0` only when
+you intentionally want no timeout.
+
+```bash
+make benchmark-simulator-costs ARGS="--simulator <simulator_id> --timeout 3600"
+```
+
+Timeouts are stored in `cost.json` as `status=timeout` when no repeat succeeds,
+or inside `failure_breakdown.timeout` when a benchmark point is only partially
+successful. The generate-data planner does not use fully timed-out points as
+runtime evidence. Partially successful points remain usable, but their ETA
+receives a conservative risk penalty and carries a provenance warning.
+
 Each integrated simulator should have a bounded profile config under:
 
 ```text
