@@ -239,6 +239,7 @@ Manifest dependencies:
 | `derivable_extras` | Listed above by profile | README output shapes, input files and source technical-noise methods | Every claimed extra has a deterministic wrapper rule. | `lineage_tree` is differentiation-only and guarded by a run-scoped compatibility rule plus wrapper validation. |
 | `params` | Serializable constructor, graph and noise parameters | README usage and `sergio.py` signature/methods | Exposes supportable public API surface while keeping seed/runtime resources separate. | None beyond upstream runtime cost for large bundled demos. |
 | `compatibility_rules.lineage_tree` | `scope=run`, block when `lineage_tree` is requested and `simulation_mode!=differentiation` | Generate-data scenario preflight has only default params; plan/run validation has resolved run params | Prevents valid lineage scenarios from being blocked before a SERGIO run chooses differentiation mode, while still rejecting invalid selected runs before Docker execution. | Requires the shared SimulatorSpec schema to support run-scoped compatibility rules. |
+| `compatibility_rules.demo_differentiation_runtime` | Block `input_preset=demo_differentiation` when `number_sc>100`, `sampling_state>1`, scalar `noise_params>0.3`, scalar `noise_params_splice>0.3` or scalar `splice_ratio>1.5` | Upstream demo notebook uses `number_sc=100`, `noise_params=0.3`, `sampling_state=1`, `noise_params_splice=0.1` and `splice_ratio=1.5`; README recommends small differentiation noise values; GUI runs with `number_sc=300` or `sampling_state=15` stalled or exited 137 | Prevents known unsafe public demo-preset configurations from entering monolithic `simulate_dynamics()` without diagnostics. | Larger SERGIO differentiation runs may be scientifically possible with custom files or manual tuning, but are not promised by this demo preset. |
 | `cost profile` | No `cost.json` for SERGIO in Phase 3 | No timing benchmark matrix has been collected beyond smoke tests | Generate-data uses conservative fallback ETA/resource planning with explicit fallback provenance. | A future cost-benchmark phase can add catalog costs for production scheduling. |
 
 ## Smoke-Test Matrix
@@ -270,6 +271,8 @@ Implemented smoke configs:
 The smoke matrix intentionally has no `scrna_cell_specific` config because the spec does not claim that profile. Shared output validation enforces the required truth contexts for each claimed profile and verifies that group contexts match `groups.tsv`.
 
 A local probe of `input_preset=demo_steady_state` with `number_genes=100`, `number_bins=9`, `number_sc=1` and `sampling_state=1` was still running after more than 90 seconds and was interrupted. The wrapper and Docker image still support the bundled public SERGIO demo presets, but routine smoke tests use compact custom inputs so CI covers the executable contract without inheriting the upstream demo runtime.
+
+After GUI testing, the public differentiation demo preset was narrowed to the upstream notebook scale. The failed GUI plan at `/tmp/andrea_gui/generate_data/e8b03895b903/simulation-plan.json` used `input_preset=demo_differentiation`, `number_sc=300`, `sampling_state=15` and full technical noise, and Docker exited with code 137. A follow-up GUI plan at `benchmarks/gui_generate_benchmark_20260617T112322Z` used `sampling_state=1` but still kept `number_sc=300`, `noise_params=1.0` and `splice_ratio=4.0`; it remained inside `simulate_dynamics()` for more than 48 minutes while using about 24 GiB. The upstream demo notebook uses `number_sc=100`, `sampling_state=1`, `noise_params=0.3`, `noise_params_splice=0.1` and `splice_ratio=1.5`; a direct Docker probe of that recommended configuration completed in about 51 seconds. Because SERGIO's dynamics call is monolithic and keeps simulated history for sampling, the wrapper and spec now reject `demo_differentiation` configurations outside that public demo scale before execution. The top-level SERGIO defaults were also made conservative (`number_sc=100`, `noise_params=0.3`, `sampling_state=1`, `noise_params_splice=0.1`, `noise_type_splice=dpd`, `splice_ratio=1.5`) so GUI-created runs do not inherit steady-state-only demo values by default.
 
 ## Implementation Outcome
 
@@ -305,3 +308,18 @@ Implementation verification:
   - `sergio_phase3_grouped__sergio_custom_grouped__r01`: 3 genes, 4 cells, 10 eligible tools
 
 No wrapper-output mismatch remains after Phase 3. Public truth contexts, extras, manifests, and provenance validate through both the simulator smoke matrix and `generate-data` packaging.
+
+## Post-GUI Failure Follow-Up
+
+- Rebuilt `adriansegura99/simulator_sergio:1.0.0` after adding the `demo_differentiation` guard.
+- Direct Docker run of the failed GUI configuration now exits quickly with `ValueError` and writes `progress.json` plus `provenance/raw/wrapper_error.log`; it no longer enters the long `simulate_dynamics()` call.
+- `validate_simulation_plan('/tmp/andrea_gui/generate_data/e8b03895b903/simulation-plan.json')` now rejects the unsafe run with the `sampling_state=1` compatibility message.
+- `validate_simulation_plan('benchmarks/gui_generate_benchmark_20260617T112322Z/simulation-plan.json')` now rejects the long-running follow-up plan with the `number_sc <= 100`, `noise_params <= 0.3` and `splice_ratio <= 1.5` compatibility messages.
+- Direct Docker run of the safe demo differentiation configuration with full technical noise completed in about 49.5 seconds.
+- `generate-data` now copies `simulation-plan.json` at execution start and preserves failed simulator staging under `failed_runs/<dataset_id>/` when `_run_simulator` raises.
+- Verification after this follow-up:
+  - `PYTHONPATH=. .venv/bin/python wrappers/simulation_data_tools/scripts/validate_simulatorspecs.py --simulator sergio`: passed
+  - `PYTHONPATH=. .venv/bin/python wrappers/simulation_data_tools/scripts/validate_smoketest_configs.py --simulator sergio`: passed
+  - `PYTHONPATH=. .venv/bin/python wrappers/simulation_data_tools/scripts/run_smoketests.py --simulator sergio --skip-build`: passed
+  - `PYTHONPATH=. .venv/bin/python -m pytest tests/core/commands/generate_data/test_generate_data.py`: 48 passed before the follow-up runtime-scale guard
+  - `PYTHONPATH=. .venv/bin/python -m pytest tests/core/commands/generate_data/test_generate_data.py::GenerateDataDyngenTests::test_run_generate_data_preserves_failed_simulator_stage tests/core/commands/generate_data/test_generate_data.py::GenerateDataDyngenTests::test_sergio_demo_differentiation_rejects_unsafe_sampling_state tests/core/commands/generate_data/test_generate_data.py::GenerateDataDyngenTests::test_sergio_demo_differentiation_rejects_unsafe_cell_count`: 3 passed

@@ -179,6 +179,86 @@
       "message": "input_preset=demo_differentiation requires number_bins=3 to match the bundled SERGIO demo files."
     },
     {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.input_preset",
+          "op": "eq",
+          "value": "demo_differentiation"
+        },
+        {
+          "field": "param.number_sc",
+          "op": "gt",
+          "value": 100
+        }
+      ],
+      "message": "input_preset=demo_differentiation must use number_sc <= 100, matching the bundled SERGIO dynamics demo; larger values multiply differentiation paths and can be prohibitively slow."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.input_preset",
+          "op": "eq",
+          "value": "demo_differentiation"
+        },
+        {
+          "field": "param.sampling_state",
+          "op": "gt",
+          "value": 1
+        }
+      ],
+      "message": "input_preset=demo_differentiation must use sampling_state=1, matching the bundled SERGIO dynamics demo; larger values multiply the monolithic upstream dynamics history and can exhaust memory."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.input_preset",
+          "op": "eq",
+          "value": "demo_differentiation"
+        },
+        {
+          "field": "param.noise_params",
+          "op": "gt",
+          "value": 0.3
+        }
+      ],
+      "message": "input_preset=demo_differentiation must use scalar noise_params <= 0.3; upstream recommends small differentiation noise values and the bundled dynamics demo uses 0.3."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.input_preset",
+          "op": "eq",
+          "value": "demo_differentiation"
+        },
+        {
+          "field": "param.noise_params_splice",
+          "op": "gt",
+          "value": 0.3
+        }
+      ],
+      "message": "input_preset=demo_differentiation must use scalar noise_params_splice <= 0.3; upstream recommends small differentiation splice-noise values."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.input_preset",
+          "op": "eq",
+          "value": "demo_differentiation"
+        },
+        {
+          "field": "param.splice_ratio",
+          "op": "gt",
+          "value": 1.5
+        }
+      ],
+      "message": "input_preset=demo_differentiation must use scalar splice_ratio <= 1.5, matching the bundled SERGIO dynamics demo."
+    },
+    {
       "scope": "run",
       "action": "block",
       "conditions": [
@@ -758,20 +838,20 @@
     "number_sc": {
       "type": "int",
       "required": false,
-      "default": 300,
+      "default": 100,
       "min": 1,
       "description": "Number of single cells sampled per SERGIO bin."
     },
     "noise_params": {
       "type": "union",
       "required": false,
-      "default": 1.0,
+      "default": 0.3,
       "description": "SERGIO noise amplitude parameter q for steady-state expression or unspliced transcripts. A scalar applies to all genes; an array provides one value per gene.",
       "oneOf": [
         {
           "type": "float",
           "required": false,
-          "default": 1.0,
+          "default": 0.3,
           "min": 0.0,
           "description": "Scalar SERGIO noise amplitude."
         },
@@ -782,7 +862,7 @@
           "items": {
             "type": "float",
             "required": false,
-            "default": 1.0,
+            "default": 0.3,
             "min": 0.0,
             "description": "Per-gene SERGIO noise amplitude."
           },
@@ -834,7 +914,7 @@
     "sampling_state": {
       "type": "int",
       "required": false,
-      "default": 15,
+      "default": 1,
       "min": 1,
       "description": "SERGIO sampling_state controlling how many post-steady-state time steps are simulated before sampling cells."
     },
@@ -876,7 +956,7 @@
     "noise_params_splice": {
       "type": "union",
       "required": false,
-      "default": null,
+      "default": 0.1,
       "description": "SERGIO spliced-transcript noise parameter for differentiation mode. Null delegates to noise_params.",
       "oneOf": [
         {
@@ -904,7 +984,7 @@
     "noise_type_splice": {
       "type": "enum",
       "required": false,
-      "default": null,
+      "default": "dpd",
       "enum": [
         "dpd",
         "sp",
@@ -915,13 +995,13 @@
     "splice_ratio": {
       "type": "union",
       "required": false,
-      "default": 4.0,
+      "default": 1.5,
       "description": "Ratio of expected spliced to unspliced expression in differentiation simulations. A scalar applies to all genes; an array provides one value per gene.",
       "oneOf": [
         {
           "type": "float",
           "required": false,
-          "default": 4.0,
+          "default": 1.5,
           "min": 0.0,
           "exclusive_min": true,
           "description": "Scalar SERGIO splice ratio."
@@ -933,7 +1013,7 @@
           "items": {
             "type": "float",
             "required": false,
-            "default": 4.0,
+            "default": 1.5,
             "min": 0.0,
             "exclusive_min": true,
             "description": "Per-gene SERGIO splice ratio."

@@ -42,19 +42,19 @@ DEFAULT_PARAMS: dict[str, Any] = {
     "simulation_mode": "steady_state",
     "number_genes": 100,
     "number_bins": 9,
-    "number_sc": 300,
-    "noise_params": 1.0,
+    "number_sc": 100,
+    "noise_params": 0.3,
     "noise_type": "dpd",
     "decays": 0.8,
-    "sampling_state": 15,
+    "sampling_state": 1,
     "tol": 0.001,
     "window_length": 100,
     "dt": 0.01,
     "optimize_sampling": False,
     "shared_coop_state": 2.0,
-    "noise_params_splice": None,
-    "noise_type_splice": None,
-    "splice_ratio": 4.0,
+    "noise_params_splice": 0.1,
+    "noise_type_splice": "dpd",
+    "splice_ratio": 1.5,
     "dt_splice": 0.01,
     "differentiation_expression": "total",
     "technical_noise": {
@@ -207,6 +207,14 @@ def as_scalar_or_array(
     return as_float(value, name, minimum=minimum, strict_min=strict_min)
 
 
+def max_scalar_or_array(value: float | list[float] | None) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return max(float(item) for item in value) if value else None
+    return float(value)
+
+
 def normalize_params(raw_params: dict[str, Any]) -> dict[str, Any]:
     params = deep_merge(DEFAULT_PARAMS, raw_params)
     number_genes = as_int(params["number_genes"], "number_genes", minimum=2)
@@ -283,6 +291,34 @@ def validate_profile_and_params(profile: str, extras: set[str], params: dict[str
             raise ValueError("input_preset=demo_differentiation must use simulation_mode=differentiation.")
         if params["number_genes"] != 100 or params["number_bins"] != 3:
             raise ValueError("input_preset=demo_differentiation requires number_genes=100 and number_bins=3.")
+        if params["number_sc"] > 100:
+            raise ValueError(
+                "input_preset=demo_differentiation must use number_sc <= 100; "
+                "the bundled SERGIO dynamics demo uses 100 cells per bin."
+            )
+        if params["sampling_state"] > 1:
+            raise ValueError(
+                "input_preset=demo_differentiation must use sampling_state=1; "
+                "larger values multiply SERGIO's monolithic dynamics history and can exhaust memory."
+            )
+        max_noise = max_scalar_or_array(params["noise_params"])
+        if max_noise is not None and max_noise > 0.3:
+            raise ValueError(
+                "input_preset=demo_differentiation must use noise_params <= 0.3; "
+                "the bundled SERGIO dynamics demo uses 0.3 and upstream recommends small values."
+            )
+        max_splice_noise = max_scalar_or_array(params["noise_params_splice"])
+        if max_splice_noise is not None and max_splice_noise > 0.3:
+            raise ValueError(
+                "input_preset=demo_differentiation must use noise_params_splice <= 0.3; "
+                "SERGIO upstream recommends small values for differentiation simulations."
+            )
+        max_splice_ratio = max_scalar_or_array(params["splice_ratio"])
+        if max_splice_ratio is not None and max_splice_ratio > 1.5:
+            raise ValueError(
+                "input_preset=demo_differentiation must use splice_ratio <= 1.5; "
+                "the bundled SERGIO dynamics demo uses 1.5."
+            )
     if "lineage_tree" in extras and params["simulation_mode"] != "differentiation":
         raise ValueError("lineage_tree requires simulation_mode=differentiation.")
     if "pseudotime" in extras:

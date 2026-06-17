@@ -2057,6 +2057,141 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 {"threads": 1},
             )
 
+    def test_run_generate_data_preserves_failed_simulator_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            plan_path = self._write_plan(
+                base,
+                request_id="dyngen_fail",
+                profile="scrna_global",
+                simulator_id="dyngen",
+                run_id="dyngen_small",
+                requested_extras=[],
+                simulator_params={"num_cells": 10},
+            )
+
+            def fake_run_simulator(**kwargs):  # noqa: ANN003
+                stage_dir = kwargs["stage_dir"]
+                raw_dir = stage_dir / "provenance" / "raw"
+                raw_dir.mkdir(parents=True, exist_ok=True)
+                (stage_dir / "progress.json").write_text(
+                    json.dumps(
+                        {
+                            "schema_version": "1.0",
+                            "status": "failed",
+                            "phase": "failed",
+                            "message": "simulated docker failure",
+                        },
+                        indent=2,
+                        ensure_ascii=True,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (raw_dir / "docker_wrapper.stderr.log").write_text(
+                    "container killed\n",
+                    encoding="utf-8",
+                )
+                raise RuntimeError(
+                    "Docker simulator 'dyngen' failed with exit code 137"
+                )
+
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.pipeline._run_simulator",
+                    side_effect=fake_run_simulator,
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "Failed run artifacts preserved under",
+                ),
+            ):
+                run_generate_data(
+                    plan_path=plan_path,
+                    output_dir=base / "out",
+                    show_progress=False,
+                )
+
+            benchmark_root = next((base / "out").glob("dyngen_fail_*"))
+            self.assertTrue((benchmark_root / "simulation-plan.json").exists())
+            failed_dir = (
+                benchmark_root
+                / "failed_runs"
+                / "dyngen_fail__dyngen_small__r01"
+            )
+            self.assertTrue((failed_dir / "progress.json").exists())
+            self.assertTrue(
+                (
+                    failed_dir
+                    / "provenance"
+                    / "raw"
+                    / "docker_wrapper.stderr.log"
+                ).exists()
+            )
+            failure = json.loads(
+                (failed_dir / "failure.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(failure["dataset_id"], "dyngen_fail__dyngen_small__r01")
+            self.assertIn("exit code 137", failure["message"])
+
+    def test_sergio_demo_differentiation_rejects_unsafe_sampling_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            plan_path = self._write_plan(
+                base,
+                request_id="sergio_unsafe_diff",
+                profile="scrna_grouped",
+                simulator_id="sergio",
+                run_id="sergio_diff",
+                requested_extras=[],
+                simulator_params={
+                    "input_preset": "demo_differentiation",
+                    "simulation_mode": "differentiation",
+                    "number_genes": 100,
+                    "number_bins": 3,
+                    "sampling_state": 15,
+                },
+                native_outputs=[
+                    "clean_expression",
+                    "unspliced_expression",
+                    "spliced_expression",
+                ],
+            )
+
+            with self.assertRaisesRegex(ValueError, "sampling_state=1"):
+                validate_simulation_plan(plan_path)
+
+    def test_sergio_demo_differentiation_rejects_unsafe_cell_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            plan_path = self._write_plan(
+                base,
+                request_id="sergio_unsafe_cells",
+                profile="scrna_grouped",
+                simulator_id="sergio",
+                run_id="sergio_diff",
+                requested_extras=[],
+                simulator_params={
+                    "input_preset": "demo_differentiation",
+                    "simulation_mode": "differentiation",
+                    "number_genes": 100,
+                    "number_bins": 3,
+                    "number_sc": 300,
+                    "sampling_state": 1,
+                    "noise_params": 0.3,
+                    "noise_params_splice": 0.1,
+                    "splice_ratio": 1.5,
+                },
+                native_outputs=[
+                    "clean_expression",
+                    "unspliced_expression",
+                    "spliced_expression",
+                ],
+            )
+
+            with self.assertRaisesRegex(ValueError, "number_sc <= 100"):
+                validate_simulation_plan(plan_path)
+
     def test_docker_image_resolution_uses_local_before_pull(self) -> None:
         docker_runner._PULLED_IMAGES.clear()
         with (

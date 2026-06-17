@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import shutil
 import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -656,6 +657,37 @@ def _validate_selected_native_outputs(
     return resolved
 
 
+def _preserve_failed_stage(
+    *,
+    stage_dir: Path,
+    benchmark_root: Path,
+    dataset_id: str,
+    task: dict[str, Any],
+    exc: BaseException,
+) -> Path:
+    failure_dir = benchmark_root / "failed_runs" / dataset_id
+    failure_dir.parent.mkdir(parents=True, exist_ok=True)
+    if stage_dir.exists():
+        shutil.copytree(stage_dir, failure_dir, dirs_exist_ok=True)
+    else:
+        failure_dir.mkdir(parents=True, exist_ok=True)
+    _write_json(
+        failure_dir / "failure.json",
+        {
+            "schema_version": "1.0",
+            "dataset_id": dataset_id,
+            "task_id": str(task.get("task_id", "")),
+            "run_id": str(task.get("run_id", "")),
+            "simulator_id": str(task.get("simulator_id", "")),
+            "status": "failed",
+            "failed_at": _utc_now(),
+            "error_type": exc.__class__.__name__,
+            "message": str(exc),
+        },
+    )
+    return failure_dir
+
+
 def _execute_simulation_task(
     *,
     task: dict[str, Any],
@@ -675,15 +707,27 @@ def _execute_simulation_task(
     stage_dir = staging_root / dataset_id
     stage_dir.mkdir(parents=True, exist_ok=True)
 
-    simulator_manifest_path = _run_simulator(
-        request=run,
-        seed=seed,
-        stage_dir=stage_dir,
-        task_label=str(task["task_id"]),
-        progress_poll_seconds=progress_poll_seconds,
-        show_progress=show_progress,
-        progress_callback=progress_callback,
-    )
+    try:
+        simulator_manifest_path = _run_simulator(
+            request=run,
+            seed=seed,
+            stage_dir=stage_dir,
+            task_label=str(task["task_id"]),
+            progress_poll_seconds=progress_poll_seconds,
+            show_progress=show_progress,
+            progress_callback=progress_callback,
+        )
+    except Exception as exc:
+        failure_dir = _preserve_failed_stage(
+            stage_dir=stage_dir,
+            benchmark_root=benchmark_root,
+            dataset_id=dataset_id,
+            task=task,
+            exc=exc,
+        )
+        raise RuntimeError(
+            f"{exc} Failed run artifacts preserved under {failure_dir}."
+        ) from exc
     simulator_manifest = _load_json_object(
         simulator_manifest_path, f"simulator-output-manifest[{dataset_id}]"
     )
@@ -885,6 +929,7 @@ def run_generate_data(
         raise ValueError(f"Benchmark output directory already exists: {benchmark_root}")
     datasets_root = benchmark_root / "datasets"
     datasets_root.mkdir(parents=True, exist_ok=False)
+    _copy_file(plan_path, benchmark_root / "simulation-plan.json")
 
     benchmark_datasets: list[dict[str, Any]] = []
     benchmark_artifacts: list[dict[str, Any]] = []
