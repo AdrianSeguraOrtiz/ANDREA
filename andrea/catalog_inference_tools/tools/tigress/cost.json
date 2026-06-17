@@ -60,7 +60,6 @@
             "normalizeexp": true,
             "scoring": "area",
             "allsteps": true,
-            "usemulticore": false,
             "limit": 50,
             "seed": 666
           },
@@ -68,15 +67,13 @@
             "nstepsLARS",
             "nsplit",
             "normalizeexp",
-            "allsteps",
-            "usemulticore"
+            "allsteps"
           ],
           "cost_relevant_values": {
             "nstepsLARS": 1,
             "nsplit": 20,
             "normalizeexp": true,
-            "allsteps": true,
-            "usemulticore": false
+            "allsteps": true
           }
         }
       },
@@ -794,7 +791,6 @@
             "normalizeexp": true,
             "scoring": "area",
             "allsteps": true,
-            "usemulticore": false,
             "limit": 50,
             "seed": 666
           },
@@ -802,15 +798,13 @@
             "nstepsLARS",
             "nsplit",
             "normalizeexp",
-            "allsteps",
-            "usemulticore"
+            "allsteps"
           ],
           "cost_relevant_values": {
             "nstepsLARS": 1,
             "nsplit": 20,
             "normalizeexp": true,
-            "allsteps": true,
-            "usemulticore": false
+            "allsteps": true
           }
         }
       },
@@ -1531,7 +1525,6 @@
             "normalizeexp": true,
             "scoring": "area",
             "allsteps": true,
-            "usemulticore": false,
             "limit": 50,
             "seed": 666
           },
@@ -1539,15 +1532,13 @@
             "nstepsLARS",
             "nsplit",
             "normalizeexp",
-            "allsteps",
-            "usemulticore"
+            "allsteps"
           ],
           "cost_relevant_values": {
             "nstepsLARS": 1,
             "nsplit": 20,
             "normalizeexp": true,
-            "allsteps": true,
-            "usemulticore": false
+            "allsteps": true
           }
         }
       },

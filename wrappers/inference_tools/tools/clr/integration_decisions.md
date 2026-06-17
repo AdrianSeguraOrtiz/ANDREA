@@ -260,6 +260,39 @@ For each field below:
 - uncertainty:
   - low
 
+### `runtime_resources.threading`
+
+- chosen value:
+  - `supported`: `false`
+  - `default_threads`: `1`
+  - `max_threads`: `1`
+  - `upstream_mapping`: `minet::build.mim` and `minet::clr` expose no
+    documented thread, worker or job-count argument in the selected public API;
+    the wrapper pins common BLAS/OpenMP environment variables to one thread and
+    requires ANDREA `--threads=1`.
+- evidence:
+  - `wrappers/inference_tools/tools/clr/repo/man/build.mim.Rd:5-35`
+  - `wrappers/inference_tools/tools/clr/repo/man/clr.Rd:6-18`
+  - `wrappers/inference_tools/tools/clr/repo/R/build.mim.R:11-39`
+  - `wrappers/inference_tools/tools/clr/run_tool.R`
+- rationale:
+  - the selected public minet path is a batch R API without a real CPU
+    parallelism control
+  - accepting `--threads>1` would imply planner-controllable speedup that the
+    wrapper cannot actually provide
+  - therefore CLR must run with one assigned thread and any thread-like control
+    stays out of `params`
+- uncertainty:
+  - low
+  - R/BLAS may use implementation-level internals on some systems, but the
+    selected CLR/minet API exposes no stable public control to map ANDREA
+    planner threads
+- cost profile impact:
+  - `andrea/catalog_inference_tools/tools/clr/cost.json` was pruned to
+    `threads_tested=[1]` and `runtime_points[].threads=1` only; previous points
+    for 2, 4 and 8 assigned threads were invalid because the wrapper ignored
+    those values.
+
 ### `params`
 
 - chosen value:
@@ -424,6 +457,10 @@ Implemented wrapper:
 - install `minet` from the pinned Bioconductor 3.22 source tarball for version `3.68.0`
 - parse resolved `estimator`, `disc`, `nbins`
 - if `nbins` is `null`, omit it so that upstream default `sqrt(NROW(dataset))` remains in effect
+- require `--threads=1` because minet's selected CLR path exposes no public
+  thread/worker control
+- pin common BLAS/OpenMP environment variables to one thread before loading
+  R packages
 - transpose `expression.tsv` to the orientation expected by `minet`
 - call `build.mim(...)`
 - call `clr(mim)`

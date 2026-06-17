@@ -22,6 +22,14 @@
     "global",
     "group_emulated"
   ],
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "minet::build.mim and minet::clr expose no documented thread, worker or job-count argument in the selected public API. The wrapper pins common BLAS/OpenMP environment variables to 1 and accepts ANDREA --threads only as a runtime contract field, requiring it to be 1."
+    }
+  },
   "accepts": [
     "samples",
     "cells",

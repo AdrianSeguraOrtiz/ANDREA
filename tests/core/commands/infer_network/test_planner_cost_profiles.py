@@ -11,11 +11,11 @@ from andrea.core.commands.infer_network.commons.planner import (
 from andrea.core.commands.infer_network.commons.shared import DatasetContext
 
 
-def _runtime_point(seconds: float = 2.0) -> dict[str, Any]:
+def _runtime_point(seconds: float = 2.0, *, threads: int = 1) -> dict[str, Any]:
     return {
         "genes": 10,
         "columns": 5,
-        "threads": 1,
+        "threads": threads,
         "ram_gb": 1.0,
         "status": "ok",
         "repeats_total": 1,
@@ -50,6 +50,7 @@ def _profile(
     resolved_params: dict[str, Any] | None = None,
     cost_relevant_params: list[str] | None = None,
     cost_relevant_values: dict[str, Any] | None = None,
+    runtime_points: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     extras = extras or []
     resolved_params = resolved_params or {"limit": 50}
@@ -89,7 +90,7 @@ def _profile(
                 "cost_relevant_values": cost_relevant_values,
             },
         },
-        "runtime_points": [_runtime_point(seconds)],
+        "runtime_points": runtime_points or [_runtime_point(seconds)],
     }
 
 
@@ -113,6 +114,14 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         return {
             "id": "genie3",
             "docker_image": "example/genie3:latest",
+            "runtime_resources": {
+                "threading": {
+                    "supported": True,
+                    "default_threads": 2,
+                    "max_threads": 4,
+                    "upstream_mapping": "Wrapper maps --threads to upstream n_jobs.",
+                }
+            },
             "extra_inputs": {
                 "required": [],
                 "optional": [{"input": "tf_list", "usage": "restrict TFs"}],
@@ -127,6 +136,100 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 ],
             },
         }
+
+    def test_fallback_without_cost_uses_toolspec_default_threads(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="genie3_01",
+                run_id="genie3_01",
+                toolspec=self._toolspec(),
+                cost_profile=None,
+                execution_mode="global",
+                resolved_params={"limit": 50},
+                extras_present=set(),
+                logical_group_count=0,
+                physical_tasks_total=1,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=8,
+                max_ram_gb=4.0,
+                output_dir="tools/genie3_01",
+            )
+
+        self.assertEqual(warnings, [])
+        self.assertEqual(modes[0].eta_source, "fallback_no_cost")
+        self.assertEqual(modes[0].threads, 2)
+
+    def test_cost_points_above_toolspec_max_threads_are_ignored(self) -> None:
+        cost_payload = {
+            "profiles": [
+                _profile(
+                    "global_default",
+                    runtime_points=[
+                        _runtime_point(seconds=1.0, threads=8),
+                        _runtime_point(seconds=5.0, threads=2),
+                    ],
+                )
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="genie3_01",
+                run_id="genie3_01",
+                toolspec=self._toolspec(),
+                cost_profile=cost_payload,
+                execution_mode="global",
+                resolved_params={"limit": 50},
+                extras_present=set(),
+                logical_group_count=0,
+                physical_tasks_total=1,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=8,
+                max_ram_gb=4.0,
+                output_dir="tools/genie3_01",
+            )
+
+        self.assertTrue(any("incompatible" in warning for warning in warnings))
+        self.assertEqual(modes[0].eta_source, "cost_profile")
+        self.assertEqual(modes[0].threads, 2)
+
+    def test_unsupported_threading_never_plans_more_than_one_thread(self) -> None:
+        toolspec = self._toolspec()
+        toolspec["runtime_resources"]["threading"] = {
+            "supported": False,
+            "default_threads": 1,
+            "max_threads": 1,
+            "upstream_mapping": "No upstream parallel runtime control.",
+        }
+        cost_payload = {
+            "profiles": [
+                _profile(
+                    "global_default",
+                    runtime_points=[_runtime_point(seconds=1.0, threads=2)],
+                )
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="serial_tool_01",
+                run_id="serial_tool_01",
+                toolspec=toolspec,
+                cost_profile=cost_payload,
+                execution_mode="global",
+                resolved_params={"limit": 50},
+                extras_present=set(),
+                logical_group_count=0,
+                physical_tasks_total=1,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=8,
+                max_ram_gb=4.0,
+                output_dir="tools/serial_tool_01",
+            )
+
+        self.assertTrue(any("incompatible" in warning for warning in warnings))
+        self.assertEqual(modes[0].eta_source, "fallback_no_usable_runtime_point")
+        self.assertEqual(modes[0].threads, 1)
 
     def test_selects_profile_without_optional_inputs_when_manifest_lacks_them(
         self,

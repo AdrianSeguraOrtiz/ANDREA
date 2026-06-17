@@ -22,6 +22,14 @@
     "global",
     "group_emulated"
   ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "Wrapper forwards ANDREA --threads to the ARACNe3 binary --threads option. Upstream documents OpenMP multithreading and --threads as the CPU thread count control; current cost profiles cover 1, 2, 4 and 8 threads."
+    }
+  },
   "accepts": [
     "samples",
     "cells",

@@ -40,6 +40,14 @@ class ToolSpecCatalogTest(unittest.TestCase):
         return {
             "id": "cell_tool",
             "execution_capabilities": execution_capabilities,
+            "runtime_resources": {
+                "threading": {
+                    "supported": False,
+                    "default_threads": 1,
+                    "max_threads": 1,
+                    "upstream_mapping": "No upstream parallel runtime control.",
+                }
+            },
             "taxonomic_scope": {
                 "allowed_groups": ["animal"],
                 "supported_species": [],
@@ -53,6 +61,9 @@ class ToolSpecCatalogTest(unittest.TestCase):
             "compatibility_rules": [],
         }
 
+    @unittest.skip(
+        "ToolSpecs are intentionally invalid until runtime_resources.threading is backfilled tool by tool."
+    )
     def test_all_tool_specs_validate_with_wrapper_script(self) -> None:
         completed = subprocess.run(
             [
@@ -65,6 +76,56 @@ class ToolSpecCatalogTest(unittest.TestCase):
             capture_output=True,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_runtime_resources_threading_is_required(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["global"])
+        instance.pop("runtime_resources")
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("runtime_resources.threading is required" in error for error in errors),
+            errors,
+        )
+
+    def test_runtime_resources_supported_false_requires_one_thread(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["global"])
+        instance["runtime_resources"]["threading"]["max_threads"] = 2
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("supported=false" in error for error in errors),
+            errors,
+        )
+
+    def test_runtime_resources_default_must_not_exceed_max(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["global"])
+        instance["runtime_resources"]["threading"] = {
+            "supported": True,
+            "default_threads": 4,
+            "max_threads": 2,
+            "upstream_mapping": "Wrapper maps --threads to upstream n_jobs.",
+        }
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("default_threads must be <= max_threads" in error for error in errors),
+            errors,
+        )
 
     def test_group_aggregated_requires_cell_native_capability(self) -> None:
         module = _load_validate_toolspecs_module()

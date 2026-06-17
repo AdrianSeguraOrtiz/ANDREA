@@ -52,6 +52,30 @@ SimiC is a single-cell GRN inference framework for ordered cell phenotypes. It j
   - High for `simicLASSO_op` + `main_fn`.
   - Medium that the undocumented clustering fallback in `simicLASSO_op` should remain out of the wrapper contract; the tutorial says the correct run requires an assignment file.
 
+### Runtime resources
+
+- ToolSpec value: `runtime_resources.threading.supported=true`,
+  `default_threads=1`, `max_threads=8`.
+- Evidence:
+  - The selected public Python workflow uses NumPy/SciPy/scikit-learn
+    operations in `simiclasso.clus_regression`, including matrix products
+    (`X_i @ W_i`, `X_i.T @ X_i`), norms and `scipy.linalg.eigh`.
+  - `weighted_AUC_mat.main_fn` also performs NumPy/Pandas post-processing over
+    inferred weight matrices.
+  - Upstream does not expose `n_jobs`, worker, process or explicit thread
+    parameters in `simicLASSO_op` or `main_fn`.
+- Wrapper mapping:
+  - ANDREA `--threads` is applied before importing NumPy, pandas, SciPy,
+    scikit-learn or `simiclasso`.
+  - The wrapper sets `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`,
+    `MKL_NUM_THREADS`, `NUMEXPR_NUM_THREADS`, `BLIS_NUM_THREADS` and
+    `VECLIB_MAXIMUM_THREADS` to the assigned thread count.
+  - No thread-like control is exposed as a normal ToolSpec parameter.
+- Cost status: existing `cost.json` already covers runtime points for
+  `threads` 1, 2, 4 and 8, so `max_threads=8` matches the measured matrix.
+- Limitation: this is backend-level CPU parallelism, not algorithm-level
+  sharding. Some SimiC phases are Python loops and may not scale with threads.
+
 ### Execution capabilities
 
 - Chosen value: `["group_native"]`.
@@ -149,6 +173,16 @@ SimiC is a single-cell GRN inference framework for ordered cell phenotypes. It j
 - Evidence: project naming convention used by other inference tool ToolSpecs.
 - Rationale: expected final image name for ANDREA packaged wrappers.
 - Confidence: medium until Phase 2 builds the image.
+
+### `runtime_resources.threading`
+
+- Chosen value: supported, default 1, max 8.
+- Evidence: see Runtime resources above.
+- Rationale: SimiC's public API lacks an algorithmic worker parameter, but its
+  CPU-heavy numerical kernels can be controlled through BLAS/OpenMP-style
+  backend thread variables under the agreed ToolSpec semantics.
+- Confidence: medium. The mapping is real for numeric kernels, but not every
+  phase is backend-bound.
 
 ### `accepts`
 
@@ -371,6 +405,9 @@ Upstream Dockerfile decision:
   - `raw/simic_wauc_matrices.pickle` is produced by `weighted_AUC_mat.main_fn`
   - `network.csv` uses raw incidence-matrix coefficient magnitudes from `weight_dic`, excludes exact zero coefficients, writes `+`/`-` sign from the raw coefficient direction, and sets `context=group:<phenotype>`
   - `progress.json` reports coarse lifecycle states because the selected upstream public function has no stable progress callback
+- Runtime resources:
+  - `--threads` sets BLAS/OpenMP-style thread environment variables before NumPy/Pandas/SciPy/scikit-learn/SimiC are imported
+  - SimiC has no public `n_jobs`, worker or process-count parameter; backend CPU threads are not repeated as normal params
 - Compatibility note:
   - The wrapper patches SimiC's imported `r2_score` call to pass `sample_weight` as a keyword, preserving upstream behavior on modern scikit-learn where that argument is keyword-only.
 
@@ -393,6 +430,7 @@ Upstream Dockerfile decision:
 - The wrapper preserves runtime-dependent randomness for the stratified 20% train/test split when `random_seed=null`; integer `random_seed` seeds the split and random coordinate descent.
 - Datasets with too many ordered phenotypes for the fixed 20% test split, or with fewer than four cells in any phenotype, are unsupported by this wrapper contract because SimiC's adjusted-R2 diagnostics require at least two train and two test cells per phenotype.
 - `simicLASSO_op` has an undocumented fallback that clusters cells when no assignment file is provided. This integration does not expose it because the tutorial says a correct run requires an assignment file and the fallback does not clearly preserve meaningful phenotype order.
+- `--threads` controls numeric backend threads only; SimiC does not expose an upstream algorithm-level worker pool.
 
 ## Failure Semantics Review
 

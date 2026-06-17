@@ -28,6 +28,7 @@ from _run_tool_common import (
 MINIEX_DIR = Path("/opt/MINI-EX")
 MINIEX_NF = MINIEX_DIR / "miniex.nf"
 DATASET_ID = "andrea"
+DEFAULT_GRNBOOST_SUBJOBS = 20
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,6 @@ class ResolvedParams:
     top_markers: int
     expression_filter: int
     top_regulons: int
-    grnboost_subjobs: int
 
 
 @dataclass(frozen=True)
@@ -62,7 +62,6 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
         "topMarkers",
         "expressionFilter",
         "topRegulons",
-        "grnboostSubjobs",
     }
     require_param_keys(raw_params, expected)
     warn_unknown_params(raw_params, expected)
@@ -82,7 +81,6 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
     top_markers = _as_int(raw_params["topMarkers"], "topMarkers", minimum=0)
     expression_filter = _as_int(raw_params["expressionFilter"], "expressionFilter", minimum=0, maximum=100)
     top_regulons = _as_int(raw_params["topRegulons"], "topRegulons", minimum=0)
-    grnboost_subjobs = _as_int(raw_params["grnboostSubjobs"], "grnboostSubjobs", minimum=1)
 
     if reference_species == "none" and do_motif_analysis:
         raise ValueError("reference_species=none requires doMotifAnalysis=false.")
@@ -94,7 +92,6 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
         top_markers=top_markers,
         expression_filter=expression_filter,
         top_regulons=top_regulons,
-        grnboost_subjobs=grnboost_subjobs,
     )
 
 
@@ -563,6 +560,7 @@ def _write_config(
     if prepared.terms_of_interest_path is not None and params.reference_species == "none":
         raise ValueError("terms_of_interest requires reference_species other than none because GO annotations are unavailable.")
 
+    grnboost_subjobs = 1 if prepared.grnboost_path is not None else DEFAULT_GRNBOOST_SUBJOBS
     species = _species_paths(
         params.reference_species,
         use_motif=params.do_motif_analysis,
@@ -573,7 +571,7 @@ def _write_config(
             [
                 "executor {",
                 "  name = 'local'",
-                f"  queueSize = {max(1, int(threads))}",
+                "  queueSize = 1",
                 "}",
                 "",
                 "process.container = null",
@@ -599,7 +597,7 @@ def _write_config(
                 f"  motifFilter = {_groovy_value(params.motif_filter)}",
                 f"  enrichmentBackground = {_groovy_value(prepared.enrichment_background_path)}",
                 f"  topRegulons = {_groovy_value(params.top_regulons)}",
-                f"  grnboostSubjobs = {_groovy_value(params.grnboost_subjobs)}",
+                f"  grnboostSubjobs = {_groovy_value(grnboost_subjobs)}",
                 f"  outputDir = {_groovy_value(raw_dir)}",
                 "}",
                 "",
@@ -623,6 +621,15 @@ def _run_nextflow(*, config_path: Path, runtime_dir: Path, log_path: Path, progr
     env["NXF_WORK"] = str(runtime_dir / "work")
     env["MPLCONFIGDIR"] = str(runtime_dir / "matplotlib")
     env["HOME"] = str(runtime_dir / "home")
+    for key in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "BLIS_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+    ):
+        env[key] = "1"
     for key in ("NXF_HOME", "NXF_WORK", "MPLCONFIGDIR", "HOME"):
         Path(env[key]).mkdir(parents=True, exist_ok=True)
 

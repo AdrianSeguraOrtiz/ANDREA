@@ -345,8 +345,15 @@ def run_scgenerai(
     log_path: Path,
     threads: int,
 ) -> None:
-    os.environ.setdefault("OMP_NUM_THREADS", str(threads))
-    os.environ.setdefault("MKL_NUM_THREADS", str(threads))
+    for key in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "BLIS_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+    ):
+        os.environ[key] = str(threads)
 
     import scGeneRAI as scgenerai_module  # noqa: PLC0415
 
@@ -354,6 +361,7 @@ def run_scgenerai(
         import torch  # noqa: PLC0415
 
         torch.set_num_threads(threads)
+        torch.set_num_interop_threads(1)
     except Exception as exc:  # noqa: BLE001
         append_log(log_path, f"Warning: failed to set torch thread count: {exc}")
 

@@ -206,6 +206,41 @@ inferCSN is described as a cell type and cell state specific GRN method for scRN
 - Rationale: The wrapper should still write `progress.json`, but only coarse states are reliable while mirroring the selected public entrypoints.
 - Confidence / ambiguity: Medium.
 
+### `runtime_resources.threading`
+
+- Chosen value:
+  - `supported`: `true`
+  - `default_threads`: `1`
+  - `max_threads`: `8`
+  - `upstream_mapping`: wrapper maps ANDREA `--threads` to
+    `inferCSN::inferCSN(cores=threads)`, `inferCSN::network_sift(cores=threads)`
+    for `sift_method="max"`, and `parallel::mclapply(mc.cores=threads)` in the
+    entropy compatibility path.
+- Evidence:
+  - `wrappers/inference_tools/tools/infercsn/run_tool.R` passes `threads` to
+    `inferCSN()` as `cores`, to `network_sift()` as `cores`, and to entropy
+    sifting as `mc.cores`.
+  - `wrappers/inference_tools/tools/infercsn/repo/inferCSN/man/inferCSN.Rd`
+    documents `cores` as the number of cores used for parallelization with
+    `foreach::foreach`.
+  - `wrappers/inference_tools/tools/infercsn/repo/inferCSN/R/inferCSN.R`
+    passes validated `cores` into `thisutils::parallelize_fun()`.
+  - `andrea/catalog_inference_tools/tools/infercsn/cost.json` benchmarks
+    thread values `1`, `2`, `4` and `8`.
+- Rationale:
+  - This is a real upstream CPU control, so it belongs in
+    `runtime_resources.threading` rather than `params`.
+  - The wrapper pins common BLAS/OpenMP environment variables to one thread
+    before loading R packages to avoid nested parallelism outside the
+    planner-assigned `cores`.
+- Confidence / ambiguity: High for `inferCSN(cores=...)` and
+  `network_sift(cores=...)`; medium for the exact scaling benefit because it
+  depends on the number of target genes or entropy gene pairs available in a
+  physical group run.
+- Uncertainty: upstream does not publish a fixed hard maximum core count;
+  `max_threads=8` is the current ANDREA planning cap because it is the largest
+  value covered by the checked-in cost profile.
+
 ### `params`
 
 - Chosen values:
@@ -335,7 +370,11 @@ inferCSN is described as a cell type and cell state specific GRN method for scRN
   - `sift_method="none"` skips post-filtering.
   - `sift_method="max"` calls `inferCSN::network_sift(method="max")`.
   - `sift_method="entropy"` mirrors the CRAN 1.2.0 transfer-entropy implementation with the minimal column-name compatibility fix described above, then preserves the original inferCSN regression `weight` in the final table.
-  - Runtime `--threads` is passed to upstream `cores` where applicable.
+  - Runtime `--threads` is passed to upstream `cores` where applicable and to
+    `parallel::mclapply(mc.cores=threads)` in the entropy compatibility path.
+  - Common BLAS/OpenMP environment variables are pinned to one thread before R
+    packages load so the upstream `cores` control remains the only planned CPU
+    parallelism.
 - Output mapping:
   - Writes coarse lifecycle `progress.json`.
   - Writes `infercsn.log`.

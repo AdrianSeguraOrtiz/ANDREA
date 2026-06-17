@@ -147,7 +147,35 @@ Fixed implementation choices, not exposed:
 - `alpha=2`, `rho=1.7`, `theta_init_offset=0.1`: ADMM implementation knobs used
   by examples/code, not primary method-level user inputs for this first
   contract.
-- `n_jobs`/thread controls: runtime infrastructure, not a method parameter.
+- `n_jobs`/thread controls: runtime infrastructure represented in
+  `runtime_resources.threading`, not a method parameter.
+
+## Runtime Resources
+
+- Threading support: `supported=true`.
+- Default threads: `1`.
+- Maximum planned threads: `8`.
+- ANDREA mapping: wrapper argument `--threads` is mapped to
+  `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS`,
+  `NUMEXPR_NUM_THREADS`, `torch.set_num_threads(threads)`, and
+  `G_admm_minibatch.train(njobs=threads)`.
+- Evidence:
+  - `wrappers/inference_tools/tools/cespgrn/run_tool.py` sets the environment
+    variables, calls `torch.set_num_threads()`, and passes `njobs` to upstream
+    `train()`.
+  - `wrappers/inference_tools/tools/cespgrn/repo/CeSpGRN/src/g_admm.py`
+    exposes `train(..., njobs=1)` and forwards `njobs` into
+    `construct_weighted_G()`, whose docstring says `njobs` is the number of
+    CPUs and whose implementation creates `Pool(njobs)`.
+  - Upstream test scripts set `OMP_NUM_THREADS` and `torch.set_num_threads()`;
+    several benchmark/test paths use `njobs=8` or higher.
+- Rationale: this is real runtime parallelism through PyTorch, BLAS/OpenMP and
+  upstream multiprocessing, so it belongs under `runtime_resources.threading`
+  and should not be exposed as a normal method parameter.
+- Uncertainty: no catalog `cost.json` exists for CeSpGRN yet, so
+  `max_threads=8` is a conservative ANDREA planning and benchmarking cap rather
+  than an upstream hard limit. The planner will use `default_threads=1` until
+  empirical cost points are generated.
 
 ## Output Mapping to `network.csv`
 
@@ -185,6 +213,7 @@ Fixed implementation choices, not exposed:
 | `implementation_url` | `https://github.com/PeterZZQ/CeSpGRN` | Repo README and published paper availability statement. | None |
 | `docker_image` | `adriansegura99/inference-tools_cespgrn:1.0.0` | Project image naming convention. | None |
 | `execution_capabilities` | `cell_native`, `group_aggregated` | Paper/repo produce one GRN per cell; ANDREA can aggregate cell rows by group. | None |
+| `runtime_resources.threading` | `supported=true`, `default_threads=1`, `max_threads=8` | Wrapper maps `--threads` to Torch, BLAS/OpenMP environment variables and upstream `G_admm_minibatch.train(njobs=threads)`; upstream source documents `njobs` as CPU count for `construct_weighted_G()`. | Medium; no catalog `cost.json` exists yet, so `max_threads=8` is a conservative planning cap. |
 | `accepts` | `cells` | README requires count matrix shape `(ncells, ngenes)` and method is single-cell specific. | None |
 | `assumes` | `scrna_specific` | Paper targets scRNA-seq, single-cell multi-omics and spatial transcriptomics. | None |
 | `taxonomic_scope` | all broad groups, no species IDs | Method is statistical and examples include human, mouse and Drosophila; no species-specific packaged database is required for selected paths. | Low |

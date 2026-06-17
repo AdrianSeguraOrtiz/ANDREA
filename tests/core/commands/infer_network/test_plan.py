@@ -14,6 +14,14 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             "id": "fakecell",
             "docker_image": "fake/cell:latest",
             "execution_capabilities": ["cell_native", "group_aggregated"],
+            "runtime_resources": {
+                "threading": {
+                    "supported": False,
+                    "default_threads": 1,
+                    "max_threads": 1,
+                    "upstream_mapping": "No upstream parallel runtime control.",
+                }
+            },
             "params": {},
             "extra_inputs": {
                 "required": [],

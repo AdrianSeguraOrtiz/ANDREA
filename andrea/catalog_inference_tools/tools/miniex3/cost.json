@@ -74,8 +74,7 @@
             "motifFilter": "TF-F_motifs",
             "topMarkers": 700,
             "expressionFilter": 10,
-            "topRegulons": 150,
-            "grnboostSubjobs": 1
+            "topRegulons": 150
           },
           "cost_relevant_params": [
             "reference_species",
@@ -83,8 +82,7 @@
             "motifFilter",
             "topMarkers",
             "expressionFilter",
-            "topRegulons",
-            "grnboostSubjobs"
+            "topRegulons"
           ],
           "cost_relevant_values": {
             "reference_species": "none",
@@ -92,8 +90,7 @@
             "motifFilter": "TF-F_motifs",
             "topMarkers": 700,
             "expressionFilter": 10,
-            "topRegulons": 150,
-            "grnboostSubjobs": 1
+            "topRegulons": 150
           }
         }
       },

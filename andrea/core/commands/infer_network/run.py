@@ -51,6 +51,7 @@ from .commons.shared import (
     _slugify_token,
     _write_json,
 )
+from .commons.threading import resolve_tool_threading, thread_count_allowed_by_tool
 from .commons.tools import (
     EXECUTION_CAPABILITIES,
     _collect_compatibility_rule_issues,
@@ -687,6 +688,9 @@ def run_infer_network_plan(
     compatibility_blocks: dict[str, list[str]] = {}
     compatibility_warnings: list[str] = []
     runtime_extra_input_keys_by_run: dict[str, set[str] | None] = {}
+    planned_threads_by_task = {
+        task.tool_id: task.threads for wave in waves for task in wave.tasks
+    }
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids.get(run_id, "").strip()
         if not catalog_tool_id:
@@ -704,6 +708,31 @@ def run_infer_network_plan(
             else None
         )
         _parse_execution_capabilities(tool_id=run_id, toolspec=toolspec)
+        threading, threading_warnings = resolve_tool_threading(
+            tool_id=run_id,
+            toolspec=toolspec,
+        )
+        compatibility_warnings.extend(threading_warnings)
+        logical_run = logical_runs.get(run_id, {})
+        for physical in logical_run.get("physical_tasks", []):
+            if not isinstance(physical, dict):
+                continue
+            task_id = str(physical.get("task_id", "")).strip()
+            if not task_id:
+                continue
+            planned_threads = planned_threads_by_task.get(task_id)
+            if planned_threads is None:
+                compatibility_blocks.setdefault(run_id, []).append(
+                    f"plan.json has no wave task for physical task '{task_id}'."
+                )
+                continue
+            if not thread_count_allowed_by_tool(threading, int(planned_threads)):
+                compatibility_blocks.setdefault(run_id, []).append(
+                    "planned runtime threads are incompatible with "
+                    "toolspec.runtime_resources.threading: "
+                    f"task '{task_id}' has threads={planned_threads}, "
+                    f"supported={threading.supported}, max_threads={threading.max_threads}."
+                )
         rule_blocks, rule_warnings, rule_errors = _collect_compatibility_rule_issues(
             tool_id=run_id,
             toolspec=toolspec,
@@ -713,11 +742,11 @@ def run_infer_network_plan(
             warning_prefix=run_id,
         )
         if rule_errors:
-            compatibility_blocks[run_id] = [
+            compatibility_blocks.setdefault(run_id, []).extend(
                 f"invalid compatibility rule: {message}" for message in rule_errors
-            ]
+            )
         elif rule_blocks:
-            compatibility_blocks[run_id] = rule_blocks
+            compatibility_blocks.setdefault(run_id, []).extend(rule_blocks)
         compatibility_warnings.extend(rule_warnings)
         issues = _collect_conditional_input_issues(
             tool_id=run_id,

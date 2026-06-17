@@ -7,15 +7,13 @@ import contextlib
 import csv
 import json
 import math
+import os
 import pickle
 import random
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
-
-import numpy as np
-import pandas as pd
 
 from _run_tool_common import (
     load_params,
@@ -45,6 +43,14 @@ EXPECTED_PARAMS = {
 
 SIMIC_TEST_PROPORTION = 0.2
 SIMIC_MIN_CELLS_PER_SPLIT = 2
+THREAD_ENV_VARS = (
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "BLIS_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
 
 
 @dataclass(frozen=True)
@@ -85,6 +91,13 @@ def _append_log(log_path: Path, message: str) -> None:
     with log_path.open("a", encoding="utf-8") as fh:
         fh.write(message.rstrip())
         fh.write("\n")
+
+
+def _configure_runtime_threads(threads: int) -> None:
+    if threads < 1:
+        raise ValueError("--threads must be a positive integer.")
+    for key in THREAD_ENV_VARS:
+        os.environ[key] = str(threads)
 
 
 def _require_bool(value: Any, name: str) -> bool:
@@ -635,6 +648,14 @@ def main() -> None:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--threads", required=True, type=int)
     args = parser.parse_args()
+
+    _configure_runtime_threads(args.threads)
+    global np, pd
+    import numpy as np_module  # noqa: PLC0415
+    import pandas as pd_module  # noqa: PLC0415
+
+    np = np_module
+    pd = pd_module
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     raw_dir = args.output_dir / "raw"

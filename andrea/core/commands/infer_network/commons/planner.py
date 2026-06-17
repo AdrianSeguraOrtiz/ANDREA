@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .shared import DatasetContext, PlanWave, ToolPlanItem, _load_json_object
+from .threading import (
+    default_threads_for_limits,
+    resolve_tool_threading,
+    thread_count_allowed_by_tool,
+)
 
 
 def _load_tool_cost_profile(
@@ -462,6 +467,7 @@ def _fallback_plan_item(
     max_ram_gb: float,
     eta_source: str,
     output_dir: str,
+    threads: int = 1,
     group_label: Optional[str] = None,
     eta_provenance: Optional[dict[str, Any]] = None,
 ) -> ToolPlanItem:
@@ -473,7 +479,7 @@ def _fallback_plan_item(
         tool_id=tool_id,
         run_id=run_id,
         image=image,
-        threads=max(1, min(max_cores, 1)),
+        threads=max(1, min(max_cores, int(threads))),
         ram_gb=max(1.0, min(max_ram_gb, 4.0)),
         eta_seconds=round(fallback_eta, 3),
         eta_source=eta_source,
@@ -565,6 +571,12 @@ def _estimate_tool_mode_options(
     image = str(toolspec.get("docker_image", "")).strip()
     if not image:
         raise ValueError(f"[{tool_id}] toolspec.docker_image is missing")
+    threading, threading_warnings = resolve_tool_threading(
+        tool_id=tool_id,
+        toolspec=toolspec,
+    )
+    warnings.extend(threading_warnings)
+    fallback_threads = default_threads_for_limits(threading, max_cores=max_cores)
 
     cost = cost_profile
     cost_features = _inference_cost_features(
@@ -586,10 +598,14 @@ def _estimate_tool_mode_options(
                     max_ram_gb=max_ram_gb,
                     eta_source="fallback_no_cost",
                     output_dir=output_dir,
+                    threads=fallback_threads,
                     group_label=group_label,
                     eta_provenance={
                         "eta_source": "fallback",
-                        "warnings": ["no cost.json payload available"],
+                        "warnings": [
+                            "no cost.json payload available",
+                            *threading_warnings,
+                        ],
                         "cost_features": cost_features,
                     },
                 )
@@ -620,10 +636,11 @@ def _estimate_tool_mode_options(
                     max_ram_gb=max_ram_gb,
                     eta_source="fallback_no_matching_cost_profile",
                     output_dir=output_dir,
+                    threads=fallback_threads,
                     group_label=group_label,
                     eta_provenance={
                         "eta_source": "fallback",
-                        "warnings": profile_warnings,
+                        "warnings": [*profile_warnings, *threading_warnings],
                         "execution_mode": execution_mode,
                         "cost_features": cost_features,
                     },
@@ -632,7 +649,27 @@ def _estimate_tool_mode_options(
             warnings,
         )
 
-    valid_points = _valid_runtime_points(selected_profile)
+    raw_valid_points = _valid_runtime_points(selected_profile)
+    incompatible_thread_values = sorted(
+        {
+            int(point["threads"])
+            for point in raw_valid_points
+            if not thread_count_allowed_by_tool(threading, int(point["threads"]))
+        }
+    )
+    cost_point_warnings: list[str] = []
+    if incompatible_thread_values:
+        cost_point_warnings.append(
+            f"[{tool_id}] cost.json contains runtime point thread value(s) incompatible "
+            "with toolspec.runtime_resources.threading and they were ignored: "
+            f"{incompatible_thread_values}."
+        )
+        warnings.extend(cost_point_warnings)
+    valid_points = [
+        point
+        for point in raw_valid_points
+        if thread_count_allowed_by_tool(threading, int(point["threads"]))
+    ]
 
     candidate_resources = sorted(
         {
@@ -678,7 +715,11 @@ def _estimate_tool_mode_options(
         point_quality = ("exact_size" if size_exact else "nearest_size") + (
             "_exact_resources" if resource_exact else "_nearest_resources"
         )
-        provenance_warnings = list(profile_warnings)
+        provenance_warnings = [
+            *profile_warnings,
+            *threading_warnings,
+            *cost_point_warnings,
+        ]
         if nearest.get("status") == "partial":
             provenance_warnings.append(
                 "nearest benchmark point has partial success; ETA includes risk penalty"
@@ -753,6 +794,7 @@ def _estimate_tool_mode_options(
                 max_ram_gb=max_ram_gb,
                 eta_source="fallback_no_usable_runtime_point",
                 output_dir=output_dir,
+                threads=fallback_threads,
                 group_label=group_label,
                 eta_provenance={
                     "eta_source": "fallback",
@@ -761,7 +803,9 @@ def _estimate_tool_mode_options(
                         "profile_id": profile_match.get("profile_id"),
                         "match_quality": profile_match.get("match_quality"),
                         "warnings": [
-                            "selected profile has no runtime point compatible with resource limits"
+                            "selected profile has no runtime point compatible with resource limits",
+                            *threading_warnings,
+                            *cost_point_warnings,
                         ],
                     },
                 },

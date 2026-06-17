@@ -36,6 +36,14 @@ DEFAULT_FIXTURES_DIR = INFERENCE_TOOLS_ROOT / "tests" / "fixtures"
 DEFAULT_SMOKETEST_CONFIGS_DIR = INFERENCE_TOOLS_ROOT / "tests" / "smoketest_configs"
 DEFAULT_BUILD_SCRIPT = INFERENCE_TOOLS_ROOT / "scripts" / "build_tool_images.py"
 REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from andrea.core.commands.infer_network.commons.threading import (  # noqa: E402
+    resolve_tool_threading,
+    thread_count_allowed_by_tool,
+)
+
 CATALOG_ROOT = REPO_ROOT / "andrea" / "catalog_inference_tools"
 DEFAULT_CATALOG_TOOLS_ROOT = CATALOG_ROOT / "tools"
 DEFAULT_TOOL_SOURCES_ROOT = INFERENCE_TOOLS_ROOT / "tools"
@@ -145,7 +153,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--threads",
         type=int,
         default=int(os.environ.get("THREADS", "2")),
-        help="Threads passed to wrapper. Default: env THREADS or 2.",
+        help=(
+            "Requested threads for smoketests. Per-tool execution is capped by "
+            "toolspec.runtime_resources.threading, so serial tools run with 1. "
+            "Default: env THREADS or 2."
+        ),
     )
     parser.add_argument(
         "--skip-image-build",
@@ -548,11 +560,7 @@ def load_configs(*, tool_id: str, configs_dir: Path) -> list[SmokeConfig]:
 
 
 def load_aux_artifacts(catalog_tool_dir: Path) -> list[AuxArtifactSpec]:
-    toolspec_path = catalog_tool_dir / "toolspec.json"
-    with toolspec_path.open("r", encoding="utf-8") as fh:
-        raw = json.load(fh)
-    if not isinstance(raw, dict):
-        raise ValueError(f"Invalid toolspec in {toolspec_path}: expected JSON object.")
+    raw = load_toolspec(catalog_tool_dir)
 
     entries = raw.get("artifacts_aux", [])
     if entries is None:
@@ -597,6 +605,41 @@ def load_aux_artifacts(catalog_tool_dir: Path) -> list[AuxArtifactSpec]:
         )
 
     return out
+
+
+def load_toolspec(catalog_tool_dir: Path) -> dict[str, object]:
+    toolspec_path = catalog_tool_dir / "toolspec.json"
+    with toolspec_path.open("r", encoding="utf-8") as fh:
+        raw = json.load(fh)
+    if not isinstance(raw, dict):
+        raise ValueError(f"Invalid toolspec in {toolspec_path}: expected JSON object.")
+    return raw
+
+
+def resolve_smoketest_threads(
+    *, tool_id: str, catalog_tool_dir: Path, requested_threads: int
+) -> int:
+    toolspec = load_toolspec(catalog_tool_dir)
+    threading, warnings = resolve_tool_threading(tool_id=tool_id, toolspec=toolspec)
+    for warning in warnings:
+        print(f"[{tool_id}] warning: {warning}")
+
+    if thread_count_allowed_by_tool(threading, requested_threads):
+        return requested_threads
+
+    effective_threads = 1
+    if threading.supported:
+        effective_threads = max(1, min(requested_threads, threading.max_threads))
+    if not thread_count_allowed_by_tool(threading, effective_threads):
+        effective_threads = 1
+
+    print(
+        f"[{tool_id}] using threads={effective_threads} for smoketest "
+        f"(requested {requested_threads}; "
+        f"supported={str(threading.supported).lower()}, "
+        f"max_threads={threading.max_threads})"
+    )
+    return effective_threads
 
 
 def build_image(
@@ -1057,10 +1100,14 @@ def run(argv: Sequence[str] | None = None) -> int:
                 break
             continue
 
-        image_tag = image_tags.get(tool_id, default_image_tag(tool_id))
-
         print()
         print(f"[{tool_id}] running smoketest")
+        image_tag = image_tags.get(tool_id, default_image_tag(tool_id))
+        effective_threads = resolve_smoketest_threads(
+            tool_id=tool_id,
+            catalog_tool_dir=catalog_tool_dir,
+            requested_threads=args.threads,
+        )
         started = time.perf_counter()
         try:
             run_tool_smoketest(
@@ -1072,7 +1119,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 param_overrides_dir=args.param_overrides_dir,
                 tool_sources_root=args.tool_sources_root,
                 image_tag=image_tag,
-                threads=args.threads,
+                threads=effective_threads,
                 skip_image_build=args.skip_image_build,
                 poll_interval_s=max(0.05, args.poll_interval),
                 timeout_s=args.timeout,

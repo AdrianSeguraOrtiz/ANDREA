@@ -187,6 +187,52 @@ def _condition_param_name(condition: dict[str, Any]) -> str | None:
     return None
 
 
+def _validate_runtime_resources(instance: dict[str, Any], errors: list[str]) -> None:
+    runtime_resources = instance.get("runtime_resources")
+    if not isinstance(runtime_resources, dict):
+        errors.append("runtime_resources.threading is required and must be an object.")
+        return
+    threading = runtime_resources.get("threading")
+    if not isinstance(threading, dict):
+        errors.append("runtime_resources.threading is required and must be an object.")
+        return
+
+    supported = threading.get("supported")
+    default_threads = threading.get("default_threads")
+    max_threads = threading.get("max_threads")
+    upstream_mapping = threading.get("upstream_mapping")
+    if not isinstance(upstream_mapping, str) or not upstream_mapping.strip():
+        errors.append("runtime_resources.threading.upstream_mapping is required.")
+    if not isinstance(supported, bool):
+        errors.append("runtime_resources.threading.supported must be boolean.")
+    if (
+        isinstance(default_threads, bool)
+        or not isinstance(default_threads, int)
+        or default_threads < 1
+    ):
+        errors.append("runtime_resources.threading.default_threads must be >= 1.")
+    if (
+        isinstance(max_threads, bool)
+        or not isinstance(max_threads, int)
+        or max_threads < 1
+    ):
+        errors.append("runtime_resources.threading.max_threads must be >= 1.")
+    if (
+        isinstance(default_threads, int)
+        and not isinstance(default_threads, bool)
+        and isinstance(max_threads, int)
+        and not isinstance(max_threads, bool)
+        and default_threads > max_threads
+    ):
+        errors.append(
+            "runtime_resources.threading.default_threads must be <= max_threads."
+        )
+    if supported is False and (default_threads != 1 or max_threads != 1):
+        errors.append(
+            "runtime_resources.threading with supported=false must set default_threads=1 and max_threads=1."
+        )
+
+
 def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(instance, dict):
@@ -201,6 +247,8 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     params = instance.get("params", {})
     if not isinstance(params, dict):
         params = {}
+
+    _validate_runtime_resources(instance, errors)
 
     execution_capabilities = instance.get("execution_capabilities", [])
     execution_modes = {

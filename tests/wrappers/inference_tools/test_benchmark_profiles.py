@@ -35,7 +35,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             [profile.profile_id for profile in profiles],
             [
                 "group_native_groups_2_q2_with_prior",
-                "group_native_groups_2_q0_independent",
+                "group_native_groups_1_q0_independent",
             ],
         )
         q2_profile = profiles[0]

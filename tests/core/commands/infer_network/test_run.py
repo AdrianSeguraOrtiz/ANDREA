@@ -22,6 +22,14 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             "id": "fakecell",
             "docker_image": "fake/cell:latest",
             "execution_capabilities": ["cell_native", "group_aggregated"],
+            "runtime_resources": {
+                "threading": {
+                    "supported": False,
+                    "default_threads": 1,
+                    "max_threads": 1,
+                    "upstream_mapping": "No upstream parallel runtime control.",
+                }
+            },
             "params": {},
             "extra_inputs": {
                 "required": [],
@@ -339,6 +347,50 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             state_payload["tools"]["cellrun__cell_native"]["status"],
             "completed",
         )
+
+    def test_run_rejects_plan_threads_above_toolspec_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            output_dir = base / "out"
+            manifest_path, tools_params_path, preflight = (
+                self._write_cell_aggregated_bundle(base)
+            )
+            with patch(
+                "andrea.core.commands.infer_network.plan._load_toolspec",
+                return_value=self._cell_aggregated_toolspec(),
+            ):
+                run_dir = self.mod.plan_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                    output_dir=output_dir,
+                    planner="heuristic",
+                    preflight_report=preflight,
+                )
+
+            plan_path = run_dir / "plan.json"
+            plan_payload = json.loads(plan_path.read_text(encoding="utf-8"))
+            plan_payload["waves"][0]["threads_used"] = 2
+            plan_payload["waves"][0]["tasks"][0]["threads"] = 2
+            plan_path.write_text(
+                json.dumps(plan_payload, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            with (
+                patch("andrea.core.commands.infer_network.run._ensure_docker_cli"),
+                patch(
+                    "andrea.core.commands.infer_network.run._load_toolspec",
+                    return_value=self._cell_aggregated_toolspec(),
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "planned runtime threads are incompatible",
+                ),
+            ):
+                self.mod.run_infer_network_plan(
+                    run_dir=run_dir,
+                    progress_poll_seconds=0.1,
+                )
 
     def test_run_plan_executes_from_frozen_dir_and_updates_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

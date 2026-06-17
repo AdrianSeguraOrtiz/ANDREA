@@ -18,6 +18,14 @@
   ],
   "implementation_url": "https://github.com/PhGK/scGeneRAI",
   "docker_image": "adriansegura99/inference-tools_scgenerai:1.0.0",
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "Wrapper maps ANDREA --threads to PyTorch CPU intra-op threads with torch.set_num_threads(threads) before invoking scGeneRAI fit() and predict_networks(). The wrapper also sets OMP, MKL, OpenBLAS, NumExpr, BLIS and Accelerate thread environment variables to the assigned thread count, and keeps PyTorch inter-op threads at 1 to avoid nested oversubscription. scGeneRAI itself uses torch neural-network training and LRP prediction on CPU; it does not expose separate worker/n_jobs parameters."
+    }
+  },
   "execution_capabilities": [
     "cell_native",
     "group_aggregated"

@@ -37,6 +37,12 @@ def _resolve_params(
 
     if not isinstance(regressor_kwargs, dict):
         raise ValueError("regressor_kwargs must be an object/dict.")
+    if "n_jobs" in regressor_kwargs:
+        raise ValueError(
+            "regressor_kwargs.n_jobs is controlled by ANDREA --threads and must "
+            "not be provided as a method parameter."
+        )
+    regressor_kwargs = dict(regressor_kwargs)
     if limit is not None and not isinstance(limit, int):
         raise ValueError("limit must be an integer or null.")
     if seed is not None and not isinstance(seed, int):

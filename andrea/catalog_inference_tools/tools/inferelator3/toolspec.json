@@ -25,6 +25,14 @@
     "group_native",
     "group_emulated"
   ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "Wrapper maps ANDREA --threads to Inferelator MPControl.set_multiprocess_engine(..., processes=threads). The custom MPControl controller executes upstream MI/CLR and regression jobs through joblib.Parallel(n_jobs=threads) with inner_max_num_threads=1, and the wrapper pins common BLAS/OpenMP environment variables to 1 to avoid nested parallelism; current cost profiles cover 1, 2, 4 and 8 assigned threads."
+    }
+  },
   "accepts": [
     "samples",
     "cells"

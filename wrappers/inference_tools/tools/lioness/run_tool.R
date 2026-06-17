@@ -1,5 +1,13 @@
 #!/usr/bin/env Rscript
 
+Sys.setenv(
+  OMP_NUM_THREADS = "1",
+  OPENBLAS_NUM_THREADS = "1",
+  MKL_NUM_THREADS = "1",
+  BLIS_NUM_THREADS = "1",
+  VECLIB_MAXIMUM_THREADS = "1"
+)
+
 suppressPackageStartupMessages({
   suppressWarnings(library(jsonlite))
   suppressWarnings(library(lionessR))
@@ -285,6 +293,12 @@ main <- function() {
   threads <- suppressWarnings(as.integer(threads_raw))
   if (is.na(threads) || threads <= 0L) {
     stop("--threads must be a positive integer.", call. = FALSE)
+  }
+  if (threads != 1L) {
+    stop(
+      "LIONESS/lionessR exposes no upstream thread control; --threads must be 1.",
+      call. = FALSE
+    )
   }
 
   if (!file.exists(input_path)) stop(sprintf("Input file not found: %s", input_path), call. = FALSE)

@@ -98,6 +98,7 @@ class RunPlanItem:
 class ToolBenchmarkTarget:
     tool_id: str
     catalog_tool_dir: Path
+    toolspec: dict[str, Any]
     profiles: tuple[BenchmarkProfile, ...]
 
 
@@ -267,6 +268,21 @@ def save_json(path: Path, payload: Any) -> None:
         fh.write("\n")
 
 
+def load_json_object(path: Path, label: str) -> dict[str, Any]:
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"{label} file not found: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"{label} is malformed JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"{label} must be a JSON object: {path}")
+    return payload
+
+
 def parse_size(value: str) -> SizePoint:
     token = value.strip().lower()
     if "x" not in token:
@@ -364,6 +380,10 @@ def resolve_tool_targets(
     targets: list[ToolBenchmarkTarget] = []
 
     for tool_id, catalog_tool_dir in selected_tools:
+        toolspec = load_json_object(
+            catalog_tool_dir / "toolspec.json",
+            f"toolspec[{tool_id}]",
+        )
         resolved_profiles = resolve_benchmark_profiles(
             tool_id=tool_id,
             catalog_tools_root=catalog_tools_root,
@@ -392,6 +412,7 @@ def resolve_tool_targets(
                 ToolBenchmarkTarget(
                     tool_id=tool_id,
                     catalog_tool_dir=catalog_tool_dir,
+                    toolspec=toolspec,
                     profiles=tuple(selected_profiles),
                 )
             )
@@ -761,6 +782,60 @@ def resolve_benchmark_dimensions(
     return sizes, threads, ram_gb, int(effective_cores), float(effective_ram_gb)
 
 
+def _threading_config(toolspec: dict[str, Any]) -> dict[str, Any]:
+    runtime_resources = toolspec.get("runtime_resources")
+    if not isinstance(runtime_resources, dict):
+        raise RuntimeError("toolspec.runtime_resources.threading is required.")
+    threading = runtime_resources.get("threading")
+    if not isinstance(threading, dict):
+        raise RuntimeError("toolspec.runtime_resources.threading is required.")
+    supported = threading.get("supported")
+    default_threads = threading.get("default_threads")
+    max_threads = threading.get("max_threads")
+    upstream_mapping = str(threading.get("upstream_mapping", "")).strip()
+    if (
+        not isinstance(supported, bool)
+        or isinstance(default_threads, bool)
+        or not isinstance(default_threads, int)
+        or isinstance(max_threads, bool)
+        or not isinstance(max_threads, int)
+        or default_threads < 1
+        or max_threads < 1
+        or default_threads > max_threads
+        or not upstream_mapping
+    ):
+        raise RuntimeError("toolspec.runtime_resources.threading is invalid.")
+    if not supported and (default_threads != 1 or max_threads != 1):
+        raise RuntimeError(
+            "toolspec.runtime_resources.threading with supported=false must use one thread."
+        )
+    return threading
+
+
+def filter_threads_for_tool(
+    *, tool_id: str, toolspec: dict[str, Any], requested_threads: list[int]
+) -> list[int]:
+    threading = _threading_config(toolspec)
+    supported = bool(threading["supported"])
+    max_threads = int(threading["max_threads"])
+    if supported:
+        allowed = [value for value in requested_threads if 1 <= value <= max_threads]
+    else:
+        allowed = [value for value in requested_threads if value == 1]
+    ignored = sorted(set(requested_threads).difference(allowed))
+    if ignored:
+        print(
+            f"[{tool_id}] ignoring thread value(s) incompatible with "
+            f"toolspec.runtime_resources.threading: {ignored}"
+        )
+    if not allowed:
+        raise RuntimeError(
+            f"[{tool_id}] no requested thread values are compatible with "
+            "toolspec.runtime_resources.threading."
+        )
+    return allowed
+
+
 def build_benchmark_config(
     *,
     sizes: list[SizePoint],
@@ -954,8 +1029,22 @@ def run(argv: Sequence[str] | None = None) -> int:
         profile_filters=args.profile,
     )
 
-    total_profiles = sum(len(target.profiles) for target in targets)
-    total_runs = total_profiles * len(sizes) * len(threads) * len(ram_gb) * args.repeats
+    threads_by_tool = {
+        target.tool_id: filter_threads_for_tool(
+            tool_id=target.tool_id,
+            toolspec=target.toolspec,
+            requested_threads=threads,
+        )
+        for target in targets
+    }
+    total_runs = sum(
+        len(target.profiles)
+        * len(sizes)
+        * len(threads_by_tool[target.tool_id])
+        * len(ram_gb)
+        * args.repeats
+        for target in targets
+    )
     run_index = 0
     fail_fast_triggered = False
     global_success = 0
@@ -963,6 +1052,7 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     for target in targets:
         tool_id = target.tool_id
+        tool_threads = threads_by_tool[tool_id]
         image_tag = docker_image_tag(tool_id)
         tool_source_dir = args.tool_sources_root / tool_id
         if not tool_source_dir.exists() or not tool_source_dir.is_dir():
@@ -999,7 +1089,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 print(f"[{tool_id}] profile: {profile.profile_id}")
                 benchmark_config = build_benchmark_config(
                     sizes=sizes,
-                    threads=threads,
+                    threads=tool_threads,
                     ram_gb=ram_gb,
                     params_profile=profile.params_profile,
                     execution_profile=profile.execution_profile,
@@ -1013,7 +1103,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                     image_tag=image_tag,
                     workdir=profile_workdir,
                     sizes=sizes,
-                    threads=threads,
+                    threads=tool_threads,
                     ram_gb=ram_gb,
                     repeats=args.repeats,
                     resolved_params=profile.params,

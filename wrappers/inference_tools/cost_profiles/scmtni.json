@@ -15,11 +15,11 @@
       "prior_density": 0.05
     },
     {
-      "id": "group_native_groups_2_q0_independent",
+      "id": "group_native_groups_1_q0_independent",
       "execution": {
         "mode": "group_native"
       },
-      "group_count": 2,
+      "group_count": 1,
       "param_overrides": {
         "q": 0,
         "indep": true

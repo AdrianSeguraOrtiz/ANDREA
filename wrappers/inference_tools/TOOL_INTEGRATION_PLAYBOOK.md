@@ -45,10 +45,23 @@ The goal of an integration is to produce:
    cell ids and group ids must not be renamed, prefixed or normalized in
    `network.csv` unless every public artifact is mapped back consistently and
    the mapping is recorded as an auxiliary artifact.
-10. Keep ANDREA-owned orchestration out of wrappers. The wrapper produces raw
+10. Runtime resource controls and runtime parallelism must be declared under
+    `runtime_resources.threading`, not as user-facing tool params. The audit
+    must look beyond obvious `threads` parameters: consider `cores`, `workers`,
+    `n_jobs`, process pools, schedulers, OpenMP/BLAS/MKL/Torch controls,
+    foreach/joblib/Dask-style backends, and upstream-documented sharding over
+    independent work units such as targets, genes, bootstraps, folds,
+    subsamples or partitions. The wrapper must map ANDREA `--threads` to the
+    declared upstream control or documented execution pattern.
+11. Keep ANDREA-owned orchestration out of wrappers. The wrapper produces raw
     method outputs; `infer-network` core owns downstream score normalization,
     `group_emulated` orchestration, `group_aggregated` aggregation and ZIP
-    bundles such as `analysis`, `report`, `graphs` and `full`.
+    bundles such as `analysis`, `report`, `graphs` and `full`. This does not
+    forbid wrapper-owned parallel execution that is part of the selected
+    upstream runtime contract for one logical run, such as upstream-documented
+    sharding over independent work units; in that case the wrapper must preserve
+    per-shard raw outputs, logs and configs, then merge deterministically into
+    the single public `network.csv` contract.
 
 ## Official End-to-End Procedure
 
@@ -169,6 +182,12 @@ Requirements:
 - Populate `year`, `method_summary` and `method_keywords` with explicit evidence from the primary paper/repo, not with wrapper-level wording
 - Explicitly decide and document which upstream public entrypoint the integration mirrors
 - Explicitly document any upstream public modes/entrypoints that are not exposed by the wrapper and why
+- Identify runtime resource support. Do not stop at searching for a literal
+  `threads` argument: inspect docs, examples, CLI help and source for worker,
+  process, scheduler, OpenMP/BLAS/MKL/Torch, foreach/joblib/Dask, environment
+  variable, and documented independent-work-unit sharding controls. Document
+  how ANDREA will map assigned `--threads` to the selected mechanism, or why no
+  safe mapping exists.
 - If any upstream default is data-dependent or runtime-dependent, document the exact rule and how the ToolSpec preserves it
 - Determine whether the wrapper should preserve raw method score magnitudes directly or whether the chosen upstream public interface already defines the score scale; if the upstream score is a signed coefficient, document how the wrapper separates `abs(coefficient)` into `score` and coefficient direction into `sign`
 - For every non-trivial field in [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json), record:
@@ -183,13 +202,18 @@ Focus especially on:
 1. upstream execution modes/entrypoints and whether each maps to `global`, `group_native`, `group_emulated`, `cell_native`, `group_aggregated`, a parameter choice, or is intentionally excluded
 2. input semantics and conditional required inputs by execution mode and by parameter value
 3. parameter mapping and defaults
-4. output semantics and how they should map to raw `network.csv` with positive `score` magnitudes and direction stored only in `sign`
-5. installation source preference: package first, pinned upstream source second; inspect the installable package/version when it differs from the local repo snapshot
-6. preserving public expression/cell/group ids in wrapper outputs, including any
+4. runtime parallelism support and whether `runtime_resources.threading` should
+   be `supported=true` or `supported=false`, including whether parallelism is
+   native in-process, backend/environment-controlled, or documented
+   process-level sharding over independent work units
+5. output semantics and how they should map to raw `network.csv` with positive `score` magnitudes and direction stored only in `sign`
+6. installation source preference: package first, pinned upstream source second; inspect the installable package/version when it differs from the local repo snapshot
+7. preserving public expression/cell/group ids in wrapper outputs, including any
    upstream alias map needed to round-trip internal ids back to ANDREA ids
-7. whether any apparent parameter is actually a fixed implementation choice
+8. whether any apparent parameter is actually a fixed implementation choice
    that should be documented instead of exposed as a single-value user param
-8. explicit evidence for `accepts`, `assumes`, `extra_inputs`, `outputs`, `progress`, `params` and `artifacts_aux`
+9. explicit evidence for `accepts`, `assumes`, `extra_inputs`, `outputs`,
+   `progress`, `runtime_resources`, `params` and `artifacts_aux`
 ```
 
 ### Step 6. Review the Phase 1 outputs
@@ -224,6 +248,7 @@ Requirements:
 - Install runtime dependencies with the package manager of the same interpreter/runtime that will execute the wrapper
 - If the runtime build pipeline requires [template_map.json](wrappers/inference_tools/scripts/template_map.json), register `<tool_id>` there with the correct runtime and template bundles
 - Preserve data-dependent or runtime-dependent upstream defaults; if the ToolSpec uses a sentinel such as `null` to mean "defer to upstream default", implement that by omitting the argument rather than hard-coding a replacement value
+- Map the wrapper `--threads` runtime argument to the upstream thread/worker/process/runtime control or documented execution pattern declared in `toolspec.runtime_resources.threading.upstream_mapping`; if the mapping is process-level sharding over independent work units, split work into at most `--threads` public upstream invocations, preserve per-shard raw outputs/configs/logs, and merge deterministically; do not reintroduce thread controls as user-facing tool params
 - Make the wrapper produce raw positive `network.csv` score magnitudes for the chosen upstream interface and `progress.json`
 - Do not apply ANDREA-specific score normalization in the wrapper; downstream normalization is handled later by [merge.py](andrea/core/commands/infer_network/commons/merge.py)
 - Do not write rows with `score <= 0` to `network.csv`; if the upstream method produces a dense matrix, filter zero-magnitude edges in the wrapper before export
@@ -273,6 +298,13 @@ If you need a smaller or custom benchmark matrix, customize `ARGS`, for example:
 ```bash
 make benchmark-tool-costs ARGS="--tool <tool_id> --size 50x20 --size 100x40 --threads 1,2 --ram-gb 8,16 --repeats 1"
 ```
+
+The requested `--threads` matrix must be compatible with
+`toolspec.runtime_resources.threading`. Tools with `supported=false` may only
+benchmark `threads=1`; tools with `supported=true` may benchmark values up to
+`max_threads`. If `supported=true` is implemented by wrapper-owned upstream
+sharding, include benchmark points for the declared shard counts so the planner
+does not rely on single-thread measurements for multi-thread runs.
 
 Then validate the resulting [cost.json](../../andrea/catalog_inference_tools/tools/<tool_id>/cost.json):
 
@@ -585,6 +617,45 @@ If an upstream default depends on the dataset or runtime state, do not silently 
   - rule:
     - this field is defined by wrapper instrumentation, but it must still be justified from real upstream execution behavior
 
+### Runtime Resources
+
+- `runtime_resources.threading.supported`
+- `runtime_resources.threading.default_threads`
+- `runtime_resources.threading.max_threads`
+- `runtime_resources.threading.upstream_mapping`
+  - look in:
+    - CLI help and argument parsers
+    - function signatures and exported workflow constructors
+    - README examples, benchmark scripts and scheduler examples
+    - source code around loops over genes, targets, cells, samples, folds,
+      bootstraps, subsamples or parameter partitions
+    - imports/usages of `parallel`, `multiprocessing`, `concurrent.futures`,
+      `joblib`, `foreach`, `doParallel`, `Dask`, `OpenMP`, `torch`,
+      BLAS/MKL/OpenBLAS controls or equivalent runtime backends
+  - search for:
+    - explicit resource controls such as `threads`, `cores`, `workers`,
+      `n_jobs`, `njobs`, `processes`, `cpus`, `pool`, `scheduler`, `backend`
+    - environment-variable controls such as `OMP_NUM_THREADS`,
+      `MKL_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, Torch thread setters or
+      runtime-specific equivalents
+    - documented recommendations to split independent work units and run
+      multiple public upstream invocations
+  - rule:
+    - set `supported=true` when ANDREA `--threads` can be mapped to a real
+      upstream CPU control or documented execution pattern that can affect
+      runtime
+    - set `supported=false` when there is no safe, public, reproducible mapping;
+      in that case `default_threads=1`, `max_threads=1`, and the wrapper must
+      reject or ignore only according to the project runtime contract
+    - do not expose thread/resource controls as normal `params`
+    - if using process-level sharding, each shard must call the public upstream
+      entrypoint, preserve shard raw outputs/configs/logs, and merge only after
+      upstream completes
+    - do not claim speculative parallelism that would require reimplementing
+      the algorithm or changing scientific semantics
+    - document uncertainty when the mapping exists but scaling benefit is
+      workload-dependent
+
 ### Parameters
 
 - `params`
@@ -668,6 +739,9 @@ Before considering a tool integrated, confirm:
 - required inputs are modeled by always-required, execution-mode-required, or parameter-required rules as appropriate
 - no normalized input is being reused with the wrong semantics
 - no fixed single-value implementation choice is exposed as a user parameter
+- runtime resource controls are declared in `runtime_resources.threading`, not
+  as user-facing params, and wrapper `--threads` maps to the documented upstream
+  control or is constrained to one thread
 - the wrapper does not rely on the local `repo/`
 - the `Dockerfile` uses a stable public source
 - the output mapping to raw `network.csv` is documented in `integration_decisions.md`
@@ -677,5 +751,6 @@ Before considering a tool integrated, confirm:
 - `group_emulated`, `group_aggregated`, merge normalization and ZIP bundle
   availability are treated as ANDREA core behavior, not wrapper-specific logic
 - smoketest passes
-- `cost.json` exists and validates if planner support is expected for the tool
+- `cost.json` exists and validates if planner support is expected for the tool,
+  and its thread matrix respects `runtime_resources.threading`
 - the packaged image can be built, and pushed if publication is part of the integration task

@@ -5,8 +5,7 @@
     "motifFilter",
     "topMarkers",
     "expressionFilter",
-    "topRegulons",
-    "grnboostSubjobs"
+    "topRegulons"
   ],
   "profiles": [
     {
@@ -21,8 +20,7 @@
       ],
       "param_overrides": {
         "reference_species": "none",
-        "doMotifAnalysis": false,
-        "grnboostSubjobs": 1
+        "doMotifAnalysis": false
       }
     }
   ]

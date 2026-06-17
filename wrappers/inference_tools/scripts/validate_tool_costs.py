@@ -302,6 +302,32 @@ def _value_at_param_path(payload: dict[str, Any], path: str) -> Any:
     return current
 
 
+def _threading_config(toolspec: dict[str, Any]) -> dict[str, Any] | None:
+    runtime_resources = toolspec.get("runtime_resources")
+    if not isinstance(runtime_resources, dict):
+        return None
+    threading = runtime_resources.get("threading")
+    return threading if isinstance(threading, dict) else None
+
+
+def _thread_value_allowed(threading: dict[str, Any] | None, threads: Any) -> bool:
+    if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
+        return False
+    if threading is None:
+        return False
+    supported = threading.get("supported")
+    max_threads = threading.get("max_threads")
+    if supported is False:
+        return threads == 1
+    if (
+        supported is True
+        and isinstance(max_threads, int)
+        and not isinstance(max_threads, bool)
+    ):
+        return threads <= max_threads
+    return False
+
+
 def semantic_errors_for_cost(
     *,
     tool_id: str,
@@ -334,6 +360,11 @@ def semantic_errors_for_cost(
         if str(rule.get("input", "")).strip()
     }
     declared_inputs = required_inputs | optional_inputs | conditional_inputs
+    threading = _threading_config(toolspec)
+    if threading is None:
+        errors.append(
+            "toolspec.runtime_resources.threading is required to validate cost runtime points."
+        )
 
     profile_ids: set[str] = set()
     for idx, profile in enumerate(profiles, start=1):
@@ -349,6 +380,29 @@ def semantic_errors_for_cost(
         benchmark_config = profile.get("benchmark_config")
         if not isinstance(benchmark_config, dict):
             continue
+
+        threads_tested = benchmark_config.get("threads_tested")
+        if threading is not None and isinstance(threads_tested, list):
+            for thread_value in threads_tested:
+                if not _thread_value_allowed(threading, thread_value):
+                    errors.append(
+                        f"{profile_prefix}.benchmark_config.threads_tested contains "
+                        "thread value incompatible with "
+                        f"toolspec.runtime_resources.threading: {thread_value}."
+                    )
+
+        runtime_points = profile.get("runtime_points")
+        if threading is not None and isinstance(runtime_points, list):
+            for point_idx, point in enumerate(runtime_points, start=1):
+                if not isinstance(point, dict):
+                    continue
+                thread_value = point.get("threads")
+                if not _thread_value_allowed(threading, thread_value):
+                    errors.append(
+                        f"{profile_prefix}.runtime_points[{point_idx}].threads is "
+                        "incompatible with toolspec.runtime_resources.threading: "
+                        f"{thread_value}."
+                    )
 
         params_profile = benchmark_config.get("params_profile")
         if not isinstance(params_profile, dict):

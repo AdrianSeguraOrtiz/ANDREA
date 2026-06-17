@@ -177,6 +177,33 @@ Implementation:
 Uncertainty:
 - None.
 
+## Runtime Resources
+
+Chosen value:
+- `runtime_resources.threading.supported = false`
+- `runtime_resources.threading.default_threads = 1`
+- `runtime_resources.threading.max_threads = 1`
+
+Evidence:
+- `additional_files/lionessR.txt` documents the selected public call as
+  `lioness(x, f = netFun)` with no thread, worker or core-count argument.
+- `repo/lionessR/R/lioness.R` shows the implementation iterating over samples
+  internally without a public parallelism control.
+- `run_tool.R` calls `lionessR::lioness(expression_data, lionessR::netFun)` and
+  does not map `--threads` to an upstream runtime option.
+
+Rationale:
+- The selected Bioconductor LIONESS path has no stable public CPU control to
+  map from ANDREA planner threads.
+- The wrapper therefore requires `--threads=1` and pins common BLAS/OpenMP
+  environment variables to one thread before loading R packages.
+- `threads` is not exposed as a method parameter.
+
+Uncertainty:
+- Low. R or linked math libraries could have implementation-level internal
+  parallelism on some systems, but lionessR exposes no documented public
+  control for ANDREA to plan against.
+
 ## Auxiliary Artifacts
 
 Chosen artifacts:
@@ -226,6 +253,7 @@ Uncertainty:
 | `outputs.sign` | `signed` | Paper examples and Pearson weights can be positive or negative | Export magnitude in `score`, direction in `sign`. | None. |
 | `outputs.evidence` | `association` | Pearson/coexpression preset | Pearson LIONESS is association/coexpression evidence, not causal direction. | None. |
 | `progress` | `kind=none` | Public function has no callback | Coarse wrapper lifecycle only. | None. |
+| `runtime_resources.threading` | `supported=false`, `default_threads=1`, `max_threads=1` | `lioness(x, f=netFun)` docs and wrapper call expose no thread/core argument | The planner must assign only one thread; wrapper rejects `--threads>1` and pins BLAS/OpenMP env vars. | Low. |
 | `params` | `{}` | `lionessR::netFun`; Bioconductor docs | The wrapper fixes the package-native Pearson aggregate network function; a one-option parameter would not change behavior. | Future presets can be added after evidence review. |
 | `artifacts_aux` | log, raw RDS, raw long TSV | Bioconductor return type; wrapper provenance rules; Phase 2 wrapper output | Preserve raw upstream object and inspectable extracted weights. | None. |
 | `taxonomic_scope` | all groups, empty supported species | No species-specific resource in selected entrypoint | No taxonomic restriction. | None. |
@@ -243,6 +271,10 @@ Runtime behavior:
 - Loads `/io/expression.tsv` as genes x cells/samples.
 - Requires at least 3 cells/samples and at least 2 variable genes after zero-variance filtering.
 - Accepts no runtime parameters and calls `lionessR::lioness(expression_data, lionessR::netFun)`.
+- Requires `--threads=1` because the selected lionessR public API exposes no
+  planner-controllable parallelism.
+- Pins common BLAS/OpenMP environment variables to one thread before loading R
+  packages.
 - Preserves the raw signed upstream object and extracted long-form signed weights under `raw/`.
 - Captures the informational stdout emitted by `lionessR::lioness()` into `lioness.log`.
 - Exports `network.csv` as undirected unordered gene pairs, excludes self-loops, filters `score <= 0`, writes `score=abs(weight)`, writes `sign` from the raw signed weight, and emits `context=cell:<cell_id>`.

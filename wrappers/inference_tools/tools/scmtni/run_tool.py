@@ -9,8 +9,11 @@ import argparse
 import csv
 import os
 import re
+import shlex
 import subprocess
 import sys
+import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -23,8 +26,17 @@ from _run_tool_common import validate_runtime_inputs, warn_unknown_params
 from _run_tool_common import write_progress as _write_progress
 
 SCMTNI_BIN = Path("/app/bin/scMTNI")
-ITERATION_RE = re.compile(r"\bITERATION\s+(\d+)\b")
-MAX_ITERATIONS_PROGRESS = 100
+
+
+@dataclass(frozen=True)
+class _ShardSpec:
+    name: str
+    runtime_config_path: Path
+    target_og_path: Path
+    raw_output_root: Path
+    work_dir: Path
+    log_path: Path
+    target_count: int
 
 
 def _resolve_params(raw_params: Dict[str, Any]) -> Dict[str, Any]:
@@ -325,10 +337,11 @@ def _write_orthogroup_files(
     genes: Sequence[str],
     cluster_order: Sequence[str],
     runtime_dir: Path,
-) -> Tuple[Dict[str, int], Path, Path]:
+) -> Tuple[Dict[str, int], Path, Path, List[int]]:
     gene_to_og: Dict[str, int] = {}
     og_map_path = runtime_dir / "ogids.tsv"
     target_og_path = runtime_dir / "target_ogids.txt"
+    target_og_ids: List[int] = []
 
     with (
         og_map_path.open("w", encoding="utf-8", newline="") as og_fh,
@@ -339,11 +352,37 @@ def _write_orthogroup_files(
 
         for idx, gene in enumerate(genes, start=1):
             gene_to_og[gene] = idx
+            target_og_ids.append(idx)
             members = [f"{gene}_{cluster}" for cluster in cluster_order]
             og_writer.writerow([f"OG{idx}_1", ",".join(members)])
             targets_fh.write(f"{idx}\n")
 
-    return gene_to_og, og_map_path, target_og_path
+    return gene_to_og, og_map_path, target_og_path, target_og_ids
+
+
+def _write_target_og_file(path: Path, og_ids: Sequence[int]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        for og_id in og_ids:
+            fh.write(f"{og_id}\n")
+
+
+def _split_target_og_ids(target_og_ids: Sequence[int], shard_count: int) -> List[List[int]]:
+    if shard_count < 1:
+        raise ValueError("shard_count must be >= 1.")
+    if not target_og_ids:
+        raise ValueError("No target orthogroups available for scMTNI.")
+
+    shard_count = min(shard_count, len(target_og_ids))
+    base_size = len(target_og_ids) // shard_count
+    extra = len(target_og_ids) % shard_count
+    shards: List[List[int]] = []
+    offset = 0
+    for shard_idx in range(shard_count):
+        size = base_size + (1 if shard_idx < extra else 0)
+        shards.append(list(target_og_ids[offset : offset + size]))
+        offset += size
+    return shards
 
 
 def _parse_ogid(token: str) -> Optional[int]:
@@ -546,7 +585,64 @@ def _write_runtime_config(
     return runtime_config_path
 
 
-def _run_scmtni(
+def _prepare_scmtni_shards(
+    *,
+    runtime_config_path: Path,
+    target_og_path: Path,
+    threads: int,
+    output_dir: Path,
+    runtime_dir: Path,
+    raw_output_root: Path,
+    target_og_ids: Sequence[int],
+    cluster_order: Sequence[str],
+    cluster_tables: Dict[str, Path],
+    motif_paths: Dict[str, Path],
+) -> List[_ShardSpec]:
+    shard_count = min(max(1, int(threads)), len(target_og_ids))
+    if shard_count == 1:
+        return [
+            _ShardSpec(
+                name="direct",
+                runtime_config_path=runtime_config_path,
+                target_og_path=target_og_path,
+                raw_output_root=raw_output_root,
+                work_dir=runtime_dir,
+                log_path=output_dir / "scmtni.log",
+                target_count=len(target_og_ids),
+            )
+        ]
+
+    shards: List[_ShardSpec] = []
+    for shard_index, shard_target_ids in enumerate(
+        _split_target_og_ids(target_og_ids, shard_count), start=1
+    ):
+        shard_name = f"shard_{shard_index:04d}"
+        shard_runtime_dir = runtime_dir / "shards" / shard_name
+        shard_raw_output_root = raw_output_root / "shards" / shard_name
+        shard_target_og_path = shard_runtime_dir / "target_ogids.txt"
+        _write_target_og_file(shard_target_og_path, shard_target_ids)
+        shard_runtime_config_path = _write_runtime_config(
+            cluster_order=cluster_order,
+            cluster_tables=cluster_tables,
+            motif_paths=motif_paths,
+            raw_output_root=shard_raw_output_root,
+            runtime_dir=shard_runtime_dir,
+        )
+        shards.append(
+            _ShardSpec(
+                name=shard_name,
+                runtime_config_path=shard_runtime_config_path,
+                target_og_path=shard_target_og_path,
+                raw_output_root=shard_raw_output_root,
+                work_dir=shard_runtime_dir,
+                log_path=output_dir / f"scmtni.{shard_name}.log",
+                target_count=len(shard_target_ids),
+            )
+        )
+    return shards
+
+
+def _build_scmtni_command(
     *,
     runtime_config_path: Path,
     tf_og_path: Path,
@@ -555,10 +651,7 @@ def _run_scmtni(
     og_map_path: Path,
     cell_order_path: Path,
     params: Dict[str, Any],
-    threads: int,
-    output_dir: Path,
-    progress_path: Path,
-) -> None:
+) -> List[str]:
     cmd: List[str] = [
         str(SCMTNI_BIN),
         "-f",
@@ -594,70 +687,225 @@ def _run_scmtni(
     if params["split_genes"]:
         cmd.extend(["-c", "yes"])
 
-    env = os.environ.copy()
-    env["OMP_NUM_THREADS"] = str(threads)
+    return cmd
 
-    log_path = output_dir / "scmtni.log"
-    with log_path.open("w", encoding="utf-8") as log_fh:
-        process = subprocess.Popen(
-            cmd,
-            cwd=str(output_dir),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            env=env,
+
+def _scmtni_subprocess_env() -> Dict[str, str]:
+    env = os.environ.copy()
+    for key in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "BLIS_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+    ):
+        env[key] = "1"
+    return env
+
+
+def _combine_shard_logs(output_dir: Path, shards: Sequence[_ShardSpec]) -> None:
+    if len(shards) <= 1 and shards[0].log_path == output_dir / "scmtni.log":
+        return
+
+    combined_log = output_dir / "scmtni.log"
+    with combined_log.open("w", encoding="utf-8") as out_fh:
+        for shard in shards:
+            out_fh.write(f"===== {shard.name} ({shard.target_count} target genes) =====\n")
+            if shard.log_path.exists():
+                log_text = shard.log_path.read_text(encoding="utf-8", errors="replace")
+                out_fh.write(log_text)
+                if log_text and not log_text.endswith("\n"):
+                    out_fh.write("\n")
+            else:
+                out_fh.write("Shard log was not created.\n")
+
+
+def _start_scmtni_process(
+    *,
+    shard: _ShardSpec,
+    tf_og_path: Path,
+    lineage_tree_path: Optional[Path],
+    og_map_path: Path,
+    cell_order_path: Path,
+    params: Dict[str, Any],
+    env: Dict[str, str],
+) -> Tuple[subprocess.Popen[None], Any]:
+    shard.work_dir.mkdir(parents=True, exist_ok=True)
+    shard.raw_output_root.mkdir(parents=True, exist_ok=True)
+    cmd = _build_scmtni_command(
+        runtime_config_path=shard.runtime_config_path,
+        tf_og_path=tf_og_path,
+        target_og_path=shard.target_og_path,
+        lineage_tree_path=lineage_tree_path,
+        og_map_path=og_map_path,
+        cell_order_path=cell_order_path,
+        params=params,
+    )
+    log_fh = shard.log_path.open("w", encoding="utf-8")
+    log_fh.write("$ " + shlex.join(cmd) + "\n")
+    log_fh.flush()
+    process = subprocess.Popen(
+        cmd,
+        cwd=str(shard.work_dir),
+        stdout=log_fh,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=env,
+    )
+    return process, log_fh
+
+
+def _run_scmtni_shards(
+    *,
+    shards: Sequence[_ShardSpec],
+    tf_og_path: Path,
+    lineage_tree_path: Optional[Path],
+    og_map_path: Path,
+    cell_order_path: Path,
+    params: Dict[str, Any],
+    output_dir: Path,
+    progress_path: Path,
+) -> None:
+    if not shards:
+        raise ValueError("No scMTNI shards were prepared.")
+
+    if len(shards) == 1:
+        _write_progress(
+            progress_path,
+            status="running",
+            percent=12,
+            phase="inference",
+            message="Running scMTNI optimization",
+        )
+    else:
+        _write_progress(
+            progress_path,
+            status="running",
+            percent=12,
+            phase="inference",
+            message=f"Running {len(shards)} scMTNI target-gene shards",
+            completed=0,
+            total=len(shards),
         )
 
-        if process.stdout is None:
-            raise RuntimeError("Failed to capture scMTNI stdout stream.")
+    env = _scmtni_subprocess_env()
+    running: Dict[str, Tuple[_ShardSpec, subprocess.Popen[None], Any]] = {}
+    failed: Optional[Tuple[_ShardSpec, int]] = None
 
-        last_iteration = -1
-        saw_inference = False
+    try:
+        for shard in shards:
+            process, log_fh = _start_scmtni_process(
+                shard=shard,
+                tf_og_path=tf_og_path,
+                lineage_tree_path=lineage_tree_path,
+                og_map_path=og_map_path,
+                cell_order_path=cell_order_path,
+                params=params,
+                env=env,
+            )
+            running[shard.name] = (shard, process, log_fh)
 
-        for line in process.stdout:
-            log_fh.write(line)
+        completed = 0
+        while running:
+            for shard_name, (shard, process, log_fh) in list(running.items()):
+                return_code = process.poll()
+                if return_code is None:
+                    continue
 
-            if not saw_inference:
-                saw_inference = True
+                log_fh.close()
+                del running[shard_name]
+                if return_code != 0:
+                    failed = (shard, return_code)
+                    break
+
+                completed += 1
+                percent = 10 + int((completed / len(shards)) * 80)
                 _write_progress(
                     progress_path,
                     status="running",
-                    percent=12,
+                    percent=min(90, percent),
                     phase="inference",
-                    message="Running scMTNI optimization",
+                    message="Completed scMTNI target-gene shards",
+                    completed=completed,
+                    total=len(shards),
                 )
 
-            match = ITERATION_RE.search(line)
-            if match is None:
-                continue
+            if failed is not None:
+                break
+            if running:
+                time.sleep(0.25)
 
-            iteration = int(match.group(1))
-            if iteration <= last_iteration:
-                continue
+        if failed is not None:
+            for _, process, log_fh in running.values():
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                log_fh.close()
 
-            last_iteration = iteration
-            completed = min(iteration + 1, MAX_ITERATIONS_PROGRESS)
-            percent = 10 + int((completed / MAX_ITERATIONS_PROGRESS) * 80)
-            _write_progress(
-                progress_path,
-                status="running",
-                percent=min(90, percent),
-                phase="inference",
-                message="Running scMTNI optimization",
-                completed=completed,
-                total=MAX_ITERATIONS_PROGRESS,
-            )
-
-        return_code = process.wait()
-
-    if return_code != 0:
-        logs_tail = _tail_text(log_path)
-        if logs_tail:
+            _combine_shard_logs(output_dir, shards)
+            failed_shard, return_code = failed
+            logs_tail = _tail_text(failed_shard.log_path)
+            if logs_tail:
+                raise RuntimeError(
+                    f"scMTNI shard {failed_shard.name} failed with exit code {return_code}.\n\n"
+                    f"log tail:\n{logs_tail}"
+                )
             raise RuntimeError(
-                f"scMTNI failed with exit code {return_code}.\n\nlog tail:\n{logs_tail}"
+                f"scMTNI shard {failed_shard.name} failed with exit code {return_code}."
             )
-        raise RuntimeError(f"scMTNI failed with exit code {return_code}.")
+
+    finally:
+        for _, process, log_fh in running.values():
+            if process.poll() is None:
+                process.terminate()
+            log_fh.close()
+
+    _combine_shard_logs(output_dir, shards)
+
+
+def _merge_shard_outputs(
+    *,
+    shards: Sequence[_ShardSpec],
+    merged_raw_output_root: Path,
+    clusters: Sequence[str],
+    max_regulators: int,
+) -> None:
+    merged_raw_output_root.mkdir(parents=True, exist_ok=True)
+    var_filename = f"var_mb_pw_k{max_regulators}.txt"
+
+    for cluster in clusters:
+        merged_cluster_dir = merged_raw_output_root / cluster / "fold0"
+        merged_cluster_dir.mkdir(parents=True, exist_ok=True)
+        merged_var_path = merged_cluster_dir / var_filename
+        with merged_var_path.open("w", encoding="utf-8") as out_fh:
+            for shard in shards:
+                shard_var_path = shard.raw_output_root / cluster / "fold0" / var_filename
+                if not shard_var_path.exists():
+                    raise FileNotFoundError(
+                        f"Expected scMTNI shard output not found: {shard_var_path}"
+                    )
+                with shard_var_path.open("r", encoding="utf-8") as in_fh:
+                    for line in in_fh:
+                        if line.strip():
+                            out_fh.write(line)
+                            if not line.endswith("\n"):
+                                out_fh.write("\n")
+
+        merged_modelparams_path = merged_cluster_dir / "modelparams.txt"
+        with merged_modelparams_path.open("w", encoding="utf-8") as out_fh:
+            for shard in shards:
+                shard_modelparams_path = (
+                    shard.raw_output_root / cluster / "fold0" / "modelparams.txt"
+                )
+                if not shard_modelparams_path.exists():
+                    continue
+                out_fh.write(f"===== {shard.name} =====\n")
+                with shard_modelparams_path.open("r", encoding="utf-8") as in_fh:
+                    out_fh.writelines(in_fh)
 
 
 def _collect_network_rows(
@@ -797,7 +1045,7 @@ def main() -> None:
             runtime_dir=runtime_dir,
         )
 
-        gene_to_og, og_map_path, target_og_path = _write_orthogroup_files(
+        gene_to_og, og_map_path, target_og_path, target_og_ids = _write_orthogroup_files(
             genes=genes,
             cluster_order=cluster_order,
             runtime_dir=runtime_dir,
@@ -828,27 +1076,51 @@ def main() -> None:
             raw_output_root=raw_output_root,
             runtime_dir=runtime_dir,
         )
+        shards = _prepare_scmtni_shards(
+            runtime_config_path=runtime_config_path,
+            target_og_path=target_og_path,
+            threads=args.threads,
+            output_dir=args.output_dir,
+            runtime_dir=runtime_dir,
+            raw_output_root=raw_output_root,
+            target_og_ids=target_og_ids,
+            cluster_order=cluster_order,
+            cluster_tables=cluster_tables,
+            motif_paths=motif_paths,
+        )
 
         _write_progress(
             progress_path,
             status="running",
             percent=10,
             phase="inference",
-            message="Starting scMTNI inference",
+            message=(
+                "Starting scMTNI inference"
+                if len(shards) == 1
+                else f"Starting scMTNI inference across {len(shards)} target-gene shards"
+            ),
         )
 
-        _run_scmtni(
-            runtime_config_path=runtime_config_path,
+        _run_scmtni_shards(
+            shards=shards,
             tf_og_path=tf_og_path,
-            target_og_path=target_og_path,
             lineage_tree_path=lineage_tree_path,
             og_map_path=og_map_path,
             cell_order_path=cell_order_path,
             params=params,
-            threads=args.threads,
             output_dir=args.output_dir,
             progress_path=progress_path,
         )
+
+        collection_raw_output_root = raw_output_root
+        if len(shards) > 1:
+            collection_raw_output_root = raw_output_root / "merged"
+            _merge_shard_outputs(
+                shards=shards,
+                merged_raw_output_root=collection_raw_output_root,
+                clusters=cluster_order,
+                max_regulators=params["x"],
+            )
 
         _write_progress(
             progress_path,
@@ -859,7 +1131,7 @@ def main() -> None:
         )
 
         rows = _collect_network_rows(
-            raw_output_root=raw_output_root,
+            raw_output_root=collection_raw_output_root,
             clusters=cluster_order,
             max_regulators=params["x"],
         )

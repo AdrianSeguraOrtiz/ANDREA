@@ -107,6 +107,38 @@ Data-dependent upstream defaults preserved:
 - BBSR may cap or adjust usable predictors according to available regulators and CLR/prior filtering. The wrapper passes `bsr_feature_num` and does not precompute a replacement.
 - `regression=auto` is wrapper-level routing, not an upstream replacement for a data-dependent default.
 
+## Runtime Resources
+
+- Threading support: `supported=true`.
+- Default threads: `1`.
+- Maximum planned threads: `8`.
+- ANDREA mapping: wrapper argument `--threads` is passed to
+  `MPControl.set_multiprocess_engine(controller, processes=threads)`.
+- Controller mapping: the wrapper's custom `MPControl` controller executes
+  upstream MI/CLR and regression map jobs with
+  `joblib.Parallel(n_jobs=processes)` and
+  `joblib.parallel_config(inner_max_num_threads=1)`.
+- Evidence:
+  - `wrappers/inference_tools/tools/inferelator3/run_tool.py` passes
+    `threads` to Inferelator `MPControl`, and the custom controller maps that
+    value to `joblib.Parallel(n_jobs=...)`.
+  - `wrappers/inference_tools/tools/inferelator3/repo/inferelator/inferelator/distributed/inferelator_mp.py`
+    exposes `MPControl.set_multiprocess_engine(..., processes=...)`.
+  - Existing smoke validation already used `--threads 2`, and
+    `andrea/catalog_inference_tools/tools/inferelator3/cost.json` benchmarks
+    thread values `1`, `2`, `4` and `8`.
+- Rationale:
+  - This is real CPU parallelism for the upstream job map and belongs in
+    `runtime_resources.threading`, not in ToolSpec method parameters.
+  - Common BLAS/OpenMP environment variables are pinned to one thread before
+    NumPy/joblib imports, and joblib inner threads are capped, so assigned
+    threads are used as worker processes rather than nested math-library
+    threads.
+- Uncertainty:
+  - Upstream does not publish a fixed hard process maximum. `max_threads=8` is
+    the current ANDREA planning cap because it is the largest value covered by
+    the checked-in cost profile.
+
 ## Output Mapping
 
 Raw upstream outputs are kept under `raw/`. `network.csv` maps:
@@ -151,6 +183,9 @@ Evidence:
 - `outputs`: directed regulator-target edges with unsigned confidence and optional coefficient sign.
 - `progress`: BBSR progress uses MI/CLR and per-target regression jobs; AMuSR native grouped mode currently reports coarse phase progress.
 - `params`: public workflow/regression parameters above.
+- `runtime_resources.threading`: `supported=true`, `default_threads=1`,
+  `max_threads=8`; wrapper maps ANDREA `--threads` to Inferelator
+  `MPControl` worker processes and pins nested BLAS/OpenMP threads.
 - `artifacts_aux`: upstream log plus `network.tsv.gz`, `gene_alias_map.tsv`, `combined_confidences.tsv.gz`, `model_coefficients.tsv.gz`, and `inferelator_model.h5ad`; smoke validation confirms all exist.
 
 Uncertainty:
@@ -164,7 +199,7 @@ Uncertainty:
 - Docker pins `numpy<2` because `inferelator==0.6.3` fails the smoke BBSR path with current NumPy 2.x scalar assignment behavior.
 - Inferelator 0.6.3 also calls `np.isdtype`; the wrapper installs a small NumPy 1.x compatibility shim before importing/using Inferelator.
 - Inferelator can retype numeric-looking TF names internally, producing an empty prior/TF intersection even when public ANDREA `tf_list.txt` and `prior_grn.tsv` agree. The wrapper therefore writes safe `andrea_gene_*` aliases into upstream runtime files and translates outputs back to the original public gene IDs.
-- `threads` remains an ANDREA runtime argument and maps to Inferelator `MPControl`; it is not a ToolSpec parameter.
+- `threads` remains an ANDREA runtime argument and maps to Inferelator `MPControl`; it is represented in `runtime_resources.threading`, not as a ToolSpec method parameter.
 
 ## Failure Semantics Review
 

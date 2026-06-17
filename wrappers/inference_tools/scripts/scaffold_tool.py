@@ -152,6 +152,14 @@ def toolspec_template(tool_id: str) -> str:
         "implementation_url": "https://example.org/TODO",
         "docker_image": f"TODO/{tool_id}:latest",
         "execution_capabilities": ["global"],
+        "runtime_resources": {
+            "threading": {
+                "supported": False,
+                "default_threads": 1,
+                "max_threads": 1,
+                "upstream_mapping": "TODO: document how wrapper --threads maps to upstream parallelism, or state that upstream exposes no parallel runtime control.",
+            }
+        },
         "taxonomic_scope": {
             "allowed_groups": [
                 "animal",
@@ -255,6 +263,10 @@ TODO
 TODO
 
 ### `docker_image`
+
+TODO
+
+### `runtime_resources`
 
 TODO
 

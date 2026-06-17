@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-RUN R -q -e "install.packages(c('lars','remotes'), repos='https://cloud.r-project.org')" \
+RUN R -q -e "install.packages(c('doParallel','lars','remotes'), repos='https://cloud.r-project.org')" \
   && R -q -e "remotes::install_github('jpvert/tigress@${TIGRESS_REF}')"
 
 COPY run_tool.sh /app/run_tool.sh

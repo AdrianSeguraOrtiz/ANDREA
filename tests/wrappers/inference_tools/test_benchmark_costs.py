@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import json
-import shutil
 import sys
 import tempfile
 import unittest
@@ -52,6 +51,35 @@ def _runtime_point() -> dict[str, object]:
         "seconds_p50": 1.0,
         "seconds_p90": 1.0,
     }
+
+
+def _catalog_toolspec(tool_id: str, *, supported: bool = True) -> dict[str, object]:
+    payload = json.loads((CATALOG_TOOLS_ROOT / tool_id / "toolspec.json").read_text())
+    payload["runtime_resources"] = {
+        "threading": {
+            "supported": supported,
+            "default_threads": 1,
+            "max_threads": 8 if supported else 1,
+            "upstream_mapping": (
+                "Test fixture maps --threads to upstream runtime controls."
+                if supported
+                else "Test fixture exposes no upstream parallel runtime control."
+            ),
+        }
+    }
+    return payload
+
+
+def _write_catalog_toolspec(
+    target_path: Path,
+    tool_id: str,
+    *,
+    supported: bool = True,
+) -> None:
+    target_path.write_text(
+        json.dumps(_catalog_toolspec(tool_id, supported=supported), indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _valid_cost_payload() -> dict[str, object]:
@@ -169,6 +197,55 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
             any("not declared by this ToolSpec" in error for error in errors)
         )
 
+    def test_toolcost_semantics_reject_threads_incompatible_with_toolspec(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog_root = Path(tmp) / "tools"
+            (catalog_root / "serial_tool").mkdir(parents=True)
+            toolspec = _catalog_toolspec("genie3", supported=False)
+            toolspec["id"] = "serial_tool"
+            (catalog_root / "serial_tool" / "toolspec.json").write_text(
+                json.dumps(toolspec, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            payload = copy.deepcopy(_valid_cost_payload())
+            profile = payload["profiles"][0]
+            profile["benchmark_config"]["threads_tested"] = [1, 2]
+            profile["runtime_points"][0]["threads"] = 2
+
+            errors = validate_tool_costs.semantic_errors_for_cost(
+                tool_id="serial_tool",
+                instance=payload,
+                catalog_tools_root=catalog_root,
+                known_input_keys=validate_tool_costs.discover_input_keys(
+                    CATALOG_TOOLS_ROOT.parent / "input_specs"
+                ),
+            )
+
+        self.assertTrue(any("threads_tested" in error for error in errors), errors)
+        self.assertTrue(any("runtime_points[1].threads" in error for error in errors), errors)
+
+    def test_benchmark_thread_filter_respects_toolspec_threading(self) -> None:
+        supported = _catalog_toolspec("genie3", supported=True)
+        supported["runtime_resources"]["threading"]["max_threads"] = 4
+        serial = _catalog_toolspec("genie3", supported=False)
+
+        self.assertEqual(
+            benchmark_costs.filter_threads_for_tool(
+                tool_id="parallel_tool",
+                toolspec=supported,
+                requested_threads=[1, 2, 4, 8],
+            ),
+            [1, 2, 4],
+        )
+        self.assertEqual(
+            benchmark_costs.filter_threads_for_tool(
+                tool_id="serial_tool",
+                toolspec=serial,
+                requested_threads=[1, 2, 4],
+            ),
+            [1],
+        )
+
     def test_profile_filters_support_tool_qualified_and_unqualified_ids(self) -> None:
         targets = resolve_tool_targets(
             selected_tools=[
@@ -183,7 +260,7 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
             default_optional_inputs=None,
             profile_filters=[
                 "genie3:global_tf_list",
-                "group_native_groups_2_q0_independent",
+                "group_native_groups_1_q0_independent",
             ],
         )
 
@@ -194,7 +271,7 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
         )
         self.assertEqual(
             [profile.profile_id for profile in targets[1].profiles],
-            ["group_native_groups_2_q0_independent"],
+            ["group_native_groups_1_q0_independent"],
         )
 
     def test_profile_filter_rejects_unknown_ids(self) -> None:
@@ -237,9 +314,9 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
             tool_sources_root = tmp_root / "tool_sources"
             (catalog_root / "genie3").mkdir(parents=True)
             (tool_sources_root / "genie3").mkdir(parents=True)
-            shutil.copy2(
-                CATALOG_TOOLS_ROOT / "genie3" / "toolspec.json",
+            _write_catalog_toolspec(
                 catalog_root / "genie3" / "toolspec.json",
+                "genie3",
             )
 
             with patch.object(
@@ -314,9 +391,10 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
             workdir = tmp_root / "benchmark_work"
             (catalog_root / "clr").mkdir(parents=True)
             (tool_sources_root / "clr").mkdir(parents=True)
-            shutil.copy2(
-                CATALOG_TOOLS_ROOT / "clr" / "toolspec.json",
+            _write_catalog_toolspec(
                 catalog_root / "clr" / "toolspec.json",
+                "clr",
+                supported=False,
             )
             cost_path = catalog_root / "clr" / "cost.json"
             cost_path.write_text('{"sentinel": true}\n', encoding="utf-8")

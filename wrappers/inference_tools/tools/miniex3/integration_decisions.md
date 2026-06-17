@@ -58,7 +58,16 @@ Phase: Phase 3 complete; wrapper, ToolSpec, input specs and smoketest validated.
 - Optional GO/term-guided ranking: exposed by optional `terms_of_interest`; upstream chooses standard/reference Borda at runtime.
 - Optional custom enrichment universe: exposed by optional `enrichment_background`.
 - Optional precomputed GRNBoost2 cache: exposed by optional `grnboost_network`.
-- GRNBoost2 subjob count and visualization threshold: exposed as `grnboostSubjobs` and `topRegulons`.
+- Visualization threshold: exposed as `topRegulons`.
+- GRNBoost2 subjob count is not exposed as a normal parameter after the runtime-resources migration. Upstream documents it as a technical setting that does not affect results, so the wrapper keeps the upstream default internally and maps assigned CPU resources through `runtime_resources.threading`.
+
+### Runtime Resources
+
+- ToolSpec value: `runtime_resources.threading.supported=true`, `default_threads=1`, `max_threads=8`.
+- Evidence: `miniex.nf` process `run_grnboost` passes `${task.cpus}` to `MINIEX_runGrnboost.py`; that script reads it as `num_workers` and constructs `multiprocessing.Pool(num_workers)`.
+- Wrapper mapping: ANDREA `--threads` becomes Nextflow `cpus` for `run_grnboost`, while BLAS/OpenMP-style environment variables are pinned to 1 to avoid nested oversubscription.
+- `grnboostSubjobs` remains an internal technical default (`20` for de novo GRNBoost2; `1` when `grnboost_network` skips the stage). It is intentionally not represented in `params` because it is a resource partitioning control, not a method parameter.
+- Limitation: when a precomputed `grnboost_network` is supplied, the GRNBoost2 worker stage is skipped, so extra threads may not materially affect runtime for that input path.
 
 ### Upstream Modes Not Exposed
 
@@ -216,7 +225,7 @@ Schema changes made:
 ### `progress`
 
 - Chosen value: `task_partitions`.
-- Evidence: public interface is a Nextflow workflow with named processes, and `grnboostSubjobs` splits GRNBoost2 into independent subjobs.
+- Evidence: public interface is a Nextflow workflow with named processes, and the GRNBoost2 stage can be split into independent upstream subjobs.
 - Rationale: progress can be reported as coarse Nextflow process/task progress rather than target gene loops.
 - Uncertainty: exact percentages will be wrapper-defined and approximate; upstream does not expose stable per-edge callbacks.
 
@@ -228,9 +237,9 @@ Schema changes made:
 - `topMarkers = 700`: upstream default. Evidence: `miniex.config`, `docs/configuration.md`, primary paper parameter optimization.
 - `expressionFilter = 10`: upstream default and valid range 0-100. Evidence: `miniex.config`, `docs/configuration.md`, `MINIEX_checkUserInput.py`.
 - `topRegulons = 150`: upstream default and visualization-only. Evidence: `miniex.config` and `docs/configuration.md`.
-- `grnboostSubjobs = 20`: upstream default, technical partition count. Evidence: `miniex.config`, `docs/configuration.md`, `MINIEX_checkUserInput.py`.
-- Rationale: preserve upstream defaults and expose documented behavior-changing settings; avoid exposing executor/memory because those are runtime infrastructure, not method parameters.
-- Uncertainty: upstream validation function accepts integer `0` for some "positive" parameters, but `grnboostSubjobs=0` would make splitting invalid. ToolSpec sets `grnboostSubjobs` minimum to 1 and leaves `topMarkers`/`topRegulons` minimum at 0 to match upstream validation.
+- `grnboostSubjobs` was removed from the public parameter surface during the threading-contract migration. Evidence: `miniex.config` labels it as a technical setting, `docs/configuration.md` states subjobs are independent and can use multiple CPUs, and `MINIEX_runGrnboost.py` receives `task.cpus` as multiprocessing workers.
+- Rationale: preserve behavior-changing method settings as params and route resource controls through `runtime_resources.threading`; avoid exposing executor, memory, workers or partition counts as normal method parameters.
+- Uncertainty: upstream validation function accepts integer `0` for some "positive" parameters, but the wrapper keeps the safe upstream default internally, so users do not need to configure this directly.
 
 ### `artifacts_aux`
 
@@ -291,7 +300,7 @@ Schema changes made:
 
 - Use a small cell expression matrix with at least two clusters, a TF list, marker table, groups file and cluster identity file.
 - Prefer `doMotifAnalysis=false` and `reference_species=none` for the first smoke test to avoid species annotation/motif dependencies and make the test independent of real plant IDs.
-- Use a tiny provided `grnboost_network` in the smoke test if GRNBoost2 runtime is too heavy; otherwise run de novo with low `grnboostSubjobs`.
+- Use a tiny provided `grnboost_network` in the smoke test if GRNBoost2 runtime is too heavy; otherwise run de novo with assigned `--threads` controlling `run_grnboost` workers.
 - Validate that `network.csv` contains nonzero directed TF-to-target rows with `context=group:<cluster>`, and that raw upstream artifacts are copied under `raw/`.
 
 ## Phase 2 Implementation Notes
@@ -303,6 +312,10 @@ Schema changes made:
   - Required extras: `groups.tsv`, `cluster_markers.tsv`, `cluster_identities.tsv`, `tf_list.txt`.
   - Optional extras: `terms_of_interest.txt`, `enrichment_background.txt`, `grnboost_network.tsv`.
   - For `reference_species=none`, wrapper rejects `doMotifAnalysis=true` and rejects `terms_of_interest.txt` because GO annotations are unavailable.
+- Runtime resources:
+  - `--threads` maps to Nextflow `run_grnboost.cpus`, which upstream passes to `MINIEX_runGrnboost.py` as `multiprocessing.Pool(num_workers)`.
+  - The wrapper sets Nextflow `queueSize=1` and keeps `grnboostSubjobs` internal to avoid multiplying assigned threads by concurrent GRNBoost2 subjobs.
+  - BLAS/OpenMP/MKL/NumExpr/BLIS/Accelerate environment variables are pinned to 1 inside the wrapper's Nextflow environment.
 - Output conversion:
   - Reads `raw/regulons/*_edgeTable.tsv`.
   - Writes `network.csv` rows as `source=TF`, `target=TG`, `score=weight`, `sign=?`, `evidence=association`, `context=group:<original group>`.

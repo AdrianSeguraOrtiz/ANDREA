@@ -40,6 +40,28 @@ interleaving, so the PDF remains the primary paper evidence.
   repo. PyPI package discovery with `python -m pip index versions scgenerai`
   found no package on 2026-06-16.
 
+## Runtime Resources
+
+- ToolSpec value: `runtime_resources.threading.supported=true`,
+  `default_threads=1`, `max_threads=8`.
+- Evidence: the pinned upstream implementation imports PyTorch, trains a
+  `torch.nn.Module` in `train(...)`, and performs LRP prediction through
+  PyTorch tensor operations in `compute_LRP(...)`; it does not expose
+  `n_jobs`, workers, DataLoader workers or a public thread parameter.
+- Wrapper mapping: ANDREA `--threads` is applied before `fit(...)` and
+  `predict_networks(...)` through `torch.set_num_threads(threads)` and through
+  `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS`,
+  `NUMEXPR_NUM_THREADS`, `BLIS_NUM_THREADS` and `VECLIB_MAXIMUM_THREADS`.
+- PyTorch inter-op threads are fixed to 1 because scGeneRAI has no outer worker
+  pool; this avoids nested oversubscription while still allowing the assigned
+  threads to affect CPU tensor kernels.
+- No normal ToolSpec parameter represents threads, workers, cores, DataLoader
+  worker count or device selection. `batch_size` remains a method/training
+  hyperparameter because it changes optimization behavior, not only resource
+  allocation.
+- No `cost.json` exists yet for scGeneRAI, so planner fallback currently uses
+  `default_threads=1` until cost benchmarking adds compatible runtime points.
+
 ## Upstream Entrypoint Audit
 
 | Upstream surface | Output | ANDREA mapping | Exposed | Decision |
@@ -137,6 +159,7 @@ Dynamic or implementation defaults preserved by calling upstream code:
 | `method_keywords` | `single_cell`, `explainable_ai`, `layer_wise_relevance_propagation`, `deep_learning`, `cell_specific_network`, `undirected` | Paper title, abstract, and LRPau method section. | None |
 | `implementation_url` | `https://github.com/PhGK/scGeneRAI` | Paper availability and local git remote. | None |
 | `docker_image` | `adriansegura99/inference-tools_scgenerai:1.0.0` | Local image naming convention used by other inference ToolSpecs. | Final publication is outside Phase 3. |
+| `runtime_resources.threading` | Supported; default 1, max 8 | Wrapper maps `--threads` to PyTorch CPU intra-op threads and thread environment variables; upstream uses PyTorch training/LRP and exposes no separate worker parameter. | No cost profile exists yet, so default remains conservative. |
 | `execution_capabilities` | `cell_native`, `group_aggregated` | Upstream writes per-cell files; ANDREA can aggregate cell rows by groups. | None |
 | `accepts` | `cells` | README and paper describe RNA samples of cells and individual-cell GRNs. | None |
 | `assumes` | `scrna_specific` | Paper is explicitly for static scRNA-seq and single-cell GRNs. | None |

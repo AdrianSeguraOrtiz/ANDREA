@@ -190,6 +190,17 @@ def normalize_custom_tools_payload(
             "implementation_url": "",
             "docker_image": docker_image,
             "execution_capabilities": capabilities,
+            "runtime_resources": {
+                "threading": {
+                    "supported": False,
+                    "default_threads": 1,
+                    "max_threads": 1,
+                    "upstream_mapping": (
+                        "External Docker tool threading is not catalog-audited; "
+                        "ANDREA assigns one thread by default."
+                    ),
+                }
+            },
             "taxonomic_scope": {
                 "allowed_groups": sorted(constraints.taxonomic_groups),
                 "supported_species": [],

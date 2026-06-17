@@ -3,8 +3,7 @@
     "nstepsLARS",
     "nsplit",
     "normalizeexp",
-    "allsteps",
-    "usemulticore"
+    "allsteps"
   ],
   "profiles": [
     {

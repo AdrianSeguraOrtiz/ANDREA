@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 suppressPackageStartupMessages({
+  suppressWarnings(library(doParallel))
   suppressWarnings(library(jsonlite))
   suppressWarnings(library(tigress))
 })
@@ -77,7 +78,7 @@ load_params <- function(params_path) {
 resolve_params <- function(raw_params) {
   required <- c(
     "alpha", "nstepsLARS", "nsplit", "normalizeexp", "scoring",
-    "allsteps", "usemulticore", "limit", "seed"
+    "allsteps", "limit", "seed"
   )
   missing <- setdiff(required, names(raw_params))
   if (length(missing) > 0L) {
@@ -90,7 +91,6 @@ resolve_params <- function(raw_params) {
   normalizeexp <- raw_params$normalizeexp
   scoring <- raw_params$scoring
   allsteps <- raw_params$allsteps
-  usemulticore <- raw_params$usemulticore
   limit <- raw_params$limit
   seed <- raw_params$seed
 
@@ -105,7 +105,6 @@ resolve_params <- function(raw_params) {
     stop("scoring must be one of: area, max.", call. = FALSE)
   }
   if (!is_scalar_logical(allsteps)) stop("allsteps must be a boolean.", call. = FALSE)
-  if (!is_scalar_logical(usemulticore)) stop("usemulticore must be a boolean.", call. = FALSE)
 
   if (!is.null(limit)) {
     limit <- as_int_checked("limit", limit, min_value = 1)
@@ -121,10 +120,29 @@ resolve_params <- function(raw_params) {
     normalizeexp = normalizeexp,
     scoring = scoring,
     allsteps = allsteps,
-    usemulticore = usemulticore,
     limit = limit,
     seed = seed
   )
+}
+
+configure_threads <- function(threads) {
+  if (is.na(threads) || threads <= 0L) {
+    stop("--threads must be a positive integer.", call. = FALSE)
+  }
+  for (key in c(
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "BLIS_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS"
+  )) {
+    do.call(Sys.setenv, stats::setNames(list("1"), key))
+  }
+
+  if (threads > 1L) {
+    doParallel::registerDoParallel(cores = threads)
+  }
 }
 
 load_tf_list <- function(extra_dir) {
@@ -186,9 +204,10 @@ empty_network <- function() {
 
 # Upstream TIGRESS can index past the available LARS steps on small/collinear datasets.
 # Retry with fewer steps so the wrapper remains usable instead of failing outright.
-run_tigress_with_fallback <- function(expression_data, tf_names, params) {
+run_tigress_with_fallback <- function(expression_data, tf_names, params, threads) {
   requested_steps <- params$nstepsLARS
   last_error <- NULL
+  usemulticore <- threads > 1L
 
   for (steps in seq.int(requested_steps, 1L, by = -1L)) {
     result <- tryCatch(
@@ -203,7 +222,7 @@ run_tigress_with_fallback <- function(expression_data, tf_names, params) {
         scoring = params$scoring,
         allsteps = params$allsteps,
         verb = FALSE,
-        usemulticore = params$usemulticore
+        usemulticore = usemulticore
       ),
       error = function(e) e
     )
@@ -259,9 +278,7 @@ main <- function() {
   threads_raw <- args$threads %||% stop("Missing required argument: --threads", call. = FALSE)
 
   threads <- suppressWarnings(as.integer(threads_raw))
-  if (is.na(threads) || threads <= 0L) {
-    stop("--threads must be a positive integer.", call. = FALSE)
-  }
+  configure_threads(threads)
 
   if (!file.exists(input_path)) stop(sprintf("Input file not found: %s", input_path), call. = FALSE)
   if (!file.exists(params_path)) stop(sprintf("Params file not found: %s", params_path), call. = FALSE)
@@ -275,10 +292,6 @@ main <- function() {
   tryCatch({
     raw_params <- load_params(params_path)
     params <- resolve_params(raw_params)
-
-    if (isTRUE(params$usemulticore) && threads <= 1L) {
-      warning("usemulticore=TRUE but --threads<=1; running effectively single-core.")
-    }
 
     if (!is.null(params$seed)) {
       set.seed(params$seed)
@@ -321,7 +334,7 @@ main <- function() {
       "Running TIGRESS (no fine-grained internal progress available)"
     )
 
-    tigress_run <- run_tigress_with_fallback(expression_data, tf_names, params)
+    tigress_run <- run_tigress_with_fallback(expression_data, tf_names, params, threads)
     tigress_result <- tigress_run$result
 
     score_matrix <- if (is.list(tigress_result)) {

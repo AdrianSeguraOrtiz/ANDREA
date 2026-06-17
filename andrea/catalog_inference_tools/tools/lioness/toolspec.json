@@ -23,6 +23,14 @@
     "cell_native",
     "group_aggregated"
   ],
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "The selected public entrypoint lionessR::lioness(expression_data, lionessR::netFun) exposes no documented thread, worker or core-count argument. The wrapper pins common BLAS/OpenMP environment variables to 1 and requires ANDREA --threads=1."
+    }
+  },
   "taxonomic_scope": {
     "allowed_groups": [
       "animal",

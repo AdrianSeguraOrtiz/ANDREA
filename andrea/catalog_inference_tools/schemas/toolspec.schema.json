@@ -17,6 +17,7 @@
     "implementation_url",
     "docker_image",
     "execution_capabilities",
+    "runtime_resources",
     "taxonomic_scope",
     "compatibility_rules",
     "accepts",
@@ -61,6 +62,44 @@
         "synthetic",
         "unknown"
       ]
+    },
+    "runtime_resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["threading"],
+      "properties": {
+        "threading": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "supported",
+            "default_threads",
+            "max_threads",
+            "upstream_mapping"
+          ],
+          "properties": {
+            "supported": {
+              "type": "boolean",
+              "description": "Whether ANDREA may assign more than one runtime thread to this tool."
+            },
+            "default_threads": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Default planner thread assignment when no cost profile is available."
+            },
+            "max_threads": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum planner thread assignment supported by the wrapper/upstream runtime."
+            },
+            "upstream_mapping": {
+              "type": "string",
+              "minLength": 1,
+              "description": "How wrapper --threads maps to upstream API, CLI, worker, process or runtime environment controls."
+            }
+          }
+        }
+      }
     },
     "extra_input_usage": {
       "type": "object",
@@ -407,6 +446,9 @@
         ]
       },
       "description": "Execution modes supported by the tool wrapper: global, native grouped inference, orchestrator-emulated grouped inference, native per-cell inference, and/or ANDREA group aggregation from native per-cell outputs."
+    },
+    "runtime_resources": {
+      "$ref": "#/$defs/runtime_resources"
     },
     "taxonomic_scope": {
       "type": "object",

@@ -15,8 +15,7 @@
     "doMotifAnalysis": false,
     "topMarkers": 10,
     "expressionFilter": 0,
-    "topRegulons": 6,
-    "grnboostSubjobs": 1
+    "topRegulons": 6
   },
   "checks": {
     "forbid_self_loops": true,
