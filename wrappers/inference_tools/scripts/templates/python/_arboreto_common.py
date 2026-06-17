@@ -58,7 +58,7 @@ def infer_arboreto_local(
         n_workers=threads,
         threads_per_worker=1,
         processes=True,
-        diagnostics_port=None,
+        dashboard_address=None,
     )
     client = Client(cluster)
     try:
