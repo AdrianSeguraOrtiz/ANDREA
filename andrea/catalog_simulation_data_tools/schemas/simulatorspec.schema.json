@@ -877,10 +877,6 @@
       "additionalProperties": {
         "$ref": "#/$defs/param_def"
       }
-    },
-    "notes": {
-      "type": "string",
-      "minLength": 1
     }
   }
 }

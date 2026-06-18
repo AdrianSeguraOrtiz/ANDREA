@@ -953,6 +953,7 @@ textarea {
   background: rgba(255, 255, 255, 0.96);
   display: grid;
   gap: 0.35rem;
+  overflow: visible;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 

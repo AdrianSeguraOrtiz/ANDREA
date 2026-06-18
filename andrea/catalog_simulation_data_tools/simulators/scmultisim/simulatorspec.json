@@ -1695,6 +1695,5 @@
       ],
       "description": "Preset for upstream ext.cif.giv, which expects an R function. Only none is currently serializable and supported."
     }
-  },
-  "notes": "Phase 1 contract for the scMultiSim Bioconductor package version 1.8.0. The wrapper will mirror sim_true_counts(options), optionally followed by add_expr_noise and divide_batches. Spatial cell-cell interaction simulation is scientifically supported upstream but is not claimed in this initial ANDREA contract because there is no canonical spatial simulation profile yet and CCI inputs/outputs need a separate normalized contract."
+  }
 }

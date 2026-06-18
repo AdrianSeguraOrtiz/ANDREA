@@ -1133,6 +1133,5 @@
         }
       }
     }
-  },
-  "notes": "Phase 3 verified. The Docker image installs SERGIO from the public GitHub repository pinned to a6190b74425112834c8fa9b4b6157d9cb3d1ab88; the wrapper calls the public Python API and emits the normalized ANDREA output package documented in profile_capabilities."
+  }
 }

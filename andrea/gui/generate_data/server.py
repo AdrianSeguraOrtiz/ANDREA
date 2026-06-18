@@ -288,7 +288,6 @@ def _load_generate_bootstrap() -> dict[str, Any]:
                 "extra_inputs": spec.get("extra_inputs", {}),
                 "runtime_resources": spec.get("runtime_resources", {}),
                 "profile_capabilities": spec.get("profile_capabilities", {}),
-                "notes": spec.get("notes"),
                 "params_schema": spec.get("params", {}),
                 "spec": spec,
             }

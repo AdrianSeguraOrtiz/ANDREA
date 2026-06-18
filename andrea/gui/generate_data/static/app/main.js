@@ -1465,7 +1465,6 @@ function simulatorInfoPayload(simulator) {
             value: simulator.implementation_url || "-",
           },
           { label: "Docker image", value: simulator.docker_image || "-" },
-          { label: "Notes", value: simulatorNotesSummary(simulator.notes) },
         ],
       },
       {
@@ -1504,13 +1503,6 @@ function simulatorRuntimeResourceSummary(resources) {
     `max_threads: ${maxThreads}`,
     mapping ? `mapping: ${mapping}` : "",
   ].filter(Boolean).join("\n");
-}
-
-function simulatorNotesSummary(notes) {
-  if (Array.isArray(notes)) {
-    return notes.map((item) => String(item || "").trim()).filter(Boolean).join("\n") || "none";
-  }
-  return String(notes || "").trim() || "none";
 }
 
 function simulatorInputSummary(item) {

@@ -674,6 +674,5 @@
         }
       }
     }
-  },
-  "notes": "Phase 3 verified. The Docker image installs BoolODE from https://github.com/Murali-group/BoolODE.git pinned to ba8884af40f98fc648b3f36f0b81a5a8cf22c9b9; the wrapper calls the public BoolODE Python API, emits the normalized ANDREA output package, and serializes integral simulation_time values as YAML integers to avoid a pinned upstream large-output sampling TypeError."
+  }
 }
