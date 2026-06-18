@@ -126,7 +126,7 @@ load_execution_mode <- function(params_path) {
   }
   if (!(mode %in% SUPPORTED_MODES)) {
     stop(
-      "ScReNI supports only execution.mode=cell_native or execution.mode=group_aggregated.",
+      "kScReNI supports only execution.mode=cell_native or execution.mode=group_aggregated.",
       call. = FALSE
     )
   }
@@ -193,7 +193,7 @@ read_expression_tsv <- function(expr_path) {
     stop("expression.tsv contains non-finite or non-numeric expression values.", call. = FALSE)
   }
   if (any(mat < 0)) {
-    stop("ScReNI kScReNI expects non-negative scRNA-seq counts.", call. = FALSE)
+    stop("kScReNI expects non-negative scRNA-seq counts.", call. = FALSE)
   }
 
   rownames(mat) <- gene_ids
@@ -203,10 +203,10 @@ read_expression_tsv <- function(expr_path) {
 
 validate_expression_for_params <- function(expr, params) {
   if (nrow(expr) < 2L) {
-    stop("ScReNI requires at least 2 genes.", call. = FALSE)
+    stop("kScReNI requires at least 2 genes.", call. = FALSE)
   }
   if (ncol(expr) < 2L) {
-    stop("ScReNI requires at least 2 cells.", call. = FALSE)
+    stop("kScReNI requires at least 2 cells.", call. = FALSE)
   }
   if (params$knn + 1L > ncol(expr)) {
     stop(
@@ -223,7 +223,7 @@ validate_expression_for_params <- function(expr, params) {
 validate_groups <- function(extra_dir, cell_ids) {
   groups_path <- file.path(extra_dir, "groups.tsv")
   if (!file.exists(groups_path)) {
-    stop("groups.tsv is required for ScReNI execution.mode=group_aggregated.", call. = FALSE)
+    stop("groups.tsv is required for kScReNI execution.mode=group_aggregated.", call. = FALSE)
   }
   header <- read_header(groups_path)
   if (length(header) < 2L || !("cluster" %in% header[-1L])) {
@@ -309,7 +309,7 @@ run_kscreni_with_safe_pca <- function(expr, params, threads, log_path) {
   variable_features <- Seurat::VariableFeatures(object = pbmc)
   safe_npcs <- min(50L, length(variable_features), ncol(expr) - 1L, nrow(expr) - 1L)
   if (safe_npcs < 1L) {
-    stop("ScReNI requires at least one computable PCA component.", call. = FALSE)
+    stop("kScReNI requires at least one computable PCA component.", call. = FALSE)
   }
   append_log(
     log_path,
@@ -350,22 +350,22 @@ coerce_weight_matrix <- function(value, cell_id) {
   mat <- as.matrix(value)
   suppressWarnings(storage.mode(mat) <- "double")
   if (!is.matrix(mat) || nrow(mat) < 1L || ncol(mat) < 1L) {
-    stop(sprintf("ScReNI returned an empty matrix for cell %s.", cell_id), call. = FALSE)
+    stop(sprintf("kScReNI returned an empty matrix for cell %s.", cell_id), call. = FALSE)
   }
   if (is.null(rownames(mat)) || is.null(colnames(mat))) {
-    stop(sprintf("ScReNI returned a matrix without gene dimnames for cell %s.", cell_id), call. = FALSE)
+    stop(sprintf("kScReNI returned a matrix without gene dimnames for cell %s.", cell_id), call. = FALSE)
   }
   mat
 }
 
 network_to_andrea <- function(sc_networks, expected_cells) {
   if (!is.list(sc_networks)) {
-    stop("ScReNI output must be a list of per-cell network matrices.", call. = FALSE)
+    stop("kScReNI output must be a list of per-cell network matrices.", call. = FALSE)
   }
   if (length(sc_networks) != length(expected_cells)) {
     stop(
       sprintf(
-        "ScReNI returned %d cell networks but expression.tsv has %d cells.",
+        "kScReNI returned %d cell networks but expression.tsv has %d cells.",
         length(sc_networks),
         length(expected_cells)
       ),
@@ -378,7 +378,7 @@ network_to_andrea <- function(sc_networks, expected_cells) {
     network_names <- expected_cells
   }
   if (!identical(network_names, expected_cells)) {
-    stop("ScReNI output cell names do not match expression.tsv cell identifiers.", call. = FALSE)
+    stop("kScReNI output cell names do not match expression.tsv cell identifiers.", call. = FALSE)
   }
 
   rows <- vector("list", length(sc_networks))
@@ -443,10 +443,10 @@ main <- function() {
   dir.create(raw_dir, recursive = TRUE, showWarnings = FALSE)
 
   progress_path <- file.path(output_dir, "progress.json")
-  log_path <- file.path(output_dir, "screni.log")
+  log_path <- file.path(output_dir, "kscreni.log")
 
-  write_progress(progress_path, "running", 0L, "init", "Initializing ScReNI wrapper")
-  append_log(log_path, "Initializing ScReNI wrapper")
+  write_progress(progress_path, "running", 0L, "init", "Initializing kScReNI wrapper")
+  append_log(log_path, "Initializing kScReNI wrapper")
 
   tryCatch({
     params <- resolve_params(load_params(params_path))
@@ -472,10 +472,10 @@ main <- function() {
       )
     )
 
-    write_progress(progress_path, "running", 15L, "inference", "Running ScReNI kScReNI")
+    write_progress(progress_path, "running", 15L, "inference", "Running kScReNI")
     sc_networks <- capture_upstream_output(log_path, expr, params, threads)
     saveRDS(sc_networks, file.path(raw_dir, "kscreni_networks.rds"))
-    append_log(log_path, sprintf("ScReNI returned %d cell-specific networks", length(sc_networks)))
+    append_log(log_path, sprintf("kScReNI returned %d cell-specific networks", length(sc_networks)))
 
     write_progress(progress_path, "running", 90L, "write_output", "Writing network.csv")
     network_df <- network_to_andrea(sc_networks, colnames(expr))

@@ -510,7 +510,7 @@ class CompareNetworksCoreTests(unittest.TestCase):
                 run_id="run",
                 catalog_ids={
                     "cell_tool_a": "lioness",
-                    "cell_tool_b": "screni",
+                    "cell_tool_b": "kscreni",
                 },
             )
             request = base / "comparison-request.json"

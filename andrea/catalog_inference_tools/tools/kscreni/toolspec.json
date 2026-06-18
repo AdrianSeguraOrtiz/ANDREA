@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
-  "id": "screni",
-  "name": "ScReNI (kScReNI)",
+  "id": "kscreni",
+  "name": "kScReNI",
   "publication": [
     "https://doi.org/10.1093/gpbjnl/qzaf060"
   ],
   "first_author": "Xueli Xu",
   "year": 2025,
-  "method_summary": "ScReNI infers cell-specific regulatory networks by identifying neighboring cells with k-nearest neighbors and estimating random-forest importance scores as regulatory weights. kScReNI is the transcriptome-only ScReNI variant for scRNA-seq data alone, producing directed cell-specific regulator-target networks.",
+  "method_summary": "kScReNI is the transcriptome-only ScReNI variant for scRNA-seq data alone. It infers cell-specific regulatory networks by identifying neighboring cells with k-nearest neighbors and estimating random-forest importance scores as directed regulator-target weights.",
   "method_keywords": [
     "single_cell",
     "cell_specific_network",
@@ -17,7 +17,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/Xuxl2020/ScReNI",
-  "docker_image": "adriansegura99/inference-tools_screni:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_kscreni:1.0.0",
   "execution_capabilities": [
     "cell_native",
     "group_aggregated"
@@ -58,14 +58,14 @@
         "execution": "mode",
         "op": "eq",
         "value": "group_aggregated",
-        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates ScReNI cell-native network rows by group.",
-        "usage": "ANDREA uses groups.tsv after the native kScReNI per-cell run to aggregate cell:<cell_id> rows into group:<group_id> rows; ScReNI itself does not consume groups.tsv."
+        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates kScReNI cell-native network rows by group.",
+        "usage": "ANDREA uses groups.tsv after the native kScReNI per-cell run to aggregate cell:<cell_id> rows into group:<group_id> rows; kScReNI itself does not consume groups.tsv."
       }
     ]
   },
   "artifacts_aux": [
     {
-      "path_pattern": "screni.log",
+      "path_pattern": "kscreni.log",
       "kind": "file",
       "require_non_empty": true,
       "description": "Combined stdout/stderr log from Seurat preprocessing, neighbor-graph construction, and per-cell GENIE3 runs."
@@ -84,7 +84,7 @@
   },
   "progress": {
     "kind": "none",
-    "note": "The kScReNI public entrypoint runs Seurat preprocessing followed by an internal foreach loop over cells and GENIE3 verbose output, but it does not expose a stable progress callback; the wrapper reports coarse lifecycle states in progress.json and records upstream diagnostics in screni.log."
+    "note": "The kScReNI public entrypoint runs Seurat preprocessing followed by an internal foreach loop over cells and GENIE3 verbose output, but it does not expose a stable progress callback; the wrapper reports coarse lifecycle states in progress.json and records upstream diagnostics in kscreni.log."
   },
   "params": {
     "nfeatures": {
