@@ -222,4 +222,4 @@ comparisons/
 benchmark_runs/
 
 # Paper
-paper/
+paper/*
