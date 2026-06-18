@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "id": "boolode_boolean_model",
+  "name": "BoolODE Boolean model",
+  "format": "tsv",
+  "accepted_extensions": [".tsv", ".txt"],
+  "description": "BoolODE Boolean-rule model table consumed as the model_definition file. Each row defines one gene and the Boolean rule controlling that gene.",
+  "example": "Gene\tRule\na\tnot(c)\nc\tnot(b)\nb\tnot(a)",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "required_columns": ["Gene", "Rule"],
+  "column_types": {
+    "Gene": "string",
+    "Rule": "string"
+  },
+  "validation_notes": [
+    "The Gene column contains BoolODE gene identifiers used in expression and truth outputs.",
+    "The Rule column uses BoolODE Boolean syntax with gene identifiers, parentheses and the logical operators and, or and not.",
+    "Identifiers referenced in rules should either have their own Gene row or be supplied as fixed inputs through a boolode_parameter_inputs file.",
+    "BoolODE may add self-activation rules for referenced nodes without explicit rules when they are not declared as parameter inputs."
+  ]
+}

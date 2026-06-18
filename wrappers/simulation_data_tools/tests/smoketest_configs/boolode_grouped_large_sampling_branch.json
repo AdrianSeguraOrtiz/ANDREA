@@ -1,0 +1,43 @@
+{
+  "simulator_id": "boolode",
+  "request": {
+    "profile": "scrna_grouped",
+    "seed": 303,
+    "effective_extras": [
+      "groups",
+      "prior_grn_by_group"
+    ],
+    "inputs": {},
+    "params": {
+      "model_preset": "dyn_bifurcating",
+      "model_type": "hill",
+      "simulation_time": 1.0,
+      "num_cells": 2,
+      "n_clusters": 2,
+      "sample_cells": false,
+      "sample_parameters": false,
+      "integration_step_size": 0.001,
+      "dropout": {
+        "enabled": false
+      }
+    },
+    "runtime_resources": {"threads": 1}
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "extras/prior_grn_by_group.tsv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/boolode_config.yaml",
+    "provenance/raw/boolode_output/andrea_boolode/ExpressionData.csv",
+    "provenance/raw/boolode_output/andrea_boolode/PseudoTime.csv",
+    "provenance/raw/boolode_output/andrea_boolode/refNetwork.csv",
+    "provenance/raw/boolode_output/andrea_boolode/ClusterIds.csv",
+    "provenance/raw/upstream_stdout.log"
+  ],
+  "required_truth_context_prefixes": ["global", "group:"]
+}

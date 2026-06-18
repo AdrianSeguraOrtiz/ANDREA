@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "id": "boolode_interaction_strengths",
+  "name": "BoolODE interaction strengths",
+  "format": "tsv",
+  "accepted_extensions": [".tsv", ".txt"],
+  "description": "BoolODE interaction-strength table consumed as the interaction_strengths file. Each row adjusts the ODE threshold for one regulator-target interaction.",
+  "example": "Gene1\tGene2\tStrength\ng4\tg6\t10\ng3\tg2\t0.2",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "required_columns": ["Gene1", "Gene2", "Strength"],
+  "column_types": {
+    "Gene1": "string",
+    "Gene2": "string",
+    "Strength": "float"
+  },
+  "validation_notes": [
+    "BoolODE interprets Gene1 as the target and Gene2 as the regulator in the pinned implementation.",
+    "Strength must be a positive numeric value used to scale the Hill or Heaviside threshold for that interaction.",
+    "Interaction strengths affect simulator dynamics but do not add new regulatory edges beyond those present in the Boolean model rules."
+  ]
+}

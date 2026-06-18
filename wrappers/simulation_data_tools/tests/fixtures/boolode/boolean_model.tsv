@@ -1,0 +1,4 @@
+Gene	Rule
+a	not(c)
+b	a
+c	not(b)

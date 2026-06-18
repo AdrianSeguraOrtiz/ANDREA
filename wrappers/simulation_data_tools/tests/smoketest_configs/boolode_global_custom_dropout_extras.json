@@ -1,0 +1,60 @@
+{
+  "simulator_id": "boolode",
+  "request": {
+    "profile": "scrna_global",
+    "seed": 301,
+    "effective_extras": [
+      "pseudotime",
+      "enrichment_background",
+      "prior_grn",
+      "tf_list"
+    ],
+    "inputs": {
+      "boolode_boolean_model": "../fixtures/boolode/boolean_model.tsv",
+      "boolode_initial_conditions": "../fixtures/boolode/initial_conditions.tsv",
+      "boolode_interaction_strengths": "../fixtures/boolode/interaction_strengths.tsv"
+    },
+    "params": {
+      "model_preset": "custom_files",
+      "model_type": "hill",
+      "simulation_time": 0.08,
+      "num_cells": 3,
+      "n_clusters": 1,
+      "sample_cells": false,
+      "sample_parameters": false,
+      "integration_step_size": 0.01,
+      "dropout": {
+        "enabled": true,
+        "drop_cutoff": 0.5,
+        "drop_prob": 0.5
+      }
+    },
+    "runtime_resources": {"threads": 1}
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/pseudotime.tsv",
+    "extras/enrichment_background.txt",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/boolode_config.yaml",
+    "provenance/raw/model_inputs/model_definition.tsv",
+    "provenance/raw/model_inputs/initial_conditions.tsv",
+    "provenance/raw/model_inputs/interaction_strengths.tsv",
+    "provenance/raw/boolode_output/andrea_boolode/ExpressionData.csv",
+    "provenance/raw/boolode_output/andrea_boolode/PseudoTime.csv",
+    "provenance/raw/boolode_output/andrea_boolode/refNetwork.csv",
+    "provenance/raw/dropout/dropout-50-0.5/ExpressionData.csv",
+    "provenance/raw/public_gene_id_map.tsv",
+    "provenance/raw/public_cell_id_map.tsv",
+    "provenance/raw/truth_source_edges.tsv",
+    "provenance/raw/session_info.txt",
+    "provenance/raw/upstream_stdout.log"
+  ],
+  "required_truth_context_prefixes": ["global"]
+}

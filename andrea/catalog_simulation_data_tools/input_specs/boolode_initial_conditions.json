@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "id": "boolode_initial_conditions",
+  "name": "BoolODE initial conditions",
+  "format": "tsv",
+  "accepted_extensions": [".tsv", ".txt"],
+  "description": "BoolODE initial-condition table consumed as the model_initial_conditions file. Each row stores Python-literal lists of genes and starting values.",
+  "example": "Genes\tValues\n['g1','g2']\t[1,0.01]",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "required_columns": ["Genes", "Values"],
+  "column_types": {
+    "Genes": "string",
+    "Values": "string"
+  },
+  "validation_notes": [
+    "Genes must be a Python-literal list of gene identifiers present in the BoolODE Boolean model.",
+    "Values must be a Python-literal list of numeric values with the same length as Genes.",
+    "BoolODE applies provided values to matching gene/protein state variables and falls back to small default values for unspecified genes."
+  ]
+}

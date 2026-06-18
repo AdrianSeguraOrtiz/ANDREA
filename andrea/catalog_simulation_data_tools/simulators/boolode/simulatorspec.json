@@ -1,0 +1,679 @@
+{
+  "schema_version": "1.0",
+  "id": "boolode",
+  "name": "BoolODE",
+  "publication": [
+    "https://doi.org/10.1038/s41592-019-0690-6"
+  ],
+  "first_author": "Aditya Pratapa",
+  "year": 2020,
+  "simulation_summary": "Converts Boolean gene regulatory models into stochastic ordinary differential equation systems and simulates single-cell expression time-course snapshots with native reference networks, pseudotime and optional trajectory clustering.",
+  "simulation_keywords": [
+    "scrna",
+    "single_cell",
+    "boolean_model",
+    "ordinary_differential_equations",
+    "gene_regulatory_network",
+    "trajectory",
+    "pseudotime"
+  ],
+  "implementation_url": "https://github.com/Murali-group/BoolODE",
+  "docker_image": "adriansegura99/simulator_boolode:1.0.0",
+  "extra_inputs": {
+    "required": [],
+    "optional": [
+      {
+        "input": "boolode_initial_conditions",
+        "usage": "Wrapper copies this file into BoolODE model_dir and sets jobs[].model_initial_conditions when mounted; bundled presets use their pinned repository initial-condition files when available."
+      },
+      {
+        "input": "boolode_interaction_strengths",
+        "usage": "Wrapper copies this file into BoolODE model_dir and sets jobs[].interaction_strengths when mounted; bundled presets use their pinned repository interaction-strength files when available."
+      }
+    ],
+    "conditional_required": [
+      {
+        "input": "boolode_boolean_model",
+        "usage": "Wrapper copies this BoolODE Gene/Rule table into model_dir and sets jobs[].model_definition when model_preset=custom_files.",
+        "conditions": [
+          {
+            "field": "param.model_preset",
+            "op": "eq",
+            "value": "custom_files"
+          }
+        ],
+        "message": "boolode_boolean_model is required when model_preset=custom_files."
+      }
+    ]
+  },
+  "compatibility_rules": [
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "profile",
+          "op": "eq",
+          "value": "scrna_grouped"
+        },
+        {
+          "field": "param.n_clusters",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "message": "scrna_grouped requires n_clusters >= 2 so BoolODE produces trajectory cluster IDs for public groups and group truth contexts."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.sample_cells",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "field": "param.n_clusters",
+          "op": "gt",
+          "value": 1
+        }
+      ],
+      "message": "BoolODE's nClusters>1 trajectory-clustering path requires sample_cells=false; sample_cells=true writes only one sampled cell per trajectory and does not populate the full trajectories needed by ClusterIds.csv."
+    }
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "The reviewed BoolODE YAML exposes only a do_parallel boolean; the pinned implementation calls multiprocessing.Pool() without a process-count argument and hard-codes KMeans n_jobs=8. The wrapper therefore rejects runtime_resources.threads != 1, writes do_parallel=false, and patches the imported public BoolODE KMeans constructor to n_jobs=1 before calling BoolODE.ConfigParser.parse(...).execute_jobs()."
+    }
+  },
+  "profile_capabilities": {
+    "scrna_global": {
+      "native_extras": [
+        "pseudotime"
+      ],
+      "derivable_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": {
+        "global": "native",
+        "group": "none",
+        "cell": "none"
+      },
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "refNetwork.csv",
+            "BoolODE Boolean model file"
+          ],
+          "upstream_configuration": [
+            "global_settings.do_simulations=true with jobs[].model_definition set to a bundled or mounted BoolODE Boolean model.",
+            "BoolODE run_experiment.startRun() calls utils.generateInputFiles(), which writes refNetwork.csv from the Boolean rules."
+          ],
+          "generation": "The wrapper normalizes every non-self-loop refNetwork.csv row into truth/networks.csv with context=global, source=Gene1 and target=Gene2.",
+          "score_semantics": "score is 1.0 because BoolODE refNetwork.csv stores signed topology but no edge magnitude; sign is copied from the native Type column, where '+' denotes activation and '-' denotes repression according to BoolODE's Boolean-rule parser.",
+          "limitations": [
+            "Complex Boolean rules are reduced to signed pairwise regulator-target edges by BoolODE's native refNetwork.csv generation.",
+            "Interaction-strength input files affect ODE thresholds but are not represented as public truth scores because refNetwork.csv does not emit magnitudes."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "The global profile does not export group truth contexts."
+        },
+        {
+          "context": "cell",
+          "status": "none",
+          "explanation": "BoolODE does not expose cell-specific regulatory networks."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "expression_data",
+          "kind": "matrix",
+          "description": "Gene-by-cell ExpressionData.csv written by BoolODE from simulated trajectories or sampled trajectory time points.",
+          "formats": [
+            "csv"
+          ]
+        },
+        {
+          "id": "reference_network",
+          "kind": "graph",
+          "description": "refNetwork.csv edgelist with Gene1 regulator, Gene2 target and signed interaction Type inferred from the Boolean model.",
+          "formats": [
+            "csv"
+          ]
+        },
+        {
+          "id": "pseudo_time",
+          "kind": "table",
+          "description": "PseudoTime.csv table containing normalized simulation time used by BoolODE as ground-truth pseudotime.",
+          "formats": [
+            "csv"
+          ]
+        },
+        {
+          "id": "simulation_trajectories",
+          "kind": "directory",
+          "description": "Per-simulation trajectory CSV files under the BoolODE simulations/ directory.",
+          "formats": [
+            "csv"
+          ]
+        },
+        {
+          "id": "generated_model",
+          "kind": "other",
+          "description": "model.py generated by BoolODE from the selected Boolean model.",
+          "formats": [
+            "py"
+          ]
+        },
+        {
+          "id": "kinetic_parameters",
+          "kind": "table",
+          "description": "parameters.txt containing the ODE kinetic parameter values used for the run.",
+          "formats": [
+            "txt"
+          ]
+        },
+        {
+          "id": "dropout_expression",
+          "kind": "matrix",
+          "description": "Post-processed ExpressionData.csv after BoolODE dropout induction.",
+          "formats": [
+            "csv"
+          ],
+          "conditions": [
+            {
+              "field": "param.dropout.enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "dropout_expression requires dropout.enabled=true."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public gene identifier present in expression.tsv as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The generated expression feature set is the appropriate enrichment background for downstream analysis of the simulated dataset."
+          ],
+          "limitations": [
+            "The background is synthetic and dataset-derived, not an organism-specific external annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "refNetwork.csv"
+          ],
+          "method": "Normalize the same non-self-loop refNetwork.csv rows used for global truth into extras/prior_grn.tsv with source=Gene1, target=Gene2, score=1.0 and sign=Type.",
+          "assumptions": [
+            "BoolODE's native reference network can serve as an oracle structural prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior rather than an independently noisy prior.",
+            "Edge magnitudes are unavailable in refNetwork.csv and are therefore binary."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "refNetwork.csv"
+          ],
+          "method": "Export the unique Gene1 regulator identifiers from refNetwork.csv, one per line, after applying the same public gene-id normalization used for expression.tsv and truth/networks.csv.",
+          "assumptions": [
+            "BoolODE is designed for transcription factor regulatory networks, so native refNetwork.csv regulators define the simulated TF/regulator universe."
+          ],
+          "limitations": [
+            "The TF list reflects simulator regulators, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "config_snapshot",
+          "kind": "metadata",
+          "description": "Resolved BoolODE YAML configuration written for the run."
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mappings from native BoolODE gene and cell identifiers to public normalized identifiers when any escaping is required."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Python package versions, BoolODE commit and runtime environment captured by the wrapper."
+        }
+      ],
+      "notes": "The global profile exports the simulated single-cell expression matrix with global regulatory truth from BoolODE's native refNetwork.csv and optional native pseudotime from PseudoTime.csv."
+    },
+    "scrna_grouped": {
+      "native_extras": [
+        "pseudotime"
+      ],
+      "derivable_extras": [
+        "groups",
+        "cell_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list",
+        "prior_grn_by_group"
+      ],
+      "truth_outputs": {
+        "global": "native",
+        "group": "derivable",
+        "cell": "none"
+      },
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "refNetwork.csv",
+            "BoolODE Boolean model file"
+          ],
+          "upstream_configuration": [
+            "global_settings.do_simulations=true with jobs[].model_definition set to a bundled or mounted BoolODE Boolean model.",
+            "BoolODE run_experiment.startRun() calls utils.generateInputFiles(), which writes refNetwork.csv from the Boolean rules."
+          ],
+          "generation": "The wrapper normalizes every non-self-loop refNetwork.csv row into truth/networks.csv with context=global, source=Gene1 and target=Gene2.",
+          "score_semantics": "score is 1.0 because BoolODE refNetwork.csv stores signed topology but no edge magnitude; sign is copied from the native Type column, where '+' denotes activation and '-' denotes repression according to BoolODE's Boolean-rule parser.",
+          "limitations": [
+            "Global truth is the fixed Boolean-model topology driving all simulated trajectories.",
+            "Interaction-strength input files affect ODE thresholds but are not represented as public truth scores because refNetwork.csv does not emit magnitudes."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "derivable",
+          "source_artifacts": [
+            "ClusterIds.csv",
+            "ExpressionData.csv",
+            "refNetwork.csv"
+          ],
+          "upstream_configuration": [
+            "jobs[].nClusters must be at least 2 so BoolODE clusters full simulation trajectories and writes ClusterIds.csv.",
+            "jobs[].sample_cells must be false because BoolODE's trajectory-clustering branch relies on full per-simulation trajectory matrices."
+          ],
+          "generation": "The wrapper derives groups.tsv by mapping each expression cell's E<experiment> prefix to the corresponding ClusterIds.csv label, then duplicates the fixed global refNetwork.csv edge set into one context=group:<group_id> network for every observed group.",
+          "score_semantics": "Group truth rows use the same score and sign as global truth: score=1.0 and sign copied from refNetwork.csv Type.",
+          "limitations": [
+            "Group truth networks are wrapper-derived context expansions, not native group-specific BoolODE GRNs.",
+            "All group truth contexts have identical topology and signs because BoolODE uses one Boolean model for all trajectories.",
+            "ClusterIds.csv labels are k-means labels over full trajectories and do not encode a lineage hierarchy."
+          ]
+        },
+        {
+          "context": "cell",
+          "status": "none",
+          "explanation": "BoolODE does not emit cell-specific regulatory networks, and duplicating the fixed GRN per cell would misrepresent the scrna_cell_specific contract."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "expression_data",
+          "kind": "matrix",
+          "description": "Gene-by-cell ExpressionData.csv written by BoolODE from simulated trajectories or sampled trajectory time points.",
+          "formats": [
+            "csv"
+          ]
+        },
+        {
+          "id": "reference_network",
+          "kind": "graph",
+          "description": "refNetwork.csv edgelist with Gene1 regulator, Gene2 target and signed interaction Type inferred from the Boolean model.",
+          "formats": [
+            "csv"
+          ]
+        },
+        {
+          "id": "pseudo_time",
+          "kind": "table",
+          "description": "PseudoTime.csv table containing normalized simulation time used by BoolODE as ground-truth pseudotime.",
+          "formats": [
+            "csv"
+          ]
+        },
+        {
+          "id": "cluster_ids",
+          "kind": "metadata",
+          "description": "ClusterIds.csv trajectory-cluster assignment table emitted when nClusters > 1.",
+          "formats": [
+            "csv"
+          ],
+          "conditions": [
+            {
+              "field": "param.n_clusters",
+              "op": "gt",
+              "value": 1
+            }
+          ],
+          "message": "cluster_ids requires n_clusters > 1."
+        },
+        {
+          "id": "simulation_trajectories",
+          "kind": "directory",
+          "description": "Per-simulation trajectory CSV files under the BoolODE simulations/ directory.",
+          "formats": [
+            "csv"
+          ]
+        },
+        {
+          "id": "generated_model",
+          "kind": "other",
+          "description": "model.py generated by BoolODE from the selected Boolean model.",
+          "formats": [
+            "py"
+          ]
+        },
+        {
+          "id": "kinetic_parameters",
+          "kind": "table",
+          "description": "parameters.txt containing the ODE kinetic parameter values used for the run.",
+          "formats": [
+            "txt"
+          ]
+        },
+        {
+          "id": "dropout_expression",
+          "kind": "matrix",
+          "description": "Post-processed ExpressionData.csv after BoolODE dropout induction.",
+          "formats": [
+            "csv"
+          ],
+          "conditions": [
+            {
+              "field": "param.dropout.enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "dropout_expression requires dropout.enabled=true."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "groups",
+          "source_artifacts": [
+            "ClusterIds.csv",
+            "ExpressionData.csv"
+          ],
+          "method": "For each expression cell column, parse the native E<experiment>_<time> identifier, join E<experiment> to ClusterIds.csv, and emit a stable public group label cluster_<label> in extras/groups.tsv.",
+          "assumptions": [
+            "BoolODE ClusterIds.csv assigns each simulated trajectory to the cluster used by the paper as a cell group or steady-state trajectory label.",
+            "Every public expression column retains an experiment prefix that can be joined back to ClusterIds.csv."
+          ],
+          "limitations": [
+            "Groups are k-means trajectory clusters, not curated biological annotations.",
+            "K-means numeric cluster labels are arbitrary across runs."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "cell_phenotypes",
+          "source_artifacts": [
+            "groups",
+            "PseudoTime.csv"
+          ],
+          "method": "Reuse each cell's public group as its phenotype label and order phenotypes by mean native simulation Time across cells in that group, resolving ties by group id.",
+          "assumptions": [
+            "Trajectory clusters provide a useful synthetic phenotype label for grouped BoolODE benchmarks.",
+            "Mean simulation time provides a deterministic ordering hint even though BoolODE does not emit a lineage tree."
+          ],
+          "limitations": [
+            "The phenotype label is a cluster label, not a curated cell type name.",
+            "Ordering by mean time is descriptive and does not imply parent-child lineage relations."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "cluster_identities",
+          "source_artifacts": [
+            "groups"
+          ],
+          "method": "Export one row per observed group with cluster_id equal to the public group id, annotation equal to the same id, and optional order inherited from the cell_phenotypes group order.",
+          "assumptions": [
+            "BoolODE's trajectory clusters are the most stable public identities available for grouped synthetic data."
+          ],
+          "limitations": [
+            "Annotations are synthetic cluster identifiers rather than biological cell-type names."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public gene identifier present in expression.tsv as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The generated expression feature set is the appropriate enrichment background for downstream analysis of the simulated dataset."
+          ],
+          "limitations": [
+            "The background is synthetic and dataset-derived, not an organism-specific external annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "refNetwork.csv"
+          ],
+          "method": "Normalize the same non-self-loop refNetwork.csv rows used for global truth into extras/prior_grn.tsv with source=Gene1, target=Gene2, score=1.0 and sign=Type.",
+          "assumptions": [
+            "BoolODE's native reference network can serve as an oracle structural prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior rather than an independently noisy prior.",
+            "Edge magnitudes are unavailable in refNetwork.csv and are therefore binary."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "refNetwork.csv"
+          ],
+          "method": "Export the unique Gene1 regulator identifiers from refNetwork.csv, one per line, after applying the same public gene-id normalization used for expression.tsv and truth/networks.csv.",
+          "assumptions": [
+            "BoolODE is designed for transcription factor regulatory networks, so native refNetwork.csv regulators define the simulated TF/regulator universe."
+          ],
+          "limitations": [
+            "The TF list reflects simulator regulators, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn_by_group",
+          "source_artifacts": [
+            "refNetwork.csv",
+            "groups"
+          ],
+          "method": "For each exported group, duplicate the fixed BoolODE refNetwork.csv edge set into extras/prior_grn_by_group.tsv with group=<group_id>, score=1.0 and sign=Type.",
+          "assumptions": [
+            "BoolODE's regulatory topology is fixed across trajectory clusters, so a group-specific oracle prior is identical for every group."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior and does not encode group-varying regulation.",
+            "Benchmarks using prior_grn_by_group with BoolODE should account for the fixed topology across groups."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        },
+        {
+          "artifact": "group",
+          "source_artifacts": [
+            "refNetwork.csv",
+            "groups"
+          ],
+          "method": "For every group emitted in groups.tsv, duplicate the fixed BoolODE global truth GRN into context=group:<group_id> rows in truth/networks.csv.",
+          "assumptions": [
+            "A grouped benchmark can explicitly represent BoolODE's fixed-GRN design by providing one identical group context per trajectory cluster.",
+            "This satisfies the cumulative grouped truth contract without pretending that BoolODE models group-specific GRN rewiring."
+          ],
+          "limitations": [
+            "Group truth networks are wrapper-derived context expansions, not native BoolODE group-specific network outputs.",
+            "All group truth contexts are identical except for their context labels."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "config_snapshot",
+          "kind": "metadata",
+          "description": "Resolved BoolODE YAML configuration written for the run."
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mappings from native BoolODE gene, cell and cluster identifiers to public normalized identifiers when any escaping is required."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Python package versions, BoolODE commit and runtime environment captured by the wrapper."
+        }
+      ],
+      "notes": "The grouped profile uses BoolODE trajectory clusters as public groups. Group truth is intentionally a duplicate of the fixed global Boolean-model GRN for each cluster because BoolODE does not model group-specific regulatory topology."
+    }
+  },
+  "params": {
+    "model_preset": {
+      "type": "enum",
+      "required": false,
+      "default": "dyn_bifurcating",
+      "enum": [
+        "dyn_linear",
+        "dyn_linear_long",
+        "dyn_cycle",
+        "dyn_bifurcating",
+        "dyn_bifurcating_converging",
+        "dyn_trifurcating",
+        "mCAD",
+        "VSC",
+        "HSC",
+        "GSD",
+        "custom_files"
+      ],
+      "description": "Selects a bundled BoolODE Boolean model from the pinned upstream repository or mounted custom BoolODE-format files."
+    },
+    "model_type": {
+      "type": "enum",
+      "required": false,
+      "default": "hill",
+      "enum": [
+        "hill",
+        "heaviside"
+      ],
+      "description": "Maps to global_settings.modeltype and controls whether BoolODE uses Hill-function or soft-Heaviside regulatory terms."
+    },
+    "simulation_time": {
+      "type": "float",
+      "required": false,
+      "default": 8.0,
+      "min": 0.0,
+      "exclusive_min": true,
+      "description": "Maps to jobs[].simulation_time, the maximum simulated trajectory time. Integral values are serialized as YAML integers because the pinned BoolODE implementation uses range(1, tmax*100) in its large-output sampling branch; the wrapper rejects non-integral values when that branch would be reached."
+    },
+    "num_cells": {
+      "type": "int",
+      "required": false,
+      "default": 100,
+      "min": 1,
+      "max": 5000,
+      "description": "Maps to jobs[].num_cells. BoolODE runs this many stochastic trajectories and may sample one expression cell from each trajectory when the full trajectory matrix is large."
+    },
+    "n_clusters": {
+      "type": "int",
+      "required": false,
+      "default": 2,
+      "min": 1,
+      "description": "Maps to jobs[].nClusters. Values greater than one make BoolODE cluster full simulated trajectories and emit ClusterIds.csv."
+    },
+    "sample_cells": {
+      "type": "bool",
+      "required": false,
+      "default": false,
+      "description": "Maps to jobs[].sample_cells. When true, BoolODE samples one time point from each trajectory during simulation; this is incompatible with n_clusters > 1 in the pinned implementation."
+    },
+    "sample_parameters": {
+      "type": "bool",
+      "required": false,
+      "default": false,
+      "description": "Maps to jobs[].sample_pars, causing BoolODE to sample kinetic parameters around defaults instead of fixing them exactly."
+    },
+    "sample_std": {
+      "type": "float",
+      "required": false,
+      "default": 0.1,
+      "min": 0.0,
+      "description": "Maps to jobs[].sample_std, the relative standard deviation used when sample_parameters=true."
+    },
+    "identical_parameters": {
+      "type": "bool",
+      "required": false,
+      "default": false,
+      "description": "Maps to jobs[].identical_pars, making BoolODE reuse one sampled kinetic value per parameter class when sample_parameters=true."
+    },
+    "integration_step_size": {
+      "type": "float",
+      "required": false,
+      "default": 0.01,
+      "min": 0.0,
+      "exclusive_min": true,
+      "description": "Maps to jobs[].integration_step_size and controls the ODE simulation time grid."
+    },
+    "dropout": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "enabled": false,
+        "drop_cutoff": 0.5,
+        "drop_prob": 0.5
+      },
+      "description": "Serializable BoolODE dropout post-processing controls. When enabled, expression.tsv uses the dropout-processed ExpressionData.csv and clean expression is preserved under provenance/raw/.",
+      "properties": {
+        "enabled": {
+          "type": "bool",
+          "required": false,
+          "default": false,
+          "description": "Whether to run BoolODE's dropout induction post-processing."
+        },
+        "drop_cutoff": {
+          "type": "float",
+          "required": false,
+          "default": 0.5,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Expression quantile below which values are eligible for dropout."
+        },
+        "drop_prob": {
+          "type": "float",
+          "required": false,
+          "default": 0.5,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Probability of setting an eligible expression value to zero."
+        }
+      }
+    }
+  },
+  "notes": "Phase 3 verified. The Docker image installs BoolODE from https://github.com/Murali-group/BoolODE.git pinned to ba8884af40f98fc648b3f36f0b81a5a8cf22c9b9; the wrapper calls the public BoolODE Python API, emits the normalized ANDREA output package, and serializes integral simulation_time values as YAML integers to avoid a pinned upstream large-output sampling TypeError."
+}

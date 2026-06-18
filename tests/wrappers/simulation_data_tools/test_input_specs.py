@@ -53,6 +53,9 @@ class SimulationInputSpecCatalogTests(unittest.TestCase):
         self.assertEqual(
             set(self.specs),
             {
+                "boolode_boolean_model",
+                "boolode_initial_conditions",
+                "boolode_interaction_strengths",
                 "regulatory_network",
                 "sergio_bifurcation_matrix",
                 "sergio_master_regulators",
