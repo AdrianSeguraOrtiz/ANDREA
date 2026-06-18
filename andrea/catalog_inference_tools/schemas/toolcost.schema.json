@@ -239,10 +239,6 @@
           "type": "boolean",
           "description": "Whether the benchmark input profile includes the standardized tf_list extra."
         },
-        "has_chromatin_accessibility_matrix": {
-          "type": "boolean",
-          "description": "Whether the benchmark input profile includes the standardized paired chromatin accessibility matrix extra."
-        },
         "output_density_class": {
           "type": "string",
           "enum": ["sparse", "dense", "unknown"],

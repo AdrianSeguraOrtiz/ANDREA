@@ -56,7 +56,7 @@ partial-correlation network.
 | Same cell-native path plus ANDREA `groups.tsv` | expression matrix plus groups after wrapper output | derived group networks | `group_aggregated` | Yes | CeSpGRN itself does not consume groups; ANDREA can aggregate `cell:<id>` rows with the fixed signed-effect mean rule. |
 | Spatial workflow in paper and `test/scripts_drosophila_embryo/test_drosophila_embryo.py` | expression matrix plus cell spatial coordinates | cell-specific signed partial-correlation tensor | parameter choice `kernel_source=spatial` within `cell_native` / `group_aggregated` | Yes | It uses the same CeSpGRN estimator and only changes the cell-cell kernel coordinates, so it is a parameter/input choice, not a new execution mode. |
 | TF-prior workflow from paper and `G_admm_minibatch(TF=...)` | expression matrix plus TF list | cell-specific signed partial-correlation tensor with target-target mask penalty when beta > 0 | parameter choice `prior_mode=tf_list` | Yes | Existing `tf_list` semantics match the paper's TF information prior. |
-| ATAC/cell-specific prior workflows in paper and `G_admm_mask(mask=...)` test scripts | paired scRNA/scATAC plus region-target and region-TF mappings or precomputed cell-specific masks | cell-specific signed partial-correlation tensor | parameter/input choice if represented | No | Existing `chromatin_accessibility_matrix` alone is insufficient; the workflow requires cell-specific prior masks or genomic region-to-gene and motif/TF mapping inputs not currently normalized in the inference catalog. |
+| ATAC/cell-specific prior workflows in paper and `G_admm_mask(mask=...)` test scripts | paired scRNA/scATAC plus region-target and region-TF mappings or precomputed cell-specific masks | cell-specific signed partial-correlation tensor | parameter/input choice if represented | No | A standalone accessibility matrix is insufficient; the workflow requires cell-specific prior masks or genomic region-to-gene and motif/TF mapping inputs not currently normalized in the inference catalog. |
 | `src/genie3.py` | expression matrix, optional regulators | global directed tree-importance matrix | separate global method, not CeSpGRN | No | It is bundled as a baseline implementation, not the CeSpGRN method. Existing GENIE3 integration should own this behavior. |
 | `src/de_analysis.py` | pseudotime and expression | differential expression outputs | not network inference | No | Auxiliary downstream analysis, not a GRN inference output contract. |
 | Published/supplement scripts that scan bandwidth and lambda grids and average GRNs | expression/spatial plus parameter grid | averaged cell-specific GRNs | possible parameter preset | No | Implementing the paper grid would multiply runtime substantially and is present as ad-hoc scripts, not a reusable public API. The current contract exposes the single-run API; users can run parameter sweeps externally or a later wrapper can add an explicit preset. |
@@ -100,8 +100,8 @@ Optional inputs:
   they are required exactly when their activating parameter values are selected.
 
 Inputs intentionally not exposed:
-- `chromatin_accessibility_matrix` alone is not enough for CeSpGRN-ATAC because
-  the paper constructs cell-specific priors from accessible regions, region to
+- A standalone accessibility matrix is not enough for CeSpGRN-ATAC because the
+  paper constructs cell-specific priors from accessible regions, region to
   target-gene proximity and motif/TF information. Existing `prior_grn` and
   `prior_grn_by_group` are global/group-level, not cell-specific masks.
 - Pseudotime is not consumed by the selected CeSpGRN estimator; the paper

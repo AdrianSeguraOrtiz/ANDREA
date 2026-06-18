@@ -686,9 +686,6 @@ def _build_input_profile(
         ),
         "group_count": group_count,
         "has_tf_list": "tf_list" in extras,
-        "has_chromatin_accessibility_matrix": (
-            "chromatin_accessibility_matrix" in extras
-        ),
         "output_density_class": (
             "dense" if mode in {"cell_native", "group_aggregated"} else "sparse"
         ),

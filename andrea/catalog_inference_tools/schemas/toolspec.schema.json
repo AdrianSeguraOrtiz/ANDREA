@@ -35,7 +35,6 @@
         "groups",
         "cell_phenotypes",
         "cell_descriptors",
-        "chromatin_accessibility_matrix",
         "cluster_identities",
         "cluster_markers",
         "enrichment_background",

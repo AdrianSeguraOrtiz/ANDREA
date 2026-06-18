@@ -358,10 +358,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 "cell\tbatch\tcell_type\nC1\tbatch_a\troot\nC2\tbatch_b\tleaf\n",
                 encoding="utf-8",
             )
-            (base / "chromatin_accessibility_matrix.tsv").write_text(
-                "region\tC1\tC2\nchr1:100-250\t0\t3\nchr1:400-520\t1\t0\n",
-                encoding="utf-8",
-            )
             manifest_path = self._write_manifest(
                 base,
                 expression_matrix="expression.tsv",
@@ -369,7 +365,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 expression_profile="scrna",
                 extras={
                     "cell_descriptors": "cell_descriptors.tsv",
-                    "chromatin_accessibility_matrix": "chromatin_accessibility_matrix.tsv",
                 },
             )
 
@@ -379,42 +374,6 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             )
             extras_validation = preflight["input_validation"]["extras"]
             self.assertEqual(extras_validation["cell_descriptors"]["status"], "ok")
-            self.assertEqual(
-                extras_validation["chromatin_accessibility_matrix"]["status"], "ok"
-            )
-
-    def test_preflight_fails_when_accessibility_columns_do_not_match_expression(
-        self,
-    ) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp)
-            self._write_expression_matrix(
-                base,
-                lines=[
-                    "gene\tC1\tC2",
-                    "G1\t1\t2",
-                    "G2\t3\t4",
-                ],
-            )
-            (base / "chromatin_accessibility_matrix.tsv").write_text(
-                "region\tC1\tC3\nchr1:100-250\t0\t3\n",
-                encoding="utf-8",
-            )
-            manifest_path = self._write_manifest(
-                base,
-                expression_matrix="expression.tsv",
-                column_kind="cells",
-                expression_profile="scrna",
-                extras={
-                    "chromatin_accessibility_matrix": "chromatin_accessibility_matrix.tsv"
-                },
-            )
-
-            with self.assertRaisesRegex(ValueError, "Input validation failed"):
-                self.mod.preflight_infer_network(
-                    dataset_manifest_path=manifest_path,
-                    tools_params_path=None,
-                )
 
     def test_preflight_fails_when_expression_first_header_is_not_gene_like(
         self,

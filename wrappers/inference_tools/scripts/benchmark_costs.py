@@ -718,10 +718,6 @@ def build_feature_vector(
         "expected_contexts": int(expected_contexts),
         "expected_dense_edges": int(max(0, n_cells) * max(0, genes) * max(0, genes - 1)),
         "has_tf_list": "tf_list" in set(input_profile.get("extras_provided", [])),
-        "has_chromatin_accessibility_matrix": (
-            "chromatin_accessibility_matrix"
-            in set(input_profile.get("extras_provided", []))
-        ),
         "output_density_class": str(
             input_profile.get("output_density_class")
             or ("dense" if mode in {"cell_native", "group_aggregated"} else "sparse")

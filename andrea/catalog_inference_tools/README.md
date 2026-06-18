@@ -26,7 +26,6 @@ andrea/catalog_inference_tools/
     groups.json
     cell_phenotypes.json
     cell_descriptors.json
-    chromatin_accessibility_matrix.json
     cluster_identities.json
     cluster_markers.json
     enrichment_background.json

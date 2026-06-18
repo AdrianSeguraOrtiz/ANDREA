@@ -13,7 +13,6 @@ from typing import Any, Sequence
 GENERATED_EXTRA_INPUTS = {
     "cell_phenotypes",
     "cell_descriptors",
-    "chromatin_accessibility_matrix",
     "cluster_identities",
     "cluster_markers",
     "enrichment_background",
@@ -31,7 +30,6 @@ GENERATED_EXTRA_INPUTS = {
 EXTRA_FILENAMES = {
     "cell_phenotypes": "cell_phenotypes.tsv",
     "cell_descriptors": "cell_descriptors.tsv",
-    "chromatin_accessibility_matrix": "chromatin_accessibility_matrix.tsv",
     "cluster_identities": "cluster_identities.tsv",
     "cluster_markers": "cluster_markers.tsv",
     "enrichment_background": "enrichment_background.txt",
@@ -138,13 +136,6 @@ def write_benchmark_io_dir(
             write_cell_phenotypes(path, columns=columns, assignments=assignments)
         elif input_key == "cell_descriptors":
             write_cell_descriptors(path, columns=columns, assignments=assignments)
-        elif input_key == "chromatin_accessibility_matrix":
-            write_chromatin_accessibility_matrix(
-                path,
-                columns=columns,
-                row_count=max(4, len(genes) // 2),
-                seed=stable_seed(size=size, profile=profile, namespace=input_key),
-            )
         elif input_key == "cluster_identities":
             write_cluster_identities(path, groups=groups)
         elif input_key == "cluster_markers":
@@ -333,24 +324,6 @@ def write_cell_descriptors(
                     group_by_column.get(column, "cluster_1"),
                 ]
             )
-
-
-def write_chromatin_accessibility_matrix(
-    path: Path,
-    *,
-    columns: Sequence[str],
-    row_count: int,
-    seed: int,
-) -> None:
-    rng = random.Random(seed)
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["region"] + list(columns))
-        for idx in range(max(1, row_count)):
-            start = 1000 + (idx * 250)
-            region = f"chr1:{start}-{start + 149}"
-            values = [f"{rng.uniform(0.0, 5.0):.6f}" for _column in columns]
-            writer.writerow([region] + values)
 
 
 def write_pseudotime(

@@ -248,10 +248,6 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                                     "input": "tf_list",
                                     "usage": "Restricts candidate regulators.",
                                 },
-                                {
-                                    "input": "chromatin_accessibility_matrix",
-                                    "usage": "Provides paired accessibility features.",
-                                },
                             ],
                             "conditional_required": [
                                 {
@@ -274,12 +270,9 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                     {
                         "profiles": [
                             {
-                                "id": "cell_native_atac",
+                                "id": "cell_native_tf_list",
                                 "execution": {"mode": "cell_native"},
-                                "optional_inputs": [
-                                    "tf_list",
-                                    "chromatin_accessibility_matrix",
-                                ],
+                                "optional_inputs": ["tf_list"],
                             },
                             {
                                 "id": "group_aggregated_groups_2",
@@ -308,9 +301,6 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         self.assertEqual(cell_native.execution_profile["aggregation_step"], "none")
         self.assertEqual(cell_native.input_profile["output_density_class"], "dense")
         self.assertTrue(cell_native.input_profile["has_tf_list"])
-        self.assertTrue(
-            cell_native.input_profile["has_chromatin_accessibility_matrix"]
-        )
 
         group_aggregated = profiles[1]
         self.assertEqual(group_aggregated.execution_profile["mode"], "group_aggregated")

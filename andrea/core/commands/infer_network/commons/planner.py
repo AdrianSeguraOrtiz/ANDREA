@@ -257,9 +257,6 @@ def _inference_cost_features(
         "expected_contexts": int(expected_contexts),
         "expected_dense_edges": int(n_cells * n_genes * max(0, n_genes - 1)),
         "has_tf_list": "tf_list" in extras_present,
-        "has_chromatin_accessibility_matrix": (
-            "chromatin_accessibility_matrix" in extras_present
-        ),
         "output_density_class": (
             "dense"
             if execution_mode in {"cell_native", "group_aggregated"}
