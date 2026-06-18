@@ -28,7 +28,7 @@ import { closeReproducibilityStepsModal, initReproducibility, resetReproducibili
 import { closeParamsModal, initParamsModal, openParamsModal, applyParamsModal, setParamsModalStatus } from "./runs/params_modal.js";
 import { addRunCard, collectRuns, initRunCards, readParamsFromCard, refreshRunCardsValidation, renderRunParamsForm, updateRunsEmptyState } from "./runs/cards.js";
 import { executionModeAvailability } from "./runs/execution_modes.js";
-import { readParamsFromHost, renderParamsHost, resolvedDefaultParams } from "/static-common/app/params/schema_form.js?v=20260615a";
+import { readParamsFromHost, renderParamsHost, resolvedDefaultParams } from "/static-common/app/params/schema_form.js?v=20260617d";
 import { buildInfoTooltip, hideInfoTooltip, readHelpPayload, showInfoTooltip } from "./ui/popovers.js";
 import { setActiveStep, setStepState } from "./ui/steps.js";
 import { pushToast } from "./ui/toasts.js";

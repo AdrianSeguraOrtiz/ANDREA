@@ -68,6 +68,85 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 any(issue.get("code") == "invalid_params" for issue in issues)
             )
 
+    def test_catalog_does_not_block_configurable_required_params(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2",
+                    "G1\t1\t2",
+                    "G2\t3\t4",
+                ],
+            )
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                column_kind="cells",
+                expression_profile="scrna",
+                organism={"taxonomic_group": "animal", "ncbi_taxon_id": 9606},
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=None,
+            )
+
+        blocked_ids = {item["tool_id"] for item in report["catalog"]["blocked"]}
+        visible_ids = {
+            item["tool_id"]
+            for bucket in ("eligible", "warning")
+            for item in report["catalog"][bucket]
+        }
+        self.assertNotIn("dignet", blocked_ids)
+        self.assertIn("dignet", visible_ids)
+
+    def test_selected_run_still_blocks_missing_required_params(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2",
+                    "G1\t1\t2",
+                    "G2\t3\t4",
+                ],
+            )
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                column_kind="cells",
+                expression_profile="scrna",
+                organism={"taxonomic_group": "animal", "ncbi_taxon_id": 9606},
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "dignet__01",
+                        "tool_id": "dignet",
+                        "execution": {"mode": "global"},
+                        "params": {},
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("dignet__01", report["runs"]["skipped"])
+        issues = report["runs"]["issues"]["dignet__01"]
+        self.assertTrue(any(issue.get("code") == "invalid_params" for issue in issues))
+        self.assertTrue(
+            any(
+                "missing required parameter: gene_set" in issue.get("message", "")
+                for issue in issues
+            )
+        )
+
     def test_preflight_accepts_custom_docker_tool_and_passes_free_params(
         self,
     ) -> None:

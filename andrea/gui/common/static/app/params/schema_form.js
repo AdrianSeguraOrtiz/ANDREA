@@ -1,4 +1,4 @@
-import { buildInfoTooltip, readHelpPayload, showInfoTooltip } from "../ui/popovers.js";
+import { buildInfoTooltip, readHelpPayload, showInfoTooltip } from "../ui/popovers.js?v=20260617a";
 
 export function deepClone(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -166,11 +166,24 @@ function unionVariantLabel(schema, index) {
   return type || `option ${index + 1}`;
 }
 
+function enumHelpSummary(values) {
+  if (!Array.isArray(values) || !values.length) {
+    return "";
+  }
+  const normalized = values.map((item) => String(item)).filter(Boolean);
+  const visible = normalized.slice(0, 12);
+  const remaining = normalized.length - visible.length;
+  return remaining > 0
+    ? `Allowed values: ${visible.join(", ")} and ${remaining} more`
+    : `Allowed values: ${visible.join(", ")}`;
+}
+
 function paramDescriptionPayload(label, schema) {
   const type = String(schema?.type || "").trim() || "unknown";
   const bits = [`Type: ${type}`];
-  if (Array.isArray(schema?.enum) && schema.enum.length) {
-    bits.push(`Allowed values: ${schema.enum.join(", ")}`);
+  const enumSummary = enumHelpSummary(schema?.enum);
+  if (enumSummary) {
+    bits.push(enumSummary);
   }
   if (schema?.min !== undefined) {
     bits.push(`${schema.exclusive_min ? "Exclusive min" : "Min"}: ${schema.min}`);
@@ -221,17 +234,6 @@ function createParamFieldShell({ key, schema }) {
   nameEl.textContent = key;
   titleWrap.appendChild(nameEl);
 
-  const metaBits = [];
-  if (schema?.required) {
-    metaBits.push("required");
-  }
-  if (metaBits.length) {
-    const meta = document.createElement("div");
-    meta.className = "param-field-meta";
-    meta.textContent = metaBits.join(" · ");
-    titleWrap.appendChild(meta);
-  }
-
   const infoBtn = document.createElement("button");
   infoBtn.type = "button";
   infoBtn.className = "info-icon";
@@ -276,14 +278,24 @@ function renderPrimitiveEditor(field, schema, value) {
     input = document.createElement("select");
     input.className = "param-input";
     input.dataset.inputKind = "enum";
-    const values = Array.isArray(schema?.enum) ? schema.enum : [];
-    for (const item of values) {
+    const values = Array.isArray(schema?.enum) ? schema.enum.map((item) => String(item)) : [];
+    const hasNullDefault =
+      Object.prototype.hasOwnProperty.call(schema || {}, "default") &&
+      schema.default === null;
+    if (hasNullDefault) {
       const option = document.createElement("option");
-      option.value = String(item);
-      option.textContent = String(item);
+      option.value = "";
+      option.textContent = "";
+      option.disabled = Boolean(schema?.required);
       input.appendChild(option);
     }
-    input.value = values.includes(value) ? String(value) : String(values[0] ?? "");
+    for (const item of values) {
+      const option = document.createElement("option");
+      option.value = item;
+      option.textContent = item;
+      input.appendChild(option);
+    }
+    input.value = values.includes(String(value)) ? String(value) : "";
   } else if (type === "int" || type === "float") {
     input = document.createElement("input");
     input.type = "number";
@@ -455,6 +467,11 @@ function readParamFieldValue(field, schema, label) {
     !schema?.required &&
     Object.prototype.hasOwnProperty.call(schema || {}, "default") &&
     schema.default === null;
+  const isRequired = Boolean(schema?.required);
+
+  if (!rawValue && isRequired) {
+    throw new Error(`${label}: value is required`);
+  }
 
   if (type === "bool") {
     return rawValue === "true";

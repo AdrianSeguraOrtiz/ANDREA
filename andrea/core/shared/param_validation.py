@@ -39,6 +39,7 @@ def validate_param_value(
     param_def: dict[str, Any],
     path: str,
     warnings: list[str],
+    allow_missing_required: bool = False,
 ) -> Any:
     param_type = param_def.get("type")
 
@@ -97,7 +98,11 @@ def validate_param_value(
                 raw_sub = copy.deepcopy(sub_def.get("default"))
 
             if raw_sub is None:
-                if bool(sub_def.get("required")) and sub_def.get("default") is None:
+                if (
+                    bool(sub_def.get("required"))
+                    and sub_def.get("default") is None
+                    and not allow_missing_required
+                ):
                     raise ParamValidationError(
                         f"missing required parameter: {sub_path}"
                     )
@@ -109,6 +114,7 @@ def validate_param_value(
                 param_def=sub_def,
                 path=sub_path,
                 warnings=warnings,
+                allow_missing_required=allow_missing_required,
             )
         return resolved
 
@@ -126,6 +132,7 @@ def validate_param_value(
                     param_def=item_def,
                     path=f"{path}[{idx}]",
                     warnings=warnings,
+                    allow_missing_required=allow_missing_required,
                 )
             )
         return out
@@ -144,6 +151,7 @@ def validate_param_value(
                     param_def=option,
                     path=path,
                     warnings=warnings,
+                    allow_missing_required=allow_missing_required,
                 )
             except ParamValidationError as exc:
                 errors.append(str(exc))

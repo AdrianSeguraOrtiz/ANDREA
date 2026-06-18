@@ -1,6 +1,6 @@
 import { $ } from "../core/dom.js";
 import { state } from "../core/state.js";
-import { readParamsFromHost, renderParamsHost, resolvedDefaultParams } from "/static-common/app/params/schema_form.js?v=20260615a";
+import { readParamsFromHost, renderParamsHost, resolvedDefaultParams } from "/static-common/app/params/schema_form.js?v=20260617d";
 
 let getToolByIdFn = null;
 let renderRunParamsFormFn = null;

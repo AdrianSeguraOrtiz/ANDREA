@@ -1,5 +1,5 @@
 import { $ } from "../core/dom.js";
-import { conditionalRuleMatches, deepEqualJson, readParamsFromHost, renderParamsHost, resolvedDefaultParams, setParamFieldError } from "/static-common/app/params/schema_form.js?v=20260615a";
+import { conditionalRuleMatches, deepEqualJson, readParamsFromHost, renderParamsHost, resolvedDefaultParams, setParamFieldError } from "/static-common/app/params/schema_form.js?v=20260617d";
 import { executionModeAvailability, executionModeLabel } from "./execution_modes.js";
 
 let getToolByIdFn = null;
@@ -164,11 +164,15 @@ function updateRunParamsSummary(card, tool, params = null) {
   if (!summaryEl) {
     return;
   }
-  const currentParams = params || readParamsFromCard(card);
-  const defaultParams = resolvedDefaultParams(tool);
-  summaryEl.textContent = deepEqualJson(currentParams, defaultParams)
-    ? "Default parameters"
-    : "Custom parameters";
+  try {
+    const currentParams = params || readParamsFromCard(card);
+    const defaultParams = resolvedDefaultParams(tool);
+    summaryEl.textContent = deepEqualJson(currentParams, defaultParams)
+      ? "Default parameters"
+      : "Custom parameters";
+  } catch (_err) {
+    summaryEl.textContent = "Parameters need review";
+  }
 }
 
 export function renderRunParamsForm(card, tool, initialParams = null) {
@@ -177,7 +181,14 @@ export function renderRunParamsForm(card, tool, initialParams = null) {
     refreshRunCardsValidation();
     notifyRunsChanged();
   });
-  updateRunParamsSummary(card, tool, readParamsFromHost(tool, host));
+  try {
+    updateRunParamsSummary(card, tool, readParamsFromHost(tool, host));
+  } catch (_err) {
+    const summaryEl = card.querySelector(".run-params-summary");
+    if (summaryEl) {
+      summaryEl.textContent = "Parameters need review";
+    }
+  }
 }
 
 function validateRunCard(card) {

@@ -453,6 +453,7 @@ def _resolve_tool_params(
     toolspec_params: dict[str, Any],
     warnings: list[str],
     passthrough_unknown_params: bool = False,
+    allow_missing_required: bool = False,
 ) -> tuple[bool, dict[str, Any], list[str]]:
     errors: list[str] = []
     if passthrough_unknown_params and not toolspec_params:
@@ -477,6 +478,7 @@ def _resolve_tool_params(
             if (
                 bool(param_def_any.get("required"))
                 and param_def_any.get("default") is None
+                and not allow_missing_required
             ):
                 errors.append(f"missing required parameter: {param_name}")
             resolved[param_name] = None
@@ -488,6 +490,7 @@ def _resolve_tool_params(
                 param_def=param_def_any,
                 path=f"{tool_id}.{param_name}",
                 warnings=warnings,
+                allow_missing_required=allow_missing_required,
             )
         except ParamValidationError as exc:
             errors.append(str(exc))
@@ -593,6 +596,7 @@ def _build_tool_compatibility_entry(
                 user_params={},
                 toolspec_params=toolspec_params,
                 warnings=local_warnings,
+                allow_missing_required=True,
             )
             execution_ok, resolved_execution, execution_errors = (
                 _resolve_run_execution(

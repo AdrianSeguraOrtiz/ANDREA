@@ -83,6 +83,12 @@
       "bundles": [
         "python_runtime_contract"
       ]
+    },
+    "dignet": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ]
     }
   }
 }

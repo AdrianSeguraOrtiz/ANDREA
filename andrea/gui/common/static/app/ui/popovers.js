@@ -226,6 +226,19 @@ function appendInfoBadges(parent, values) {
   parent.appendChild(wrap);
 }
 
+function limitedInfoBadges(values, limit = 12) {
+  const normalized = Array.isArray(values)
+    ? values.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  if (normalized.length <= limit) {
+    return normalized;
+  }
+  return [
+    ...normalized.slice(0, limit),
+    `${normalized.length - limit} more`,
+  ];
+}
+
 function appendParamDefault(parent, value) {
   if (value === undefined) {
     return;
@@ -263,7 +276,7 @@ function appendParamEnum(parent, schema) {
   const label = document.createElement("strong");
   label.textContent = "Allowed values";
   row.appendChild(label);
-  appendInfoBadges(row, schema.enum.map((item) => String(item)));
+  appendInfoBadges(row, limitedInfoBadges(schema.enum));
   parent.appendChild(row);
 }
 
