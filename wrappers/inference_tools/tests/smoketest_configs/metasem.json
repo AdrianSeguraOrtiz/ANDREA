@@ -1,0 +1,32 @@
+{
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "param_overrides": {
+    "epochs": 2,
+    "batch_size": 8
+  },
+  "variants": [
+    {
+      "name": "global_unlabeled_pseudo"
+    },
+    {
+      "name": "global_provided_prior",
+      "extra_files": [
+        "prior_grn.tsv"
+      ],
+      "param_overrides": {
+        "pseudo_grn_mode": "provided_prior"
+      }
+    },
+    {
+      "name": "group_emulated_contract",
+      "extra_files": [
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_emulated"
+      }
+    }
+  ]
+}

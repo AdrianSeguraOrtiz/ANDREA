@@ -1,0 +1,178 @@
+{
+  "schema_version": "1.0",
+  "id": "metasem",
+  "name": "MetaSEM",
+  "publication": [
+    "https://doi.org/10.3390/ijms24032595"
+  ],
+  "first_author": "Yongqing Zhang",
+  "year": 2023,
+  "method_summary": "MetaSEM infers gene regulatory networks from scRNA-seq data with a meta-learning framework composed of an encoder, a meta-decoder and a GRN layer. The GRN layer embeds a structural equation model adjacency matrix as directed regulatory weights, and bi-level optimization trains the encoder and meta-decoder to learn pseudo-labels from sparse high-dimensional single-cell expression data.",
+  "method_keywords": [
+    "single_cell",
+    "meta_learning",
+    "structural_equation_model",
+    "bi_level_optimization",
+    "few_shot_learning",
+    "directed"
+  ],
+  "implementation_url": "https://github.com/ZhangLab312/MetaSEM/tree/482987b360ca57172f0276fd64e27b2681223b00",
+  "docker_image": "adriansegura99/inference-tools_metasem:1.0.0",
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "MetaSEM exposes no public worker, n_jobs or CLI thread argument. The selected implementation is PyTorch-based; the wrapper should map ANDREA --threads to PyTorch CPU intra-op threads with torch.set_num_threads(threads), keep PyTorch inter-op threads at 1, and set common BLAS/OpenMP environment variables such as OMP_NUM_THREADS, MKL_NUM_THREADS, OPENBLAS_NUM_THREADS, NUMEXPR_NUM_THREADS, BLIS_NUM_THREADS and VECLIB_MAXIMUM_THREADS to the assigned thread count before invoking MetaSEM. DataLoader num_workers remains the upstream default 0."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "prior_grn",
+        "param": "pseudo_grn_mode",
+        "op": "eq",
+        "value": "provided_prior",
+        "message": "prior_grn is required when pseudo_grn_mode=provided_prior because MetaSEM uses the provided network as its upstream net_path label/prior file.",
+        "usage": "Wrapper converts normalized prior_grn.tsv to MetaSEM's net_path CSV with Gene1 and Gene2 columns. In this mode MetaSEM uses the network to identify candidate TFs and target genes, construct the TF mask, initialize label-derived pseudo targets, and compute epoch metrics."
+      },
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running MetaSEM.",
+        "usage": "ANDREA uses groups.tsv to create one single-group MetaSEM child run per group; each child follows the global GRN-inference path and MetaSEM itself does not consume groups.tsv."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "iterations",
+    "note": "The selected GRN-inference implementation prints one status line per training epoch; after applying the documented source patch, the wrapper should report iteration progress from the configured epochs plus coarse setup/export states."
+  },
+  "params": {
+    "pseudo_grn_mode": {
+      "type": "enum",
+      "required": false,
+      "default": "unlabeled_all_genes",
+      "enum": [
+        "unlabeled_all_genes",
+        "provided_prior"
+      ],
+      "description": "How the wrapper supplies MetaSEM's required net_path file. unlabeled_all_genes generates a deterministic all-expression-gene pseudo scaffold and runs MetaSEM with is_label=false, matching the tutorial's no-ground-truth path. provided_prior requires prior_grn and runs with is_label=true."
+    },
+    "epochs": {
+      "type": "int",
+      "required": false,
+      "default": 20,
+      "min": 1,
+      "description": "Number of MetaSEM training epochs. Upstream tutorial and default GRN_inference path use 20; the wrapper should apply a source patch so this controls the training loop instead of the hard-coded value."
+    },
+    "batch_size": {
+      "type": "int",
+      "required": false,
+      "default": 64,
+      "min": 1,
+      "description": "Training minibatch size. Upstream tutorial and default GRN_inference path use 64; the wrapper should apply a source patch so this controls the DataLoader batch size."
+    },
+    "alpha": {
+      "type": "float",
+      "required": false,
+      "default": 0.45,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "GRN-layer alpha coefficient used in the meta-decoder update. The documented GRN_inference/default path sets alpha to 0.45."
+    },
+    "lr": {
+      "type": "float",
+      "required": false,
+      "default": 0.001,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "Adam learning rate for the encoder/main network in the selected GRN_inference/default path."
+    },
+    "lr_meta": {
+      "type": "float",
+      "required": false,
+      "default": 0.0005,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "Adam learning rate for the MetaSEM meta-decoder network in the selected GRN_inference/default path."
+    },
+    "gamma": {
+      "type": "float",
+      "required": false,
+      "default": 0.95,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "description": "Learning-rate decay factor for the encoder/main-network scheduler in the selected GRN_inference/default path."
+    },
+    "gamma_meta": {
+      "type": "float",
+      "required": false,
+      "default": 0.85,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "description": "Learning-rate decay factor for the meta-decoder scheduler in the selected GRN_inference/default path."
+    },
+    "random_seed": {
+      "type": "int",
+      "required": false,
+      "default": 3258769933,
+      "min": 0,
+      "description": "Seed used for Python, NumPy and PyTorch reproducibility. This matches the seed hard-coded in the reviewed upstream training modules."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "metasem.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined stdout/stderr log from the MetaSEM run, including upstream epoch metrics."
+    },
+    {
+      "path_pattern": "raw/metasem_edges.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw upstream MetaSEM TF, Target, EdgeWeight table before conversion to ANDREA network.csv."
+    },
+    {
+      "path_pattern": "raw/metasem_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Wrapper-recorded MetaSEM task, fixed/default hyperparameters, input gene count, prior alignment summary and runtime thread assignment."
+    }
+  ]
+}

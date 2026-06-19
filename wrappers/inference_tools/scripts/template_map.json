@@ -89,6 +89,12 @@
       "bundles": [
         "python_runtime_contract"
       ]
+    },
+    "metasem": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ]
     }
   }
 }
