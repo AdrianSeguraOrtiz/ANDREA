@@ -139,6 +139,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
         self.assertIn('id="truth-granularity"', index)
         self.assertNotIn("Canonical Profile", index)
         self.assertIn("truthContextFamiliesForDisplay", script)
+        self.assertIn("extraSupportForTemplate", script)
+        self.assertIn("extra-support-chip", script)
         self.assertNotIn("TRUTH_OUTPUT_ORDER", script)
 
     def test_bootstrap_exposes_scenario_template_extras_and_simulation_inputs(self) -> None:

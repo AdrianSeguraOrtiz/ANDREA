@@ -768,6 +768,33 @@ function renderExtras() {
     desc.textContent = isRequired
       ? `${extra.description} Generated automatically for ${selectedTemplate}.`
       : extra.description;
+    const support = extraSupportForTemplate(extra.key, selectedTemplate, required);
+    const supportBlock = document.createElement("div");
+    supportBlock.className = "extra-support";
+    const supportLabel = document.createElement("span");
+    supportLabel.className = "extra-support-label";
+    supportLabel.textContent = "Supported by";
+    const supportChips = document.createElement("div");
+    supportChips.className = "extra-support-chip-row";
+    if (support.length) {
+      for (const item of support) {
+        const chip = document.createElement("span");
+        chip.className = `extra-support-chip mode-${item.mode}`;
+        chip.title = `${item.name}: ${extraSupportModeLabel(item.mode).toLowerCase()}`;
+        const name = document.createElement("strong");
+        name.textContent = item.name;
+        const mode = document.createElement("span");
+        mode.textContent = extraSupportModeLabel(item.mode);
+        chip.append(name, mode);
+        supportChips.appendChild(chip);
+      }
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "extra-support-empty";
+      empty.textContent = "No compatible simulator for this template.";
+      supportChips.appendChild(empty);
+    }
+    supportBlock.append(supportLabel, supportChips);
     const syncState = () => {
       const isSelected = input.checked;
       row.classList.toggle("is-required", isRequired);
@@ -782,10 +809,55 @@ function renderExtras() {
     syncState();
     text.appendChild(head);
     text.appendChild(desc);
+    text.appendChild(supportBlock);
     row.appendChild(input);
     row.appendChild(text);
     host.appendChild(row);
   }
+}
+
+function extraSupportForTemplate(extraKey, templateId, requiredExtras) {
+  const key = String(extraKey || "").trim();
+  const required = requiredExtras instanceof Set
+    ? requiredExtras
+    : new Set(Array.isArray(requiredExtras) ? requiredExtras : []);
+  const support = [];
+  for (const simulator of state.bootstrap?.simulators || []) {
+    const capability = scenarioTemplateCapabilityForSimulator(simulator, templateId);
+    if (!capability) {
+      continue;
+    }
+    const nativeExtras = new Set(Array.isArray(capability.native_extras) ? capability.native_extras : []);
+    const derivableExtras = new Set(Array.isArray(capability.derivable_extras) ? capability.derivable_extras : []);
+    let mode = "";
+    if (required.has(key)) {
+      mode = nativeExtras.has(key) ? "native-required" : derivableExtras.has(key) ? "derived-required" : "required";
+    } else if (nativeExtras.has(key)) {
+      mode = "native";
+    } else if (derivableExtras.has(key)) {
+      mode = "derivable";
+    }
+    if (!mode) {
+      continue;
+    }
+    support.push({
+      simulator_id: String(simulator.simulator_id || simulator.id || "").trim(),
+      name: String(simulator.name || simulator.simulator_id || simulator.id || "").trim(),
+      mode,
+    });
+  }
+  return support.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function extraSupportModeLabel(mode) {
+  const labels = {
+    required: "fixed",
+    "native-required": "fixed native",
+    "derived-required": "fixed derived",
+    native: "native",
+    derivable: "derived",
+  };
+  return labels[String(mode || "").trim()] || "supported";
 }
 
 function renderScenarioTemplateControls() {
