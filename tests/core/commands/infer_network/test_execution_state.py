@@ -38,14 +38,14 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
                         output_dir="tools/genie3_01",
                     ),
                     ToolPlanItem(
-                        tool_id="lioness_01__cell_native",
+                        tool_id="lioness_01__column_native",
                         run_id="lioness_01",
                         image="andrea/lioness:test",
                         threads=2,
                         ram_gb=4.0,
                         eta_seconds=20.0,
                         eta_source="cost_profile",
-                        output_dir="tools/lioness_01__cell_native",
+                        output_dir="tools/lioness_01__column_native",
                     ),
                 ],
             ),
@@ -124,9 +124,9 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
                 },
             },
         )
-        self.assertEqual(payload["waves"][0]["tools"], ["genie3_01", "lioness_01__cell_native"])
-        self.assertEqual(payload["tools"]["lioness_01__cell_native"]["run_id"], "lioness_01")
-        self.assertEqual(payload["tools"]["lioness_01__cell_native"]["wave"], 1)
+        self.assertEqual(payload["waves"][0]["tools"], ["genie3_01", "lioness_01__column_native"])
+        self.assertEqual(payload["tools"]["lioness_01__column_native"]["run_id"], "lioness_01")
+        self.assertEqual(payload["tools"]["lioness_01__column_native"]["wave"], 1)
         self.assertEqual(
             [
                 event["phase"]
@@ -179,7 +179,7 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
                 "run_id": "lioness_01",
                 "tool_id": "lioness",
                 "execution": {"mode": "group_aggregated"},
-                "physical_tasks": [{"task_id": "lioness_01__cell_native"}],
+                "physical_tasks": [{"task_id": "lioness_01__column_native"}],
             },
         }
         with tempfile.TemporaryDirectory() as tmp:
@@ -200,7 +200,7 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
             )
             writer.record_warning_message("[genie3_01] docker image was pulled")
             writer.update_tool(
-                "lioness_01__cell_native",
+                "lioness_01__column_native",
                 status="failed",
                 phase="failed",
                 percent=100,
@@ -253,7 +253,7 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
         )
         self.assertEqual(loaded["logical_runs"]["lioness_01"]["status"], "failed")
         self.assertEqual(
-            loaded["tools"]["lioness_01__cell_native"]["errors"],
+            loaded["tools"]["lioness_01__column_native"]["errors"],
             ["synthetic failure"],
         )
         self.assertEqual(
@@ -315,7 +315,7 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
             self.assertEqual(running_state["waves"][0]["status"], "running")
 
             writer.update_tool(
-                "lioness_01__cell_native",
+                "lioness_01__column_native",
                 status="failed",
                 phase="failed",
                 percent=100,
@@ -344,7 +344,7 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
                 message="Finished",
             )
             writer.update_tool(
-                "lioness_01__cell_native",
+                "lioness_01__column_native",
                 status="failed",
                 phase="failed",
                 percent=100,

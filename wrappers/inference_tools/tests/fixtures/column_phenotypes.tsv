@@ -1,4 +1,4 @@
-cell	phenotype	order
+column	phenotype	order
 c01	state_0	0
 c02	state_1	1
 c03	state_0	0

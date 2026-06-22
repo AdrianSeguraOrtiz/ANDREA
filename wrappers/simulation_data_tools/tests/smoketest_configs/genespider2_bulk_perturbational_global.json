@@ -1,0 +1,69 @@
+{
+  "simulator_id": "genespider2",
+  "request": {
+    "seed": 501,
+    "effective_extras": [
+      "perturbation_design",
+      "interventions",
+      "replicates",
+      "enrichment_background",
+      "prior_grn",
+      "tf_list"
+    ],
+    "native_outputs": [
+      "network_matrix",
+      "perturbation_design",
+      "bulk_response",
+      "gaussian_noise"
+    ],
+    "inputs": {},
+    "params": {
+      "num_genes": 6,
+      "average_degree": 2.0,
+      "perturbation": {
+        "replicates_per_gene": 1
+      },
+      "bulk": {
+        "snr": 1.0
+      }
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "bulk",
+      "column_kind": "perturbations",
+      "experimental_design": "perturbational"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/perturbation_design.tsv",
+    "extras/interventions.tsv",
+    "extras/replicates.tsv",
+    "extras/enrichment_background.txt",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "native/network_matrix.tsv",
+    "native/perturbation_design.tsv",
+    "native/bulk_response.tsv",
+    "native/gaussian_noise.tsv",
+    "provenance/raw/matlab_outputs/network_matrix.tsv",
+    "provenance/raw/matlab_outputs/perturbation_design_matrix.tsv",
+    "provenance/raw/matlab_outputs/matlab_session_info.txt"
+  ],
+  "required_truth_context_prefixes": [
+    "global"
+  ]
+}

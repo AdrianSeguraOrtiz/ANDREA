@@ -41,6 +41,7 @@ from andrea.gui.common.server_jobs import (
     make_core_progress_callback,
     run_parallel,
     set_job_progress,
+    start_background_thread,
     timed_job_stage,
     utc_now,
 )
@@ -214,11 +215,11 @@ def _start_evaluation_job(
         job.traceback = None
         job.started_at = None
         job.finished_at = None
-    threading.Thread(
+    start_background_thread(
         target=_run_evaluation_job,
         kwargs={"job_id": job_id},
         daemon=True,
-    ).start()
+    )
 
 
 def _run_evaluation_job(*, job_id: str) -> None:

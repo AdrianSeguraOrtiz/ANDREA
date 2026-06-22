@@ -26,7 +26,7 @@ The goal of an integration is to produce:
 - a coherent `simulatorspec.json`
 - a wrapper that maps upstream simulator behavior to the ANDREA output contract
 - a `Dockerfile` that installs the simulator from a stable public source
-- a smoke-test matrix covering every declared profile and extra combination
+- a smoke-test matrix covering every declared semantic capability and extra combination
 - an `integration_decisions.md` file documenting evidence and tradeoffs
 - a `progress.json` implementation for observable execution state
 
@@ -51,28 +51,30 @@ adriansegura99/simulator_<simulator_id>:1.0.0
 7. `publication` must be a list. Store DOI references as full canonical URLs such as `https://doi.org/...`.
 8. `first_author` must be the full first-author name from the primary publication, not only surname.
 9. Expose the full public parameter surface that is serializable and supportable through JSON. Function-valued callbacks may be represented by explicit presets, but should not be faked as arbitrary JSON parameters.
+   Parameters that select the semantic scenario axes, such as steady-state vs
+   differentiation mode, must be declared as capability `parameter_bindings`
+   instead of remaining freely editable per run.
 10. Runtime resource controls such as `threads`, `num_cores` or equivalent
     upstream parallelism knobs must be declared under
     `runtime_resources.threading`, not as user-facing simulator params.
-11. Every supported profile/extra combination must be covered by tests.
+11. Every supported semantic capability/extra combination must be covered by tests.
 12. Simulator-side input files are defined in shared input specs. A
     `simulatorspec.json` may only declare how a simulator uses those files via
     `extra_inputs`; it must not define inline formats or examples.
-13. Every claimed canonical profile must be audited independently. Do not infer
-    support for one profile from another profile only because the expression
-    matrix shape is compatible.
-14. Every claimed profile must document all public truth contexts in
-    `profile_capabilities.<profile>.truth_contexts`, including native upstream
-    artifacts, wrapper-derived artifacts, upstream parameter switches,
-    score/sign semantics and limitations.
-15. `scrna_cell_specific` is cumulative in the current ANDREA contract: it
-    requires public `global`, `group:<group_id>` and `cell:<cell_id>` truth rows
-    in `truth/networks.csv`, and `groups` is a profile-required standardized
-    extra because the group truth layer must be traceable to cell-to-group
-    assignments.
+13. Every claimed semantic capability must be audited independently. Do not
+    infer support for one combination of axes from another only because the
+    expression matrix shape is compatible.
+14. Every claimed capability must document all public truth context families,
+    including native upstream artifacts, wrapper-derived artifacts, upstream
+    parameter switches, score/sign semantics and limitations.
+15. Column-specific truth is cumulative when requested: it requires public
+    `global` and any requested `group:<group_id>` rows plus
+    `column:<column_id>` rows in `truth/networks.csv`. If group truth is
+    requested, `groups` is a standardized extra because the group truth layer
+    must be traceable to expression-column-to-group assignments.
 16. Preserve public identifiers consistently across all normalized outputs.
     Gene ids in `expression.tsv`, `truth/networks.csv`, `truth/gene_universe.txt`
-    and extras must refer to the same public ids. Cell and group ids must also
+    and extras must refer to the same public ids. Column and group ids must also
     be consistent across expression columns, `groups.tsv`, other extras and
     truth contexts.
 17. Keep packaging separate from wrapper behavior. The simulator wrapper emits
@@ -88,42 +90,92 @@ Simulator integrations must proceed in this order:
 2. Current wrapper behavior audit, if a scaffold or older wrapper exists.
 3. Wrapper correction or implementation.
 4. SimulatorSpec update from verified wrapper behavior.
-5. Smoke-test proof for every claimed profile, truth context and extra path.
+5. Smoke-test proof for every claimed semantic capability, truth context and
+   extra path.
 
 Do not write aspirational `truth_contexts` or capability claims into
 `simulatorspec.json` before the wrapper can actually emit those outputs. The
 catalog describes executable behavior, not intended future behavior.
 
-## Canonical Concepts
+## Core Concepts
 
-### Canonical Profiles
+### Semantic Dataset Axes
 
-`andrea generate-data` currently recognizes these data profiles:
-- `bulk_steady_state`
-- `bulk_time_series`
-- `bulk_perturbational`
-- `scrna_global`
-- `scrna_grouped`
-- `scrna_cell_specific`
+`andrea generate-data` models benchmark requests with independent semantic
+axes, not with one combined profile string. Do not encode measurement modality,
+experimental design and truth granularity into names such as
+`<measurement>_<design>_<truth_granularity>`.
 
-Do not create a new canonical profile just because one inference tool has special input needs. Use extras for additional files.
+The central axes are:
+
+- `measurement`: what the matrix measures. Initial value: `rna_expression`.
+- `resolution`: biological/experimental resolution. Initial values: `bulk`,
+  `single_cell`, `spatial`, `pseudo_bulk`, `mixed`, `unknown`.
+- `column_kind`: what each expression column represents. Initial values:
+  `samples`, `cells`, `timepoints`, `perturbations`, `spots`, `metacells`,
+  `conditions`.
+- `experimental_design`: scientific design of the benchmark. Initial values:
+  `observational`, `steady_state`, `perturbational`, `time_series`,
+  `trajectory`, `differentiation`.
+
+Regulatory truth granularity is a separate request:
+
+- `global`: one dataset-level GRN.
+- `group`: one GRN per group of expression columns.
+- `column`: one GRN per expression column.
+
+The public `truth/networks.csv` context conventions are `global`,
+`group:<group_id>` and `column:<column_id>`. The meaning of `column:<id>` comes
+from `column_kind`: if columns are cells, this is cell-level truth; if columns
+are timepoints, this is timepoint-level truth.
+
+`groups.tsv` groups expression columns, not only cells. Avoid UI or wrapper
+text that describes groups as cell-only unless the selected axes specifically
+use `column_kind=cells`.
 
 ### Extras
 
 Supported extras currently include:
 - `groups`
-- `cell_phenotypes`
+- `cell_cell_interactions`
+- `chromatin_accessibility`
+- `chromatin_regions`
+- `column_descriptors`
+- `column_phenotypes`
 - `cluster_identities`
 - `enrichment_background`
+- `interventions`
 - `lineage_tree`
+- `perturbation_design`
 - `pseudotime`
 - `prior_grn`
-- `tf_list`
 - `prior_grn_by_group`
+- `replicates`
+- `spatial_coordinates`
+- `tf_list`
+- `timepoints`
 
-Extras describe optional generated artifacts that can accompany a canonical profile. For example, `scMTNI` should be viewed as consuming `scrna_grouped` plus extras, not as defining a new simulator profile.
+Extras describe optional generated artifacts that can accompany a scenario.
+For example, a grouped single-cell workflow consumes `resolution=single_cell`,
+`column_kind=cells`, `truth_requirements.contexts=["global", "group"]` plus
+extras, not a special profile name.
 
-Cell-specific regulatory truth is not an infer-network extra input. It is a public simulator truth output represented by `truth/networks.csv` rows with `context=cell:<cell_id>`.
+Column-specific regulatory truth is not an infer-network extra input. It is a
+public simulator truth output represented by `truth/networks.csv` rows with
+`context=column:<column_id>`.
+
+If a standardized extra is only valid for a semantic design, model that by
+listing it only on the matching capability. For example, a lineage artifact that
+exists only for trajectory/differentiation runs belongs in those capabilities,
+not behind simulator-specific GUI logic. If the upstream simulator exposes this
+through a parameter, bind that parameter with `parameter_bindings` so the
+capability and run parameters stay aligned.
+
+Simulator-specific native/provenance outputs may depend on run parameters,
+requested extras or selected native outputs. Model that dependency with
+`native_outputs[].conditions`; the GUI, planner and wrapper request validation
+must evaluate those conditions centrally instead of adding simulator-specific
+branches.
 
 ### Simulator-Side Inputs
 
@@ -145,9 +197,10 @@ simulatorspec.extra_inputs.conditional_required
 
 Use `required` only when the simulator cannot run without the file, `optional`
 when providing the file enriches or changes the simulation without being forced
-by a parameter, and `conditional_required` when a selected profile, requested
-extra, native output or parameter value requires the file. Generated extras are
-outputs requested from the simulator; they are not simulator-side inputs.
+by a parameter, and `conditional_required` when a selected semantic capability,
+requested extra, native output or parameter value requires the file. Generated
+extras are outputs requested from the simulator; they are not simulator-side
+inputs.
 
 ### Truth Outputs
 
@@ -159,50 +212,51 @@ Truth output modes are:
 Use these modes for:
 - `global`
 - `group`
-- `cell`
+- `column`
 
 All public truth networks are exported through `truth/networks.csv`.
-`context` determines whether an edge belongs to global, group or cell truth.
-`global` means rows with `context=global`; `group` means rows with `context=group:<group_id>`; `cell` means rows with `context=cell:<cell_id>`.
+`context` determines whether an edge belongs to global, group or column truth.
+`global` means rows with `context=global`; `group` means rows with
+`context=group:<group_id>`; `column` means rows with
+`context=column:<column_id>`.
 Be explicit about whether each context family comes directly from the simulator or is derived by the wrapper from simulator-native state.
-For simulators with native cell-specific GRNs, distinguish native cell truth from any group truth that the wrapper derives by aggregating cell-specific simulator state. Do not label group-level summaries as native unless upstream actually emits group-level truth.
+For simulators with native column-specific GRNs, distinguish native column truth
+from any group truth that the wrapper derives by aggregating column-specific
+simulator state. Do not label group-level summaries as native unless upstream
+actually emits group-level truth.
 Simulators may preserve native outputs under provenance, but public consumers must not depend on those native files.
 
 ### Truth Contexts
 
-Every `profile_capabilities.<profile>` entry must include `truth_contexts`.
+Every simulator capability entry must include `truth_contexts`.
 
-For every key in `truth_outputs`, add one matching `truth_contexts` entry with:
+For every supported `truth_outputs[]` entry, add one matching
+`truth_contexts` entry with:
 
-- `context`: `global`, `group` or `cell`
-- `status`: the same value as `truth_outputs.<context>`
+- `context`: `global`, `group` or `column`
+- `status`: the same value as the matching `truth_outputs[]` entry
 - `source_artifacts`: native upstream or normalized artifacts used
-- `upstream_configuration`: profile-relevant upstream settings or switches
+- `upstream_configuration`: capability-relevant upstream settings or switches
 - `generation`: exact wrapper rule for public rows in `truth/networks.csv`
 - `score_semantics`: how `score` and `sign` are computed
 - `limitations`: what is lost, derived or not native
 
-`status=none` is allowed only for contexts not required by the selected
-canonical profile. Contexts with `status=native` or `status=derivable` require
+`status=none` is allowed only for contexts not required by the selected scenario
+truth requirements. Contexts with `status=native` or `status=derivable` require
 the evidence fields above. If a truth context depends on parameters, inputs or
-requested native outputs, encode those constraints in `truth_parameter_requirements`
-or `compatibility_rules` so invalid runs fail before wrapper execution.
+requested native outputs, encode those constraints in
+`truth_parameter_requirements` or `compatibility_rules` so invalid runs fail
+before wrapper execution.
 
-Profile requirements are cumulative:
-
-- `scrna_global`: requires `global`.
-- `scrna_grouped`: requires `global` and `group`.
-- `scrna_cell_specific`: requires `global`, `group` and `cell`.
-
-Every derived public artifact must also have a `derivations[]` entry in the relevant profile capability. This applies to both:
+Every derived public artifact must also have a `derivations[]` entry in the relevant capability. This applies to both:
 - each item in `derivable_extras`
-- each `truth_outputs.*` entry whose mode is `derivable`
+- each `truth_outputs[]` entry whose status is `derivable`
 
 Each derivation entry must state:
-- `artifact`: the derived extra or truth output key
+- `artifact`: the derived extra id or derived truth context family
 - `source_artifacts`: simulator-native or already-normalized artifacts used as evidence
 - `method`: the exact wrapper rule, including thresholds and tie-breaks
-- `assumptions`: why the rule is acceptable for the benchmark profile
+- `assumptions`: why the rule is acceptable for the benchmark scenario
 - `limitations`: what information is lost or where the derivation can be misleading
 - `implemented_in`: wrapper path where the rule is implemented
 
@@ -241,12 +295,14 @@ Manual action:
 - confirm the canonical upstream project name and implementation URL
 - decide which public package, repo tag or commit will be installed
 - decide which upstream public API/CLI entrypoint the wrapper mirrors
-- list which canonical profiles are realistically supported
+- list which semantic axis combinations are realistically supported
 - list which extras are native or derivable
 - for every derived extra or truth output, write the exact derivation explanation before implementing the wrapper
 
 This id will be reused in:
 - simulator spec: `andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json`
+- Phase 1 draft spec, when the wrapper is not implemented yet:
+  `wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json`
 - wrapper dir: `wrappers/simulation_data_tools/simulators/<simulator_id>/`
 - smoke configs: `wrappers/simulation_data_tools/tests/smoketest_configs/<simulator_id>*.json`
 - Docker image: `adriansegura99/simulator_<simulator_id>:1.0.0`
@@ -285,7 +341,9 @@ Minimum evidence expected in `papers/`:
 
 Goal:
 - produce/update `integration_decisions.md`
-- draft `simulatorspec.json`
+- draft `simulatorspec.json`; keep it as
+  `wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json`
+  until the wrapper and Docker image are executable
 - decide the public installation route
 - decide the wrapper entrypoint and output mapping
 - decide the smoke-test matrix
@@ -299,27 +357,28 @@ Context:
 - Upstream repo is under [repo/](wrappers/simulation_data_tools/simulators/<simulator_id>/repo/)
 - Local papers are under [papers/](wrappers/simulation_data_tools/simulators/<simulator_id>/papers/)
 - Optional docs are under [wrappers/simulation_data_tools/simulators/<simulator_id>/](wrappers/simulation_data_tools/simulators/<simulator_id>/)
-- The SimulatorSpec target is [simulatorspec.json](andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json)
+- The final executable SimulatorSpec target is [simulatorspec.json](andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json)
+- During Phase 1, draft the spec at [draft_simulatorspec.json](wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json) unless an executable wrapper already exists
 - The wrapper target directory is [wrappers/simulation_data_tools/simulators/<simulator_id>/](wrappers/simulation_data_tools/simulators/<simulator_id>/)
 - Optional manual clarifications from the integrator:
   - preferred installation route: `<optional>`
   - preferred version/tag/commit: `<optional>`
   - target function/CLI/API entrypoint: `<optional>`
-  - profiles/extras that must be prioritized: `<optional>`
+  - semantic capabilities/extras that must be prioritized: `<optional>`
 
 Requirements:
 - Review the upstream repo, local paper text/PDFs and available docs
 - Produce or update [integration_decisions.md](wrappers/simulation_data_tools/simulators/<simulator_id>/integration_decisions.md)
-- Draft [simulatorspec.json](andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json)
+- Draft [draft_simulatorspec.json](wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json), or update the catalog [simulatorspec.json](andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json) only if the executable wrapper already exists
 - Do not implement the wrapper yet
 - Store publication references as a list of full canonical URLs
 - Store `first_author` as the full first-author name
 - Set `docker_image` to `adriansegura99/simulator_<simulator_id>:1.0.0`
-- Identify every canonical profile the simulator can support
+- Identify every semantic capability the simulator can support
 - Identify every extra that is native or derivable
-- Audit every claimed profile independently; for each profile, identify public
-  `truth_contexts` for `global`, `group` and `cell`, including whether each is
-  native, derivable or unavailable
+- Audit every claimed capability independently; for each capability, identify
+  public `truth_contexts` for `global`, `group` and `column`, including whether
+  each is native, derivable or unavailable
 - Document the upstream parameter switches required to produce each claimed
   truth context
 - Identify required, optional and conditional simulator input files
@@ -338,14 +397,14 @@ Requirements:
 - Do not add placeholder specs for other simulators
 
 Focus especially on:
-1. canonical profile support
+1. semantic axis and truth-requirement support
 2. optional and conditional input files
 3. extras and truth-output derivation
 4. parameter mapping and defaults
 5. output normalization into `expression.tsv`, `extras/`, `truth/` and provenance
 6. public installation source and version pinning
 7. smoke-test matrix needed to cover the declared contract
-8. profile-specific truth context evidence, including score/sign semantics and
+8. capability-specific truth context evidence, including score/sign semantics and
    limitations
 9. public id consistency across expression, truth, gene universe and extras
 10. which normalized outputs are needed to build `dataset-manifest.json` for
@@ -369,7 +428,7 @@ Goal:
 - implement the wrapper
 - implement the Dockerfile
 - keep `simulatorspec.json` aligned with actual behavior
-- add smoke-test configs covering all declared profiles/extras
+- add smoke-test configs covering all declared semantic capabilities/extras
 - make the wrapper produce `progress.json`
 
 Prompt to paste in chat:
@@ -390,9 +449,9 @@ Requirements:
 - Preserve raw upstream outputs, config snapshots, logs and session info under `provenance/raw/`
 - Map `runtime_resources.threads` to the upstream thread/worker option declared
   in `simulatorspec.json`; do not reintroduce thread controls as simulator params
-- Implement public truth rows exactly as documented in
-  `profile_capabilities.<profile>.truth_contexts`; if wrapper behavior differs,
-  fix the wrapper first and then update the spec from verified behavior
+- Implement public truth rows exactly as documented in the selected simulator
+  capability `truth_contexts`; if wrapper behavior differs, fix the wrapper
+  first and then update the spec from verified behavior
 - Produce:
   - `expression.tsv`
   - `truth/networks.csv`
@@ -400,11 +459,12 @@ Requirements:
   - optional `extras/`
   - `simulator-output-manifest.json`
 - Add smoke-test configs under [wrappers/simulation_data_tools/tests/smoketest_configs/](wrappers/simulation_data_tools/tests/smoketest_configs/)
-- The smoke-test matrix must cover every declared profile and every declared extra path
-- The smoke-test matrix must prove every required profile truth context:
-  - `scrna_global`: `global`
-  - `scrna_grouped`: `global` and `group:`
-  - `scrna_cell_specific`: `global`, `group:` and `cell:`
+- The smoke-test matrix must cover every declared semantic capability and every
+  declared extra path
+- The smoke-test matrix must prove every required truth context family:
+  - `global`: `context=global`
+  - `group`: at least one `context=group:<group_id>`
+  - `column`: at least one `context=column:<column_id>`
 - The smoke-test matrix must prove public id consistency across expression,
   truth, gene universe and generated extras
 - Build the image and run the smoke tests during this phase
@@ -490,7 +550,15 @@ The input request has this shape:
 {
   "schema_version": "1.0",
   "simulator_id": "<simulator_id>",
-  "profile": "scrna_grouped",
+  "data_axes": {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "differentiation"
+  },
+  "truth_requirements": {
+    "contexts": ["global", "group"]
+  },
   "seed": 1,
   "effective_extras": ["groups", "tf_list"],
   "mounted_inputs": {},
@@ -501,7 +569,7 @@ The input request has this shape:
 ```
 
 Rules:
-- `effective_extras` includes profile-required extras plus user-requested extras.
+- `effective_extras` includes truth-required extras plus user-requested extras.
 - `mounted_inputs` maps simulator input ids to read-only paths under `/work/inputs/`.
 - `params` contains values already schema-validated by `generate-data`.
 - `runtime_resources.threads` contains the planner-assigned thread count. The
@@ -530,14 +598,23 @@ Optional files:
 
 ```text
 extras/groups.tsv
-extras/cell_phenotypes.tsv
+extras/cell_cell_interactions.tsv
+extras/chromatin_accessibility.tsv
+extras/chromatin_regions.tsv
+extras/column_descriptors.tsv
+extras/column_phenotypes.tsv
 extras/cluster_identities.tsv
 extras/enrichment_background.txt
+extras/interventions.tsv
 extras/lineage_tree.tsv
+extras/perturbation_design.tsv
 extras/pseudotime.tsv
 extras/prior_grn.tsv
-extras/tf_list.txt
 extras/prior_grn_by_group.tsv
+extras/replicates.tsv
+extras/spatial_coordinates.tsv
+extras/tf_list.txt
+extras/timepoints.tsv
 ```
 
 The core validates only the normalized contract. It must not parse simulator-native files directly.
@@ -634,7 +711,7 @@ Look in:
 
 Rules:
 - if the simulator can run from built-in templates, do not declare unnecessary required inputs
-- if a file is needed only for specific params, profile, requested extras or native outputs, model it in `conditional_required`
+- if a file is needed only for specific params, semantic axes, requested extras or native outputs, model it in `conditional_required`
 - create or reuse `andrea/catalog_simulation_data_tools/input_specs/<input_id>.json` for file semantics, format, columns, accepted extensions, validation notes and examples
 - keep `extra_inputs` entries focused on simulator-specific `usage`, `conditions` and `message`
 - do not define inline `formats`, `example` or column contracts inside `simulatorspec.json`
@@ -649,10 +726,12 @@ Examples:
 - kinetic parameter file
 - real expression reference file
 
-### Profile Capabilities
+### Semantic Capabilities
 
-For each canonical profile, determine:
-- whether the simulator can generate the expression profile
+For each supported combination of semantic axes and truth requirements,
+determine:
+- whether the simulator can generate the requested measurement/resolution,
+  column kind and experimental design
 - which extras are native
 - which extras are derivable
 - which truth outputs are native or derivable
@@ -665,20 +744,25 @@ Evidence sources:
 
 Rules:
 - decide from simulator semantics, not only matrix shape
-- `scrna_grouped` requires expression plus a defensible group assignment
-- `scrna_cell_specific` requires expression columns to represent cells and `truth_outputs.cell != "none"`
-- `scrna_cell_specific` truth must be exported through `truth/networks.csv` with `context=cell:<cell_id>`, not through a separate public cell-network file
-- `bulk_time_series` requires temporal semantics, not just ordered samples
-- `bulk_perturbational` requires perturbation/intervention semantics
+- grouped truth requires expression plus a defensible group assignment over
+  expression columns
+- column truth requires a `truth_outputs[]` entry with `context="column"` and
+  `status` equal to `native` or `derivable`; it must be exported through
+  `truth/networks.csv` with `context=column:<column_id>`, not through a separate
+  public column-network file
+- `experimental_design=time_series` requires temporal semantics, not just
+  ordered samples
+- `experimental_design=perturbational` requires perturbation/intervention
+  semantics
 - do not claim `lineage_tree` unless the simulator has trajectory/tree/state-transition information or the wrapper can derive it defensibly
 - do not claim `prior_grn_by_group` unless there is a defensible modality or simulator state from which to derive it
 
 ### Truth Outputs
 
-For each profile, set:
+For each semantic capability, set:
 - `global`
 - `group`
-- `cell`
+- `column`
 
 Rules:
 - `native`: directly available from simulator internals or declared inputs
@@ -691,10 +775,14 @@ Document:
 - score meaning
 - thresholding rule, if any
 - context convention (`global` and, when supported, `group:<group_id>`)
-- context convention for cell-specific truth (`cell:<cell_id>`) and how those cell ids map to expression columns
-- whether grouped truth is profile-native, derived from simulator-native state, or unavailable
-- whether cell truth is simulator-native, wrapper-derived from simulator state, or unavailable
-- whether group truth is a direct simulator output or a wrapper-derived aggregation of native cell truth
+- context convention for column-specific truth (`column:<column_id>`) and how
+  those column ids map to expression columns
+- whether grouped truth is capability-native, derived from simulator-native
+  state, or unavailable
+- whether column truth is simulator-native, wrapper-derived from simulator state,
+  or unavailable
+- whether group truth is a direct simulator output or a wrapper-derived
+  aggregation of native column truth
 
 ### Parameters
 
@@ -715,15 +803,25 @@ Rules:
 - expose function-valued hooks only as explicit presets when practical
 - do not include arbitrary code strings as parameters
 - every declared parameter must be accepted by the wrapper
+- if a parameter controls a semantic axis already chosen in the scenario, for
+  example `experimental_design=steady_state` vs `differentiation`, add a
+  capability-level `parameter_bindings[]` entry so planning and the GUI enforce
+  the scenario contract
+- use `policy="locked"` when the value must not be changed by the user for that
+  capability
+- use `policy="default_if_unset"` when the capability needs a safer default but
+  the user may still choose another compatible value
+- do not rely on the global param default when it contradicts one supported
+  capability; bind that capability explicitly
 
 ### Auxiliary Artifacts
 
 Use `artifacts_aux` for non-public but useful native outputs:
 - raw simulator model objects
-- milestone/cell-state metadata
+- milestone/column-state metadata
 - reaction logs
 - velocity matrices
-- cell-specific GRNs
+- column-specific GRNs
 - upstream config snapshots
 - session info
 
@@ -743,7 +841,7 @@ G1	0	3	...
 Rules:
 - first column is gene id
 - remaining columns are samples/cells/timepoints/perturbations
-- column semantics must match the selected canonical profile
+- column semantics must match `data_axes.column_kind`
 - preserve simulator count/abundance scale unless a documented upstream export requires transformation
 - do not rename genes opportunistically. If the upstream simulator emits
   numeric ids or prefixed ids, choose one public convention at the earliest
@@ -755,29 +853,44 @@ Rules:
 Use:
 
 ```text
-cell	cluster
+column	cluster
 cell_1	group_a
 cell_2	group_b
 ```
 
 Rules:
 - exactly one group assignment per expression column
-- `cell` values must match expression column names
+- first-column values must match expression column names
 - group labels should be stable and human-readable
 
-### `cell_phenotypes.tsv`
+### `column_descriptors.tsv`
 
 Use:
 
 ```text
-cell	phenotype	order
+column	batch	condition
+cell_1	batch_a	control
+cell_2	batch_a	stimulated
+```
+
+Rules:
+- exactly one descriptor row per expression column
+- first-column values must match expression column names
+- descriptor columns should be serializable categorical or scalar metadata
+
+### `column_phenotypes.tsv`
+
+Use:
+
+```text
+column	phenotype	order
 cell_1	state_a	0
 cell_2	state_b	1
 ```
 
 Rules:
 - exactly one phenotype assignment per expression column
-- `cell` values must match expression column names
+- first-column values must match expression column names
 - `order` must be an integer and must follow a documented simulator-derived state ordering
 
 ### `cluster_identities.tsv`
@@ -800,15 +913,73 @@ Rules:
 Use:
 
 ```text
-cell	pseudotime
+column	pseudotime
 cell_1	0.0
 cell_2	0.7
 ```
 
 Rules:
 - exactly one pseudotime value per expression column
-- `cell` values must match expression column names
+- first-column values must match expression column names
 - document whether pseudotime is native or derived, including branch handling and scaling
+
+### `timepoints.tsv`
+
+Use:
+
+```text
+column	timepoint
+sample_1	0
+sample_2	24
+```
+
+Rules:
+- exactly one row per expression column
+- `timepoint` is a numeric observed sampling coordinate, not a derived pseudotime
+
+### `perturbation_design.tsv`
+
+Use:
+
+```text
+column	condition	perturbation	target	dose	timepoint	replicate	control
+cell_1	control	none		0	0	r1	true
+cell_2	knockdown_G1	knockdown	G1	1	24	r1	false
+```
+
+Rules:
+- exactly one row per expression column
+- `condition` is required; additional columns are optional when the simulator exposes them
+- target genes should use the same public IDs as `expression.tsv` and `truth/gene_universe.txt`
+
+### `interventions.tsv`
+
+Use:
+
+```text
+intervention	target	effect	sign	dose
+knockdown_G1	G1	knockdown	-1	1.0
+overexpress_G2	G2	overexpression	1	1.0
+```
+
+Rules:
+- one row per intervention definition
+- `target` must use public expression gene IDs
+- `effect` should preserve the simulator-native intervention type when available
+
+### `replicates.tsv`
+
+Use:
+
+```text
+column	replicate	batch
+sample_1	r1	batch_a
+sample_2	r2	batch_a
+```
+
+Rules:
+- exactly one row per expression column
+- use for biological or technical replicate labels that are not already captured by `groups.tsv`
 
 ### `lineage_tree.tsv`
 
@@ -887,7 +1058,7 @@ Use:
 source,target,score,sign,evidence,context
 TF1,G2,1,+,simulated_truth,global
 TF1,G3,0.7,-,simulated_truth,group:group_a
-TF2,G4,0.4,+,simulated_truth,cell:cell_001
+TF2,G4,0.4,+,simulated_truth,column:cell_001
 ```
 
 Rules:
@@ -897,14 +1068,19 @@ Rules:
 - `score` must be a positive truth label, confidence or effect magnitude; sign belongs in `sign`
 - `context=global` for dataset-level truth
 - `context=group:<group_id>` for group-specific truth
-- `context=cell:<cell_id>` for cell-specific truth
+- `context=column:<column_id>` for expression-column-specific truth. The
+  biological meaning of the column id comes from `data_axes.column_kind`.
 - every group context must correspond to a group in `groups.tsv`
-- every cell context must correspond to an expression column identifier
+- every column context must correspond to an expression column identifier
 - `source` and `target` must use the same public gene-id convention as
   `expression.tsv`
-- when deriving group truth from cell-specific simulator state, document the fixed aggregation rule and whether missing cell-edge values contribute zero
-- when exporting native cell truth, do not apply group-level thresholds unless they are also native to the cell-level simulator output
-- dense cell-specific truth can be very large; keep smoke-test matrices small but representative, and preserve full native objects under provenance/raw when useful for audit
+- when deriving group truth from column-specific simulator state, document the
+  fixed aggregation rule and whether missing column-edge values contribute zero
+- when exporting native column truth, do not apply group-level thresholds unless
+  they are also native to the column-level simulator output
+- dense column-specific truth can be very large; keep smoke-test matrices small
+  but representative, and preserve full native objects under provenance/raw when
+  useful for audit
 - include this file in `ground-truth-manifest.json` as `outputs.networks`
 - include this file in `simulator-output-manifest.json` as `truth.networks`
 
@@ -917,7 +1093,7 @@ wrappers/simulation_data_tools/tests/smoketest_configs/<simulator_id>*.json
 ```
 
 The matrix must cover:
-- every declared canonical profile
+- every declared semantic capability
 - every declared extra at least once
 - representative parameter groups
 - conditional-input behavior when supported
@@ -926,14 +1102,12 @@ The matrix must cover:
 - public id consistency across expression, truth, gene universe and extras
 - important provenance files
 
-For `dyngen`, this currently means:
-- `scrna_global`
-- `scrna_global + tf_list`
-- `scrna_grouped + groups`
-- `scrna_grouped + groups + lineage_tree + tf_list`
-- `scrna_grouped + groups + tf_list + RNA velocity parameter path`
-- `scrna_cell_specific` with cumulative `global`, `group:<group_id>` and
-  `cell:<cell_id>` truth contexts
+For `dyngen`, this currently means representative single-cell trajectory or
+differentiation capabilities covering:
+- `global` truth
+- `global + group` truth plus `groups`
+- `global + group + column` truth
+- optional `tf_list`, `lineage_tree`, RNA velocity and other declared extras
 
 Run:
 
@@ -964,7 +1138,7 @@ successful. The generate-data planner does not use fully timed-out points as
 runtime evidence. Partially successful points remain usable, but their ETA
 receives a conservative risk penalty and carries a provenance warning.
 
-Each integrated simulator should have a bounded profile config under:
+Each integrated simulator should have a bounded cost benchmark config under:
 
 ```text
 wrappers/simulation_data_tools/cost_profiles/<simulator_id>.json
@@ -973,7 +1147,7 @@ wrappers/simulation_data_tools/cost_profiles/<simulator_id>.json
 The cost profile matrix should vary the dimensions and settings that materially
 change runtime:
 
-- canonical profile
+- semantic capability
 - genes and cells
 - group/population count where applicable
 - requested extras
@@ -981,8 +1155,8 @@ change runtime:
 - runtime-affecting parameter presets
 - assigned `runtime_resources.threads`
 
-Do not benchmark impossible combinations. If a profile activates a
-`extra_inputs.conditional_required` rule, the profile config must provide
+Do not benchmark impossible combinations. If a semantic capability activates an
+`extra_inputs.conditional_required` rule, the cost profile config must provide
 that simulator-side input file.
 
 ## Generate-Data Resource And ETA Contract
@@ -1033,10 +1207,10 @@ The decision log must include:
 - upstream evidence reviewed
 - selected installation route and version/tag/commit
 - selected public API/CLI entrypoint
-- supported profiles and why
-- unsupported profiles and why
+- supported semantic capabilities and why
+- unsupported semantic capabilities and why
 - native and derivable extras
-- per-profile `truth_contexts`, including native upstream outputs,
+- per-capability `truth_contexts`, including native upstream outputs,
   wrapper-derived outputs, upstream parameter switches, score/sign semantics and
   limitations
 - simulator-side input specs and `extra_inputs` usage rules
@@ -1045,7 +1219,8 @@ The decision log must include:
 - progress strategy
 - smoke-test matrix and outcome
 - cost profile status and whether ETA uses catalog costs or fallback estimates
-- resource mapping from `runtime_resources.threads` to the upstream API
+- resource mapping from request `runtime_resources.threads` through the spec
+  `runtime_resources.threading` contract to the upstream API
 
 For every non-trivial decision, record:
 - chosen value
@@ -1095,11 +1270,11 @@ Before considering a simulator integrated, confirm:
 - `docker_image` follows `adriansegura99/simulator_<simulator_id>:1.0.0`
 - the Dockerfile installs from a stable public source
 - runtime does not depend on the local evidence repo
-- every declared profile is covered by smoke tests
+- every declared semantic capability is covered by smoke tests
 - every declared extra is covered by smoke tests
-- every declared profile has audited `truth_contexts`
-- `scrna_cell_specific`, when claimed, emits `global`, `group:<group_id>` and
-  `cell:<cell_id>` truth rows
+- every declared capability has audited `truth_contexts`
+- column-specific truth, when claimed, emits `global`, requested
+  `group:<group_id>` and `column:<column_id>` truth rows
 - every declared parameter is accepted by the wrapper
 - `progress.json` is written
 - `simulator-output-manifest.json` validates

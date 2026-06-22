@@ -25,6 +25,15 @@ from _run_tool_common import (
 )
 
 
+def _numpy_module() -> Any:
+    try:
+        return np
+    except NameError:
+        import numpy as np_module  # noqa: PLC0415
+
+        return np_module
+
+
 EXPECTED_PARAMS = {
     "similarity",
     "lambda1",
@@ -257,7 +266,7 @@ def _read_tf_list(tf_path: Path, expression_genes: set[str]) -> list[str]:
     return tf_names
 
 
-def _read_cell_phenotypes(
+def _read_column_phenotypes(
     phenotypes_path: Path,
     *,
     cells: list[str],
@@ -267,31 +276,31 @@ def _read_cell_phenotypes(
         fieldnames = reader.fieldnames or []
         if len(fieldnames) < 3:
             raise ValueError(
-                "cell_phenotypes.tsv must have at least 3 columns: cell, phenotype, order."
+                "column_phenotypes.tsv must have at least 3 columns: column, phenotype, order."
             )
-        cell_col = fieldnames[0]
+        column_col = fieldnames[0]
         missing_cols = sorted({"phenotype", "order"}.difference(fieldnames))
         if missing_cols:
-            raise ValueError(f"cell_phenotypes.tsv is missing columns: {missing_cols}")
+            raise ValueError(f"column_phenotypes.tsv is missing columns: {missing_cols}")
 
         cell_to_raw: dict[str, tuple[str, int]] = {}
         phenotype_to_order: dict[str, int] = {}
         order_to_phenotype: dict[int, str] = {}
         for line_no, row in enumerate(reader, start=2):
-            cell = str(row.get(cell_col, "")).strip()
+            cell = str(row.get(column_col, "")).strip()
             phenotype = str(row.get("phenotype", "")).strip()
             raw_order = str(row.get("order", "")).strip()
             if not cell or not phenotype or not raw_order:
                 raise ValueError(
-                    f"cell_phenotypes.tsv has an empty cell, phenotype or order at line {line_no}."
+                    f"column_phenotypes.tsv has an empty expression column, phenotype or order at line {line_no}."
                 )
             if cell in cell_to_raw:
-                raise ValueError(f"cell_phenotypes.tsv contains duplicate cell: {cell}")
+                raise ValueError(f"column_phenotypes.tsv contains duplicate expression column: {cell}")
             try:
                 order = int(raw_order)
             except ValueError as exc:
                 raise ValueError(
-                    f"cell_phenotypes.tsv order must be an integer at line {line_no}: {raw_order!r}"
+                    f"column_phenotypes.tsv order must be an integer at line {line_no}: {raw_order!r}"
                 ) from exc
 
             previous_order = phenotype_to_order.get(phenotype)
@@ -314,13 +323,13 @@ def _read_cell_phenotypes(
     missing = sorted(expected.difference(observed))
     extra = sorted(observed.difference(expected))
     if missing:
-        raise ValueError(f"cell_phenotypes.tsv is missing cells from expression: {missing}")
+        raise ValueError(f"column_phenotypes.tsv is missing expression columns: {missing}")
     if extra:
-        raise ValueError(f"cell_phenotypes.tsv contains cells not in expression: {extra}")
+        raise ValueError(f"column_phenotypes.tsv contains columns not in expression: {extra}")
 
     sorted_orders = sorted(order_to_phenotype)
     if not sorted_orders:
-        raise ValueError("cell_phenotypes.tsv contains no phenotype assignments.")
+        raise ValueError("column_phenotypes.tsv contains no phenotype assignments.")
 
     contiguous_by_order = {order: idx for idx, order in enumerate(sorted_orders)}
     label_by_assignment = {
@@ -369,7 +378,8 @@ def _stratified_split_df_and_assignment(
     assignment: Any,
     test_proportion: float = SIMIC_TEST_PROPORTION,
 ) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]:
-    assignment_array = np.asarray(assignment)
+    np_module = _numpy_module()
+    assignment_array = np_module.asarray(assignment)
     if len(df_in) != len(assignment_array):
         raise ValueError(
             "SimiC split received mismatched expression rows and phenotype assignments."
@@ -392,13 +402,13 @@ def _stratified_split_df_and_assignment(
     test_indices: list[int] = []
     candidate_extra_indices: list[int] = []
     for label in labels:
-        label_indices = np.where(assignment_array == label)[0]
+        label_indices = np_module.where(assignment_array == label)[0]
         if len(label_indices) < SIMIC_MIN_CELLS_PER_SPLIT * 2:
             raise ValueError(
                 "Each phenotype must have at least four cells for SimiC's train/test split "
                 "to retain at least two train and two test cells per phenotype."
             )
-        permuted = np.random.permutation(label_indices)
+        permuted = np_module.random.permutation(label_indices)
         test_indices.extend(permuted[:SIMIC_MIN_CELLS_PER_SPLIT].tolist())
         candidate_extra_indices.extend(
             permuted[SIMIC_MIN_CELLS_PER_SPLIT:-SIMIC_MIN_CELLS_PER_SPLIT].tolist()
@@ -410,12 +420,12 @@ def _stratified_split_df_and_assignment(
             "SimiC's upstream 20% test split cannot satisfy per-phenotype train/test coverage."
         )
     if remaining:
-        extra_permuted = np.random.permutation(candidate_extra_indices)
+        extra_permuted = np_module.random.permutation(candidate_extra_indices)
         test_indices.extend(extra_permuted[:remaining].tolist())
 
     test_index_set = set(test_indices)
-    test_idx = np.array(sorted(test_indices), dtype=int)
-    train_idx = np.array(
+    test_idx = np_module.array(sorted(test_indices), dtype=int)
+    train_idx = np_module.array(
         [idx for idx in range(len(assignment_array)) if idx not in test_index_set],
         dtype=int,
     )
@@ -438,7 +448,7 @@ def _prepare_upstream_inputs(
     genes = [str(gene) for gene in expression.index]
     cells = [str(cell) for cell in expression.columns]
     tf_names = _read_tf_list(tf_path, set(genes))
-    phenotype_assignments = _read_cell_phenotypes(phenotypes_path, cells=cells)
+    phenotype_assignments = _read_column_phenotypes(phenotypes_path, cells=cells)
 
     non_tf_genes = [
         gene for gene in genes if gene.lower() not in {tf.lower() for tf in tf_names}
@@ -669,7 +679,7 @@ def main() -> None:
     try:
         tf_path = require_extra_file(args.extra, "tf_list.txt", "tf_list")
         phenotypes_path = require_extra_file(
-            args.extra, "cell_phenotypes.tsv", "cell_phenotypes"
+            args.extra, "column_phenotypes.tsv", "column_phenotypes"
         )
         validate_runtime_inputs(
             input_path=args.input,

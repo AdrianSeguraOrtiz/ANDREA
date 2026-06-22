@@ -29,6 +29,25 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
+SCRIPT_ROOT = Path(__file__).resolve().parent
+if str(SCRIPT_ROOT) in sys.path:
+    sys.path.remove(str(SCRIPT_ROOT))
+sys.path.insert(0, str(SCRIPT_ROOT))
+loaded_shared = sys.modules.get("shared")
+if loaded_shared is not None:
+    loaded_shared_file = getattr(loaded_shared, "__file__", None)
+    loaded_from_other_wrapper = (
+        loaded_shared_file is None
+        or SCRIPT_ROOT not in Path(loaded_shared_file).resolve().parents
+    )
+    if loaded_from_other_wrapper:
+        for module_name in [
+            name
+            for name in sys.modules
+            if name == "shared" or name.startswith("shared.")
+        ]:
+            del sys.modules[module_name]
+
 from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR, resolve_dev_params
 
 INFERENCE_TOOLS_ROOT = Path(__file__).resolve().parents[1]
@@ -471,7 +490,7 @@ def _parse_smoke_config_payload(
         "global",
         "group_native",
         "group_emulated",
-        "cell_native",
+        "column_native",
         "group_aggregated",
     }:
         raise ValueError(

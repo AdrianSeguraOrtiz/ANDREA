@@ -63,7 +63,7 @@ def _normalize_execution_mode(raw_tool: dict[str, Any]) -> str:
 
 def _capabilities_for_execution_mode(execution_mode: str) -> list[str]:
     if execution_mode == "group_aggregated":
-        return ["cell_native", "group_aggregated"]
+        return ["column_native", "group_aggregated"]
     return [execution_mode]
 
 

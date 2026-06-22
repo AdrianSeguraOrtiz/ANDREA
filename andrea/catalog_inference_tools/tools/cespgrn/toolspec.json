@@ -20,7 +20,7 @@
   "implementation_url": "https://github.com/PeterZZQ/CeSpGRN",
   "docker_image": "adriansegura99/inference-tools_cespgrn:1.0.0",
   "execution_capabilities": [
-    "cell_native",
+    "column_native",
     "group_aggregated"
   ],
   "runtime_resources": {
@@ -59,8 +59,8 @@
         "execution": "mode",
         "op": "eq",
         "value": "group_aggregated",
-        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates CeSpGRN cell-native network rows by group.",
-        "usage": "ANDREA uses groups.tsv after the native CeSpGRN per-cell run to aggregate cell:<cell_id> rows into group:<group_id> rows; CeSpGRN itself does not consume groups.tsv."
+        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates CeSpGRN column-native network rows by group.",
+        "usage": "ANDREA uses groups.tsv after the native CeSpGRN per-column run to aggregate column:<column_id> rows into group:<group_id> rows; CeSpGRN itself does not consume groups.tsv."
       },
       {
         "input": "spatial_coordinates",

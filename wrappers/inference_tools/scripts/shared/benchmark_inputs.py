@@ -11,37 +11,45 @@ from pathlib import Path
 from typing import Any, Sequence
 
 GENERATED_EXTRA_INPUTS = {
-    "cell_phenotypes",
-    "cell_descriptors",
+    "column_phenotypes",
+    "column_descriptors",
     "cluster_identities",
     "cluster_markers",
     "enrichment_background",
     "grnboost_network",
     "groups",
+    "interventions",
     "lineage_tree",
+    "perturbation_design",
     "prior_grn",
     "prior_grn_by_group",
     "pseudotime",
+    "replicates",
     "spatial_coordinates",
     "terms_of_interest",
     "tf_list",
+    "timepoints",
 }
 
 EXTRA_FILENAMES = {
-    "cell_phenotypes": "cell_phenotypes.tsv",
-    "cell_descriptors": "cell_descriptors.tsv",
+    "column_phenotypes": "column_phenotypes.tsv",
+    "column_descriptors": "column_descriptors.tsv",
     "cluster_identities": "cluster_identities.tsv",
     "cluster_markers": "cluster_markers.tsv",
     "enrichment_background": "enrichment_background.txt",
     "grnboost_network": "grnboost_network.tsv",
     "groups": "groups.tsv",
+    "interventions": "interventions.tsv",
     "lineage_tree": "lineage_tree.tsv",
+    "perturbation_design": "perturbation_design.tsv",
     "prior_grn": "prior_grn.tsv",
     "prior_grn_by_group": "prior_grn_by_group.tsv",
     "pseudotime": "pseudotime.tsv",
+    "replicates": "replicates.tsv",
     "spatial_coordinates": "spatial_coordinates.tsv",
     "terms_of_interest": "terms_of_interest.txt",
     "tf_list": "tf_list.txt",
+    "timepoints": "timepoints.tsv",
 }
 
 
@@ -132,10 +140,10 @@ def write_benchmark_io_dir(
         if input_key not in GENERATED_EXTRA_INPUTS:
             raise ValueError(f"Unsupported synthetic extra input: {input_key}")
         path = extra_dir / EXTRA_FILENAMES[input_key]
-        if input_key == "cell_phenotypes":
-            write_cell_phenotypes(path, columns=columns, assignments=assignments)
-        elif input_key == "cell_descriptors":
-            write_cell_descriptors(path, columns=columns, assignments=assignments)
+        if input_key == "column_phenotypes":
+            write_column_phenotypes(path, columns=columns, assignments=assignments)
+        elif input_key == "column_descriptors":
+            write_column_descriptors(path, columns=columns, assignments=assignments)
         elif input_key == "cluster_identities":
             write_cluster_identities(path, groups=groups)
         elif input_key == "cluster_markers":
@@ -157,8 +165,12 @@ def write_benchmark_io_dir(
             )
         elif input_key == "groups":
             write_groups(path, assignments=assignments)
+        elif input_key == "interventions":
+            write_interventions(path, genes=genes)
         elif input_key == "lineage_tree":
             write_lineage_tree(path, groups=groups)
+        elif input_key == "perturbation_design":
+            write_perturbation_design(path, columns=columns, genes=genes)
         elif input_key == "prior_grn":
             write_network_edges(
                 path,
@@ -178,12 +190,16 @@ def write_benchmark_io_dir(
             )
         elif input_key == "pseudotime":
             write_pseudotime(path, columns=columns, assignments=assignments)
+        elif input_key == "replicates":
+            write_replicates(path, columns=columns)
         elif input_key == "spatial_coordinates":
             write_spatial_coordinates(path, columns=columns)
         elif input_key == "terms_of_interest":
             write_terms_of_interest(path, profile.terms_of_interest)
         elif input_key == "tf_list":
             write_tf_list(path, tfs)
+        elif input_key == "timepoints":
+            write_timepoints(path, columns=columns)
         extras[input_key] = path
 
     return BenchmarkInputBundle(
@@ -233,7 +249,7 @@ def write_groups(
 ) -> None:
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["sample", "cluster"])
+        writer.writerow(["column", "cluster"])
         writer.writerows(assignments)
 
 
@@ -287,7 +303,7 @@ def write_prior_grn_by_group(
                 writer.writerow([group, source, target, f"{score:.6f}"])
 
 
-def write_cell_phenotypes(
+def write_column_phenotypes(
     path: Path,
     *,
     columns: Sequence[str],
@@ -298,14 +314,14 @@ def write_cell_phenotypes(
     label_by_group = {group: f"P{idx + 1}" for idx, group in enumerate(group_order)}
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "phenotype", "order"])
+        writer.writerow(["column", "phenotype", "order"])
         group_by_column = dict(assignments)
         for column in columns:
             group = group_by_column[column]
             writer.writerow([column, label_by_group[group], order_by_group[group]])
 
 
-def write_cell_descriptors(
+def write_column_descriptors(
     path: Path,
     *,
     columns: Sequence[str],
@@ -314,7 +330,7 @@ def write_cell_descriptors(
     group_by_column = dict(assignments)
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "batch", "condition", "cell_type"])
+        writer.writerow(["column", "batch", "condition", "cell_type"])
         for idx, column in enumerate(columns):
             writer.writerow(
                 [
@@ -324,6 +340,73 @@ def write_cell_descriptors(
                     group_by_column.get(column, "cluster_1"),
                 ]
             )
+
+
+def write_timepoints(path: Path, *, columns: Sequence[str]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["column", "timepoint"])
+        for idx, column in enumerate(columns):
+            writer.writerow([column, f"{float(idx % 4):.1f}"])
+
+
+def write_replicates(path: Path, *, columns: Sequence[str]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["column", "replicate", "batch"])
+        for idx, column in enumerate(columns):
+            writer.writerow([column, f"r{(idx % 3) + 1}", f"batch_{(idx % 2) + 1}"])
+
+
+def write_perturbation_design(
+    path: Path,
+    *,
+    columns: Sequence[str],
+    genes: Sequence[str],
+) -> None:
+    targets = list(genes[: max(1, min(3, len(genes)))])
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(
+            [
+                "column",
+                "condition",
+                "perturbation",
+                "target",
+                "dose",
+                "timepoint",
+                "replicate",
+                "control",
+            ]
+        )
+        for idx, column in enumerate(columns):
+            if idx % 4 == 0:
+                writer.writerow(
+                    [column, "control", "none", "", "0", "0", f"r{(idx % 3) + 1}", "true"]
+                )
+            else:
+                target = targets[idx % len(targets)]
+                writer.writerow(
+                    [
+                        column,
+                        f"knockdown_{target}",
+                        "knockdown",
+                        target,
+                        "1",
+                        "24",
+                        f"r{(idx % 3) + 1}",
+                        "false",
+                    ]
+                )
+
+
+def write_interventions(path: Path, *, genes: Sequence[str]) -> None:
+    targets = list(genes[: max(1, min(3, len(genes)))])
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["intervention", "target", "effect", "sign", "dose"])
+        for target in targets:
+            writer.writerow([f"knockdown_{target}", target, "knockdown", "-1", "1.0"])
 
 
 def write_pseudotime(
@@ -347,7 +430,7 @@ def write_pseudotime(
 
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "pseudotime"])
+        writer.writerow(["column", "pseudotime"])
         for column in columns:
             writer.writerow([column, f"{pseudotime_by_column[column]:.6f}"])
 
@@ -355,7 +438,7 @@ def write_pseudotime(
 def write_spatial_coordinates(path: Path, *, columns: Sequence[str]) -> None:
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "x", "y"])
+        writer.writerow(["column", "x", "y"])
         for idx, column in enumerate(columns):
             row = idx // 8
             col = idx % 8
@@ -542,7 +625,7 @@ def _validate_profile(
     needs_groups = any(
         input_key
         in {
-            "cell_phenotypes",
+            "column_phenotypes",
             "cluster_identities",
             "cluster_markers",
             "groups",
@@ -556,11 +639,11 @@ def _validate_profile(
         raise ValueError("Grouped synthetic inputs require group_count >= 1.")
     if profile.group_count > size.columns:
         raise ValueError("group_count cannot exceed the number of expression columns.")
-    if "cell_phenotypes" in profile.extras_provided and (
+    if "column_phenotypes" in profile.extras_provided and (
         size.columns < profile.group_count * 2
     ):
         raise ValueError(
-            "cell_phenotypes generation requires at least two cells per phenotype."
+            "column_phenotypes generation requires at least two expression columns per phenotype."
         )
     if profile.marker_count_per_group < 1:
         raise ValueError("marker_count_per_group must be >= 1.")

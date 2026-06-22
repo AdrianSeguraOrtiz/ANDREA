@@ -1,19 +1,25 @@
 {
   "schema_version": "1.0",
-  "key": "cell_descriptors",
+  "key": "replicates",
   "file_kind": "tsv",
-  "description": "Cell descriptor TSV: first column maps expression cell/sample identifiers to one or more categorical descriptor columns such as batch, donor, condition or cell type.",
-  "example": "cell\tbatch\tcell_type\ncell_1\tbatch_a\tT_cell\ncell_2\tbatch_b\tB_cell",
+  "description": "Replicate TSV: first column maps expression column identifiers to biological or technical replicate labels.",
+  "example": "column\treplicate\tbatch\nsample_1\tr1\tbatch_a\nsample_2\tr2\tbatch_a\nsample_3\tr1\tbatch_b",
   "delimiter": "\t",
   "header": true,
   "min_rows": 1,
   "min_columns": 2,
   "first_column_role": "expression_column_id",
+  "required_columns": [
+    "replicate"
+  ],
   "unique_first_column": true,
   "data_columns_type": "any",
   "data_numeric_min_fraction": 0.0,
-  "required_columns": [],
-  "column_types": {},
+  "column_types": {
+    "replicate": "string",
+    "batch": "string",
+    "condition": "string"
+  },
   "cross_checks": [
     {
       "kind": "first_column_subset_expression_columns"

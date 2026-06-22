@@ -14,8 +14,8 @@ _REPO_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT_FOR_IMPORTS) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT_FOR_IMPORTS))
 
+from andrea.core.commands.generate_data.catalog import get_semantic_capability
 from andrea.core.commands.generate_data.request import validate_simulator_inputs
-from andrea.core.commands.generate_data.shared import PROFILE_SPECS
 
 from shared.catalog_simulators import (
     CATALOG_ROOT,
@@ -118,14 +118,17 @@ def semantic_errors_for_cost(
                 f"{prefix}.benchmark_config.simulator_id must be '{simulator_id}'."
             )
             continue
-        scenario_profile = str(config.get("profile") or "")
-        if scenario_profile not in spec.get("profile_capabilities", {}):
+        data_axes = config.get("data_axes", {})
+        truth_requirements = config.get("truth_requirements", {})
+        capability = get_semantic_capability(
+            spec,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
+        )
+        if capability is None:
             errors.append(
-                f"{prefix}.benchmark_config.profile is not declared by this SimulatorSpec."
+                f"{prefix}.benchmark_config data_axes/truth_requirements are not declared by this SimulatorSpec."
             )
-            continue
-        if scenario_profile not in PROFILE_SPECS:
-            errors.append(f"{prefix}.benchmark_config.profile is not canonical.")
             continue
         input_profile = config.get("input_profile", {})
         params_profile = config.get("params_profile", {})
@@ -136,7 +139,9 @@ def semantic_errors_for_cost(
                 semantic_input_errors(
                     simulator_id=simulator_id,
                     spec=spec,
-                    scenario_profile=scenario_profile,
+                    data_axes=data_axes,
+                    truth_requirements=truth_requirements,
+                    capability=capability,
                     input_profile=input_profile,
                     params_profile=params_profile,
                     prefix=prefix,
@@ -167,21 +172,99 @@ def semantic_errors_for_cost(
                     prefix=prefix,
                 )
             )
+        errors.extend(
+            semantic_feature_vector_errors(
+                profile=profile,
+                config=config,
+                input_profile=input_profile,
+                prefix=prefix,
+            )
+        )
     return errors
+
+
+def coverage_errors_for_cost(
+    *,
+    simulator_id: str,
+    instance: dict[str, Any],
+    catalog_simulators_root: Path,
+) -> list[str]:
+    spec = load_simulatorspec(catalog_simulators_root, simulator_id)
+    covered_capabilities: set[tuple[str, tuple[str, ...]]] = set()
+    covered_extras: set[str] = set()
+    for profile in instance.get("profiles", []):
+        if not isinstance(profile, dict):
+            continue
+        config = profile.get("benchmark_config", {})
+        if not isinstance(config, dict):
+            continue
+        covered_capabilities.add(_capability_key(config))
+        input_profile = config.get("input_profile", {})
+        if isinstance(input_profile, dict):
+            covered_extras.update(
+                str(item) for item in input_profile.get("effective_extras", [])
+            )
+
+    errors: list[str] = []
+    supported_extras: set[str] = set()
+    for capability in spec.get("capabilities", []):
+        if not isinstance(capability, dict):
+            continue
+        supported_extras.update(str(item) for item in capability.get("native_extras", []))
+        supported_extras.update(
+            str(item) for item in capability.get("derivable_extras", [])
+        )
+        if _capability_key(capability) not in covered_capabilities:
+            errors.append(
+                f"cost.json missing profile for capability {simulator_id}:{_capability_label(capability)}"
+            )
+    missing_extras = sorted(supported_extras.difference(covered_extras))
+    if missing_extras:
+        errors.append(f"cost.json missing cost coverage for supported extras: {missing_extras}")
+    return errors
+
+
+def _capability_key(payload: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
+    data_axes = payload.get("data_axes", {})
+    truth_requirements = payload.get("truth_requirements", {})
+    return (
+        repr(sorted(data_axes.items())) if isinstance(data_axes, dict) else repr(data_axes),
+        tuple(truth_requirements.get("contexts", []))
+        if isinstance(truth_requirements, dict)
+        else (),
+    )
+
+
+def _capability_label(capability: dict[str, Any]) -> str:
+    data_axes = capability.get("data_axes", {})
+    truth_requirements = capability.get("truth_requirements", {})
+    contexts = (
+        ",".join(truth_requirements.get("contexts", []))
+        if isinstance(truth_requirements, dict)
+        else "unknown"
+    )
+    if not isinstance(data_axes, dict):
+        return f"unknown axes truth={contexts}"
+    return (
+        f"{data_axes.get('resolution')}/"
+        f"{data_axes.get('column_kind')}/"
+        f"{data_axes.get('experimental_design')} truth={contexts}"
+    )
 
 
 def semantic_input_errors(
     *,
     simulator_id: str,
     spec: dict[str, Any],
-    scenario_profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
+    capability: dict[str, Any],
     input_profile: dict[str, Any],
     params_profile: Any,
     prefix: str,
 ) -> list[str]:
     errors: list[str] = []
     effective = set(input_profile.get("effective_extras", []))
-    capability = spec["profile_capabilities"][scenario_profile]
     supported = set(capability.get("native_extras", []))
     supported.update(capability.get("derivable_extras", []))
     unsupported = sorted(effective.difference(supported))
@@ -202,7 +285,8 @@ def semantic_input_errors(
         for message in validate_simulator_inputs(
             simulator_id=simulator_id,
             simulator_spec=spec,
-            profile=scenario_profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested,
             simulator_params=resolved_params,
             input_ids=input_ids,
@@ -258,6 +342,25 @@ def semantic_dimension_errors(
                 prefix=f"{prefix}.dimension_profile.cells_param",
             )
         )
+    elif isinstance(cells_param, dict):
+        param = cells_param.get("param")
+        if isinstance(param, str):
+            errors.extend(
+                validate_param_path(
+                    path=param,
+                    params_schema=params_schema,
+                    prefix=f"{prefix}.dimension_profile.cells_param.param",
+                )
+            )
+        multiplier_param = cells_param.get("multiplier_param")
+        if isinstance(multiplier_param, str):
+            errors.extend(
+                validate_param_path(
+                    path=multiplier_param,
+                    params_schema=params_schema,
+                    prefix=f"{prefix}.dimension_profile.cells_param.multiplier_param",
+                )
+            )
     genes_param = dimension_profile.get("genes_param")
     if isinstance(genes_param, str):
         errors.extend(
@@ -268,14 +371,15 @@ def semantic_dimension_errors(
             )
         )
     elif isinstance(genes_param, dict):
-        for path in genes_param:
-            errors.extend(
-                validate_param_path(
-                    path=str(path),
-                    params_schema=params_schema,
-                    prefix=f"{prefix}.dimension_profile.genes_param",
+        if "fixed" not in genes_param:
+            for path in genes_param:
+                errors.extend(
+                    validate_param_path(
+                        path=str(path),
+                        params_schema=params_schema,
+                        prefix=f"{prefix}.dimension_profile.genes_param",
+                    )
                 )
-            )
     return errors
 
 
@@ -301,6 +405,71 @@ def semantic_runtime_errors(
             errors.append(
                 f"{prefix}.runtime_points[{point_idx}].threads exceeds max_threads={max_threads}."
             )
+    return errors
+
+
+def semantic_feature_vector_errors(
+    *,
+    profile: dict[str, Any],
+    config: dict[str, Any],
+    input_profile: Any,
+    prefix: str,
+) -> list[str]:
+    data_axes = config.get("data_axes", {})
+    truth_requirements = config.get("truth_requirements", {})
+    contexts = (
+        truth_requirements.get("contexts", [])
+        if isinstance(truth_requirements, dict)
+        else []
+    )
+    requested_extras = (
+        input_profile.get("requested_extras", [])
+        if isinstance(input_profile, dict)
+        else []
+    )
+    effective_extras = (
+        input_profile.get("effective_extras", [])
+        if isinstance(input_profile, dict)
+        else []
+    )
+    expected_values = {
+        "simulator_id": config.get("simulator_id"),
+        "data_axes": data_axes,
+        "truth_requirements": truth_requirements,
+        "benchmark_profile_id": profile.get("profile_id"),
+        "expression_profile": data_axes.get("resolution")
+        if isinstance(data_axes, dict)
+        else None,
+        "column_kind": data_axes.get("column_kind")
+        if isinstance(data_axes, dict)
+        else None,
+        "experimental_design": data_axes.get("experimental_design")
+        if isinstance(data_axes, dict)
+        else None,
+        "truth_context_families": contexts,
+        "truth_context_count": len(contexts) if isinstance(contexts, list) else None,
+        "extras": effective_extras,
+        "requested_extras": requested_extras,
+        "effective_extras": effective_extras,
+        "column_truth_requested": "column" in contexts
+        if isinstance(contexts, list)
+        else None,
+    }
+    point_fields = ("genes", "cells", "groups", "population_count", "threads", "ram_gb")
+    errors: list[str] = []
+    for point_idx, point in enumerate(profile.get("runtime_points", []), start=1):
+        if not isinstance(point, dict):
+            continue
+        feature_vector = point.get("feature_vector")
+        if not isinstance(feature_vector, dict):
+            continue
+        point_prefix = f"{prefix}.runtime_points[{point_idx}].feature_vector"
+        for key, expected in expected_values.items():
+            if feature_vector.get(key) != expected:
+                errors.append(f"{point_prefix}.{key} does not match benchmark_config.")
+        for key in point_fields:
+            if feature_vector.get(key) != point.get(key):
+                errors.append(f"{point_prefix}.{key} does not match runtime point.")
     return errors
 
 
@@ -373,7 +542,16 @@ def run(argv: Sequence[str] | None = None) -> int:
                 if isinstance(payload, dict)
                 else ["cost.json must be an object"]
             )
-            errors = [*schema_errors, *semantic_errors]
+            coverage_errors = (
+                coverage_errors_for_cost(
+                    simulator_id=simulator_id,
+                    instance=payload,
+                    catalog_simulators_root=args.catalog_simulators_root,
+                )
+                if isinstance(payload, dict)
+                else []
+            )
+            errors = [*schema_errors, *semantic_errors, *coverage_errors]
             if errors:
                 invalid += 1
                 print(f"[{simulator_id}] invalid:")

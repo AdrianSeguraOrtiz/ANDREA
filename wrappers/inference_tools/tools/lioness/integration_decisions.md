@@ -49,7 +49,7 @@ Evidence:
 Wrapper contract:
 - The wrapper will pass ANDREA `expression.tsv` as a numeric expression matrix with genes as rows and cells as columns.
 - The wrapper will always call `lionessR::lioness(..., f = lionessR::netFun)`.
-- The wrapper will export one network per cell as `context=cell:<cell_id>`.
+- The wrapper will export one network per cell as `context=column:<column_id>`.
 
 ### Not Exposed
 
@@ -58,12 +58,12 @@ Wrapper contract:
 - `global` execution is not exposed. Evidence: LIONESS is designed to estimate sample-specific networks from aggregate networks, and the public `lioness()` entrypoint returns sample-specific networks. Rationale: although the default `netFun()` can compute the all-sample Pearson aggregate network, exposing that as `global` would mirror a helper aggregate function rather than the LIONESS method.
 - `group_native` is not exposed. Evidence: no upstream argument consumes cell groups or produces one network per group.
 - `group_emulated` is not exposed. Rationale: LIONESS relies on the full background sample set to infer each sample-specific network. Splitting expression by group before running LIONESS would change the background set and is not the desired grouped behavior for this integration.
-- `group_aggregated` is exposed as an ANDREA-managed execution mode, not as an upstream LIONESS mode. It runs the cell-native LIONESS output and lets ANDREA average signed cell-level edge effects within each group.
+- `group_aggregated` is exposed as an ANDREA-managed execution mode, not as an upstream LIONESS mode. It runs the column-native LIONESS output and lets ANDREA average signed column-level edge effects within each group.
 
 ## Execution Capability Decisions
 
 Chosen capabilities:
-- `cell_native`
+- `column_native`
 - `group_aggregated`
 
 Evidence:
@@ -73,8 +73,8 @@ Evidence:
 - `lionessR::lioness()` returns sample-specific edge weights through its `lioness` assay.
 
 Rationale:
-- In ANDREA, cell-specific inferred networks are represented with `execution.mode=cell_native` and `context=cell:<cell_id>`.
-- `group_aggregated` is appropriate because ANDREA can aggregate the resulting cell-native networks into group contexts using the standardized `groups.tsv` input.
+- In ANDREA, column-level inferred networks are represented with `execution.mode=column_native` and `context=column:<column_id>`.
+- `group_aggregated` is appropriate because ANDREA can aggregate the resulting column-native networks into group contexts using the standardized `groups.tsv` input.
 
 Uncertainty:
 - LIONESS is a generic single-sample network method, not exclusively a single-cell method. The current ANDREA context model for this canonical profile is cell-specific, so the ToolSpec accepts `cells` only. Extending this to sample-native contexts would require a future platform-level context extension.
@@ -99,7 +99,7 @@ Evidence:
 - No upstream group, TF-list, prior network, pseudotime, or phenotype input is consumed by the selected entrypoint.
 
 Rationale:
-- `groups.tsv` is not passed to lionessR. It is needed only by ANDREA after the cell-native run to aggregate cell-level networks into group-level networks.
+- `groups.tsv` is not passed to lionessR. It is needed only by ANDREA after the column-native run to aggregate column-level networks into group-level networks.
 
 No new input spec is needed.
 
@@ -130,7 +130,7 @@ Upstream output:
 ANDREA `network.csv` mapping:
 - `source`: regulator/gene from upstream `reg`.
 - `target`: target/gene from upstream `tar`.
-- `context`: `cell:<cell_id>` for cell-native output.
+- `context`: `column:<column_id>` for column-native output.
 - `score`: `abs(weight)`.
 - `sign`: `+` if weight > 0, `-` if weight < 0, `?` only if a nonzero edge has no reliable sign.
 - `evidence`: `association`.
@@ -243,8 +243,8 @@ Uncertainty:
 | `method_keywords` | `single_sample`, `single_cell`, `linear_interpolation`, `aggregate_network`, `pearson_correlation`, `coexpression`, `undirected` | Paper and package docs | Captures selected public preset and output convention. | LIONESS itself is generic single-sample, not only single-cell. |
 | `implementation_url` | Bioconductor lionessR page | `additional_files/lionessR.txt`; integrator clarification | Official package source for runtime install. | None. |
 | `docker_image` | `adriansegura99/inference-tools_lioness:1.0.0` | Project naming convention | Expected image tag for Phase 2. | None. |
-| `execution_capabilities` | `cell_native`, `group_aggregated` | Paper; Bioconductor docs; ANDREA execution model | Native one network per cell; group output is ANDREA aggregation from cell outputs. | No sample-native context exists yet. |
-| `accepts` | `cells` | Selected ANDREA profile semantics | Avoids mislabeling generic samples as `cell:<id>` contexts. | Future sample-native support could expand this. |
+| `execution_capabilities` | `column_native`, `group_aggregated` | Paper; Bioconductor docs; ANDREA execution model | Native one network per expression column; group output is ANDREA aggregation from column outputs. | No sample-native context exists yet. |
+| `accepts` | `cells` | Selected ANDREA profile semantics | Avoids mislabeling generic samples as `column:<id>` contexts. | Future sample-native support could expand this. |
 | `assumes` | `generic` | Method works on numeric expression matrices and is not scRNA-specific in the paper | Algorithm has no scRNA-specific required input. | The integration targets cell columns for ANDREA context semantics. |
 | `extra_inputs.required` | `[]` | `lioness(x, f=netFun)` docs | Selected upstream entrypoint needs only expression matrix. | None. |
 | `extra_inputs.optional` | `[]` | Upstream docs and code | No optional standardized input modifies selected Pearson LIONESS run. | None. |
@@ -277,8 +277,8 @@ Runtime behavior:
   packages.
 - Preserves the raw signed upstream object and extracted long-form signed weights under `raw/`.
 - Captures the informational stdout emitted by `lionessR::lioness()` into `lioness.log`.
-- Exports `network.csv` as undirected unordered gene pairs, excludes self-loops, filters `score <= 0`, writes `score=abs(weight)`, writes `sign` from the raw signed weight, and emits `context=cell:<cell_id>`.
-- Does not pass `groups.tsv` to lionessR. `group_aggregated` remains ANDREA-managed aggregation from the emitted cell-native rows; the logical result exposes only aggregated `group:<id>` rows while the physical cell-native rows remain in `network.cell_native.csv`.
+- Exports `network.csv` as undirected unordered gene pairs, excludes self-loops, filters `score <= 0`, writes `score=abs(weight)`, writes `sign` from the raw signed weight, and emits `context=column:<column_id>`.
+- Does not pass `groups.tsv` to lionessR. `group_aggregated` remains ANDREA-managed aggregation from the emitted column-native rows; the logical result exposes only aggregated `group:<id>` rows while the physical column-native rows remain in `network.column_native.csv`.
 
 ## Phase 2 Validation
 
@@ -296,9 +296,9 @@ Outcome:
 - Build pipeline selected `runtime=r` and no template bundles for `lioness`.
 - Docker build completed using Bioconductor 3.23 and `lionessR 1.26.0`.
 - Smoketest passed for both variants:
-  - `cell_native`
+  - `column_native`
   - `group_aggregated` with `groups.tsv`
-- Each smoketest variant wrote `network.csv` with 840 positive-score cell-context rows and validated all 3 declared auxiliary artifacts.
+- Each smoketest variant wrote `network.csv` with 840 positive-score column-context rows and validated all 3 declared auxiliary artifacts.
 
 ## Phase 3 Validation
 
@@ -312,5 +312,5 @@ Outcome:
 - `toolspec.json` is valid.
 - All inference input specs are valid.
 - `lioness` smoketest config is valid.
-- Final smoketest rebuilt `lioness-smoketest:local` and passed both `cell_native` and `group_aggregated` variants.
+- Final smoketest rebuilt `lioness-smoketest:local` and passed both `column_native` and `group_aggregated` variants.
 - No remaining wrapper, ToolSpec, normalized-input, or smoketest inconsistencies were found.

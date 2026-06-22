@@ -33,19 +33,26 @@
       "type": "string",
       "enum": [
         "groups",
-        "cell_phenotypes",
-        "cell_descriptors",
+        "column_descriptors",
+        "column_phenotypes",
         "cluster_identities",
         "cluster_markers",
         "enrichment_background",
         "grnboost_network",
+        "interventions",
         "lineage_tree",
+        "perturbation_design",
         "pseudotime",
+        "prior_grn",
+        "prior_grn_by_group",
+        "replicates",
         "spatial_coordinates",
         "terms_of_interest",
         "tf_list",
-        "prior_grn",
-        "prior_grn_by_group"
+        "timepoints",
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "cell_cell_interactions"
       ]
     },
     "taxonomic_group": {
@@ -65,7 +72,9 @@
     "runtime_resources": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["threading"],
+      "required": [
+        "threading"
+      ],
       "properties": {
         "threading": {
           "type": "object",
@@ -440,11 +449,11 @@
           "global",
           "group_native",
           "group_emulated",
-          "cell_native",
+          "column_native",
           "group_aggregated"
         ]
       },
-      "description": "Execution modes supported by the tool wrapper: global, native grouped inference, orchestrator-emulated grouped inference, native per-cell inference, and/or ANDREA group aggregation from native per-cell outputs."
+      "description": "Execution modes supported by the tool wrapper: global, native grouped inference, orchestrator-emulated grouped inference, native per-column inference, and/or ANDREA group aggregation from native per-column outputs."
     },
     "runtime_resources": {
       "$ref": "#/$defs/runtime_resources"
@@ -522,7 +531,10 @@
           "samples",
           "cells",
           "timepoints",
-          "perturbations"
+          "perturbations",
+          "spots",
+          "metacells",
+          "conditions"
         ]
       },
       "description": "Column kinds the tool can be applied to."

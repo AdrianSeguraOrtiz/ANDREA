@@ -48,8 +48,8 @@ Excluded public modes:
 - `global`: exposed. One expression matrix produces one directed gene x gene network.
 - `group_emulated`: exposed. ANDREA can partition expression by `groups.tsv`, run the global wrapper per group, and rewrite contexts to `group:<group_id>`.
 - `group_native`: not exposed; upstream does not consume group metadata.
-- `cell_native`: not exposed; the public CSV interface does not return one network per cell.
-- `group_aggregated`: not exposed; DigNet does not produce cell-native output for ANDREA to aggregate.
+- `column_native`: not exposed; the public CSV interface does not return one network per cell.
+- `group_aggregated`: not exposed; DigNet does not produce column-native output for ANDREA to aggregate.
 
 For wrapper-level `execution.mode=group_emulated`, the wrapper still runs one DigNet invocation over the expression matrix it receives. It does not validate or consume `groups.tsv`; the ANDREA orchestrator validates groups, partitions the dataset, invokes one child run per group, and rewrites contexts to `group:<group_id>`.
 

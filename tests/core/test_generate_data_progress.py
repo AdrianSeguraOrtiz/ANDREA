@@ -11,6 +11,14 @@ from andrea.core.commands.generate_data.shared import (
     ResolvedSimulatorRun,
 )
 
+DATA_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "trajectory",
+}
+TRUTH_REQUIREMENTS = {"contexts": ["global"]}
+
 
 class GenerateDataProgressCallbackTests(unittest.TestCase):
     def test_run_generate_data_emits_normalized_progress_events(self) -> None:
@@ -21,7 +29,8 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
 
             run = ResolvedSimulatorRun(
                 request_id="bench",
-                profile="scrna_global",
+                data_axes=DATA_AXES,
+                truth_requirements=TRUTH_REQUIREMENTS,
                 run_id="dyngen_cfg",
                 simulator_id="dyngen",
                 organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
@@ -56,7 +65,8 @@ class GenerateDataProgressCallbackTests(unittest.TestCase):
             }
             resolved = ResolvedSimulationPlan(
                 request_id="bench",
-                profile="scrna_global",
+                data_axes=DATA_AXES,
+                truth_requirements=TRUTH_REQUIREMENTS,
                 organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                 requested_extras=[],
                 effective_extras=[],

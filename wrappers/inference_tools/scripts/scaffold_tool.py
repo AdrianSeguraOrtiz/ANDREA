@@ -266,9 +266,22 @@ TODO
 
 TODO
 
+### `execution_capabilities`
+
+TODO
+
+Record which public modes are claimed (`global`, `group_native`,
+`group_emulated`, `column_native`, `group_aggregated`), which upstream
+entrypoints support them, and which scientifically possible modes are not
+claimed by the wrapper.
+
 ### `runtime_resources`
 
 TODO
+
+Document whether ANDREA `--threads` maps to a real upstream CPU control or a
+documented wrapper-owned sharding pattern. Do not expose threads, cores,
+workers, pools or equivalent resource controls as normal params.
 
 ### `accepts`
 
@@ -308,6 +321,16 @@ TODO
 
 ## Upstream Interface
 
+### Public execution modes / entrypoints
+
+TODO
+
+Audit whole-dataset, grouped/task, per-column, time-aware and
+condition-specific upstream modes before finalizing `execution_capabilities`.
+Do not infer `column_native` by rerunning a global/group method per expression
+column unless the public upstream interface explicitly defines that as a valid
+column-specific workflow.
+
 ### Required inputs
 
 TODO
@@ -343,6 +366,19 @@ TODO
 ## Output Mapping to `network.csv`
 
 TODO
+
+Preserve public expression gene ids, expression column ids and group ids in all
+public outputs. `context` must be `global`, `group:<id>`, `column:<id>` or a
+documented non-empty family. `column:<id>` follows the dataset column semantics,
+not necessarily cells.
+
+## Runtime Resource Mapping
+
+TODO
+
+Record the exact wrapper behavior for `--threads`, including environment
+variables, upstream API/CLI arguments, process-level sharding or the explicit
+reason `supported=false` is required.
 
 ## Installation Strategy
 

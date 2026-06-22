@@ -237,29 +237,33 @@ def _inference_cost_features(
     extras_present: set[str],
     logical_group_count: Optional[int],
 ) -> dict[str, Any]:
+    n_columns = int(dataset.columns)
     n_cells = int(dataset.columns) if dataset.column_kind == "cells" else 0
     n_genes = int(dataset.genes)
     n_groups = int(logical_group_count or 0)
-    if execution_mode == "cell_native":
-        expected_contexts = max(1, n_cells)
+    if execution_mode == "column_native":
+        expected_contexts = max(1, n_columns)
     elif execution_mode in {"group_native", "group_emulated", "group_aggregated"}:
         expected_contexts = max(1, n_groups)
     else:
         expected_contexts = 1
     aggregation_step = (
-        "cell_to_group" if execution_mode == "group_aggregated" else "none"
+        "column_to_group" if execution_mode == "group_aggregated" else "none"
     )
     return {
         "execution_mode": execution_mode,
+        "column_kind": dataset.column_kind,
+        "expression_profile": dataset.expression_profile,
+        "n_columns": n_columns,
         "n_cells": n_cells,
         "n_genes": n_genes,
         "n_groups": n_groups,
         "expected_contexts": int(expected_contexts),
-        "expected_dense_edges": int(n_cells * n_genes * max(0, n_genes - 1)),
+        "expected_dense_edges": int(n_columns * n_genes * max(0, n_genes - 1)),
         "has_tf_list": "tf_list" in extras_present,
         "output_density_class": (
             "dense"
-            if execution_mode in {"cell_native", "group_aggregated"}
+            if execution_mode in {"column_native", "group_aggregated"}
             else "sparse"
         ),
         "aggregation_step": aggregation_step,
@@ -469,7 +473,7 @@ def _fallback_plan_item(
     eta_provenance: Optional[dict[str, Any]] = None,
 ) -> ToolPlanItem:
     fallback_eta = max(10.0, 0.02 * dataset.genes * dataset.columns)
-    if execution_mode == "cell_native":
+    if execution_mode == "column_native":
         dense_cell_edges = max(0, dataset.genes * (dataset.genes - 1)) * dataset.columns
         fallback_eta = max(fallback_eta, 10.0 + (0.0000001 * dense_cell_edges))
     return ToolPlanItem(

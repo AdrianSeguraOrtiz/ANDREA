@@ -68,6 +68,28 @@ def declared_input_ids(spec: dict[str, Any]) -> set[str]:
     return declared
 
 
+def _find_capability(
+    spec: dict[str, Any],
+    *,
+    data_axes: Any,
+    truth_requirements: Any,
+) -> dict[str, Any] | None:
+    if not isinstance(data_axes, dict) or not isinstance(truth_requirements, dict):
+        return None
+    contexts = truth_requirements.get("contexts")
+    if not isinstance(contexts, list):
+        return None
+    for capability in spec.get("capabilities", []):
+        if not isinstance(capability, dict):
+            continue
+        if capability.get("data_axes") != data_axes:
+            continue
+        capability_contexts = capability.get("truth_requirements", {}).get("contexts")
+        if capability_contexts == contexts:
+            return capability
+    return None
+
+
 def semantic_errors(
     *,
     config_path: Path,
@@ -83,11 +105,18 @@ def semantic_errors(
 
     spec = load_simulatorspec(catalog_simulators_root, simulator_id)
     request = config.get("request", {})
-    profile = str(request.get("profile", ""))
-    capabilities = spec.get("profile_capabilities", {})
-    capability = capabilities.get(profile)
+    data_axes = request.get("data_axes")
+    truth_requirements = request.get("truth_requirements")
+    capability = _find_capability(
+        spec,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
+    )
     if not isinstance(capability, dict):
-        errors.append(f"request.profile '{profile}' is not supported by {simulator_id}")
+        errors.append(
+            "request.data_axes/request.truth_requirements are not supported by "
+            f"{simulator_id}"
+        )
     else:
         supported_extras = set(capability.get("native_extras", [])).union(
             capability.get("derivable_extras", [])
@@ -96,7 +125,24 @@ def semantic_errors(
         unsupported = sorted(extras.difference(supported_extras))
         if unsupported:
             errors.append(
-                f"request.effective_extras not supported for profile '{profile}': {unsupported}"
+                "request.effective_extras not supported for requested capability: "
+                f"{unsupported}"
+            )
+        supported_native_outputs = {
+            str(item.get("id"))
+            for item in capability.get("native_outputs", [])
+            if isinstance(item, dict) and str(item.get("id", "")).strip()
+        }
+        requested_native_outputs = {
+            str(item) for item in request.get("native_outputs", [])
+        }
+        unsupported_native_outputs = sorted(
+            requested_native_outputs.difference(supported_native_outputs)
+        )
+        if unsupported_native_outputs:
+            errors.append(
+                "request.native_outputs not supported for requested capability: "
+                f"{unsupported_native_outputs}"
             )
 
     unknown_inputs = sorted(
@@ -136,6 +182,67 @@ def semantic_errors(
     ):
         errors.append(
             f"filename should start with '{simulator_id}_' or be '{simulator_id}.json'"
+        )
+    return errors
+
+
+def _capability_key(capability_or_request: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
+    data_axes = capability_or_request.get("data_axes", {})
+    truth_requirements = capability_or_request.get("truth_requirements", {})
+    return (
+        repr(sorted(data_axes.items())) if isinstance(data_axes, dict) else repr(data_axes),
+        tuple(truth_requirements.get("contexts", []))
+        if isinstance(truth_requirements, dict)
+        else (),
+    )
+
+
+def _capability_label(capability: dict[str, Any]) -> str:
+    data_axes = capability.get("data_axes", {})
+    truth_requirements = capability.get("truth_requirements", {})
+    contexts = (
+        ",".join(truth_requirements.get("contexts", []))
+        if isinstance(truth_requirements, dict)
+        else "unknown"
+    )
+    if not isinstance(data_axes, dict):
+        return f"unknown axes truth={contexts}"
+    return (
+        f"{data_axes.get('resolution')}/"
+        f"{data_axes.get('column_kind')}/"
+        f"{data_axes.get('experimental_design')} truth={contexts}"
+    )
+
+
+def coverage_errors_for_simulator(
+    *, simulator_id: str, spec: dict[str, Any], configs: list[dict[str, Any]]
+) -> list[str]:
+    covered_capabilities: set[tuple[str, tuple[str, ...]]] = set()
+    covered_extras: set[str] = set()
+    for config in configs:
+        request = config.get("request", {})
+        if not isinstance(request, dict):
+            continue
+        covered_capabilities.add(_capability_key(request))
+        covered_extras.update(str(item) for item in request.get("effective_extras", []))
+
+    errors: list[str] = []
+    supported_extras: set[str] = set()
+    for capability in spec.get("capabilities", []):
+        if not isinstance(capability, dict):
+            continue
+        supported_extras.update(str(item) for item in capability.get("native_extras", []))
+        supported_extras.update(str(item) for item in capability.get("derivable_extras", []))
+        if _capability_key(capability) not in covered_capabilities:
+            errors.append(
+                "missing smoketest config for capability "
+                f"{simulator_id}:{_capability_label(capability)}"
+            )
+
+    missing_extras = sorted(supported_extras.difference(covered_extras))
+    if missing_extras:
+        errors.append(
+            f"missing smoketest coverage for supported extras: {missing_extras}"
         )
     return errors
 
@@ -198,6 +305,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     selected_ids = {simulator_id for simulator_id, _path in selected}
     known_ids = {simulator_id for simulator_id, _path in discovered}
     seen_ids: set[str] = set()
+    valid_configs_by_simulator: dict[str, list[dict[str, Any]]] = {}
     counters = ValidationCounters()
 
     config_paths = sorted(args.configs_root.glob("*.json"))
@@ -246,6 +354,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 break
         else:
             counters = ValidationCounters(counters.valid + 1, counters.invalid)
+            if simulator_id in selected_ids:
+                valid_configs_by_simulator.setdefault(simulator_id, []).append(config)
             print(f"[valid] {config_path.name}")
 
     missing = sorted(selected_ids.difference(seen_ids))
@@ -255,6 +365,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"[INVALID] {simulator_id}: missing smoketest config",
             file=sys.stderr,
         )
+
+    for simulator_id, _simulator_path in selected:
+        if simulator_id in missing:
+            continue
+        configs = valid_configs_by_simulator.get(simulator_id, [])
+        if not configs:
+            continue
+        spec = load_simulatorspec(args.catalog_simulators_root, simulator_id)
+        coverage_errors = coverage_errors_for_simulator(
+            simulator_id=simulator_id,
+            spec=spec,
+            configs=configs,
+        )
+        if coverage_errors:
+            counters = ValidationCounters(counters.valid, counters.invalid + 1)
+            print(
+                f"[INVALID] {simulator_id}: incomplete smoketest matrix",
+                file=sys.stderr,
+            )
+            for message in coverage_errors:
+                print(f"  - {message}", file=sys.stderr)
+            if args.fail_fast:
+                break
 
     print(
         f"Checked {counters.checked} smoketest config(s): "

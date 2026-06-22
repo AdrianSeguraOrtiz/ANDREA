@@ -1,0 +1,66 @@
+{
+  "simulator_id": "genespider2",
+  "request": {
+    "seed": 502,
+    "effective_extras": [
+      "perturbation_design",
+      "interventions",
+      "timepoints",
+      "enrichment_background",
+      "prior_grn",
+      "tf_list"
+    ],
+    "native_outputs": [
+      "network_matrix",
+      "perturbation_vector",
+      "time_series_expression",
+      "time_grid"
+    ],
+    "inputs": {},
+    "params": {
+      "num_genes": 6,
+      "average_degree": 2.0,
+      "time_series": {
+        "time_points": 4
+      }
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "bulk",
+      "column_kind": "timepoints",
+      "experimental_design": "time_series"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/perturbation_design.tsv",
+    "extras/interventions.tsv",
+    "extras/timepoints.tsv",
+    "extras/enrichment_background.txt",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "native/network_matrix.tsv",
+    "native/perturbation_vector.tsv",
+    "native/time_series_expression.tsv",
+    "native/time_grid.tsv",
+    "provenance/raw/matlab_outputs/network_matrix.tsv",
+    "provenance/raw/matlab_outputs/time_series_perturbation_vector.tsv",
+    "provenance/raw/matlab_outputs/matlab_session_info.txt"
+  ],
+  "required_truth_context_prefixes": [
+    "global"
+  ]
+}

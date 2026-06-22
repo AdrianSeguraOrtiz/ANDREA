@@ -22,85 +22,10 @@ MAX_SEED_32BIT = 2_147_483_646
 
 
 @dataclass(frozen=True)
-class ProfileSpec:
-    profile: str
-    column_kind: str
-    expression_profile: str
-    required_extras: frozenset[str]
-
-
-PROFILE_SPECS: dict[str, ProfileSpec] = {
-    "bulk_steady_state": ProfileSpec(
-        profile="bulk_steady_state",
-        column_kind="samples",
-        expression_profile="bulk",
-        required_extras=frozenset(),
-    ),
-    "bulk_time_series": ProfileSpec(
-        profile="bulk_time_series",
-        column_kind="timepoints",
-        expression_profile="bulk",
-        required_extras=frozenset(),
-    ),
-    "bulk_perturbational": ProfileSpec(
-        profile="bulk_perturbational",
-        column_kind="perturbations",
-        expression_profile="bulk",
-        required_extras=frozenset(),
-    ),
-    "scrna_global": ProfileSpec(
-        profile="scrna_global",
-        column_kind="cells",
-        expression_profile="scrna",
-        required_extras=frozenset(),
-    ),
-    "scrna_grouped": ProfileSpec(
-        profile="scrna_grouped",
-        column_kind="cells",
-        expression_profile="scrna",
-        required_extras=frozenset({"groups"}),
-    ),
-    "scrna_cell_specific": ProfileSpec(
-        profile="scrna_cell_specific",
-        column_kind="cells",
-        expression_profile="scrna",
-        required_extras=frozenset({"groups"}),
-    ),
-}
-
-
-def required_truth_outputs_for_profile(profile: str) -> tuple[str, ...]:
-    if profile == "scrna_grouped":
-        return ("global", "group")
-    if profile == "scrna_cell_specific":
-        return ("global", "group", "cell")
-    return ("global",)
-
-
-def primary_truth_output_for_profile(profile: str) -> str:
-    if profile == "scrna_grouped":
-        return "group"
-    if profile == "scrna_cell_specific":
-        return "cell"
-    return "global"
-
-
-def required_truth_context_prefixes_for_profile(profile: str) -> tuple[str, ...]:
-    prefixes = {
-        "global": "global",
-        "group": "group:",
-        "cell": "cell:",
-    }
-    return tuple(
-        prefixes[output_id]
-        for output_id in required_truth_outputs_for_profile(profile)
-    )
-
-
-@dataclass(frozen=True)
 class ResolvedSimulatorRun:
     request_id: str
-    profile: str
+    data_axes: dict[str, Any]
+    truth_requirements: dict[str, Any]
     run_id: str
     simulator_id: str
     organism: dict[str, Any]
@@ -121,7 +46,8 @@ class ResolvedSimulatorRun:
 @dataclass(frozen=True)
 class ResolvedSimulationPlan:
     request_id: str
-    profile: str
+    data_axes: dict[str, Any]
+    truth_requirements: dict[str, Any]
     organism: dict[str, Any]
     requested_extras: list[str]
     effective_extras: list[str]
@@ -138,7 +64,8 @@ class ResolvedSimulationPlan:
 @dataclass(frozen=True)
 class ResolvedScenarioRequest:
     request_id: str
-    profile: str
+    data_axes: dict[str, Any]
+    truth_requirements: dict[str, Any]
     organism: dict[str, Any]
     requested_extras: list[str]
     effective_extras: list[str]
@@ -164,8 +91,8 @@ def _relative_posix(path: Path, start: Path) -> str:
     return path.relative_to(start).as_posix()
 
 
-def _stable_seed_base(*, request_id: str, profile: str, simulator_id: str) -> int:
+def _stable_seed_base(*, request_id: str, semantic_key: str, simulator_id: str) -> int:
     digest = hashlib.sha256(
-        f"{request_id}|{profile}|{simulator_id}".encode("utf-8")
+        f"{request_id}|{semantic_key}|{simulator_id}".encode("utf-8")
     ).hexdigest()
     return (int(digest[:8], 16) % MAX_SEED_32BIT) + 1

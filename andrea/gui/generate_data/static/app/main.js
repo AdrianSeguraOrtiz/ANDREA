@@ -20,6 +20,15 @@ import {
   pushRuntimeFailureToasts,
   renderRuntimeProgress,
 } from "/static-common/app/runtime/view.js";
+import {
+  contextFamily as truthContextFamily,
+} from "/static-common/app/network_context.js?v=20260620a";
+import { createExecutionView } from "./execution_view.js?v=20260620a";
+import { createPlanView } from "./plan_view.js?v=20260620a";
+import { createPreflightView } from "./preflight_view.js?v=20260620a";
+import { createRunHelpers } from "./runs.js?v=20260620a";
+import { createScenarioTemplateModel } from "./scenario_templates.js?v=20260620c";
+import { createSimulatorCatalogHelpers } from "./simulator_catalog.js?v=20260620a";
 import { buildInfoTooltip, initInfoPopover, showInfoTooltip } from "/static-common/app/ui/popovers.js";
 import { setActiveStep, setStepState, initSteps } from "/static-common/app/ui/steps.js";
 import { pushToast } from "/static-common/app/ui/toasts.js";
@@ -41,9 +50,71 @@ const state = {
   simulatorInputMetrics: new Map(),
 };
 
-const LARGE_TRUTH_NETWORK_BYTES = 25 * 1024 * 1024;
-const TRUTH_OUTPUT_ORDER = ["global", "group", "cell"];
+const scenarioTemplateModel = createScenarioTemplateModel({ state, $ });
+const {
+  axisValueLabel,
+  extraByKey,
+  fixedOutputFilesForScenarioTemplate,
+  knownTruthContextFamilies,
+  primaryTruthOutputForScenarioTemplate,
+  readableToken,
+  refreshScenarioAxisControls,
+  scenarioSemanticLabel,
+  scenarioTemplateRequiredExtras,
+  scenarioTemplateRequiredTruthContexts,
+  scenarioTemplateRequiredTruthOutputs,
+  scenarioTemplateSpec,
+  scenarioTemplates,
+  selectedScenarioTemplateId,
+  syncScenarioTemplateOptions,
+  templateDataAxes,
+  templateTruthContexts,
+  templateTruthGranularityKey,
+  truthContextArtifactLabel,
+  truthContextChipLabel,
+  truthContextExplanation,
+  truthContextFamiliesForDisplay,
+  truthGranularityLabel,
+} = scenarioTemplateModel;
+const {
+  capabilityDerivations,
+  conditionalSimulatorInputDetail,
+  formatSimulatorInputCondition,
+  simulatorInputSummary,
+  simulatorRuntimeResourceSummary,
+  truthContextHasDetail,
+  truthContextMap,
+  truthOutputStatusLabel,
+  truthOutputStatusMap,
+} = createSimulatorCatalogHelpers({ truthContextFamily });
+const { renderPlan } = createPlanView({ $, scenarioSemanticLabel });
+const { renderPreflightSummary } = createPreflightView({
+  $,
+  scenarioSemanticLabel,
+  scenarioTemplateRequiredExtras,
+  selectedScenarioTemplateId,
+});
+const {
+  refreshFilesIfNeeded,
+  renderExecutionAlerts,
+  updateExplorerVisibility,
+} = createExecutionView({
+  state,
+  $,
+  pushToast,
+  resetFilesView,
+  resetReproducibility,
+  fetchFiles,
+  fileApi,
+  fileExplorerOptions,
+});
+const {
+  availableSimulatorIds,
+  buildRunId,
+  refreshSimulatorCatalogRunCounts,
+} = createRunHelpers({ state });
 
+const LARGE_TRUTH_NETWORK_BYTES = 25 * 1024 * 1024;
 async function readJson(response, fallbackMessage) {
   let payload = null;
   try {
@@ -149,7 +220,7 @@ function renderGenerateFilesSummary({ summaryEl, entries, mode, filesCount, dirs
     {
       label: "extras/groups.tsv",
       path: firstMatchingPath("/extras/groups.tsv"),
-      description: "cell-to-group assignments",
+      description: "column-to-group assignments",
     },
   ].filter((item) => item.path);
   if (keyFiles.length) {
@@ -207,124 +278,235 @@ function simulatorById(id) {
   return state.simulatorsById.get(String(id || ""));
 }
 
-function profileSpec(profileId) {
-  return (state.bootstrap?.profiles || []).find((item) => item.id === profileId) || null;
-}
-
-function profileRequiredTruthOutputs(profileId = selectedProfileId()) {
-  const profile = profileSpec(profileId);
-  if (Array.isArray(profile?.required_truth_outputs)) {
-    return profile.required_truth_outputs.map((item) => String(item || "").trim()).filter(Boolean);
-  }
-  if (profileId === "scrna_grouped") {
-    return ["global", "group"];
-  }
-  if (profileId === "scrna_cell_specific") {
-    return ["global", "group", "cell"];
-  }
-  return ["global"];
-}
-
-function primaryTruthOutputForProfile(profileId = selectedProfileId()) {
-  if (profileId === "scrna_grouped") {
-    return "group";
-  }
-  if (profileId === "scrna_cell_specific") {
-    return "cell";
-  }
-  return "global";
-}
-
-function truthContextPrefixForOutput(outputId) {
-  const normalized = String(outputId || "").trim();
-  if (normalized === "group") {
-    return "group:";
-  }
-  if (normalized === "cell") {
-    return "cell:";
-  }
-  return normalized || "-";
-}
-
-function profileRequiredTruthContexts(profileId = selectedProfileId()) {
-  const profile = profileSpec(profileId);
-  if (Array.isArray(profile?.required_truth_contexts)) {
-    return profile.required_truth_contexts.map((item) => String(item || "").trim()).filter(Boolean);
-  }
-  return profileRequiredTruthOutputs(profileId).map(truthContextPrefixForOutput).filter(Boolean);
-}
-
-function profileRequiredExtras(profileId = selectedProfileId()) {
-  const profile = profileSpec(profileId);
-  return Array.isArray(profile?.required_extras)
-    ? profile.required_extras.map((item) => String(item || "").trim()).filter(Boolean)
-    : [];
-}
-
-function fixedOutputFilesForProfile(profileId = selectedProfileId()) {
-  const files = [
-    {
-      path: "expression.tsv",
-      description: "Normalized expression matrix.",
-    },
-    {
-      path: "truth/networks.csv",
-      description: "Unified ground-truth network table.",
-      highlight: true,
-    },
-    {
-      path: "truth/gene_universe.txt",
-      description: "Genes covered by the ground-truth networks.",
-    },
-  ];
-  for (const extra of profileRequiredExtras(profileId)) {
-    if (extra === "groups") {
-      files.push({
-        path: "extras/groups.tsv",
-        description: "Cell-to-group assignments used by group-level truth.",
-      });
-    }
-  }
-  return files;
-}
-
-function truthContextExplanation(context) {
-  const normalized = String(context || "").trim();
-  if (normalized === "global") {
-    return "one dataset-level GRN.";
-  }
-  if (normalized === "group:") {
-    return "one GRN per group, stored as context values like group:<group_id>.";
-  }
-  if (normalized === "cell:") {
-    return "one GRN per cell, stored as context values like cell:<cell_id>.";
-  }
-  return "truth rows distinguished by this context value.";
-}
-
-function extraByKey(key) {
-  return (state.bootstrap?.extras || []).find((item) => item.key === key) || null;
-}
-
-function selectedProfileId() {
-  return state.preflightReport?.scenario?.profile || $("profile").value;
-}
-
-function profileCapabilityForSimulator(simulator, profileId = selectedProfileId()) {
-  const profileCapabilities = simulator?.profile_capabilities && typeof simulator.profile_capabilities === "object"
-    ? simulator.profile_capabilities
+function scenarioTemplateCapabilityForSimulator(simulator, templateId = selectedScenarioTemplateId()) {
+  const semanticCapabilities = simulator?.semantic_capabilities && typeof simulator.semantic_capabilities === "object"
+    ? simulator.semantic_capabilities
     : {};
-  return profileCapabilities?.[profileId] || null;
+  return semanticCapabilities?.[templateId] || null;
 }
 
-function nativeOutputDefsForSimulator(simulator, profileId = selectedProfileId()) {
-  const profileCapabilities = simulator?.profile_capabilities && typeof simulator.profile_capabilities === "object"
-    ? simulator.profile_capabilities
+function nativeOutputDefsForSimulator(simulator, templateId = selectedScenarioTemplateId()) {
+  const semanticCapabilities = simulator?.semantic_capabilities && typeof simulator.semantic_capabilities === "object"
+    ? simulator.semantic_capabilities
     : {};
-  const capability = profileCapabilities?.[profileId];
+  const capability = semanticCapabilities?.[templateId];
   return Array.isArray(capability?.native_outputs)
     ? capability.native_outputs.filter((item) => item && typeof item === "object" && String(item.id || "").trim())
     : [];
+}
+
+function availableNativeOutputDefsForSimulator(simulator, params = null, templateId = selectedScenarioTemplateId()) {
+  const defs = nativeOutputDefsForSimulator(simulator, templateId);
+  if (!params || typeof params !== "object") {
+    return defs;
+  }
+  return defs.filter((definition) => nativeOutputMatches(definition, params));
+}
+
+function cloneJson(value) {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
+function splitParamPath(path) {
+  return String(path || "").split(".").map((item) => item.trim()).filter(Boolean);
+}
+
+function hasPath(payload, parts) {
+  let current = payload;
+  for (const part of parts) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return false;
+    }
+    current = current[part];
+  }
+  return true;
+}
+
+function valueAtParts(payload, parts) {
+  let current = payload;
+  for (const part of parts) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return undefined;
+    }
+    current = current[part];
+  }
+  return current;
+}
+
+function setValueAtParts(payload, parts, value) {
+  let current = payload;
+  for (const part of parts.slice(0, -1)) {
+    if (!current[part] || typeof current[part] !== "object" || Array.isArray(current[part])) {
+      current[part] = {};
+    }
+    current = current[part];
+  }
+  current[parts[parts.length - 1]] = cloneJson(value);
+}
+
+function deleteValueAtParts(payload, parts) {
+  let current = payload;
+  for (const part of parts.slice(0, -1)) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return;
+    }
+    current = current[part];
+  }
+  if (current && typeof current === "object") {
+    delete current[parts[parts.length - 1]];
+  }
+}
+
+function parameterBindingsForSimulator(simulator, templateId = selectedScenarioTemplateId()) {
+  const capability = scenarioTemplateCapabilityForSimulator(simulator, templateId);
+  return Array.isArray(capability?.parameter_bindings)
+    ? capability.parameter_bindings.filter((item) => item && typeof item === "object")
+    : [];
+}
+
+function schemaAtParts(schemaMap, parts) {
+  let current = schemaMap;
+  for (const [index, part] of parts.entries()) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return null;
+    }
+    const schema = current[part];
+    if (index === parts.length - 1) {
+      return schema && typeof schema === "object" ? schema : null;
+    }
+    if (!schema || typeof schema !== "object" || schema.type !== "object") {
+      return null;
+    }
+    current = schema.properties || {};
+  }
+  return null;
+}
+
+function deleteSchemaAtParts(schemaMap, parts) {
+  let current = schemaMap;
+  for (const part of parts.slice(0, -1)) {
+    const schema = current?.[part];
+    if (!schema || typeof schema !== "object" || schema.type !== "object") {
+      return;
+    }
+    current = schema.properties || {};
+  }
+  if (current && typeof current === "object") {
+    delete current[parts[parts.length - 1]];
+  }
+}
+
+function deleteSchemaDefaultAtParts(schemaMap, parts) {
+  let properties = schemaMap;
+  for (const [index, part] of parts.entries()) {
+    const currentSchema = properties?.[part];
+    if (!currentSchema || typeof currentSchema !== "object") {
+      return;
+    }
+    if (currentSchema.default && typeof currentSchema.default === "object" && !Array.isArray(currentSchema.default)) {
+      deleteValueAtParts(currentSchema.default, parts.slice(index + 1));
+    }
+    properties = currentSchema.properties || {};
+  }
+}
+
+function setSchemaDefaultAtParts(schemaMap, parts, value) {
+  let properties = schemaMap;
+  for (const [index, part] of parts.entries()) {
+    const currentSchema = properties?.[part];
+    if (!currentSchema || typeof currentSchema !== "object") {
+      return;
+    }
+    if (index === parts.length - 1) {
+      currentSchema.default = cloneJson(value);
+      return;
+    }
+    if (currentSchema.default && typeof currentSchema.default === "object" && !Array.isArray(currentSchema.default)) {
+      setValueAtParts(currentSchema.default, parts.slice(index + 1), value);
+    }
+    properties = currentSchema.properties || {};
+  }
+}
+
+function editableSimulatorForScenario(simulator) {
+  const schemaMap = cloneJson(simulator?.params_schema || {});
+  for (const binding of parameterBindingsForSimulator(simulator)) {
+    const parts = splitParamPath(binding.param);
+    if (!parts.length) {
+      continue;
+    }
+    if (binding.policy === "locked") {
+      deleteSchemaDefaultAtParts(schemaMap, parts);
+      deleteSchemaAtParts(schemaMap, parts);
+      continue;
+    }
+    if (binding.policy === "default_if_unset") {
+      const schema = schemaAtParts(schemaMap, parts);
+      if (schema && typeof schema === "object") {
+        if (Array.isArray(binding.allowed_values) && Array.isArray(schema.enum)) {
+          const allowed = new Set(binding.allowed_values.map((item) => JSON.stringify(item)));
+          schema.enum = schema.enum.filter((item) => allowed.has(JSON.stringify(item)));
+        }
+        if (Object.prototype.hasOwnProperty.call(binding, "value")) {
+          setSchemaDefaultAtParts(schemaMap, parts, binding.value);
+        }
+      }
+    }
+  }
+  return { ...simulator, params_schema: schemaMap };
+}
+
+function applyParameterBindingsForScenario(simulator, params = {}, options = {}) {
+  const source = String(options.source || "user");
+  const resolved = cloneJson(params || {});
+  for (const binding of parameterBindingsForSimulator(simulator)) {
+    const parts = splitParamPath(binding.param);
+    if (!parts.length || !Object.prototype.hasOwnProperty.call(binding, "value")) {
+      continue;
+    }
+    if (binding.policy === "locked") {
+      const userSupplied = hasPath(resolved, parts);
+      const currentValue = valueAtParts(resolved, parts);
+      if (source !== "defaults" && userSupplied && !deepEqualJson(currentValue, binding.value)) {
+        throw new Error(`${binding.param} is controlled by the selected scenario.`);
+      }
+      setValueAtParts(resolved, parts, binding.value);
+    } else if (binding.policy === "default_if_unset" && (source === "defaults" || !hasPath(resolved, parts))) {
+      setValueAtParts(resolved, parts, binding.value);
+    }
+    if (Array.isArray(binding.allowed_values) && binding.allowed_values.length) {
+      const currentValue = valueAtParts(resolved, parts);
+      if (!binding.allowed_values.some((item) => deepEqualJson(item, currentValue))) {
+        throw new Error(`${binding.param} is not available for the selected scenario.`);
+      }
+    }
+  }
+  return resolved;
+}
+
+function scenarioDefaultParams(simulator) {
+  const editableSimulator = editableSimulatorForScenario(simulator);
+  return applyParameterBindingsForScenario(
+    simulator,
+    resolvedDefaultParams(editableSimulator),
+    { source: "defaults" }
+  );
+}
+
+function renderScenarioParamsHost(host, simulator, params = null, onChange = null) {
+  const editableSimulator = editableSimulatorForScenario(simulator);
+  const values = params && typeof params === "object" && !Array.isArray(params)
+    ? cloneJson(params)
+    : scenarioDefaultParams(simulator);
+  renderParamsHost(host, editableSimulator, values, onChange);
+}
+
+function readScenarioParamsFromHost(simulator, form) {
+  const editableSimulator = editableSimulatorForScenario(simulator);
+  return applyParameterBindingsForScenario(
+    simulator,
+    readParamsFromHost(editableSimulator, form)
+  );
 }
 
 function nativeOutputLabel(definitionOrId) {
@@ -345,13 +527,13 @@ function nativeOutputMatches(definition, params) {
   return conditionalInputMatches(definition, params);
 }
 
-function profileTruthConditionMessages(simulator, params) {
-  const profileId = selectedProfileId();
-  const capability = profileCapabilityForSimulator(simulator, profileId);
+function scenarioTemplateTruthConditionMessages(simulator, params) {
+  const templateId = selectedScenarioTemplateId();
+  const capability = scenarioTemplateCapabilityForSimulator(simulator, templateId);
   if (!capability || !params) {
     return [];
   }
-  const requiredTruth = new Set(profileRequiredTruthOutputs(profileId));
+  const requiredTruth = new Set(scenarioTemplateRequiredTruthOutputs(templateId));
   const messages = [];
 
   const explicitRequirements = Array.isArray(capability.truth_parameter_requirements)
@@ -383,13 +565,16 @@ function readNativeOutputsFromHost(host) {
     .filter(Boolean);
 }
 
-function renderNativeOutputsHost(host, simulator, selected = []) {
+function renderNativeOutputsHost(host, simulator, selected = [], params = null) {
   host.innerHTML = "";
-  const defs = nativeOutputDefsForSimulator(simulator);
+  const allDefs = nativeOutputDefsForSimulator(simulator);
+  const defs = availableNativeOutputDefsForSimulator(simulator, params);
   if (!defs.length) {
     const empty = document.createElement("div");
     empty.className = "muted-box";
-    empty.textContent = "No simulator-specific native outputs are available for this profile.";
+    empty.textContent = allDefs.length
+      ? "No simulator-specific native outputs are available with the current parameters."
+      : "No simulator-specific native outputs are available for this scenario template.";
     host.appendChild(empty);
     return;
   }
@@ -444,14 +629,16 @@ function renderNativeOutputsHost(host, simulator, selected = []) {
   host.appendChild(grid);
 }
 
-function updateRunNativeOutputsSummary(card, simulator, selected = null) {
+function updateRunNativeOutputsSummary(card, simulator, selected = null, params = null) {
   const summary = card.querySelector(".run-native-outputs-summary");
   if (!summary) {
     return;
   }
-  const defs = nativeOutputDefsForSimulator(simulator);
+  const defs = availableNativeOutputDefsForSimulator(simulator, params);
   if (!defs.length) {
-    summary.textContent = "No simulator-specific native outputs available for this profile.";
+    summary.textContent = nativeOutputDefsForSimulator(simulator).length
+      ? "No native outputs available with current parameters."
+      : "No simulator-specific native outputs available for this scenario template.";
     return;
   }
   const selectedIds = selected || readNativeOutputsFromHost(card.querySelector(".run-native-outputs-form"));
@@ -465,10 +652,11 @@ function updateRunNativeOutputsSummary(card, simulator, selected = null) {
     .join(", ");
 }
 
-function renderCardNativeOutputs(card, simulator, selected = null) {
+function renderCardNativeOutputs(card, simulator, selected = null, params = null) {
   const host = card.querySelector(".run-native-outputs-form");
-  renderNativeOutputsHost(host, simulator, selected || []);
-  updateRunNativeOutputsSummary(card, simulator, readNativeOutputsFromHost(host));
+  const currentParams = params || readScenarioParamsFromHost(simulator, card.querySelector(".run-params-form"));
+  renderNativeOutputsHost(host, simulator, selected || [], currentParams);
+  updateRunNativeOutputsSummary(card, simulator, readNativeOutputsFromHost(host), currentParams);
 }
 
 function simulatorInputById(inputId) {
@@ -547,10 +735,10 @@ async function updateSimulatorInputMetrics(row) {
 function renderExtras() {
   const host = $("extras-grid");
   host.innerHTML = "";
-  const selectedProfile = $("profile").value;
-  const profile = profileSpec(selectedProfile);
-  const required = new Set(profile?.required_extras || []);
-  const available = (profile?.available_extras || [])
+  const selectedTemplate = $("scenario-template").value;
+  const template = scenarioTemplateSpec(selectedTemplate);
+  const required = new Set(template?.required_extras || []);
+  const available = (template?.available_extras || [])
     .map((key) => extraByKey(key))
     .filter(Boolean);
   $("extras-empty").hidden = available.length > 0;
@@ -578,7 +766,7 @@ function renderExtras() {
     const desc = document.createElement("div");
     desc.className = "checkbox-desc";
     desc.textContent = isRequired
-      ? `${extra.description} Generated automatically for ${selectedProfile}.`
+      ? `${extra.description} Generated automatically for ${selectedTemplate}.`
       : extra.description;
     const syncState = () => {
       const isSelected = input.checked;
@@ -600,39 +788,68 @@ function renderExtras() {
   }
 }
 
-function renderScenarioProfileControls() {
-  renderProfileTruthContextSummary();
+function renderScenarioTemplateControls() {
+  renderScenarioTemplateTruthContextSummary();
   renderExtras();
 }
 
-function renderProfileTruthContextSummary() {
-  const host = $("profile-truth-contexts");
+function renderScenarioTemplateTruthContextSummary() {
+  const host = $("scenario-template-truth-contexts");
   if (!host) {
     return;
   }
   host.innerHTML = "";
-  const profileId = $("profile").value;
-  const contexts = profileRequiredTruthContexts(profileId);
-  const files = fixedOutputFilesForProfile(profileId);
+  const templateId = $("scenario-template").value;
+  const template = scenarioTemplateSpec(templateId);
+  if (!template) {
+    const empty = document.createElement("div");
+    empty.className = "muted-box";
+    empty.textContent = "No compatible scenario template.";
+    host.appendChild(empty);
+    return;
+  }
+  const axes = templateDataAxes(template);
+  const contexts = scenarioTemplateRequiredTruthContexts(templateId);
+  const files = fixedOutputFilesForScenarioTemplate(templateId);
 
   const head = document.createElement("div");
-  head.className = "profile-output-head";
+  head.className = "scenario-template-output-head";
   const badge = document.createElement("span");
-  badge.className = "profile-output-badge";
-  badge.textContent = "Selected profile";
+  badge.className = "scenario-template-output-badge";
+  badge.textContent = "Selected template";
   const title = document.createElement("strong");
-  title.textContent = profileId;
+  title.textContent = templateId;
   const subtitle = document.createElement("span");
   subtitle.textContent = "ANDREA will generate these standardized outputs automatically.";
   head.append(badge, title, subtitle);
 
+  const axesRow = document.createElement("div");
+  axesRow.className = "scenario-template-axis-row";
+  for (const [label, axis, value] of [
+    ["Modality", "resolution", axes.resolution],
+    ["Columns", "column_kind", axes.column_kind],
+    ["Design", "experimental_design", axes.experimental_design],
+    ["Truth", "truth", templateTruthGranularityKey(template)],
+  ]) {
+    const chip = document.createElement("span");
+    chip.className = "scenario-template-axis-chip";
+    const strong = document.createElement("strong");
+    strong.textContent = label;
+    const text = document.createElement("span");
+    text.textContent = axis === "truth"
+      ? truthGranularityLabel(value)
+      : axisValueLabel(axis, value);
+    chip.append(strong, text);
+    axesRow.appendChild(chip);
+  }
+
   const fileList = document.createElement("div");
-  fileList.className = "profile-output-file-list";
+  fileList.className = "scenario-template-output-file-list";
   for (const file of files) {
     const item = document.createElement("div");
     item.className = file.highlight
-      ? "profile-output-file is-highlight"
-      : "profile-output-file";
+      ? "scenario-template-output-file is-highlight"
+      : "scenario-template-output-file";
     const path = document.createElement("strong");
     path.textContent = file.path;
     const description = document.createElement("span");
@@ -642,14 +859,14 @@ function renderProfileTruthContextSummary() {
   }
 
   const network = document.createElement("div");
-  network.className = "profile-network-contexts";
+  network.className = "scenario-template-network-contexts";
   const networkTitle = document.createElement("strong");
   networkTitle.textContent = "truth/networks.csv contexts";
   const chips = document.createElement("div");
-  chips.className = "profile-context-chip-row";
+  chips.className = "scenario-template-context-chip-row";
   for (const context of contexts) {
     const chip = document.createElement("div");
-    chip.className = "profile-context-chip";
+    chip.className = "scenario-template-context-chip";
     const label = document.createElement("strong");
     label.textContent = context;
     const description = document.createElement("span");
@@ -659,23 +876,18 @@ function renderProfileTruthContextSummary() {
   }
   network.append(networkTitle, chips);
 
-  host.append(head, fileList, network);
+  host.append(head, axesRow, fileList, network);
 }
 
 function initBootstrapView() {
-  const profileSelect = $("profile");
-  profileSelect.innerHTML = "";
-  for (const profile of state.bootstrap.profiles || []) {
-    const option = document.createElement("option");
-    option.value = profile.id;
-    option.textContent = profile.id;
-    profileSelect.appendChild(option);
+  refreshScenarioAxisControls({ preserve: false });
+  for (const id of ["scenario-resolution", "scenario-design", "scenario-column-kind", "truth-granularity"]) {
+    $(id).addEventListener("change", () => {
+      refreshScenarioAxisControls();
+      renderScenarioTemplateControls();
+      resetScenarioDerivedState();
+    });
   }
-  if ((state.bootstrap.profiles || []).some((item) => item.id === "scrna_grouped")) {
-    profileSelect.value = "scrna_grouped";
-  }
-  profileSelect.addEventListener("change", renderScenarioProfileControls);
-  profileSelect.addEventListener("change", resetScenarioDerivedState);
   const defaultMaxParallel = Number.parseInt(
     String(state.bootstrap?.planning_defaults?.max_parallel_tasks || ""),
     10
@@ -691,7 +903,7 @@ function initBootstrapView() {
   if (Number.isFinite(defaultMaxRam) && defaultMaxRam >= 1) {
     $("max-ram-gb").value = String(defaultMaxRam);
   }
-  renderScenarioProfileControls();
+  renderScenarioTemplateControls();
   populateSimulatorIssueSelect();
 }
 
@@ -1123,8 +1335,17 @@ function compareConditionValue(actual, op, expected) {
 
 function conditionActualValue(field, params, nativeOutputs = []) {
   const normalized = String(field || "").trim();
-  if (normalized === "profile") {
-    return selectedProfileId();
+  const template = scenarioTemplateSpec(selectedScenarioTemplateId()) || {};
+  if (normalized === "scenario_template") {
+    return selectedScenarioTemplateId();
+  }
+  if (normalized.startsWith("data_axes.")) {
+    const axis = normalized.slice("data_axes.".length);
+    return template?.data_axes?.[axis] ?? null;
+  }
+  if (normalized === "truth_requirement") {
+    const contexts = template?.truth_requirements?.contexts;
+    return Array.isArray(contexts) ? contexts.map((item) => String(item)) : [];
   }
   if (normalized === "requested_extra") {
     return checkedExtras().sort();
@@ -1172,19 +1393,24 @@ function compatibilityConditionMatches(condition, params, nativeOutputs = []) {
   const expected = conditionExpectedValue(condition, params, nativeOutputs);
   const requestedExtras = new Set(checkedExtras());
   const selectedNativeOutputs = new Set((nativeOutputs || []).map((item) => String(item)));
-  if (field === "requested_extra" && op === "eq") {
-    return requestedExtras.has(String(expected));
+  const setValuedActual = field === "requested_extra"
+    ? requestedExtras
+    : field === "truth_requirement"
+      ? new Set(conditionActualValue(field, params, nativeOutputs).map((item) => String(item)))
+      : null;
+  if (setValuedActual && op === "eq") {
+    return setValuedActual.has(String(expected));
   }
-  if (field === "requested_extra" && op === "ne") {
-    return !requestedExtras.has(String(expected));
+  if (setValuedActual && op === "ne") {
+    return !setValuedActual.has(String(expected));
   }
-  if (field === "requested_extra" && op === "in") {
+  if (setValuedActual && op === "in") {
     const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
-    return values.some((item) => requestedExtras.has(item));
+    return values.some((item) => setValuedActual.has(item));
   }
-  if (field === "requested_extra" && op === "not_in") {
+  if (setValuedActual && op === "not_in") {
     const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
-    return !values.some((item) => requestedExtras.has(item));
+    return !values.some((item) => setValuedActual.has(item));
   }
   if (field === "native_output" && op === "eq") {
     return selectedNativeOutputs.has(String(expected));
@@ -1231,6 +1457,12 @@ function conditionalInputMatches(requirement, params, nativeOutputs = []) {
   }
   const requestedExtras = new Set(checkedExtras());
   const selectedNativeOutputs = new Set((nativeOutputs || []).map((item) => String(item)));
+  const template = scenarioTemplateSpec(selectedScenarioTemplateId()) || {};
+  const truthRequirements = new Set(
+    Array.isArray(template?.truth_requirements?.contexts)
+      ? template.truth_requirements.contexts.map((item) => String(item))
+      : []
+  );
   for (const condition of conditions) {
     if (!condition || typeof condition !== "object") {
       return false;
@@ -1238,28 +1470,33 @@ function conditionalInputMatches(requirement, params, nativeOutputs = []) {
     const field = String(condition.field || "").trim();
     const op = String(condition.op || "").trim();
     const expected = condition.value;
-    if (field === "requested_extra" && op === "eq") {
-      if (!requestedExtras.has(String(expected))) {
+    const setValuedActual = field === "requested_extra"
+      ? requestedExtras
+      : field === "truth_requirement"
+        ? truthRequirements
+        : null;
+    if (setValuedActual && op === "eq") {
+      if (!setValuedActual.has(String(expected))) {
         return false;
       }
       continue;
     }
-    if (field === "requested_extra" && op === "ne") {
-      if (requestedExtras.has(String(expected))) {
+    if (setValuedActual && op === "ne") {
+      if (setValuedActual.has(String(expected))) {
         return false;
       }
       continue;
     }
-    if (field === "requested_extra" && op === "in") {
+    if (setValuedActual && op === "in") {
       const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
-      if (!values.some((item) => requestedExtras.has(item))) {
+      if (!values.some((item) => setValuedActual.has(item))) {
         return false;
       }
       continue;
     }
-    if (field === "requested_extra" && op === "not_in") {
+    if (setValuedActual && op === "not_in") {
       const values = Array.isArray(expected) ? expected.map((item) => String(item)) : [];
-      if (values.some((item) => requestedExtras.has(item))) {
+      if (values.some((item) => setValuedActual.has(item))) {
         return false;
       }
       continue;
@@ -1332,6 +1569,9 @@ function validateScenarioForm() {
   if (!benchmarkId) {
     throw new Error("Benchmark ID is required.");
   }
+  if (!scenarioTemplateSpec(selectedScenarioTemplateId())) {
+    throw new Error("Select a supported scenario combination.");
+  }
   const seenInputs = new Set();
   for (const row of selectedInputRows()) {
     const inputId = row.querySelector(".input-kind").value;
@@ -1357,9 +1597,14 @@ function collectScenarioConfig() {
   const organism = organismRow
     ? rowOrganismPayload(organismRow)
     : { taxonomic_group: "synthetic", ncbi_taxon_id: null };
+  const selectedTemplate = scenarioTemplateSpec($("scenario-template").value);
+  if (!selectedTemplate) {
+    throw new Error("Select a supported scenario combination.");
+  }
   const scenario = {
     id: $("benchmark-id").value.trim(),
-    profile: $("profile").value,
+    data_axes: selectedTemplate?.data_axes || {},
+    truth_requirements: selectedTemplate?.truth_requirements || { contexts: ["global"] },
     requested_extras: checkedExtras(),
     organism,
   };
@@ -1413,8 +1658,8 @@ function buildPreflightFormData() {
 }
 
 function simulatorInfoPayload(simulator) {
-  const profileCapabilities = simulator.profile_capabilities && typeof simulator.profile_capabilities === "object"
-    ? simulator.profile_capabilities
+  const semanticCapabilities = simulator.semantic_capabilities && typeof simulator.semantic_capabilities === "object"
+    ? simulator.semantic_capabilities
     : {};
   const publications = Array.isArray(simulator.publication) ? simulator.publication : [];
   const keywords = Array.isArray(simulator.simulation_keywords) ? simulator.simulation_keywords : [];
@@ -1422,7 +1667,7 @@ function simulatorInfoPayload(simulator) {
     ? simulator.extra_inputs
     : {};
   const params = simulator?.params_schema && typeof simulator.params_schema === "object" ? simulator.params_schema : {};
-  const profileIds = Object.keys(profileCapabilities);
+  const templateIds = Object.keys(semanticCapabilities);
   const requiredInputs = (Array.isArray(rawInputs.required) ? rawInputs.required : [])
     .map((item) => simulatorInputSummary(item))
     .filter(Boolean);
@@ -1438,7 +1683,7 @@ function simulatorInfoPayload(simulator) {
     chips: [
       { label: "id", value: simulator.simulator_id || "-" },
       { label: "year", value: simulator.year ? String(simulator.year) : "-" },
-      { label: "profiles", value: profileIds.length ? String(profileIds.length) : "0" },
+      { label: "templates", value: templateIds.length ? String(templateIds.length) : "0" },
     ],
     sections: [
       {
@@ -1489,113 +1734,25 @@ function simulatorInfoPayload(simulator) {
   });
 }
 
-function simulatorRuntimeResourceSummary(resources) {
-  const threading = resources?.threading && typeof resources.threading === "object"
-    ? resources.threading
-    : {};
-  const supported = Boolean(threading.supported);
-  const defaultThreads = threading.default_threads ?? 1;
-  const maxThreads = threading.max_threads ?? 1;
-  const mapping = String(threading.upstream_mapping || "").trim();
-  return [
-    `threading: ${supported ? "supported" : "not supported"}`,
-    `default_threads: ${defaultThreads}`,
-    `max_threads: ${maxThreads}`,
-    mapping ? `mapping: ${mapping}` : "",
-  ].filter(Boolean).join("\n");
-}
-
-function simulatorInputSummary(item) {
-  if (!item || typeof item !== "object") {
-    return "";
-  }
-  const id = String(item.input || "").trim();
-  const description = String(item.usage || item.message || "").trim();
-  return [id, description].filter(Boolean).join(": ");
-}
-
-function conditionalSimulatorInputDetail(rule) {
-  if (!rule || typeof rule !== "object") {
-    return null;
-  }
-  const input = String(rule.input || "").trim();
-  const message = String(rule.message || "").trim();
-  const conditions = Array.isArray(rule.conditions)
-    ? rule.conditions.map(formatSimulatorInputCondition).filter(Boolean)
-    : [];
-  const condition = conditions.join(" AND ");
-  return input || condition || message
-    ? { input, condition, message }
-    : null;
-}
-
-function formatSimulatorInputCondition(condition) {
-  if (!condition || typeof condition !== "object") {
-    return "";
-  }
-  const field = String(condition.field || "").trim();
-  const op = String(condition.op || "").trim();
-  const value = condition.value === undefined ? "" : JSON.stringify(condition.value);
-  return field && op ? `${field} ${formatConditionalOperator(op)} ${value}` : "";
-}
-
-function formatConditionalOperator(op) {
-  const normalized = String(op || "").trim();
-  const labels = {
-    eq: "==",
-    ne: "!=",
-    in: "in",
-    not_in: "not in",
-    gt: ">",
-    gte: ">=",
-    lt: "<",
-    lte: "<=",
-  };
-  return labels[normalized] || normalized;
-}
-
-function profileDerivations(capability) {
-  const items = Array.isArray(capability?.derivations) ? capability.derivations : [];
-  const derivations = new Map();
-  for (const item of items) {
-    const artifact = String(item?.artifact || "").trim();
-    if (artifact && !derivations.has(artifact)) {
-      derivations.set(artifact, item);
-    }
-  }
-  return derivations;
-}
-
 function artifactDisplayLabel(artifact) {
   const extra = extraByKey(artifact);
   if (extra?.label) {
     return extra.label;
   }
-  const truthLabels = {
-    global: "truth/networks.csv · global",
-    group: "truth/networks.csv · group:<id>",
-    cell: "truth/networks.csv · cell:<id>",
-  };
-  return truthLabels[artifact] || artifact;
-}
-
-function truthOutputStatusLabel(status) {
-  if (status === "native") {
-    return "native";
+  const family = truthContextFamily(artifact);
+  if (family && knownTruthContextFamilies().has(family)) {
+    return truthContextArtifactLabel(family);
   }
-  if (status === "derivable") {
-    return "derived";
-  }
-  return "unavailable";
+  return artifact;
 }
 
 function appendSimulatorTruthContextChips(host, entry) {
-  const truthOutputs = entry?.truth_outputs || {};
-  const primaryOutput = primaryTruthOutputForProfile(entry?.requested_profile || selectedProfileId());
+  const truthOutputs = truthOutputStatusMap(entry?.truth_outputs);
+  const primaryOutput = primaryTruthOutputForScenarioTemplate(selectedScenarioTemplateId());
   const row = document.createElement("div");
   row.className = "simulator-context-chip-row";
-  for (const outputId of TRUTH_OUTPUT_ORDER) {
-    const rawStatus = String(truthOutputs[outputId] || "none");
+  for (const outputId of truthContextFamiliesForDisplay({ truthOutputs: entry?.truth_outputs })) {
+    const rawStatus = String(truthOutputs.get(outputId) || "none");
     const status = rawStatus === "native" || rawStatus === "derivable" ? rawStatus : "none";
     const chip = document.createElement("span");
     chip.className = `simulator-context-chip status-${status}`;
@@ -1610,17 +1767,6 @@ function appendSimulatorTruthContextChips(host, entry) {
     row.appendChild(chip);
   }
   host.appendChild(row);
-}
-
-function truthContextChipLabel(context) {
-  const normalized = String(context || "").trim();
-  if (normalized === "group") {
-    return "group";
-  }
-  if (normalized === "cell") {
-    return "cell";
-  }
-  return normalized || "-";
 }
 
 function appendTruthContextList(host, title, values) {
@@ -1643,46 +1789,6 @@ function appendTruthContextList(host, title, values) {
   }
   block.append(heading, list);
   host.appendChild(block);
-}
-
-function normalizedTruthContextKey(context) {
-  const normalized = String(context || "").trim();
-  if (normalized === "global") {
-    return "global";
-  }
-  if (normalized === "group" || normalized.startsWith("group:")) {
-    return "group";
-  }
-  if (normalized === "cell" || normalized.startsWith("cell:")) {
-    return "cell";
-  }
-  return normalized;
-}
-
-function truthContextMap(truthContexts) {
-  const contexts = Array.isArray(truthContexts)
-    ? truthContexts.filter((item) => item && typeof item === "object")
-    : [];
-  const byOutput = new Map();
-  for (const context of contexts) {
-    const key = normalizedTruthContextKey(context.context);
-    if (key && !byOutput.has(key)) {
-      byOutput.set(key, context);
-    }
-  }
-  return byOutput;
-}
-
-function truthContextHasDetail(context, status) {
-  if (!context || status === "none") {
-    return false;
-  }
-  const textFields = ["explanation", "generation", "score_semantics"];
-  if (textFields.some((field) => String(context?.[field] || "").trim())) {
-    return true;
-  }
-  const listFields = ["upstream_configuration", "source_artifacts", "limitations"];
-  return listFields.some((field) => Array.isArray(context?.[field]) && context[field].length);
 }
 
 function appendTruthContextDetail(host, context) {
@@ -1719,8 +1825,9 @@ function appendTruthContextDetail(host, context) {
   appendTruthContextList(host, "Limitations", context.limitations);
 }
 
-function appendTruthNetworksSummary(host, truthOutputs, truthContexts, profileId) {
-  const primaryOutput = primaryTruthOutputForProfile(profileId);
+function appendTruthNetworksSummary(host, truthOutputs, truthContexts, templateId) {
+  const primaryOutput = primaryTruthOutputForScenarioTemplate(templateId);
+  const outputStatuses = truthOutputStatusMap(truthOutputs);
   const contextByOutput = truthContextMap(truthContexts);
   const panel = document.createElement("div");
   panel.className = "truth-networks-summary";
@@ -1736,8 +1843,8 @@ function appendTruthNetworksSummary(host, truthOutputs, truthContexts, profileId
 
   const contexts = document.createElement("div");
   contexts.className = "truth-network-context-list";
-  for (const outputId of TRUTH_OUTPUT_ORDER) {
-    const rawStatus = String(truthOutputs?.[outputId] || "none");
+  for (const outputId of truthContextFamiliesForDisplay({ templateId, truthOutputs, truthContexts })) {
+    const rawStatus = String(outputStatuses.get(outputId) || "none");
     const status = rawStatus === "native" || rawStatus === "derivable" ? rawStatus : "none";
     const context = contextByOutput.get(outputId) || { context: outputId, status };
     const hasDetail = truthContextHasDetail(context, status);
@@ -1882,7 +1989,7 @@ function appendArtifactDetailContent(detailBox, item, artifact, derivation) {
   detailBox.appendChild(impl);
 }
 
-function appendArtifactChipRow(host, items, { derivations, simulator, profileId }) {
+function appendArtifactChipRow(host, items, { derivations, simulator, templateId }) {
   if (!items.length) {
     const empty = document.createElement("span");
     empty.className = "artifact-empty";
@@ -1929,11 +2036,11 @@ function appendArtifactChipRow(host, items, { derivations, simulator, profileId 
 }
 
 function appendCapabilitySection(host, simulator) {
-  const profileCapabilities = simulator.profile_capabilities && typeof simulator.profile_capabilities === "object"
-    ? simulator.profile_capabilities
+  const semanticCapabilities = simulator.semantic_capabilities && typeof simulator.semantic_capabilities === "object"
+    ? simulator.semantic_capabilities
     : {};
-  const profileIds = Object.keys(profileCapabilities);
-  if (!profileIds.length) {
+  const templateIds = Object.keys(semanticCapabilities);
+  if (!templateIds.length) {
     return;
   }
 
@@ -1941,7 +2048,7 @@ function appendCapabilitySection(host, simulator) {
   section.className = "info-details simulator-capability-details";
   section.open = true;
   const title = document.createElement("summary");
-  title.textContent = "Profile Capabilities";
+  title.textContent = "Semantic Capabilities";
   section.appendChild(title);
 
   const body = document.createElement("div");
@@ -1949,17 +2056,17 @@ function appendCapabilitySection(host, simulator) {
 
   const cards = document.createElement("div");
   cards.className = "simulator-capability-list";
-  for (const profileId of profileIds) {
-    const capability = profileCapabilities[profileId] || {};
-    const derivations = profileDerivations(capability);
+  for (const templateId of templateIds) {
+    const capability = semanticCapabilities[templateId] || {};
+    const derivations = capabilityDerivations(capability);
     const card = document.createElement("article");
     card.className = "simulator-capability-card";
 
     const header = document.createElement("div");
     header.className = "simulator-capability-head";
-    const profileTitle = document.createElement("h6");
-    profileTitle.textContent = profileId;
-    header.appendChild(profileTitle);
+    const templateTitle = document.createElement("h6");
+    templateTitle.textContent = templateId;
+    header.appendChild(templateTitle);
     card.appendChild(header);
 
     const notes = String(capability.notes || "").trim();
@@ -1980,7 +2087,7 @@ function appendCapabilitySection(host, simulator) {
       truthWrap,
       capability.truth_outputs || {},
       capability.truth_contexts,
-      profileId
+      templateId
     );
     truthRow.appendChild(truthLabel);
     truthRow.appendChild(truthWrap);
@@ -2015,6 +2122,32 @@ function appendCapabilitySection(host, simulator) {
       card.appendChild(truthRulesRow);
     }
 
+    const parameterBindings = Array.isArray(capability.parameter_bindings)
+      ? capability.parameter_bindings
+      : [];
+    if (parameterBindings.length) {
+      const bindingsRow = document.createElement("div");
+      bindingsRow.className = "simulator-capability-row";
+      const bindingsLabel = document.createElement("strong");
+      bindingsLabel.textContent = "Parameter bindings";
+      const bindingsWrap = document.createElement("div");
+      bindingsWrap.className = "simulator-truth-rules";
+      for (const binding of parameterBindings) {
+        const rule = document.createElement("div");
+        rule.className = "simulator-truth-rule";
+        const head = document.createElement("strong");
+        head.textContent = String(binding?.param || "").trim();
+        const condition = document.createElement("code");
+        condition.textContent = `${String(binding?.policy || "").trim()} = ${JSON.stringify(binding?.value)}`;
+        const message = document.createElement("span");
+        message.textContent = String(binding?.description || binding?.source || "").trim();
+        rule.append(head, condition, message);
+        bindingsWrap.appendChild(rule);
+      }
+      bindingsRow.append(bindingsLabel, bindingsWrap);
+      card.appendChild(bindingsRow);
+    }
+
     const extrasRow = document.createElement("div");
     extrasRow.className = "simulator-capability-row";
     const extrasLabel = document.createElement("strong");
@@ -2029,7 +2162,7 @@ function appendCapabilitySection(host, simulator) {
         ...nativeExtras.map((artifact) => ({ artifact, mode: "native" })),
         ...derivableExtras.map((artifact) => ({ artifact, mode: "derivable" })),
       ],
-      { derivations, simulator, profileId }
+      { derivations, simulator, templateId }
     );
     extrasRow.appendChild(extrasLabel);
     extrasRow.appendChild(extrasWrap);
@@ -2053,7 +2186,7 @@ function appendCapabilitySection(host, simulator) {
         notes: String(item?.notes || "").trim(),
         mode: "native",
       })),
-      { derivations, simulator, profileId }
+      { derivations, simulator, templateId }
     );
     nativeOutputRow.appendChild(nativeOutputLabel);
     nativeOutputRow.appendChild(nativeOutputWrap);
@@ -2077,7 +2210,7 @@ function appendCapabilitySection(host, simulator) {
         notes: String(item?.notes || "").trim(),
         mode: "native",
       })),
-      { derivations, simulator, profileId }
+      { derivations, simulator, templateId }
     );
     auxRow.appendChild(auxLabel);
     auxRow.appendChild(auxWrap);
@@ -2135,7 +2268,7 @@ function buildSimulatorRequestIssueUrl() {
   const simulatorName = String($("simulator-request-name")?.value || "").trim();
   const doi = String($("simulator-request-doi")?.value || "").trim();
   const repoUrl = String($("simulator-request-repo")?.value || "").trim();
-  const expectedProfiles = String($("simulator-request-profiles")?.value || "").trim();
+  const expectedTemplates = String($("simulator-request-templates")?.value || "").trim();
   const expectedArtifacts = String($("simulator-request-artifacts")?.value || "").trim();
   const notes = String($("simulator-request-notes")?.value || "").trim();
 
@@ -2152,7 +2285,7 @@ function buildSimulatorRequestIssueUrl() {
     `- Simulator name: ${simulatorName}`,
     `- DOI / publication: ${doi || "-"}`,
     `- Implementation repository: ${repoUrl || "-"}`,
-    `- Expected canonical profiles: ${expectedProfiles || "-"}`,
+    `- Expected semantic capabilities: ${expectedTemplates || "-"}`,
     `- Expected extras / inputs: ${expectedArtifacts || "-"}`,
     "",
     "## Notes",
@@ -2203,169 +2336,6 @@ function buildSimulatorIssueReportUrl() {
     "- ANDREA GUI generate-data",
   ].join("\n"));
   return `https://github.com/AdrianSeguraOrtiz/ANDREA/issues/new?${params.toString()}`;
-}
-
-function renderPreflightSummary(report) {
-  const root = $("preflight-report-view");
-  if (!report) {
-    root.textContent = "No preflight report yet.";
-    return;
-  }
-  root.innerHTML = "";
-  const summary = report.catalog_summary || {};
-  const scenario = report.scenario || {};
-  const organism = scenario.organism && typeof scenario.organism === "object" ? scenario.organism : {};
-  const taxonRaw = organism.ncbi_taxon_id;
-  const taxonId = taxonRaw === null || taxonRaw === undefined ? "-" : String(taxonRaw);
-  const issueCounts = countPreflightIssues(report);
-
-  appendPreflightSummaryBand(root, "Scenario", [
-    { label: "Scenario", value: scenario.id || "-" },
-    { label: "Profile", value: scenario.profile || "-" },
-    {
-      label: "Organism",
-      value: organism.taxonomic_group || "synthetic",
-      detail: `NCBI taxon ${taxonId}`,
-    },
-  ]);
-
-  appendPreflightExtrasBand(root, scenario);
-
-  appendPreflightSummaryBand(root, "Simulator Catalog", [
-    { label: "Total", value: summary.total ?? 0 },
-    { label: "Eligible", value: summary.eligible ?? 0, tone: "ok" },
-    { label: "Warning", value: summary.warning ?? 0, tone: Number(summary.warning || 0) ? "warning" : "" },
-    { label: "Blocked", value: summary.blocked ?? 0, tone: Number(summary.blocked || 0) ? "blocked" : "" },
-    { label: "Issues", value: issueCounts.total, detail: `${issueCounts.warn} warn · ${issueCounts.block} block` },
-  ]);
-
-  const rawDetails = document.createElement("details");
-  rawDetails.className = "preflight-list";
-  const summaryNode = document.createElement("summary");
-  summaryNode.textContent = "Raw preflight_report.json";
-  rawDetails.appendChild(summaryNode);
-  const pre = document.createElement("pre");
-  pre.textContent = JSON.stringify(report, null, 2);
-  rawDetails.appendChild(pre);
-  root.appendChild(rawDetails);
-}
-
-function countPreflightIssues(report) {
-  const counts = { warn: 0, block: 0, total: 0 };
-  const entries = [
-    ...(Array.isArray(report?.eligible) ? report.eligible : []),
-    ...(Array.isArray(report?.warning) ? report.warning : []),
-    ...(Array.isArray(report?.blocked) ? report.blocked : []),
-  ];
-  for (const entry of entries) {
-    for (const issue of entry.issues || []) {
-      const severity = String(issue?.severity || "").trim();
-      if (severity === "warn") {
-        counts.warn += 1;
-      } else if (severity === "block") {
-        counts.block += 1;
-      }
-    }
-  }
-  counts.total = counts.warn + counts.block;
-  return counts;
-}
-
-function appendPreflightMetricCard(parent, { label, value, detail = "", tone = "" }) {
-  const card = document.createElement("article");
-  card.className = `preflight-kpi${tone ? ` ${tone}` : ""}`;
-  const title = document.createElement("strong");
-  title.textContent = label;
-  const main = document.createElement("span");
-  main.textContent = String(value ?? "-");
-  card.append(title, main);
-  if (detail) {
-    const small = document.createElement("small");
-    small.textContent = detail;
-    card.appendChild(small);
-  }
-  parent.appendChild(card);
-}
-
-function appendPreflightSummaryBand(parent, title, cards) {
-  const section = document.createElement("section");
-  section.className = "preflight-summary-section";
-  const heading = document.createElement("h4");
-  heading.textContent = title;
-  const grid = document.createElement("div");
-  grid.className = "preflight-grid";
-  for (const card of cards) {
-    appendPreflightMetricCard(grid, card);
-  }
-  section.append(heading, grid);
-  parent.appendChild(section);
-}
-
-function appendPreflightExtrasBand(parent, scenario) {
-  const section = document.createElement("section");
-  section.className = "preflight-summary-section";
-  const heading = document.createElement("h4");
-  heading.textContent = "Standardized Extras";
-  const grid = document.createElement("div");
-  grid.className = "preflight-extra-grid";
-  const requested = normalizedExtraList(scenario.requested_extras || []);
-  const required = normalizedExtraList(profileRequiredExtras(scenario.profile || selectedProfileId()));
-  const requiredSet = new Set(required);
-  const selected = requested.filter((item) => !requiredSet.has(item));
-  appendPreflightExtraSet(grid, "Selected", selected);
-  appendPreflightExtraSet(
-    grid,
-    "Added automatically",
-    required,
-    required.length ? "Required by the selected canonical profile." : ""
-  );
-  section.append(heading, grid);
-  parent.appendChild(section);
-}
-
-function normalizedExtraList(items) {
-  return [
-    ...new Set(
-      (Array.isArray(items) ? items : [])
-        .map((item) => String(item || "").trim())
-        .filter(Boolean)
-    ),
-  ].sort();
-}
-
-function appendPreflightExtraSet(parent, title, items, note = "") {
-  const block = document.createElement("div");
-  block.className = "preflight-extra-set";
-  const head = document.createElement("div");
-  head.className = "preflight-extra-head";
-  const label = document.createElement("strong");
-  label.textContent = title;
-  const count = document.createElement("span");
-  count.textContent = String(items.length);
-  head.append(label, count);
-  const chips = document.createElement("div");
-  chips.className = "preflight-chip-row";
-  if (!items.length) {
-    const empty = document.createElement("span");
-    empty.className = "preflight-chip muted";
-    empty.textContent = "-";
-    chips.appendChild(empty);
-  } else {
-    for (const item of items) {
-      const chip = document.createElement("span");
-      chip.className = "preflight-chip";
-      chip.textContent = String(item);
-      chips.appendChild(chip);
-    }
-  }
-  block.append(head, chips);
-  if (note) {
-    const noteNode = document.createElement("small");
-    noteNode.className = "preflight-extra-note";
-    noteNode.textContent = note;
-    block.appendChild(noteNode);
-  }
-  parent.appendChild(block);
 }
 
 function simulatorIssues(entry, severity = null) {
@@ -2485,70 +2455,27 @@ function renderSimulatorEligibility(report) {
   refreshSimulatorCatalogRunCounts();
 }
 
-function selectedSimulatorRunCounts() {
-  const counts = new Map();
-  document.querySelectorAll(".run-card .simulator-id").forEach((input) => {
-    const simulatorId = String(input?.value || "").trim();
-    if (!simulatorId) {
-      return;
-    }
-    counts.set(simulatorId, (counts.get(simulatorId) || 0) + 1);
-  });
-  return counts;
-}
-
-function refreshSimulatorCatalogRunCounts() {
-  const counts = selectedSimulatorRunCounts();
-  document.querySelectorAll(".tool-item[data-simulator-id]").forEach((card) => {
-    const simulatorId = String(card.dataset.simulatorId || "").trim();
-    const count = counts.get(simulatorId) || 0;
-    card.classList.toggle("has-selected-runs", count > 0);
-    const badge = card.querySelector(".selection-count-badge");
-    if (!badge) {
-      return;
-    }
-    badge.textContent = String(count);
-    badge.classList.toggle("is-active", count > 0);
-    badge.setAttribute(
-      "aria-label",
-      `${count} selected ${count === 1 ? "run" : "runs"} for ${simulatorId}`
-    );
-  });
-}
-
-function availableSimulatorIds() {
-  const report = state.preflightReport;
-  if (!report) {
-    return [];
-  }
-  return [...(report.eligible || []), ...(report.warning || [])]
-    .map((entry) => String(entry.simulator_id || ""))
-    .filter(Boolean);
-}
-
-function buildRunId(simulatorId) {
-  const existing = Array.from(document.querySelectorAll(".run-id")).map((node) => node.value.trim());
-  let idx = 1;
-  while (existing.includes(`${simulatorId}__${String(idx).padStart(2, "0")}`)) {
-    idx += 1;
-  }
-  return `${simulatorId}__${String(idx).padStart(2, "0")}`;
-}
-
 function updateRunParamsSummary(card, simulator, params = null) {
   const summary = card.querySelector(".run-params-summary");
-  const current = params || readParamsFromHost(simulator, card.querySelector(".run-params-form"));
-  summary.textContent = deepEqualJson(current, resolvedDefaultParams(simulator))
+  const current = params || readScenarioParamsFromHost(simulator, card.querySelector(".run-params-form"));
+  summary.textContent = deepEqualJson(current, scenarioDefaultParams(simulator))
     ? "Default parameters"
     : "Custom parameters";
 }
 
 function renderCardParams(card, simulator, params = null) {
   const host = card.querySelector(".run-params-form");
-  renderParamsHost(host, simulator, params, () => {
+  renderScenarioParamsHost(host, simulator, params, () => {
+    try {
+      const currentParams = readScenarioParamsFromHost(simulator, host);
+      const selectedNativeOutputs = readNativeOutputsFromHost(card.querySelector(".run-native-outputs-form"));
+      renderCardNativeOutputs(card, simulator, selectedNativeOutputs, currentParams);
+    } catch (_err) {
+      // Keep the previous native-output list while the parameter form is transiently invalid.
+    }
     refreshRunCardsValidation();
   });
-  updateRunParamsSummary(card, simulator, readParamsFromHost(simulator, host));
+  updateRunParamsSummary(card, simulator, readScenarioParamsFromHost(simulator, host));
 }
 
 function addRunCard(initial = {}) {
@@ -2567,12 +2494,18 @@ function addRunCard(initial = {}) {
   node.querySelector(".run-id").value = initial.run_id || buildRunId(simulatorId);
   node.querySelector(".replicates").value = String(initial.replicates || 1);
   renderCardParams(node, simulator, initial.params || null);
-  renderCardNativeOutputs(node, simulator, initial.native_outputs || []);
+  renderCardNativeOutputs(
+    node,
+    simulator,
+    initial.native_outputs || [],
+    readScenarioParamsFromHost(simulator, node.querySelector(".run-params-form"))
+  );
   node.querySelectorAll("input").forEach((input) => input.addEventListener("input", refreshRunCardsValidation));
   node.querySelector(".open-params").addEventListener("click", () => openParamsModal(node));
   node.querySelector(".reset-params").addEventListener("click", () => {
-    renderCardParams(node, simulator, resolvedDefaultParams(simulator));
-    renderCardNativeOutputs(node, simulator, []);
+    const defaults = scenarioDefaultParams(simulator);
+    renderCardParams(node, simulator, defaults);
+    renderCardNativeOutputs(node, simulator, [], defaults);
     refreshRunCardsValidation();
   });
   node.querySelector(".remove-run").addEventListener("click", () => {
@@ -2613,7 +2546,7 @@ function refreshRunCardsValidation({ sync = true } = {}) {
     const simulator = simulatorById(card.querySelector(".simulator-id").value);
     let params = null;
     try {
-      params = readParamsFromHost(simulator, card.querySelector(".run-params-form"));
+      params = readScenarioParamsFromHost(simulator, card.querySelector(".run-params-form"));
     } catch (err) {
       messages.push(String(err?.message || "Invalid parameters"));
     }
@@ -2621,7 +2554,7 @@ function refreshRunCardsValidation({ sync = true } = {}) {
     if (params) {
       messages.push(...simulatorInputMessages(simulator, params, selectedNativeOutputs));
       messages.push(...simulatorCompatibilityMessages(simulator, params, selectedNativeOutputs));
-      messages.push(...profileTruthConditionMessages(simulator, params));
+      messages.push(...scenarioTemplateTruthConditionMessages(simulator, params));
     }
     const nativeOutputDefs = nativeOutputDefsForSimulator(simulator);
     const supportedNativeOutputs = new Set(nativeOutputDefs.map((item) => String(item.id)));
@@ -2673,7 +2606,7 @@ function collectRuns() {
       run_id: card.querySelector(".run-id").value.trim(),
       simulator_id: simulator.simulator_id,
       replicates: Number.parseInt(card.querySelector(".replicates").value, 10),
-      params: readParamsFromHost(simulator, card.querySelector(".run-params-form")),
+      params: readScenarioParamsFromHost(simulator, card.querySelector(".run-params-form")),
       native_outputs: readNativeOutputsFromHost(card.querySelector(".run-native-outputs-form")),
     };
   });
@@ -2681,16 +2614,18 @@ function collectRuns() {
 
 function openParamsModal(card) {
   const simulator = simulatorById(card.querySelector(".simulator-id").value);
-  const currentParams = readParamsFromHost(simulator, card.querySelector(".run-params-form"));
+  const currentParams = readScenarioParamsFromHost(simulator, card.querySelector(".run-params-form"));
   const currentNativeOutputs = readNativeOutputsFromHost(card.querySelector(".run-native-outputs-form"));
   state.paramsModalCard = card;
   $("params-modal-title").textContent = `${simulator.name} · Configuration`;
   const status = $("params-modal-status");
   status.classList.remove("ok", "err");
   status.textContent = "Adjust native outputs and parameters, then apply changes.";
-  renderParamsHost($("params-modal-form"), simulator, currentParams, () => {
+  renderScenarioParamsHost($("params-modal-form"), simulator, currentParams, () => {
     try {
-      readParamsFromHost(simulator, $("params-modal-form"));
+      const params = readScenarioParamsFromHost(simulator, $("params-modal-form"));
+      const selectedNativeOutputs = readNativeOutputsFromHost($("params-modal-native-outputs"));
+      renderNativeOutputsHost($("params-modal-native-outputs"), simulator, selectedNativeOutputs, params);
       status.classList.remove("ok", "err");
       status.textContent = "Adjust native outputs and parameters, then apply changes.";
     } catch (err) {
@@ -2699,7 +2634,7 @@ function openParamsModal(card) {
       status.textContent = String(err?.message || "Invalid parameter value");
     }
   });
-  renderNativeOutputsHost($("params-modal-native-outputs"), simulator, currentNativeOutputs);
+  renderNativeOutputsHost($("params-modal-native-outputs"), simulator, currentNativeOutputs, currentParams);
   $("params-modal").classList.remove("hidden");
 }
 
@@ -2720,10 +2655,10 @@ function applyParamsModal() {
   }
   const simulator = simulatorById(state.paramsModalCard.querySelector(".simulator-id").value);
   try {
-    const params = readParamsFromHost(simulator, $("params-modal-form"));
+    const params = readScenarioParamsFromHost(simulator, $("params-modal-form"));
     const nativeOutputs = readNativeOutputsFromHost($("params-modal-native-outputs"));
     renderCardParams(state.paramsModalCard, simulator, params);
-    renderCardNativeOutputs(state.paramsModalCard, simulator, nativeOutputs);
+    renderCardNativeOutputs(state.paramsModalCard, simulator, nativeOutputs, params);
     refreshRunCardsValidation();
     closeParamsModal();
   } catch (err) {
@@ -2731,174 +2666,6 @@ function applyParamsModal() {
     $("params-modal-status").classList.add("err");
     $("params-modal-status").textContent = String(err?.message || "Invalid parameters");
   }
-}
-
-function renderPlan(plan) {
-  const summary = $("plan-summary");
-  const tables = $("plan-tables");
-  tables.innerHTML = "";
-  if (!plan || typeof plan !== "object") {
-    summary.textContent = "No plan loaded yet.";
-    return;
-  }
-  summary.textContent = [
-    `benchmark: ${plan.id || "-"}`,
-    `profile: ${plan.profile || "-"}`,
-    `runs: ${(plan.runs || []).length}`,
-    `tasks: ${(plan.tasks || []).length}`,
-    `max_parallel_tasks: ${plan.execution?.max_parallel_tasks ?? "-"}`,
-    `max_cores: ${plan.execution?.max_cores ?? "-"}`,
-    `max_ram_gb: ${plan.execution?.max_ram_gb ?? "-"}`,
-    `estimated_total_time_s: ${plan.execution?.eta_total_seconds ?? "-"}`,
-    `waves: ${(plan.execution?.waves || []).length}`,
-  ].join("\n");
-
-  const warnings = Array.isArray(plan.execution?.warnings) ? plan.execution.warnings.filter(Boolean) : [];
-  if (warnings.length) {
-    const warningBox = document.createElement("div");
-    warningBox.className = "muted-box warning-box";
-    warningBox.textContent = warnings.join("\n");
-    tables.appendChild(warningBox);
-  }
-
-  const runsCard = document.createElement("article");
-  runsCard.className = "wave-card";
-  runsCard.innerHTML = "<h3>Simulator Runs</h3>";
-  const runsTable = document.createElement("table");
-  runsTable.className = "wave-table";
-  runsTable.innerHTML = "<thead><tr><th>run_id</th><th>simulator</th><th>replicates</th><th>threads</th><th>RAM GB</th><th>ETA s</th><th>ETA source</th><th>native_outputs</th><th>base_seed</th><th>replicate_seeds</th></tr></thead>";
-  const runsBody = document.createElement("tbody");
-  const appendPlanCell = (tr, value, className = "") => {
-    const td = document.createElement("td");
-    td.textContent = String(value ?? "-");
-    if (className) {
-      td.className = className;
-    }
-    tr.appendChild(td);
-  };
-  for (const run of plan.runs || []) {
-    const tr = document.createElement("tr");
-    appendPlanCell(tr, run.run_id);
-    appendPlanCell(tr, run.simulator_id);
-    appendPlanCell(tr, run.replicates);
-    appendPlanCell(tr, run.runtime_resources?.threads ?? "-");
-    appendPlanCell(tr, run.ram_gb ?? "-");
-    appendPlanCell(tr, run.eta_seconds ?? "-");
-    appendPlanCell(tr, run.eta_source ?? "-");
-    appendPlanCell(
-      tr,
-      (run.native_outputs || []).join(", ") || "-",
-      "wrap-cell native-outputs-cell",
-    );
-    appendPlanCell(tr, run.base_seed);
-    appendPlanCell(tr, (run.replicate_seeds || []).join(", "), "wrap-cell");
-    runsBody.appendChild(tr);
-  }
-  runsTable.appendChild(runsBody);
-  runsCard.appendChild(runsTable);
-  tables.appendChild(runsCard);
-
-  const wavesCard = document.createElement("article");
-  wavesCard.className = "wave-card";
-  wavesCard.innerHTML = "<h3>Execution Waves</h3>";
-  const wavesTable = document.createElement("table");
-  wavesTable.className = "wave-table";
-  wavesTable.innerHTML = "<thead><tr><th>wave</th><th>tasks</th><th>threads_used</th><th>RAM GB</th><th>ETA s</th><th>window</th></tr></thead>";
-  const wavesBody = document.createElement("tbody");
-  for (const wave of plan.execution?.waves || []) {
-    const tr = document.createElement("tr");
-    appendPlanCell(tr, wave.index);
-    appendPlanCell(
-      tr,
-      (wave.tasks || []).map((task) => task.task_id).join(", "),
-      "wrap-cell",
-    );
-    appendPlanCell(tr, wave.threads_used);
-    appendPlanCell(tr, wave.ram_gb_used);
-    appendPlanCell(tr, wave.eta_seconds);
-    appendPlanCell(tr, `${wave.eta_start_seconds ?? "-"}-${wave.eta_end_seconds ?? "-"}`);
-    wavesBody.appendChild(tr);
-  }
-  wavesTable.appendChild(wavesBody);
-  wavesCard.appendChild(wavesTable);
-  tables.appendChild(wavesCard);
-
-  const tasksCard = document.createElement("article");
-  tasksCard.className = "wave-card";
-  tasksCard.innerHTML = "<h3>Planned Tasks</h3>";
-  const tasksTable = document.createElement("table");
-  tasksTable.className = "wave-table";
-  tasksTable.innerHTML = "<thead><tr><th>task_id</th><th>run_id</th><th>replicate</th><th>seed</th><th>threads</th><th>RAM GB</th><th>ETA s</th><th>wave</th><th>dataset_id</th></tr></thead>";
-  const tasksBody = document.createElement("tbody");
-  for (const task of plan.tasks || []) {
-    const tr = document.createElement("tr");
-    appendPlanCell(tr, task.task_id);
-    appendPlanCell(tr, task.run_id);
-    appendPlanCell(tr, task.replicate_index);
-    appendPlanCell(tr, task.seed);
-    appendPlanCell(tr, task.runtime_resources?.threads ?? "-");
-    appendPlanCell(tr, task.ram_gb ?? "-");
-    appendPlanCell(tr, task.eta_seconds ?? "-");
-    appendPlanCell(tr, task.eta_wave ?? "-");
-    appendPlanCell(tr, task.dataset_id, "wrap-cell");
-    tasksBody.appendChild(tr);
-  }
-  tasksTable.appendChild(tasksBody);
-  tasksCard.appendChild(tasksTable);
-  tables.appendChild(tasksCard);
-}
-
-function renderExecutionAlerts(job, runtimeProgress = null) {
-  const root = $("execution-alerts");
-  const error = String(job?.error || "").trim();
-  const failedTasks = Array.isArray(runtimeProgress?.tasks)
-    ? runtimeProgress.tasks.filter((task) => String(task?.status || "") === "failed")
-    : [];
-  const messages = [];
-  if (error) {
-    messages.push(error);
-  }
-  for (const task of failedTasks) {
-    const taskId = String(task?.task_id || "").trim() || "task";
-    const message = String(task?.message || "Task failed.").trim();
-    messages.push(`${taskId}: ${message}`);
-  }
-  const uniqueMessages = [...new Set(messages.filter(Boolean))];
-  root.classList.toggle("has-errors", uniqueMessages.length > 0);
-  if (!uniqueMessages.length) {
-    root.textContent = "No execution errors or warnings.";
-    return;
-  }
-  root.textContent = uniqueMessages.join("\n");
-  if (error) {
-    pushToast({ title: "Job failed", message: error, kind: "error", ttlMs: 9000 });
-  }
-}
-
-function hasExecutionArtifacts(job) {
-  return Boolean(job?.benchmark_root) && (job.stage === "executed" || job.status === "failed");
-}
-
-function updateExplorerVisibility(job) {
-  const visible = hasExecutionArtifacts(job);
-  $("results-explorer-section").hidden = !visible;
-  $("results-explorer-placeholder").hidden = visible;
-  if (!visible) {
-    resetFilesView(state, "Results Explorer will be available after execution.");
-    resetReproducibility("Reproducibility snippets will be available after execution.");
-  }
-}
-
-async function refreshFilesIfNeeded(job) {
-  if (!hasExecutionArtifacts(job)) {
-    return;
-  }
-  const key = `${job.job_id}:${state.filesMode}:${job.status}:${job.benchmark_root}`;
-  if (state.loadedFilesKey === key) {
-    return;
-  }
-  await fetchFiles(state, fileApi(), {}, fileExplorerOptions());
-  state.loadedFilesKey = key;
 }
 
 function syncButtons() {
@@ -3097,8 +2864,21 @@ function initEvents() {
       return;
     }
     const simulator = simulatorById(state.paramsModalCard.querySelector(".simulator-id").value);
-    renderParamsHost($("params-modal-form"), simulator, resolvedDefaultParams(simulator));
-    renderNativeOutputsHost($("params-modal-native-outputs"), simulator, []);
+    const defaults = scenarioDefaultParams(simulator);
+    renderScenarioParamsHost($("params-modal-form"), simulator, defaults, () => {
+      try {
+        const params = readScenarioParamsFromHost(simulator, $("params-modal-form"));
+        const selectedNativeOutputs = readNativeOutputsFromHost($("params-modal-native-outputs"));
+        renderNativeOutputsHost($("params-modal-native-outputs"), simulator, selectedNativeOutputs, params);
+        $("params-modal-status").classList.remove("ok", "err");
+        $("params-modal-status").textContent = "Adjust native outputs and parameters, then apply changes.";
+      } catch (err) {
+        $("params-modal-status").classList.remove("ok");
+        $("params-modal-status").classList.add("err");
+        $("params-modal-status").textContent = String(err?.message || "Invalid parameter value");
+      }
+    });
+    renderNativeOutputsHost($("params-modal-native-outputs"), simulator, [], defaults);
     $("params-modal-status").classList.remove("ok", "err");
     $("params-modal-status").textContent = "Default parameters restored and native outputs cleared in the modal. Apply to save them.";
   });

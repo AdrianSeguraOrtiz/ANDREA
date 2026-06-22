@@ -26,7 +26,12 @@ from andrea.core.commands.generate_data.request import (
     resolve_simulator_runtime_resources,
     validate_simulator_inputs,
 )
-from andrea.core.commands.generate_data.shared import PROFILE_SPECS
+from andrea.core.commands.generate_data.catalog import get_semantic_capability
+from andrea.core.commands.generate_data.semantic import (
+    parse_truth_requirements,
+    required_extras_for_request,
+    semantic_key_from_json,
+)
 
 from shared.catalog_simulators import (
     DEFAULT_CATALOG_SIMULATORS_ROOT,
@@ -45,7 +50,6 @@ DEFAULT_SIZES = ("50x20", "100x40", "200x80")
 DEFAULT_THREADS = "1,2,4,8"
 DEFAULT_RAM_GB = "8,16,32,64"
 DEFAULT_GROUP_COUNT = 2
-PROFILES_WITH_GROUP_DIMENSION = {"scrna_grouped", "scrna_cell_specific"}
 
 CONDITIONAL_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
 
@@ -69,6 +73,8 @@ class SimulatorBenchmarkProfile:
     simulator_id: str
     profile_id: str
     profile: str
+    data_axes: dict[str, Any]
+    truth_requirements: dict[str, Any]
     sizes: tuple[SizePoint, ...] | None
     requested_extras: tuple[str, ...]
     effective_extras: tuple[str, ...]
@@ -524,24 +530,37 @@ def resolve_one_profile(
     default_group_count: int,
 ) -> SimulatorBenchmarkProfile:
     profile_id = profile_id_from(raw_profile, raw_profile_index)
-    profile = str(raw_profile.get("profile") or "").strip()
-    if profile not in spec.get("profile_capabilities", {}):
+    data_axes = raw_profile.get("data_axes", {})
+    truth_requirements = raw_profile.get("truth_requirements", {})
+    if not isinstance(data_axes, dict) or not isinstance(truth_requirements, dict):
         raise RuntimeError(
-            f"[{simulator_id}:{profile_id}] profile {profile!r} is not supported."
+            f"[{simulator_id}:{profile_id}] data_axes and truth_requirements are required."
         )
-    if profile not in PROFILE_SPECS:
-        raise RuntimeError(f"[{simulator_id}:{profile_id}] unknown profile {profile!r}.")
+    capability = get_semantic_capability(
+        spec,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
+    )
+    if capability is None:
+        raise RuntimeError(
+            f"[{simulator_id}:{profile_id}] data_axes/truth_requirements are not supported."
+        )
+    profile = semantic_key_from_json(
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
+    )
 
     requested_extras = sorted_unique_strings(raw_profile.get("requested_extras", []))
     profile_sizes = resolve_profile_sizes(raw_profile=raw_profile, profile_id=profile_id)
     effective_extras = sorted(
-        set(requested_extras).union(PROFILE_SPECS[profile].required_extras)
+        set(requested_extras).union(
+            required_extras_for_request(data_axes, truth_requirements)
+        )
     )
     validate_supported_extras(
         simulator_id=simulator_id,
         profile_id=profile_id,
-        spec=spec,
-        profile=profile,
+        capability=capability,
         effective_extras=effective_extras,
     )
 
@@ -557,7 +576,7 @@ def resolve_one_profile(
         simulator_id=simulator_id,
         spec=spec,
         raw_profile=raw_profile,
-        profile=profile,
+        truth_requirements=truth_requirements,
         default_group_count=default_group_count,
     )
     inputs = resolve_profile_input_paths(
@@ -567,7 +586,8 @@ def resolve_one_profile(
     input_profile = build_input_profile(
         simulator_id=simulator_id,
         spec=spec,
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         effective_extras=effective_extras,
         params=base_params,
@@ -579,7 +599,8 @@ def resolve_one_profile(
     input_errors = validate_simulator_inputs(
         simulator_id=simulator_id,
         simulator_spec=spec,
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         simulator_params=base_params,
         input_ids=set(inputs),
@@ -595,6 +616,8 @@ def resolve_one_profile(
         simulator_id=simulator_id,
         profile_id=profile_id,
         profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         sizes=profile_sizes,
         requested_extras=tuple(requested_extras),
         effective_extras=tuple(effective_extras),
@@ -666,17 +689,15 @@ def validate_supported_extras(
     *,
     simulator_id: str,
     profile_id: str,
-    spec: dict[str, Any],
-    profile: str,
+    capability: dict[str, Any],
     effective_extras: list[str],
 ) -> None:
-    capability = spec["profile_capabilities"][profile]
     supported = set(capability.get("native_extras", []))
     supported.update(capability.get("derivable_extras", []))
     unsupported = sorted(set(effective_extras).difference(supported))
     if unsupported:
         raise RuntimeError(
-            f"[{simulator_id}:{profile_id}] unsupported extras for {profile}: {unsupported}"
+            f"[{simulator_id}:{profile_id}] unsupported extras: {unsupported}"
         )
 
 
@@ -766,7 +787,7 @@ def resolve_dimension_profile(
     simulator_id: str,
     spec: dict[str, Any],
     raw_profile: dict[str, Any],
-    profile: str,
+    truth_requirements: dict[str, Any],
     default_group_count: int,
 ) -> dict[str, Any]:
     raw_dimensions = raw_profile.get("dimension_params")
@@ -774,42 +795,42 @@ def resolve_dimension_profile(
         raise RuntimeError(
             f"[{simulator_id}] benchmark profiles require dimension_params."
         )
-    cells_param = str(raw_dimensions.get("cells") or "").strip()
-    genes_param = raw_dimensions.get("genes")
-    if not cells_param:
-        raise RuntimeError("dimension_params.cells must be a parameter path.")
-    validate_param_path(
-        path=cells_param,
-        params_schema=spec.get("params", {}),
-        label="dimension_params.cells",
+    cells_param = normalize_cells_dimension(
+        raw_dimensions.get("cells"), params_schema=spec.get("params", {})
     )
+    genes_param = raw_dimensions.get("genes")
     if isinstance(genes_param, str):
         validate_param_path(
             path=genes_param,
             params_schema=spec.get("params", {}),
             label="dimension_params.genes",
         )
-        normalized_genes: str | dict[str, dict[str, Any]] = genes_param
+        normalized_genes: str | dict[str, Any] = genes_param
     elif isinstance(genes_param, dict):
-        normalized_genes = {}
-        for path, rule in genes_param.items():
-            if not isinstance(rule, dict):
-                raise RuntimeError("dimension_params.genes entries must be objects.")
-            validate_param_path(
-                path=str(path),
-                params_schema=spec.get("params", {}),
-                label="dimension_params.genes",
-            )
-            normalized_genes[str(path)] = {
-                "fraction": float(rule.get("fraction", 0)),
-                "min": int(rule.get("min", 0)),
-            }
+        normalized_genes = normalize_genes_dimension(
+            genes_param, params_schema=spec.get("params", {})
+        )
     else:
         raise RuntimeError("dimension_params.genes must be a path or weighted object.")
 
+    contexts = set(parse_truth_requirements(truth_requirements).contexts)
+    requested_extras = set(sorted_unique_strings(raw_profile.get("requested_extras", [])))
+    uses_group_dimension = bool(
+        {"group", "column"}.intersection(contexts)
+        or requested_extras.intersection(
+            {
+                "groups",
+                "column_phenotypes",
+                "cluster_identities",
+                "lineage_tree",
+                "prior_grn_by_group",
+                "cell_cell_interactions",
+            }
+        )
+    )
     group_count = raw_profile.get(
         "group_count",
-        default_group_count if profile in PROFILES_WITH_GROUP_DIMENSION else 0,
+        default_group_count if uses_group_dimension else 0,
     )
     population_count = raw_profile.get("population_count", group_count)
     if not isinstance(group_count, int) or isinstance(group_count, bool) or group_count < 0:
@@ -820,9 +841,9 @@ def resolve_dimension_profile(
         or population_count < 0
     ):
         raise RuntimeError("profile.population_count must be an integer >= 0.")
-    if profile not in PROFILES_WITH_GROUP_DIMENSION and group_count != 0:
+    if not uses_group_dimension and group_count != 0:
         raise RuntimeError(
-            "group_count must be 0 outside scrna_grouped and scrna_cell_specific profiles."
+            "group_count must be 0 unless group or column truth is requested."
         )
     return {
         "cells_param": cells_param,
@@ -832,11 +853,88 @@ def resolve_dimension_profile(
     }
 
 
+def normalize_cells_dimension(
+    raw: Any, *, params_schema: dict[str, Any]
+) -> str | dict[str, Any]:
+    if isinstance(raw, str):
+        cells_param = raw.strip()
+        if not cells_param:
+            raise RuntimeError("dimension_params.cells must be a parameter path.")
+        validate_param_path(
+            path=cells_param,
+            params_schema=params_schema,
+            label="dimension_params.cells",
+        )
+        return cells_param
+    if not isinstance(raw, dict):
+        raise RuntimeError("dimension_params.cells must be a parameter path or object.")
+    param = str(raw.get("param") or "").strip()
+    if not param:
+        raise RuntimeError("dimension_params.cells.param must be a parameter path.")
+    validate_param_path(
+        path=param,
+        params_schema=params_schema,
+        label="dimension_params.cells.param",
+    )
+    normalized: dict[str, Any] = {"param": param}
+    if "multiplier_param" in raw:
+        multiplier_param = str(raw.get("multiplier_param") or "").strip()
+        if not multiplier_param:
+            raise RuntimeError("dimension_params.cells.multiplier_param must be a parameter path.")
+        validate_param_path(
+            path=multiplier_param,
+            params_schema=params_schema,
+            label="dimension_params.cells.multiplier_param",
+        )
+        normalized["multiplier_param"] = multiplier_param
+    if "multiplier" in raw:
+        multiplier = raw.get("multiplier")
+        if not isinstance(multiplier, int) or isinstance(multiplier, bool) or multiplier < 1:
+            raise RuntimeError("dimension_params.cells.multiplier must be an integer >= 1.")
+        normalized["multiplier"] = multiplier
+    if "offset" in raw:
+        offset = raw.get("offset")
+        if not isinstance(offset, int) or isinstance(offset, bool) or offset < 0:
+            raise RuntimeError("dimension_params.cells.offset must be an integer >= 0.")
+        normalized["offset"] = offset
+    unknown = sorted(set(raw).difference({"param", "multiplier_param", "multiplier", "offset"}))
+    if unknown:
+        raise RuntimeError(f"dimension_params.cells has unknown key(s): {unknown}")
+    if "multiplier_param" in normalized and "multiplier" in normalized:
+        raise RuntimeError("dimension_params.cells can use multiplier or multiplier_param, not both.")
+    return normalized
+
+
+def normalize_genes_dimension(
+    raw: dict[str, Any], *, params_schema: dict[str, Any]
+) -> dict[str, Any]:
+    if set(raw) == {"fixed"}:
+        fixed = raw.get("fixed")
+        if not isinstance(fixed, int) or isinstance(fixed, bool) or fixed < 1:
+            raise RuntimeError("dimension_params.genes.fixed must be an integer >= 1.")
+        return {"fixed": fixed}
+    normalized: dict[str, dict[str, Any]] = {}
+    for path, rule in raw.items():
+        if not isinstance(rule, dict):
+            raise RuntimeError("dimension_params.genes entries must be objects.")
+        validate_param_path(
+            path=str(path),
+            params_schema=params_schema,
+            label="dimension_params.genes",
+        )
+        normalized[str(path)] = {
+            "fraction": float(rule.get("fraction", 0)),
+            "min": int(rule.get("min", 0)),
+        }
+    return normalized
+
+
 def build_input_profile(
     *,
     simulator_id: str,
     spec: dict[str, Any],
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: list[str],
     effective_extras: list[str],
     params: dict[str, Any],
@@ -848,7 +946,8 @@ def build_input_profile(
     optional_declared = set(input_ids_for(extra_inputs, "optional"))
     conditional = active_conditional_inputs(
         spec=spec,
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         params=params,
     )
@@ -885,7 +984,8 @@ def input_ids_for(extra_inputs: Any, field: str) -> list[str]:
 def active_conditional_inputs(
     *,
     spec: dict[str, Any],
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: list[str],
     params: dict[str, Any],
 ) -> list[str]:
@@ -899,7 +999,8 @@ def active_conditional_inputs(
             continue
         if conditional_requirement_matches(
             requirement=requirement,
-            profile=profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested,
             params=params,
         ):
@@ -912,7 +1013,8 @@ def active_conditional_inputs(
 def conditional_requirement_matches(
     *,
     requirement: dict[str, Any],
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: set[str],
     params: dict[str, Any],
 ) -> bool:
@@ -927,9 +1029,15 @@ def conditional_requirement_matches(
         if op not in CONDITIONAL_OPS:
             return False
         expected = condition.get("value")
-        if field == "profile":
-            actual = profile
+        if field.startswith("data_axes."):
+            actual = data_axes.get(field.removeprefix("data_axes."))
             matches = compare_condition_value(actual, op, expected)
+        elif field == "truth_requirement":
+            matches = compare_requested_extra(
+                set(parse_truth_requirements(truth_requirements).contexts),
+                op,
+                expected,
+            )
         elif field == "requested_extra":
             matches = compare_requested_extra(requested_extras, op, expected)
         elif field.startswith("param."):
@@ -1039,17 +1147,60 @@ def apply_dimensions_to_params(
     size: SizePoint,
 ) -> dict[str, Any]:
     params = copy.deepcopy(base_params)
-    set_param_path(params, str(dimension_profile["cells_param"]), size.cells)
     genes_param = dimension_profile["genes_param"]
     if isinstance(genes_param, str):
         set_param_path(params, genes_param, size.genes)
     elif isinstance(genes_param, dict):
-        allocations = allocate_weighted_counts(size.genes, genes_param)
-        for path, value in allocations.items():
-            set_param_path(params, path, value)
+        if "fixed" in genes_param:
+            fixed = int(genes_param["fixed"])
+            if size.genes != fixed:
+                raise RuntimeError(
+                    f"Benchmark size requests {size.genes} genes, but this profile has fixed gene count {fixed}."
+                )
+        else:
+            allocations = allocate_weighted_counts(size.genes, genes_param)
+            for path, value in allocations.items():
+                set_param_path(params, path, value)
     else:
         raise RuntimeError("Invalid dimension_profile.genes_param.")
+    apply_cells_dimension(params, dimension_profile["cells_param"], size)
     return params
+
+
+def apply_cells_dimension(
+    params: dict[str, Any],
+    cells_param: str | dict[str, Any],
+    size: SizePoint,
+) -> None:
+    if isinstance(cells_param, str):
+        set_param_path(params, cells_param, size.cells)
+        return
+    if not isinstance(cells_param, dict):
+        raise RuntimeError("Invalid dimension_profile.cells_param.")
+    offset = int(cells_param.get("offset", 0))
+    adjusted_cells = size.cells - offset
+    if adjusted_cells < 1:
+        raise RuntimeError(
+            f"Benchmark size requests {size.cells} columns, but cell offset {offset} leaves no positive parameter value."
+        )
+    multiplier = 1
+    if "multiplier" in cells_param:
+        multiplier = int(cells_param["multiplier"])
+    elif "multiplier_param" in cells_param:
+        raw_multiplier = value_at_param_path(params, str(cells_param["multiplier_param"]))
+        if not isinstance(raw_multiplier, (int, float)) or isinstance(raw_multiplier, bool):
+            raise RuntimeError(
+                f"Cannot resolve cell multiplier parameter: {cells_param['multiplier_param']}"
+            )
+        multiplier = int(raw_multiplier)
+    if multiplier < 1:
+        raise RuntimeError("Cell dimension multiplier must be >= 1.")
+    if adjusted_cells % multiplier != 0:
+        raise RuntimeError(
+            f"Benchmark size requests {size.cells} columns with offset {offset}, "
+            f"which is not divisible by cell multiplier {multiplier}."
+        )
+    set_param_path(params, str(cells_param["param"]), int(adjusted_cells / multiplier))
 
 
 def allocate_weighted_counts(
@@ -1118,7 +1269,9 @@ def run_container_once(
     request_payload = {
         "schema_version": "1.0",
         "simulator_id": simulator_id,
-        "profile": profile.profile,
+        "profile": profile.profile_id,
+        "data_axes": profile.data_axes,
+        "truth_requirements": profile.truth_requirements,
         "seed": int(seed),
         "effective_extras": list(profile.effective_extras),
         "mounted_inputs": mounted_inputs,
@@ -1325,10 +1478,23 @@ def build_feature_vector(
 ) -> dict[str, Any]:
     n_tfs = infer_tf_count(profile=profile, genes=genes)
     dynamic_flags = dynamic_grn_flags(profile.params)
+    truth_contexts = list(parse_truth_requirements(profile.truth_requirements).contexts)
+    requested_extras = list(profile.input_profile["requested_extras"])
+    effective_extras = list(profile.input_profile["effective_extras"])
     return {
         "simulator_id": profile.simulator_id,
-        "profile": profile.profile,
+        "data_axes": profile.data_axes,
+        "truth_requirements": profile.truth_requirements,
+        "benchmark_profile_id": profile.profile_id,
         "profile_id": profile.profile_id,
+        "expression_profile": profile.data_axes["resolution"],
+        "column_kind": profile.data_axes["column_kind"],
+        "experimental_design": profile.data_axes["experimental_design"],
+        "truth_context_families": truth_contexts,
+        "truth_context_count": len(truth_contexts),
+        "extras": effective_extras,
+        "requested_extras": requested_extras,
+        "effective_extras": effective_extras,
         "genes": genes,
         "cells": cells,
         "groups": groups,
@@ -1336,10 +1502,10 @@ def build_feature_vector(
         "n_genes": genes,
         "n_cells": cells,
         "n_tfs": n_tfs,
-        "native_cell_truth_enabled": profile.profile == "scrna_cell_specific",
+        "column_truth_requested": "column" in set(truth_contexts),
         "dynamic_grn_flags": dynamic_flags,
-        "requested_extras_count": len(profile.input_profile["requested_extras"]),
-        "effective_extras_count": len(profile.input_profile["effective_extras"]),
+        "requested_extras_count": len(requested_extras),
+        "effective_extras_count": len(effective_extras),
         "required_inputs_count": len(profile.input_profile["required_inputs_satisfied"]),
         "optional_inputs_count": len(profile.input_profile["optional_inputs_provided"]),
         "conditional_inputs_count": len(profile.input_profile["conditional_inputs_satisfied"]),
@@ -1404,7 +1570,8 @@ def build_benchmark_config(
 ) -> dict[str, Any]:
     return {
         "simulator_id": simulator_id,
-        "profile": profile.profile,
+        "data_axes": profile.data_axes,
+        "truth_requirements": profile.truth_requirements,
         "sizes": [{"genes": s.genes, "cells": s.cells} for s in sizes],
         "threads_tested": [int(item) for item in threads],
         "ram_gb_tested": [float(item) for item in ram_gb],
@@ -1523,6 +1690,9 @@ def execute_profile_benchmarks(
             payload["error"] = error
         profile_runs.append(payload)
         print(f"  -> {status} ({elapsed:.3f}s)")
+        if status != "ok" and error:
+            compact_error = " ".join(str(error).split())
+            print(f"     error: {compact_error[:2000]}")
         if status != "ok" and fail_fast:
             return profile_runs, run_index, True
     return profile_runs, run_index, False

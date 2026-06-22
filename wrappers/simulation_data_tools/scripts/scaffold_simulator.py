@@ -192,22 +192,54 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
                 "upstream_mapping": "No upstream threading control is declared.",
             }
         },
-        "profile_capabilities": {
-            "scrna_global": {
+        "capabilities": [
+            {
+                "data_axes": {
+                    "measurement": "rna_expression",
+                    "resolution": "single_cell",
+                    "column_kind": "cells",
+                    "experimental_design": "observational",
+                },
+                "truth_requirements": {
+                    "contexts": ["global"],
+                },
+                "parameter_bindings": [],
                 "native_extras": [],
                 "derivable_extras": [],
-                "truth_outputs": {
-                    "global": "native",
-                    "group": "none",
-                    "cell": "none",
-                },
+                "truth_outputs": [
+                    {
+                        "context": "global",
+                        "status": "native",
+                    }
+                ],
+                "truth_contexts": [
+                    {
+                        "context": "global",
+                        "status": "native",
+                        "source_artifacts": ["TODO_NATIVE_GRN"],
+                        "upstream_configuration": ["TODO_UPSTREAM_SWITCH"],
+                        "generation": "TODO: describe how global truth rows are produced.",
+                        "score_semantics": "TODO: describe score and sign semantics.",
+                        "limitations": ["TODO: describe truth limitations."],
+                    },
+                    {
+                        "context": "group",
+                        "status": "none",
+                        "explanation": "TODO: explain why group truth is unavailable.",
+                    },
+                    {
+                        "context": "column",
+                        "status": "none",
+                        "explanation": "TODO: explain why column-level truth is unavailable.",
+                    },
+                ],
+                "truth_parameter_requirements": [],
                 "derivations": [],
+                "native_outputs": [],
                 "artifacts_aux": [],
-                "notes": "TODO: replace with the real supported profile capabilities.",
             }
-        },
+        ],
         "params": {},
-        "notes": "Draft scaffold. Do not activate until reviewed against paper and implementation.",
     }
 
 
@@ -215,7 +247,15 @@ def smoketest_payload(simulator_id: str) -> dict[str, object]:
     return {
         "simulator_id": simulator_id,
         "request": {
-            "profile": "scrna_global",
+            "data_axes": {
+                "measurement": "rna_expression",
+                "resolution": "single_cell",
+                "column_kind": "cells",
+                "experimental_design": "observational",
+            },
+            "truth_requirements": {
+                "contexts": ["global"],
+            },
             "seed": 1,
             "effective_extras": [],
             "inputs": {},
@@ -246,7 +286,10 @@ TODO: document installation, wrapper behavior and smoke tests.
 - The wrapper must write `progress.json`.
 - All public truth networks are exported through `truth/networks.csv`; the
   `context` column determines whether an edge belongs to global, group or
-  future cell truth.
+  column-level truth.
+- `group:<id>` groups expression columns and `column:<id>` refers to the
+  expression column semantics declared by `data_axes.column_kind`; only
+  `column_kind=cells` makes it cell-level truth.
 - `simulator-output-manifest.json` must report `truth.gene_universe` and
   `truth.networks`.
 - Simulators may preserve native outputs under provenance, but public consumers
@@ -263,7 +306,7 @@ File semantics, format, examples and basic validation live in
 
 - required inputs
 - optional inputs
-- conditional inputs and the params/extras/profile values that require them
+- conditional inputs and the params/extras/data-axis values that require them
 
 Generated extras are not simulator-side inputs. Do not put formats or examples
 inline in `extra_inputs`; create or reuse an input spec instead.
@@ -291,14 +334,17 @@ TODO: record paper/repo review and wrapper decisions.
 - upstream evidence reviewed
 - selected installation route and version/tag/commit
 - selected public API/CLI entrypoint
-- supported profiles and unsupported profiles
+- supported semantic capabilities and intentionally unsupported
+  `data_axes` / `truth_requirements` combinations
 - native and derivable extras
 - simulator-side input specs and `extra_inputs` usage/conditional rules
 - parameter mapping and unsupported function-valued hooks
-- runtime resource mapping from `runtime_resources.threads`
-- output mapping
+- `runtime_resources.threading` contract and request `runtime_resources.threads`
+  mapping to upstream controls
+- output mapping, including `global`, `group:<id>` and `column:<id>` truth
+  contexts when supported
 - progress strategy
-- smoke-test matrix and outcome
+- smoke-test matrix by data axes, truth contexts, extras and outcome
 - cost profile status and ETA fallback/cost behavior
 """
 

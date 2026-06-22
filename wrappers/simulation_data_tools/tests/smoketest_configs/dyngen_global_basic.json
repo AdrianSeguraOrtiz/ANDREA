@@ -1,15 +1,32 @@
 {
   "simulator_id": "dyngen",
   "request": {
-    "profile": "scrna_global",
     "seed": 7,
     "effective_extras": [],
     "inputs": {},
     "params": {
       "backbone_template": "linear",
-      "distance_metric": "pearson"
+      "distance_metric": "pearson",
+      "simulation_params": {
+        "num_simulations": 2,
+        "census_interval": 2.0,
+        "num_knockdown_simulations": 0
+      }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "trajectory"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [

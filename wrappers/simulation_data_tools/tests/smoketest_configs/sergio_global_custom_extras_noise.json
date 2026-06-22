@@ -1,7 +1,6 @@
 {
   "simulator_id": "sergio",
   "request": {
-    "profile": "scrna_global",
     "seed": 202,
     "effective_extras": [
       "enrichment_background",
@@ -35,7 +34,20 @@
         "convert_to_umi": true
       }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "steady_state"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [
@@ -53,5 +65,7 @@
     "provenance/raw/public_gene_id_map.tsv",
     "provenance/raw/session_info.txt"
   ],
-  "required_truth_context_prefixes": ["global"]
+  "required_truth_context_prefixes": [
+    "global"
+  ]
 }

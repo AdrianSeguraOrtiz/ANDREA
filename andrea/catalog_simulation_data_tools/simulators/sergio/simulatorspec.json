@@ -70,9 +70,9 @@
       "action": "block",
       "conditions": [
         {
-          "field": "profile",
+          "field": "truth_requirement",
           "op": "eq",
-          "value": "scrna_grouped"
+          "value": "group"
         },
         {
           "field": "param.number_bins",
@@ -80,7 +80,7 @@
           "value": 2
         }
       ],
-      "message": "scrna_grouped requires number_bins >= 2 so public groups and group truth contexts are meaningful."
+      "message": "Group truth requires number_bins >= 2 so public groups and group truth contexts are meaningful."
     },
     {
       "action": "block",
@@ -274,6 +274,38 @@
         }
       ],
       "message": "lineage_tree requires simulation_mode=differentiation because SERGIO only uses a bifurcation graph in dynamics mode."
+    },
+    {
+      "conditions": [
+        {
+          "field": "data_axes.experimental_design",
+          "op": "eq",
+          "value": "steady_state"
+        },
+        {
+          "field": "param.simulation_mode",
+          "op": "ne",
+          "value": "steady_state"
+        }
+      ],
+      "action": "block",
+      "message": "steady_state data axes require simulation_mode=steady_state."
+    },
+    {
+      "conditions": [
+        {
+          "field": "data_axes.experimental_design",
+          "op": "eq",
+          "value": "differentiation"
+        },
+        {
+          "field": "param.simulation_mode",
+          "op": "ne",
+          "value": "differentiation"
+        }
+      ],
+      "action": "block",
+      "message": "differentiation data axes require simulation_mode=differentiation."
     }
   ],
   "runtime_resources": {
@@ -282,521 +314,6 @@
       "default_threads": 1,
       "max_threads": 1,
       "upstream_mapping": "SERGIO a6190b74425112834c8fa9b4b6157d9cb3d1ab88 exposes no public thread, worker or core-count control; ANDREA must assign threads=1 and the wrapper must not expose threading as a simulator parameter."
-    }
-  },
-  "profile_capabilities": {
-    "scrna_global": {
-      "native_extras": [],
-      "derivable_extras": [
-        "enrichment_background",
-        "prior_grn",
-        "tf_list"
-      ],
-      "truth_outputs": {
-        "global": "native",
-        "group": "none",
-        "cell": "none"
-      },
-      "truth_contexts": [
-        {
-          "context": "global",
-          "status": "native",
-          "source_artifacts": [
-            "input_file_taregts",
-            "sim.graph_"
-          ],
-          "upstream_configuration": [
-            "Wrapper calls sergio(..., dynamics=False) and sim.simulate() when simulation_mode=steady_state, or sergio(..., dynamics=True, bifurcation_matrix=...) and sim.simulate_dynamics() when simulation_mode=differentiation.",
-            "Wrapper calls sim.build_graph(input_file_taregts=..., input_file_regs=..., shared_coop_state=...) before simulation; the target interaction file is the fixed GRN that drives expression."
-          ],
-          "generation": "The wrapper parses the same SERGIO target interaction rows passed to build_graph and writes one non-self-loop regulator-target row per signed K value as context=global in truth/networks.csv.",
-          "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
-          "limitations": [
-            "SERGIO does not emit a separate canonical truth file; the public global truth is normalized from the native simulator GRN input/state used to run the simulation.",
-            "Hill coefficients and half-response values affect simulation dynamics but are not represented as separate columns in the public truth edge table."
-          ]
-        },
-        {
-          "context": "group",
-          "status": "none",
-          "explanation": "The global profile does not export group truth contexts."
-        },
-        {
-          "context": "cell",
-          "status": "none",
-          "explanation": "SERGIO uses one fixed GRN and does not expose cell-specific regulatory networks."
-        }
-      ],
-      "native_outputs": [
-        {
-          "id": "clean_expression",
-          "kind": "matrix",
-          "description": "Clean SERGIO expression array returned by getExpressions() for steady-state mode or derived from getExpressions_dynamics() for differentiation mode.",
-          "formats": [
-            "npy",
-            "tsv"
-          ]
-        },
-        {
-          "id": "unspliced_expression",
-          "kind": "matrix",
-          "description": "Unspliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
-          "formats": [
-            "npy",
-            "tsv"
-          ],
-          "conditions": [
-            {
-              "field": "param.simulation_mode",
-              "op": "eq",
-              "value": "differentiation"
-            }
-          ],
-          "message": "unspliced_expression requires simulation_mode=differentiation."
-        },
-        {
-          "id": "spliced_expression",
-          "kind": "matrix",
-          "description": "Spliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
-          "formats": [
-            "npy",
-            "tsv"
-          ],
-          "conditions": [
-            {
-              "field": "param.simulation_mode",
-              "op": "eq",
-              "value": "differentiation"
-            }
-          ],
-          "message": "spliced_expression requires simulation_mode=differentiation."
-        },
-        {
-          "id": "library_size_factors",
-          "kind": "table",
-          "description": "Cell-level library-size factors returned by SERGIO lib_size_effect or lib_size_effect_dynamics.",
-          "formats": [
-            "npy",
-            "tsv"
-          ],
-          "conditions": [
-            {
-              "field": "param.technical_noise.library_size_enabled",
-              "op": "eq",
-              "value": true
-            }
-          ],
-          "message": "library_size_factors requires technical_noise.library_size_enabled=true."
-        },
-        {
-          "id": "dropout_indicator",
-          "kind": "matrix",
-          "description": "Binary dropout mask returned by SERGIO dropout_indicator or dropout_indicator_dynamics.",
-          "formats": [
-            "npy"
-          ],
-          "conditions": [
-            {
-              "field": "param.technical_noise.dropout_enabled",
-              "op": "eq",
-              "value": true
-            }
-          ],
-          "message": "dropout_indicator requires technical_noise.dropout_enabled=true."
-        },
-        {
-          "id": "umi_counts",
-          "kind": "counts",
-          "description": "UMI/count matrix returned by convert_to_UMIcounts or convert_to_UMIcounts_dynamics.",
-          "formats": [
-            "npy",
-            "tsv"
-          ],
-          "conditions": [
-            {
-              "field": "param.technical_noise.convert_to_umi",
-              "op": "eq",
-              "value": true
-            }
-          ],
-          "message": "umi_counts requires technical_noise.convert_to_umi=true."
-        }
-      ],
-      "derivations": [
-        {
-          "artifact": "enrichment_background",
-          "source_artifacts": [
-            "expression.tsv"
-          ],
-          "method": "Export every public gene identifier present in expression.tsv as extras/enrichment_background.txt, one gene per line.",
-          "assumptions": [
-            "The simulated expression gene set is the appropriate enrichment background for downstream analyses of the generated dataset."
-          ],
-          "limitations": [
-            "The background is dataset-derived and synthetic, not an organism-specific external annotation universe."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "prior_grn",
-          "source_artifacts": [
-            "input_file_taregts",
-            "sim.graph_"
-          ],
-          "method": "Normalize every SERGIO target interaction K value into a regulator-target prior edge using score=abs(K), public sign '+' for K>0 and public sign '-' for K<0, after applying the same public gene-id mapping used for truth/networks.csv.",
-          "assumptions": [
-            "The SERGIO input GRN is an oracle regulatory prior when explicitly requested."
-          ],
-          "limitations": [
-            "This is a truth-derived oracle prior rather than an independently noisy prior."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "tf_list",
-          "source_artifacts": [
-            "input_file_taregts",
-            "input_file_regs"
-          ],
-          "method": "Export the union of all regulator IDs in the target interaction file and all master-regulator IDs in the master-regulator rate file, mapped to public gene identifiers, one per line.",
-          "assumptions": [
-            "SERGIO regulators and master regulators are the simulated transcription-factor/regulator universe for GRN inference benchmarks."
-          ],
-          "limitations": [
-            "The TF list reflects the synthetic SERGIO regulatory input, not an external organism-specific TF catalogue."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        }
-      ],
-      "artifacts_aux": [
-        {
-          "id": "public_gene_id_map",
-          "kind": "metadata",
-          "description": "Mapping from SERGIO zero-based numeric gene IDs to stable public gene_<id> identifiers."
-        },
-        {
-          "id": "session_info",
-          "kind": "metadata",
-          "description": "Python, NumPy, SciPy, NetworkX and SERGIO source revision information captured by the wrapper."
-        }
-      ],
-      "notes": "The global profile exports a single-cell expression matrix without public group labels. SERGIO may internally simulate multiple bins even for this profile, but only context=global truth is public."
-    },
-    "scrna_grouped": {
-      "native_extras": [],
-      "derivable_extras": [
-        "groups",
-        "cell_phenotypes",
-        "cluster_identities",
-        "enrichment_background",
-        "lineage_tree",
-        "prior_grn",
-        "tf_list",
-        "prior_grn_by_group"
-      ],
-      "truth_outputs": {
-        "global": "native",
-        "group": "derivable",
-        "cell": "none"
-      },
-      "truth_contexts": [
-        {
-          "context": "global",
-          "status": "native",
-          "source_artifacts": [
-            "input_file_taregts",
-            "sim.graph_"
-          ],
-          "upstream_configuration": [
-            "Wrapper calls sim.build_graph(input_file_taregts=..., input_file_regs=..., shared_coop_state=...) before steady-state or differentiation simulation.",
-            "SERGIO uses one fixed target-interaction GRN across all simulated bins; master-regulator rates vary by bin through input_file_regs."
-          ],
-          "generation": "The wrapper parses the SERGIO target interaction rows and writes one non-self-loop regulator-target row per signed K value as context=global in truth/networks.csv.",
-          "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
-          "limitations": [
-            "The global truth is the fixed simulator GRN used for every bin.",
-            "SERGIO bin-specific expression differences arise from master-regulator rates and stochastic dynamics, not from different bin-specific GRN topology."
-          ]
-        },
-        {
-          "context": "group",
-          "status": "derivable",
-          "source_artifacts": [
-            "input_file_taregts",
-            "groups"
-          ],
-          "upstream_configuration": [
-            "number_bins must be at least 2 for scrna_grouped.",
-            "SERGIO returns expression arrays ordered by bin; the wrapper preserves this order and assigns each column to its originating bin."
-          ],
-          "generation": "The wrapper derives groups.tsv from SERGIO bin membership, then duplicates the fixed SERGIO GRN into one context=group:<group_id> network for every exported group.",
-          "score_semantics": "Group truth uses the same score=abs(K), public sign '+' for K>0 and public sign '-' for K<0 as global truth because SERGIO does not change target-interaction K values by bin.",
-          "limitations": [
-            "Group truth is an ANDREA-derived context expansion, not a native SERGIO group-specific GRN output.",
-            "All group networks have identical topology and edge parameters; this documents SERGIO's fixed-GRN design rather than dynamic group-specific regulation."
-          ]
-        },
-        {
-          "context": "cell",
-          "status": "none",
-          "explanation": "SERGIO does not expose native cell-specific GRNs, and duplicating the fixed GRN per cell is not claimed as cell-specific regulatory truth."
-        }
-      ],
-      "native_outputs": [
-        {
-          "id": "clean_expression",
-          "kind": "matrix",
-          "description": "Clean SERGIO expression array returned by getExpressions() for steady-state mode or derived from getExpressions_dynamics() for differentiation mode.",
-          "formats": [
-            "npy",
-            "tsv"
-          ]
-        },
-        {
-          "id": "unspliced_expression",
-          "kind": "matrix",
-          "description": "Unspliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
-          "formats": [
-            "npy",
-            "tsv"
-          ],
-          "conditions": [
-            {
-              "field": "param.simulation_mode",
-              "op": "eq",
-              "value": "differentiation"
-            }
-          ],
-          "message": "unspliced_expression requires simulation_mode=differentiation."
-        },
-        {
-          "id": "spliced_expression",
-          "kind": "matrix",
-          "description": "Spliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
-          "formats": [
-            "npy",
-            "tsv"
-          ],
-          "conditions": [
-            {
-              "field": "param.simulation_mode",
-              "op": "eq",
-              "value": "differentiation"
-            }
-          ],
-          "message": "spliced_expression requires simulation_mode=differentiation."
-        },
-        {
-          "id": "library_size_factors",
-          "kind": "table",
-          "description": "Cell-level library-size factors returned by SERGIO lib_size_effect or lib_size_effect_dynamics.",
-          "formats": [
-            "npy",
-            "tsv"
-          ],
-          "conditions": [
-            {
-              "field": "param.technical_noise.library_size_enabled",
-              "op": "eq",
-              "value": true
-            }
-          ],
-          "message": "library_size_factors requires technical_noise.library_size_enabled=true."
-        },
-        {
-          "id": "dropout_indicator",
-          "kind": "matrix",
-          "description": "Binary dropout mask returned by SERGIO dropout_indicator or dropout_indicator_dynamics.",
-          "formats": [
-            "npy"
-          ],
-          "conditions": [
-            {
-              "field": "param.technical_noise.dropout_enabled",
-              "op": "eq",
-              "value": true
-            }
-          ],
-          "message": "dropout_indicator requires technical_noise.dropout_enabled=true."
-        },
-        {
-          "id": "umi_counts",
-          "kind": "counts",
-          "description": "UMI/count matrix returned by convert_to_UMIcounts or convert_to_UMIcounts_dynamics.",
-          "formats": [
-            "npy",
-            "tsv"
-          ],
-          "conditions": [
-            {
-              "field": "param.technical_noise.convert_to_umi",
-              "op": "eq",
-              "value": true
-            }
-          ],
-          "message": "umi_counts requires technical_noise.convert_to_umi=true."
-        }
-      ],
-      "derivations": [
-        {
-          "artifact": "groups",
-          "source_artifacts": [
-            "getExpressions bin order",
-            "getExpressions_dynamics bin order"
-          ],
-          "method": "Assign each expression column to the SERGIO bin that produced it. Public group identifiers are bin_<zero_based_bin_id> and cell identifiers are cell_bin<bin_id>_<within_bin_index>.",
-          "assumptions": [
-            "SERGIO returns expression arrays in bin-major order, and README states that concatenated columns are grouped by cell type/bin."
-          ],
-          "limitations": [
-            "Groups are simulator bins/cell types, not data-driven clusters."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "cell_phenotypes",
-          "source_artifacts": [
-            "groups",
-            "sergio_bifurcation_matrix"
-          ],
-          "method": "Reuse each cell's bin group as its phenotype label. For differentiation runs, assign phenotype order from topological order in the bifurcation matrix; for steady-state runs, assign numeric bin order.",
-          "assumptions": [
-            "SERGIO bins correspond to intended cell types or differentiation states."
-          ],
-          "limitations": [
-            "Steady-state bins have no lineage ordering beyond their numeric bin IDs.",
-            "Differentiation ordering is branch-level and does not recover individual sampled simulation times."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "cluster_identities",
-          "source_artifacts": [
-            "groups",
-            "sergio_bifurcation_matrix"
-          ],
-          "method": "Export one row per SERGIO bin, using the public bin_<id> group as both cluster and annotation, with order from bifurcation topological order for differentiation runs or numeric bin order for steady-state runs.",
-          "assumptions": [
-            "SERGIO bin identifiers are meaningful synthetic cell-type or state annotations."
-          ],
-          "limitations": [
-            "Annotations are synthetic bin labels rather than curated biological cell-type names."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "enrichment_background",
-          "source_artifacts": [
-            "expression.tsv"
-          ],
-          "method": "Export every public gene identifier present in expression.tsv as extras/enrichment_background.txt, one gene per line.",
-          "assumptions": [
-            "The simulated expression gene set is the appropriate enrichment background for downstream analyses of the generated dataset."
-          ],
-          "limitations": [
-            "The background is dataset-derived and synthetic, not an organism-specific external annotation universe."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "lineage_tree",
-          "source_artifacts": [
-            "sergio_bifurcation_matrix",
-            "groups"
-          ],
-          "method": "For differentiation runs, convert every non-zero bifurcation matrix entry i,j into parent=bin_i and child=bin_j. Root bins are emitted as child rows with parent='__root__', gain_rate=0 and loss_rate=0 so lineage_tree.tsv covers every group. Edge gain/loss rates are set to 0 because SERGIO uses one fixed GRN across all bins.",
-          "assumptions": [
-            "SERGIO's bifurcation matrix is the intended lineage graph between simulated bins.",
-            "Because SERGIO does not change GRN topology by bin, regulatory gain/loss summaries between groups are zero under the public truth contract."
-          ],
-          "limitations": [
-            "lineage_tree is unavailable for steady-state runs and is blocked unless simulation_mode=differentiation.",
-            "The artifact records bin-level lineage topology, not per-cell pseudotime or sampled transient positions."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "prior_grn",
-          "source_artifacts": [
-            "input_file_taregts",
-            "sim.graph_"
-          ],
-          "method": "Normalize every SERGIO target interaction K value into a regulator-target prior edge using score=abs(K), public sign '+' for K>0 and public sign '-' for K<0, after applying the same public gene-id mapping used for truth/networks.csv.",
-          "assumptions": [
-            "The SERGIO input GRN is an oracle regulatory prior when explicitly requested."
-          ],
-          "limitations": [
-            "This is a truth-derived oracle prior rather than an independently noisy prior."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "tf_list",
-          "source_artifacts": [
-            "input_file_taregts",
-            "input_file_regs"
-          ],
-          "method": "Export the union of all regulator IDs in the target interaction file and all master-regulator IDs in the master-regulator rate file, mapped to public gene identifiers, one per line.",
-          "assumptions": [
-            "SERGIO regulators and master regulators are the simulated transcription-factor/regulator universe for GRN inference benchmarks."
-          ],
-          "limitations": [
-            "The TF list reflects the synthetic SERGIO regulatory input, not an external organism-specific TF catalogue."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "prior_grn_by_group",
-          "source_artifacts": [
-            "input_file_taregts",
-            "groups"
-          ],
-          "method": "For each exported group, duplicate the fixed SERGIO GRN into group-specific prior rows with group=<group_id>, score=abs(K), public sign '+' for K>0 and public sign '-' for K<0.",
-          "assumptions": [
-            "SERGIO's regulatory topology and K values are fixed across bins, so the group-specific oracle prior is identical for every group."
-          ],
-          "limitations": [
-            "This is a truth-derived oracle prior and does not encode group-varying regulation.",
-            "Benchmarks using prior_grn_by_group with SERGIO should account for the fact that every group prior has identical topology."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        },
-        {
-          "artifact": "group",
-          "source_artifacts": [
-            "input_file_taregts",
-            "groups"
-          ],
-          "method": "For every group emitted in groups.tsv, duplicate the fixed SERGIO global truth GRN into context=group:<group_id> rows in truth/networks.csv.",
-          "assumptions": [
-            "A grouped benchmark can explicitly represent SERGIO's fixed-GRN design by providing one identical group context per simulated bin.",
-            "This satisfies the cumulative grouped truth contract without pretending that SERGIO models group-specific GRN changes."
-          ],
-          "limitations": [
-            "Group truth networks are wrapper-derived context expansions, not native SERGIO group-specific network outputs.",
-            "All group truth contexts are identical except for their context labels."
-          ],
-          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
-        }
-      ],
-      "artifacts_aux": [
-        {
-          "id": "public_gene_id_map",
-          "kind": "metadata",
-          "description": "Mapping from SERGIO zero-based numeric gene IDs to stable public gene_<id> identifiers."
-        },
-        {
-          "id": "public_cell_id_map",
-          "kind": "metadata",
-          "description": "Mapping from SERGIO bin/within-bin column positions to stable public cell IDs."
-        },
-        {
-          "id": "session_info",
-          "kind": "metadata",
-          "description": "Python, NumPy, SciPy, NetworkX and SERGIO source revision information captured by the wrapper."
-        }
-      ],
-      "notes": "The grouped profile uses SERGIO bins as public groups. Group truth is intentionally a duplicate of the fixed global GRN for each group, because SERGIO does not model group-specific GRN topology."
     }
   },
   "params": {
@@ -1133,5 +650,1163 @@
         }
       }
     }
-  }
+  },
+  "capabilities": [
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "steady_state"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "parameter_bindings": [
+        {
+          "param": "simulation_mode",
+          "policy": "locked",
+          "value": "steady_state",
+          "source": "data_axes.experimental_design",
+          "description": "The selected semantic design fixes SERGIO dynamics=False."
+        },
+        {
+          "param": "input_preset",
+          "policy": "default_if_unset",
+          "value": "demo_steady_state",
+          "allowed_values": [
+            "demo_steady_state",
+            "custom_files"
+          ],
+          "source": "data_axes.experimental_design",
+          "description": "Steady-state templates may use the bundled steady-state demo or custom steady-state SERGIO files."
+        }
+      ],
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "input_file_taregts",
+            "sim.graph_"
+          ],
+          "upstream_configuration": [
+            "Wrapper calls sergio(..., dynamics=False) and sim.simulate() when simulation_mode=steady_state, or sergio(..., dynamics=True, bifurcation_matrix=...) and sim.simulate_dynamics() when simulation_mode=differentiation.",
+            "Wrapper calls sim.build_graph(input_file_taregts=..., input_file_regs=..., shared_coop_state=...) before simulation; the target interaction file is the fixed GRN that drives expression."
+          ],
+          "generation": "The wrapper parses the same SERGIO target interaction rows passed to build_graph and writes one non-self-loop regulator-target row per signed K value as context=global in truth/networks.csv.",
+          "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
+          "limitations": [
+            "SERGIO does not emit a separate canonical truth file; the public global truth is normalized from the native simulator GRN input/state used to run the simulation.",
+            "Hill coefficients and half-response values affect simulation dynamics but are not represented as separate columns in the public truth edge table."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "The global-truth capability does not export group truth contexts."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "SERGIO uses one fixed GRN and does not expose cell-specific regulatory networks."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "clean_expression",
+          "kind": "matrix",
+          "description": "Clean SERGIO expression array returned by getExpressions() for steady-state mode or derived from getExpressions_dynamics() for differentiation mode.",
+          "formats": [
+            "npy",
+            "tsv"
+          ]
+        },
+        {
+          "id": "unspliced_expression",
+          "kind": "matrix",
+          "description": "Unspliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.simulation_mode",
+              "op": "eq",
+              "value": "differentiation"
+            }
+          ],
+          "message": "unspliced_expression requires simulation_mode=differentiation."
+        },
+        {
+          "id": "spliced_expression",
+          "kind": "matrix",
+          "description": "Spliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.simulation_mode",
+              "op": "eq",
+              "value": "differentiation"
+            }
+          ],
+          "message": "spliced_expression requires simulation_mode=differentiation."
+        },
+        {
+          "id": "library_size_factors",
+          "kind": "table",
+          "description": "Cell-level library-size factors returned by SERGIO lib_size_effect or lib_size_effect_dynamics.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.library_size_enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "library_size_factors requires technical_noise.library_size_enabled=true."
+        },
+        {
+          "id": "dropout_indicator",
+          "kind": "matrix",
+          "description": "Binary dropout mask returned by SERGIO dropout_indicator or dropout_indicator_dynamics.",
+          "formats": [
+            "npy"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.dropout_enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "dropout_indicator requires technical_noise.dropout_enabled=true."
+        },
+        {
+          "id": "umi_counts",
+          "kind": "counts",
+          "description": "UMI/count matrix returned by convert_to_UMIcounts or convert_to_UMIcounts_dynamics.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.convert_to_umi",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "umi_counts requires technical_noise.convert_to_umi=true."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public gene identifier present in expression.tsv as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The simulated expression gene set is the appropriate enrichment background for downstream analyses of the generated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived and synthetic, not an organism-specific external annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "input_file_taregts",
+            "sim.graph_"
+          ],
+          "method": "Normalize every SERGIO target interaction K value into a regulator-target prior edge using score=abs(K), public sign '+' for K>0 and public sign '-' for K<0, after applying the same public gene-id mapping used for truth/networks.csv.",
+          "assumptions": [
+            "The SERGIO input GRN is an oracle regulatory prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior rather than an independently noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "input_file_taregts",
+            "input_file_regs"
+          ],
+          "method": "Export the union of all regulator IDs in the target interaction file and all master-regulator IDs in the master-regulator rate file, mapped to public gene identifiers, one per line.",
+          "assumptions": [
+            "SERGIO regulators and master regulators are the simulated transcription-factor/regulator universe for GRN inference benchmarks."
+          ],
+          "limitations": [
+            "The TF list reflects the synthetic SERGIO regulatory input, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "public_gene_id_map",
+          "kind": "metadata",
+          "description": "Mapping from SERGIO zero-based numeric gene IDs to stable public gene_<id> identifiers."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Python, NumPy, SciPy, NetworkX and SERGIO source revision information captured by the wrapper."
+        }
+      ]
+    },
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "parameter_bindings": [
+        {
+          "param": "simulation_mode",
+          "policy": "locked",
+          "value": "differentiation",
+          "source": "data_axes.experimental_design",
+          "description": "The selected semantic design fixes SERGIO dynamics=True."
+        },
+        {
+          "param": "input_preset",
+          "policy": "default_if_unset",
+          "value": "demo_differentiation",
+          "allowed_values": [
+            "demo_differentiation",
+            "custom_files"
+          ],
+          "source": "data_axes.experimental_design",
+          "description": "Differentiation templates may use the bundled dynamics demo or custom differentiation SERGIO files."
+        },
+        {
+          "param": "number_bins",
+          "policy": "default_if_unset",
+          "value": 3,
+          "source": "data_axes.experimental_design",
+          "description": "The bundled SERGIO differentiation demo has three bins."
+        }
+      ],
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "input_file_taregts",
+            "sim.graph_"
+          ],
+          "upstream_configuration": [
+            "Wrapper calls sergio(..., dynamics=False) and sim.simulate() when simulation_mode=steady_state, or sergio(..., dynamics=True, bifurcation_matrix=...) and sim.simulate_dynamics() when simulation_mode=differentiation.",
+            "Wrapper calls sim.build_graph(input_file_taregts=..., input_file_regs=..., shared_coop_state=...) before simulation; the target interaction file is the fixed GRN that drives expression."
+          ],
+          "generation": "The wrapper parses the same SERGIO target interaction rows passed to build_graph and writes one non-self-loop regulator-target row per signed K value as context=global in truth/networks.csv.",
+          "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
+          "limitations": [
+            "SERGIO does not emit a separate canonical truth file; the public global truth is normalized from the native simulator GRN input/state used to run the simulation.",
+            "Hill coefficients and half-response values affect simulation dynamics but are not represented as separate columns in the public truth edge table."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "The global-truth capability does not export group truth contexts."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "SERGIO uses one fixed GRN and does not expose cell-specific regulatory networks."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "clean_expression",
+          "kind": "matrix",
+          "description": "Clean SERGIO expression array returned by getExpressions() for steady-state mode or derived from getExpressions_dynamics() for differentiation mode.",
+          "formats": [
+            "npy",
+            "tsv"
+          ]
+        },
+        {
+          "id": "unspliced_expression",
+          "kind": "matrix",
+          "description": "Unspliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.simulation_mode",
+              "op": "eq",
+              "value": "differentiation"
+            }
+          ],
+          "message": "unspliced_expression requires simulation_mode=differentiation."
+        },
+        {
+          "id": "spliced_expression",
+          "kind": "matrix",
+          "description": "Spliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.simulation_mode",
+              "op": "eq",
+              "value": "differentiation"
+            }
+          ],
+          "message": "spliced_expression requires simulation_mode=differentiation."
+        },
+        {
+          "id": "library_size_factors",
+          "kind": "table",
+          "description": "Cell-level library-size factors returned by SERGIO lib_size_effect or lib_size_effect_dynamics.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.library_size_enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "library_size_factors requires technical_noise.library_size_enabled=true."
+        },
+        {
+          "id": "dropout_indicator",
+          "kind": "matrix",
+          "description": "Binary dropout mask returned by SERGIO dropout_indicator or dropout_indicator_dynamics.",
+          "formats": [
+            "npy"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.dropout_enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "dropout_indicator requires technical_noise.dropout_enabled=true."
+        },
+        {
+          "id": "umi_counts",
+          "kind": "counts",
+          "description": "UMI/count matrix returned by convert_to_UMIcounts or convert_to_UMIcounts_dynamics.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.convert_to_umi",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "umi_counts requires technical_noise.convert_to_umi=true."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public gene identifier present in expression.tsv as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The simulated expression gene set is the appropriate enrichment background for downstream analyses of the generated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived and synthetic, not an organism-specific external annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "input_file_taregts",
+            "sim.graph_"
+          ],
+          "method": "Normalize every SERGIO target interaction K value into a regulator-target prior edge using score=abs(K), public sign '+' for K>0 and public sign '-' for K<0, after applying the same public gene-id mapping used for truth/networks.csv.",
+          "assumptions": [
+            "The SERGIO input GRN is an oracle regulatory prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior rather than an independently noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "input_file_taregts",
+            "input_file_regs"
+          ],
+          "method": "Export the union of all regulator IDs in the target interaction file and all master-regulator IDs in the master-regulator rate file, mapped to public gene identifiers, one per line.",
+          "assumptions": [
+            "SERGIO regulators and master regulators are the simulated transcription-factor/regulator universe for GRN inference benchmarks."
+          ],
+          "limitations": [
+            "The TF list reflects the synthetic SERGIO regulatory input, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "public_gene_id_map",
+          "kind": "metadata",
+          "description": "Mapping from SERGIO zero-based numeric gene IDs to stable public gene_<id> identifiers."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Python, NumPy, SciPy, NetworkX and SERGIO source revision information captured by the wrapper."
+        }
+      ]
+    },
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "steady_state"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "parameter_bindings": [
+        {
+          "param": "simulation_mode",
+          "policy": "locked",
+          "value": "steady_state",
+          "source": "data_axes.experimental_design",
+          "description": "The selected semantic design fixes SERGIO dynamics=False."
+        },
+        {
+          "param": "input_preset",
+          "policy": "default_if_unset",
+          "value": "demo_steady_state",
+          "allowed_values": [
+            "demo_steady_state",
+            "custom_files"
+          ],
+          "source": "data_axes.experimental_design",
+          "description": "Steady-state templates may use the bundled steady-state demo or custom steady-state SERGIO files."
+        }
+      ],
+      "native_extras": [],
+      "derivable_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list",
+        "prior_grn_by_group"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        },
+        {
+          "context": "group",
+          "status": "derivable"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "input_file_taregts",
+            "sim.graph_"
+          ],
+          "upstream_configuration": [
+            "Wrapper calls sim.build_graph(input_file_taregts=..., input_file_regs=..., shared_coop_state=...) before steady-state or differentiation simulation.",
+            "SERGIO uses one fixed target-interaction GRN across all simulated bins; master-regulator rates vary by bin through input_file_regs."
+          ],
+          "generation": "The wrapper parses the SERGIO target interaction rows and writes one non-self-loop regulator-target row per signed K value as context=global in truth/networks.csv.",
+          "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
+          "limitations": [
+            "The global truth is the fixed simulator GRN used for every bin.",
+            "SERGIO bin-specific expression differences arise from master-regulator rates and stochastic dynamics, not from different bin-specific GRN topology."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "derivable",
+          "source_artifacts": [
+            "input_file_taregts",
+            "groups"
+          ],
+          "upstream_configuration": [
+            "number_bins must be at least 2 for group truth.",
+            "SERGIO returns expression arrays ordered by bin; the wrapper preserves this order and assigns each column to its originating bin."
+          ],
+          "generation": "The wrapper derives groups.tsv from SERGIO bin membership, then duplicates the fixed SERGIO GRN into one context=group:<group_id> network for every exported group.",
+          "score_semantics": "Group truth uses the same score=abs(K), public sign '+' for K>0 and public sign '-' for K<0 as global truth because SERGIO does not change target-interaction K values by bin.",
+          "limitations": [
+            "Group truth is an ANDREA-derived context expansion, not a native SERGIO group-specific GRN output.",
+            "All group networks have identical topology and edge parameters; this documents SERGIO's fixed-GRN design rather than dynamic group-specific regulation."
+          ]
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "SERGIO does not expose native cell-specific GRNs, and duplicating the fixed GRN per cell is not claimed as cell-specific regulatory truth."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "clean_expression",
+          "kind": "matrix",
+          "description": "Clean SERGIO expression array returned by getExpressions() for steady-state mode or derived from getExpressions_dynamics() for differentiation mode.",
+          "formats": [
+            "npy",
+            "tsv"
+          ]
+        },
+        {
+          "id": "unspliced_expression",
+          "kind": "matrix",
+          "description": "Unspliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.simulation_mode",
+              "op": "eq",
+              "value": "differentiation"
+            }
+          ],
+          "message": "unspliced_expression requires simulation_mode=differentiation."
+        },
+        {
+          "id": "spliced_expression",
+          "kind": "matrix",
+          "description": "Spliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.simulation_mode",
+              "op": "eq",
+              "value": "differentiation"
+            }
+          ],
+          "message": "spliced_expression requires simulation_mode=differentiation."
+        },
+        {
+          "id": "library_size_factors",
+          "kind": "table",
+          "description": "Cell-level library-size factors returned by SERGIO lib_size_effect or lib_size_effect_dynamics.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.library_size_enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "library_size_factors requires technical_noise.library_size_enabled=true."
+        },
+        {
+          "id": "dropout_indicator",
+          "kind": "matrix",
+          "description": "Binary dropout mask returned by SERGIO dropout_indicator or dropout_indicator_dynamics.",
+          "formats": [
+            "npy"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.dropout_enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "dropout_indicator requires technical_noise.dropout_enabled=true."
+        },
+        {
+          "id": "umi_counts",
+          "kind": "counts",
+          "description": "UMI/count matrix returned by convert_to_UMIcounts or convert_to_UMIcounts_dynamics.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.convert_to_umi",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "umi_counts requires technical_noise.convert_to_umi=true."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "groups",
+          "source_artifacts": [
+            "getExpressions bin order",
+            "getExpressions_dynamics bin order"
+          ],
+          "method": "Assign each expression column to the SERGIO bin that produced it. Public group identifiers are bin_<zero_based_bin_id> and column identifiers are cell_bin<bin_id>_<within_bin_index>.",
+          "assumptions": [
+            "SERGIO returns expression arrays in bin-major order, and README states that concatenated columns are grouped by cell type/bin."
+          ],
+          "limitations": [
+            "Groups are simulator bins/cell types, not data-driven clusters."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "column_phenotypes",
+          "source_artifacts": [
+            "groups",
+            "sergio_bifurcation_matrix"
+          ],
+          "method": "Reuse each cell's bin group as its phenotype label. For differentiation runs, assign phenotype order from topological order in the bifurcation matrix; for steady-state runs, assign numeric bin order.",
+          "assumptions": [
+            "SERGIO bins correspond to intended cell types or differentiation states."
+          ],
+          "limitations": [
+            "Steady-state bins have no lineage ordering beyond their numeric bin IDs.",
+            "Differentiation ordering is branch-level and does not recover individual sampled simulation times."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "cluster_identities",
+          "source_artifacts": [
+            "groups",
+            "sergio_bifurcation_matrix"
+          ],
+          "method": "Export one row per SERGIO bin, using the public bin_<id> group as both cluster and annotation, with order from bifurcation topological order for differentiation runs or numeric bin order for steady-state runs.",
+          "assumptions": [
+            "SERGIO bin identifiers are meaningful synthetic cell-type or state annotations."
+          ],
+          "limitations": [
+            "Annotations are synthetic bin labels rather than curated biological cell-type names."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public gene identifier present in expression.tsv as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The simulated expression gene set is the appropriate enrichment background for downstream analyses of the generated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived and synthetic, not an organism-specific external annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "input_file_taregts",
+            "sim.graph_"
+          ],
+          "method": "Normalize every SERGIO target interaction K value into a regulator-target prior edge using score=abs(K), public sign '+' for K>0 and public sign '-' for K<0, after applying the same public gene-id mapping used for truth/networks.csv.",
+          "assumptions": [
+            "The SERGIO input GRN is an oracle regulatory prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior rather than an independently noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "input_file_taregts",
+            "input_file_regs"
+          ],
+          "method": "Export the union of all regulator IDs in the target interaction file and all master-regulator IDs in the master-regulator rate file, mapped to public gene identifiers, one per line.",
+          "assumptions": [
+            "SERGIO regulators and master regulators are the simulated transcription-factor/regulator universe for GRN inference benchmarks."
+          ],
+          "limitations": [
+            "The TF list reflects the synthetic SERGIO regulatory input, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn_by_group",
+          "source_artifacts": [
+            "input_file_taregts",
+            "groups"
+          ],
+          "method": "For each exported group, duplicate the fixed SERGIO GRN into group-specific prior rows with group=<group_id>, score=abs(K), public sign '+' for K>0 and public sign '-' for K<0.",
+          "assumptions": [
+            "SERGIO's regulatory topology and K values are fixed across bins, so the group-specific oracle prior is identical for every group."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior and does not encode group-varying regulation.",
+            "Benchmarks using prior_grn_by_group with SERGIO should account for the fact that every group prior has identical topology."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "group",
+          "source_artifacts": [
+            "input_file_taregts",
+            "groups"
+          ],
+          "method": "For every group emitted in groups.tsv, duplicate the fixed SERGIO global truth GRN into context=group:<group_id> rows in truth/networks.csv.",
+          "assumptions": [
+            "A grouped benchmark can explicitly represent SERGIO's fixed-GRN design by providing one identical group context per simulated bin.",
+            "This satisfies the cumulative grouped truth contract without pretending that SERGIO models group-specific GRN changes."
+          ],
+          "limitations": [
+            "Group truth networks are wrapper-derived context expansions, not native SERGIO group-specific network outputs.",
+            "All group truth contexts are identical except for their context labels."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "public_gene_id_map",
+          "kind": "metadata",
+          "description": "Mapping from SERGIO zero-based numeric gene IDs to stable public gene_<id> identifiers."
+        },
+        {
+          "id": "public_cell_id_map",
+          "kind": "metadata",
+          "description": "Mapping from SERGIO bin/within-bin column positions to stable public cell IDs."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Python, NumPy, SciPy, NetworkX and SERGIO source revision information captured by the wrapper."
+        }
+      ]
+    },
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "parameter_bindings": [
+        {
+          "param": "simulation_mode",
+          "policy": "locked",
+          "value": "differentiation",
+          "source": "data_axes.experimental_design",
+          "description": "The selected semantic design fixes SERGIO dynamics=True."
+        },
+        {
+          "param": "input_preset",
+          "policy": "default_if_unset",
+          "value": "demo_differentiation",
+          "allowed_values": [
+            "demo_differentiation",
+            "custom_files"
+          ],
+          "source": "data_axes.experimental_design",
+          "description": "Differentiation templates may use the bundled dynamics demo or custom differentiation SERGIO files."
+        },
+        {
+          "param": "number_bins",
+          "policy": "default_if_unset",
+          "value": 3,
+          "source": "data_axes.experimental_design",
+          "description": "The bundled SERGIO differentiation demo has three bins."
+        }
+      ],
+      "native_extras": [],
+      "derivable_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "tf_list",
+        "prior_grn_by_group"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        },
+        {
+          "context": "group",
+          "status": "derivable"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "input_file_taregts",
+            "sim.graph_"
+          ],
+          "upstream_configuration": [
+            "Wrapper calls sim.build_graph(input_file_taregts=..., input_file_regs=..., shared_coop_state=...) before steady-state or differentiation simulation.",
+            "SERGIO uses one fixed target-interaction GRN across all simulated bins; master-regulator rates vary by bin through input_file_regs."
+          ],
+          "generation": "The wrapper parses the SERGIO target interaction rows and writes one non-self-loop regulator-target row per signed K value as context=global in truth/networks.csv.",
+          "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
+          "limitations": [
+            "The global truth is the fixed simulator GRN used for every bin.",
+            "SERGIO bin-specific expression differences arise from master-regulator rates and stochastic dynamics, not from different bin-specific GRN topology."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "derivable",
+          "source_artifacts": [
+            "input_file_taregts",
+            "groups"
+          ],
+          "upstream_configuration": [
+            "number_bins must be at least 2 for group truth.",
+            "SERGIO returns expression arrays ordered by bin; the wrapper preserves this order and assigns each column to its originating bin."
+          ],
+          "generation": "The wrapper derives groups.tsv from SERGIO bin membership, then duplicates the fixed SERGIO GRN into one context=group:<group_id> network for every exported group.",
+          "score_semantics": "Group truth uses the same score=abs(K), public sign '+' for K>0 and public sign '-' for K<0 as global truth because SERGIO does not change target-interaction K values by bin.",
+          "limitations": [
+            "Group truth is an ANDREA-derived context expansion, not a native SERGIO group-specific GRN output.",
+            "All group networks have identical topology and edge parameters; this documents SERGIO's fixed-GRN design rather than dynamic group-specific regulation."
+          ]
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "SERGIO does not expose native cell-specific GRNs, and duplicating the fixed GRN per cell is not claimed as cell-specific regulatory truth."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "clean_expression",
+          "kind": "matrix",
+          "description": "Clean SERGIO expression array returned by getExpressions() for steady-state mode or derived from getExpressions_dynamics() for differentiation mode.",
+          "formats": [
+            "npy",
+            "tsv"
+          ]
+        },
+        {
+          "id": "unspliced_expression",
+          "kind": "matrix",
+          "description": "Unspliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.simulation_mode",
+              "op": "eq",
+              "value": "differentiation"
+            }
+          ],
+          "message": "unspliced_expression requires simulation_mode=differentiation."
+        },
+        {
+          "id": "spliced_expression",
+          "kind": "matrix",
+          "description": "Spliced transcript expression returned by getExpressions_dynamics() when dynamics=True.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.simulation_mode",
+              "op": "eq",
+              "value": "differentiation"
+            }
+          ],
+          "message": "spliced_expression requires simulation_mode=differentiation."
+        },
+        {
+          "id": "library_size_factors",
+          "kind": "table",
+          "description": "Cell-level library-size factors returned by SERGIO lib_size_effect or lib_size_effect_dynamics.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.library_size_enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "library_size_factors requires technical_noise.library_size_enabled=true."
+        },
+        {
+          "id": "dropout_indicator",
+          "kind": "matrix",
+          "description": "Binary dropout mask returned by SERGIO dropout_indicator or dropout_indicator_dynamics.",
+          "formats": [
+            "npy"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.dropout_enabled",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "dropout_indicator requires technical_noise.dropout_enabled=true."
+        },
+        {
+          "id": "umi_counts",
+          "kind": "counts",
+          "description": "UMI/count matrix returned by convert_to_UMIcounts or convert_to_UMIcounts_dynamics.",
+          "formats": [
+            "npy",
+            "tsv"
+          ],
+          "conditions": [
+            {
+              "field": "param.technical_noise.convert_to_umi",
+              "op": "eq",
+              "value": true
+            }
+          ],
+          "message": "umi_counts requires technical_noise.convert_to_umi=true."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "groups",
+          "source_artifacts": [
+            "getExpressions bin order",
+            "getExpressions_dynamics bin order"
+          ],
+          "method": "Assign each expression column to the SERGIO bin that produced it. Public group identifiers are bin_<zero_based_bin_id> and column identifiers are cell_bin<bin_id>_<within_bin_index>.",
+          "assumptions": [
+            "SERGIO returns expression arrays in bin-major order, and README states that concatenated columns are grouped by cell type/bin."
+          ],
+          "limitations": [
+            "Groups are simulator bins/cell types, not data-driven clusters."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "column_phenotypes",
+          "source_artifacts": [
+            "groups",
+            "sergio_bifurcation_matrix"
+          ],
+          "method": "Reuse each cell's bin group as its phenotype label. For differentiation runs, assign phenotype order from topological order in the bifurcation matrix; for steady-state runs, assign numeric bin order.",
+          "assumptions": [
+            "SERGIO bins correspond to intended cell types or differentiation states."
+          ],
+          "limitations": [
+            "Steady-state bins have no lineage ordering beyond their numeric bin IDs.",
+            "Differentiation ordering is branch-level and does not recover individual sampled simulation times."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "cluster_identities",
+          "source_artifacts": [
+            "groups",
+            "sergio_bifurcation_matrix"
+          ],
+          "method": "Export one row per SERGIO bin, using the public bin_<id> group as both cluster and annotation, with order from bifurcation topological order for differentiation runs or numeric bin order for steady-state runs.",
+          "assumptions": [
+            "SERGIO bin identifiers are meaningful synthetic cell-type or state annotations."
+          ],
+          "limitations": [
+            "Annotations are synthetic bin labels rather than curated biological cell-type names."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public gene identifier present in expression.tsv as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The simulated expression gene set is the appropriate enrichment background for downstream analyses of the generated dataset."
+          ],
+          "limitations": [
+            "The background is dataset-derived and synthetic, not an organism-specific external annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "lineage_tree",
+          "source_artifacts": [
+            "sergio_bifurcation_matrix",
+            "groups"
+          ],
+          "method": "For differentiation runs, convert every non-zero bifurcation matrix entry i,j into parent=bin_i and child=bin_j. Root bins are emitted as child rows with parent='__root__', gain_rate=0 and loss_rate=0 so lineage_tree.tsv covers every group. Edge gain/loss rates are set to 0 because SERGIO uses one fixed GRN across all bins.",
+          "assumptions": [
+            "SERGIO's bifurcation matrix is the intended lineage graph between simulated bins.",
+            "Because SERGIO does not change GRN topology by bin, regulatory gain/loss summaries between groups are zero under the public truth contract."
+          ],
+          "limitations": [
+            "lineage_tree is unavailable for steady-state runs and is blocked unless simulation_mode=differentiation.",
+            "The artifact records bin-level lineage topology, not per-cell pseudotime or sampled transient positions."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "input_file_taregts",
+            "sim.graph_"
+          ],
+          "method": "Normalize every SERGIO target interaction K value into a regulator-target prior edge using score=abs(K), public sign '+' for K>0 and public sign '-' for K<0, after applying the same public gene-id mapping used for truth/networks.csv.",
+          "assumptions": [
+            "The SERGIO input GRN is an oracle regulatory prior when explicitly requested."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior rather than an independently noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "input_file_taregts",
+            "input_file_regs"
+          ],
+          "method": "Export the union of all regulator IDs in the target interaction file and all master-regulator IDs in the master-regulator rate file, mapped to public gene identifiers, one per line.",
+          "assumptions": [
+            "SERGIO regulators and master regulators are the simulated transcription-factor/regulator universe for GRN inference benchmarks."
+          ],
+          "limitations": [
+            "The TF list reflects the synthetic SERGIO regulatory input, not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn_by_group",
+          "source_artifacts": [
+            "input_file_taregts",
+            "groups"
+          ],
+          "method": "For each exported group, duplicate the fixed SERGIO GRN into group-specific prior rows with group=<group_id>, score=abs(K), public sign '+' for K>0 and public sign '-' for K<0.",
+          "assumptions": [
+            "SERGIO's regulatory topology and K values are fixed across bins, so the group-specific oracle prior is identical for every group."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior and does not encode group-varying regulation.",
+            "Benchmarks using prior_grn_by_group with SERGIO should account for the fact that every group prior has identical topology."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        },
+        {
+          "artifact": "group",
+          "source_artifacts": [
+            "input_file_taregts",
+            "groups"
+          ],
+          "method": "For every group emitted in groups.tsv, duplicate the fixed SERGIO global truth GRN into context=group:<group_id> rows in truth/networks.csv.",
+          "assumptions": [
+            "A grouped benchmark can explicitly represent SERGIO's fixed-GRN design by providing one identical group context per simulated bin.",
+            "This satisfies the cumulative grouped truth contract without pretending that SERGIO models group-specific GRN changes."
+          ],
+          "limitations": [
+            "Group truth networks are wrapper-derived context expansions, not native SERGIO group-specific network outputs.",
+            "All group truth contexts are identical except for their context labels."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/sergio/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "public_gene_id_map",
+          "kind": "metadata",
+          "description": "Mapping from SERGIO zero-based numeric gene IDs to stable public gene_<id> identifiers."
+        },
+        {
+          "id": "public_cell_id_map",
+          "kind": "metadata",
+          "description": "Mapping from SERGIO bin/within-bin column positions to stable public cell IDs."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Python, NumPy, SciPy, NetworkX and SERGIO source revision information captured by the wrapper."
+        }
+      ]
+    }
+  ]
 }

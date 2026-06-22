@@ -1,7 +1,6 @@
 {
   "simulator_id": "scmultisim",
   "request": {
-    "profile": "scrna_global",
     "seed": 101,
     "effective_extras": [],
     "inputs": {},
@@ -20,7 +19,20 @@
         "enabled": false
       }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "differentiation"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [

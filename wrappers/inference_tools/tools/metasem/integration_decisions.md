@@ -52,8 +52,8 @@ Selected upstream public entrypoint: the documented `GRN_inference/default` path
 - `global`: exposed. One expression matrix and one prior/pseudo GRN produce one directed gene-gene network.
 - `group_emulated`: exposed. ANDREA can partition expression by `groups.tsv`, run the same global MetaSEM wrapper once per group, and rewrite final contexts to `group:<group_id>`.
 - `group_native`: not exposed. MetaSEM does not consume group metadata or return multiple group networks in one public run.
-- `cell_native`: not exposed. MetaSEM outputs one adjacency/edge table for the input matrix, not one network per cell.
-- `group_aggregated`: not exposed. There is no native per-cell output to aggregate.
+- `column_native`: not exposed. MetaSEM outputs one adjacency/edge table for the input matrix, not one network per cell.
+- `group_aggregated`: not exposed. There is no native column-level output to aggregate.
 
 ## Required Inputs
 

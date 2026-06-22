@@ -26,6 +26,7 @@ VALIDATOR_SCRIPT = (
     / "scripts"
     / "validate_simulatorspecs.py"
 )
+DRAFT_SIMULATORS_TO_SKIP = {"genespider2"}
 
 
 def _load_validator_module():
@@ -46,6 +47,37 @@ def _load_validator_module():
 
 def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _find_capability(
+    spec: dict,
+    *,
+    experimental_design: str,
+    contexts: tuple[str, ...],
+) -> dict:
+    expected_axes = {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": experimental_design,
+    }
+    for capability in spec["capabilities"]:
+        if (
+            capability["data_axes"] == expected_axes
+            and tuple(capability["truth_requirements"]["contexts"]) == contexts
+        ):
+            return capability
+    raise AssertionError(
+        f"Missing capability for {experimental_design=} and {contexts=}"
+    )
+
+
+def _truth_output_statuses(capability: dict) -> dict[str, str]:
+    return {
+        item["context"]: item["status"]
+        for item in capability.get("truth_outputs", [])
+        if isinstance(item, dict)
+    }
 
 
 def _valid_semantic_spec() -> dict:
@@ -84,15 +116,24 @@ def _valid_semantic_spec() -> dict:
         },
         "compatibility_rules": [],
         "params": {},
-        "profile_capabilities": {
-            "scrna_cell_specific": {
+        "capabilities": [
+            {
+                "data_axes": {
+                    "measurement": "rna_expression",
+                    "resolution": "single_cell",
+                    "column_kind": "cells",
+                    "experimental_design": "trajectory",
+                },
+                "truth_requirements": {
+                    "contexts": ["global", "group", "column"],
+                },
                 "native_extras": [],
                 "derivable_extras": [],
-                "truth_outputs": {
-                    "global": "native",
-                    "group": "derivable",
-                    "cell": "native",
-                },
+                "truth_outputs": [
+                    {"context": "global", "status": "native"},
+                    {"context": "group", "status": "derivable"},
+                    {"context": "column", "status": "native"},
+                ],
                 "truth_contexts": [
                     evidence_context,
                     {
@@ -102,15 +143,15 @@ def _valid_semantic_spec() -> dict:
                     },
                     {
                         **evidence_context,
-                        "context": "cell",
+                        "context": "column",
                         "status": "native",
                     },
                 ],
                 "derivations": [
                     {
                         "artifact": "group",
-                        "source_artifacts": ["cell_networks"],
-                        "method": "Aggregate cell networks by group.",
+                        "source_artifacts": ["column_networks"],
+                        "method": "Aggregate column networks by group.",
                         "assumptions": ["Groups exist."],
                         "limitations": ["Synthetic test contract."],
                     }
@@ -118,7 +159,7 @@ def _valid_semantic_spec() -> dict:
                 "native_outputs": [],
                 "artifacts_aux": [],
             }
-        },
+        ],
     }
 
 
@@ -127,7 +168,11 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.schema = _load_json(SCHEMA_PATH)
         cls.validator = Draft202012Validator(cls.schema)
-        cls.spec_paths = sorted(SIMULATORS_DIR.glob("*/simulatorspec.json"))
+        cls.spec_paths = sorted(
+            path
+            for path in SIMULATORS_DIR.glob("*/simulatorspec.json")
+            if path.parent.name not in DRAFT_SIMULATORS_TO_SKIP
+        )
         cls.specs = {path.parent.name: _load_json(path) for path in cls.spec_paths}
 
     def test_catalog_contains_dyngen_spec(self) -> None:
@@ -144,6 +189,25 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
                 msg=f"{simulator_id} spec validation failed: "
                 + "; ".join(f"{list(err.path)} -> {err.message}" for err in errors),
             )
+
+    def test_legacy_profile_capabilities_shape_is_rejected(self) -> None:
+        legacy_spec = copy.deepcopy(_valid_semantic_spec())
+        legacy_spec["profile_capabilities"] = {
+            "scrna_global": legacy_spec.pop("capabilities")[0]
+        }
+
+        errors = sorted(
+            self.validator.iter_errors(legacy_spec),
+            key=lambda err: list(err.path),
+        )
+
+        self.assertTrue(errors)
+        messages = "; ".join(error.message for error in errors)
+        self.assertIn("'capabilities' is a required property", messages)
+        self.assertIn(
+            "Additional properties are not allowed ('profile_capabilities' was unexpected)",
+            messages,
+        )
 
     def test_all_simulator_specs_declare_compatibility_rules(self) -> None:
         for simulator_id, spec in self.specs.items():
@@ -176,12 +240,47 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
     def test_dyngen_capabilities_are_single_cell_only(self) -> None:
         dyngen = self.specs["dyngen"]
         self.assertEqual(
-            set(dyngen["profile_capabilities"]),
-            {"scrna_global", "scrna_grouped", "scrna_cell_specific"},
+            {
+                (
+                    capability["data_axes"]["measurement"],
+                    capability["data_axes"]["resolution"],
+                    capability["data_axes"]["column_kind"],
+                    capability["data_axes"]["experimental_design"],
+                    tuple(capability["truth_requirements"]["contexts"]),
+                )
+                for capability in dyngen["capabilities"]
+            },
+            {
+                (
+                    "rna_expression",
+                    "single_cell",
+                    "cells",
+                    design,
+                    contexts,
+                )
+                for design in ("trajectory", "time_series", "perturbational")
+                for contexts in (
+                    ("global",),
+                    ("global", "group"),
+                    ("global", "group", "column"),
+                )
+            },
         )
-        global_capability = dyngen["profile_capabilities"]["scrna_global"]
-        grouped = dyngen["profile_capabilities"]["scrna_grouped"]
-        cell_specific = dyngen["profile_capabilities"]["scrna_cell_specific"]
+        global_capability = _find_capability(
+            dyngen,
+            experimental_design="trajectory",
+            contexts=("global",),
+        )
+        grouped = _find_capability(
+            dyngen,
+            experimental_design="trajectory",
+            contexts=("global", "group"),
+        )
+        column_truth = _find_capability(
+            dyngen,
+            experimental_design="trajectory",
+            contexts=("global", "group", "column"),
+        )
         self.assertEqual(
             {item["id"] for item in global_capability["native_outputs"]},
             {
@@ -196,7 +295,7 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
             set(grouped["derivable_extras"]),
             {
                 "groups",
-                "cell_phenotypes",
+                "column_phenotypes",
                 "cluster_identities",
                 "enrichment_background",
                 "lineage_tree",
@@ -206,32 +305,34 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
                 "prior_grn_by_group",
             },
         )
-        self.assertEqual(grouped["truth_outputs"]["global"], "native")
-        self.assertEqual(grouped["truth_outputs"]["group"], "derivable")
-        self.assertEqual(grouped["truth_outputs"]["cell"], "none")
-        self.assertEqual(cell_specific["truth_outputs"]["global"], "native")
-        self.assertEqual(cell_specific["truth_outputs"]["group"], "derivable")
-        self.assertEqual(cell_specific["truth_outputs"]["cell"], "native")
+        self.assertEqual(
+            _truth_output_statuses(grouped),
+            {"global": "native", "group": "derivable"},
+        )
+        self.assertEqual(
+            _truth_output_statuses(column_truth),
+            {"global": "native", "group": "derivable", "column": "native"},
+        )
         self.assertEqual(
             {item["context"]: item["status"] for item in grouped["truth_contexts"]},
-            {"global": "native", "group": "derivable", "cell": "none"},
+            {"global": "native", "group": "derivable", "column": "none"},
         )
         self.assertEqual(
             {
                 item["context"]: item["status"]
-                for item in cell_specific["truth_contexts"]
+                for item in column_truth["truth_contexts"]
             },
-            {"global": "native", "group": "derivable", "cell": "native"},
+            {"global": "native", "group": "derivable", "column": "native"},
         )
         self.assertIn(
             "group",
-            {item["artifact"] for item in cell_specific["derivations"]},
+            {item["artifact"] for item in column_truth["derivations"]},
         )
         self.assertEqual(
-            set(cell_specific["derivable_extras"]),
+            set(column_truth["derivable_extras"]),
             {
                 "groups",
-                "cell_phenotypes",
+                "column_phenotypes",
                 "cluster_identities",
                 "enrichment_background",
                 "lineage_tree",
@@ -244,18 +345,22 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
 
     def test_dyngen_documents_every_derivation(self) -> None:
         dyngen = self.specs["dyngen"]
-        for profile_id, capability in dyngen["profile_capabilities"].items():
+        for capability in dyngen["capabilities"]:
+            capability_id = (
+                f"{capability['data_axes']['experimental_design']}:"
+                f"{','.join(capability['truth_requirements']['contexts'])}"
+            )
             expected = set(capability["derivable_extras"])
             expected.update(
                 key
-                for key, mode in capability["truth_outputs"].items()
+                for key, mode in _truth_output_statuses(capability).items()
                 if mode == "derivable"
             )
             documented = {item["artifact"] for item in capability["derivations"]}
             self.assertEqual(
                 documented,
                 expected,
-                msg=f"{profile_id} derivation documentation mismatch",
+                msg=f"{capability_id} derivation documentation mismatch",
             )
             for derivation in capability["derivations"]:
                 self.assertTrue(derivation["source_artifacts"])
@@ -332,29 +437,33 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
             ]
         )
 
-    def test_scmultisim_declares_cell_specific_profile(self) -> None:
+    def test_scmultisim_declares_column_truth_capability(self) -> None:
         scmultisim = self.specs["scmultisim"]
-        self.assertIn("scrna_cell_specific", scmultisim["profile_capabilities"])
-        cell_specific = scmultisim["profile_capabilities"]["scrna_cell_specific"]
-        self.assertEqual(cell_specific["truth_outputs"]["global"], "derivable")
-        self.assertEqual(cell_specific["truth_outputs"]["group"], "derivable")
-        self.assertEqual(cell_specific["truth_outputs"]["cell"], "native")
+        column_truth = _find_capability(
+            scmultisim,
+            experimental_design="differentiation",
+            contexts=("global", "group", "column"),
+        )
+        self.assertEqual(
+            _truth_output_statuses(column_truth),
+            {"global": "derivable", "group": "derivable", "column": "native"},
+        )
         self.assertEqual(
             {
                 item["context"]: item["status"]
-                for item in cell_specific["truth_contexts"]
+                for item in column_truth["truth_contexts"]
             },
-            {"global": "derivable", "group": "derivable", "cell": "native"},
+            {"global": "derivable", "group": "derivable", "column": "native"},
         )
         self.assertIn(
             "group",
-            {item["artifact"] for item in cell_specific["derivations"]},
+            {item["artifact"] for item in column_truth["derivations"]},
         )
         self.assertEqual(
-            set(cell_specific["derivable_extras"]),
+            set(column_truth["derivable_extras"]),
             {
                 "groups",
-                "cell_phenotypes",
+                "column_phenotypes",
                 "cluster_identities",
                 "enrichment_background",
                 "lineage_tree",
@@ -362,17 +471,19 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
                 "prior_grn",
                 "tf_list",
                 "prior_grn_by_group",
+                "chromatin_accessibility",
+                "chromatin_regions",
             },
         )
         requirements = {
             requirement["truth_output"]: requirement
-            for requirement in cell_specific["truth_parameter_requirements"]
+            for requirement in column_truth["truth_parameter_requirements"]
         }
         self.assertEqual(
             set(requirements),
-            {"group", "cell"},
+            {"group", "column"},
         )
-        for truth_output in ("group", "cell"):
+        for truth_output in ("group", "column"):
             self.assertEqual(
                 requirements[truth_output],
                 {
@@ -385,17 +496,16 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
                         }
                     ],
                     "message": (
-                        f"scrna_cell_specific {truth_output} truth requires "
-                        "dynamic_grn.enabled=true."
+                        "Column truth requires dynamic_grn.enabled=true."
+                        if truth_output == "column"
+                        else "Group truth requires dynamic_grn.enabled=true."
                     ),
                 },
             )
 
     def test_truth_context_schema_requires_evidence_for_non_none_contexts(self) -> None:
         broken_spec = _valid_semantic_spec()
-        del broken_spec["profile_capabilities"]["scrna_cell_specific"][
-            "truth_contexts"
-        ][0]["generation"]
+        del broken_spec["capabilities"][0]["truth_contexts"][0]["generation"]
 
         errors = sorted(
             self.validator.iter_errors(broken_spec),
@@ -422,7 +532,7 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
     def test_truth_context_semantics_reject_missing_truth_contexts(self) -> None:
         validator = _load_validator_module()
         spec = _valid_semantic_spec()
-        del spec["profile_capabilities"]["scrna_cell_specific"]["truth_contexts"]
+        del spec["capabilities"][0]["truth_contexts"]
 
         errors = validator.semantic_errors(
             simulator_id="dyngen",
@@ -432,16 +542,14 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
         )
 
         self.assertIn(
-            "profile_capabilities.scrna_cell_specific: missing truth_contexts array",
+            "capabilities[0]: missing truth_contexts array",
             errors,
         )
 
     def test_truth_context_semantics_reject_status_mismatch(self) -> None:
         validator = _load_validator_module()
         spec = _valid_semantic_spec()
-        spec["profile_capabilities"]["scrna_cell_specific"]["truth_contexts"][1][
-            "status"
-        ] = "native"
+        spec["capabilities"][0]["truth_contexts"][1]["status"] = "native"
 
         errors = validator.semantic_errors(
             simulator_id="dyngen",
@@ -451,16 +559,17 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
         )
 
         self.assertTrue(
-            any("status must match truth_outputs.group" in error for error in errors),
+            any(
+                "status must match truth_outputs context 'group'" in error
+                for error in errors
+            ),
             msg=errors,
         )
 
     def test_truth_context_semantics_reject_unknown_context(self) -> None:
         validator = _load_validator_module()
         spec = _valid_semantic_spec()
-        spec["profile_capabilities"]["scrna_cell_specific"]["truth_contexts"][1][
-            "context"
-        ] = "branch"
+        spec["capabilities"][0]["truth_contexts"][1]["context"] = "branch"
 
         errors = validator.semantic_errors(
             simulator_id="dyngen",
@@ -474,13 +583,44 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
             msg=errors,
         )
 
+    def test_legacy_profile_condition_field_is_rejected(self) -> None:
+        validator = _load_validator_module()
+        spec = _valid_semantic_spec()
+        spec["compatibility_rules"] = [
+            {
+                "conditions": [
+                    {
+                        "field": "profile",
+                        "op": "eq",
+                        "value": "scrna_grouped",
+                    }
+                ],
+                "action": "warn",
+                "message": "Legacy profile condition.",
+            }
+        ]
+
+        errors = validator.semantic_errors(
+            simulator_id="dyngen",
+            spec=spec,
+            wrappers_root=REPO_ROOT / "wrappers" / "simulation_data_tools" / "simulators",
+            known_input_ids=set(),
+        )
+
+        self.assertTrue(
+            any("condition field 'profile' is legacy" in error for error in errors),
+            msg=errors,
+        )
+
     def test_truth_context_semantics_reject_required_context_with_none_status(
         self,
     ) -> None:
         validator = _load_validator_module()
         spec = _valid_semantic_spec()
-        capability = spec["profile_capabilities"]["scrna_cell_specific"]
-        capability["truth_outputs"]["group"] = "none"
+        capability = spec["capabilities"][0]
+        capability["truth_outputs"] = [
+            item for item in capability["truth_outputs"] if item["context"] != "group"
+        ]
         capability["truth_contexts"][1] = {
             "context": "group",
             "status": "none",
@@ -496,8 +636,8 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
         )
 
         self.assertIn(
-            "profile_capabilities.scrna_cell_specific.truth_outputs: "
-            "required profile context(s) cannot be none: group",
+            "capabilities[0].truth_outputs: "
+            "required truth context(s) are not supported: group",
             errors,
         )
 

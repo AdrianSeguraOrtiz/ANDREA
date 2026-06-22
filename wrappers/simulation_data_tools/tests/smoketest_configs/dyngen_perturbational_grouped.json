@@ -1,0 +1,61 @@
+{
+  "simulator_id": "dyngen",
+  "request": {
+    "seed": 47,
+    "effective_extras": [
+      "groups",
+      "perturbation_design",
+      "interventions"
+    ],
+    "inputs": {},
+    "params": {
+      "backbone_template": "bifurcating",
+      "num_cells": 18,
+      "simulation_params": {
+        "num_simulations": 2,
+        "num_knockdown_simulations": 4
+      },
+      "experiment_params": {
+        "kind": "snapshot"
+      },
+      "knockdown_params": {
+        "num_genes": 1,
+        "multiplier": 0.0,
+        "timepoint": 0.5
+      }
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "perturbational"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "extras/perturbation_design.tsv",
+    "extras/interventions.tsv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "provenance/raw/group_networks_index.tsv",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/model.rds",
+    "provenance/raw/dataset.rds"
+  ],
+  "required_truth_context_prefixes": [
+    "global",
+    "group:"
+  ]
+}

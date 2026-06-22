@@ -25,18 +25,8 @@ from andrea.core.commands.generate_data import (
     preflight_generate_data_scenario,
     run_generate_data,
 )
-from andrea.core.commands.generate_data.catalog import (
-    _load_simulator_catalog,
-    load_simulation_input_specs,
-)
+from andrea.core.commands.generate_data.bootstrap import load_generate_bootstrap
 from andrea.core.commands.generate_data.cost_planner import detect_host_ram_gb
-from andrea.core.commands.generate_data.shared import (
-    PROFILE_SPECS,
-    required_truth_context_prefixes_for_profile,
-    required_truth_outputs_for_profile,
-)
-from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
-from andrea.core.shared.input_specs import load_input_specs as load_inference_input_specs
 from andrea.gui.common.reproducibility import (
     python_path_expr,
     shell_join_pretty,
@@ -57,34 +47,11 @@ from andrea.gui.common.server_files import (
     resolve_virtual_source,
     save_upload,
 )
+from andrea.gui.common.server_jobs import start_background_thread
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 COMMON_STATIC_DIR = Path(__file__).resolve().parents[1] / "common" / "static"
 GUI_TMP_ROOT = Path("/tmp/andrea_gui/generate_data")
-
-
-def _accept_from_formats(formats: list[str]) -> str:
-    extensions_by_format = {
-        "csv": [".csv"],
-        "newick": [".nwk", ".newick", ".txt"],
-        "rds": [".rds"],
-        "tsv": [".tsv", ".txt"],
-        "txt": [".txt"],
-    }
-    extensions: set[str] = set()
-    for value in formats:
-        normalized = str(value or "").strip().lower()
-        extensions.update(extensions_by_format.get(normalized, []))
-    return ",".join(sorted(extensions))
-
-
-def _accept_from_extensions(extensions: list[str]) -> str:
-    normalized = {
-        value if value.startswith(".") else f".{value}"
-        for value in (str(item or "").strip().lower() for item in extensions)
-        if value
-    }
-    return ",".join(sorted(normalized))
 
 
 def _utc_now() -> str:
@@ -121,197 +88,7 @@ STATE = GuiState()
 
 
 def _load_generate_bootstrap() -> dict[str, Any]:
-    _schemas, catalog = _load_simulator_catalog()
-    inference_input_specs = load_inference_input_specs()
-    simulation_input_specs = load_simulation_input_specs()
-    extras_by_profile: dict[str, set[str]] = {
-        profile_id: set(spec.required_extras)
-        for profile_id, spec in PROFILE_SPECS.items()
-    }
-    simulation_inputs: dict[str, dict[str, Any]] = {}
-
-    def _merge_simulation_input(
-        item: dict[str, Any],
-        *,
-        simulator_id: str,
-        simulator_name: str,
-        relation: str,
-    ) -> None:
-        input_id = str(item.get("input") or "").strip()
-        if not input_id:
-            return
-        input_spec = simulation_input_specs.get(input_id, {})
-        input_format = str(input_spec.get("format") or "").strip()
-        formats = [input_format] if input_format else []
-        accepted_extensions = (
-            [
-                str(x).strip()
-                for x in input_spec.get("accepted_extensions", [])
-                if str(x).strip()
-            ]
-            if isinstance(input_spec.get("accepted_extensions", []), list)
-            else []
-        )
-        existing = simulation_inputs.setdefault(
-            input_id,
-            {
-                "id": input_id,
-                "label": str(input_spec.get("name") or input_id),
-                "description": str(input_spec.get("description") or ""),
-                "example": str(input_spec.get("example") or ""),
-                "formats": [],
-                "accepted_extensions": [],
-                "accept": "",
-                "supported_by": [],
-                "used_by": {
-                    "required": [],
-                    "optional": [],
-                    "conditional": [],
-                },
-            },
-        )
-        existing.setdefault("supported_by", [])
-        if simulator_id not in existing["supported_by"]:
-            existing["supported_by"].append(simulator_id)
-            existing["supported_by"].sort()
-        existing["formats"] = sorted(set(existing.get("formats", [])).union(formats))
-        existing["accepted_extensions"] = sorted(
-            set(existing.get("accepted_extensions", [])).union(accepted_extensions)
-        )
-        existing["accept"] = _accept_from_extensions(existing["accepted_extensions"])
-        if not existing["accept"]:
-            existing["accept"] = _accept_from_formats(existing["formats"])
-        entry: dict[str, Any] = {
-            "simulator_id": simulator_id,
-            "name": simulator_name,
-            "usage": str(item.get("usage") or "").strip(),
-        }
-        if relation == "conditional":
-            entry["conditions"] = item.get("conditions", [])
-            entry["message"] = str(item.get("message") or "").strip()
-        used_by = existing.setdefault(
-            "used_by", {"required": [], "optional": [], "conditional": []}
-        )
-        relation_entries = used_by.setdefault(relation, [])
-        if not any(
-            str(existing_entry.get("simulator_id")) == simulator_id
-            for existing_entry in relation_entries
-        ):
-            relation_entries.append(entry)
-            relation_entries.sort(key=lambda value: str(value.get("simulator_id", "")))
-
-    for simulator_id, spec in sorted(catalog.items()):
-        simulator_name = str(spec.get("name") or simulator_id)
-        profile_capabilities = spec.get("profile_capabilities", {})
-        if isinstance(profile_capabilities, dict):
-            for profile_id, capability in profile_capabilities.items():
-                if profile_id not in extras_by_profile or not isinstance(
-                    capability, dict
-                ):
-                    continue
-                extras_by_profile[profile_id].update(
-                    str(x)
-                    for x in capability.get("native_extras", [])
-                    if isinstance(x, str) and x in SIMULATION_EXTRA_IDS
-                )
-                extras_by_profile[profile_id].update(
-                    str(x)
-                    for x in capability.get("derivable_extras", [])
-                    if isinstance(x, str) and x in SIMULATION_EXTRA_IDS
-                )
-        raw_inputs = spec.get("extra_inputs", {})
-        if isinstance(raw_inputs, dict):
-            for group_key in ("required", "optional"):
-                for item in raw_inputs.get(group_key, []):
-                    if isinstance(item, dict):
-                        _merge_simulation_input(
-                            item,
-                            simulator_id=simulator_id,
-                            simulator_name=simulator_name,
-                            relation=group_key,
-                        )
-            for item in raw_inputs.get("conditional_required", []):
-                if isinstance(item, dict):
-                    _merge_simulation_input(
-                        item,
-                        simulator_id=simulator_id,
-                        simulator_name=simulator_name,
-                        relation="conditional",
-                    )
-
-    profiles = [
-        {
-            "id": profile_id,
-            "column_kind": spec.column_kind,
-            "expression_profile": spec.expression_profile,
-            "required_truth_outputs": list(
-                required_truth_outputs_for_profile(profile_id)
-            ),
-            "required_truth_contexts": list(
-                required_truth_context_prefixes_for_profile(profile_id)
-            ),
-            "required_extras": sorted(spec.required_extras),
-            "available_extras": sorted(extras_by_profile.get(profile_id, set())),
-        }
-        for profile_id, spec in sorted(PROFILE_SPECS.items())
-    ]
-    extras = []
-    for key in sorted(set().union(*extras_by_profile.values())):
-        spec = inference_input_specs.get(key, {})
-        default_suffix = ".txt" if spec.get("file_kind") == "txt_list" else ".tsv"
-        extras.append(
-            {
-                "key": key,
-                "label": str(spec.get("label", f"{key}{default_suffix}")),
-                "description": str(
-                    spec.get("description", f"Optional generated extra '{key}'.")
-                ),
-                "file_kind": str(spec.get("file_kind", "tsv")),
-                "example": str(spec.get("example", "")),
-            }
-        )
-    simulators = []
-    for simulator_id, spec in sorted(catalog.items()):
-        simulators.append(
-            {
-                "simulator_id": simulator_id,
-                "id": simulator_id,
-                "schema_version": spec.get("schema_version"),
-                "name": spec["name"],
-                "publication": spec.get("publication", []),
-                "first_author": spec.get("first_author"),
-                "year": spec.get("year"),
-                "simulation_summary": spec.get("simulation_summary"),
-                "simulation_keywords": spec.get("simulation_keywords", []),
-                "implementation_url": spec.get("implementation_url"),
-                "docker_image": spec.get("docker_image"),
-                "extra_inputs": spec.get("extra_inputs", {}),
-                "runtime_resources": spec.get("runtime_resources", {}),
-                "profile_capabilities": spec.get("profile_capabilities", {}),
-                "params_schema": spec.get("params", {}),
-                "spec": spec,
-            }
-        )
-    return {
-        "profiles": profiles,
-        "extras": extras,
-        "planning_defaults": {
-            "max_parallel_tasks": max(1, int(os.cpu_count() or 1)),
-            "max_cores": max(1, int(os.cpu_count() or 1)),
-            "max_ram_gb": round(detect_host_ram_gb(), 3),
-        },
-        "simulation_inputs": sorted(
-            simulation_inputs.values(),
-            key=lambda item: (
-                -sum(
-                    len(item.get("used_by", {}).get(relation, []))
-                    for relation in ("required", "optional", "conditional")
-                ),
-                str(item.get("id", "")),
-            ),
-        ),
-        "simulators": simulators,
-    }
+    return load_generate_bootstrap()
 
 
 def _frozen_job_artifact_paths(job: GuiJob) -> dict[str, Optional[str]]:
@@ -370,11 +147,16 @@ def _scenario_payload_from_config(
     options = config.get("options") or {}
     if not isinstance(options, dict):
         raise ValueError("config.options must be an object when provided")
+    data_axes = scenario.get("data_axes")
+    truth_requirements = scenario.get("truth_requirements")
+    if not isinstance(data_axes, dict) or not isinstance(truth_requirements, dict):
+        raise ValueError("config.scenario must include data_axes and truth_requirements")
 
     payload = {
         "schema_version": "1.0",
         "id": str(scenario.get("id", "")).strip(),
-        "profile": str(scenario.get("profile", "")).strip(),
+        "data_axes": data_axes,
+        "truth_requirements": truth_requirements,
         "organism": scenario.get(
             "organism", {"taxonomic_group": "synthetic", "ncbi_taxon_id": None}
         ),
@@ -949,25 +731,37 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
         "groups.tsv": {
             "title": "Groups",
             "summary": (
-                "Cell-to-group assignment table. The first column contains expression "
-                "cell identifiers and the cluster column stores the exported group label."
+                "Expression-column-to-group assignment table. The first column contains "
+                "expression column identifiers and the cluster column stores the exported group label."
             ),
             "badges": ["standardized extra", "group context"],
             "tips": [
                 "Referenced by dataset-manifest.json when group-aware tools are run.",
-                "Required by profiles or methods that derive one network per group.",
+                "Required by scenario templates or methods that derive one network per group.",
             ],
         },
-        "cell_phenotypes.tsv": {
-            "title": "Cell phenotypes",
+        "column_phenotypes.tsv": {
+            "title": "Column phenotypes",
             "summary": (
-                "Ordered cell-to-phenotype assignment table for methods that model "
-                "transitions between cell states."
+                "Ordered expression-column-to-phenotype assignment table for methods "
+                "that model transitions between observed states."
             ),
             "badges": ["standardized extra", "ordered states"],
             "tips": [
-                "Each expression cell appears once with a phenotype label and integer order.",
+                "Each expression column appears once with a phenotype label and integer order.",
                 "This is stricter than groups.tsv because the order column carries state progression.",
+            ],
+        },
+        "column_descriptors.tsv": {
+            "title": "Column descriptors",
+            "summary": (
+                "Expression-column metadata table with categorical or scalar descriptors "
+                "such as batch, condition, donor, cell type or assay state."
+            ),
+            "badges": ["standardized extra", "column metadata"],
+            "tips": [
+                "Each expression column should appear once.",
+                "Used by tools that consume auxiliary sample, cell or condition descriptors.",
             ],
         },
         "cluster_identities.tsv": {
@@ -1006,6 +800,30 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
                 "Used by methods that model regulatory changes across a group lineage.",
             ],
         },
+        "interventions.tsv": {
+            "title": "Interventions",
+            "summary": (
+                "Intervention-definition table describing perturbed targets, effects, "
+                "optional signs and doses."
+            ),
+            "badges": ["standardized extra", "perturbation"],
+            "tips": [
+                "Target gene IDs should match expression.tsv and truth/gene_universe.txt.",
+                "Use with perturbation_design.tsv when per-column condition assignments are available.",
+            ],
+        },
+        "perturbation_design.tsv": {
+            "title": "Perturbation design",
+            "summary": (
+                "Expression-column perturbation metadata table with condition labels and "
+                "optional target, dose, timepoint, replicate and control columns."
+            ),
+            "badges": ["standardized extra", "perturbation"],
+            "tips": [
+                "Each expression column should appear once.",
+                "Condition labels should be stable enough for downstream filtering and grouping.",
+            ],
+        },
         "prior_grn.tsv": {
             "title": "Global prior GRN",
             "summary": (
@@ -1033,13 +851,37 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
         "pseudotime.tsv": {
             "title": "Pseudotime",
             "summary": (
-                "Cell-level pseudotime table mapping each expression cell to a numeric "
+                "Column-level pseudotime table mapping each expression column to a numeric "
                 "trajectory value."
             ),
             "badges": ["standardized extra", "trajectory"],
             "tips": [
-                "Each expression cell should appear once.",
-                "Used by trajectory-aware tools or filters that depend on cell ordering.",
+                "Each expression column should appear once.",
+                "Used by trajectory-aware tools or filters that depend on column ordering.",
+            ],
+        },
+        "replicates.tsv": {
+            "title": "Replicates",
+            "summary": (
+                "Expression-column replicate metadata table for biological or technical "
+                "replicate labels."
+            ),
+            "badges": ["standardized extra", "replicates"],
+            "tips": [
+                "Each expression column should appear once.",
+                "Use this separately from groups.tsv when replicate structure is not the grouping axis.",
+            ],
+        },
+        "timepoints.tsv": {
+            "title": "Timepoints",
+            "summary": (
+                "Expression-column timepoint table with observed sampling times or ordered "
+                "time coordinates."
+            ),
+            "badges": ["standardized extra", "time series"],
+            "tips": [
+                "Each expression column should appear once.",
+                "This represents observed time, while pseudotime.tsv represents an inferred or simulated trajectory coordinate.",
             ],
         },
         "tf_list.txt": {
@@ -1074,7 +916,7 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             ),
             "badges": ["input contract", "scenario"],
             "tips": [
-                "Contains the canonical profile, benchmark ID, requested extras and scenario-level settings.",
+                "Contains the selected benchmark scenario, benchmark ID, requested extras and scenario-level settings.",
                 "Use this with simulator-runs.json to reproduce planning from the CLI.",
             ],
         }
@@ -1099,7 +941,7 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             ),
             "badges": ["preflight", "simulator eligibility"],
             "tips": [
-                "Shows eligible, warning and blocked simulators for the requested profile and extras.",
+                "Shows eligible, warning and blocked simulators for the requested scenario axes, truth contexts and extras.",
                 "Use it to understand why a simulator did or did not enter the plan.",
             ],
         }
@@ -1145,13 +987,13 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
         return {
             "title": "Expression matrix",
             "summary": (
-                "Normalized simulated expression matrix with genes in rows and cells or "
-                "samples in columns."
+                "Normalized simulated expression matrix with genes in rows and expression "
+                "columns representing samples, cells, timepoints, perturbations or other axes."
             ),
             "badges": ["required input", "TSV matrix"],
             "tips": [
                 "This is the expression input referenced by dataset-manifest.json.",
-                "Column names are the cell/sample identifiers used by extras such as groups.tsv.",
+                "Column names are the expression-column identifiers used by extras such as groups.tsv.",
             ],
         }
     if basename in extras_guides:
@@ -1165,8 +1007,8 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             ),
             "badges": ["ground truth", "network table"],
             "tips": [
-                "The context column distinguishes global, group:<group_id> and cell:<cell_id> truth networks.",
-                "Cell-specific profiles store one cell-level network per cell context in this single file.",
+                "The context column distinguishes global and scoped contexts such as group:<id> or column:<id>.",
+                "Scoped truth stores one network per declared context value in this single file.",
                 "Scores are positive magnitudes and direction is stored separately in sign.",
             ],
         }
@@ -1558,11 +1400,11 @@ def create_app() -> FastAPI:
         )
         with STATE.lock:
             STATE.jobs[job_id] = job
-        threading.Thread(
+        start_background_thread(
             target=_run_job,
             kwargs={"job_id": job_id, "action": "preflight", "options": options},
             daemon=True,
-        ).start()
+        )
         return JSONResponse(
             {
                 "job_id": job_id,
@@ -1615,11 +1457,11 @@ def create_app() -> FastAPI:
             job.error = None
             job.traceback = None
             job.runtime_progress = {}
-        threading.Thread(
+        start_background_thread(
             target=_run_job,
             kwargs={"job_id": job_id, "action": "plan", "options": options},
             daemon=True,
-        ).start()
+        )
         return JSONResponse(
             {
                 "job_id": job_id,
@@ -1664,11 +1506,11 @@ def create_app() -> FastAPI:
             job.traceback = None
             job.benchmark_root = None
             job.runtime_progress = {}
-        threading.Thread(
+        start_background_thread(
             target=_run_job,
             kwargs={"job_id": job_id, "action": "run", "options": options},
             daemon=True,
-        ).start()
+        )
         return JSONResponse({"job_id": job_id, "status": "queued", "stage": "planned"})
 
     return app

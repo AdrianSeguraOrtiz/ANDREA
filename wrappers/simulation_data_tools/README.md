@@ -38,10 +38,10 @@ progress.json
 
 All public truth networks are exported through `truth/networks.csv`, with
 columns `source,target,score,sign,evidence,context`. The `context` value
-determines whether an edge belongs to global, group or cell truth.
+determines whether an edge belongs to global, group or column-specific truth.
 Use `context=global` for dataset-level truth and `context=group:<id>` for
-group-specific truth. Use `context=cell:<id>` for cell-specific truth, where
-`<id>` should match an expression column. Cell-specific truth is not an
+group-specific truth. Use `context=column:<id>` for column-specific truth, where
+`<id>` should match an expression column. Column-specific truth is not an
 infer-network extra input; it is public benchmark truth in this same table.
 The manifests reference this table through `outputs.networks` and
 `truth.networks`. Simulators may preserve native outputs under provenance, but
@@ -172,4 +172,6 @@ and records a conservative fallback `eta_source` plus warnings in
 1. Run `make scaffold-simulator SIMULATOR=<simulator_id>`.
 2. Place upstream evidence under `wrappers/simulation_data_tools/simulators/<simulator_id>/repo/` and local papers under `papers/`.
 3. Follow `wrappers/simulation_data_tools/SIMULATOR_INTEGRATION_PLAYBOOK.md`.
-4. Keep expensive smoketest defaults in `param_overrides/<simulator_id>.json`; keep scenario-specific deltas in `tests/smoketest_configs/`.
+4. Model supported datasets with `data_axes`, `truth_requirements` and
+   `capabilities`; do not reintroduce combined profile names.
+5. Keep expensive smoketest defaults in `param_overrides/<simulator_id>.json`; keep scenario-specific deltas in `tests/smoketest_configs/`.

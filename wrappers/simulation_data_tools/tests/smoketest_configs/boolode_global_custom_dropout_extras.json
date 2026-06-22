@@ -1,7 +1,6 @@
 {
   "simulator_id": "boolode",
   "request": {
-    "profile": "scrna_global",
     "seed": 301,
     "effective_extras": [
       "pseudotime",
@@ -29,7 +28,20 @@
         "drop_prob": 0.5
       }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "trajectory"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [
@@ -56,5 +68,7 @@
     "provenance/raw/session_info.txt",
     "provenance/raw/upstream_stdout.log"
   ],
-  "required_truth_context_prefixes": ["global"]
+  "required_truth_context_prefixes": [
+    "global"
+  ]
 }

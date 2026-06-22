@@ -207,14 +207,14 @@ body {
 .andrea-evaluation-view .other-contexts {
   margin-top: 14px;
 }
-.andrea-evaluation-view .cell-contexts {
+.andrea-evaluation-view .column-contexts {
   margin-top: 14px;
 }
-.andrea-evaluation-view .cell-dist-list {
+.andrea-evaluation-view .specific-dist-list {
   display: grid;
   gap: 8px;
 }
-.andrea-evaluation-view .cell-dist-row {
+.andrea-evaluation-view .specific-dist-row {
   display: grid;
   grid-template-columns: minmax(130px, 0.32fr) minmax(260px, 1fr) minmax(280px, 0.8fr);
   gap: 12px;
@@ -224,7 +224,7 @@ body {
   border-radius: 6px;
   background: #fbfdff;
 }
-.andrea-evaluation-view .cell-violin {
+.andrea-evaluation-view .specific-violin {
   position: relative;
   height: 30px;
   border-radius: 6px;
@@ -233,44 +233,44 @@ body {
   overflow: hidden;
 }
 
-.andrea-evaluation-view .cell-violin svg {
+.andrea-evaluation-view .specific-violin svg {
   display: block;
   height: 100%;
   width: 100%;
 }
 
-.andrea-evaluation-view .cell-violin-shape {
+.andrea-evaluation-view .specific-violin-shape {
   stroke: #0369a1;
   stroke-width: 0.55;
 }
 
-.andrea-evaluation-view .cell-violin-range {
+.andrea-evaluation-view .specific-violin-range {
   stroke: #64748b;
   stroke-linecap: round;
   stroke-width: 0.55;
 }
 
-.andrea-evaluation-view .cell-violin-iqr {
+.andrea-evaluation-view .specific-violin-iqr {
   stroke: #075985;
   stroke-linecap: round;
   stroke-width: 2.6;
 }
 
-.andrea-evaluation-view .cell-violin-median {
+.andrea-evaluation-view .specific-violin-median {
   stroke: #0f172a;
   stroke-width: 0.9;
 }
-.andrea-evaluation-view .cell-stats {
+.andrea-evaluation-view .specific-stats {
   display: grid;
   grid-template-columns: repeat(5, minmax(48px, 1fr));
   gap: 6px;
 }
-.andrea-evaluation-view .cell-stats span {
+.andrea-evaluation-view .specific-stats span {
   display: grid;
   gap: 1px;
   min-width: 0;
 }
-.andrea-evaluation-view .cell-stats strong {
+.andrea-evaluation-view .specific-stats strong {
   overflow: hidden;
   color: #0f172a;
   font-size: 12px;
@@ -278,7 +278,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.andrea-evaluation-view .cell-stats small {
+.andrea-evaluation-view .specific-stats small {
   color: var(--muted);
   font-size: 10px;
   text-transform: uppercase;
@@ -428,10 +428,10 @@ body {
   .andrea-evaluation-view .viz-grid {
     grid-template-columns: 1fr;
   }
-  .andrea-evaluation-view .cell-dist-row {
+  .andrea-evaluation-view .specific-dist-row {
     grid-template-columns: 1fr;
   }
-  .andrea-evaluation-view .cell-stats {
+  .andrea-evaluation-view .specific-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .andrea-evaluation-view .toolbar {

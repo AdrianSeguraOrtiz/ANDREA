@@ -30,7 +30,7 @@
             "global",
             "group_native",
             "group_emulated",
-            "cell_native",
+            "column_native",
             "group_aggregated"
           ]
         }
@@ -98,7 +98,7 @@
                   "global",
                   "group_native",
                   "group_emulated",
-                  "cell_native",
+                  "column_native",
                   "group_aggregated"
                 ]
               }

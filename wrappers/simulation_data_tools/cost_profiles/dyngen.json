@@ -4,7 +4,11 @@
     "distance_metric",
     "simulation_params.compute_dimred",
     "experiment_params.map_reference_cpm",
-    "experiment_params.map_reference_ls"
+    "experiment_params.map_reference_ls",
+    "experiment_params.kind",
+    "experiment_params.num_timepoints",
+    "simulation_params.num_knockdown_simulations",
+    "knockdown_params.num_genes"
   ],
   "dimension_params": {
     "cells": "num_cells",
@@ -25,8 +29,7 @@
   },
   "profiles": [
     {
-      "id": "scrna_global_linear_default",
-      "profile": "scrna_global",
+      "id": "single_cell_cells_trajectory_global_linear_default",
       "requested_extras": [],
       "group_count": 0,
       "population_count": 0,
@@ -34,17 +37,28 @@
         "backbone_template": "linear",
         "distance_metric": "pearson",
         "simulation_params": {
-          "compute_dimred": false
+          "compute_dimred": false,
+          "num_simulations": 4
         },
         "experiment_params": {
           "map_reference_cpm": false,
           "map_reference_ls": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
       }
     },
     {
-      "id": "scrna_grouped_bifurcating_groups",
-      "profile": "scrna_grouped",
+      "id": "single_cell_cells_trajectory_global_group_bifurcating_groups",
       "requested_extras": [
         "groups"
       ],
@@ -54,20 +68,32 @@
         "backbone_template": "bifurcating",
         "distance_metric": "pearson",
         "simulation_params": {
-          "compute_dimred": false
+          "compute_dimred": false,
+          "num_simulations": 4
         },
         "experiment_params": {
           "map_reference_cpm": false,
           "map_reference_ls": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
       }
     },
     {
-      "id": "scrna_grouped_bifurcating_full_extras",
-      "profile": "scrna_grouped",
+      "id": "single_cell_cells_trajectory_global_group_bifurcating_full_extras",
       "requested_extras": [
         "groups",
-        "cell_phenotypes",
+        "column_phenotypes",
         "cluster_identities",
         "enrichment_background",
         "lineage_tree",
@@ -82,17 +108,29 @@
         "backbone_template": "bifurcating",
         "distance_metric": "pearson",
         "simulation_params": {
-          "compute_dimred": false
+          "compute_dimred": false,
+          "num_simulations": 4
         },
         "experiment_params": {
           "map_reference_cpm": false,
           "map_reference_ls": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
       }
     },
     {
-      "id": "scrna_global_linear_full_extras",
-      "profile": "scrna_global",
+      "id": "single_cell_cells_trajectory_global_linear_full_extras",
       "requested_extras": [
         "enrichment_background",
         "pseudotime",
@@ -105,17 +143,28 @@
         "backbone_template": "linear",
         "distance_metric": "pearson",
         "simulation_params": {
-          "compute_dimred": false
+          "compute_dimred": false,
+          "num_simulations": 4
         },
         "experiment_params": {
           "map_reference_cpm": false,
           "map_reference_ls": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
       }
     },
     {
-      "id": "scrna_cell_specific_bifurcating_truth",
-      "profile": "scrna_cell_specific",
+      "id": "single_cell_cells_trajectory_global_group_column_bifurcating_truth",
       "requested_extras": [],
       "group_count": 2,
       "population_count": 2,
@@ -124,20 +173,33 @@
         "distance_metric": "pearson",
         "simulation_params": {
           "compute_dimred": false,
-          "compute_rna_velocity": false
+          "compute_rna_velocity": false,
+          "num_simulations": 4
         },
         "experiment_params": {
           "map_reference_cpm": false,
           "map_reference_ls": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
       }
     },
     {
-      "id": "scrna_cell_specific_bifurcating_full_extras",
-      "profile": "scrna_cell_specific",
+      "id": "single_cell_cells_trajectory_global_group_column_bifurcating_full_extras",
       "requested_extras": [
         "groups",
-        "cell_phenotypes",
+        "column_phenotypes",
         "cluster_identities",
         "enrichment_background",
         "lineage_tree",
@@ -153,12 +215,239 @@
         "distance_metric": "pearson",
         "simulation_params": {
           "compute_dimred": false,
-          "compute_rna_velocity": false
+          "compute_rna_velocity": false,
+          "num_simulations": 4
         },
         "experiment_params": {
           "map_reference_cpm": false,
           "map_reference_ls": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_time_series_global_linear_default",
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "backbone_template": "linear",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false,
+          "num_knockdown_simulations": 0,
+          "num_simulations": 4
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "kind": "synchronised",
+          "num_timepoints": 3
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_time_series_global_group_bifurcating_timepoints",
+      "requested_extras": [],
+      "group_count": 2,
+      "population_count": 2,
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false,
+          "num_knockdown_simulations": 0,
+          "num_simulations": 4
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "kind": "synchronised",
+          "num_timepoints": 3
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_time_series_global_group_column_bifurcating_truth",
+      "requested_extras": [],
+      "group_count": 2,
+      "population_count": 2,
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false,
+          "num_knockdown_simulations": 0,
+          "num_simulations": 4
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "kind": "synchronised",
+          "num_timepoints": 3
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_perturbational_global_linear_default",
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "backbone_template": "linear",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false,
+          "num_knockdown_simulations": 4,
+          "compute_rna_velocity": false,
+          "num_simulations": 4
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "kind": "snapshot"
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_perturbational_global_group_bifurcating_design",
+      "requested_extras": [],
+      "group_count": 2,
+      "population_count": 2,
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false,
+          "num_knockdown_simulations": 4,
+          "compute_rna_velocity": false,
+          "num_simulations": 4
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "kind": "snapshot"
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_perturbational_global_group_column_bifurcating_truth",
+      "requested_extras": [],
+      "group_count": 2,
+      "population_count": 2,
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "distance_metric": "pearson",
+        "simulation_params": {
+          "compute_dimred": false,
+          "num_knockdown_simulations": 4,
+          "compute_rna_velocity": false,
+          "num_simulations": 4
+        },
+        "experiment_params": {
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "kind": "snapshot"
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
       }
     }
   ]

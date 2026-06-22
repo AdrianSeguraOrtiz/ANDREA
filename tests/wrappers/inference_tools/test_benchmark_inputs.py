@@ -46,8 +46,9 @@ def _read_expression(path: Path) -> tuple[set[str], set[str]]:
 
 
 def _assert_type(testcase: unittest.TestCase, value: str, expected: str) -> None:
+    if value == "":
+        return
     if expected == "string":
-        testcase.assertNotEqual(value, "")
         return
     if expected == "int":
         int(value)
@@ -55,11 +56,14 @@ def _assert_type(testcase: unittest.TestCase, value: str, expected: str) -> None
     if expected == "float":
         float(value)
         return
+    if expected == "bool":
+        testcase.assertIn(value.lower(), {"true", "false", "1", "0"})
+        return
     testcase.fail(f"Unsupported input spec column type in test: {expected}")
 
 
 def _column_values(rows: list[dict[str, str]], column: str) -> set[str]:
-    return {row[column] for row in rows if column in row}
+    return {row[column] for row in rows if column in row and row[column] != ""}
 
 
 def _load_specs() -> dict[str, dict[str, Any]]:
@@ -136,6 +140,8 @@ def _assert_file_matches_input_spec(
             testcase.assertTrue(first_column_values.issubset(expression_columns))
         elif kind == "data_columns_subset_expression_columns":
             testcase.assertTrue(set(header[1:]).issubset(expression_columns))
+        elif kind == "data_columns_match_expression_columns":
+            testcase.assertEqual(set(header[1:]), expression_columns)
         elif kind == "row_count_matches_expression_columns":
             testcase.assertEqual(len(rows), len(expression_columns), input_key)
         elif kind == "column_subset_expression_genes":
@@ -221,7 +227,7 @@ class BenchmarkInputGeneratorTest(unittest.TestCase):
 
     def test_rejects_grouped_inputs_without_groups(self) -> None:
         profile = BenchmarkInputProfile(
-            extras_provided=("cell_phenotypes",),
+            extras_provided=("column_phenotypes",),
             group_count=0,
         )
         with tempfile.TemporaryDirectory() as tmp:
@@ -234,8 +240,9 @@ class BenchmarkInputGeneratorTest(unittest.TestCase):
 
 
 def assign_rows(path: Path) -> list[tuple[str, str]]:
-    _header, rows = _read_tsv(path)
-    return [(row["sample"], row["cluster"]) for row in rows]
+    header, rows = _read_tsv(path)
+    first_col = header[0]
+    return [(row[first_col], row["cluster"]) for row in rows]
 
 
 if __name__ == "__main__":

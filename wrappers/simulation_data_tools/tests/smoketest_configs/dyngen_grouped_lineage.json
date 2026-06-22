@@ -1,11 +1,10 @@
 {
   "simulator_id": "dyngen",
   "request": {
-    "profile": "scrna_grouped",
     "seed": 17,
     "effective_extras": [
       "groups",
-      "cell_phenotypes",
+      "column_phenotypes",
       "cluster_identities",
       "enrichment_background",
       "lineage_tree",
@@ -23,13 +22,27 @@
         "compute_rna_velocity": false
       }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "trajectory"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
     "extras/groups.tsv",
-    "extras/cell_phenotypes.tsv",
+    "extras/column_phenotypes.tsv",
     "extras/cluster_identities.tsv",
     "extras/enrichment_background.txt",
     "extras/lineage_tree.tsv",
@@ -48,5 +61,8 @@
     "provenance/raw/lineage_states_used.tsv",
     "provenance/raw/lineage_transitions_used.tsv"
   ],
-  "required_truth_context_prefixes": ["global", "group:"]
+  "required_truth_context_prefixes": [
+    "global",
+    "group:"
+  ]
 }

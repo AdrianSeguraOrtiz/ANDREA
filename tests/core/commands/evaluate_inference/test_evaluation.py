@@ -13,6 +13,7 @@ from andrea.core.commands.evaluate_inference.evaluation import (
     _aggregate_rows,
     _auroc,
     _average_precision,
+    _context_counts_by_family,
     _load_inferred_rows,
     _sparse_auroc,
     _sparse_average_precision,
@@ -21,6 +22,60 @@ from andrea.core.commands.evaluate_inference.evaluation import (
 
 
 class EvaluateInferenceCoreTests(unittest.TestCase):
+    @staticmethod
+    def _manifest(
+        *,
+        dataset_id: str = "toy",
+        simulator_id: str = "toy_sim",
+        data_axes: dict[str, str] | None = None,
+        truth_contexts: list[str] | None = None,
+        outputs: dict[str, str] | None = None,
+    ) -> dict[str, object]:
+        return {
+            "schema_version": "1.0",
+            "dataset_id": dataset_id,
+            "simulator_id": simulator_id,
+            "data_axes": data_axes
+            or {
+                "measurement": "rna_expression",
+                "resolution": "single_cell",
+                "column_kind": "cells",
+                "experimental_design": "steady_state",
+            },
+            "truth_requirements": {
+                "contexts": truth_contexts or ["global"],
+            },
+            "outputs": outputs
+            or {
+                "gene_universe": "truth/gene_universe.txt",
+                "networks": "truth/networks.csv",
+            },
+        }
+
+    def test_context_family_counts_include_public_context_families(self) -> None:
+        self.assertEqual(
+            _context_counts_by_family(
+                [
+                    "global",
+                    "group:a",
+                    "column:c1",
+                    "sample:s1",
+                    "timepoint:t1",
+                    "perturbation:ko",
+                    "condition:stim",
+                ]
+            ),
+            {
+                "global": 1,
+                "group": 1,
+                "column": 1,
+                "sample": 1,
+                "timepoint": 1,
+                "perturbation": 1,
+                "other": 1,
+            },
+        )
+
     def test_aggregates_signed_prediction_scores_without_negating_by_sign(self) -> None:
         rows = [
             NetworkRow(
@@ -191,7 +246,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, expected):
                         _load_inferred_rows(path)
 
-    def test_evaluates_cumulative_global_group_and_cell_truth_contexts(self) -> None:
+    def test_evaluates_cumulative_global_group_and_column_truth_contexts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             truth_dir = base / "truth"
@@ -233,23 +288,14 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "score": "1",
                         "sign": "+",
                         "evidence": "simulated_truth",
-                        "context": "cell:cell_a",
+                        "context": "column:cell_a",
                     },
                 ],
             )
             manifest_path = base / "ground-truth-manifest.json"
             manifest_path.write_text(
                 json.dumps(
-                    {
-                        "schema_version": "1.0",
-                        "dataset_id": "toy",
-                        "simulator_id": "toy_sim",
-                        "profile": "scrna_cell_specific",
-                        "outputs": {
-                            "gene_universe": "truth/gene_universe.txt",
-                            "networks": "truth/networks.csv",
-                        },
-                    }
+                    self._manifest(truth_contexts=["global", "group", "column"])
                 ),
                 encoding="utf-8",
             )
@@ -281,7 +327,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "score": "0.6",
                         "sign": "?",
                         "evidence": "association",
-                        "context": "cell:cell_a",
+                        "context": "column:cell_a",
                         "tool_id": "genie3__01",
                     },
                     {
@@ -397,7 +443,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         self.assertEqual(metrics[("genie3__01", "global", "signed")]["truth_signed"], True)
         self.assertEqual(metrics[("genie3__01", "group:sA", "topology")]["status"], "ok")
         self.assertEqual(metrics[("genie3__01", "group:sA", "directed")]["status"], "ok")
-        self.assertEqual(metrics[("genie3__01", "cell:cell_a", "topology")]["status"], "ok")
+        self.assertEqual(metrics[("genie3__01", "column:cell_a", "topology")]["status"], "ok")
         self.assertEqual(metrics[("signed_tool", "group:sA", "signed")]["status"], "ok")
         self.assertEqual(metrics[("signed_tool", "global", "signed")]["status"], "ok")
         self.assertAlmostEqual(
@@ -435,18 +481,40 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         )
         self.assertEqual(report["ground_truth"]["gene_universe_size"], 4)
         self.assertEqual(
+            report["ground_truth"]["data_axes"],
+            {
+                "measurement": "rna_expression",
+                "resolution": "single_cell",
+                "column_kind": "cells",
+                "experimental_design": "steady_state",
+            },
+        )
+        self.assertEqual(
+            report["ground_truth"]["truth_requirements"],
+            {"contexts": ["global", "group", "column"]},
+        )
+        self.assertNotIn("profile", report["ground_truth"])
+        self.assertEqual(
             report["ground_truth"]["context_counts_by_family"],
-            {"global": 1, "group": 1, "cell": 1, "other": 0},
+            {
+                "global": 1,
+                "group": 1,
+                "column": 1,
+                "sample": 0,
+                "timepoint": 0,
+                "perturbation": 0,
+                "other": 0,
+            },
         )
         self.assertEqual(metrics[("genie3__01", "global", "topology")]["n_candidate_genes"], 4)
-        self.assertEqual(report["ground_truth"]["contexts"], ["global", "group:sA", "cell:cell_a"])
+        self.assertEqual(report["ground_truth"]["contexts"], ["global", "group:sA", "column:cell_a"])
         self.assertEqual(
             report["context_matching"]["truth_context_counts_by_family"]["group"],
             1,
         )
-        self.assertIn("cell:cell_a", report["ground_truth"]["contexts"])
+        self.assertIn("column:cell_a", report["ground_truth"]["contexts"])
         self.assertEqual(
-            report["context_matching"]["truth_context_counts_by_family"]["cell"],
+            report["context_matching"]["truth_context_counts_by_family"]["column"],
             1,
         )
         missing_by_tool = {
@@ -454,15 +522,15 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             for row in report["context_matching"]["missing_truth_contexts_by_tool"]
         }
         self.assertEqual(
-            missing_by_tool["signed_tool"]["missing_context_counts_by_family"]["cell"],
+            missing_by_tool["signed_tool"]["missing_context_counts_by_family"]["column"],
             1,
         )
         self.assertIn("Global", view_html)
         self.assertIn("bars", view_html)
         self.assertIn("Groups", view_html)
         self.assertIn("heatmap", view_html)
-        self.assertIn("Cells", view_html)
-        self.assertIn("violins by tool", view_html)
+        self.assertIn("Column Contexts", view_html)
+        self.assertIn("distributions by tool", view_html)
         self.assertNotIn("run_report", report["inputs"])
         self.assertNotIn("ground_truth_manifest", report["inputs"])
         self.assertNotIn("derived_inputs", report)
@@ -494,16 +562,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             manifest_path = base / "ground-truth-manifest.json"
             manifest_path.write_text(
                 json.dumps(
-                    {
-                        "schema_version": "1.0",
-                        "dataset_id": "toy",
-                        "simulator_id": "toy_sim",
-                        "profile": "scrna_grouped",
-                        "outputs": {
-                            "gene_universe": "truth/gene_universe.txt",
-                            "networks": "truth/networks.csv",
-                        },
-                    }
+                    self._manifest(truth_contexts=["global"])
                 ),
                 encoding="utf-8",
             )
@@ -589,16 +648,10 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             manifest_path = base / "ground-truth-manifest.json"
             manifest_path.write_text(
                 json.dumps(
-                    {
-                        "schema_version": "1.0",
-                        "dataset_id": "toy_grouped",
-                        "simulator_id": "toy_sim",
-                        "profile": "scrna_grouped",
-                        "outputs": {
-                            "gene_universe": "truth/gene_universe.txt",
-                            "networks": "truth/networks.csv",
-                        },
-                    }
+                    self._manifest(
+                        dataset_id="toy_grouped",
+                        truth_contexts=["global", "group"],
+                    )
                 ),
                 encoding="utf-8",
             )
@@ -613,7 +666,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "sign": "+",
                         "evidence": "andrea_group_agg_mean_effect",
                         "context": "group:sA",
-                        "tool_id": "cellrun_01",
+                        "tool_id": "group_tool_01",
                     },
                     {
                         "source": "B",
@@ -622,7 +675,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "sign": "-",
                         "evidence": "andrea_group_agg_mean_effect",
                         "context": "group:sA",
-                        "tool_id": "cellrun_01",
+                        "tool_id": "group_tool_01",
                     },
                 ],
             )
@@ -633,7 +686,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "outputs": {"merged_network_raw": inferred_path.name},
                         "tools": {
                             "catalog_tool_ids": {
-                                "cellrun_01": "signed_tool",
+                                "group_tool_01": "signed_tool",
                             }
                         },
                     }
@@ -661,13 +714,21 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         self.assertEqual(report["pairings"][0]["truth_context"], "group:sA")
         self.assertEqual(
             report["ground_truth"]["context_counts_by_family"],
-            {"global": 0, "group": 1, "cell": 0, "other": 0},
+            {
+                "global": 0,
+                "group": 1,
+                "column": 0,
+                "sample": 0,
+                "timepoint": 0,
+                "perturbation": 0,
+                "other": 0,
+            },
         )
-        self.assertEqual(metrics[("cellrun_01", "group:sA", "topology")]["status"], "ok")
-        self.assertEqual(metrics[("cellrun_01", "group:sA", "directed")]["status"], "ok")
-        self.assertEqual(metrics[("cellrun_01", "group:sA", "signed")]["status"], "ok")
+        self.assertEqual(metrics[("group_tool_01", "group:sA", "topology")]["status"], "ok")
+        self.assertEqual(metrics[("group_tool_01", "group:sA", "directed")]["status"], "ok")
+        self.assertEqual(metrics[("group_tool_01", "group:sA", "signed")]["status"], "ok")
         self.assertAlmostEqual(
-            metrics[("cellrun_01", "group:sA", "signed")]["f1_at_truth_count"],
+            metrics[("group_tool_01", "group:sA", "signed")]["f1_at_truth_count"],
             1.0,
         )
 
@@ -696,16 +757,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             manifest_path = base / "ground-truth-manifest.json"
             manifest_path.write_text(
                 json.dumps(
-                    {
-                        "schema_version": "1.0",
-                        "dataset_id": "toy_other_context",
-                        "simulator_id": "toy_sim",
-                        "profile": "scrna_global",
-                        "outputs": {
-                            "gene_universe": "truth/gene_universe.txt",
-                            "networks": "truth/networks.csv",
-                        },
-                    }
+                    self._manifest(dataset_id="toy_other_context")
                 ),
                 encoding="utf-8",
             )
@@ -749,12 +801,132 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         self.assertEqual(report["ground_truth"]["contexts"], ["condition:stim"])
         self.assertEqual(
             report["ground_truth"]["context_counts_by_family"],
-            {"global": 0, "group": 0, "cell": 0, "other": 1},
+            {
+                "global": 0,
+                "group": 0,
+                "column": 0,
+                "sample": 0,
+                "timepoint": 0,
+                "perturbation": 0,
+                "other": 1,
+            },
         )
         self.assertEqual(report["pairings"][0]["status"], "evaluated")
         self.assertEqual(report["metrics"][0]["context"], "condition:stim")
         self.assertNotIn("context_type", report["metrics"][0])
         self.assertNotIn("context_family", report["metrics"][0])
+
+    def test_semantic_specific_contexts_are_evaluated_by_exact_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            truth_dir = base / "truth"
+            truth_dir.mkdir(parents=True)
+            (truth_dir / "gene_universe.txt").write_text(
+                "A\nB\nC\n",
+                encoding="utf-8",
+            )
+            self._write_csv(
+                truth_dir / "networks.csv",
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "1",
+                        "sign": "+",
+                        "evidence": "simulated_truth",
+                        "context": "timepoint:t0",
+                    },
+                    {
+                        "source": "B",
+                        "target": "C",
+                        "score": "1",
+                        "sign": "-",
+                        "evidence": "simulated_truth",
+                        "context": "perturbation:ko_G1",
+                    },
+                ],
+            )
+            manifest_path = base / "ground-truth-manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    self._manifest(
+                        dataset_id="toy_semantic_contexts",
+                        data_axes={
+                            "measurement": "rna_expression",
+                            "resolution": "bulk",
+                            "column_kind": "timepoints",
+                            "experimental_design": "time_series",
+                        },
+                        truth_contexts=["global", "column"],
+                    )
+                ),
+                encoding="utf-8",
+            )
+            inferred_path = base / "merged_network_raw.csv"
+            self._write_csv(
+                inferred_path,
+                [
+                    {
+                        "source": "A",
+                        "target": "B",
+                        "score": "0.9",
+                        "sign": "?",
+                        "evidence": "association",
+                        "context": "timepoint:t0",
+                        "tool_id": "genie3__01",
+                    },
+                    {
+                        "source": "B",
+                        "target": "C",
+                        "score": "0.8",
+                        "sign": "?",
+                        "evidence": "association",
+                        "context": "perturbation:ko_G1",
+                        "tool_id": "genie3__01",
+                    },
+                ],
+            )
+            run_report_path = base / "run_report.json"
+            run_report_path.write_text(
+                json.dumps(
+                    {
+                        "outputs": {"merged_network_raw": inferred_path.name},
+                        "tools": {
+                            "catalog_tool_ids": {
+                                "genie3__01": "genie3",
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            report = evaluate_inference(
+                run_report_path=run_report_path,
+                ground_truth_manifest_path=manifest_path,
+                output_dir=base / "evaluation",
+                generate_view=False,
+            )
+
+        metrics = {
+            (row["context"], row["level"]): row
+            for row in report["metrics"]
+            if row["tool_id"] == "genie3__01"
+        }
+        self.assertEqual(
+            report["ground_truth"]["contexts"],
+            ["timepoint:t0", "perturbation:ko_G1"],
+        )
+        self.assertEqual(
+            report["ground_truth"]["context_counts_by_family"]["timepoint"],
+            1,
+        )
+        self.assertEqual(
+            report["ground_truth"]["context_counts_by_family"]["perturbation"],
+            1,
+        )
+        self.assertEqual(metrics[("timepoint:t0", "topology")]["status"], "ok")
+        self.assertEqual(metrics[("perturbation:ko_G1", "topology")]["status"], "ok")
 
     def test_requires_explicit_ground_truth_gene_universe(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -777,15 +949,11 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             manifest_path = base / "ground-truth-manifest.json"
             manifest_path.write_text(
                 json.dumps(
-                    {
-                        "schema_version": "1.0",
-                        "dataset_id": "toy",
-                        "simulator_id": "toy_sim",
-                        "profile": "scrna_grouped",
-                        "outputs": {
+                    self._manifest(
+                        outputs={
                             "networks": "truth/networks.csv",
-                        },
-                    }
+                        }
+                    )
                 ),
                 encoding="utf-8",
             )

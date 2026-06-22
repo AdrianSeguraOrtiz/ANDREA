@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ANDREA GUI · generate-data</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260612f" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260620c" />
     <link rel="stylesheet" href="/static-common/app/bundles/styles.css?v=20260522a" />
     <link rel="stylesheet" href="/static-common/app/buttons/styles.css?v=20260612c" />
     <link rel="stylesheet" href="/static-common/app/params/styles.css?v=20260612a" />
@@ -28,24 +28,38 @@
           <span class="step-state" id="step-1-state">draft</span>
         </div>
         <div class="step-body">
-          <div class="grid three">
-            <label>
+          <div class="grid scenario-axis-grid">
+            <label class="scenario-field scenario-field-benchmark">
               Benchmark ID
               <input id="benchmark-id" type="text" value="gui_generate_benchmark" />
             </label>
-            <label>
-              Canonical Profile
-              <select id="profile"></select>
+            <label class="scenario-field scenario-field-modality">
+              Modality
+              <select id="scenario-resolution"></select>
             </label>
-            <label>
+            <label class="scenario-field scenario-field-column">
+              Column Type
+              <select id="scenario-column-kind"></select>
+            </label>
+            <label class="scenario-field scenario-field-design">
+              Design
+              <select id="scenario-design"></select>
+            </label>
+            <label class="scenario-field scenario-field-truth">
+              Truth Granularity
+              <select id="truth-granularity" class="semantic-hidden-control" aria-hidden="true" tabindex="-1"></select>
+              <div id="truth-granularity-control" class="truth-granularity-control" role="radiogroup" aria-label="Truth Granularity"></div>
+            </label>
+            <label class="scenario-field scenario-field-seed">
               Base Seed
               <input id="base-seed" type="number" min="1" step="1" placeholder="stable default" />
             </label>
           </div>
-          <div id="profile-truth-contexts" class="profile-context-summary profile-derived-summary"></div>
+          <select id="scenario-template" hidden aria-hidden="true"></select>
+          <div id="scenario-template-truth-contexts" class="scenario-template-context-summary scenario-template-derived-summary"></div>
           <h3>Requested Standardized Extras</h3>
           <div id="extras-grid" class="checkbox-grid"></div>
-          <div id="extras-empty" class="muted-box compact-empty" hidden>No optional standardized extras are available for this profile.</div>
+          <div id="extras-empty" class="muted-box compact-empty" hidden>No optional standardized extras are available for this scenario template.</div>
 
           <div class="panel-head compact-head input-files-head">
             <h3>Simulator Input Files</h3>
@@ -225,8 +239,8 @@
               <input id="simulator-request-repo" type="text" placeholder="https://github.com/owner/repo" />
             </label>
             <label>
-              Expected Profiles
-              <input id="simulator-request-profiles" type="text" placeholder="scrna_grouped, bulk_time_series..." />
+              Expected Scenario Templates
+              <input id="simulator-request-templates" type="text" placeholder="single_cell-cells-trajectory-global-group..." />
             </label>
           </div>
           <label>
@@ -275,7 +289,7 @@
           </label>
           <label>
             Repro / Context
-            <textarea id="simulator-issue-context" rows="3" placeholder="Scenario profile, extras, plan/run details..."></textarea>
+            <textarea id="simulator-issue-context" rows="3" placeholder="Scenario axes, truth contexts, extras, plan/run details..."></textarea>
           </label>
           <div class="actions-inline">
             <button id="open-simulator-issue-btn" class="secondary" type="button">Open Prefilled GitHub Issue</button>
@@ -405,6 +419,6 @@
       </article>
     </template>
 
-    <script type="module" src="/static/app/main.js?v=20260612a"></script>
+    <script type="module" src="/static/app/main.js?v=20260620e"></script>
   </body>
 </html>

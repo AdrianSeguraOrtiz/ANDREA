@@ -6,7 +6,7 @@ import multiprocessing
 from pathlib import Path
 from typing import Any
 
-from .catalog import _load_simulator_catalog, get_profile_capability
+from .catalog import _load_simulator_catalog, get_semantic_capability
 from .cost_planner import apply_simulator_cost_plan, detect_host_ram_gb
 from .request import (
     _resolve_native_outputs,
@@ -19,6 +19,7 @@ from .request import (
 )
 from .scenario import validate_scenario_request
 from .selection import evaluate_simulator_for_scenario
+from .semantic import semantic_key_from_json
 from .shared import (
     MAX_SEED_32BIT,
     _load_json_object,
@@ -93,17 +94,25 @@ def _build_simulation_plan_payload(
                 f"Simulator run '{run_id}' is blocked for scenario '{scenario.request_id}': "
                 + "; ".join(block_messages)
             )
+        capability = get_semantic_capability(
+            simulator_spec,
+            data_axes=scenario.data_axes,
+            truth_requirements=scenario.truth_requirements,
+        )
+        if capability is None:
+            raise ValueError(
+                f"Simulator '{simulator_id}' does not support requested data_axes/truth_requirements"
+            )
         resolved_params = _resolve_simulator_params(
             simulator_id=simulator_id,
             user_params=dict(run_config.get("params", {})),
             spec_params=simulator_spec.get("params", {}),
+            capability=capability,
         )
         truth_parameter_errors = validate_truth_parameter_requirements(
-            profile_capability=get_profile_capability(
-                simulator_spec, scenario.profile
-            )
-            or {},
-            profile=scenario.profile,
+            capability=capability,
+            data_axes=scenario.data_axes,
+            truth_requirements=scenario.truth_requirements,
             requested_extras=scenario.requested_extras,
             simulator_params=resolved_params,
         )
@@ -112,15 +121,11 @@ def _build_simulation_plan_payload(
                 f"Simulator run '{run_id}' has invalid truth output parameters: "
                 + "; ".join(truth_parameter_errors)
             )
-        profile_capability = get_profile_capability(simulator_spec, scenario.profile)
-        if profile_capability is None:
-            raise ValueError(
-                f"Simulator '{simulator_id}' does not support profile '{scenario.profile}'"
-            )
         native_outputs = _resolve_native_outputs(
             simulator_id=simulator_id,
-            profile=scenario.profile,
-            profile_capability=profile_capability,
+            data_axes=scenario.data_axes,
+            truth_requirements=scenario.truth_requirements,
+            capability=capability,
             requested_extras=scenario.requested_extras,
             simulator_params=resolved_params,
             raw_native_outputs=run_config.get("native_outputs"),
@@ -130,7 +135,8 @@ def _build_simulation_plan_payload(
             collect_simulator_compatibility_rule_issues(
                 simulator_id=simulator_id,
                 simulator_spec=simulator_spec,
-                profile=scenario.profile,
+                data_axes=scenario.data_axes,
+                truth_requirements=scenario.truth_requirements,
                 requested_extras=scenario.requested_extras,
                 simulator_params=resolved_params,
                 native_outputs=native_outputs,
@@ -150,7 +156,8 @@ def _build_simulation_plan_payload(
         input_errors = validate_simulator_inputs(
             simulator_id=simulator_id,
             simulator_spec=simulator_spec,
-            profile=scenario.profile,
+            data_axes=scenario.data_axes,
+            truth_requirements=scenario.truth_requirements,
             requested_extras=scenario.requested_extras,
             simulator_params=resolved_params,
             native_outputs=native_outputs,
@@ -168,9 +175,13 @@ def _build_simulation_plan_payload(
         base_seed = run_config.get("base_seed")
         if base_seed is None:
             if scenario.base_seed is None:
+                scenario_key = semantic_key_from_json(
+                    data_axes=scenario.data_axes,
+                    truth_requirements=scenario.truth_requirements,
+                )
                 base_seed = _stable_seed_base(
                     request_id=scenario.request_id,
-                    profile=scenario.profile,
+                    semantic_key=scenario_key,
                     simulator_id=f"{run_id}|{simulator_id}",
                 )
             else:
@@ -220,7 +231,8 @@ def _build_simulation_plan_payload(
         runs=resolved_runs,
         tasks=tasks,
         catalog=catalog,
-        scenario_profile=scenario.profile,
+        data_axes=scenario.data_axes,
+        truth_requirements=scenario.truth_requirements,
         requested_extras=scenario.requested_extras,
         effective_extras=scenario.effective_extras,
         input_ids=set(scenario.inputs),
@@ -232,7 +244,8 @@ def _build_simulation_plan_payload(
     payload: dict[str, Any] = {
         "schema_version": "1.0",
         "id": scenario.request_id,
-        "profile": scenario.profile,
+        "data_axes": dict(scenario.data_axes),
+        "truth_requirements": dict(scenario.truth_requirements),
         "organism": dict(scenario.organism),
         "requested_extras": list(scenario.requested_extras),
         "effective_extras": list(scenario.effective_extras),

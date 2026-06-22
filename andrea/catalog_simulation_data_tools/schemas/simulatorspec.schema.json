@@ -19,33 +19,31 @@
     "extra_inputs",
     "compatibility_rules",
     "runtime_resources",
-    "profile_capabilities",
-    "params"
+    "params",
+    "capabilities"
   ],
   "$defs": {
-    "canonical_profile": {
-      "type": "string",
-      "enum": [
-        "bulk_steady_state",
-        "bulk_time_series",
-        "bulk_perturbational",
-        "scrna_global",
-        "scrna_grouped",
-        "scrna_cell_specific"
-      ]
-    },
     "extra_key": {
       "type": "string",
       "enum": [
         "groups",
-        "cell_phenotypes",
+        "column_descriptors",
+        "column_phenotypes",
         "cluster_identities",
         "enrichment_background",
+        "interventions",
         "lineage_tree",
+        "perturbation_design",
         "pseudotime",
         "prior_grn",
+        "prior_grn_by_group",
+        "replicates",
         "tf_list",
-        "prior_grn_by_group"
+        "timepoints",
+        "spatial_coordinates",
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "cell_cell_interactions"
       ]
     },
     "identifier": {
@@ -82,7 +80,7 @@
         "field": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^(profile|requested_extra|native_output|param\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$"
+          "pattern": "^(data_axes\\.(measurement|resolution|column_kind|experimental_design)|truth_requirement|requested_extra|native_output|param\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$"
         },
         "op": {
           "type": "string",
@@ -99,19 +97,37 @@
         },
         "value": {
           "anyOf": [
-            { "type": "null" },
-            { "type": "integer" },
-            { "type": "number" },
-            { "type": "boolean" },
-            { "type": "string" },
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            },
             {
               "type": "array",
               "items": {
                 "anyOf": [
-                  { "type": "integer" },
-                  { "type": "number" },
-                  { "type": "boolean" },
-                  { "type": "string" }
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "string"
+                  }
                 ]
               }
             }
@@ -160,7 +176,7 @@
         "field": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^(profile|requested_extra|native_output|param\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*|input\\.[a-z][a-z0-9_]*\\.unique_gene_count)$"
+          "pattern": "^(data_axes\\.(measurement|resolution|column_kind|experimental_design)|truth_requirement|requested_extra|native_output|param\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*|input\\.[a-z][a-z0-9_]*\\.unique_gene_count)$"
         },
         "op": {
           "type": "string",
@@ -177,19 +193,37 @@
         },
         "value": {
           "anyOf": [
-            { "type": "null" },
-            { "type": "integer" },
-            { "type": "number" },
-            { "type": "boolean" },
-            { "type": "string" },
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            },
             {
               "type": "array",
               "items": {
                 "anyOf": [
-                  { "type": "integer" },
-                  { "type": "number" },
-                  { "type": "boolean" },
-                  { "type": "string" }
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "string"
+                  }
                 ]
               }
             }
@@ -202,8 +236,26 @@
         }
       },
       "oneOf": [
-        { "required": ["value"], "not": { "required": ["value_from"] } },
-        { "required": ["value_from"], "not": { "required": ["value"] } }
+        {
+          "required": [
+            "value"
+          ],
+          "not": {
+            "required": [
+              "value_from"
+            ]
+          }
+        },
+        {
+          "required": [
+            "value_from"
+          ],
+          "not": {
+            "required": [
+              "value"
+            ]
+          }
+        }
       ]
     },
     "compatibility_rule": {
@@ -217,11 +269,17 @@
       "properties": {
         "scope": {
           "type": "string",
-          "enum": ["scenario_and_run", "run"]
+          "enum": [
+            "scenario_and_run",
+            "run"
+          ]
         },
         "action": {
           "type": "string",
-          "enum": ["block", "warn"]
+          "enum": [
+            "block",
+            "warn"
+          ]
         },
         "conditions": {
           "type": "array",
@@ -268,7 +326,9 @@
     "runtime_resources": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["threading"],
+      "required": [
+        "threading"
+      ],
       "properties": {
         "threading": {
           "type": "object",
@@ -308,23 +368,11 @@
       ]
     },
     "truth_outputs": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "global",
-        "group",
-        "cell"
-      ],
-      "properties": {
-        "global": {
-          "$ref": "#/$defs/truth_output_mode"
-        },
-        "group": {
-          "$ref": "#/$defs/truth_output_mode"
-        },
-        "cell": {
-          "$ref": "#/$defs/truth_output_mode"
-        }
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/truth_output"
       }
     },
     "truth_context": {
@@ -336,12 +384,7 @@
       ],
       "properties": {
         "context": {
-          "type": "string",
-          "enum": [
-            "global",
-            "group",
-            "cell"
-          ]
+          "$ref": "#/$defs/truth_context_family"
         },
         "status": {
           "$ref": "#/$defs/truth_output_mode"
@@ -389,10 +432,15 @@
           "if": {
             "properties": {
               "status": {
-                "enum": ["native", "derivable"]
+                "enum": [
+                  "native",
+                  "derivable"
+                ]
               }
             },
-            "required": ["status"]
+            "required": [
+              "status"
+            ]
           },
           "then": {
             "required": [
@@ -416,12 +464,7 @@
       ],
       "properties": {
         "truth_output": {
-          "type": "string",
-          "enum": [
-            "global",
-            "group",
-            "cell"
-          ]
+          "$ref": "#/$defs/truth_context_family"
         },
         "conditions": {
           "type": "array",
@@ -436,21 +479,69 @@
         }
       }
     },
+    "parameter_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "param",
+        "policy",
+        "value"
+      ],
+      "properties": {
+        "param": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$"
+        },
+        "policy": {
+          "type": "string",
+          "enum": [
+            "locked",
+            "default_if_unset"
+          ]
+        },
+        "value": true,
+        "allowed_values": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": true
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^data_axes\\.(measurement|resolution|column_kind|experimental_design)$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "derivable_artifact_key": {
       "type": "string",
       "enum": [
         "groups",
-        "cell_phenotypes",
+        "column_descriptors",
+        "column_phenotypes",
         "cluster_identities",
         "enrichment_background",
+        "interventions",
         "lineage_tree",
+        "perturbation_design",
         "pseudotime",
         "prior_grn",
-        "tf_list",
         "prior_grn_by_group",
+        "replicates",
+        "tf_list",
+        "timepoints",
         "global",
         "group",
-        "cell"
+        "column",
+        "spatial_coordinates",
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "cell_cell_interactions"
       ]
     },
     "derivation": {
@@ -587,77 +678,6 @@
         "message": {
           "type": "string",
           "minLength": 1
-        },
-        "notes": {
-          "type": "string",
-          "minLength": 1
-        }
-      }
-    },
-    "profile_capability": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "native_extras",
-        "derivable_extras",
-        "truth_outputs",
-        "derivations",
-        "native_outputs",
-        "artifacts_aux"
-      ],
-      "properties": {
-        "native_extras": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/extra_key"
-          }
-        },
-        "derivable_extras": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/extra_key"
-          }
-        },
-        "truth_outputs": {
-          "$ref": "#/$defs/truth_outputs"
-        },
-        "truth_contexts": {
-          "type": "array",
-          "minItems": 3,
-          "items": {
-            "$ref": "#/$defs/truth_context"
-          }
-        },
-        "truth_parameter_requirements": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/truth_parameter_requirement"
-          }
-        },
-        "derivations": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/derivation"
-          }
-        },
-        "native_outputs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/native_output"
-          }
-        },
-        "artifacts_aux": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/aux_artifact"
-          }
-        },
-        "notes": {
-          "type": "string",
-          "minLength": 1
         }
       }
     },
@@ -689,20 +709,36 @@
         },
         "default": {
           "anyOf": [
-            { "type": "null" },
-            { "type": "integer" },
-            { "type": "number" },
-            { "type": "boolean" },
-            { "type": "string" },
-            { "type": "array" },
-            { "type": "object" }
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "array"
+            },
+            {
+              "type": "object"
+            }
           ]
         },
         "enum": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "min": {
           "type": "number"
@@ -746,37 +782,346 @@
         {
           "if": {
             "properties": {
-              "type": { "const": "enum" }
+              "type": {
+                "const": "enum"
+              }
             },
-            "required": ["type"]
+            "required": [
+              "type"
+            ]
           },
           "then": {
-            "required": ["enum"]
+            "required": [
+              "enum"
+            ]
           }
         },
         {
           "if": {
             "properties": {
-              "type": { "const": "array" }
+              "type": {
+                "const": "array"
+              }
             },
-            "required": ["type"]
+            "required": [
+              "type"
+            ]
           },
           "then": {
-            "required": ["items"]
+            "required": [
+              "items"
+            ]
           }
         },
         {
           "if": {
             "properties": {
-              "type": { "const": "union" }
+              "type": {
+                "const": "union"
+              }
             },
-            "required": ["type"]
+            "required": [
+              "type"
+            ]
           },
           "then": {
-            "required": ["oneOf"]
+            "required": [
+              "oneOf"
+            ]
           }
         }
       ]
+    },
+    "data_axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measurement",
+        "resolution",
+        "column_kind",
+        "experimental_design"
+      ],
+      "properties": {
+        "measurement": {
+          "type": "string",
+          "enum": [
+            "rna_expression"
+          ]
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "bulk",
+            "single_cell",
+            "spatial",
+            "pseudo_bulk",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "column_kind": {
+          "type": "string",
+          "enum": [
+            "samples",
+            "cells",
+            "timepoints",
+            "perturbations",
+            "spots",
+            "metacells",
+            "conditions"
+          ]
+        },
+        "experimental_design": {
+          "type": "string",
+          "enum": [
+            "observational",
+            "steady_state",
+            "perturbational",
+            "time_series",
+            "trajectory",
+            "differentiation"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "cells"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "single_cell"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "spots"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "spatial"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "metacells"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "enum": [
+                  "single_cell",
+                  "pseudo_bulk"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "time_series"
+              }
+            },
+            "required": [
+              "experimental_design"
+            ]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": [
+                  "timepoints",
+                  "cells",
+                  "samples"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "perturbational"
+              }
+            },
+            "required": [
+              "experimental_design"
+            ]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": [
+                  "perturbations",
+                  "cells",
+                  "samples"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "truth_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contexts"
+      ],
+      "properties": {
+        "contexts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "global",
+              "group",
+              "column"
+            ]
+          },
+          "contains": {
+            "const": "global"
+          }
+        }
+      }
+    },
+    "semantic_capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_axes",
+        "truth_requirements",
+        "native_extras",
+        "derivable_extras",
+        "truth_outputs",
+        "truth_contexts",
+        "derivations",
+        "native_outputs",
+        "artifacts_aux"
+      ],
+      "properties": {
+        "data_axes": {
+          "$ref": "#/$defs/data_axes"
+        },
+        "truth_requirements": {
+          "$ref": "#/$defs/truth_requirements"
+        },
+        "native_extras": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/extra_key"
+          }
+        },
+        "derivable_extras": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/extra_key"
+          }
+        },
+        "truth_outputs": {
+          "$ref": "#/$defs/truth_outputs"
+        },
+        "truth_contexts": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "$ref": "#/$defs/truth_context"
+          }
+        },
+        "truth_parameter_requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/truth_parameter_requirement"
+          }
+        },
+        "parameter_bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter_binding"
+          }
+        },
+        "derivations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/derivation"
+          }
+        },
+        "native_outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/native_output"
+          }
+        },
+        "artifacts_aux": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/aux_artifact"
+          }
+        }
+      }
+    },
+    "truth_context_family": {
+      "type": "string",
+      "enum": [
+        "global",
+        "group",
+        "column"
+      ]
+    },
+    "truth_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context",
+        "status"
+      ],
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/truth_context_family"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "native",
+            "derivable"
+          ]
+        }
+      }
     }
   },
   "properties": {
@@ -796,7 +1141,10 @@
     "publication": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string", "minLength": 1 }
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "first_author": {
       "type": "string",
@@ -842,31 +1190,6 @@
     "runtime_resources": {
       "$ref": "#/$defs/runtime_resources"
     },
-    "profile_capabilities": {
-      "type": "object",
-      "additionalProperties": false,
-      "minProperties": 1,
-      "properties": {
-        "bulk_steady_state": {
-          "$ref": "#/$defs/profile_capability"
-        },
-        "bulk_time_series": {
-          "$ref": "#/$defs/profile_capability"
-        },
-        "bulk_perturbational": {
-          "$ref": "#/$defs/profile_capability"
-        },
-        "scrna_global": {
-          "$ref": "#/$defs/profile_capability"
-        },
-        "scrna_grouped": {
-          "$ref": "#/$defs/profile_capability"
-        },
-        "scrna_cell_specific": {
-          "$ref": "#/$defs/profile_capability"
-        }
-      }
-    },
     "params": {
       "type": "object",
       "propertyNames": {
@@ -876,6 +1199,13 @@
       },
       "additionalProperties": {
         "$ref": "#/$defs/param_def"
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/semantic_capability"
       }
     }
   }

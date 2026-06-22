@@ -49,10 +49,10 @@ from .commons.tools import (
 from .preflight import preflight_infer_network
 
 PLAN_SCHEMA_VERSION = "1.3"
-_CELL_NATIVE_DENSE_EDGE_WARNING_THRESHOLD = 10_000_000
+_COLUMN_NATIVE_DENSE_EDGE_WARNING_THRESHOLD = 10_000_000
 
 
-def _estimated_dense_cell_edges(*, dataset: DatasetContext) -> int:
+def _estimated_dense_column_edges(*, dataset: DatasetContext) -> int:
     return max(0, int(dataset.genes) * (int(dataset.genes) - 1)) * max(
         0, int(dataset.columns)
     )
@@ -63,8 +63,8 @@ def _group_aggregation_eta_seconds(
     dataset: DatasetContext,
     group_count: int,
 ) -> float:
-    dense_cell_edges = _estimated_dense_cell_edges(dataset=dataset)
-    return round(max(1.0, (0.0000001 * dense_cell_edges) + (0.05 * group_count)), 3)
+    dense_column_edges = _estimated_dense_column_edges(dataset=dataset)
+    return round(max(1.0, (0.0000001 * dense_column_edges) + (0.05 * group_count)), 3)
 
 
 def _with_group_aggregation_eta(
@@ -82,17 +82,17 @@ def _with_group_aggregation_eta(
         "rule": "mean_signed_effect_by_group",
         "eta_seconds": aggregation_eta,
         "group_count": int(group_count),
-        "estimated_dense_cell_edges": _estimated_dense_cell_edges(dataset=dataset),
+        "estimated_dense_column_edges": _estimated_dense_column_edges(dataset=dataset),
     }
     cost_features = dict(eta_provenance.get("cost_features") or {})
     if cost_features:
         cost_features["upstream_cost_execution_mode"] = cost_features.get(
-            "execution_mode", "cell_native"
+            "execution_mode", "column_native"
         )
         cost_features["execution_mode"] = "group_aggregated"
         cost_features["n_groups"] = int(group_count)
         cost_features["expected_contexts"] = max(1, int(group_count))
-        cost_features["aggregation_step"] = "cell_to_group"
+        cost_features["aggregation_step"] = "column_to_group"
         cost_features["output_density_class"] = "dense"
         eta_provenance["cost_features"] = cost_features
         if isinstance(eta_provenance.get("cost_profile"), dict):
@@ -104,22 +104,22 @@ def _with_group_aggregation_eta(
     )
 
 
-def _append_cell_native_output_warning(
+def _append_column_native_output_warning(
     *,
     warnings: list[str],
     run_id: str,
     execution_mode: str,
     dataset: DatasetContext,
 ) -> None:
-    if execution_mode not in {"cell_native", "group_aggregated"}:
+    if execution_mode not in {"column_native", "group_aggregated"}:
         return
-    dense_cell_edges = _estimated_dense_cell_edges(dataset=dataset)
-    if dense_cell_edges < _CELL_NATIVE_DENSE_EDGE_WARNING_THRESHOLD:
+    dense_column_edges = _estimated_dense_column_edges(dataset=dataset)
+    if dense_column_edges < _COLUMN_NATIVE_DENSE_EDGE_WARNING_THRESHOLD:
         return
     warnings.append(
-        f"[{run_id}] execution.mode={execution_mode} may emit a large per-cell "
-        f"network ({dataset.columns} cells, {dataset.genes} genes; dense upper "
-        f"bound {dense_cell_edges} cell-edge rows)."
+        f"[{run_id}] execution.mode={execution_mode} may emit a large per-column "
+        f"network ({dataset.columns} columns, {dataset.genes} genes; dense upper "
+        f"bound {dense_column_edges} column-edge rows)."
     )
 
 
@@ -367,7 +367,7 @@ def plan_infer_network(
                 tool_id=catalog_tool_id,
             )
         warnings.extend(cost_warnings)
-        _append_cell_native_output_warning(
+        _append_column_native_output_warning(
             warnings=warnings,
             run_id=run_id,
             execution_mode=execution_mode,
@@ -424,17 +424,17 @@ def plan_infer_network(
                 )
         else:
             physical_task_id = (
-                f"{run_id}__cell_native"
+                f"{run_id}__column_native"
                 if execution_mode == "group_aggregated"
                 else run_id
             )
             task_output_dir = (
-                f"tools/{run_id}/upstream_cell_native"
+                f"tools/{run_id}/upstream_column_native"
                 if execution_mode == "group_aggregated"
                 else f"tools/{run_id}"
             )
             cost_execution_mode = (
-                "cell_native" if execution_mode == "group_aggregated" else execution_mode
+                "column_native" if execution_mode == "group_aggregated" else execution_mode
             )
             mode_options, plan_warnings = _estimate_tool_mode_options(
                 tool_id=physical_task_id,

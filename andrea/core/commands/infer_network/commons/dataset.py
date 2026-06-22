@@ -6,6 +6,11 @@ import csv
 from pathlib import Path
 from typing import Any, Optional
 
+from andrea.core.shared.input_validation import (
+    read_tsv_column_values as _shared_read_tsv_column_values,
+    validate_text_list_with_spec as _shared_validate_text_list_with_spec,
+    validate_tsv_file_with_spec as _shared_validate_tsv_file_with_spec,
+)
 from andrea.core.shared.input_specs import load_input_specs
 
 from .shared import (
@@ -234,7 +239,7 @@ def _load_groups_by_column(
                 continue
             if len(row) < 2:
                 raise ValueError(
-                    f"{groups_path}: line {line_idx} must have at least 2 columns: sample and group"
+                    f"{groups_path}: line {line_idx} must have at least 2 columns: expression column and group"
                 )
 
             sample = str(row[0]).strip()
@@ -247,11 +252,11 @@ def _load_groups_by_column(
                 continue
             if not sample or not group:
                 raise ValueError(
-                    f"{groups_path}: line {line_idx} must have non-empty sample and group values"
+                    f"{groups_path}: line {line_idx} must have non-empty expression-column and group values"
                 )
             if sample in sample_to_group:
                 raise ValueError(
-                    f"{groups_path}: duplicate sample assignment found: {sample}"
+                    f"{groups_path}: duplicate expression-column assignment found: {sample}"
                 )
             sample_to_group[sample] = group
 
@@ -283,79 +288,8 @@ def _load_groups_by_column(
     return group_order, group_to_columns
 
 
-def _coerce_cell_type(
-    *,
-    value: str,
-    type_name: str,
-    field_name: str,
-    file_path: Path,
-    line_idx: int,
-) -> Optional[str]:
-    if value is None:
-        value = ""
-    stripped = str(value).strip()
-    if stripped == "":
-        return None
-
-    if type_name == "string":
-        return stripped
-    if type_name == "int":
-        try:
-            int(stripped)
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(
-                f"{file_path}: line {line_idx}, field '{field_name}' must be int"
-            ) from exc
-        return stripped
-    if type_name == "float":
-        try:
-            float(stripped)
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(
-                f"{file_path}: line {line_idx}, field '{field_name}' must be float"
-            ) from exc
-        return stripped
-    if type_name == "bool":
-        normalized = stripped.lower()
-        if normalized not in {"true", "false", "0", "1"}:
-            raise ValueError(
-                f"{file_path}: line {line_idx}, field '{field_name}' must be bool"
-            )
-        return stripped
-
-    raise ValueError(
-        f"Unsupported input spec type '{type_name}' for field '{field_name}'"
-    )
-
-
 def _read_tsv_column_values(path: Path, spec: dict[str, Any], column: str) -> set[str]:
-    delimiter = str(spec.get("delimiter", "\t"))
-    has_header = bool(spec.get("header", True))
-    if not has_header:
-        raise ValueError("referenced input does not define a header row")
-
-    with path.open("r", encoding="utf-8", newline="") as fh:
-        reader = csv.reader(fh, delimiter=delimiter)
-        header_row = next(reader, None)
-        fieldnames = [str(x).strip() for x in header_row] if header_row else []
-        if not fieldnames:
-            raise ValueError("referenced input is missing a header row")
-        try:
-            column_index = fieldnames.index(column)
-        except ValueError as exc:
-            raise ValueError(
-                f"referenced input is missing required column '{column}'"
-            ) from exc
-
-        values: set[str] = set()
-        expected_cols = len(fieldnames)
-        for row in reader:
-            if not row or len(row) != expected_cols:
-                continue
-            raw_value = str(row[column_index]).strip()
-            if raw_value:
-                values.add(raw_value)
-    return values
+    return _shared_read_tsv_column_values(path, spec, column)
 
 
 def _validate_tsv_file_with_spec(
@@ -368,358 +302,15 @@ def _validate_tsv_file_with_spec(
     expression_columns_count: int,
     extra_column_lookup: Any = None,
 ) -> dict[str, Any]:
-    delimiter = str(spec.get("delimiter", "\t"))
-    has_header = bool(spec.get("header", True))
-    min_rows = int(spec.get("min_rows", 0) or 0)
-    min_columns = int(spec.get("min_columns", 1) or 1)
-    required_columns = [
-        c for c in spec.get("required_columns", []) if isinstance(c, str)
-    ]
-    column_types = spec.get("column_types", {})
-    if not isinstance(column_types, dict):
-        column_types = {}
-    first_column_role = str(spec.get("first_column_role", "none") or "none").strip()
-    unique_first_column = bool(spec.get("unique_first_column", False))
-    first_column_disallowed_names = {
-        str(x).strip().lower()
-        for x in spec.get("first_column_disallowed_names", [])
-        if isinstance(x, str) and str(x).strip()
-    }
-    if first_column_role == "gene_id" and not first_column_disallowed_names:
-        first_column_disallowed_names = {
-            "cell",
-            "cells",
-            "sample",
-            "samples",
-            "timepoint",
-            "timepoints",
-            "perturbation",
-            "perturbations",
-            "cluster",
-            "pseudotime",
-        }
-    data_columns_type = str(spec.get("data_columns_type", "any") or "any").strip()
-    if data_columns_type not in {"any", "float"}:
-        data_columns_type = "any"
-    data_numeric_min_fraction = float(spec.get("data_numeric_min_fraction", 1.0) or 1.0)
-    if data_numeric_min_fraction < 0.0:
-        data_numeric_min_fraction = 0.0
-    if data_numeric_min_fraction > 1.0:
-        data_numeric_min_fraction = 1.0
-    cross_checks = spec.get("cross_checks", [])
-    if not isinstance(cross_checks, list):
-        cross_checks = []
-
-    errors: list[str] = []
-    warnings: list[str] = []
-    row_count = 0
-    columns_count = 0
-    values_by_column: dict[str, set[str]] = {}
-    first_column_seen: set[str] = set()
-    first_column_values: set[str] = set()
-    data_column_names: set[str] = set()
-    data_cells_total = 0
-    data_cells_numeric = 0
-    data_non_numeric_samples: list[str] = []
-
-    with path.open("r", encoding="utf-8", newline="") as fh:
-        reader_raw = csv.reader(fh, delimiter=delimiter)
-        if has_header:
-            header_row = next(reader_raw, None)
-            fieldnames = [str(x).strip() for x in header_row] if header_row else []
-            columns_count = len(fieldnames)
-            if not fieldnames:
-                errors.append(f"{path}: expected header row with column names")
-            if columns_count and columns_count < min_columns:
-                errors.append(
-                    f"{path}: expected at least {min_columns} column(s) for '{key}', got {columns_count}"
-                )
-            if any(not name for name in fieldnames):
-                errors.append(f"{path}: header contains empty column names")
-            if columns_count > 1:
-                data_column_names = {
-                    str(name).strip() for name in fieldnames[1:] if str(name).strip()
-                }
-            if first_column_role == "gene_id" and fieldnames:
-                first_header = str(fieldnames[0]).strip().lower()
-                if first_header in first_column_disallowed_names:
-                    errors.append(
-                        f"{path}: first column header '{fieldnames[0]}' is not valid for expression genes"
-                    )
-            missing_required = [c for c in required_columns if c not in fieldnames]
-            if missing_required:
-                errors.append(
-                    f"{path}: missing required columns for '{key}': {missing_required}"
-                )
-            tracked_columns = {
-                str(col).strip()
-                for col in list(column_types.keys())
-                + [
-                    str(rule.get("column", "")).strip()
-                    for rule in cross_checks
-                    if isinstance(rule, dict)
-                ]
-                if isinstance(col, str) and str(col).strip()
-            }
-            index_by_name = {name: idx for idx, name in enumerate(fieldnames)}
-
-            for line_idx, row in enumerate(reader_raw, start=2):
-                if not row:
-                    continue
-                if len(row) != columns_count:
-                    errors.append(
-                        f"{path}: inconsistent number of columns at line {line_idx} "
-                        f"(expected {columns_count}, got {len(row)})"
-                    )
-                    continue
-                row_count += 1
-
-                if first_column_role == "gene_id":
-                    first_value = str(row[0]).strip() if columns_count >= 1 else ""
-                    if not first_value:
-                        errors.append(
-                            f"{path}: line {line_idx} has empty gene identifier in first column"
-                        )
-                    elif unique_first_column:
-                        if first_value in first_column_seen:
-                            errors.append(
-                                f"{path}: duplicated gene identifier '{first_value}' in first column"
-                            )
-                        else:
-                            first_column_seen.add(first_value)
-                elif first_column_role == "expression_column_id":
-                    first_value = str(row[0]).strip() if columns_count >= 1 else ""
-                    if not first_value:
-                        errors.append(
-                            f"{path}: line {line_idx} has empty expression-column identifier in first column"
-                        )
-                    else:
-                        first_column_values.add(first_value)
-                        if unique_first_column:
-                            if first_value in first_column_seen:
-                                errors.append(
-                                    f"{path}: duplicated expression-column identifier '{first_value}' in first column"
-                                )
-                            else:
-                                first_column_seen.add(first_value)
-
-                if data_columns_type == "float" and columns_count > 1:
-                    for col_idx, raw_value in enumerate(row[1:], start=2):
-                        value = str(raw_value).strip()
-                        data_cells_total += 1
-                        if value == "":
-                            if len(data_non_numeric_samples) < 5:
-                                data_non_numeric_samples.append(
-                                    f"line {line_idx}, col {col_idx}: <empty>"
-                                )
-                            continue
-                        try:
-                            float(value)
-                            data_cells_numeric += 1
-                        except Exception:  # noqa: BLE001
-                            if len(data_non_numeric_samples) < 5:
-                                data_non_numeric_samples.append(
-                                    f"line {line_idx}, col {col_idx}: {value!r}"
-                                )
-
-                for col, type_name in column_types.items():
-                    idx = index_by_name.get(str(col))
-                    if idx is None:
-                        continue
-                    value = row[idx]
-                    coerced = _coerce_cell_type(
-                        value=value if value is not None else "",
-                        type_name=str(type_name),
-                        field_name=col,
-                        file_path=path,
-                        line_idx=line_idx,
-                    )
-                    if coerced is not None:
-                        values_by_column.setdefault(col, set()).add(coerced)
-                for col in tracked_columns:
-                    idx = index_by_name.get(col)
-                    if idx is None:
-                        continue
-                    raw_value = str(row[idx]).strip()
-                    if raw_value:
-                        values_by_column.setdefault(col, set()).add(raw_value)
-        else:
-            expected_cols: Optional[int] = None
-            columns_count = 0
-            for line_idx, row in enumerate(reader_raw, start=1):
-                if not row:
-                    continue
-                if expected_cols is None:
-                    expected_cols = len(row)
-                    columns_count = len(row)
-                    if columns_count < min_columns:
-                        errors.append(
-                            f"{path}: expected at least {min_columns} column(s) for '{key}', got {columns_count}"
-                        )
-                elif len(row) != expected_cols:
-                    errors.append(
-                        f"{path}: inconsistent number of columns at line {line_idx} "
-                        f"(expected {expected_cols}, got {len(row)})"
-                    )
-                    continue
-                row_count += 1
-                if first_column_role == "gene_id":
-                    first_value = str(row[0]).strip() if columns_count >= 1 else ""
-                    if not first_value:
-                        errors.append(
-                            f"{path}: line {line_idx} has empty gene identifier in first column"
-                        )
-                    elif unique_first_column:
-                        if first_value in first_column_seen:
-                            errors.append(
-                                f"{path}: duplicated gene identifier '{first_value}' in first column"
-                            )
-                        else:
-                            first_column_seen.add(first_value)
-                elif first_column_role == "expression_column_id":
-                    first_value = str(row[0]).strip() if columns_count >= 1 else ""
-                    if not first_value:
-                        errors.append(
-                            f"{path}: line {line_idx} has empty expression-column identifier in first column"
-                        )
-                    else:
-                        first_column_values.add(first_value)
-                        if unique_first_column:
-                            if first_value in first_column_seen:
-                                errors.append(
-                                    f"{path}: duplicated expression-column identifier '{first_value}' in first column"
-                                )
-                            else:
-                                first_column_seen.add(first_value)
-                if data_columns_type == "float" and columns_count > 1:
-                    for col_idx, raw_value in enumerate(row[1:], start=2):
-                        value = str(raw_value).strip()
-                        data_cells_total += 1
-                        if value == "":
-                            if len(data_non_numeric_samples) < 5:
-                                data_non_numeric_samples.append(
-                                    f"line {line_idx}, col {col_idx}: <empty>"
-                                )
-                            continue
-                        try:
-                            float(value)
-                            data_cells_numeric += 1
-                        except Exception:  # noqa: BLE001
-                            if len(data_non_numeric_samples) < 5:
-                                data_non_numeric_samples.append(
-                                    f"line {line_idx}, col {col_idx}: {value!r}"
-                                )
-            if expected_cols is None:
-                columns_count = 0
-
-    if row_count < min_rows:
-        errors.append(
-            f"{path}: expected at least {min_rows} row(s) for '{key}', got {row_count}"
-        )
-    if columns_count and columns_count < min_columns:
-        errors.append(
-            f"{path}: expected at least {min_columns} column(s) for '{key}', got {columns_count}"
-        )
-    if data_columns_type == "float" and columns_count > 1:
-        if data_cells_total <= 0:
-            errors.append(
-                f"{path}: expected numeric values in data columns for '{key}', but found none"
-            )
-        else:
-            numeric_fraction = data_cells_numeric / data_cells_total
-            if numeric_fraction < data_numeric_min_fraction:
-                errors.append(
-                    f"{path}: only {numeric_fraction:.3f} of data cells are numeric for '{key}' "
-                    f"(required >= {data_numeric_min_fraction:.3f}); "
-                    f"examples: {data_non_numeric_samples[:5]}"
-                )
-
-    for rule in cross_checks:
-        if not isinstance(rule, dict):
-            continue
-        kind = str(rule.get("kind", "")).strip()
-        column = str(rule.get("column", "")).strip()
-        if kind == "column_subset_expression_genes":
-            present = values_by_column.get(column, set())
-            unknown = sorted(present.difference(expression_genes))
-            if unknown:
-                sample = unknown[:5]
-                errors.append(
-                    f"{path}: column '{column}' contains identifiers not present in expression genes: {sample}"
-                )
-        elif kind == "column_subset_expression_columns":
-            present = values_by_column.get(column, set())
-            unknown = sorted(present.difference(expression_columns))
-            if unknown:
-                sample = unknown[:5]
-                errors.append(
-                    f"{path}: column '{column}' contains identifiers not present in expression columns: {sample}"
-                )
-        elif kind == "first_column_subset_expression_columns":
-            unknown = sorted(first_column_values.difference(expression_columns))
-            if unknown:
-                sample = unknown[:5]
-                errors.append(
-                    f"{path}: first column contains identifiers not present in expression columns: {sample}"
-                )
-        elif kind == "data_columns_subset_expression_columns":
-            unknown = sorted(data_column_names.difference(expression_columns))
-            if unknown:
-                sample = unknown[:5]
-                errors.append(
-                    f"{path}: data column headers contain identifiers not present in expression columns: {sample}"
-                )
-        elif kind == "column_subset_extra_column":
-            other_input = str(rule.get("other_input", "")).strip()
-            other_column = str(rule.get("other_column", "")).strip()
-            if callable(extra_column_lookup):
-                reference_values, lookup_warning = extra_column_lookup(
-                    other_input,
-                    other_column,
-                )
-            else:
-                reference_values, lookup_warning = (
-                    None,
-                    "cross-check lookup unavailable",
-                )
-            if lookup_warning:
-                warnings.append(
-                    f"{path}: skipped cross-check for column '{column}' against "
-                    f"extra '{other_input}.{other_column}': {lookup_warning}"
-                )
-                continue
-            if reference_values is None:
-                continue
-            present = values_by_column.get(column, set())
-            unknown = sorted(present.difference(reference_values))
-            if unknown:
-                sample = unknown[:5]
-                errors.append(
-                    f"{path}: column '{column}' contains identifiers not present in "
-                    f"extra '{other_input}.{other_column}': {sample}"
-                )
-        elif kind == "row_count_matches_expression_columns":
-            if row_count != expression_columns_count:
-                errors.append(
-                    f"{path}: row count ({row_count}) must match expression columns ({expression_columns_count})"
-                )
-        elif kind:
-            warnings.append(f"[{key}] unknown cross-check ignored: {kind}")
-
-    status = "ok"
-    if errors:
-        status = "error"
-    elif warnings:
-        status = "warning"
-    return {
-        "status": status,
-        "errors": errors,
-        "warnings": warnings,
-        "summary": {
-            "rows": row_count,
-            "columns": columns_count,
-        },
-    }
+    return _shared_validate_tsv_file_with_spec(
+        key=key,
+        path=path,
+        spec=spec,
+        expression_genes=expression_genes,
+        expression_columns=expression_columns,
+        expression_columns_count=expression_columns_count,
+        extra_column_lookup=extra_column_lookup,
+    ).to_public_dict()
 
 
 def _validate_text_list_with_spec(
@@ -729,52 +320,12 @@ def _validate_text_list_with_spec(
     spec: dict[str, Any],
     expression_genes: set[str],
 ) -> dict[str, Any]:
-    min_rows = int(spec.get("min_rows", 0) or 0)
-    cross_checks = spec.get("cross_checks", [])
-    if not isinstance(cross_checks, list):
-        cross_checks = []
-
-    values: list[str] = []
-    with path.open("r", encoding="utf-8") as fh:
-        for raw in fh:
-            v = raw.strip()
-            if v:
-                values.append(v)
-
-    errors: list[str] = []
-    warnings: list[str] = []
-    if len(values) < min_rows:
-        errors.append(
-            f"{path}: expected at least {min_rows} line(s) for '{key}', got {len(values)}"
-        )
-
-    for rule in cross_checks:
-        if not isinstance(rule, dict):
-            continue
-        kind = str(rule.get("kind", "")).strip()
-        if kind == "line_subset_expression_genes":
-            unknown = sorted(set(values).difference(expression_genes))
-            if unknown:
-                errors.append(
-                    f"{path}: contains identifiers not present in expression genes: {unknown[:5]}"
-                )
-        elif kind:
-            warnings.append(f"[{key}] unknown cross-check ignored: {kind}")
-
-    status = "ok"
-    if errors:
-        status = "error"
-    elif warnings:
-        status = "warning"
-    return {
-        "status": status,
-        "errors": errors,
-        "warnings": warnings,
-        "summary": {
-            "rows": len(values),
-            "columns": 1,
-        },
-    }
+    return _shared_validate_text_list_with_spec(
+        key=key,
+        path=path,
+        spec=spec,
+        expression_genes=expression_genes,
+    ).to_public_dict()
 
 
 def _validate_dataset_inputs_by_specs(

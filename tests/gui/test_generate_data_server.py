@@ -8,6 +8,8 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+from tests.gui.helpers import start_immediate_background_thread
+
 try:
     from fastapi.testclient import TestClient
 except Exception:  # noqa: BLE001
@@ -17,19 +19,6 @@ try:
     from andrea.gui.generate_data import server as gui_server
 except Exception:  # noqa: BLE001
     gui_server = None
-
-
-class _ImmediateThread:
-    def __init__(
-        self, *, target=None, kwargs=None, daemon=None
-    ):  # noqa: ANN001, ANN204
-        self._target = target
-        self._kwargs = kwargs or {}
-        self.daemon = daemon
-
-    def start(self) -> None:
-        if self._target is not None:
-            self._target(**self._kwargs)
 
 
 def _add_eta_contract(plan_payload: dict[str, object], *, max_parallel_tasks: int) -> None:
@@ -91,6 +80,17 @@ def _add_eta_contract(plan_payload: dict[str, object], *, max_parallel_tasks: in
     }
 
 
+TRAJECTORY_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "trajectory",
+}
+GLOBAL_TRUTH = {"contexts": ["global"]}
+GROUP_TRUTH = {"contexts": ["global", "group"]}
+COLUMN_TRUTH = {"contexts": ["global", "group", "column"]}
+
+
 @unittest.skipIf(
     TestClient is None or gui_server is None,
     "GUI test dependencies are not installed",
@@ -133,31 +133,45 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
         self.assertIn("/bundles", script)
         self.assertIn("bundle_id=", script)
         self.assertIn("dataset_id", script)
+        self.assertIn('id="scenario-resolution"', index)
+        self.assertIn('id="scenario-design"', index)
+        self.assertIn('id="scenario-column-kind"', index)
+        self.assertIn('id="truth-granularity"', index)
+        self.assertNotIn("Canonical Profile", index)
+        self.assertIn("truthContextFamiliesForDisplay", script)
+        self.assertNotIn("TRUTH_OUTPUT_ORDER", script)
 
-    def test_bootstrap_exposes_profile_extras_and_simulation_inputs(self) -> None:
+    def test_bootstrap_exposes_scenario_template_extras_and_simulation_inputs(self) -> None:
         client = TestClient(gui_server.create_app())
         payload = client.get("/api/generate-data/bootstrap").json()
-        profiles = {item["id"]: item for item in payload["profiles"]}
+        scenario_templates = {
+            item["id"]: item for item in payload["scenario_templates"]
+        }
         self.assertNotIn(
-            "lineage_tree", profiles["bulk_steady_state"]["available_extras"]
+            "lineage_tree",
+            scenario_templates["single_cell-cells-steady_state-global"]["available_extras"],
         )
-        self.assertEqual(profiles["scrna_cell_specific"]["column_kind"], "cells")
+        column_truth = scenario_templates[
+            "single_cell-cells-trajectory-global-group-column"
+        ]
+        grouped = scenario_templates["single_cell-cells-trajectory-global-group"]
+        self.assertEqual(column_truth["column_kind"], "cells")
         self.assertEqual(
-            profiles["scrna_cell_specific"]["required_truth_outputs"],
-            ["global", "group", "cell"],
-        )
-        self.assertEqual(
-            profiles["scrna_cell_specific"]["required_truth_contexts"],
-            ["global", "group:", "cell:"],
-        )
-        self.assertEqual(
-            profiles["scrna_grouped"]["required_truth_outputs"], ["global", "group"]
+            column_truth["required_truth_outputs"],
+            ["global", "group", "column"],
         )
         self.assertEqual(
-            profiles["scrna_grouped"]["required_truth_contexts"], ["global", "group:"]
+            column_truth["required_truth_contexts"],
+            ["global", "group:", "column:"],
         )
-        self.assertIn("groups", profiles["scrna_grouped"]["available_extras"])
-        self.assertIn("lineage_tree", profiles["scrna_grouped"]["available_extras"])
+        self.assertEqual(
+            grouped["required_truth_outputs"], ["global", "group"]
+        )
+        self.assertEqual(
+            grouped["required_truth_contexts"], ["global", "group:"]
+        )
+        self.assertIn("groups", grouped["available_extras"])
+        self.assertIn("lineage_tree", grouped["available_extras"])
         inputs = {item["id"]: item for item in payload["simulation_inputs"]}
         self.assertIn("regulatory_network", inputs)
         self.assertIn("tree_newick", inputs)
@@ -167,25 +181,30 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
         self.assertIn(".tsv", inputs["regulatory_network"]["accept"])
         self.assertIn("scmultisim", inputs["regulatory_network"]["supported_by"])
         conditional_usage = inputs["regulatory_network"]["used_by"]["conditional"]
-        self.assertEqual(conditional_usage[0]["simulator_id"], "scmultisim")
-        self.assertIn("grn_source=input_tsv", conditional_usage[0]["message"])
+        scmultisim_usage = next(
+            item
+            for item in conditional_usage
+            if item["simulator_id"] == "scmultisim"
+        )
+        self.assertEqual(scmultisim_usage["simulator_id"], "scmultisim")
+        self.assertIn("grn_source=input_tsv", scmultisim_usage["message"])
         planning_defaults = payload["planning_defaults"]
         self.assertGreaterEqual(planning_defaults["max_cores"], 1)
         self.assertGreaterEqual(planning_defaults["max_ram_gb"], 1.0)
         simulators = {item["simulator_id"]: item for item in payload["simulators"]}
         grouped_native_outputs = {
             item["id"]
-            for item in simulators["dyngen"]["profile_capabilities"]["scrna_grouped"][
-                "native_outputs"
-            ]
+            for item in simulators["dyngen"]["semantic_capabilities"][
+                "single_cell-cells-trajectory-global-group"
+            ]["native_outputs"]
         }
         self.assertIn("rna_velocity", grouped_native_outputs)
         self.assertIn("regulatory_network_sc", grouped_native_outputs)
         scmultisim_outputs = {
             item["id"]: item
-            for item in simulators["scmultisim"]["profile_capabilities"]["scrna_global"][
-                "native_outputs"
-            ]
+            for item in simulators["scmultisim"]["semantic_capabilities"][
+                "single_cell-cells-differentiation-global"
+            ]["native_outputs"]
         }
         self.assertEqual(
             scmultisim_outputs["observed_counts"]["conditions"][0]["field"],
@@ -193,13 +212,13 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
         )
         scmultisim_cell_contexts = {
             item["context"]: item["status"]
-            for item in simulators["scmultisim"]["profile_capabilities"][
-                "scrna_cell_specific"
+            for item in simulators["scmultisim"]["semantic_capabilities"][
+                "single_cell-cells-differentiation-global-group-column"
             ]["truth_contexts"]
         }
         self.assertEqual(
             scmultisim_cell_contexts,
-            {"global": "derivable", "group": "derivable", "cell": "native"},
+            {"global": "derivable", "group": "derivable", "column": "native"},
         )
         self.assertIn("extra_inputs", simulators["scmultisim"])
 
@@ -213,7 +232,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     "schema_version": "1.0",
                     "scenario": {
                         "id": payload["id"],
-                        "profile": payload["profile"],
+                        "data_axes": payload["data_axes"],
+                        "truth_requirements": payload["truth_requirements"],
                         "organism": payload["organism"],
                         "requested_extras": payload["requested_extras"],
                         "effective_extras": ["groups", "lineage_tree"],
@@ -230,17 +250,19 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                         {
                             "simulator_id": "dyngen",
                             "name": "dyngen",
-                            "requested_profile": "scrna_grouped",
+                            "requested_data_axes": payload["data_axes"],
+                            "requested_truth_requirements": payload[
+                                "truth_requirements"
+                            ],
                             "requested_extras": ["lineage_tree"],
                             "effective_extras": ["groups", "lineage_tree"],
                             "inputs_used": [],
                             "native_extras_used": [],
                             "derived_extras_used": ["groups", "lineage_tree"],
-                            "truth_outputs": {
-                                "global": "native",
-                                "group": "derivable",
-                                "cell": "none",
-                            },
+                            "truth_outputs": [
+                                {"context": "global", "status": "native"},
+                                {"context": "group", "status": "derivable"},
+                            ],
                             "status": "eligible",
                             "issues": [],
                         }
@@ -260,7 +282,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 plan_payload = {
                     "schema_version": "1.0",
                     "id": "gui_generate_test",
-                    "profile": "scrna_grouped",
+                    "data_axes": TRAJECTORY_AXES,
+                    "truth_requirements": GROUP_TRUTH,
                     "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                     "requested_extras": ["lineage_tree"],
                     "effective_extras": ["groups", "lineage_tree"],
@@ -341,7 +364,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                         {
                             "schema_version": "1.0",
                             "id": "gui_generate_test",
-                            "profile": "scrna_grouped",
+                            "data_axes": TRAJECTORY_AXES,
+                            "truth_requirements": GROUP_TRUTH,
                             "requested_extras": ["lineage_tree"],
                             "organism": {
                                 "taxonomic_group": "synthetic",
@@ -381,7 +405,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                             "schema_version": "1.0",
                             "scenario": {
                                 "id": "gui_generate_test",
-                                "profile": "scrna_grouped",
+                                "data_axes": TRAJECTORY_AXES,
+                                "truth_requirements": GROUP_TRUTH,
                                 "organism": {
                                     "taxonomic_group": "synthetic",
                                     "ncbi_taxon_id": None,
@@ -410,7 +435,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 frozen_plan = {
                             "schema_version": "1.0",
                             "id": "gui_generate_test",
-                            "profile": "scrna_grouped",
+                            "data_axes": TRAJECTORY_AXES,
+                            "truth_requirements": GROUP_TRUTH,
                             "organism": {
                                 "taxonomic_group": "synthetic",
                                 "ncbi_taxon_id": None,
@@ -507,7 +533,11 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
             with (
                 patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
                 patch.object(gui_server, "STATE", gui_server.GuiState()),
-                patch.object(gui_server.threading, "Thread", _ImmediateThread),
+                patch.object(
+                    gui_server,
+                    "start_background_thread",
+                    start_immediate_background_thread,
+                ),
                 patch.object(
                     gui_server,
                     "preflight_generate_data_scenario",
@@ -529,7 +559,8 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                             {
                                 "scenario": {
                                     "id": "gui_generate_test",
-                                    "profile": "scrna_grouped",
+                                    "data_axes": TRAJECTORY_AXES,
+                                    "truth_requirements": GROUP_TRUTH,
                                     "requested_extras": ["lineage_tree"],
                                     "organism": {
                                         "taxonomic_group": "synthetic",
@@ -670,7 +701,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 truth_payload = truth_response.json()
                 self.assertEqual(truth_payload["viewer"], "table_csv")
                 self.assertIn(
-                    "cell:<cell_id>",
+                    "column:<id>",
                     " ".join(truth_payload["guide"]["tips"]),
                 )
 

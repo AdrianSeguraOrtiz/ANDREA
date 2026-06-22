@@ -6,6 +6,16 @@
     distance_coordinates: 12,
     runtime_profile: 18
   };
+  const contextFamilyOrder = ["global", "group", "column", "sample", "timepoint", "perturbation", "other"];
+  const contextFamilyLabels = {
+    global: "Global",
+    group: "Group",
+    column: "Column",
+    sample: "Sample",
+    timepoint: "Timepoint",
+    perturbation: "Perturbation",
+    other: "Other"
+  };
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -106,11 +116,17 @@
   function renderContextSummary(report) {
     const counts = report.context_counts_by_family || {};
     const contexts = Array.isArray(report.contexts) ? report.contexts : [];
-    const families = Object.entries(counts);
+    const knownFamilies = contextFamilyOrder
+      .filter((family) => Object.prototype.hasOwnProperty.call(counts, family))
+      .map((family) => [family, counts[family]]);
+    const extraFamilies = Object.entries(counts)
+      .filter(([family]) => !contextFamilyOrder.includes(family))
+      .sort(([familyA], [familyB]) => familyA.localeCompare(familyB));
+    const families = knownFamilies.concat(extraFamilies);
     return `
       <div class="context-summary">
         ${families.map(([family, count]) => `
-          <span class="context-pill"><strong>${escapeHtml(family)}</strong>${escapeHtml(count)}</span>
+          <span class="context-pill"><strong>${escapeHtml(contextFamilyLabels[family] || family)}</strong>${escapeHtml(count)}</span>
         `).join("")}
       </div>
       <p class="subtle">${escapeHtml(countLabel(contexts.length, "context"))} total. Large context-specific exploration is intentionally not embedded in this HTML.</p>

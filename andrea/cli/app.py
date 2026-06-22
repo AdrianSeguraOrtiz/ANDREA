@@ -61,6 +61,25 @@ def _run_core(fn, *args, **kwargs):
         raise typer.Exit(code=1)
 
 
+def _format_generate_data_semantics(scenario: dict) -> str:
+    data_axes = scenario.get("data_axes", {})
+    truth_requirements = scenario.get("truth_requirements", {})
+    axis_parts = []
+    if isinstance(data_axes, dict):
+        for key in ("measurement", "resolution", "column_kind", "experimental_design"):
+            value = data_axes.get(key)
+            if value is not None:
+                axis_parts.append(f"{key}={value}")
+    contexts = []
+    if isinstance(truth_requirements, dict):
+        raw_contexts = truth_requirements.get("contexts", [])
+        if isinstance(raw_contexts, list):
+            contexts = [str(item) for item in raw_contexts if str(item)]
+    if contexts:
+        axis_parts.append("truth=" + ",".join(contexts))
+    return "; ".join(axis_parts) or "(unspecified)"
+
+
 app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
@@ -194,7 +213,7 @@ def infer_network_preflight(
         help=(
             "Optional tools_params.json to pre-validate requested runs "
             "({'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]})."
+            "'execution': {'mode': 'global|group_native|group_emulated|column_native|group_aggregated'}}, ...]})."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(
@@ -271,7 +290,7 @@ def infer_network_plan(
         help=(
             "Path to tools_params.json in runs format: "
             "{'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]}."
+            "'execution': {'mode': 'global|group_native|group_emulated|column_native|group_aggregated'}}, ...]}."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(
@@ -352,7 +371,7 @@ def infer_network_execute(
         help=(
             "Path to tools_params.json in runs format: "
             "{'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated|cell_native|group_aggregated'}}, ...]}."
+            "'execution': {'mode': 'global|group_native|group_emulated|column_native|group_aggregated'}}, ...]}."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(
@@ -433,7 +452,7 @@ def generate_data_preflight(
     summary = report["catalog_summary"]
     print("[bold green]generate-data scenario preflight[/bold green]")
     print(f"  scenario id: {report['scenario']['id']}")
-    print(f"  profile: {report['scenario']['profile']}")
+    print(f"  semantics: {_format_generate_data_semantics(report['scenario'])}")
     print(
         f"  requested extras: {', '.join(report['scenario']['requested_extras']) or '(none)'}"
     )

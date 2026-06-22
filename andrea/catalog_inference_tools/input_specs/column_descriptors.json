@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "key": "column_descriptors",
+  "file_kind": "tsv",
+  "description": "Column descriptor TSV: first column maps expression column identifiers to one or more categorical descriptor columns such as batch, donor, condition, cell type, timepoint or perturbation.",
+  "example": "column\tbatch\tcondition\ncell_1\tbatch_a\tcontrol\ncell_2\tbatch_b\tstimulated",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 2,
+  "first_column_role": "expression_column_id",
+  "unique_first_column": true,
+  "data_columns_type": "any",
+  "data_numeric_min_fraction": 0.0,
+  "required_columns": [],
+  "column_types": {},
+  "cross_checks": [
+    {
+      "kind": "first_column_subset_expression_columns"
+    },
+    {
+      "kind": "row_count_matches_expression_columns"
+    }
+  ]
+}

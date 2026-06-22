@@ -22,7 +22,7 @@ export function defaultGroupModeForTool(tool) {
     "global",
     "group_native",
     "group_emulated",
-    "cell_native",
+    "column_native",
     "group_aggregated",
   ];
   for (const mode of preferredOrder) {
@@ -38,7 +38,7 @@ function executionModeLabel(mode) {
     global: "Global",
     group_native: "Group native",
     group_emulated: "Group emulated",
-    cell_native: "Cell native",
+    column_native: "Column native",
     group_aggregated: "Group aggregated",
   };
   const key = String(mode || "").trim();
@@ -50,8 +50,8 @@ function executionModeDescription(mode) {
     global: "Runs once on the complete expression matrix and produces one dataset-level network.",
     group_native: "Uses the upstream method's native grouped or multitask interface to produce one network per group.",
     group_emulated: "ANDREA partitions the expression matrix by groups.tsv and runs the method independently per group.",
-    cell_native: "Uses a native upstream per-cell interface and preserves one cell:<id> network per expression column.",
-    group_aggregated: "Runs the native per-cell interface once, then ANDREA aggregates cell:<id> rows into group:<id> rows using groups.tsv and a fixed mean signed-effect rule.",
+    column_native: "Uses a native upstream per-column interface and preserves one column:<id> network per expression column.",
+    group_aggregated: "Runs the native per-column interface once, then ANDREA aggregates column:<id> rows into group:<id> rows using groups.tsv and a fixed mean signed-effect rule.",
   };
   return descriptions[String(mode || "").trim()] || "";
 }

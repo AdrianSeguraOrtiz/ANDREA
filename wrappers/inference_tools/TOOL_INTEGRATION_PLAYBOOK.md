@@ -42,7 +42,7 @@ The goal of an integration is to produce:
 7. Audit all relevant upstream public modes before choosing the wrapper contract.
 8. Treat execution capabilities as dataset-routing semantics, not as algorithm-variant names.
 9. Preserve public identifiers exactly in public outputs. Expression gene ids,
-   cell ids and group ids must not be renamed, prefixed or normalized in
+   expression column ids and group ids must not be renamed, prefixed or normalized in
    `network.csv` unless every public artifact is mapped back consistently and
    the mapping is recorded as an auxiliary artifact.
 10. Runtime resource controls and runtime parallelism must be declared under
@@ -199,7 +199,7 @@ Requirements:
 - If optional manual clarifications are provided, treat them as authoritative context for locating the target implementation and installation route unless stronger primary evidence clearly disproves them
 
 Focus especially on:
-1. upstream execution modes/entrypoints and whether each maps to `global`, `group_native`, `group_emulated`, `cell_native`, `group_aggregated`, a parameter choice, or is intentionally excluded
+1. upstream execution modes/entrypoints and whether each maps to `global`, `group_native`, `group_emulated`, `column_native`, `group_aggregated`, a parameter choice, or is intentionally excluded
 2. input semantics and conditional required inputs by execution mode and by parameter value
 3. parameter mapping and defaults
 4. runtime parallelism support and whether `runtime_resources.threading` should
@@ -252,13 +252,13 @@ Requirements:
 - Make the wrapper produce raw positive `network.csv` score magnitudes for the chosen upstream interface and `progress.json`
 - Do not apply ANDREA-specific score normalization in the wrapper; downstream normalization is handled later by [merge.py](andrea/core/commands/infer_network/commons/merge.py)
 - Do not write rows with `score <= 0` to `network.csv`; if the upstream method produces a dense matrix, filter zero-magnitude edges in the wrapper before export
-- Preserve expression gene ids, cell ids and group ids exactly in `network.csv`.
+- Preserve expression gene ids, expression column ids and group ids exactly in `network.csv`.
   If the upstream runtime requires internal aliases, write an auxiliary alias
   map and convert all public wrapper outputs back to the original ANDREA ids.
 - For undirected methods, export one row per unordered pair and exclude self-loops unless stronger primary evidence clearly requires another edge convention
 - Add or update [smoketest config](wrappers/inference_tools/tests/smoketest_configs/<tool_id>.json) and any needed fixtures under [tests/fixtures/](wrappers/inference_tools/tests/fixtures/)
 - Cover every declared execution capability in smoketests when feasible,
-  including small representative checks for `cell_native` and
+  including small representative checks for `column_native` and
   `group_aggregated` contracts.
 - Build the image and run the smoketest during this phase; if it fails, fix the implementation and repeat until it passes
 - Keep [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json) aligned with the implemented behavior
@@ -481,26 +481,26 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
     - `global`: the wrapper can run one network on the whole expression matrix
     - `group_native`: the upstream public interface natively consumes group/task metadata and returns group/task networks from one run
     - `group_emulated`: ANDREA can emulate grouped execution by partitioning the expression matrix and running the tool once per group/subset
-    - `cell_native`: the upstream public interface natively returns one network per cell/sample from one logical run
-    - `group_aggregated`: ANDREA aggregates native per-cell outputs into group-level outputs using `groups.tsv`
+    - `column_native`: the upstream public interface natively returns one network per expression column from one logical run
+    - `group_aggregated`: ANDREA aggregates native per-column outputs into group-level outputs using `groups.tsv`
   - rule:
     - use `execution_capabilities` instead of the removed `execution_scope`
     - use `global` only when it is methodologically valid to infer one network from the whole expression matrix, not merely because the upstream code can technically accept any matrix
     - if the method is designed for one condition, cell type, cell state, trajectory segment, or subgroup at a time, expose `group_emulated` when ANDREA should partition the full dataset and run the method independently per group
     - use `group_native` only when the upstream public interface itself consumes group/task metadata and returns group/task networks from one run
-    - use `cell_native` when the upstream public interface itself estimates cell/sample-specific networks and the wrapper preserves those outputs as `cell:<cell_id>` contexts
-    - do not emulate `cell_native` by running a global/group method once per cell unless the upstream public interface explicitly defines that as a valid cell-specific mode
-    - use `group_aggregated` only for tools that also expose `cell_native`; do not declare a schema-level dependency, but do define both capabilities together in the ToolSpec
-    - `group_aggregated` is ANDREA-managed post-processing: the upstream method runs once in `cell_native` mode, ANDREA aggregates `cell:<cell_id>` rows into `group:<group_id>` rows with `groups.tsv`, and the wrapper must not rerun the upstream method per group
+    - use `column_native` when the upstream public interface itself estimates column-specific networks and the wrapper preserves those outputs as `column:<column_id>` contexts
+    - do not emulate `column_native` by running a global/group method once per expression column unless the upstream public interface explicitly defines that as a valid column-specific mode for the dataset column semantics
+    - use `group_aggregated` only for tools that also expose `column_native`; do not declare a schema-level dependency, but do define both capabilities together in the ToolSpec
+    - `group_aggregated` is ANDREA-managed post-processing: the upstream method runs once in `column_native` mode, ANDREA aggregates `column:<column_id>` rows into `group:<group_id>` rows with `groups.tsv`, and the wrapper must not rerun the upstream method per group
     - `group_aggregated` uses ANDREA's fixed signed-effect mean aggregation rule and must not introduce wrapper-specific aggregation params
     - keep algorithm choices as normal params when they are variants inside one execution capability
     - examples of parameter choices, not execution capabilities, include regression model families, penalties, score filters, feature-selection strategy, and post-processing mode when they do not change how ANDREA partitions or routes the dataset
-    - record whether grouped output context is produced by the wrapper (`group_native`), by orchestrated subruns (`group_emulated`), or by ANDREA aggregation of per-cell output (`group_aggregated`)
+    - record whether grouped output context is produced by the wrapper (`group_native`), by orchestrated subruns (`group_emulated`), or by ANDREA aggregation of per-column output (`group_aggregated`)
     - if `group_emulated` is exposed alongside other execution modes and `groups` is only used for that mode, declare `groups` only in `extra_inputs.conditional_required`; do not also mark it optional unless providing it outside the required condition changes the upstream inference
     - if `group_emulated` is the only exposed execution mode, declaring `groups` in `extra_inputs.required` is acceptable and usually clearer
     - if `group_aggregated` is exposed, declare `groups` in `extra_inputs.conditional_required` with `execution: "mode"` and `value: "group_aggregated"`
-    - do not require `groups` just because `cell_native` is exposed
-    - warn in `integration_decisions.md` when `cell_native` output can be dense or very large, and make the smoketest verify a small representative subset rather than assuming all possible cell-edge rows are manageable
+    - do not require `groups` just because `column_native` is exposed
+    - warn in `integration_decisions.md` when `column_native` output can be dense or very large, and make the smoketest verify a small representative subset rather than assuming all possible column-edge rows are manageable
     - document excluded upstream modes/entrypoints explicitly; the reason may be unsupported normalized inputs, incompatible output semantics, deprecated API, unavailable runtime dependency, or a deliberate scope decision
 
 ### Dynamic defaults
@@ -610,9 +610,9 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - preserve source and target ids exactly as they appear in the normalized
       expression input; do not add prefixes such as `gene` to numeric ids, and
       do not mix upstream aliases with public ANDREA ids
-    - every row must have a non-empty `context`; use `global`, `group:<id>`, `cell:<id>`, or a documented tool-specific non-empty context family
-    - for `cell_native`, `cell:<id>` values must correspond to expression column identifiers unless stronger upstream evidence documents a different cell/sample identifier mapping and the wrapper records that mapping as an auxiliary artifact
-    - for `group_aggregated`, the wrapper's physical `cell_native` `network.csv` should preserve `cell:<id>` rows; ANDREA keeps those rows as an auxiliary `network.cell_native.csv` artifact and writes only derived `group:<id>` rows to the logical `group_aggregated` `network.csv`
+    - every row must have a non-empty `context`; use `global`, `group:<id>`, `column:<id>`, or a documented tool-specific non-empty context family
+    - for `column_native`, `column:<id>` values must correspond to expression column identifiers unless stronger upstream evidence documents a different column identifier mapping and the wrapper records that mapping as an auxiliary artifact
+    - for `group_aggregated`, the wrapper's physical `column_native` `network.csv` should preserve `column:<id>` rows; ANDREA keeps those rows as an auxiliary `network.column_native.csv` artifact and writes only derived `group:<id>` rows to the logical `group_aggregated` `network.csv`
     - downstream normalized networks and `evaluate-inference` rank by the positive `score`, with sign handled separately by the `sign` column
     - do not add an extra ANDREA-specific score normalization layer in the wrapper; downstream normalization is handled later by `infer_network`
     - exact zero-magnitude edges should be omitted from `network.csv`; zero means "no retained interaction", not a useful stored edge

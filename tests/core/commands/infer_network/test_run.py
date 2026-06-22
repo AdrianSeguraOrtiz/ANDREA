@@ -21,7 +21,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
         return {
             "id": "fakecell",
             "docker_image": "fake/cell:latest",
-            "execution_capabilities": ["cell_native", "group_aggregated"],
+            "execution_capabilities": ["column_native", "group_aggregated"],
             "runtime_resources": {
                 "threading": {
                     "supported": False,
@@ -40,7 +40,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         "execution": "mode",
                         "op": "eq",
                         "value": "group_aggregated",
-                        "usage": "Used by ANDREA to aggregate cell-native network rows by group.",
+                        "usage": "Used by ANDREA to aggregate column-native network rows by group.",
                         "message": "groups is required when execution.mode=group_aggregated.",
                     }
                 ],
@@ -220,7 +220,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             self.assertTrue((unfiltered.io_dir / "extra" / "tf_list.txt").exists())
             self.assertTrue((unfiltered.io_dir / "extra" / "groups.tsv").exists())
 
-    def test_group_aggregated_run_writes_group_rows_and_keeps_cell_auxiliary(
+    def test_group_aggregated_run_writes_group_rows_and_keeps_column_auxiliary(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -258,16 +258,16 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                             encoding="utf-8"
                         )
                     )
-                    self.assertEqual(execution["mode"], "cell_native")
+                    self.assertEqual(execution["mode"], "column_native")
                     network_path = tool_io.out_dir / "network.csv"
                     network_path.write_text(
                         "\n".join(
                             [
                                 "source,target,score,sign,evidence,context",
-                                "G1,G2,1,+,test,cell:C1",
-                                "G1,G2,0.5,-,test,cell:C2",
-                                "G1,G2,2,?,test,cell:C3",
-                                "G2,G1,1,+,test,cell:C3",
+                                "G1,G2,1,+,test,column:C1",
+                                "G1,G2,0.5,-,test,column:C2",
+                                "G1,G2,2,?,test,column:C3",
+                                "G2,G1,1,+,test,column:C3",
                             ]
                         )
                         + "\n",
@@ -319,32 +319,32 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 and row["source"] == "G1"
                 and row["target"] == "G2"
             )
-            cell_network = (
+            column_network = (
                 run_dir
                 / "tools"
                 / "cellrun"
                 / "io"
                 / "out"
-                / "network.cell_native.csv"
+                / "network.column_native.csv"
             )
-            cell_network_exists = cell_network.exists()
-            with cell_network.open("r", encoding="utf-8", newline="") as handle:
-                cell_rows = list(csv.DictReader(handle))
-            cell_contexts = {row["context"] for row in cell_rows}
+            column_network_exists = column_network.exists()
+            with column_network.open("r", encoding="utf-8", newline="") as handle:
+                column_rows = list(csv.DictReader(handle))
+            column_contexts = {row["context"] for row in column_rows}
             state_payload = read_execution_state(execution_state_path(run_dir))
 
         self.assertEqual(contexts, {"group:A", "group:B"})
-        self.assertNotIn("cell:C1", contexts)
-        self.assertEqual(cell_contexts, {"cell:C1", "cell:C2", "cell:C3"})
+        self.assertNotIn("column:C1", contexts)
+        self.assertEqual(column_contexts, {"column:C1", "column:C2", "column:C3"})
         self.assertAlmostEqual(float(group_a["score"]), 0.25)
         self.assertEqual(group_a["sign"], "+")
         self.assertAlmostEqual(float(group_b_unknown["score"]), 2.0)
         self.assertEqual(group_b_unknown["sign"], "?")
-        self.assertTrue(cell_network_exists)
+        self.assertTrue(column_network_exists)
         self.assertEqual(state_payload["status"], "completed")
         self.assertEqual(state_payload["logical_runs"]["cellrun"]["status"], "completed")
         self.assertEqual(
-            state_payload["tools"]["cellrun__cell_native"]["status"],
+            state_payload["tools"]["cellrun__column_native"]["status"],
             "completed",
         )
 

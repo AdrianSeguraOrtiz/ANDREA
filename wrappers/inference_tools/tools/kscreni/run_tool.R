@@ -13,7 +13,7 @@ suppressPackageStartupMessages({
   suppressWarnings(library(ScReNI))
 })
 
-SUPPORTED_MODES <- c("cell_native", "group_aggregated")
+SUPPORTED_MODES <- c("column_native", "group_aggregated")
 
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
@@ -114,19 +114,19 @@ resolve_params <- function(raw_params) {
 load_execution_mode <- function(params_path) {
   execution_path <- file.path(dirname(params_path), "execution.json")
   if (!file.exists(execution_path)) {
-    return("cell_native")
+    return("column_native")
   }
   execution <- fromJSON(execution_path, simplifyVector = TRUE)
   if (!is.list(execution)) {
     stop("execution.json must be a JSON object.", call. = FALSE)
   }
-  mode <- execution$mode %||% "cell_native"
+  mode <- execution$mode %||% "column_native"
   if (!is.character(mode) || length(mode) != 1L || is.na(mode)) {
     stop("execution.mode must be a string.", call. = FALSE)
   }
   if (!(mode %in% SUPPORTED_MODES)) {
     stop(
-      "kScReNI supports only execution.mode=cell_native or execution.mode=group_aggregated.",
+      "kScReNI supports only execution.mode=column_native or execution.mode=group_aggregated.",
       call. = FALSE
     )
   }
@@ -227,7 +227,7 @@ validate_groups <- function(extra_dir, cell_ids) {
   }
   header <- read_header(groups_path)
   if (length(header) < 2L || !("cluster" %in% header[-1L])) {
-    stop("groups.tsv must contain a first cell id column and a cluster column.", call. = FALSE)
+    stop("groups.tsv must contain a first expression-column id column and a cluster column.", call. = FALSE)
   }
 
   df <- read.delim(
@@ -239,20 +239,20 @@ validate_groups <- function(extra_dir, cell_ids) {
   )
   group_cell_ids <- as.character(df[[1L]])
   if (any(!nzchar(group_cell_ids))) {
-    stop("groups.tsv contains an empty cell identifier.", call. = FALSE)
+    stop("groups.tsv contains an empty expression-column identifier.", call. = FALSE)
   }
   if (anyDuplicated(group_cell_ids)) {
     duplicated <- sort(unique(group_cell_ids[duplicated(group_cell_ids)]))
-    stop(sprintf("groups.tsv contains duplicated cell identifiers: %s", paste(duplicated, collapse = ", ")), call. = FALSE)
+    stop(sprintf("groups.tsv contains duplicated expression-column identifiers: %s", paste(duplicated, collapse = ", ")), call. = FALSE)
   }
 
   missing <- setdiff(cell_ids, group_cell_ids)
   extra <- setdiff(group_cell_ids, cell_ids)
   if (length(missing) > 0L || length(extra) > 0L) {
     details <- character()
-    if (length(missing) > 0L) details <- c(details, paste0("missing cells: ", paste(missing, collapse = ", ")))
-    if (length(extra) > 0L) details <- c(details, paste0("unknown cells: ", paste(extra, collapse = ", ")))
-    stop(paste0("groups.tsv must match expression cells exactly (", paste(details, collapse = "; "), ")."), call. = FALSE)
+    if (length(missing) > 0L) details <- c(details, paste0("missing expression columns: ", paste(missing, collapse = ", ")))
+    if (length(extra) > 0L) details <- c(details, paste0("unknown expression columns: ", paste(extra, collapse = ", ")))
+    stop(paste0("groups.tsv must match expression columns exactly (", paste(details, collapse = "; "), ")."), call. = FALSE)
   }
 
   cluster_values <- as.character(df[match(cell_ids, group_cell_ids), "cluster"])
@@ -406,7 +406,7 @@ network_to_andrea <- function(sc_networks, expected_cells) {
       score = scores[keep],
       sign = "?",
       evidence = "association",
-      context = paste0("cell:", cell_id),
+      context = paste0("column:", cell_id),
       stringsAsFactors = FALSE
     )
   }

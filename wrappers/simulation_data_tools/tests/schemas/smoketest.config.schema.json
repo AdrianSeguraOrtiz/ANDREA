@@ -10,6 +10,157 @@
     "expect_progress",
     "required_files"
   ],
+  "$defs": {
+    "data_axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measurement",
+        "resolution",
+        "column_kind",
+        "experimental_design"
+      ],
+      "properties": {
+        "measurement": {
+          "type": "string",
+          "enum": ["rna_expression"]
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["bulk", "single_cell", "spatial", "pseudo_bulk", "mixed", "unknown"]
+        },
+        "column_kind": {
+          "type": "string",
+          "enum": [
+            "samples",
+            "cells",
+            "timepoints",
+            "perturbations",
+            "spots",
+            "metacells",
+            "conditions"
+          ]
+        },
+        "experimental_design": {
+          "type": "string",
+          "enum": [
+            "observational",
+            "steady_state",
+            "perturbational",
+            "time_series",
+            "trajectory",
+            "differentiation"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "cells"
+              }
+            },
+            "required": ["column_kind"]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "single_cell"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "spots"
+              }
+            },
+            "required": ["column_kind"]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "spatial"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "metacells"
+              }
+            },
+            "required": ["column_kind"]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "enum": ["single_cell", "pseudo_bulk"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "time_series"
+              }
+            },
+            "required": ["experimental_design"]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": ["timepoints", "cells", "samples"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "perturbational"
+              }
+            },
+            "required": ["experimental_design"]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": ["perturbations", "cells", "samples"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "truth_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contexts"],
+      "properties": {
+        "contexts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["global", "group", "column"]
+          },
+          "contains": {
+            "const": "global"
+          }
+        }
+      }
+    }
+  },
   "properties": {
     "simulator_id": {
       "type": "string",
@@ -19,16 +170,19 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "profile",
+        "data_axes",
+        "truth_requirements",
         "effective_extras",
         "inputs",
         "params",
         "runtime_resources"
       ],
       "properties": {
-        "profile": {
-          "type": "string",
-          "minLength": 1
+        "data_axes": {
+          "$ref": "#/$defs/data_axes"
+        },
+        "truth_requirements": {
+          "$ref": "#/$defs/truth_requirements"
         },
         "seed": {
           "type": "integer",
@@ -36,6 +190,15 @@
         },
         "effective_extras": {
           "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "native_outputs": {
+          "type": "array",
+          "default": [],
           "items": {
             "type": "string",
             "minLength": 1

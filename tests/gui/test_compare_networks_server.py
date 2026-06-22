@@ -8,6 +8,8 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+from tests.gui.helpers import start_immediate_background_thread
+
 try:
     from fastapi.testclient import TestClient
 except Exception:  # noqa: BLE001
@@ -19,19 +21,6 @@ try:
 except Exception:  # noqa: BLE001
     gui_server = None
     write_comparison_store = None
-
-
-class _ImmediateThread:
-    def __init__(
-        self, *, target=None, kwargs=None, daemon=None
-    ):  # noqa: ANN001, ANN204
-        self._target = target
-        self._kwargs = kwargs or {}
-        self.daemon = daemon
-
-    def start(self) -> None:
-        if self._target is not None:
-            self._target(**self._kwargs)
 
 
 def _zip_bytes(entries: dict[str, str]) -> bytes:
@@ -157,7 +146,11 @@ class CompareNetworksGuiServerTests(unittest.TestCase):
             with (
                 patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
                 patch.object(gui_server, "STATE", state),
-                patch.object(gui_server.threading, "Thread", _ImmediateThread),
+                patch.object(
+                    gui_server,
+                    "start_background_thread",
+                    start_immediate_background_thread,
+                ),
                 patch.object(
                     gui_server,
                     "compare_networks",
@@ -309,7 +302,11 @@ class CompareNetworksGuiServerTests(unittest.TestCase):
             with (
                 patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
                 patch.object(gui_server, "STATE", gui_server.GuiState()),
-                patch.object(gui_server.threading, "Thread", _ImmediateThread),
+                patch.object(
+                    gui_server,
+                    "start_background_thread",
+                    start_immediate_background_thread,
+                ),
                 patch.object(
                     gui_server,
                     "compare_networks",
@@ -359,7 +356,11 @@ class CompareNetworksGuiServerTests(unittest.TestCase):
             with (
                 patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
                 patch.object(gui_server, "STATE", gui_server.GuiState()),
-                patch.object(gui_server.threading, "Thread", _ImmediateThread),
+                patch.object(
+                    gui_server,
+                    "start_background_thread",
+                    start_immediate_background_thread,
+                ),
                 patch.object(
                     gui_server,
                     "compare_networks",
@@ -692,7 +693,11 @@ class CompareNetworksGuiServerTests(unittest.TestCase):
             with (
                 patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
                 patch.object(gui_server, "STATE", gui_server.GuiState()),
-                patch.object(gui_server.threading, "Thread", _ImmediateThread),
+                patch.object(
+                    gui_server,
+                    "start_background_thread",
+                    start_immediate_background_thread,
+                ),
                 patch.object(
                     gui_server,
                     "compare_networks",
@@ -747,7 +752,11 @@ class CompareNetworksGuiServerTests(unittest.TestCase):
             with (
                 patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
                 patch.object(gui_server, "STATE", gui_server.GuiState()),
-                patch.object(gui_server.threading, "Thread", _ImmediateThread),
+                patch.object(
+                    gui_server,
+                    "start_background_thread",
+                    start_immediate_background_thread,
+                ),
                 patch.object(
                     gui_server,
                     "compare_networks",
@@ -926,7 +935,11 @@ class CompareNetworksGuiServerTests(unittest.TestCase):
 
         with (
             patch.object(gui_server, "STATE", gui_server.GuiState()),
-            patch.object(gui_server.threading, "Thread", _ImmediateThread),
+            patch.object(
+                gui_server,
+                "start_background_thread",
+                start_immediate_background_thread,
+            ),
         ):
             client = TestClient(gui_server.create_app())
             response = client.post(

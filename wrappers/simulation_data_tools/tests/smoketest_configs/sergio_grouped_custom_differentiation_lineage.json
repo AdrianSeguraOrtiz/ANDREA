@@ -1,11 +1,10 @@
 {
   "simulator_id": "sergio",
   "request": {
-    "profile": "scrna_grouped",
     "seed": 204,
     "effective_extras": [
       "groups",
-      "cell_phenotypes",
+      "column_phenotypes",
       "cluster_identities",
       "enrichment_background",
       "lineage_tree",
@@ -35,13 +34,27 @@
       "splice_ratio": 1.5,
       "differentiation_expression": "total"
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "differentiation"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
     "extras/groups.tsv",
-    "extras/cell_phenotypes.tsv",
+    "extras/column_phenotypes.tsv",
     "extras/cluster_identities.tsv",
     "extras/enrichment_background.txt",
     "extras/lineage_tree.tsv",
@@ -63,5 +76,8 @@
     "provenance/raw/truth_source_edges.tsv",
     "provenance/raw/session_info.txt"
   ],
-  "required_truth_context_prefixes": ["global", "group:"]
+  "required_truth_context_prefixes": [
+    "global",
+    "group:"
+  ]
 }

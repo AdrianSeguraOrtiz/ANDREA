@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "key": "chromatin_regions",
+  "file_kind": "tsv",
+  "description": "Chromatin region metadata TSV: one row per public chromatin region with stable region id, numeric region index and semicolon-separated linked expression genes.",
+  "example": "region\tregion_index\tlinked_genes\nregion_1\t1\tG1;G2\nregion_2\t2\tG3",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 3,
+  "first_column_role": "none",
+  "required_columns": [
+    "region",
+    "region_index",
+    "linked_genes"
+  ],
+  "unique_first_column": true,
+  "column_types": {
+    "region": "string",
+    "region_index": "float",
+    "linked_genes": "string"
+  }
+}

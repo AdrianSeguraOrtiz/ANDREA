@@ -1,4 +1,4 @@
-cell	batch	cell_type
+column	batch	cell_type
 cell.01	batch_a	type_alpha
 cell-02	batch_a	type_alpha
 cell_03	batch_a	type_alpha

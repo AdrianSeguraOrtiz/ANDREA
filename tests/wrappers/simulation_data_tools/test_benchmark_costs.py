@@ -32,6 +32,14 @@ SIMULATOR_COST_SCHEMA = (
     / "schemas"
     / "simulatorcost.schema.json"
 )
+TRAJECTORY_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "trajectory",
+}
+GLOBAL_TRUTH = {"contexts": ["global"]}
+ACTIVE_SIMULATORS = ("boolode", "dyngen", "scmultisim", "sergio")
 
 
 def _load_script(module_name: str, path: Path):
@@ -75,14 +83,25 @@ def _runtime_point() -> dict[str, object]:
         "peak_memory_mb_p90": None,
         "feature_vector": {
             "simulator_id": "dyngen",
-            "profile": "scrna_global",
-            "profile_id": "scrna_global_linear_default",
+            "data_axes": copy.deepcopy(TRAJECTORY_AXES),
+            "truth_requirements": copy.deepcopy(GLOBAL_TRUTH),
+            "benchmark_profile_id": "single_cell_cells_trajectory_global_linear_default",
+            "profile_id": "single_cell_cells_trajectory_global_linear_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "trajectory",
+            "truth_context_families": ["global"],
+            "truth_context_count": 1,
+            "extras": [],
+            "requested_extras": [],
+            "effective_extras": [],
             "genes": 10,
             "cells": 8,
             "groups": 0,
             "population_count": 0,
             "threads": 1,
             "ram_gb": 1.0,
+            "column_truth_requested": False,
             "cost_relevant_values": {},
         },
     }
@@ -93,10 +112,11 @@ def _valid_cost_payload() -> dict[str, object]:
         "schema_version": "1.0",
         "profiles": [
             {
-                "profile_id": "scrna_global_linear_default",
+                "profile_id": "single_cell_cells_trajectory_global_linear_default",
                 "benchmark_config": {
                     "simulator_id": "dyngen",
-                    "profile": "scrna_global",
+                    "data_axes": copy.deepcopy(TRAJECTORY_AXES),
+                    "truth_requirements": copy.deepcopy(GLOBAL_TRUTH),
                     "sizes": [{"genes": 10, "cells": 8}],
                     "threads_tested": [1],
                     "ram_gb_tested": [1.0],
@@ -169,12 +189,12 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             cost_profiles_dir=COST_PROFILES_DIR,
             param_overrides_dir=PARAM_OVERRIDES_DIR,
             default_group_count=2,
-            profile_filters=["scrna_grouped_custom_grn_tree"],
+            profile_filters=["single_cell_cells_differentiation_global_group_custom_grn_tree"],
         )
 
         self.assertEqual(len(targets), 1)
         profile = targets[0].profiles[0]
-        self.assertEqual(profile.profile_id, "scrna_grouped_custom_grn_tree")
+        self.assertEqual(profile.profile_id, "single_cell_cells_differentiation_global_group_custom_grn_tree")
         self.assertEqual(
             [(size.genes, size.cells) for size in profile.sizes],
             [(50, 20), (100, 40), (200, 80)],
@@ -200,7 +220,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             custom = next(
                 profile
                 for profile in payload["profiles"]
-                if profile["id"] == "scrna_grouped_custom_grn_tree"
+                if profile["id"] == "single_cell_cells_differentiation_global_group_custom_grn_tree"
             )
             custom["inputs"] = {}
             (config_dir / "scmultisim.json").write_text(
@@ -217,11 +237,11 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                     cost_profiles_dir=config_dir,
                     param_overrides_dir=PARAM_OVERRIDES_DIR,
                     default_group_count=2,
-                    profile_filters=["scrna_grouped_custom_grn_tree"],
+                    profile_filters=["single_cell_cells_differentiation_global_group_custom_grn_tree"],
                 )
 
     def test_cost_profile_configs_cover_supported_profiles(self) -> None:
-        for simulator_id in ("dyngen", "scmultisim"):
+        for simulator_id in ACTIVE_SIMULATORS:
             with self.subTest(simulator_id=simulator_id):
                 targets = benchmark_costs.resolve_simulator_targets(
                     selected_simulators=[
@@ -234,13 +254,19 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                     profile_filters=[],
                 )
                 spec = targets[0].spec
-                supported = set(spec["profile_capabilities"])
+                supported = {
+                    benchmark_costs.semantic_key_from_json(
+                        data_axes=capability["data_axes"],
+                        truth_requirements=capability["truth_requirements"],
+                    )
+                    for capability in spec["capabilities"]
+                }
                 configured = {profile.profile for profile in targets[0].profiles}
 
                 self.assertEqual(supported - configured, set())
 
-    def test_cell_specific_cost_profiles_record_group_dimensions(self) -> None:
-        for simulator_id in ("dyngen", "scmultisim"):
+    def test_column_truth_cost_profiles_record_group_dimensions(self) -> None:
+        for simulator_id in ACTIVE_SIMULATORS:
             with self.subTest(simulator_id=simulator_id):
                 targets = benchmark_costs.resolve_simulator_targets(
                     selected_simulators=[
@@ -252,25 +278,73 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                     default_group_count=2,
                     profile_filters=[],
                 )
-                cell_profiles = [
+                column_truth_profiles = [
                     profile
                     for profile in targets[0].profiles
-                    if profile.profile == "scrna_cell_specific"
+                    if "column" in profile.truth_requirements["contexts"]
                 ]
-
-                self.assertTrue(cell_profiles)
+                spec_has_column_truth = any(
+                    "column" in capability["truth_requirements"]["contexts"]
+                    for capability in targets[0].spec["capabilities"]
+                )
+                if not spec_has_column_truth:
+                    self.assertEqual(column_truth_profiles, [])
+                    continue
+                self.assertTrue(column_truth_profiles)
                 self.assertTrue(
                     all(
                         profile.dimension_profile["group_count"] > 0
-                        for profile in cell_profiles
+                        for profile in column_truth_profiles
                     )
                 )
                 self.assertTrue(
                     all(
                         profile.dimension_profile["population_count"] > 0
-                        for profile in cell_profiles
+                        for profile in column_truth_profiles
                     )
                 )
+
+    def test_boolode_cost_profile_records_fixed_gene_dimension(self) -> None:
+        targets = benchmark_costs.resolve_simulator_targets(
+            selected_simulators=[("boolode", CATALOG_SIMULATORS_ROOT / "boolode")],
+            catalog_simulators_root=CATALOG_SIMULATORS_ROOT,
+            cost_profiles_dir=COST_PROFILES_DIR,
+            param_overrides_dir=PARAM_OVERRIDES_DIR,
+            default_group_count=2,
+            profile_filters=["single_cell_cells_trajectory_global_custom_default"],
+        )
+
+        profile = targets[0].profiles[0]
+        params = benchmark_costs.apply_dimensions_to_params(
+            base_params=profile.params,
+            dimension_profile=profile.dimension_profile,
+            size=benchmark_costs.SizePoint(genes=3, cells=5),
+        )
+
+        self.assertEqual(profile.dimension_profile["genes_param"], {"fixed": 3})
+        self.assertEqual(params["num_cells"], 5)
+
+    def test_sergio_cost_profile_maps_total_columns_to_cells_per_bin(self) -> None:
+        targets = benchmark_costs.resolve_simulator_targets(
+            selected_simulators=[("sergio", CATALOG_SIMULATORS_ROOT / "sergio")],
+            catalog_simulators_root=CATALOG_SIMULATORS_ROOT,
+            cost_profiles_dir=COST_PROFILES_DIR,
+            param_overrides_dir=PARAM_OVERRIDES_DIR,
+            default_group_count=2,
+            profile_filters=["single_cell_cells_steady_state_global_custom_default"],
+        )
+
+        profile = targets[0].profiles[0]
+        params = benchmark_costs.apply_dimensions_to_params(
+            base_params=profile.params,
+            dimension_profile=profile.dimension_profile,
+            size=benchmark_costs.SizePoint(genes=3, cells=4),
+        )
+
+        self.assertEqual(profile.dimension_profile["cells_param"]["param"], "number_sc")
+        self.assertEqual(profile.dimension_profile["cells_param"]["multiplier_param"], "number_bins")
+        self.assertEqual(params["number_sc"], 2)
+        self.assertEqual(params["number_genes"], 3)
 
     def test_run_writes_selected_simulator_cost_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -310,7 +384,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                         "--simulator",
                         "dyngen",
                         "--profile",
-                        "scrna_global_linear_default",
+                        "single_cell_cells_trajectory_global_linear_default",
                         "--size",
                         "10x10",
                         "--threads",
@@ -326,7 +400,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             self.assertEqual(payload["schema_version"], "1.0")
             self.assertEqual(
                 [profile["profile_id"] for profile in payload["profiles"]],
-                ["scrna_global_linear_default"],
+                ["single_cell_cells_trajectory_global_linear_default"],
             )
             point = payload["profiles"][0]["runtime_points"][0]
             self.assertEqual(point["seconds_p50"], 1.25)
@@ -336,13 +410,24 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             self.assertEqual(point["feature_vector"]["n_genes"], 10)
             self.assertEqual(point["feature_vector"]["n_cells"], 10)
             self.assertIsInstance(point["feature_vector"]["n_tfs"], int)
-            self.assertFalse(point["feature_vector"]["native_cell_truth_enabled"])
+            self.assertEqual(
+                point["feature_vector"]["benchmark_profile_id"],
+                "single_cell_cells_trajectory_global_linear_default",
+            )
+            self.assertEqual(point["feature_vector"]["expression_profile"], "single_cell")
+            self.assertEqual(point["feature_vector"]["column_kind"], "cells")
+            self.assertEqual(point["feature_vector"]["experimental_design"], "trajectory")
+            self.assertEqual(point["feature_vector"]["truth_context_families"], ["global"])
+            self.assertEqual(point["feature_vector"]["extras"], [])
+            self.assertFalse(point["feature_vector"]["column_truth_requested"])
 
     def test_profile_sizes_override_default_sizes_unless_cli_size_is_explicit(self) -> None:
         profile = benchmark_costs.SimulatorBenchmarkProfile(
             simulator_id="scmultisim",
             profile_id="profile",
-            profile="scrna_global",
+            profile="single_cell_cells_trajectory_global",
+            data_axes=copy.deepcopy(TRAJECTORY_AXES),
+            truth_requirements=copy.deepcopy(GLOBAL_TRUTH),
             sizes=(
                 benchmark_costs.SizePoint(genes=50, cells=20),
                 benchmark_costs.SizePoint(genes=101, cells=40),
@@ -396,6 +481,34 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         )
 
         self.assertEqual(errors, [])
+
+    def test_validator_rejects_feature_vector_axis_mismatch(self) -> None:
+        payload = _valid_cost_payload()
+        payload["profiles"][0]["runtime_points"][0]["feature_vector"][
+            "expression_profile"
+        ] = "bulk"
+
+        errors = validate_simulator_costs.semantic_errors_for_cost(
+            simulator_id="dyngen",
+            instance=payload,
+            catalog_simulators_root=CATALOG_SIMULATORS_ROOT,
+        )
+
+        self.assertTrue(
+            any("feature_vector.expression_profile does not match" in item for item in errors),
+            errors,
+        )
+
+    def test_validator_reports_incomplete_cost_coverage(self) -> None:
+        payload = _valid_cost_payload()
+
+        errors = validate_simulator_costs.coverage_errors_for_cost(
+            simulator_id="dyngen",
+            instance=payload,
+            catalog_simulators_root=CATALOG_SIMULATORS_ROOT,
+        )
+
+        self.assertTrue(any("missing profile for capability" in item for item in errors))
 
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ write_progress <- function(status, phase, message = NULL, details = list()) {
 
 parse_request <- function(path) {
   req <- jsonlite::read_json(path, simplifyVector = TRUE)
-  required_fields <- c("simulator_id", "profile", "seed", "effective_extras", "params", "runtime_resources")
+  required_fields <- c("simulator_id", "data_axes", "truth_requirements", "seed", "effective_extras", "params", "runtime_resources")
   missing_fields <- required_fields[!required_fields %in% names(req)]
   if (length(missing_fields) > 0) {
     stop(
@@ -88,6 +88,22 @@ parse_request <- function(path) {
     )
   }
   req
+}
+
+truth_contexts <- function(req) {
+  contexts <- req$truth_requirements$contexts %||% character()
+  contexts <- as.character(contexts)
+  if (!("global" %in% contexts)) {
+    stop("truth_requirements.contexts must include global.", call. = FALSE)
+  }
+  unsupported <- setdiff(contexts, c("global", "group", "column"))
+  if (length(unsupported) > 0) {
+    stop(
+      sprintf("dyngen wrapper does not support truth context(s): %s", paste(unsupported, collapse = ", ")),
+      call. = FALSE
+    )
+  }
+  contexts
 }
 
 normalise_runtime_resources <- function(req) {
@@ -151,8 +167,88 @@ normalise_params <- function(req) {
       weight_bw = as.numeric((params$experiment_params$weight_bw) %||% 0.1),
       num_timepoints = as.integer((params$experiment_params$num_timepoints) %||% 8L),
       pct_between = as.numeric((params$experiment_params$pct_between) %||% 0.75)
+    ),
+    knockdown_params = list(
+      num_genes = as.integer((params$knockdown_params$num_genes) %||% 1L),
+      multiplier = as.numeric((params$knockdown_params$multiplier) %||% 0.0),
+      timepoint = as.numeric((params$knockdown_params$timepoint) %||% 0.5)
     )
   )
+}
+
+validate_semantic_request <- function(req, params, effective_extras) {
+  axes <- req$data_axes
+  if (!identical(as.character(axes$measurement), "rna_expression")) {
+    stop("dyngen wrapper only supports data_axes.measurement=rna_expression.", call. = FALSE)
+  }
+  if (!identical(as.character(axes$resolution), "single_cell")) {
+    stop("dyngen wrapper only supports data_axes.resolution=single_cell.", call. = FALSE)
+  }
+  if (!identical(as.character(axes$column_kind), "cells")) {
+    stop("dyngen wrapper only supports data_axes.column_kind=cells.", call. = FALSE)
+  }
+
+  design <- as.character(axes$experimental_design)
+  has_timepoints <- "timepoints" %in% effective_extras
+  has_perturbation_design <- "perturbation_design" %in% effective_extras
+  has_interventions <- "interventions" %in% effective_extras
+
+  if (!identical(design, "time_series") && has_timepoints) {
+    stop("extras/timepoints.tsv is only supported for dyngen time_series capabilities.", call. = FALSE)
+  }
+  if (!identical(design, "perturbational") && (has_perturbation_design || has_interventions)) {
+    stop(
+      "extras/perturbation_design.tsv and extras/interventions.tsv are only supported for dyngen perturbational capabilities.",
+      call. = FALSE
+    )
+  }
+
+  if (identical(design, "trajectory")) {
+    if (!identical(params$experiment_params$kind, "snapshot")) {
+      stop("dyngen trajectory capabilities require experiment_params.kind=snapshot.", call. = FALSE)
+    }
+    if (params$simulation_params$num_knockdown_simulations != 0L) {
+      stop("dyngen trajectory capabilities require simulation_params.num_knockdown_simulations=0.", call. = FALSE)
+    }
+    return(invisible(TRUE))
+  }
+
+  if (identical(design, "time_series")) {
+    if (!identical(params$experiment_params$kind, "synchronised")) {
+      stop("dyngen time_series capabilities require experiment_params.kind=synchronised.", call. = FALSE)
+    }
+    if (params$simulation_params$num_knockdown_simulations != 0L) {
+      stop("dyngen time_series capabilities require simulation_params.num_knockdown_simulations=0.", call. = FALSE)
+    }
+    if (!has_timepoints) {
+      stop("dyngen time_series capabilities require effective_extras to include timepoints.", call. = FALSE)
+    }
+    return(invisible(TRUE))
+  }
+
+  if (identical(design, "perturbational")) {
+    if (!identical(params$experiment_params$kind, "snapshot")) {
+      stop("dyngen perturbational capabilities require experiment_params.kind=snapshot.", call. = FALSE)
+    }
+    if (params$simulation_params$num_knockdown_simulations < 1L) {
+      stop(
+        "dyngen perturbational capabilities require simulation_params.num_knockdown_simulations >= 1.",
+        call. = FALSE
+      )
+    }
+    if (params$knockdown_params$num_genes != 1L) {
+      stop("dyngen perturbational capabilities require knockdown_params.num_genes=1.", call. = FALSE)
+    }
+    if (!has_perturbation_design || !has_interventions) {
+      stop(
+        "dyngen perturbational capabilities require effective_extras to include perturbation_design and interventions.",
+        call. = FALSE
+      )
+    }
+    return(invisible(TRUE))
+  }
+
+  stop(sprintf("dyngen wrapper does not support experimental_design=%s.", design), call. = FALSE)
 }
 
 load_backbone <- function(backbone_template) {
@@ -203,12 +299,17 @@ build_kinetics_noise_function <- function(params) {
 }
 
 build_simulation_experiment_types <- function(params) {
+  knockdown_count <- params$simulation_params$num_knockdown_simulations
   dplyr::bind_rows(
     dyngen::simulation_type_wild_type(
       num_simulations = params$simulation_params$num_simulations
     ),
     dyngen::simulation_type_knockdown(
-      num_simulations = params$simulation_params$num_knockdown_simulations
+      num_simulations = knockdown_count,
+      timepoint = rep(params$knockdown_params$timepoint, knockdown_count),
+      genes = "*",
+      num_genes = rep(params$knockdown_params$num_genes, knockdown_count),
+      multiplier = rep(params$knockdown_params$multiplier, knockdown_count)
     )
   )
 }
@@ -355,6 +456,7 @@ derive_groups <- function(milestone_percentages, cell_ids) {
 }
 
 write_groups <- function(groups_df, path) {
+  names(groups_df)[names(groups_df) == "cell"] <- "column"
   write.table(
     groups_df,
     file = path,
@@ -441,21 +543,21 @@ write_pseudotime <- function(milestone_percentages, cell_ids, milestone_order, p
     pseudotime <- rep(0, length(cell_ids))
   }
   out <- data.frame(
-    cell = as.character(cell_ids),
+    column = as.character(cell_ids),
     pseudotime = as.numeric(pseudotime),
     stringsAsFactors = FALSE
   )
   write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 }
 
-write_cell_phenotypes <- function(groups_df, milestone_order, path) {
+write_column_phenotypes <- function(groups_df, milestone_order, path) {
   phenotype_order <- as.integer(milestone_order[as.character(groups_df$cluster)])
   if (any(is.na(phenotype_order))) {
     fallback_order <- if (length(milestone_order) == 0) 0L else max(as.integer(milestone_order), na.rm = TRUE) + 1L
     phenotype_order[is.na(phenotype_order)] <- fallback_order
   }
   out <- data.frame(
-    cell = groups_df$cell,
+    column = groups_df$cell,
     phenotype = groups_df$cluster,
     order = phenotype_order,
     stringsAsFactors = FALSE
@@ -477,6 +579,130 @@ write_cluster_identities <- function(groups_df, milestone_order, path) {
     stringsAsFactors = FALSE
   )
   out <- out[order(out$order, out$cluster), , drop = FALSE]
+  write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+}
+
+write_timepoints <- function(cell_info, cell_ids, path) {
+  cell_df <- as.data.frame(cell_info, stringsAsFactors = FALSE)
+  if (!("cell_id" %in% names(cell_df))) {
+    stop("timepoints derivation requires dataset$cell_info$cell_id.", call. = FALSE)
+  }
+  if (!("timepoint_group" %in% names(cell_df))) {
+    stop("timepoints derivation requires dyngen synchronised experiment timepoint_group metadata.", call. = FALSE)
+  }
+
+  cell_df$cell_id <- as.character(cell_df$cell_id)
+  cell_df$timepoint_group <- as.numeric(cell_df$timepoint_group)
+  timepoint <- cell_df$timepoint_group[match(cell_ids, cell_df$cell_id)]
+  if (any(is.na(timepoint))) {
+    stop("timepoints derivation found expression columns without timepoint_group metadata.", call. = FALSE)
+  }
+
+  out <- data.frame(
+    column = as.character(cell_ids),
+    timepoint = as.numeric(timepoint),
+    timepoint_label = paste0("timepoint_", as.integer(timepoint)),
+    stringsAsFactors = FALSE
+  )
+  write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+}
+
+derive_knockdown_map <- function(model) {
+  kd <- model$simulations$kd_multiplier
+  if (is.null(kd)) {
+    stop("perturbational extras require dyngen model$simulations$kd_multiplier.", call. = FALSE)
+  }
+  kd_df <- as.data.frame(kd, stringsAsFactors = FALSE)
+  required_columns <- c("simulation_i", "gene", "multiplier")
+  missing_columns <- setdiff(required_columns, names(kd_df))
+  if (length(missing_columns) > 0) {
+    stop(
+      sprintf("dyngen kd_multiplier is missing required columns: %s", paste(missing_columns, collapse = ", ")),
+      call. = FALSE
+    )
+  }
+
+  kd_df$simulation_i <- as.character(kd_df$simulation_i)
+  kd_df$gene <- as.character(kd_df$gene)
+  kd_df$multiplier <- as.numeric(kd_df$multiplier)
+  kd_df <- unique(kd_df[, required_columns, drop = FALSE])
+  target_counts <- aggregate(gene ~ simulation_i, data = kd_df, FUN = function(value) length(unique(value)))
+  multi_target_simulations <- target_counts$simulation_i[target_counts$gene != 1L]
+  if (length(multi_target_simulations) > 0) {
+    stop(
+      sprintf(
+        "perturbation_design requires one knocked-down target per simulation; found multiple targets for simulation_i: %s",
+        paste(multi_target_simulations, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  kd_df$intervention <- paste0("knockdown_", kd_df$gene, "_sim", kd_df$simulation_i)
+  kd_df$effect <- "knockdown"
+  kd_df$sign <- -1L
+  kd_df$dose <- pmax(0, 1 - kd_df$multiplier)
+  kd_df
+}
+
+write_interventions <- function(model, params, path) {
+  kd_df <- derive_knockdown_map(model)
+  out <- data.frame(
+    intervention = kd_df$intervention,
+    target = kd_df$gene,
+    effect = kd_df$effect,
+    sign = kd_df$sign,
+    dose = kd_df$dose,
+    timepoint = params$knockdown_params$timepoint,
+    stringsAsFactors = FALSE
+  )
+  out <- out[order(out$intervention), , drop = FALSE]
+  write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+}
+
+write_perturbation_design <- function(dataset, model, params, path) {
+  cell_df <- as.data.frame(dataset$cell_info, stringsAsFactors = FALSE)
+  if (!all(c("cell_id", "simulation_i") %in% names(cell_df))) {
+    stop("perturbation_design derivation requires dataset$cell_info cell_id and simulation_i columns.", call. = FALSE)
+  }
+  kd_df <- derive_knockdown_map(model)
+  names(kd_df)[names(kd_df) == "gene"] <- "target"
+  kd_df <- kd_df[, c("simulation_i", "intervention", "target", "multiplier", "dose"), drop = FALSE]
+
+  cell_df$cell_id <- as.character(cell_df$cell_id)
+  cell_df$simulation_i <- as.character(cell_df$simulation_i)
+  design <- merge(
+    data.frame(
+      column = as.character(dataset$cell_ids),
+      cell_id = as.character(dataset$cell_ids),
+      stringsAsFactors = FALSE
+    ),
+    cell_df[, c("cell_id", "simulation_i"), drop = FALSE],
+    by = "cell_id",
+    all.x = TRUE,
+    all.y = FALSE,
+    sort = FALSE
+  )
+  if (any(is.na(design$simulation_i))) {
+    stop("perturbation_design derivation found expression columns without simulation_i metadata.", call. = FALSE)
+  }
+
+  design <- merge(design, kd_df, by = "simulation_i", all.x = TRUE, all.y = FALSE, sort = FALSE)
+  is_control <- is.na(design$intervention)
+  design$condition <- ifelse(is_control, "control", design$intervention)
+  design$perturbation <- ifelse(is_control, "none", "knockdown")
+  design$target[is_control] <- ""
+  design$dose[is_control] <- 0
+  design$timepoint <- ifelse(is_control, 0, params$knockdown_params$timepoint)
+  design$replicate <- paste0("simulation_", design$simulation_i)
+  design$control <- is_control
+  design$intervention[is_control] <- ""
+
+  out <- design[
+    match(as.character(dataset$cell_ids), design$column),
+    c("column", "condition", "perturbation", "target", "dose", "timepoint", "replicate", "control", "intervention"),
+    drop = FALSE
+  ]
   write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 }
 
@@ -796,9 +1022,9 @@ derive_global_truth <- function(model) {
   truth_df[order(truth_df$source, truth_df$target), , drop = FALSE]
 }
 
-derive_cell_truth <- function(dataset, cell_ids, genes, raw_dir) {
+derive_column_truth <- function(dataset, cell_ids, genes, raw_dir) {
   if (is.null(dataset$regulatory_network_sc)) {
-    stop("cell truth derivation requires dyngen cell-specific GRN output.", call. = FALSE)
+    stop("column truth derivation requires dyngen cell-specific GRN output.", call. = FALSE)
   }
 
   regulatory_network_sc <- as.data.frame(dataset$regulatory_network_sc, stringsAsFactors = FALSE)
@@ -807,7 +1033,7 @@ derive_cell_truth <- function(dataset, cell_ids, genes, raw_dir) {
   if (length(missing_columns) > 0) {
     stop(
       sprintf(
-        "dyngen regulatory_network_sc is missing required columns for cell truth: %s",
+        "dyngen regulatory_network_sc is missing required columns for column truth: %s",
         paste(missing_columns, collapse = ", ")
       ),
       call. = FALSE
@@ -845,51 +1071,51 @@ derive_cell_truth <- function(dataset, cell_ids, genes, raw_dir) {
     )
   }
 
-  cell_truth <- regulatory_network_sc[
+  column_truth <- regulatory_network_sc[
     !is.na(regulatory_network_sc$strength) &
       regulatory_network_sc$strength != 0 &
       regulatory_network_sc$regulator != regulatory_network_sc$target,
     ,
     drop = FALSE
   ]
-  cell_truth <- data.frame(
-    source = as.character(cell_truth$regulator),
-    target = as.character(cell_truth$target),
-    score = abs(as.numeric(cell_truth$strength)),
-    sign = ifelse(cell_truth$strength > 0, "+", "-"),
+  column_truth <- data.frame(
+    source = as.character(column_truth$regulator),
+    target = as.character(column_truth$target),
+    score = abs(as.numeric(column_truth$strength)),
+    sign = ifelse(column_truth$strength > 0, "+", "-"),
     evidence = "simulated_truth",
-    context = paste0("cell:", cell_truth$cell_id),
+    context = paste0("column:", column_truth$cell_id),
     stringsAsFactors = FALSE
   )
-  cell_truth <- cell_truth[cell_truth$score > 0 & !is.na(cell_truth$score), , drop = FALSE]
-  if (nrow(cell_truth) == 0) {
-    stop("cell truth derivation produced no nonzero cell-specific edges.", call. = FALSE)
+  column_truth <- column_truth[column_truth$score > 0 & !is.na(column_truth$score), , drop = FALSE]
+  if (nrow(column_truth) == 0) {
+    stop("column truth derivation produced no nonzero cell-specific edges.", call. = FALSE)
   }
-  cell_truth <- cell_truth[order(cell_truth$context, cell_truth$source, cell_truth$target), , drop = FALSE]
+  column_truth <- column_truth[order(column_truth$context, column_truth$source, column_truth$target), , drop = FALSE]
 
-  context_counts <- as.data.frame(table(cell_truth$context), stringsAsFactors = FALSE)
+  context_counts <- as.data.frame(table(column_truth$context), stringsAsFactors = FALSE)
   names(context_counts) <- c("context", "edge_count")
-  context_counts$cell <- sub("^cell:", "", context_counts$context)
-  context_counts <- context_counts[, c("cell", "context", "edge_count"), drop = FALSE]
+  context_counts$column <- sub("^column:", "", context_counts$context)
+  context_counts <- context_counts[, c("column", "context", "edge_count"), drop = FALSE]
   write.table(
     context_counts,
-    file = file.path(raw_dir, "cell_networks_index.tsv"),
+    file = file.path(raw_dir, "column_networks_index.tsv"),
     sep = "\t",
     row.names = FALSE,
     col.names = TRUE,
     quote = FALSE
   )
 
-  cell_truth
+  column_truth
 }
 
-write_truth_networks <- function(global_truth, group_truth_rows, cell_truth_rows, output_dir) {
+write_truth_networks <- function(global_truth, group_truth_rows, column_truth_rows, output_dir) {
   truth_df <- global_truth
   if (length(group_truth_rows) > 0) {
     truth_df <- rbind(truth_df, do.call(rbind, group_truth_rows))
   }
-  if (!is.null(cell_truth_rows) && nrow(cell_truth_rows) > 0) {
-    truth_df <- rbind(truth_df, cell_truth_rows)
+  if (!is.null(column_truth_rows) && nrow(column_truth_rows) > 0) {
+    truth_df <- rbind(truth_df, column_truth_rows)
   }
   truth_df <- truth_df[
     truth_df$score > 0 &
@@ -915,25 +1141,31 @@ write_manifest <- function(request, params, dataset, output_dir, native_outputs 
   expression_header <- strsplit(readLines(expression_path, n = 1L, warn = FALSE), "\t", fixed = TRUE)[[1]]
   expression_columns <- max(length(expression_header) - 1L, 0L)
   expression_genes <- ncol(dataset$counts)
+  manifest_truth_requirements <- list(
+    contexts = I(as.character(request$truth_requirements$contexts %||% character()))
+  )
 
   manifest <- list(
     schema_version = "1.0",
     simulator_id = request$simulator_id,
-    profile = request$profile,
+    data_axes = request$data_axes,
+    truth_requirements = manifest_truth_requirements,
     seed = as.integer(request$seed),
     expression = list(
       path = "expression.tsv",
       genes = expression_genes,
       columns = expression_columns,
-      column_kind = "cells",
-      expression_profile = "scrna"
+      column_kind = "cells"
     ),
     extras = list(
       groups = if (file.exists(file.path(output_dir, "extras", "groups.tsv"))) "extras/groups.tsv" else NULL,
-      cell_phenotypes = if (file.exists(file.path(output_dir, "extras", "cell_phenotypes.tsv"))) "extras/cell_phenotypes.tsv" else NULL,
+      column_phenotypes = if (file.exists(file.path(output_dir, "extras", "column_phenotypes.tsv"))) "extras/column_phenotypes.tsv" else NULL,
       cluster_identities = if (file.exists(file.path(output_dir, "extras", "cluster_identities.tsv"))) "extras/cluster_identities.tsv" else NULL,
       enrichment_background = if (file.exists(file.path(output_dir, "extras", "enrichment_background.txt"))) "extras/enrichment_background.txt" else NULL,
       lineage_tree = if (file.exists(file.path(output_dir, "extras", "lineage_tree.tsv"))) "extras/lineage_tree.tsv" else NULL,
+      timepoints = if (file.exists(file.path(output_dir, "extras", "timepoints.tsv"))) "extras/timepoints.tsv" else NULL,
+      perturbation_design = if (file.exists(file.path(output_dir, "extras", "perturbation_design.tsv"))) "extras/perturbation_design.tsv" else NULL,
+      interventions = if (file.exists(file.path(output_dir, "extras", "interventions.tsv"))) "extras/interventions.tsv" else NULL,
       pseudotime = if (file.exists(file.path(output_dir, "extras", "pseudotime.tsv"))) "extras/pseudotime.tsv" else NULL,
       prior_grn = if (file.exists(file.path(output_dir, "extras", "prior_grn.tsv"))) "extras/prior_grn.tsv" else NULL,
       tf_list = if (file.exists(file.path(output_dir, "extras", "tf_list.txt"))) "extras/tf_list.txt" else NULL,
@@ -980,25 +1212,30 @@ write_progress("running", "validate_request", "Validating dyngen wrapper request
 tryCatch(
   {
     set.seed(as.integer(request$seed))
+    validate_semantic_request(request, params, effective_extras)
 
     write_progress("running", "initialise_model", "Initialising dyngen model.")
     backbone <- load_backbone(params$backbone_template)
     need_pseudotime <- "pseudotime" %in% effective_extras
-    need_cell_phenotypes <- "cell_phenotypes" %in% effective_extras
+    need_column_phenotypes <- "column_phenotypes" %in% effective_extras
     need_cluster_identities <- "cluster_identities" %in% effective_extras
     need_enrichment_background <- "enrichment_background" %in% effective_extras
     need_prior_grn <- "prior_grn" %in% effective_extras
     need_prior_grn_by_group <- "prior_grn_by_group" %in% effective_extras
     need_lineage <- "lineage_tree" %in% effective_extras
     need_tf_list <- "tf_list" %in% effective_extras
-    need_public_cell_truth <- identical(request$profile, "scrna_cell_specific")
-    need_public_group_truth <- identical(request$profile, "scrna_grouped") || need_public_cell_truth
-    need_groups <- need_public_group_truth || any(c("groups", "lineage_tree", "cell_phenotypes", "cluster_identities", "prior_grn_by_group") %in% effective_extras)
+    need_timepoints <- "timepoints" %in% effective_extras
+    need_perturbation_design <- "perturbation_design" %in% effective_extras
+    need_interventions <- "interventions" %in% effective_extras
+    requested_truth_contexts <- truth_contexts(request)
+    need_public_column_truth <- "column" %in% requested_truth_contexts
+    need_public_group_truth <- ("group" %in% requested_truth_contexts) || need_public_column_truth
+    need_groups <- need_public_group_truth || any(c("groups", "lineage_tree", "column_phenotypes", "cluster_identities", "prior_grn_by_group") %in% effective_extras)
     need_regulatory_network_sc <- "regulatory_network_sc" %in% native_outputs
     need_rna_velocity <- "rna_velocity" %in% native_outputs
-    need_cellwise_grn <- need_public_group_truth || need_public_cell_truth || need_lineage || need_prior_grn_by_group || need_regulatory_network_sc
+    need_cellwise_grn <- need_public_group_truth || need_public_column_truth || need_lineage || need_prior_grn_by_group || need_regulatory_network_sc
     group_truth_rows <- list()
-    cell_truth_rows <- NULL
+    column_truth_rows <- NULL
     exported_native_outputs <- structure(list(), names = character())
 
     init <- dyngen::initialise_model(
@@ -1038,9 +1275,9 @@ tryCatch(
     write_gene_universe(dataset$counts, file.path(output_dir, "truth", "gene_universe.txt"))
     global_truth <- derive_global_truth(model)
     exported_native_outputs <- write_native_outputs(dataset, native_outputs, output_dir)
-    if (need_public_cell_truth) {
-      write_progress("running", "derive_truth", "Deriving cell truth from dyngen cell-specific GRN outputs.")
-      cell_truth_rows <- derive_cell_truth(
+    if (need_public_column_truth) {
+      write_progress("running", "derive_truth", "Deriving column truth from dyngen cell-specific GRN outputs.")
+      column_truth_rows <- derive_column_truth(
         dataset = dataset,
         cell_ids = rownames(dataset$counts),
         genes = colnames(dataset$counts),
@@ -1069,6 +1306,28 @@ tryCatch(
         file.path(output_dir, "extras", "pseudotime.tsv")
       )
     }
+    if (need_timepoints) {
+      write_timepoints(
+        dataset$cell_info,
+        dataset$cell_ids,
+        file.path(output_dir, "extras", "timepoints.tsv")
+      )
+    }
+    if (need_interventions) {
+      write_interventions(
+        model,
+        params,
+        file.path(output_dir, "extras", "interventions.tsv")
+      )
+    }
+    if (need_perturbation_design) {
+      write_perturbation_design(
+        dataset,
+        model,
+        params,
+        file.path(output_dir, "extras", "perturbation_design.tsv")
+      )
+    }
 
     if (need_groups) {
       groups_df <- derive_groups(dataset$milestone_percentages, dataset$cell_ids)
@@ -1089,8 +1348,8 @@ tryCatch(
           group_truth_rows <- group_truth_result$group_truth_rows
         }
       }
-      if (need_cell_phenotypes) {
-        write_cell_phenotypes(groups_df, milestone_order, file.path(output_dir, "extras", "cell_phenotypes.tsv"))
+      if (need_column_phenotypes) {
+        write_column_phenotypes(groups_df, milestone_order, file.path(output_dir, "extras", "column_phenotypes.tsv"))
       }
       if (need_cluster_identities) {
         write_cluster_identities(groups_df, milestone_order, file.path(output_dir, "extras", "cluster_identities.tsv"))
@@ -1113,7 +1372,7 @@ tryCatch(
       }
     }
 
-    write_truth_networks(global_truth, group_truth_rows, cell_truth_rows, output_dir)
+    write_truth_networks(global_truth, group_truth_rows, column_truth_rows, output_dir)
 
     write_progress("running", "write_manifest", "Writing simulator-output-manifest.json.")
     write_manifest(

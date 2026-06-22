@@ -20,7 +20,8 @@
       "required": [
         "simulator_id",
         "name",
-        "requested_profile",
+        "requested_data_axes",
+        "requested_truth_requirements",
         "requested_extras",
         "effective_extras",
         "inputs_used",
@@ -31,67 +32,310 @@
         "issues"
       ],
       "properties": {
-        "simulator_id": { "type": "string", "minLength": 1 },
-        "name": { "type": "string", "minLength": 1 },
-        "requested_profile": { "type": "string", "minLength": 1 },
+        "simulator_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
         "requested_extras": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "effective_extras": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "inputs_used": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "native_extras_used": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "derived_extras_used": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "truth_outputs": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["global", "group", "cell"],
-          "properties": {
-            "global": {
-              "type": "string",
-              "enum": ["none", "native", "derivable"]
-            },
-            "group": {
-              "type": "string",
-              "enum": ["none", "native", "derivable"]
-            },
-            "cell": {
-              "type": "string",
-              "enum": ["none", "native", "derivable"]
-            }
-          }
+          "$ref": "#/$defs/truth_outputs"
         },
         "status": {
           "type": "string",
-          "enum": ["eligible", "warning", "blocked"]
+          "enum": [
+            "eligible",
+            "warning",
+            "blocked"
+          ]
         },
         "issues": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": true,
-            "required": ["severity", "code", "message"],
+            "required": [
+              "severity",
+              "code",
+              "message"
+            ],
             "properties": {
               "severity": {
                 "type": "string",
-                "enum": ["block", "warn", "info"]
+                "enum": [
+                  "block",
+                  "warn",
+                  "info"
+                ]
               },
-              "code": { "type": "string", "minLength": 1 },
-              "message": { "type": "string", "minLength": 1 }
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
+        },
+        "requested_data_axes": {
+          "$ref": "#/$defs/data_axes"
+        },
+        "requested_truth_requirements": {
+          "$ref": "#/$defs/truth_requirements"
+        }
+      }
+    },
+    "data_axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measurement",
+        "resolution",
+        "column_kind",
+        "experimental_design"
+      ],
+      "properties": {
+        "measurement": {
+          "type": "string",
+          "enum": [
+            "rna_expression"
+          ]
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "bulk",
+            "single_cell",
+            "spatial",
+            "pseudo_bulk",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "column_kind": {
+          "type": "string",
+          "enum": [
+            "samples",
+            "cells",
+            "timepoints",
+            "perturbations",
+            "spots",
+            "metacells",
+            "conditions"
+          ]
+        },
+        "experimental_design": {
+          "type": "string",
+          "enum": [
+            "observational",
+            "steady_state",
+            "perturbational",
+            "time_series",
+            "trajectory",
+            "differentiation"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "cells"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "single_cell"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "spots"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "spatial"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "metacells"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "enum": [
+                  "single_cell",
+                  "pseudo_bulk"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "time_series"
+              }
+            },
+            "required": [
+              "experimental_design"
+            ]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": [
+                  "timepoints",
+                  "cells",
+                  "samples"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "perturbational"
+              }
+            },
+            "required": [
+              "experimental_design"
+            ]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": [
+                  "perturbations",
+                  "cells",
+                  "samples"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "truth_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contexts"
+      ],
+      "properties": {
+        "contexts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "global",
+              "group",
+              "column"
+            ]
+          },
+          "contains": {
+            "const": "global"
+          }
+        }
+      }
+    },
+    "truth_outputs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/truth_output"
+      }
+    },
+    "truth_context_family": {
+      "type": "string",
+      "enum": [
+        "global",
+        "group",
+        "column"
+      ]
+    },
+    "truth_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context",
+        "status"
+      ],
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/truth_context_family"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "native",
+            "derivable"
+          ]
         }
       }
     }
@@ -106,7 +350,8 @@
       "additionalProperties": false,
       "required": [
         "id",
-        "profile",
+        "data_axes",
+        "truth_requirements",
         "organism",
         "requested_extras",
         "effective_extras",
@@ -114,45 +359,84 @@
         "base_seed"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "profile": { "type": "string", "minLength": 1 },
-        "organism": { "type": "object" },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "organism": {
+          "type": "object"
+        },
         "requested_extras": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "effective_extras": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "inputs": {
           "type": "object"
         },
-        "base_seed": { "type": "integer" }
+        "base_seed": {
+          "type": "integer"
+        },
+        "data_axes": {
+          "$ref": "#/$defs/data_axes"
+        },
+        "truth_requirements": {
+          "$ref": "#/$defs/truth_requirements"
+        }
       }
     },
     "catalog_summary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["total", "eligible", "warning", "blocked"],
+      "required": [
+        "total",
+        "eligible",
+        "warning",
+        "blocked"
+      ],
       "properties": {
-        "total": { "type": "integer", "minimum": 0 },
-        "eligible": { "type": "integer", "minimum": 0 },
-        "warning": { "type": "integer", "minimum": 0 },
-        "blocked": { "type": "integer", "minimum": 0 }
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligible": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warning": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "eligible": {
       "type": "array",
-      "items": { "$ref": "#/$defs/simulator_entry" }
+      "items": {
+        "$ref": "#/$defs/simulator_entry"
+      }
     },
     "warning": {
       "type": "array",
-      "items": { "$ref": "#/$defs/simulator_entry" }
+      "items": {
+        "$ref": "#/$defs/simulator_entry"
+      }
     },
     "blocked": {
       "type": "array",
-      "items": { "$ref": "#/$defs/simulator_entry" }
+      "items": {
+        "$ref": "#/$defs/simulator_entry"
+      }
     }
   }
 }

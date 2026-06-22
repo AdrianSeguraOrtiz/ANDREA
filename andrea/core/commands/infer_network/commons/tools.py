@@ -23,14 +23,14 @@ EXECUTION_CAPABILITIES = {
     "global",
     "group_native",
     "group_emulated",
-    "cell_native",
+    "column_native",
     "group_aggregated",
 }
 EXECUTION_CAPABILITY_ORDER = (
     "global",
     "group_native",
     "group_emulated",
-    "cell_native",
+    "column_native",
     "group_aggregated",
 )
 
@@ -42,10 +42,10 @@ def _execution_capability_choices() -> str:
 def _validate_execution_capability_contract(
     *, tool_id: str, capabilities: list[str]
 ) -> None:
-    if "group_aggregated" in capabilities and "cell_native" not in capabilities:
+    if "group_aggregated" in capabilities and "column_native" not in capabilities:
         raise ValueError(
             f"[{tool_id}] toolspec.execution_capabilities includes 'group_aggregated' "
-            "but does not include required companion mode 'cell_native'"
+            "but does not include required companion mode 'column_native'"
         )
 
 

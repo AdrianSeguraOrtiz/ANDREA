@@ -2,7 +2,7 @@ export const EXECUTION_MODE_LABELS = {
   global: "Global",
   group_native: "Group native",
   group_emulated: "Group emulated",
-  cell_native: "Cell native",
+  column_native: "Column native",
   group_aggregated: "Group aggregated",
 };
 

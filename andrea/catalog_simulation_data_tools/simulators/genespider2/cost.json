@@ -1,0 +1,2350 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "bulk_perturbations_perturbational_global_full_extras",
+      "benchmark_config": {
+        "simulator_id": "genespider2",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "bulk",
+          "column_kind": "perturbations",
+          "experimental_design": "perturbational"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 6,
+            "cells": 6
+          }
+        ],
+        "threads_tested": [
+          1,
+          2,
+          4,
+          8
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 1,
+        "timeout_seconds": 900,
+        "dimension_profile": {
+          "cells_param": {
+            "param": "perturbation.replicates_per_gene",
+            "multiplier_param": "num_genes"
+          },
+          "genes_param": "num_genes",
+          "group_count": 0,
+          "population_count": 0
+        },
+        "input_profile": {
+          "requested_extras": [
+            "enrichment_background",
+            "prior_grn",
+            "replicates",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "enrichment_background",
+            "interventions",
+            "perturbation_design",
+            "prior_grn",
+            "replicates",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "network_source": "scalefree2"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "genespider2.json:bulk_perturbations_perturbational_global_full_extras:inline",
+          "resolved_base_params": {
+            "network_source": "scalefree2",
+            "num_genes": 50,
+            "average_degree": 2.0,
+            "network": {
+              "scalefree2_alpha": 1.2,
+              "activation_probability": 0.62
+            },
+            "perturbation": {
+              "replicates_per_gene": 2,
+              "strength": 1.0
+            },
+            "bulk": {
+              "snr": 1.0,
+              "snr_model": "SNR_L"
+            },
+            "single_cell": {
+              "snr": 0.1,
+              "control_snr": 0.1,
+              "snr_model": "SNR_L",
+              "raw_counts": true,
+              "right_tail": 2.0,
+              "negbin_prob": 0.5,
+              "dispersion": 1.0,
+              "n_clusts": 5,
+              "logbase": 10.0,
+              "ds_min": 0.3,
+              "ds_max": 0.6
+            },
+            "grouping": {
+              "method": "kmeans_expression"
+            },
+            "time_series": {
+              "time_points": 20,
+              "perturbed_gene_index": 1,
+              "perturbation_strength": -1.0,
+              "input_noise_std": 0.0
+            }
+          },
+          "cost_relevant_params": [
+            "network_source",
+            "average_degree",
+            "network.scalefree2_alpha",
+            "network.activation_probability",
+            "perturbation.replicates_per_gene",
+            "perturbation.strength",
+            "bulk.snr",
+            "bulk.snr_model",
+            "single_cell.snr",
+            "single_cell.control_snr",
+            "single_cell.raw_counts",
+            "single_cell.n_clusts",
+            "time_series.time_points",
+            "time_series.perturbed_gene_index",
+            "time_series.perturbation_strength",
+            "time_series.input_noise_std"
+          ],
+          "cost_relevant_values": {
+            "network_source": "scalefree2",
+            "average_degree": 2.0,
+            "network.scalefree2_alpha": 1.2,
+            "network.activation_probability": 0.62,
+            "perturbation.replicates_per_gene": 2,
+            "perturbation.strength": 1.0,
+            "bulk.snr": 1.0,
+            "bulk.snr_model": "SNR_L",
+            "single_cell.snr": 0.1,
+            "single_cell.control_snr": 0.1,
+            "single_cell.raw_counts": true,
+            "single_cell.n_clusts": 5,
+            "time_series.time_points": 20,
+            "time_series.perturbed_gene_index": 1,
+            "time_series.perturbation_strength": -1.0,
+            "time_series.input_noise_std": 0.0
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 64,
+          "upstream_mapping": "The MATLAB entrypoint calls maxNumCompThreads(runtime_resources.threads) before invoking public GeneSPIDER2 generation functions. The Docker runtime executes a MATLAB Compiler binary on MATLAB Runtime; no MATLAB license is required at run time."
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 6,
+          "cells": 6,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.708811,
+          "seconds_p90": 8.708811,
+          "output_bytes_p50": 11346,
+          "output_bytes_p90": 11346,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "perturbations",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_perturbations_perturbational_global_full_extras",
+            "profile_id": "bulk_perturbations_perturbational_global_full_extras",
+            "expression_profile": "bulk",
+            "column_kind": "perturbations",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 6,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 6,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 4,
+            "effective_extras_count": 6,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 1.0,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 0.1,
+              "single_cell.control_snr": 0.1,
+              "single_cell.raw_counts": true,
+              "single_cell.n_clusts": 5,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 6,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 2,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.673794,
+          "seconds_p90": 7.673794,
+          "output_bytes_p50": 11346,
+          "output_bytes_p90": 11346,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "perturbations",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_perturbations_perturbational_global_full_extras",
+            "profile_id": "bulk_perturbations_perturbational_global_full_extras",
+            "expression_profile": "bulk",
+            "column_kind": "perturbations",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 6,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 6,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 4,
+            "effective_extras_count": 6,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 2,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 1.0,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 0.1,
+              "single_cell.control_snr": 0.1,
+              "single_cell.raw_counts": true,
+              "single_cell.n_clusts": 5,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 6,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 4,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.203992,
+          "seconds_p90": 7.203992,
+          "output_bytes_p50": 11346,
+          "output_bytes_p90": 11346,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "perturbations",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_perturbations_perturbational_global_full_extras",
+            "profile_id": "bulk_perturbations_perturbational_global_full_extras",
+            "expression_profile": "bulk",
+            "column_kind": "perturbations",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 6,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 6,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 4,
+            "effective_extras_count": 6,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 4,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 1.0,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 0.1,
+              "single_cell.control_snr": 0.1,
+              "single_cell.raw_counts": true,
+              "single_cell.n_clusts": 5,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 6,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 8,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.481421,
+          "seconds_p90": 7.481421,
+          "output_bytes_p50": 11346,
+          "output_bytes_p90": 11346,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "perturbations",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_perturbations_perturbational_global_full_extras",
+            "profile_id": "bulk_perturbations_perturbational_global_full_extras",
+            "expression_profile": "bulk",
+            "column_kind": "perturbations",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 6,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 6,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 4,
+            "effective_extras_count": 6,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 8,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 1.0,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 0.1,
+              "single_cell.control_snr": 0.1,
+              "single_cell.raw_counts": true,
+              "single_cell.n_clusts": 5,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "bulk_timepoints_time_series_global_full_extras",
+      "benchmark_config": {
+        "simulator_id": "genespider2",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "bulk",
+          "column_kind": "timepoints",
+          "experimental_design": "time_series"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 6,
+            "cells": 5
+          }
+        ],
+        "threads_tested": [
+          1,
+          2,
+          4,
+          8
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 1,
+        "timeout_seconds": 900,
+        "dimension_profile": {
+          "cells_param": {
+            "param": "time_series.time_points",
+            "offset": 1
+          },
+          "genes_param": "num_genes",
+          "group_count": 0,
+          "population_count": 0
+        },
+        "input_profile": {
+          "requested_extras": [
+            "enrichment_background",
+            "prior_grn",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "enrichment_background",
+            "prior_grn",
+            "tf_list",
+            "timepoints"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "network_source": "scalefree2"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "genespider2.json:bulk_timepoints_time_series_global_full_extras:inline",
+          "resolved_base_params": {
+            "network_source": "scalefree2",
+            "num_genes": 50,
+            "average_degree": 2.0,
+            "network": {
+              "scalefree2_alpha": 1.2,
+              "activation_probability": 0.62
+            },
+            "perturbation": {
+              "replicates_per_gene": 2,
+              "strength": 1.0
+            },
+            "bulk": {
+              "snr": 0.1,
+              "snr_model": "SNR_L"
+            },
+            "single_cell": {
+              "snr": 0.1,
+              "control_snr": 0.1,
+              "snr_model": "SNR_L",
+              "raw_counts": true,
+              "right_tail": 2.0,
+              "negbin_prob": 0.5,
+              "dispersion": 1.0,
+              "n_clusts": 5,
+              "logbase": 10.0,
+              "ds_min": 0.3,
+              "ds_max": 0.6
+            },
+            "grouping": {
+              "method": "kmeans_expression"
+            },
+            "time_series": {
+              "time_points": 20,
+              "perturbed_gene_index": 1,
+              "perturbation_strength": -1.0,
+              "input_noise_std": 0.0
+            }
+          },
+          "cost_relevant_params": [
+            "network_source",
+            "average_degree",
+            "network.scalefree2_alpha",
+            "network.activation_probability",
+            "perturbation.replicates_per_gene",
+            "perturbation.strength",
+            "bulk.snr",
+            "bulk.snr_model",
+            "single_cell.snr",
+            "single_cell.control_snr",
+            "single_cell.raw_counts",
+            "single_cell.n_clusts",
+            "time_series.time_points",
+            "time_series.perturbed_gene_index",
+            "time_series.perturbation_strength",
+            "time_series.input_noise_std"
+          ],
+          "cost_relevant_values": {
+            "network_source": "scalefree2",
+            "average_degree": 2.0,
+            "network.scalefree2_alpha": 1.2,
+            "network.activation_probability": 0.62,
+            "perturbation.replicates_per_gene": 2,
+            "perturbation.strength": 1.0,
+            "bulk.snr": 0.1,
+            "bulk.snr_model": "SNR_L",
+            "single_cell.snr": 0.1,
+            "single_cell.control_snr": 0.1,
+            "single_cell.raw_counts": true,
+            "single_cell.n_clusts": 5,
+            "time_series.time_points": 20,
+            "time_series.perturbed_gene_index": 1,
+            "time_series.perturbation_strength": -1.0,
+            "time_series.input_noise_std": 0.0
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 64,
+          "upstream_mapping": "The MATLAB entrypoint calls maxNumCompThreads(runtime_resources.threads) before invoking public GeneSPIDER2 generation functions. The Docker runtime executes a MATLAB Compiler binary on MATLAB Runtime; no MATLAB license is required at run time."
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 6,
+          "cells": 5,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.552888,
+          "seconds_p90": 8.552888,
+          "output_bytes_p50": 6842,
+          "output_bytes_p90": 6842,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "timepoints",
+              "experimental_design": "time_series"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_timepoints_time_series_global_full_extras",
+            "profile_id": "bulk_timepoints_time_series_global_full_extras",
+            "expression_profile": "bulk",
+            "column_kind": "timepoints",
+            "experimental_design": "time_series",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list",
+              "timepoints"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list",
+              "timepoints"
+            ],
+            "genes": 6,
+            "cells": 5,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 5,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 3,
+            "effective_extras_count": 4,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 0.1,
+              "single_cell.control_snr": 0.1,
+              "single_cell.raw_counts": true,
+              "single_cell.n_clusts": 5,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 5,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 2,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.290664,
+          "seconds_p90": 7.290664,
+          "output_bytes_p50": 6842,
+          "output_bytes_p90": 6842,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "timepoints",
+              "experimental_design": "time_series"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_timepoints_time_series_global_full_extras",
+            "profile_id": "bulk_timepoints_time_series_global_full_extras",
+            "expression_profile": "bulk",
+            "column_kind": "timepoints",
+            "experimental_design": "time_series",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list",
+              "timepoints"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list",
+              "timepoints"
+            ],
+            "genes": 6,
+            "cells": 5,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 5,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 3,
+            "effective_extras_count": 4,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 2,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 0.1,
+              "single_cell.control_snr": 0.1,
+              "single_cell.raw_counts": true,
+              "single_cell.n_clusts": 5,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 5,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 4,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.052967,
+          "seconds_p90": 7.052967,
+          "output_bytes_p50": 6842,
+          "output_bytes_p90": 6842,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "timepoints",
+              "experimental_design": "time_series"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_timepoints_time_series_global_full_extras",
+            "profile_id": "bulk_timepoints_time_series_global_full_extras",
+            "expression_profile": "bulk",
+            "column_kind": "timepoints",
+            "experimental_design": "time_series",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list",
+              "timepoints"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list",
+              "timepoints"
+            ],
+            "genes": 6,
+            "cells": 5,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 5,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 3,
+            "effective_extras_count": 4,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 4,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 0.1,
+              "single_cell.control_snr": 0.1,
+              "single_cell.raw_counts": true,
+              "single_cell.n_clusts": 5,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 5,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 8,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 6.999094,
+          "seconds_p90": 6.999094,
+          "output_bytes_p50": 6842,
+          "output_bytes_p90": 6842,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "timepoints",
+              "experimental_design": "time_series"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_timepoints_time_series_global_full_extras",
+            "profile_id": "bulk_timepoints_time_series_global_full_extras",
+            "expression_profile": "bulk",
+            "column_kind": "timepoints",
+            "experimental_design": "time_series",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list",
+              "timepoints"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list",
+              "timepoints"
+            ],
+            "genes": 6,
+            "cells": 5,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 5,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 3,
+            "effective_extras_count": 4,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 8,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 0.1,
+              "single_cell.control_snr": 0.1,
+              "single_cell.raw_counts": true,
+              "single_cell.n_clusts": 5,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "single_cell_cells_perturbational_global_full_extras",
+      "benchmark_config": {
+        "simulator_id": "genespider2",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "single_cell",
+          "column_kind": "cells",
+          "experimental_design": "perturbational"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 6,
+            "cells": 6
+          }
+        ],
+        "threads_tested": [
+          1,
+          2,
+          4,
+          8
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 1,
+        "timeout_seconds": 900,
+        "dimension_profile": {
+          "cells_param": {
+            "param": "perturbation.replicates_per_gene",
+            "multiplier_param": "num_genes"
+          },
+          "genes_param": "num_genes",
+          "group_count": 0,
+          "population_count": 0
+        },
+        "input_profile": {
+          "requested_extras": [
+            "enrichment_background",
+            "prior_grn",
+            "replicates",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "enrichment_background",
+            "interventions",
+            "perturbation_design",
+            "prior_grn",
+            "replicates",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "network_source": "scalefree2"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "genespider2.json:single_cell_cells_perturbational_global_full_extras:inline",
+          "resolved_base_params": {
+            "network_source": "scalefree2",
+            "num_genes": 50,
+            "average_degree": 2.0,
+            "network": {
+              "scalefree2_alpha": 1.2,
+              "activation_probability": 0.62
+            },
+            "perturbation": {
+              "replicates_per_gene": 2,
+              "strength": 1.0
+            },
+            "bulk": {
+              "snr": 0.1,
+              "snr_model": "SNR_L"
+            },
+            "single_cell": {
+              "snr": 1.0,
+              "control_snr": 1.0,
+              "snr_model": "SNR_L",
+              "raw_counts": false,
+              "right_tail": 2.0,
+              "negbin_prob": 0.5,
+              "dispersion": 1.0,
+              "n_clusts": 2,
+              "logbase": 10.0,
+              "ds_min": 0.3,
+              "ds_max": 0.6
+            },
+            "grouping": {
+              "method": "kmeans_expression"
+            },
+            "time_series": {
+              "time_points": 20,
+              "perturbed_gene_index": 1,
+              "perturbation_strength": -1.0,
+              "input_noise_std": 0.0
+            }
+          },
+          "cost_relevant_params": [
+            "network_source",
+            "average_degree",
+            "network.scalefree2_alpha",
+            "network.activation_probability",
+            "perturbation.replicates_per_gene",
+            "perturbation.strength",
+            "bulk.snr",
+            "bulk.snr_model",
+            "single_cell.snr",
+            "single_cell.control_snr",
+            "single_cell.raw_counts",
+            "single_cell.n_clusts",
+            "time_series.time_points",
+            "time_series.perturbed_gene_index",
+            "time_series.perturbation_strength",
+            "time_series.input_noise_std"
+          ],
+          "cost_relevant_values": {
+            "network_source": "scalefree2",
+            "average_degree": 2.0,
+            "network.scalefree2_alpha": 1.2,
+            "network.activation_probability": 0.62,
+            "perturbation.replicates_per_gene": 2,
+            "perturbation.strength": 1.0,
+            "bulk.snr": 0.1,
+            "bulk.snr_model": "SNR_L",
+            "single_cell.snr": 1.0,
+            "single_cell.control_snr": 1.0,
+            "single_cell.raw_counts": false,
+            "single_cell.n_clusts": 2,
+            "time_series.time_points": 20,
+            "time_series.perturbed_gene_index": 1,
+            "time_series.perturbation_strength": -1.0,
+            "time_series.input_noise_std": 0.0
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 64,
+          "upstream_mapping": "The MATLAB entrypoint calls maxNumCompThreads(runtime_resources.threads) before invoking public GeneSPIDER2 generation functions. The Docker runtime executes a MATLAB Compiler binary on MATLAB Runtime; no MATLAB license is required at run time."
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 6,
+          "cells": 6,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 9.42286,
+          "seconds_p90": 9.42286,
+          "output_bytes_p50": 10736,
+          "output_bytes_p90": 10736,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_perturbational_global_full_extras",
+            "profile_id": "single_cell_cells_perturbational_global_full_extras",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 6,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 6,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 4,
+            "effective_extras_count": 6,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 1.0,
+              "single_cell.control_snr": 1.0,
+              "single_cell.raw_counts": false,
+              "single_cell.n_clusts": 2,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 6,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 2,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.836551,
+          "seconds_p90": 7.836551,
+          "output_bytes_p50": 10736,
+          "output_bytes_p90": 10736,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_perturbational_global_full_extras",
+            "profile_id": "single_cell_cells_perturbational_global_full_extras",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 6,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 6,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 4,
+            "effective_extras_count": 6,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 2,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 1.0,
+              "single_cell.control_snr": 1.0,
+              "single_cell.raw_counts": false,
+              "single_cell.n_clusts": 2,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 6,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 4,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.599664,
+          "seconds_p90": 7.599664,
+          "output_bytes_p50": 10736,
+          "output_bytes_p90": 10736,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_perturbational_global_full_extras",
+            "profile_id": "single_cell_cells_perturbational_global_full_extras",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 6,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 6,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 4,
+            "effective_extras_count": 6,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 4,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 1.0,
+              "single_cell.control_snr": 1.0,
+              "single_cell.raw_counts": false,
+              "single_cell.n_clusts": 2,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 6,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 8,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.539652,
+          "seconds_p90": 7.539652,
+          "output_bytes_p50": 10736,
+          "output_bytes_p90": 10736,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_perturbational_global_full_extras",
+            "profile_id": "single_cell_cells_perturbational_global_full_extras",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 6,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 6,
+            "n_cells": 6,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 4,
+            "effective_extras_count": 6,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 8,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 1.0,
+              "single_cell.control_snr": 1.0,
+              "single_cell.raw_counts": false,
+              "single_cell.n_clusts": 2,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+      "benchmark_config": {
+        "simulator_id": "genespider2",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "single_cell",
+          "column_kind": "cells",
+          "experimental_design": "perturbational"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global",
+            "group"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 6,
+            "cells": 12
+          }
+        ],
+        "threads_tested": [
+          1,
+          2,
+          4,
+          8
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 1,
+        "timeout_seconds": 900,
+        "dimension_profile": {
+          "cells_param": {
+            "param": "perturbation.replicates_per_gene",
+            "multiplier_param": "num_genes"
+          },
+          "genes_param": "num_genes",
+          "group_count": 2,
+          "population_count": 2
+        },
+        "input_profile": {
+          "requested_extras": [
+            "cluster_identities",
+            "column_phenotypes",
+            "enrichment_background",
+            "prior_grn",
+            "prior_grn_by_group",
+            "replicates",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "cluster_identities",
+            "column_phenotypes",
+            "enrichment_background",
+            "groups",
+            "interventions",
+            "perturbation_design",
+            "prior_grn",
+            "prior_grn_by_group",
+            "replicates",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "network_source": "scalefree2"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "genespider2.json:single_cell_cells_perturbational_global_group_full_extras:inline",
+          "resolved_base_params": {
+            "network_source": "scalefree2",
+            "num_genes": 50,
+            "average_degree": 2.0,
+            "network": {
+              "scalefree2_alpha": 1.2,
+              "activation_probability": 0.62
+            },
+            "perturbation": {
+              "replicates_per_gene": 2,
+              "strength": 1.0
+            },
+            "bulk": {
+              "snr": 0.1,
+              "snr_model": "SNR_L"
+            },
+            "single_cell": {
+              "snr": 1.0,
+              "control_snr": 1.0,
+              "snr_model": "SNR_L",
+              "raw_counts": false,
+              "right_tail": 2.0,
+              "negbin_prob": 0.5,
+              "dispersion": 1.0,
+              "n_clusts": 2,
+              "logbase": 10.0,
+              "ds_min": 0.3,
+              "ds_max": 0.6
+            },
+            "grouping": {
+              "method": "kmeans_expression"
+            },
+            "time_series": {
+              "time_points": 20,
+              "perturbed_gene_index": 1,
+              "perturbation_strength": -1.0,
+              "input_noise_std": 0.0
+            }
+          },
+          "cost_relevant_params": [
+            "network_source",
+            "average_degree",
+            "network.scalefree2_alpha",
+            "network.activation_probability",
+            "perturbation.replicates_per_gene",
+            "perturbation.strength",
+            "bulk.snr",
+            "bulk.snr_model",
+            "single_cell.snr",
+            "single_cell.control_snr",
+            "single_cell.raw_counts",
+            "single_cell.n_clusts",
+            "time_series.time_points",
+            "time_series.perturbed_gene_index",
+            "time_series.perturbation_strength",
+            "time_series.input_noise_std"
+          ],
+          "cost_relevant_values": {
+            "network_source": "scalefree2",
+            "average_degree": 2.0,
+            "network.scalefree2_alpha": 1.2,
+            "network.activation_probability": 0.62,
+            "perturbation.replicates_per_gene": 2,
+            "perturbation.strength": 1.0,
+            "bulk.snr": 0.1,
+            "bulk.snr_model": "SNR_L",
+            "single_cell.snr": 1.0,
+            "single_cell.control_snr": 1.0,
+            "single_cell.raw_counts": false,
+            "single_cell.n_clusts": 2,
+            "time_series.time_points": 20,
+            "time_series.perturbed_gene_index": 1,
+            "time_series.perturbation_strength": -1.0,
+            "time_series.input_noise_std": 0.0
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 64,
+          "upstream_mapping": "The MATLAB entrypoint calls maxNumCompThreads(runtime_resources.threads) before invoking public GeneSPIDER2 generation functions. The Docker runtime executes a MATLAB Compiler binary on MATLAB Runtime; no MATLAB license is required at run time."
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 6,
+          "cells": 12,
+          "groups": 2,
+          "population_count": 2,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 9.124155,
+          "seconds_p90": 9.124155,
+          "output_bytes_p50": 17100,
+          "output_bytes_p90": 17100,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+            "profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 12,
+            "groups": 2,
+            "population_count": 2,
+            "n_genes": 6,
+            "n_cells": 12,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 7,
+            "effective_extras_count": 10,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 1.0,
+              "single_cell.control_snr": 1.0,
+              "single_cell.raw_counts": false,
+              "single_cell.n_clusts": 2,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 12,
+          "groups": 2,
+          "population_count": 2,
+          "threads": 2,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.937274,
+          "seconds_p90": 7.937274,
+          "output_bytes_p50": 17100,
+          "output_bytes_p90": 17100,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+            "profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 12,
+            "groups": 2,
+            "population_count": 2,
+            "n_genes": 6,
+            "n_cells": 12,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 7,
+            "effective_extras_count": 10,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 2,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 1.0,
+              "single_cell.control_snr": 1.0,
+              "single_cell.raw_counts": false,
+              "single_cell.n_clusts": 2,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 12,
+          "groups": 2,
+          "population_count": 2,
+          "threads": 4,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.520322,
+          "seconds_p90": 7.520322,
+          "output_bytes_p50": 17100,
+          "output_bytes_p90": 17100,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+            "profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 12,
+            "groups": 2,
+            "population_count": 2,
+            "n_genes": 6,
+            "n_cells": 12,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 7,
+            "effective_extras_count": 10,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 4,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 1.0,
+              "single_cell.control_snr": 1.0,
+              "single_cell.raw_counts": false,
+              "single_cell.n_clusts": 2,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        },
+        {
+          "genes": 6,
+          "cells": 12,
+          "groups": 2,
+          "population_count": 2,
+          "threads": 8,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.625304,
+          "seconds_p90": 7.625304,
+          "output_bytes_p50": 17100,
+          "output_bytes_p90": 17100,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "genespider2",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "perturbational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+            "profile_id": "single_cell_cells_perturbational_global_group_full_extras",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "perturbational",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "prior_grn_by_group",
+              "replicates",
+              "tf_list"
+            ],
+            "genes": 6,
+            "cells": 12,
+            "groups": 2,
+            "population_count": 2,
+            "n_genes": 6,
+            "n_cells": 12,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 7,
+            "effective_extras_count": 10,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 8,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "network_source": "scalefree2",
+              "average_degree": 2.0,
+              "network.scalefree2_alpha": 1.2,
+              "network.activation_probability": 0.62,
+              "perturbation.replicates_per_gene": 2,
+              "perturbation.strength": 1.0,
+              "bulk.snr": 0.1,
+              "bulk.snr_model": "SNR_L",
+              "single_cell.snr": 1.0,
+              "single_cell.control_snr": 1.0,
+              "single_cell.raw_counts": false,
+              "single_cell.n_clusts": 2,
+              "time_series.time_points": 20,
+              "time_series.perturbed_gene_index": 1,
+              "time_series.perturbation_strength": -1.0,
+              "time_series.input_noise_std": 0.0
+            },
+            "input_source_modes": {
+              "network_source": "scalefree2"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

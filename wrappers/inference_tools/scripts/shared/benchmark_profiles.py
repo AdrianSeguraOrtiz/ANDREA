@@ -20,7 +20,7 @@ EXECUTION_POLICY_BY_MODE = {
     "global": "single",
     "group_native": "native_grouped",
     "group_emulated": "andrea_group_emulated",
-    "cell_native": "cell_native",
+    "column_native": "column_native",
     "group_aggregated": "andrea_group_aggregated",
 }
 CONDITIONAL_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
@@ -185,7 +185,7 @@ def _resolve_one_profile(
         "mode": mode,
         "physical_task_policy": EXECUTION_POLICY_BY_MODE[mode],
         "group_count": group_count,
-        "aggregation_step": "cell_to_group" if mode == "group_aggregated" else "none",
+        "aggregation_step": "column_to_group" if mode == "group_aggregated" else "none",
     }
     params, params_profile = _resolve_profile_params(
         params_schema=params_schema,
@@ -275,8 +275,8 @@ def _default_execution_mode(capabilities: Sequence[str]) -> str:
         return "group_native"
     if "group_emulated" in capabilities:
         return "group_emulated"
-    if "cell_native" in capabilities:
-        return "cell_native"
+    if "column_native" in capabilities:
+        return "column_native"
     if "group_aggregated" in capabilities:
         return "group_aggregated"
     raise ValueError(f"No benchmarkable execution mode in: {list(capabilities)}")
@@ -316,13 +316,13 @@ def _profile_group_count(
 ) -> int:
     raw_group_count = raw_profile.get("group_count")
     if raw_group_count is None:
-        group_count = 0 if mode in {"global", "cell_native"} else default_group_count
+        group_count = 0 if mode in {"global", "column_native"} else default_group_count
     elif isinstance(raw_group_count, bool) or not isinstance(raw_group_count, int):
         raise ValueError("profile.group_count must be an integer.")
     else:
         group_count = raw_group_count
 
-    if mode in {"global", "cell_native"} and group_count != 0:
+    if mode in {"global", "column_native"} and group_count != 0:
         raise ValueError(
             f"profile.group_count must be 0 for execution.mode={mode}."
         )
@@ -687,9 +687,9 @@ def _build_input_profile(
         "group_count": group_count,
         "has_tf_list": "tf_list" in extras,
         "output_density_class": (
-            "dense" if mode in {"cell_native", "group_aggregated"} else "sparse"
+            "dense" if mode in {"column_native", "group_aggregated"} else "sparse"
         ),
-        "aggregation_step": "cell_to_group" if mode == "group_aggregated" else "none",
+        "aggregation_step": "column_to_group" if mode == "group_aggregated" else "none",
         "notes": [str(note) for note in notes]
         or ["Resolved by benchmark_profiles.py from ToolSpec defaults."],
     }

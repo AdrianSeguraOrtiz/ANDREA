@@ -1,7 +1,6 @@
 {
   "simulator_id": "scmultisim",
   "request": {
-    "profile": "scrna_grouped",
     "seed": 104,
     "effective_extras": [
       "groups",
@@ -32,7 +31,21 @@
         "enabled": false
       }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "differentiation"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [
@@ -48,5 +61,8 @@
     "provenance/raw/result.rds",
     "provenance/raw/session_info.txt"
   ],
-  "required_truth_context_prefixes": ["global", "group:"]
+  "required_truth_context_prefixes": [
+    "global",
+    "group:"
+  ]
 }

@@ -135,6 +135,9 @@ python wrappers/inference_tools/scripts/validate_tool_costs.py
 ### `scaffold_tool.py`
 
 Creates a minimal scaffold for a new tool integration without introducing any new manifest file.
+The generated `toolspec.json` and decision log start from the current contract:
+`execution_capabilities`, `runtime_resources.threading`, column-kind-aware
+`accepts`, structured `extra_inputs` and raw `network.csv` output semantics.
 It creates:
 - `andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json`
 - `wrappers/inference_tools/tools/<tool_id>/integration_decisions.md`

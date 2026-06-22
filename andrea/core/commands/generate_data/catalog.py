@@ -8,14 +8,29 @@ from typing import Any
 from .shared import CATALOG_ROOT, _load_json_object, _validate_json_instance
 
 
-def get_profile_capability(spec: dict[str, Any], profile: str) -> dict[str, Any] | None:
-    profile_capabilities = spec.get("profile_capabilities", {})
-    if not isinstance(profile_capabilities, dict):
+def get_semantic_capabilities(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    capabilities = spec.get("capabilities", [])
+    if not isinstance(capabilities, list):
+        return []
+    return [capability for capability in capabilities if isinstance(capability, dict)]
+
+
+def get_semantic_capability(
+    spec: dict[str, Any],
+    *,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
+) -> dict[str, Any] | None:
+    contexts = truth_requirements.get("contexts")
+    if not isinstance(data_axes, dict) or not isinstance(contexts, list):
         return None
-    capability = profile_capabilities.get(profile)
-    if not isinstance(capability, dict):
-        return None
-    return capability
+    for capability in get_semantic_capabilities(spec):
+        if capability.get("data_axes") != data_axes:
+            continue
+        capability_contexts = capability.get("truth_requirements", {}).get("contexts")
+        if capability_contexts == contexts:
+            return capability
+    return None
 
 
 def _resolve_catalog_paths() -> tuple[Path, Path]:

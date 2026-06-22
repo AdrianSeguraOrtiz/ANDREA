@@ -46,13 +46,14 @@ from andrea.core.commands.compare_networks.utils import (
 from andrea.core.commands.compare_networks.view import write_comparison_view
 from andrea.core.shared.json_io import write_json
 from andrea.core.shared.network_context import (
-    network_context_family,
+    SPECIFIC_NETWORK_CONTEXT_FAMILIES,
+    network_context_counts_by_family,
     network_context_sort_key,
 )
 from andrea.core.shared.paths import report_path
 from andrea.core.shared.runtime_profile import ProgressCallback, RuntimeProfile
 
-_LARGE_CELL_CONTEXT_WARNING_THRESHOLD = 250
+_LARGE_SPECIFIC_CONTEXT_WARNING_THRESHOLD = 250
 
 
 def compare_networks(
@@ -260,23 +261,18 @@ def compare_networks(
 
 
 def _context_counts_by_family(contexts: list[str]) -> dict[str, int]:
-    counts = {
-        "global": 0,
-        "group": 0,
-        "cell": 0,
-        "other": 0,
-    }
-    for context in contexts:
-        counts[network_context_family(context)] += 1
-    return counts
+    return network_context_counts_by_family(contexts)
 
 
 def _context_scale_warnings(context_counts_by_family: dict[str, int]) -> list[str]:
-    cell_count = context_counts_by_family.get("cell", 0)
-    if cell_count <= _LARGE_CELL_CONTEXT_WARNING_THRESHOLD:
+    specific_count = sum(
+        context_counts_by_family.get(family, 0)
+        for family in SPECIFIC_NETWORK_CONTEXT_FAMILIES
+    )
+    if specific_count <= _LARGE_SPECIFIC_CONTEXT_WARNING_THRESHOLD:
         return []
     return [
         "comparison contains "
-        f"{cell_count} cell contexts; distance-map views expose context filtering "
-        "to avoid rendering every cell context at once"
+        f"{specific_count} specific contexts; distance-map views "
+        "expose context filtering to avoid rendering every context at once"
     ]

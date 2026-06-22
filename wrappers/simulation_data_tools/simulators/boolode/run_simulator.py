@@ -46,7 +46,7 @@ JOB_NAME = "andrea_boolode"
 
 EXTRA_KEYS = [
     "groups",
-    "cell_phenotypes",
+    "column_phenotypes",
     "cluster_identities",
     "enrichment_background",
     "lineage_tree",
@@ -56,18 +56,16 @@ EXTRA_KEYS = [
     "prior_grn_by_group",
 ]
 
-PROFILE_EXTRAS = {
-    "scrna_global": {"pseudotime", "enrichment_background", "prior_grn", "tf_list"},
-    "scrna_grouped": {
-        "groups",
-        "cell_phenotypes",
-        "cluster_identities",
-        "enrichment_background",
-        "pseudotime",
-        "prior_grn",
-        "tf_list",
-        "prior_grn_by_group",
-    },
+GLOBAL_EXTRAS = {"pseudotime", "enrichment_background", "prior_grn", "tf_list"}
+GROUP_EXTRAS = {
+    "groups",
+    "column_phenotypes",
+    "cluster_identities",
+    "enrichment_background",
+    "pseudotime",
+    "prior_grn",
+    "tf_list",
+    "prior_grn_by_group",
 }
 
 DEFAULT_PARAMS: dict[str, Any] = {
@@ -275,14 +273,38 @@ def normalize_params(raw_params: dict[str, Any]) -> dict[str, Any]:
     return params
 
 
-def validate_profile_and_extras(profile: str, extras: set[str], params: dict[str, Any]) -> None:
-    if profile not in PROFILE_EXTRAS:
-        raise ValueError("BoolODE supports only scrna_global and scrna_grouped in this wrapper.")
-    unsupported = sorted(extras.difference(PROFILE_EXTRAS[profile]))
+def truth_contexts(request: dict[str, Any]) -> set[str]:
+    raw = request.get("truth_requirements", {}).get("contexts", [])
+    if not isinstance(raw, list):
+        raise ValueError("truth_requirements.contexts must be an array.")
+    contexts = {str(item) for item in raw}
+    if "global" not in contexts:
+        raise ValueError("truth_requirements.contexts must include global.")
+    unsupported = sorted(contexts.difference({"global", "group"}))
     if unsupported:
-        raise ValueError(f"BoolODE profile {profile} does not support requested extra(s): {', '.join(unsupported)}")
-    if profile == "scrna_grouped" and params["n_clusters"] < 2:
-        raise ValueError("scrna_grouped requires n_clusters >= 2.")
+        raise ValueError(
+            "BoolODE wrapper supports only global and group truth contexts; unsupported: "
+            + ", ".join(unsupported)
+        )
+    return contexts
+
+
+def validate_semantic_request(request: dict[str, Any], extras: set[str], params: dict[str, Any]) -> None:
+    axes = request.get("data_axes", {})
+    if axes != {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory",
+    }:
+        raise ValueError("BoolODE wrapper supports only single-cell RNA trajectory data_axes.")
+    contexts = truth_contexts(request)
+    supported = GROUP_EXTRAS if "group" in contexts else GLOBAL_EXTRAS
+    unsupported = sorted(extras.difference(supported))
+    if unsupported:
+        raise ValueError(f"BoolODE does not support requested extra(s): {', '.join(unsupported)}")
+    if "group" in contexts and params["n_clusters"] < 2:
+        raise ValueError("group truth requires n_clusters >= 2.")
     if params["sample_cells"] and params["n_clusters"] > 1:
         raise ValueError("sample_cells=true is incompatible with n_clusters > 1 in the pinned BoolODE implementation.")
 
@@ -521,7 +543,7 @@ def parse_ref_network(path: Path, expression_genes: set[str]) -> list[dict[str, 
                 "target": target,
                 "score": 1.0,
                 "sign": sign,
-                "evidence": "boolode_refNetwork",
+                "evidence": "simulated_truth",
                 "context": "global",
                 "line_no": line_no,
             }
@@ -562,7 +584,7 @@ def load_pseudotime(path: Path, expression_columns: list[str]) -> dict[str, dict
 
 def load_groups(cluster_path: Path, expression_columns: list[str]) -> dict[str, str]:
     if not cluster_path.exists():
-        raise ValueError("scrna_grouped requires BoolODE ClusterIds.csv, but it was not generated.")
+        raise ValueError("group truth requires BoolODE ClusterIds.csv, but it was not generated.")
     df = pd.read_csv(cluster_path, index_col=0, dtype=str)
     if "cl" not in df.columns:
         raise ValueError("ClusterIds.csv is missing column 'cl'.")
@@ -615,7 +637,7 @@ def write_truth_networks(path: Path, global_edges: list[dict[str, Any]], groups:
 def write_pseudotime(path: Path, expression_columns: list[str], pseudotime: dict[str, dict[str, float]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "pseudotime"])
+        writer.writerow(["column", "pseudotime"])
         for cell in expression_columns:
             writer.writerow([cell, f"{float(pseudotime[cell]['pseudotime']):.12g}"])
 
@@ -631,15 +653,15 @@ def group_order(groups: dict[str, str], pseudotime: dict[str, dict[str, float]])
 def write_groups(path: Path, groups: dict[str, str], expression_columns: list[str]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "cluster"])
+        writer.writerow(["column", "cluster"])
         for cell in expression_columns:
             writer.writerow([cell, groups[cell]])
 
 
-def write_cell_phenotypes(path: Path, groups: dict[str, str], expression_columns: list[str], order: dict[str, int]) -> None:
+def write_column_phenotypes(path: Path, groups: dict[str, str], expression_columns: list[str], order: dict[str, int]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "phenotype", "order"])
+        writer.writerow(["column", "phenotype", "order"])
         for cell in expression_columns:
             group = groups[cell]
             writer.writerow([cell, group, order[group]])
@@ -729,6 +751,27 @@ def rel(path: Path, output_dir: Path) -> str:
     return path.relative_to(output_dir).as_posix()
 
 
+def copy_native_output(
+    *,
+    source_path: Path,
+    native_dir: Path,
+    native_outputs: dict[str, str],
+    native_id: str,
+) -> None:
+    if not source_path.exists():
+        return
+    native_dir.mkdir(parents=True, exist_ok=True)
+    if source_path.is_dir():
+        destination = native_dir / native_id
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(source_path, destination)
+    else:
+        destination = native_dir / f"{native_id}{source_path.suffix}"
+        shutil.copy2(source_path, destination)
+    native_outputs[native_id] = rel(destination, native_dir.parent)
+
+
 def write_manifest(
     output_dir: Path,
     request: dict[str, Any],
@@ -739,14 +782,14 @@ def write_manifest(
     manifest = {
         "schema_version": "1.0",
         "simulator_id": "boolode",
-        "profile": request["profile"],
+        "data_axes": request["data_axes"],
+        "truth_requirements": request["truth_requirements"],
         "seed": int(request["seed"]),
         "expression": {
             "path": "expression.tsv",
             "genes": int(expression.shape[0]),
             "columns": int(expression.shape[1]),
             "column_kind": "cells",
-            "expression_profile": "scrna",
         },
         "extras": {key: extras_paths.get(key) for key in EXTRA_KEYS},
         "native_outputs": native_outputs,
@@ -776,6 +819,7 @@ def main(argv: list[str] | None = None) -> int:
     (output_dir / "extras").mkdir(parents=True, exist_ok=True)
     (output_dir / "truth").mkdir(parents=True, exist_ok=True)
     raw_dir = output_dir / "provenance" / "raw"
+    native_dir = output_dir / "native"
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -783,7 +827,7 @@ def main(argv: list[str] | None = None) -> int:
         request = json.loads(args.request.read_text(encoding="utf-8"))
         if request.get("simulator_id") != "boolode":
             raise ValueError("simulator-run-request.json must have simulator_id='boolode'.")
-        for field in ("profile", "seed", "effective_extras", "params", "runtime_resources"):
+        for field in ("data_axes", "truth_requirements", "seed", "effective_extras", "params", "runtime_resources"):
             if field not in request:
                 raise ValueError(f"simulator-run-request.json is missing required field {field!r}.")
         write_json(raw_dir / "request.json", request)
@@ -793,7 +837,8 @@ def main(argv: list[str] | None = None) -> int:
 
         params = normalize_params(dict(request.get("params", {})))
         extras = {str(item) for item in request.get("effective_extras", [])}
-        validate_profile_and_extras(str(request["profile"]), extras, params)
+        requested_native_outputs = {str(item) for item in request.get("native_outputs", [])}
+        validate_semantic_request(request, extras, params)
         write_json(raw_dir / "resolved_params.json", params)
         np.random.seed(as_int(request["seed"], "seed", minimum=1))
 
@@ -823,18 +868,28 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError(f"BoolODE did not create expected output directory: {upstream_dir}")
         selected_dir = run_dropout_if_requested(params, upstream_dir, raw_dir)
 
-        native_outputs = {
-            "expression_data": rel(upstream_dir / "ExpressionData.csv", output_dir),
-            "pseudo_time": rel(upstream_dir / "PseudoTime.csv", output_dir),
-            "reference_network": rel(upstream_dir / "refNetwork.csv", output_dir),
-            "simulation_trajectories": rel(upstream_dir / "simulations", output_dir),
-            "generated_model": rel(upstream_dir / "model.py", output_dir),
-            "kinetic_parameters": rel(upstream_dir / "parameters.txt", output_dir),
+        native_candidates = {
+            "expression_data": upstream_dir / "ExpressionData.csv",
+            "pseudo_time": upstream_dir / "PseudoTime.csv",
+            "reference_network": upstream_dir / "refNetwork.csv",
+            "simulation_trajectories": upstream_dir / "simulations",
+            "generated_model": upstream_dir / "model.py",
+            "kinetic_parameters": upstream_dir / "parameters.txt",
         }
         if (upstream_dir / "ClusterIds.csv").exists():
-            native_outputs["cluster_ids"] = rel(upstream_dir / "ClusterIds.csv", output_dir)
+            native_candidates["cluster_ids"] = upstream_dir / "ClusterIds.csv"
         if selected_dir != upstream_dir:
-            native_outputs["dropout_expression"] = rel(selected_dir / "ExpressionData.csv", output_dir)
+            native_candidates["dropout_expression"] = selected_dir / "ExpressionData.csv"
+        native_outputs: dict[str, str] = {}
+        for native_id in sorted(requested_native_outputs):
+            source_path = native_candidates.get(native_id)
+            if source_path is not None:
+                copy_native_output(
+                    source_path=source_path,
+                    native_dir=native_dir,
+                    native_outputs=native_outputs,
+                    native_id=native_id,
+                )
 
         write_progress(output_dir, "running", "package_outputs", "Normalizing expression, truth and extras.", percent=75)
         expression = load_expression(selected_dir / "ExpressionData.csv")
@@ -846,7 +901,7 @@ def main(argv: list[str] | None = None) -> int:
 
         groups = None
         observed_groups = None
-        if request["profile"] == "scrna_grouped":
+        if "group" in truth_contexts(request):
             groups = load_groups(upstream_dir / "ClusterIds.csv", columns)
             observed_groups = sorted(set(groups.values()))
 
@@ -867,11 +922,11 @@ def main(argv: list[str] | None = None) -> int:
             order = group_order(groups, pseudotime)
         else:
             order = {}
-        if "cell_phenotypes" in extras:
+        if "column_phenotypes" in extras:
             if groups is None:
-                raise ValueError("cell_phenotypes requires grouped BoolODE output.")
-            write_cell_phenotypes(output_dir / "extras" / "cell_phenotypes.tsv", groups, columns, order)
-            extras_paths["cell_phenotypes"] = "extras/cell_phenotypes.tsv"
+                raise ValueError("column_phenotypes requires grouped BoolODE output.")
+            write_column_phenotypes(output_dir / "extras" / "column_phenotypes.tsv", groups, columns, order)
+            extras_paths["column_phenotypes"] = "extras/column_phenotypes.tsv"
         if "cluster_identities" in extras:
             if groups is None:
                 raise ValueError("cluster_identities requires grouped BoolODE output.")

@@ -27,7 +27,7 @@ from _run_tool_common import (
 
 
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"cell_native", "group_aggregated"}
+SUPPORTED_MODES = {"column_native", "group_aggregated"}
 
 
 @dataclass(frozen=True)
@@ -146,17 +146,17 @@ def resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 def load_execution_mode(params_path: Path) -> str:
     execution_path = params_path.parent / "execution.json"
     if not execution_path.exists():
-        return "cell_native"
+        return "column_native"
     with execution_path.open("r", encoding="utf-8") as fh:
         execution = json.load(fh)
     if not isinstance(execution, dict):
         raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "cell_native")
+    mode = execution.get("mode", "column_native")
     if not isinstance(mode, str):
         raise ValueError("execution.mode must be a string.")
     if mode not in SUPPORTED_MODES:
         raise ValueError(
-            "CeSpGRN supports only execution.mode=cell_native or "
+            "CeSpGRN supports only execution.mode=column_native or "
             "execution.mode=group_aggregated."
         )
     return mode
@@ -239,25 +239,25 @@ def validate_groups(extra_dir: Path, cell_ids: list[str]) -> None:
     path = require_extra_file(extra_dir, "groups.tsv", "groups")
     header = _read_header(path)
     if len(header) < 2 or "cluster" not in header[1:]:
-        raise ValueError("groups.tsv must contain a first cell id column and a cluster column.")
+        raise ValueError("groups.tsv must contain a first expression-column id column and a cluster column.")
 
     raw = pd.read_csv(path, sep="\t", header=0, dtype=str, keep_default_na=False)
     id_col = raw.columns[0]
     group_cell_ids = raw[id_col].astype(str).tolist()
     if any(not value for value in group_cell_ids):
-        raise ValueError("groups.tsv contains an empty cell identifier.")
+        raise ValueError("groups.tsv contains an empty expression-column identifier.")
     duplicated = _duplicates(group_cell_ids)
     if duplicated:
-        raise ValueError("groups.tsv contains duplicated cell identifiers: " + ", ".join(duplicated))
+        raise ValueError("groups.tsv contains duplicated expression-column identifiers: " + ", ".join(duplicated))
     missing = [cell_id for cell_id in cell_ids if cell_id not in group_cell_ids]
     extra = [cell_id for cell_id in group_cell_ids if cell_id not in cell_ids]
     if missing or extra:
         details = []
         if missing:
-            details.append("missing cells: " + ", ".join(missing))
+            details.append("missing expression columns: " + ", ".join(missing))
         if extra:
-            details.append("unknown cells: " + ", ".join(extra))
-        raise ValueError("groups.tsv must match expression cells exactly (" + "; ".join(details) + ").")
+            details.append("unknown expression columns: " + ", ".join(extra))
+        raise ValueError("groups.tsv must match expression columns exactly (" + "; ".join(details) + ").")
     clusters = raw.set_index(id_col).loc[cell_ids, "cluster"].astype(str)
     if (clusters == "").any():
         raise ValueError("groups.tsv contains empty cluster values.")
@@ -496,7 +496,7 @@ def write_network_csv(
         writer = csv.DictWriter(fh, fieldnames=NETWORK_COLUMNS)
         writer.writeheader()
         for cell_idx, cell_id in enumerate(cell_ids):
-            context = f"cell:{cell_id}"
+            context = f"column:{cell_id}"
             matrix = partial_correlations[cell_idx]
             for source_idx in range(len(gene_ids) - 1):
                 source = gene_ids[source_idx]

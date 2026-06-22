@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .request import resolve_simulator_runtime_resources
+from .semantic import parse_truth_requirements
 from .shared import CATALOG_ROOT, _load_json_object
 
 
@@ -268,15 +269,28 @@ def _dynamic_grn_flags(params: dict[str, Any]) -> dict[str, Any]:
 def _simulation_cost_features(
     *,
     params: dict[str, Any],
-    scenario_profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
+    requested_extras: list[str],
+    effective_extras: list[str],
     genes: int,
     cells: int,
     groups: int,
     population_count: int,
     dimension_profile: dict[str, Any],
 ) -> dict[str, Any]:
+    contexts = list(parse_truth_requirements(truth_requirements).contexts)
     return {
-        "profile": scenario_profile,
+        "data_axes": dict(data_axes),
+        "truth_requirements": dict(truth_requirements),
+        "expression_profile": str(data_axes.get("resolution", "")),
+        "column_kind": str(data_axes.get("column_kind", "")),
+        "experimental_design": str(data_axes.get("experimental_design", "")),
+        "truth_context_families": contexts,
+        "truth_context_count": len(contexts),
+        "extras": list(effective_extras),
+        "requested_extras": list(requested_extras),
+        "effective_extras": list(effective_extras),
         "n_cells": int(cells),
         "n_genes": int(genes),
         "n_tfs": _infer_tf_count(
@@ -286,7 +300,7 @@ def _simulation_cost_features(
         ),
         "n_groups": int(groups),
         "population_count": int(population_count),
-        "native_cell_truth_enabled": scenario_profile == "scrna_cell_specific",
+        "column_truth_requested": "column" in contexts,
         "dynamic_grn_flags": _dynamic_grn_flags(params),
     }
 
@@ -295,7 +309,8 @@ def _select_cost_profile(
     *,
     simulator_id: str,
     cost_payload: dict[str, Any],
-    scenario_profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: list[str],
     effective_extras: list[str],
     input_ids: set[str],
@@ -314,7 +329,9 @@ def _select_cost_profile(
         if not isinstance(profile, dict):
             continue
         config = _profile_config(profile)
-        if str(config.get("profile") or "") != scenario_profile:
+        if config.get("data_axes") != data_axes:
+            continue
+        if config.get("truth_requirements") != truth_requirements:
             continue
         profile_matches += 1
         input_profile = _profile_input_profile(profile)
@@ -379,7 +396,7 @@ def _select_cost_profile(
 
     if profile_matches == 0:
         return None, {}, [
-            f"[{simulator_id}] cost.json has no profile for scenario profile={scenario_profile}."
+            f"[{simulator_id}] cost.json has no profile for requested data_axes/truth_requirements."
         ]
     if not candidates:
         return None, {}, [
@@ -431,7 +448,10 @@ def _fallback_mode(
     run_id: str,
     spec: dict[str, Any],
     params: dict[str, Any],
-    scenario_profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
+    requested_extras: list[str],
+    effective_extras: list[str],
     max_cores: int,
     max_ram_gb: float,
     eta_source: str,
@@ -440,10 +460,9 @@ def _fallback_mode(
     genes, cells, groups, population_count, dimension_profile = _estimate_dimensions(
         params=params, selected_profile=None
     )
+    contexts = set(parse_truth_requirements(truth_requirements).contexts)
     extras_multiplier = (
-        2.0
-        if scenario_profile == "scrna_cell_specific"
-        else (1.4 if scenario_profile == "scrna_grouped" else 1.0)
+        2.0 if "column" in contexts else (1.4 if "group" in contexts else 1.0)
     )
     eta = max(60.0, 0.04 * genes * cells * extras_multiplier)
     resources = resolve_simulator_runtime_resources(
@@ -463,7 +482,10 @@ def _fallback_mode(
             "warnings": warnings,
             "features": _simulation_cost_features(
                 params=params,
-                scenario_profile=scenario_profile,
+                data_axes=data_axes,
+                truth_requirements=truth_requirements,
+                requested_extras=requested_extras,
+                effective_extras=effective_extras,
                 genes=genes,
                 cells=cells,
                 groups=groups,
@@ -479,7 +501,8 @@ def _estimate_run_modes(
     *,
     run: dict[str, Any],
     spec: dict[str, Any],
-    scenario_profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: list[str],
     effective_extras: list[str],
     input_ids: set[str],
@@ -497,7 +520,10 @@ def _estimate_run_modes(
                 run_id=run_id,
                 spec=spec,
                 params=params,
-                scenario_profile=scenario_profile,
+                data_axes=data_axes,
+                truth_requirements=truth_requirements,
+                requested_extras=requested_extras,
+                effective_extras=effective_extras,
                 max_cores=max_cores,
                 max_ram_gb=max_ram_gb,
                 eta_source="fallback_no_cost",
@@ -508,7 +534,8 @@ def _estimate_run_modes(
     selected_profile, profile_match, profile_warnings = _select_cost_profile(
         simulator_id=simulator_id,
         cost_payload=cost_payload,
-        scenario_profile=scenario_profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         effective_extras=effective_extras,
         input_ids=input_ids,
@@ -522,7 +549,10 @@ def _estimate_run_modes(
                 run_id=run_id,
                 spec=spec,
                 params=params,
-                scenario_profile=scenario_profile,
+                data_axes=data_axes,
+                truth_requirements=truth_requirements,
+                requested_extras=requested_extras,
+                effective_extras=effective_extras,
                 max_cores=max_cores,
                 max_ram_gb=max_ram_gb,
                 eta_source="fallback_no_matching_cost_profile",
@@ -536,7 +566,10 @@ def _estimate_run_modes(
     )
     cost_features = _simulation_cost_features(
         params=params,
-        scenario_profile=scenario_profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
+        requested_extras=requested_extras,
+        effective_extras=effective_extras,
         genes=genes,
         cells=cells,
         groups=groups,
@@ -630,7 +663,10 @@ def _estimate_run_modes(
                 run_id=run_id,
                 spec=spec,
                 params=params,
-                scenario_profile=scenario_profile,
+                data_axes=data_axes,
+                truth_requirements=truth_requirements,
+                requested_extras=requested_extras,
+                effective_extras=effective_extras,
                 max_cores=max_cores,
                 max_ram_gb=max_ram_gb,
                 eta_source="fallback_no_usable_runtime_point",
@@ -809,7 +845,8 @@ def apply_simulator_cost_plan(
     runs: list[dict[str, Any]],
     tasks: list[dict[str, Any]],
     catalog: dict[str, dict[str, Any]],
-    scenario_profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: list[str],
     effective_extras: list[str],
     input_ids: set[str],
@@ -835,7 +872,8 @@ def apply_simulator_cost_plan(
         modes, run_warnings = _estimate_run_modes(
             run=run,
             spec=catalog[simulator_id],
-            scenario_profile=scenario_profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested_extras,
             effective_extras=effective_extras,
             input_ids=input_ids,

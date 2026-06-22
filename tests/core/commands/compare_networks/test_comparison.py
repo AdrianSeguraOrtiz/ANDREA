@@ -11,18 +11,49 @@ from andrea.core.commands.compare_networks import (
     compare_networks,
     export_edge_scores_csv_from_sqlite,
 )
+from andrea.core.commands.compare_networks.comparison import _context_counts_by_family
 from andrea.core.commands.compare_networks.distances import build_distance_coordinates
 from andrea.core.commands.compare_networks.store import (
     _anchored_mds_coordinates,
     _covariance_ellipse_axes,
+    _normalize_family,
     _trim_displacements,
     distance_view,
     edge_variability,
+    list_contexts,
     write_comparison_store,
 )
 
 
 class CompareNetworksCoreTests(unittest.TestCase):
+    def test_context_family_counts_include_public_context_families(self) -> None:
+        self.assertEqual(
+            _context_counts_by_family(
+                [
+                    "global",
+                    "group:a",
+                    "column:c1",
+                    "sample:s1",
+                    "timepoint:t1",
+                    "perturbation:ko",
+                    "condition:stim",
+                ]
+            ),
+            {
+                "global": 1,
+                "group": 1,
+                "column": 1,
+                "sample": 1,
+                "timepoint": 1,
+                "perturbation": 1,
+                "other": 1,
+            },
+        )
+        self.assertEqual(_normalize_family("columns"), "column")
+        self.assertEqual(_normalize_family("samples"), "sample")
+        self.assertEqual(_normalize_family("timepoints"), "timepoint")
+        self.assertEqual(_normalize_family("perturbations"), "perturbation")
+
     def test_builds_phase_one_comparison_tables_from_normalized_networks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -66,7 +97,7 @@ class CompareNetworksCoreTests(unittest.TestCase):
                         "score": "0.6",
                         "sign": "?",
                         "evidence": "a",
-                        "context": "cell:c1",
+                        "context": "column:c1",
                         "tool_id": "genie3_01",
                     },
                 ],
@@ -170,10 +201,18 @@ class CompareNetworksCoreTests(unittest.TestCase):
         self.assertTrue(comparison_dir.name.startswith("comparison_toy_compare_"))
         self.assertEqual(report["summary"]["sources"], 2)
         self.assertEqual(report["summary"]["network_instances"], 12)
-        self.assertEqual(report["contexts"], ["global", "group:sA", "cell:c1"])
+        self.assertEqual(report["contexts"], ["global", "group:sA", "column:c1"])
         self.assertEqual(
             report["context_counts_by_family"],
-            {"global": 1, "group": 1, "cell": 1, "other": 0},
+            {
+                "global": 1,
+                "group": 1,
+                "column": 1,
+                "sample": 0,
+                "timepoint": 0,
+                "perturbation": 0,
+                "other": 0,
+            },
         )
         self.assertEqual(report["distances_available"], [])
         self.assertEqual(report["metrics_available"], [])
@@ -228,9 +267,9 @@ class CompareNetworksCoreTests(unittest.TestCase):
                 ("source_a", "genie3_01", "global", "topology"),
                 ("source_a", "genie3_01", "global", "directed"),
                 ("source_a", "genie3_01", "global", "signed"),
-                ("source_a", "genie3_01", "cell:c1", "topology"),
-                ("source_a", "genie3_01", "cell:c1", "directed"),
-                ("source_a", "genie3_01", "cell:c1", "signed"),
+                ("source_a", "genie3_01", "column:c1", "topology"),
+                ("source_a", "genie3_01", "column:c1", "directed"),
+                ("source_a", "genie3_01", "column:c1", "signed"),
                 ("source_a", "clr_01", "group:sA", "topology"),
                 ("source_a", "clr_01", "group:sA", "directed"),
                 ("source_a", "clr_01", "group:sA", "signed"),
@@ -450,7 +489,7 @@ class CompareNetworksCoreTests(unittest.TestCase):
                 self._read_csv(full_edges_path),
             )
 
-    def test_cell_contexts_are_indexed_and_compared(self) -> None:
+    def test_column_contexts_are_indexed_and_compared(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             run_dir = base / "run"
@@ -464,8 +503,8 @@ class CompareNetworksCoreTests(unittest.TestCase):
                         "score": "0.9",
                         "sign": "+",
                         "evidence": "a",
-                        "context": "cell:c1",
-                        "tool_id": "cell_tool_a",
+                        "context": "column:c1",
+                        "tool_id": "column_tool_a",
                     },
                     {
                         "source": "G1",
@@ -473,8 +512,8 @@ class CompareNetworksCoreTests(unittest.TestCase):
                         "score": "0.5",
                         "sign": "+",
                         "evidence": "a",
-                        "context": "cell:c1",
-                        "tool_id": "cell_tool_a",
+                        "context": "column:c1",
+                        "tool_id": "column_tool_a",
                     },
                     {
                         "source": "G1",
@@ -482,17 +521,17 @@ class CompareNetworksCoreTests(unittest.TestCase):
                         "score": "0.2",
                         "sign": "+",
                         "evidence": "a",
-                        "context": "cell:c1",
-                        "tool_id": "cell_tool_b",
+                        "context": "column:c1",
+                        "tool_id": "column_tool_b",
                     },
                     {
-                        "source": "G2",
-                        "target": "G3",
+                        "source": "G1",
+                        "target": "G2",
                         "score": "0.7",
                         "sign": "+",
                         "evidence": "a",
-                        "context": "cell:c1",
-                        "tool_id": "cell_tool_b",
+                        "context": "column:c1",
+                        "tool_id": "column_tool_b",
                     },
                     {
                         "source": "G1",
@@ -500,8 +539,8 @@ class CompareNetworksCoreTests(unittest.TestCase):
                         "score": "0.4",
                         "sign": "+",
                         "evidence": "a",
-                        "context": "cell:c2",
-                        "tool_id": "cell_tool_a",
+                        "context": "column:c2",
+                        "tool_id": "column_tool_a",
                     },
                 ],
             )
@@ -509,8 +548,8 @@ class CompareNetworksCoreTests(unittest.TestCase):
                 run_dir / "run_report.json",
                 run_id="run",
                 catalog_ids={
-                    "cell_tool_a": "lioness",
-                    "cell_tool_b": "kscreni",
+                    "column_tool_a": "lioness",
+                    "column_tool_b": "kscreni",
                 },
             )
             request = base / "comparison-request.json"
@@ -518,7 +557,7 @@ class CompareNetworksCoreTests(unittest.TestCase):
                 json.dumps(
                     {
                         "schema_version": "1.0",
-                        "id": "cell_compare",
+                        "id": "column_compare",
                         "sources": [
                             {
                                 "source_id": "source_a",
@@ -535,15 +574,23 @@ class CompareNetworksCoreTests(unittest.TestCase):
             output_root = base / "out"
             distances = self._read_csv(output_root / report["outputs"]["distances_csv"])
 
-        self.assertEqual(report["contexts"], ["cell:c1", "cell:c2"])
+        self.assertEqual(report["contexts"], ["column:c1", "column:c2"])
         self.assertEqual(
             report["context_counts_by_family"],
-            {"global": 0, "group": 0, "cell": 2, "other": 0},
+            {
+                "global": 0,
+                "group": 0,
+                "column": 2,
+                "sample": 0,
+                "timepoint": 0,
+                "perturbation": 0,
+                "other": 0,
+            },
         )
         self.assertTrue(
             any(
                 row["source_id"] == "source_a"
-                and row["context"] == "cell:c1"
+                and row["context"] == "column:c1"
                 and row["level"] == "topology"
                 and row["distance_metric"] == "weighted_jaccard_distance"
                 and row["status"] == "ok"
@@ -552,12 +599,194 @@ class CompareNetworksCoreTests(unittest.TestCase):
         )
         self.assertFalse(
             any(
-                row["context"] == "cell:c2"
+                row["context"] == "column:c2"
                 for row in distances
             )
         )
         self.assertFalse(any("context_type" in row for row in report["network_index"]))
         self.assertFalse(any("context_family" in row for row in report["network_index"]))
+
+    def test_semantic_specific_contexts_are_indexed_and_queryable_by_family(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            run_dir = base / "run"
+            run_dir.mkdir()
+            self._write_normalized_network(
+                run_dir / "merged_network_normalized.csv",
+                [
+                    {
+                        "source": "G1",
+                        "target": "G2",
+                        "score": "0.9",
+                        "sign": "+",
+                        "evidence": "a",
+                        "context": "sample:s1",
+                        "tool_id": "tool_a",
+                    },
+                    {
+                        "source": "G1",
+                        "target": "G2",
+                        "score": "0.9",
+                        "sign": "+",
+                        "evidence": "a",
+                        "context": "timepoint:t0",
+                        "tool_id": "tool_a",
+                    },
+                    {
+                        "source": "G1",
+                        "target": "G2",
+                        "score": "0.7",
+                        "sign": "+",
+                        "evidence": "a",
+                        "context": "timepoint:t0",
+                        "tool_id": "tool_b",
+                    },
+                    {
+                        "source": "G2",
+                        "target": "G3",
+                        "score": "0.8",
+                        "sign": "-",
+                        "evidence": "a",
+                        "context": "perturbation:ko_G1",
+                        "tool_id": "tool_a",
+                    },
+                ],
+            )
+            self._write_run_report(
+                run_dir / "run_report.json",
+                run_id="semantic_contexts",
+                catalog_ids={
+                    "tool_a": "genie3",
+                    "tool_b": "grnboost2",
+                },
+            )
+            request = base / "comparison-request.json"
+            request.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "id": "semantic_context_compare",
+                        "sources": [
+                            {
+                                "source_id": "source_a",
+                                "run_report": "run/run_report.json",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            report = compare_networks(request_path=request, output_dir=base / "out")
+            output_root = base / "out"
+            distances = self._read_csv(output_root / report["outputs"]["distances_csv"])
+            view_html = (
+                output_root / report["outputs"]["comparison_view"]
+            ).read_text(encoding="utf-8")
+            sqlite_path = output_root / report["outputs"]["comparison_sqlite"]
+            timepoint_contexts = list_contexts(
+                sqlite_path,
+                source_id="source_a",
+                family="timepoints",
+            )
+            timepoint_view = distance_view(
+                sqlite_path,
+                source_id="source_a",
+                context_family="timepoints",
+                distance_metric="weighted_jaccard_distance",
+            )
+
+        self.assertEqual(
+            report["contexts"],
+            ["sample:s1", "timepoint:t0", "perturbation:ko_G1"],
+        )
+        self.assertEqual(report["context_counts_by_family"]["sample"], 1)
+        self.assertEqual(report["context_counts_by_family"]["timepoint"], 1)
+        self.assertEqual(report["context_counts_by_family"]["perturbation"], 1)
+        self.assertIn('"sample": 1', view_html)
+        self.assertIn('"timepoint": 1', view_html)
+        self.assertIn('"perturbation": 1', view_html)
+        self.assertIn('sample: "Sample"', view_html)
+        self.assertIn('timepoint: "Timepoint"', view_html)
+        self.assertIn('perturbation: "Perturbation"', view_html)
+        self.assertEqual(timepoint_contexts["family"], "timepoint")
+        self.assertEqual(
+            [row["context"] for row in timepoint_contexts["contexts"]],
+            ["timepoint:t0"],
+        )
+        self.assertEqual(timepoint_view["context_family"], "timepoint")
+        self.assertTrue(
+            any(
+                row["context"] == "timepoint:t0"
+                and row["distance_metric"] == "weighted_jaccard_distance"
+                and row["status"] == "ok"
+                for row in distances
+            )
+        )
+
+    def test_context_comparison_is_exact_across_semantic_families(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            run_dir = base / "run"
+            run_dir.mkdir()
+            self._write_normalized_network(
+                run_dir / "merged_network_normalized.csv",
+                [
+                    {
+                        "source": "G1",
+                        "target": "G2",
+                        "score": "0.9",
+                        "sign": "+",
+                        "evidence": "a",
+                        "context": "sample:shared",
+                        "tool_id": "tool_a",
+                    },
+                    {
+                        "source": "G1",
+                        "target": "G2",
+                        "score": "0.7",
+                        "sign": "+",
+                        "evidence": "a",
+                        "context": "timepoint:shared",
+                        "tool_id": "tool_b",
+                    },
+                ],
+            )
+            self._write_run_report(
+                run_dir / "run_report.json",
+                run_id="exact_contexts",
+                catalog_ids={
+                    "tool_a": "genie3",
+                    "tool_b": "grnboost2",
+                },
+            )
+            request = base / "comparison-request.json"
+            request.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "id": "exact_context_compare",
+                        "sources": [
+                            {
+                                "source_id": "source_a",
+                                "run_report": "run/run_report.json",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            report = compare_networks(request_path=request, output_dir=base / "out")
+            output_root = base / "out"
+            distances = self._read_csv(output_root / report["outputs"]["distances_csv"])
+
+        self.assertEqual(report["contexts"], ["sample:shared", "timepoint:shared"])
+        self.assertEqual(report["context_counts_by_family"]["sample"], 1)
+        self.assertEqual(report["context_counts_by_family"]["timepoint"], 1)
+        self.assertEqual(distances, [])
 
     def test_group_aggregated_context_compares_with_group_level_network(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -574,7 +803,7 @@ class CompareNetworksCoreTests(unittest.TestCase):
                         "sign": "+",
                         "evidence": "andrea_group_agg_mean_effect",
                         "context": "group:sA",
-                        "tool_id": "cellrun_01",
+                        "tool_id": "group_tool_01",
                     },
                     {
                         "source": "G2",
@@ -583,7 +812,7 @@ class CompareNetworksCoreTests(unittest.TestCase):
                         "sign": "-",
                         "evidence": "andrea_group_agg_mean_effect",
                         "context": "group:sA",
-                        "tool_id": "cellrun_01",
+                        "tool_id": "group_tool_01",
                     },
                     {
                         "source": "G1",
@@ -609,7 +838,7 @@ class CompareNetworksCoreTests(unittest.TestCase):
                 run_dir / "run_report.json",
                 run_id="group_compare",
                 catalog_ids={
-                    "cellrun_01": "lioness",
+                    "group_tool_01": "lioness",
                     "scmtni_01": "scmtni",
                 },
             )
@@ -620,7 +849,7 @@ class CompareNetworksCoreTests(unittest.TestCase):
                         "schema_version": "1.0",
                         "metrics": [
                             {
-                                "tool_id": "cellrun_01",
+                                "tool_id": "group_tool_01",
                                 "context": "group:sA",
                                 "level": "topology",
                                 "status": "ok",
@@ -667,7 +896,15 @@ class CompareNetworksCoreTests(unittest.TestCase):
         self.assertEqual(report["contexts"], ["group:sA"])
         self.assertEqual(
             report["context_counts_by_family"],
-            {"global": 0, "group": 1, "cell": 0, "other": 0},
+            {
+                "global": 0,
+                "group": 1,
+                "column": 0,
+                "sample": 0,
+                "timepoint": 0,
+                "perturbation": 0,
+                "other": 0,
+            },
         )
         self.assertIn("rank_overlap_distance_at_truth_count", report["distances_available"])
         self.assertTrue(
@@ -743,7 +980,15 @@ class CompareNetworksCoreTests(unittest.TestCase):
         self.assertEqual(report["contexts"], ["condition:stim"])
         self.assertEqual(
             report["context_counts_by_family"],
-            {"global": 0, "group": 0, "cell": 0, "other": 1},
+            {
+                "global": 0,
+                "group": 0,
+                "column": 0,
+                "sample": 0,
+                "timepoint": 0,
+                "perturbation": 0,
+                "other": 1,
+            },
         )
         self.assertTrue(all(row["context"] == "condition:stim" for row in network_index))
         self.assertTrue(all(row["context"] == "condition:stim" for row in edge_scores))

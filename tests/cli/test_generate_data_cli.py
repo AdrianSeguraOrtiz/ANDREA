@@ -35,7 +35,13 @@ class GenerateDataCliTests(unittest.TestCase):
                 return_value={
                     "scenario": {
                         "id": "bench",
-                        "profile": "scrna_grouped",
+                        "data_axes": {
+                            "measurement": "rna_expression",
+                            "resolution": "single_cell",
+                            "column_kind": "cells",
+                            "experimental_design": "trajectory",
+                        },
+                        "truth_requirements": {"contexts": ["global", "group"]},
                         "requested_extras": ["lineage_tree"],
                         "effective_extras": ["groups", "lineage_tree"],
                         "inputs": {},

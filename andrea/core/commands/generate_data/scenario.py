@@ -9,8 +9,13 @@ from andrea.core.shared.catalog_contracts import SIMULATION_EXTRA_IDS
 
 from .catalog import _load_simulator_catalog, load_simulation_input_specs
 from .request import _resolve_inputs, _validate_organism
+from .semantic import (
+    parse_data_axes,
+    parse_truth_requirements,
+    required_extras_for_request,
+    semantic_key,
+)
 from .shared import (
-    PROFILE_SPECS,
     ResolvedScenarioRequest,
     _load_json_object,
     _stable_seed_base,
@@ -30,9 +35,12 @@ def validate_scenario_request_payload(
         label="scenario-request",
     )
 
-    profile = str(payload.get("profile", "")).strip()
-    if profile not in PROFILE_SPECS:
-        raise ValueError(f"Unknown benchmark profile: {profile}")
+    data_axes = parse_data_axes(payload.get("data_axes"), label="scenario-request.data_axes")
+    truth_requirements = parse_truth_requirements(
+        payload.get("truth_requirements"),
+        label="scenario-request.truth_requirements",
+    )
+    scenario_key = semantic_key(data_axes=data_axes, truth=truth_requirements)
 
     requested_extras = list(payload.get("requested_extras", []))
     if any(extra not in SIMULATION_EXTRA_IDS for extra in requested_extras):
@@ -50,14 +58,16 @@ def validate_scenario_request_payload(
     if base_seed is None:
         base_seed = _stable_seed_base(
             request_id=str(payload["id"]),
-            profile=profile,
+            semantic_key=scenario_key,
             simulator_id="scenario",
         )
     if int(base_seed) < 1:
         raise ValueError("scenario-request.base_seed must be >= 1")
 
     effective_extras = sorted(
-        set(requested_extras).union(PROFILE_SPECS[profile].required_extras)
+        set(requested_extras).union(
+            required_extras_for_request(data_axes, truth_requirements)
+        )
     )
     raw_inputs = payload.get("inputs", {})
     input_specs = load_simulation_input_specs()
@@ -69,7 +79,8 @@ def validate_scenario_request_payload(
 
     return ResolvedScenarioRequest(
         request_id=str(payload["id"]),
-        profile=profile,
+        data_axes=data_axes.to_json(),
+        truth_requirements=truth_requirements.to_json(),
         organism=organism,
         requested_extras=requested_extras,
         effective_extras=effective_extras,

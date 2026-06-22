@@ -148,6 +148,29 @@ def _assert_required_files(
             )
 
 
+def _assert_requested_native_outputs(
+    *,
+    simulator_id: str,
+    config_path: Path,
+    manifest: dict[str, Any],
+    requested_native_outputs: Sequence[str],
+) -> None:
+    native_outputs = manifest.get("native_outputs", {})
+    if not isinstance(native_outputs, dict):
+        raise RuntimeError(
+            f"[{simulator_id}:{config_path.stem}] simulator-output-manifest native_outputs must be an object"
+        )
+    missing = [
+        str(native_id)
+        for native_id in requested_native_outputs
+        if str(native_id) not in native_outputs
+    ]
+    if missing:
+        raise RuntimeError(
+            f"[{simulator_id}:{config_path.stem}] simulator-output-manifest is missing requested native_outputs: {missing}"
+        )
+
+
 def _assert_truth_context_prefixes(
     *,
     simulator_id: str,
@@ -227,9 +250,11 @@ def _run_one_config(
         request_payload = {
             "schema_version": "1.0",
             "simulator_id": simulator_id,
-            "profile": config["request"]["profile"],
+            "data_axes": dict(config["request"]["data_axes"]),
+            "truth_requirements": dict(config["request"]["truth_requirements"]),
             "seed": int(config["request"].get("seed", 1)),
             "effective_extras": list(config["request"]["effective_extras"]),
+            "native_outputs": list(config["request"].get("native_outputs", [])),
             "mounted_inputs": mounted_inputs,
             "params": params,
             "runtime_resources": dict(config["request"]["runtime_resources"]),
@@ -283,6 +308,13 @@ def _run_one_config(
             )
 
         _validate_manifest(simulator_id, out_dir)
+        manifest = load_json(out_dir / "simulator-output-manifest.json")
+        _assert_requested_native_outputs(
+            simulator_id=simulator_id,
+            config_path=config_path,
+            manifest=manifest,
+            requested_native_outputs=list(config["request"].get("native_outputs", [])),
+        )
         _assert_required_files(
             simulator_id,
             out_dir,
@@ -296,8 +328,9 @@ def _run_one_config(
         validate_simulator_output_package(
             stage_dir=out_dir,
             dataset_id=f"{simulator_id}:{config_path.stem}",
-            profile=str(config["request"]["profile"]),
-            simulator_manifest=load_json(out_dir / "simulator-output-manifest.json"),
+            data_axes=dict(config["request"]["data_axes"]),
+            truth_requirements=dict(config["request"]["truth_requirements"]),
+            simulator_manifest=manifest,
         )
 
         if show_output:

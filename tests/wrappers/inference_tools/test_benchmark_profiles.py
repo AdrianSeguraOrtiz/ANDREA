@@ -96,7 +96,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             },
             ("simic", "group_native_phenotypes_2_default"): {
                 "mode": "group_native",
-                "required": {"cell_phenotypes", "tf_list"},
+                "required": {"column_phenotypes", "tf_list"},
                 "optional": set(),
                 "conditional": set(),
             },
@@ -225,7 +225,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             {"tf_list"},
         )
 
-    def test_cell_native_and_group_aggregated_cost_profiles_resolve(self) -> None:
+    def test_column_native_and_group_aggregated_cost_profiles_resolve(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             catalog_root = base / "catalog"
@@ -237,7 +237,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                         "schema_version": "1.0",
                         "id": "fakecell",
                         "execution_capabilities": [
-                            "cell_native",
+                            "column_native",
                             "group_aggregated",
                         ],
                         "params": {},
@@ -255,7 +255,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                                     "execution": "mode",
                                     "op": "eq",
                                     "value": "group_aggregated",
-                                    "usage": "Maps cell-native outputs to groups.",
+                                    "usage": "Maps column-native outputs to groups.",
                                 }
                             ],
                         },
@@ -270,8 +270,8 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                     {
                         "profiles": [
                             {
-                                "id": "cell_native_tf_list",
-                                "execution": {"mode": "cell_native"},
+                                "id": "column_native_tf_list",
+                                "execution": {"mode": "column_native"},
                                 "optional_inputs": ["tf_list"],
                             },
                             {
@@ -292,15 +292,15 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                 cost_profiles_dir=cost_dir,
             )
 
-        cell_native = profiles[0]
-        self.assertEqual(cell_native.execution_profile["mode"], "cell_native")
+        column_native = profiles[0]
+        self.assertEqual(column_native.execution_profile["mode"], "column_native")
         self.assertEqual(
-            cell_native.execution_profile["physical_task_policy"], "cell_native"
+            column_native.execution_profile["physical_task_policy"], "column_native"
         )
-        self.assertEqual(cell_native.execution_profile["group_count"], 0)
-        self.assertEqual(cell_native.execution_profile["aggregation_step"], "none")
-        self.assertEqual(cell_native.input_profile["output_density_class"], "dense")
-        self.assertTrue(cell_native.input_profile["has_tf_list"])
+        self.assertEqual(column_native.execution_profile["group_count"], 0)
+        self.assertEqual(column_native.execution_profile["aggregation_step"], "none")
+        self.assertEqual(column_native.input_profile["output_density_class"], "dense")
+        self.assertTrue(column_native.input_profile["has_tf_list"])
 
         group_aggregated = profiles[1]
         self.assertEqual(group_aggregated.execution_profile["mode"], "group_aggregated")
@@ -310,7 +310,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         )
         self.assertEqual(group_aggregated.execution_profile["group_count"], 2)
         self.assertEqual(
-            group_aggregated.execution_profile["aggregation_step"], "cell_to_group"
+            group_aggregated.execution_profile["aggregation_step"], "column_to_group"
         )
         self.assertEqual(
             group_aggregated.input_profile["conditional_inputs_satisfied"], ["groups"]

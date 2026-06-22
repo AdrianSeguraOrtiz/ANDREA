@@ -26,7 +26,7 @@ from _run_tool_common import (
 
 
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"cell_native", "group_aggregated"}
+SUPPORTED_MODES = {"column_native", "group_aggregated"}
 
 
 @dataclass(frozen=True)
@@ -115,17 +115,17 @@ def resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 def load_execution_mode(params_path: Path) -> str:
     execution_path = params_path.parent / "execution.json"
     if not execution_path.exists():
-        return "cell_native"
+        return "column_native"
     with execution_path.open("r", encoding="utf-8") as fh:
         execution = json.load(fh)
     if not isinstance(execution, dict):
         raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "cell_native")
+    mode = execution.get("mode", "column_native")
     if not isinstance(mode, str):
         raise ValueError("execution.mode must be a string.")
     if mode not in SUPPORTED_MODES:
         raise ValueError(
-            "scGeneRAI supports only execution.mode=cell_native or "
+            "scGeneRAI supports only execution.mode=column_native or "
             "execution.mode=group_aggregated."
         )
     return mode
@@ -199,15 +199,15 @@ def read_expression_tsv(path: Path) -> ExpressionInput:
     )
 
 
-def load_cell_descriptors(extra_dir: Path, cell_ids: list[str]) -> pd.DataFrame | None:
-    path = optional_extra_file(extra_dir, "cell_descriptors.tsv")
+def load_column_descriptors(extra_dir: Path, cell_ids: list[str]) -> pd.DataFrame | None:
+    path = optional_extra_file(extra_dir, "column_descriptors.tsv")
     if path is None:
         return None
 
     header = _read_header(path)
     if len(header) < 2:
         raise ValueError(
-            "cell_descriptors.tsv must have a cell id column and at least one descriptor."
+            "column_descriptors.tsv must have an expression-column id column and at least one descriptor."
         )
 
     raw = pd.read_csv(path, sep="\t", header=0, dtype=str, keep_default_na=False)
@@ -215,13 +215,13 @@ def load_cell_descriptors(extra_dir: Path, cell_ids: list[str]) -> pd.DataFrame 
     descriptor_cols = list(raw.columns[1:])
     descriptor_cell_ids = raw[id_col].astype(str).tolist()
     if any(not value for value in descriptor_cell_ids):
-        raise ValueError("cell_descriptors.tsv contains an empty cell identifier.")
+        raise ValueError("column_descriptors.tsv contains an empty expression-column identifier.")
     duplicated = sorted(
         {value for value in descriptor_cell_ids if descriptor_cell_ids.count(value) > 1}
     )
     if duplicated:
         raise ValueError(
-            "cell_descriptors.tsv contains duplicated cell identifiers: "
+            "column_descriptors.tsv contains duplicated expression-column identifiers: "
             + ", ".join(duplicated)
         )
     missing = [cell_id for cell_id in cell_ids if cell_id not in descriptor_cell_ids]
@@ -229,16 +229,16 @@ def load_cell_descriptors(extra_dir: Path, cell_ids: list[str]) -> pd.DataFrame 
     if missing or extra:
         details = []
         if missing:
-            details.append("missing cells: " + ", ".join(missing))
+            details.append("missing expression columns: " + ", ".join(missing))
         if extra:
-            details.append("unknown cells: " + ", ".join(extra))
-        raise ValueError("cell_descriptors.tsv must match expression cells exactly (" + "; ".join(details) + ").")
+            details.append("unknown expression columns: " + ", ".join(extra))
+        raise ValueError("column_descriptors.tsv must match expression columns exactly (" + "; ".join(details) + ").")
 
     aligned = raw.set_index(id_col).loc[cell_ids, descriptor_cols].reset_index(drop=True)
     for col in descriptor_cols:
         aligned[col] = aligned[col].astype(str)
         if (aligned[col] == "").any():
-            raise ValueError(f"cell_descriptors.tsv column {col!r} contains empty values.")
+            raise ValueError(f"column_descriptors.tsv column {col!r} contains empty values.")
     return aligned
 
 
@@ -246,19 +246,19 @@ def validate_groups(extra_dir: Path, cell_ids: list[str]) -> None:
     path = require_extra_file(extra_dir, "groups.tsv", "groups")
     header = _read_header(path)
     if len(header) < 2 or "cluster" not in header[1:]:
-        raise ValueError("groups.tsv must contain a first cell id column and a cluster column.")
+        raise ValueError("groups.tsv must contain a first expression-column id column and a cluster column.")
 
     raw = pd.read_csv(path, sep="\t", header=0, dtype=str, keep_default_na=False)
     id_col = raw.columns[0]
     group_cell_ids = raw[id_col].astype(str).tolist()
     if any(not value for value in group_cell_ids):
-        raise ValueError("groups.tsv contains an empty cell identifier.")
+        raise ValueError("groups.tsv contains an empty expression-column identifier.")
     duplicated = sorted({value for value in group_cell_ids if group_cell_ids.count(value) > 1})
     if duplicated:
-        raise ValueError("groups.tsv contains duplicated cell identifiers: " + ", ".join(duplicated))
+        raise ValueError("groups.tsv contains duplicated expression-column identifiers: " + ", ".join(duplicated))
     missing = [cell_id for cell_id in cell_ids if cell_id not in group_cell_ids]
     if missing:
-        raise ValueError("groups.tsv is missing expression cells: " + ", ".join(missing))
+        raise ValueError("groups.tsv is missing expression columns: " + ", ".join(missing))
     clusters = raw.set_index(id_col).loc[cell_ids, "cluster"].astype(str)
     if (clusters == "").any():
         raise ValueError("groups.tsv contains empty cluster values.")
@@ -316,7 +316,7 @@ def convert_raw_results(raw_dir: Path, cell_ids: list[str]) -> pd.DataFrame:
             score = float(record["LRP"])
             if not math.isfinite(score) or score <= 0.0:
                 continue
-            context = f"cell:{cell_id}"
+            context = f"column:{cell_id}"
             pair_key = tuple(sorted((source, target)))
             key = (context, pair_key[0], pair_key[1])
             if key in seen:
@@ -432,7 +432,7 @@ def main() -> None:
             message="Loading expression and extra inputs",
         )
         expression = read_expression_tsv(args.input)
-        descriptors = load_cell_descriptors(args.extra, expression.cell_ids)
+        descriptors = load_column_descriptors(args.extra, expression.cell_ids)
         if mode == "group_aggregated":
             validate_groups(args.extra, expression.cell_ids)
         write_alias_map(raw_dir, expression.cell_ids)

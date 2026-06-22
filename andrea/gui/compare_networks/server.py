@@ -51,6 +51,7 @@ from andrea.gui.common.server_jobs import (
     make_core_progress_callback,
     run_parallel,
     set_job_progress,
+    start_background_thread,
     timed_job_stage,
     utc_now,
 )
@@ -272,11 +273,11 @@ def _start_comparison_job(
         job.finished_at = None
         job.artifact_status = {}
         job.artifact_errors = []
-    threading.Thread(
+    start_background_thread(
         target=_run_comparison_job,
         kwargs={"job_id": job_id, "selected_sources": selected_sources},
         daemon=True,
-    ).start()
+    )
 
 
 def _run_comparison_job(

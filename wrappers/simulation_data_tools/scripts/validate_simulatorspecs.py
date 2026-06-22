@@ -18,6 +18,26 @@ from typing import Any, Sequence
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError, ValidationError
+
+SCRIPT_ROOT = Path(__file__).resolve().parent
+if str(SCRIPT_ROOT) in sys.path:
+    sys.path.remove(str(SCRIPT_ROOT))
+sys.path.insert(0, str(SCRIPT_ROOT))
+loaded_shared = sys.modules.get("shared")
+if loaded_shared is not None:
+    loaded_shared_file = getattr(loaded_shared, "__file__", None)
+    loaded_from_other_wrapper = (
+        loaded_shared_file is None
+        or SCRIPT_ROOT not in Path(loaded_shared_file).resolve().parents
+    )
+    if loaded_from_other_wrapper:
+        for module_name in [
+            name
+            for name in sys.modules
+            if name == "shared" or name.startswith("shared.")
+        ]:
+            del sys.modules[module_name]
+
 from shared.catalog_simulators import (
     DEFAULT_CATALOG_SIMULATORS_ROOT,
     DEFAULT_SCHEMA_PATH,
@@ -32,14 +52,27 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_INPUT_SPECS_ROOT = (
     REPO_ROOT / "andrea" / "catalog_simulation_data_tools" / "input_specs"
 )
-TRUTH_CONTEXT_IDS = {"global", "group", "cell"}
-REQUIRED_TRUTH_OUTPUTS_BY_PROFILE = {
-    "bulk_steady_state": {"global"},
-    "bulk_time_series": {"global"},
-    "bulk_perturbational": {"global"},
-    "scrna_global": {"global"},
-    "scrna_grouped": {"global", "group"},
-    "scrna_cell_specific": {"global", "group", "cell"},
+TRUTH_CONTEXT_IDS = {"global", "group", "column"}
+DATA_AXIS_VALUES = {
+    "measurement": {"rna_expression"},
+    "resolution": {"bulk", "single_cell", "spatial", "pseudo_bulk", "mixed", "unknown"},
+    "column_kind": {
+        "samples",
+        "cells",
+        "timepoints",
+        "perturbations",
+        "spots",
+        "metacells",
+        "conditions",
+    },
+    "experimental_design": {
+        "observational",
+        "steady_state",
+        "perturbational",
+        "time_series",
+        "trajectory",
+        "differentiation",
+    },
 }
 NON_EMPTY_TRUTH_CONTEXT_FIELDS = (
     "source_artifacts",
@@ -101,7 +134,7 @@ def _condition_values(condition: dict[str, Any]) -> list[Any]:
 
 def _all_extra_ids(spec: dict[str, Any]) -> set[str]:
     extras: set[str] = set()
-    for capability in spec.get("profile_capabilities", {}).values():
+    for capability in spec.get("capabilities", []):
         if not isinstance(capability, dict):
             continue
         extras.update(capability.get("native_extras", []))
@@ -111,7 +144,7 @@ def _all_extra_ids(spec: dict[str, Any]) -> set[str]:
 
 def _all_native_output_ids(spec: dict[str, Any]) -> set[str]:
     outputs: set[str] = set()
-    for capability in spec.get("profile_capabilities", {}).values():
+    for capability in spec.get("capabilities", []):
         if not isinstance(capability, dict):
             continue
         for output in capability.get("native_outputs", []):
@@ -120,26 +153,66 @@ def _all_native_output_ids(spec: dict[str, Any]) -> set[str]:
     return outputs
 
 
+def _truth_output_statuses(capability: dict[str, Any]) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for item in capability.get("truth_outputs", []):
+        if not isinstance(item, dict):
+            continue
+        context = str(item.get("context", "")).strip()
+        status = str(item.get("status", "")).strip()
+        if context:
+            statuses[context] = status
+    return statuses
+
+
 def _validate_truth_contexts(
     *,
-    profile: str,
     capability: dict[str, Any],
     location: str,
 ) -> list[str]:
     errors: list[str] = []
-    truth_outputs = capability.get("truth_outputs", {})
-    if not isinstance(truth_outputs, dict):
-        return [f"{location}.truth_outputs must be an object"]
+    truth_outputs = capability.get("truth_outputs", [])
+    if not isinstance(truth_outputs, list):
+        return [f"{location}.truth_outputs must be an array"]
 
-    required_outputs = REQUIRED_TRUTH_OUTPUTS_BY_PROFILE.get(profile, {"global"})
+    output_contexts: list[str] = []
+    for index, item in enumerate(truth_outputs):
+        item_location = f"{location}.truth_outputs[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{item_location}: truth output must be an object")
+            continue
+        context = str(item.get("context", "")).strip()
+        status = str(item.get("status", "")).strip()
+        if context not in TRUTH_CONTEXT_IDS:
+            errors.append(f"{item_location}: unknown truth output context '{context}'")
+            continue
+        output_contexts.append(context)
+        if status not in {"native", "derivable"}:
+            errors.append(
+                f"{item_location}: supported truth output status must be native or derivable"
+            )
+    duplicate_outputs = sorted(
+        context for context in set(output_contexts) if output_contexts.count(context) > 1
+    )
+    if duplicate_outputs:
+        errors.append(
+            f"{location}.truth_outputs: duplicate output context entries: "
+            + ", ".join(duplicate_outputs)
+        )
+
+    output_statuses = _truth_output_statuses(capability)
+
+    required_outputs = set(
+        capability.get("truth_requirements", {}).get("contexts", ["global"])
+    )
     unsupported_required = sorted(
         output_id
         for output_id in required_outputs
-        if truth_outputs.get(output_id) not in {"native", "derivable"}
+        if output_statuses.get(output_id) not in {"native", "derivable"}
     )
     if unsupported_required:
         errors.append(
-            f"{location}.truth_outputs: required profile context(s) cannot be none: "
+            f"{location}.truth_outputs: required truth context(s) are not supported: "
             + ", ".join(unsupported_required)
         )
 
@@ -165,10 +238,10 @@ def _validate_truth_contexts(
         context_by_id[context_id] = item
 
         status = item.get("status")
-        expected_status = truth_outputs.get(context_id)
+        expected_status = output_statuses.get(context_id, "none")
         if status != expected_status:
             errors.append(
-                f"{item_location}: status must match truth_outputs.{context_id} "
+                f"{item_location}: status must match truth_outputs context '{context_id}' "
                 f"({expected_status!r})"
             )
         if status in {"native", "derivable"}:
@@ -190,19 +263,19 @@ def _validate_truth_contexts(
             f"{location}.truth_contexts: duplicate context entries: {duplicate_contexts}"
         )
 
-    expected_contexts = set(truth_outputs)
+    expected_contexts = TRUTH_CONTEXT_IDS
     documented_contexts = set(context_by_id)
     missing_contexts = sorted(expected_contexts.difference(documented_contexts))
     if missing_contexts:
         errors.append(
-            f"{location}.truth_contexts: missing context entries for truth_outputs: "
+            f"{location}.truth_contexts: missing context entries for truth context families: "
             + ", ".join(missing_contexts)
         )
     extra_contexts = sorted(documented_contexts.difference(expected_contexts))
     if extra_contexts:
         errors.append(
             f"{location}.truth_contexts: context entries are not declared in "
-            "truth_outputs: "
+            "truth context families: "
             + ", ".join(extra_contexts)
         )
 
@@ -246,6 +319,22 @@ def _validate_condition_reference(
         param_path = field.removeprefix("param.")
         if not _param_path_exists(spec.get("params", {}), param_path):
             errors.append(f"{location}: unknown parameter path '{field}'")
+    elif field.startswith("data_axes."):
+        axis = field.removeprefix("data_axes.")
+        allowed_values = DATA_AXIS_VALUES.get(axis)
+        if allowed_values is None:
+            errors.append(f"{location}: unsupported data axis field '{field}'")
+        else:
+            axis_values = {
+                str(value) for value in _condition_values(condition) if value is not None
+            }
+            unknown_values = sorted(axis_values.difference(allowed_values))
+            if unknown_values:
+                errors.append(
+                    f"{location}: data axis condition references unsupported "
+                    f"{axis} value(s): "
+                    + ", ".join(unknown_values)
+                )
     elif field.startswith("input."):
         parts = field.split(".")
         if len(parts) != 3 or parts[2] != "unique_gene_count":
@@ -253,16 +342,20 @@ def _validate_condition_reference(
         elif parts[1] not in known_input_ids:
             errors.append(f"{location}: condition references unknown input '{parts[1]}'")
     elif field == "profile":
-        profile_values = {
+        errors.append(
+            f"{location}: condition field 'profile' is legacy; use data_axes.* "
+            "and truth_requirement conditions instead"
+        )
+    elif field == "truth_requirement":
+        truth_values = {
             str(value) for value in _condition_values(condition) if value is not None
         }
-        unknown_profiles = sorted(
-            profile_values.difference(spec.get("profile_capabilities", {}))
-        )
-        if unknown_profiles:
+        unknown_truth_values = sorted(truth_values.difference(TRUTH_CONTEXT_IDS))
+        if unknown_truth_values:
             errors.append(
-                f"{location}: profile condition references unsupported profile(s): "
-                + ", ".join(unknown_profiles)
+                f"{location}: truth_requirement condition references unsupported "
+                "truth context(s): "
+                + ", ".join(unknown_truth_values)
             )
     elif field == "requested_extra":
         all_extras = _all_extra_ids(spec)
@@ -297,6 +390,61 @@ def _validate_condition_reference(
                 location=location,
             )
         )
+    return errors
+
+
+def _validate_parameter_bindings(
+    *,
+    spec: dict[str, Any],
+    capability: dict[str, Any],
+    location: str,
+) -> list[str]:
+    errors: list[str] = []
+    bindings = capability.get("parameter_bindings", [])
+    if bindings is None:
+        return errors
+    if not isinstance(bindings, list):
+        return [f"{location}.parameter_bindings must be an array"]
+    seen_params: set[str] = set()
+    for binding_index, binding in enumerate(bindings):
+        binding_location = f"{location}.parameter_bindings[{binding_index}]"
+        if not isinstance(binding, dict):
+            errors.append(f"{binding_location}: binding must be an object")
+            continue
+        param_path = str(binding.get("param", "")).strip()
+        if not param_path:
+            errors.append(f"{binding_location}.param is required")
+            continue
+        if param_path in seen_params:
+            errors.append(f"{binding_location}: duplicate binding for '{param_path}'")
+        seen_params.add(param_path)
+        if not _param_path_exists(spec.get("params", {}), param_path):
+            errors.append(
+                f"{binding_location}: unknown simulator parameter path '{param_path}'"
+            )
+        policy = str(binding.get("policy", "")).strip()
+        if policy not in {"locked", "default_if_unset"}:
+            errors.append(
+                f"{binding_location}.policy must be locked or default_if_unset"
+            )
+        if "value" not in binding:
+            errors.append(f"{binding_location}.value is required")
+            continue
+        allowed_values = binding.get("allowed_values")
+        if isinstance(allowed_values, list) and allowed_values:
+            if binding.get("value") not in allowed_values:
+                errors.append(
+                    f"{binding_location}.allowed_values must include the binding value"
+                )
+        source = str(binding.get("source", "")).strip()
+        if source.startswith("data_axes."):
+            axis = source.removeprefix("data_axes.")
+            if axis not in DATA_AXIS_VALUES:
+                errors.append(f"{binding_location}.source references unknown axis")
+            elif axis not in capability.get("data_axes", {}):
+                errors.append(
+                    f"{binding_location}.source references axis not declared by capability"
+                )
     return errors
 
 
@@ -453,11 +601,42 @@ def semantic_errors(
                     )
                 )
 
-    for profile, capability in spec.get("profile_capabilities", {}).items():
-        location = f"profile_capabilities.{profile}"
+    if "profile_capabilities" in spec:
+        errors.append("profile_capabilities is legacy; use capabilities instead")
+
+    capabilities = spec.get("capabilities", [])
+    if not isinstance(capabilities, list):
+        errors.append("capabilities must be an array")
+        capabilities = []
+
+    capability_keys: list[str] = []
+    for capability_index, capability in enumerate(capabilities):
+        location = f"capabilities[{capability_index}]"
+        if not isinstance(capability, dict):
+            errors.append(f"{location}: capability must be an object")
+            continue
+        axes = capability.get("data_axes", {})
+        truth_requirements = capability.get("truth_requirements", {})
+        capability_key = (
+            f"{axes.get('measurement')}|{axes.get('resolution')}|"
+            f"{axes.get('column_kind')}|{axes.get('experimental_design')}|"
+            f"{','.join(truth_requirements.get('contexts', []))}"
+            if isinstance(axes, dict) and isinstance(truth_requirements, dict)
+            else location
+        )
+        if capability_key in capability_keys:
+            errors.append(f"{location}: duplicate semantic capability {capability_key}")
+        capability_keys.append(capability_key)
+
         errors.extend(
             _validate_truth_contexts(
-                profile=str(profile),
+                capability=capability,
+                location=location,
+            )
+        )
+        errors.extend(
+            _validate_parameter_bindings(
+                spec=spec,
                 capability=capability,
                 location=location,
             )
@@ -467,7 +646,7 @@ def semantic_errors(
         overlap = sorted(native.intersection(derivable))
         if overlap:
             errors.append(
-                f"profile_capabilities.{profile}: native_extras and derivable_extras overlap: {overlap}"
+                f"{location}: native_extras and derivable_extras overlap: {overlap}"
             )
         for output_index, output in enumerate(capability.get("native_outputs", [])):
             if not isinstance(output, dict):
@@ -480,16 +659,16 @@ def semantic_errors(
                         spec=spec,
                         condition=condition,
                         location=(
-                            f"profile_capabilities.{profile}.native_outputs"
+                            f"{location}.native_outputs"
                             f"[{output_index}].conditions[{condition_index}]"
                         ),
                         known_input_ids=known_input_ids,
                     )
                 )
         truth_derivable = {
-            key
-            for key, value in capability.get("truth_outputs", {}).items()
-            if value == "derivable"
+            context
+            for context, status in _truth_output_statuses(capability).items()
+            if status == "derivable"
         }
         for requirement_index, requirement in enumerate(
             capability.get("truth_parameter_requirements", [])
@@ -506,7 +685,7 @@ def semantic_errors(
                         spec=spec,
                         condition=condition,
                         location=(
-                            f"profile_capabilities.{profile}.truth_parameter_requirements"
+                            f"{location}.truth_parameter_requirements"
                             f"[{requirement_index}].conditions[{condition_index}]"
                         ),
                         known_input_ids=known_input_ids,
@@ -526,7 +705,7 @@ def semantic_errors(
         )
         if duplicate_derivations:
             errors.append(
-                f"profile_capabilities.{profile}: duplicate derivation entries: {duplicate_derivations}"
+                f"{location}: duplicate derivation entries: {duplicate_derivations}"
             )
         documented_derivations = set(derivation_artifacts)
         missing_derivations = sorted(
@@ -534,14 +713,14 @@ def semantic_errors(
         )
         if missing_derivations:
             errors.append(
-                f"profile_capabilities.{profile}: missing derivation explanations for: {missing_derivations}"
+                f"{location}: missing derivation explanations for: {missing_derivations}"
             )
         unexpected_derivations = sorted(
             documented_derivations.difference(expected_derivations)
         )
         if unexpected_derivations:
             errors.append(
-                f"profile_capabilities.{profile}: derivation explanations declared for non-derived artifacts: {unexpected_derivations}"
+                f"{location}: derivation explanations declared for non-derived artifacts: {unexpected_derivations}"
             )
     return errors
 

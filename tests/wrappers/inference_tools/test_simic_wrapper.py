@@ -27,9 +27,9 @@ _spec.loader.exec_module(simic_run_tool)
 
 
 class SimicWrapperInputTests(unittest.TestCase):
-    def test_cell_phenotypes_rejects_groups_without_train_test_capacity(self) -> None:
+    def test_column_phenotypes_rejects_groups_without_train_test_capacity(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "cell_phenotypes.tsv"
+            path = Path(tmp) / "column_phenotypes.tsv"
             path.write_text(
                 "cell\tphenotype\torder\n"
                 "C1\tA\t0\n"
@@ -43,16 +43,16 @@ class SimicWrapperInputTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "at least four cells"):
-                simic_run_tool._read_cell_phenotypes(
+                simic_run_tool._read_column_phenotypes(
                     path,
                     cells=[f"C{i}" for i in range(1, 8)],
                 )
 
-    def test_cell_phenotypes_rejects_too_many_phenotypes_for_upstream_split(
+    def test_column_phenotypes_rejects_too_many_phenotypes_for_upstream_split(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "cell_phenotypes.tsv"
+            path = Path(tmp) / "column_phenotypes.tsv"
             rows = ["cell\tphenotype\torder"]
             cells: list[str] = []
             for label_idx, label in enumerate(["A", "B", "C"]):
@@ -63,7 +63,7 @@ class SimicWrapperInputTests(unittest.TestCase):
             path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "20% test split is too small"):
-                simic_run_tool._read_cell_phenotypes(path, cells=cells)
+                simic_run_tool._read_column_phenotypes(path, cells=cells)
 
     def test_stratified_split_preserves_per_phenotype_train_and_test_cells(
         self,

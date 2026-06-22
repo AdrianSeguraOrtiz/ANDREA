@@ -36,10 +36,40 @@ Each `simulatorspec.json` declares:
 - `extra_inputs.optional`: files consumed when present but not required by a
   particular configuration.
 - `extra_inputs.conditional_required`: files required only when a selected
-  profile, requested extra, native output or parameter value activates the rule.
+  semantic capability, requested extra, native output or parameter value
+  activates the rule.
 
 Generated benchmark extras such as `groups`, `tf_list` or `pseudotime` are
 outputs requested from simulators. They are not simulator-side input specs.
+
+## Semantic Dataset Model
+
+`generate-data` models benchmark datasets with explicit axes. A scenario is not
+defined by one combined profile string; it is defined by:
+
+- `measurement`: what the matrix measures. Initial value: `rna_expression`.
+- `resolution`: biological/experimental resolution, such as `bulk`,
+  `single_cell`, `spatial`, `pseudo_bulk`, `mixed` or `unknown`.
+- `column_kind`: what each expression column represents, such as `samples`,
+  `cells`, `timepoints`, `perturbations`, `spots`, `metacells` or
+  `conditions`.
+- `experimental_design`: the benchmark design, such as `observational`,
+  `steady_state`, `perturbational`, `time_series`, `trajectory` or
+  `differentiation`.
+
+Regulatory truth requirements are a separate axis. Public truth context
+families are:
+
+- `global`: one dataset-level GRN.
+- `group`: one GRN per group of expression columns, exported as
+  `context=group:<group_id>`.
+- `column`: one GRN per expression column, exported as
+  `context=column:<column_id>`.
+
+The meaning of `column:<column_id>` comes from `column_kind`. For example, when
+`column_kind=cells`, column truth is cell-level truth; when
+`column_kind=timepoints`, it is timepoint-level truth. `groups.tsv` groups
+expression columns, not only cells.
 
 ## Truth Contexts
 
@@ -53,24 +83,18 @@ The `context` column distinguishes the public truth level:
 
 - `global`: dataset-level regulatory truth.
 - `group:<group_id>`: group-specific regulatory truth.
-- `cell:<cell_id>`: cell-specific regulatory truth.
+- `column:<column_id>`: expression-column-specific regulatory truth.
 
-Canonical profile requirements are cumulative:
+Scenario truth requirements are cumulative. If `truth_requirements.contexts`
+contains `column`, `global` and any requested `group` truth must still be
+present unless the scenario explicitly omits them. Each simulator capability
+records whether every declared context family is `native`, `derivable` or
+`none`, which upstream artifacts are used, which upstream settings are
+activated, how public rows are generated, how `score` and `sign` are computed,
+and any limitations.
 
-- `scrna_global` requires `global`.
-- `scrna_grouped` requires `global` and at least one `group:*` context.
-- `scrna_cell_specific` requires `global`, at least one `group:*` context and
-  at least one `cell:*` context.
-
-Each `profile_capabilities.<profile>` entry in a simulator spec must explain
-these semantics through `truth_contexts`. For each `global`, `group` and `cell`
-entry, the spec records whether the context is `native`, `derivable` or `none`,
-which upstream artifacts are used, which upstream settings are activated, how
-public rows are generated, how `score` and `sign` are computed, and any
-limitations.
-
-`truth_outputs` remains the compact machine-readable summary. `truth_contexts`
-is the audit trail that makes those machine claims understandable.
+The compact machine-readable summary and the audit trail must agree: every
+claimed context family needs evidence and a wrapper rule.
 
 ## Validation
 

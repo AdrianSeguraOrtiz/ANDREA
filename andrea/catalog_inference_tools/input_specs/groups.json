@@ -3,7 +3,7 @@
   "key": "groups",
   "file_kind": "tsv",
   "description": "Groups TSV: first column maps expression column identifiers to a cluster/group label.",
-  "example": "sample\tcluster\nS1\tA\nS2\tB",
+  "example": "column\tcluster\nS1\tA\nS2\tB",
   "delimiter": "\t",
   "header": true,
   "min_rows": 1,

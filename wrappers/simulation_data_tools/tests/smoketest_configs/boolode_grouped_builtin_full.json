@@ -1,17 +1,19 @@
 {
   "simulator_id": "boolode",
   "request": {
-    "profile": "scrna_grouped",
     "seed": 302,
     "effective_extras": [
       "pseudotime",
       "groups",
-      "cell_phenotypes",
+      "column_phenotypes",
       "cluster_identities",
       "enrichment_background",
       "prior_grn",
       "tf_list",
       "prior_grn_by_group"
+    ],
+    "native_outputs": [
+      "expression_data"
     ],
     "inputs": {},
     "params": {
@@ -27,14 +29,28 @@
         "enabled": false
       }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "trajectory"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
     "extras/pseudotime.tsv",
     "extras/groups.tsv",
-    "extras/cell_phenotypes.tsv",
+    "extras/column_phenotypes.tsv",
     "extras/cluster_identities.tsv",
     "extras/enrichment_background.txt",
     "extras/prior_grn.tsv",
@@ -44,6 +60,7 @@
     "truth/gene_universe.txt",
     "simulator-output-manifest.json",
     "progress.json",
+    "native/expression_data.csv",
     "provenance/raw/boolode_config.yaml",
     "provenance/raw/boolode_output/andrea_boolode/ExpressionData.csv",
     "provenance/raw/boolode_output/andrea_boolode/PseudoTime.csv",
@@ -58,5 +75,8 @@
     "provenance/raw/session_info.txt",
     "provenance/raw/upstream_stdout.log"
   ],
-  "required_truth_context_prefixes": ["global", "group:"]
+  "required_truth_context_prefixes": [
+    "global",
+    "group:"
+  ]
 }

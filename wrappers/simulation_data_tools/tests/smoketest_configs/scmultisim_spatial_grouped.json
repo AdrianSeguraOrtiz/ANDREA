@@ -1,18 +1,23 @@
 {
   "simulator_id": "scmultisim",
   "request": {
-    "profile": "scrna_cell_specific",
-    "seed": 106,
+    "seed": 202,
     "effective_extras": [
       "groups",
-      "tf_list"
+      "spatial_coordinates"
     ],
     "inputs": {},
     "params": {
       "grn_source": "builtin_100",
       "tree_preset": "phyla3",
-      "num_cells": 8,
+      "num_genes": 120,
+      "num_cells": 20,
       "num_cifs": 20,
+      "speed_up": true,
+      "spatial": {
+        "enabled": true,
+        "single_cell_gt": true
+      },
       "velocity": {
         "enabled": false
       },
@@ -25,24 +30,41 @@
         "weight_sd": 1
       },
       "technical_noise": {
-        "enabled": true
+        "enabled": false
       }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "spatial",
+      "column_kind": "spots",
+      "experimental_design": "differentiation"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
     "extras/groups.tsv",
-    "extras/tf_list.txt",
+    "extras/spatial_coordinates.tsv",
     "truth/networks.csv",
     "truth/gene_universe.txt",
     "provenance/raw/group_networks_index.tsv",
-    "provenance/raw/cell_networks_index.tsv",
     "simulator-output-manifest.json",
     "progress.json",
     "provenance/raw/result.rds",
+    "provenance/raw/public_column_id_normalization.tsv",
     "provenance/raw/session_info.txt"
   ],
-  "required_truth_context_prefixes": ["global", "group:", "cell:"]
+  "required_truth_context_prefixes": [
+    "global",
+    "group:"
+  ]
 }

@@ -24,7 +24,11 @@ from andrea.core.commands.compare_networks.models import (
     NETWORK_INDEX_COLUMNS,
 )
 from andrea.core.commands.compare_networks.utils import format_float
-from andrea.core.shared.network_context import network_context_family
+from andrea.core.shared.network_context import (
+    network_context_family,
+    network_context_sort_key,
+    normalize_network_context_family,
+)
 
 SQLITE_TABLE_COLUMNS = {
     "network_index": NETWORK_INDEX_COLUMNS,
@@ -1285,10 +1289,7 @@ def _sqlite_value(value: Any) -> Any:
 
 
 def _normalize_family(family: str) -> str:
-    normalized = str(family or "").strip().removesuffix("s")
-    if normalized not in {"global", "group", "cell", "other"}:
-        raise ValueError("family must be one of global, group, cell or other")
-    return normalized
+    return normalize_network_context_family(family)
 
 
 def _normalize_limit(limit: int) -> int:
@@ -1299,9 +1300,7 @@ def _normalize_limit(limit: int) -> int:
 
 
 def _context_sort_key(context: str) -> tuple[int, str]:
-    family_order = {"global": 0, "group": 1, "cell": 2, "other": 3}
-    family = network_context_family(context)
-    return (family_order[family], context)
+    return network_context_sort_key(context)
 
 
 def _summary_stats(values: list[float]) -> dict[str, Any]:

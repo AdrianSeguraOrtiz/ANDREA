@@ -14,9 +14,10 @@ def unavailable_reproducibility(message: str) -> dict[str, Any]:
 def shell_join_pretty(args: list[str]) -> str:
     if len(args) <= 3:
         return " ".join(shlex.quote(str(item)) for item in args)
-    head = " ".join(shlex.quote(str(item)) for item in args[:3])
+    head_len = 2 if str(args[2]).startswith("--") else 3
+    head = " ".join(shlex.quote(str(item)) for item in args[:head_len])
     groups: list[str] = []
-    idx = 3
+    idx = head_len
     while idx < len(args):
         token = str(args[idx])
         if token.startswith("--") and idx + 1 < len(args):

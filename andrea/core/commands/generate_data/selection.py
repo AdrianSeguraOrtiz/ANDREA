@@ -7,7 +7,7 @@ from typing import Any
 from andrea.core.shared.container_runtime import ensure_docker_cli
 from andrea.core.shared.issues import make_issue
 
-from .catalog import _load_simulator_catalog, get_profile_capability
+from .catalog import _load_simulator_catalog, get_semantic_capability
 from .request import (
     _resolve_simulator_params,
     _supported_requested_artifacts,
@@ -17,12 +17,16 @@ from .request import (
     validate_simulator_inputs,
 )
 from .scenario import validate_scenario_request
+from .semantic import (
+    SIMULATOR_TRUTH_CONTEXT_FAMILIES,
+    context_prefix_for_family,
+    parse_truth_requirements,
+    primary_truth_context_family,
+    truth_output_statuses,
+)
 from .shared import (
     ResolvedScenarioRequest,
     _validate_json_instance,
-    primary_truth_output_for_profile,
-    required_truth_context_prefixes_for_profile,
-    required_truth_outputs_for_profile,
 )
 
 
@@ -40,73 +44,65 @@ def evaluate_simulator_for_scenario(
     spec: dict[str, Any],
     scenario: ResolvedScenarioRequest,
 ) -> dict[str, Any]:
-    profile_capability = get_profile_capability(spec, scenario.profile)
+    capability = get_semantic_capability(
+        spec,
+        data_axes=scenario.data_axes,
+        truth_requirements=scenario.truth_requirements,
+    )
     issues: list[dict[str, Any]] = []
 
-    if profile_capability is None:
+    if capability is None:
         issues.append(
             make_issue(
                 severity="block",
-                code="unsupported_profile",
-                message=f"profile '{scenario.profile}' is not supported",
+                code="unsupported_semantic_capability",
+                message="requested data_axes/truth_requirements are not supported",
                 simulator_id=simulator_id,
             )
         )
         native = set()
         derivable = set()
-        truth_outputs = {
-            "global": "none",
-            "group": "none",
-            "cell": "none",
-        }
+        truth_outputs: dict[str, str] = {}
         supported_effective_extras: list[str] = []
     else:
         resolved_params = _resolve_simulator_params(
             simulator_id=simulator_id,
             user_params={},
             spec_params=spec.get("params", {}),
+            capability=capability,
         )
-        native, derivable = _supported_requested_artifacts(profile_capability)
-        truth_outputs = dict(profile_capability.get("truth_outputs", {}))
+        requested_truth = parse_truth_requirements(scenario.truth_requirements)
+        native, derivable = _supported_requested_artifacts(capability)
+        truth_outputs = truth_output_statuses(capability)
         missing_truth = [
-            output_id
-            for output_id in required_truth_outputs_for_profile(scenario.profile)
-            if truth_outputs.get(output_id) not in {"native", "derivable"}
+            context
+            for context in requested_truth.contexts
+            if truth_outputs.get(context) not in {"native", "derivable"}
         ]
         if missing_truth:
-            required_outputs = list(required_truth_outputs_for_profile(scenario.profile))
-            required_contexts = list(
-                required_truth_context_prefixes_for_profile(scenario.profile)
-            )
             missing_contexts = [
-                required_contexts[required_outputs.index(output_id)]
-                for output_id in missing_truth
-                if output_id in required_outputs
+                context_prefix_for_family(context) for context in missing_truth
             ]
             issues.append(
                 make_issue(
                     severity="block",
                     code="unsupported_truth_outputs",
-                    message="profile requires truth context(s) not supported by this simulator: "
-                    + ", ".join(missing_contexts or missing_truth),
+                    message="requested truth context(s) are not supported by this simulator: "
+                    + ", ".join(missing_contexts),
                     simulator_id=simulator_id,
                 )
             )
-        primary_truth_output = primary_truth_output_for_profile(scenario.profile)
+        primary_truth_output = primary_truth_context_family(requested_truth)
         primary_truth_status = truth_outputs.get(primary_truth_output)
         if primary_truth_status == "derivable":
-            primary_context = {
-                "global": "global",
-                "group": "group:",
-                "cell": "cell:",
-            }.get(primary_truth_output, primary_truth_output)
+            primary_context = context_prefix_for_family(primary_truth_output)
             issues.append(
                 make_issue(
                     severity="warn",
                     code="primary_truth_context_derived",
                     message=(
-                        f"profile '{scenario.profile}' uses canonical truth context "
-                        f"'{primary_context}', which this simulator derives rather than "
+                        f"requested canonical truth context '{primary_context}' "
+                        "is derived by this simulator rather than "
                         "produces natively"
                     ),
                     simulator_id=simulator_id,
@@ -114,8 +110,9 @@ def evaluate_simulator_for_scenario(
                 )
             )
         truth_parameter_errors = validate_truth_parameter_requirements(
-            profile_capability=profile_capability,
-            profile=scenario.profile,
+            capability=capability,
+            data_axes=scenario.data_axes,
+            truth_requirements=scenario.truth_requirements,
             requested_extras=scenario.requested_extras,
             simulator_params=resolved_params,
         )
@@ -132,7 +129,8 @@ def evaluate_simulator_for_scenario(
             collect_simulator_compatibility_rule_issues(
                 simulator_id=simulator_id,
                 simulator_spec=spec,
-                profile=scenario.profile,
+                data_axes=scenario.data_axes,
+                truth_requirements=scenario.truth_requirements,
                 requested_extras=scenario.requested_extras,
                 simulator_params=resolved_params,
                 native_outputs=[],
@@ -178,7 +176,7 @@ def evaluate_simulator_for_scenario(
                 make_issue(
                     severity="block",
                     code="unsupported_extras",
-                    message="unsupported extras for this profile: "
+                    message="unsupported extras for this semantic capability: "
                     + ", ".join(unsupported_requested),
                     simulator_id=simulator_id,
                 )
@@ -193,7 +191,8 @@ def evaluate_simulator_for_scenario(
             for message in validate_simulator_inputs(
                 simulator_id=simulator_id,
                 simulator_spec=spec,
-                profile=scenario.profile,
+                data_axes=scenario.data_axes,
+                truth_requirements=scenario.truth_requirements,
                 requested_extras=scenario.requested_extras,
                 simulator_params=resolved_params,
                 native_outputs=[],
@@ -231,16 +230,22 @@ def evaluate_simulator_for_scenario(
 
     native_used = sorted(set(supported_effective_extras).intersection(native))
     derived_used = sorted(set(supported_effective_extras).intersection(derivable))
+    truth_output_rows = [
+        {"context": context, "status": truth_outputs[context]}
+        for context in SIMULATOR_TRUTH_CONTEXT_FAMILIES
+        if truth_outputs.get(context) in {"native", "derivable"}
+    ]
     return {
         "simulator_id": simulator_id,
         "name": spec["name"],
-        "requested_profile": scenario.profile,
+        "requested_data_axes": dict(scenario.data_axes),
+        "requested_truth_requirements": dict(scenario.truth_requirements),
         "requested_extras": list(scenario.requested_extras),
         "effective_extras": list(scenario.effective_extras),
         "inputs_used": sorted(scenario.inputs),
         "native_extras_used": native_used,
         "derived_extras_used": derived_used,
-        "truth_outputs": truth_outputs,
+        "truth_outputs": truth_output_rows,
         "status": status,
         "issues": issues,
     }
@@ -266,7 +271,8 @@ def preflight_generate_data_scenario(scenario_path: Path) -> dict[str, Any]:
         "schema_version": "1.0",
         "scenario": {
             "id": scenario.request_id,
-            "profile": scenario.profile,
+            "data_axes": scenario.data_axes,
+            "truth_requirements": scenario.truth_requirements,
             "organism": scenario.organism,
             "requested_extras": scenario.requested_extras,
             "effective_extras": scenario.effective_extras,

@@ -214,6 +214,10 @@ wrappers/simulation_data_tools/simulators/*/repo/
 wrappers/simulation_data_tools/simulators/*/papers/
 wrappers/simulation_data_tools/simulators/*/additional_files/
 
+# Local MATLAB installation/download used only to compile MATLAB-based wrappers
+MR2026a/
+matlab_R2026a_Linux.zip
+
 # Local workflow outputs
 inferred_networks/
 benchmarks/

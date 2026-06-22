@@ -212,36 +212,36 @@ def _prepare_group_expression_sources(
     return prepared
 
 
-def _cell_context_id(context: str) -> str | None:
-    prefix = "cell:"
+def _column_context_id(context: str) -> str | None:
+    prefix = "column:"
     if not context.startswith(prefix):
         return None
-    cell_id = context.removeprefix(prefix).strip()
-    return cell_id or None
+    column_id = context.removeprefix(prefix).strip()
+    return column_id or None
 
 
-def _aggregate_cell_rows_by_group(
+def _aggregate_column_rows_by_group(
     *,
     rows: list[dict[str, Any]],
     group_to_columns: dict[str, list[str]],
 ) -> list[dict[str, Any]]:
-    cell_to_group: dict[str, str] = {}
+    column_to_group: dict[str, str] = {}
     for group_label, columns in group_to_columns.items():
         for column in columns:
-            cell_to_group[str(column)] = group_label
+            column_to_group[str(column)] = group_label
 
     aggregate: dict[
         tuple[str, str, str],
         dict[str, Any],
     ] = {}
     for row in rows:
-        cell_id = _cell_context_id(str(row.get("context", "")))
-        if cell_id is None:
+        column_id = _column_context_id(str(row.get("context", "")))
+        if column_id is None:
             continue
-        group_label = cell_to_group.get(cell_id)
+        group_label = column_to_group.get(column_id)
         if group_label is None:
             raise ValueError(
-                f"cell context '{cell_id}' is not present in groups.tsv"
+                f"column context '{column_id}' is not present in groups.tsv"
             )
         key = (group_label, str(row["source"]), str(row["target"]))
         state = aggregate.setdefault(
@@ -322,7 +322,7 @@ def _finalize_group_aggregated_logical_run(
     network_path: str | None = None
     status = "failed"
     error: str | None = None
-    cell_row_count = 0
+    column_row_count = 0
     aggregated_row_count = 0
 
     if child_result is None:
@@ -334,7 +334,7 @@ def _finalize_group_aggregated_logical_run(
             network_path=None,
             progress_path=None,
             logs_path=None,
-            error="Internal cell-native task result is missing.",
+            error="Internal column-native task result is missing.",
         )
     child_payload[child_task_id] = {
         **asdict(child_result),
@@ -342,35 +342,37 @@ def _finalize_group_aggregated_logical_run(
     }
 
     if child_result.status != "completed" or not child_result.network_path:
-        error = child_result.error or "Cell-native upstream execution failed."
+        error = child_result.error or "Column-native upstream execution failed."
     else:
         try:
             rows = _read_network_rows(
                 Path(child_result.network_path),
                 tool_id=child_task_id,
             )
-            cell_rows = [
-                row for row in rows if _cell_context_id(str(row["context"])) is not None
+            column_rows = [
+                row
+                for row in rows
+                if _column_context_id(str(row["context"])) is not None
             ]
-            if not cell_rows:
+            if not column_rows:
                 raise ValueError(
-                    "group_aggregated requires upstream network rows with cell:<id> contexts"
+                    "group_aggregated requires upstream network rows with column:<id> contexts"
                 )
-            aggregated_rows = _aggregate_cell_rows_by_group(
-                rows=cell_rows,
+            aggregated_rows = _aggregate_column_rows_by_group(
+                rows=column_rows,
                 group_to_columns=group_to_columns,
             )
             if not aggregated_rows:
                 warnings.append(
                     f"[{run_id}] group_aggregated produced no non-zero aggregated group edges."
                 )
-            cell_row_count = len(cell_rows)
+            column_row_count = len(column_rows)
             aggregated_row_count = len(aggregated_rows)
 
-            cell_network_path = out_dir / "network.cell_native.csv"
+            column_network_path = out_dir / "network.column_native.csv"
             parent_network = out_dir / "network.csv"
             _write_network_rows(
-                path=cell_network_path,
+                path=column_network_path,
                 rows=rows,
                 include_tool_id=False,
             )
@@ -393,7 +395,7 @@ def _finalize_group_aggregated_logical_run(
         "status": status,
         "phase": "done" if status == "completed" else "failed",
         "message": (
-            f"Aggregated {cell_row_count} cell-context row(s) into "
+            f"Aggregated {column_row_count} column-context row(s) into "
             f"{aggregated_row_count} group-context row(s)"
             if status == "completed"
             else error or "Aggregation failed"
@@ -405,7 +407,7 @@ def _finalize_group_aggregated_logical_run(
         f"run_id={run_id}",
         f"status={status}",
         f"upstream_task={child_task_id}",
-        f"cell_rows={cell_row_count}",
+        f"column_rows={column_row_count}",
         f"aggregated_group_rows={aggregated_row_count}",
     ]
     if error:
@@ -429,7 +431,7 @@ def _finalize_group_aggregated_logical_run(
         "child_results": child_payload,
         "aggregation": {
             "rule": "mean_signed_effect_by_group",
-            "cell_rows": cell_row_count,
+            "column_rows": column_row_count,
             "aggregated_group_rows": aggregated_row_count,
         },
     }
@@ -880,7 +882,7 @@ def run_infer_network_plan(
                 str(logical_spec["execution"].get("mode", "")).strip()
                 == "group_aggregated"
             ):
-                physical_execution["mode"] = "cell_native"
+                physical_execution["mode"] = "column_native"
             runtime_io_by_tool[task_id] = _prepare_tool_runtime_io(
                 run_dir=run_dir,
                 tool_id=task_id,
@@ -950,7 +952,7 @@ def run_infer_network_plan(
                 status="running",
                 phase="finalizing_group_aggregated",
                 percent=72,
-                message=f"Aggregating cell-native output for {logical_run_id}.",
+                message=f"Aggregating column-native output for {logical_run_id}.",
             )
             upstream_children = {
                 str(physical.get("task_id", "")).strip(): physical_results.get(

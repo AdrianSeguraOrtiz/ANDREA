@@ -8,7 +8,8 @@
   "required": [
     "schema_version",
     "id",
-    "profile",
+    "data_axes",
+    "truth_requirements",
     "organism",
     "requested_extras",
     "effective_extras",
@@ -24,29 +25,34 @@
       "type": "string",
       "const": "1.0"
     },
-    "id": { "type": "string", "minLength": 1 },
-    "profile": {
+    "id": {
       "type": "string",
-      "enum": [
-        "bulk_steady_state",
-        "bulk_time_series",
-        "bulk_perturbational",
-        "scrna_global",
-        "scrna_grouped",
-        "scrna_cell_specific"
-      ]
+      "minLength": 1
     },
-    "organism": { "type": "object" },
+    "organism": {
+      "type": "object"
+    },
     "requested_extras": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "effective_extras": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
-    "base_seed": { "type": ["integer", "null"] },
-    "inputs": { "type": "object" },
+    "base_seed": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "inputs": {
+      "type": "object"
+    },
     "runs": {
       "type": "array",
       "minItems": 1,
@@ -69,33 +75,73 @@
           "eta_provenance"
         ],
         "properties": {
-          "run_id": { "type": "string", "minLength": 1 },
-          "simulator_id": { "type": "string", "minLength": 1 },
-          "replicates": { "type": "integer", "minimum": 1 },
+          "run_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "simulator_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "replicates": {
+            "type": "integer",
+            "minimum": 1
+          },
           "native_outputs": {
             "type": "array",
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "base_seed": { "type": "integer" },
+          "base_seed": {
+            "type": "integer"
+          },
           "replicate_seeds": {
             "type": "array",
-            "items": { "type": "integer" }
+            "items": {
+              "type": "integer"
+            }
           },
-          "resolved_simulator_params": { "type": "object" },
+          "resolved_simulator_params": {
+            "type": "object"
+          },
           "runtime_resources": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["threads"],
+            "required": [
+              "threads"
+            ],
             "properties": {
-              "threads": { "type": "integer", "minimum": 1 }
+              "threads": {
+                "type": "integer",
+                "minimum": 1
+              }
             }
           },
-          "ram_gb": { "type": "number", "exclusiveMinimum": 0 },
-          "eta_seconds": { "type": "number", "minimum": 0 },
-          "eta_source": { "type": "string", "minLength": 1 },
-          "eta_start_seconds": { "type": "number", "minimum": 0 },
-          "eta_end_seconds": { "type": "number", "minimum": 0 },
-          "eta_provenance": { "type": "object" }
+          "ram_gb": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "eta_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "eta_start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_end_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_provenance": {
+            "type": "object"
+          }
         }
       }
     },
@@ -122,27 +168,69 @@
           "eta_provenance"
         ],
         "properties": {
-          "task_id": { "type": "string", "minLength": 1 },
-          "run_id": { "type": "string", "minLength": 1 },
-          "simulator_id": { "type": "string", "minLength": 1 },
-          "replicate_index": { "type": "integer", "minimum": 1 },
-          "seed": { "type": "integer" },
-          "dataset_id": { "type": "string", "minLength": 1 },
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "simulator_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "replicate_index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "seed": {
+            "type": "integer"
+          },
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1
+          },
           "runtime_resources": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["threads"],
+            "required": [
+              "threads"
+            ],
             "properties": {
-              "threads": { "type": "integer", "minimum": 1 }
+              "threads": {
+                "type": "integer",
+                "minimum": 1
+              }
             }
           },
-          "ram_gb": { "type": "number", "exclusiveMinimum": 0 },
-          "eta_seconds": { "type": "number", "minimum": 0 },
-          "eta_source": { "type": "string", "minLength": 1 },
-          "eta_start_seconds": { "type": "number", "minimum": 0 },
-          "eta_end_seconds": { "type": "number", "minimum": 0 },
-          "eta_wave": { "type": "integer", "minimum": 1 },
-          "eta_provenance": { "type": "object" }
+          "ram_gb": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "eta_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "eta_start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_end_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "eta_wave": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eta_provenance": {
+            "type": "object"
+          }
         }
       }
     },
@@ -158,13 +246,27 @@
         "warnings"
       ],
       "properties": {
-        "max_parallel_tasks": { "type": "integer", "minimum": 1 },
-        "max_cores": { "type": "integer", "minimum": 1 },
-        "max_ram_gb": { "type": "number", "exclusiveMinimum": 0 },
-        "eta_total_seconds": { "type": "number", "minimum": 0 },
+        "max_parallel_tasks": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_cores": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_ram_gb": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "eta_total_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
         "warnings": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "waves": {
           "type": "array",
@@ -181,12 +283,30 @@
               "tasks"
             ],
             "properties": {
-              "index": { "type": "integer", "minimum": 1 },
-              "threads_used": { "type": "integer", "minimum": 1 },
-              "ram_gb_used": { "type": "number", "exclusiveMinimum": 0 },
-              "eta_seconds": { "type": "number", "minimum": 0 },
-              "eta_start_seconds": { "type": "number", "minimum": 0 },
-              "eta_end_seconds": { "type": "number", "minimum": 0 },
+              "index": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "threads_used": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ram_gb_used": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "eta_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "eta_start_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "eta_end_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
               "tasks": {
                 "type": "array",
                 "items": {
@@ -204,15 +324,42 @@
                     "eta_end_seconds"
                   ],
                   "properties": {
-                    "task_id": { "type": "string", "minLength": 1 },
-                    "run_id": { "type": "string", "minLength": 1 },
-                    "simulator_id": { "type": "string", "minLength": 1 },
-                    "threads": { "type": "integer", "minimum": 1 },
-                    "ram_gb": { "type": "number", "exclusiveMinimum": 0 },
-                    "eta_seconds": { "type": "number", "minimum": 0 },
-                    "eta_source": { "type": "string", "minLength": 1 },
-                    "eta_start_seconds": { "type": "number", "minimum": 0 },
-                    "eta_end_seconds": { "type": "number", "minimum": 0 }
+                    "task_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "run_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "simulator_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "threads": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "ram_gb": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "eta_seconds": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "eta_source": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "eta_start_seconds": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "eta_end_seconds": {
+                      "type": "number",
+                      "minimum": 0
+                    }
                   }
                 }
               }
@@ -237,13 +384,33 @@
           "ground_truth_manifest"
         ],
         "properties": {
-          "dataset_id": { "type": "string", "minLength": 1 },
-          "run_id": { "type": "string", "minLength": 1 },
-          "simulator_id": { "type": "string", "minLength": 1 },
-          "seed": { "type": "integer" },
-          "path": { "type": "string", "minLength": 1 },
-          "dataset_manifest": { "type": "string", "minLength": 1 },
-          "ground_truth_manifest": { "type": "string", "minLength": 1 }
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "simulator_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "seed": {
+            "type": "integer"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dataset_manifest": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ground_truth_manifest": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
@@ -262,25 +429,157 @@
           "networks"
         ],
         "properties": {
-          "dataset_id": { "type": "string", "minLength": 1 },
-          "run_id": { "type": "string", "minLength": 1 },
-          "simulator_id": { "type": "string", "minLength": 1 },
-          "expression_matrix": { "type": "string", "minLength": 1 },
-          "gene_universe": { "type": "string", "minLength": 1 },
-          "groups": { "type": ["string", "null"] },
-          "cell_phenotypes": { "type": ["string", "null"] },
-          "cluster_identities": { "type": ["string", "null"] },
-          "enrichment_background": { "type": ["string", "null"] },
-          "lineage_tree": { "type": ["string", "null"] },
-          "pseudotime": { "type": ["string", "null"] },
-          "prior_grn": { "type": ["string", "null"] },
-          "tf_list": { "type": ["string", "null"] },
-          "prior_grn_by_group": { "type": ["string", "null"] },
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "simulator_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expression_matrix": {
+            "type": "string",
+            "minLength": 1
+          },
+          "gene_universe": {
+            "type": "string",
+            "minLength": 1
+          },
+          "groups": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "column_descriptors": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "column_phenotypes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cluster_identities": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enrichment_background": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interventions": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lineage_tree": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "perturbation_design": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pseudotime": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prior_grn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tf_list": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prior_grn_by_group": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "replicates": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timepoints": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "native_outputs": {
             "type": "object",
-            "additionalProperties": { "type": "string", "minLength": 1 }
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "networks": { "type": "string", "minLength": 1 }
+          "networks": {
+            "type": "string",
+            "minLength": 1
+          },
+          "spatial_coordinates": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "pattern": ".*\\.tsv$",
+            "description": "Optional spatial coordinate TSV path for this generated dataset."
+          },
+          "chromatin_accessibility": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "pattern": ".*\\.tsv$",
+            "description": "Optional chromatin accessibility matrix TSV path for this generated dataset."
+          },
+          "chromatin_regions": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "pattern": ".*\\.tsv$",
+            "description": "Optional chromatin region metadata TSV path for this generated dataset."
+          },
+          "cell_cell_interactions": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "pattern": ".*\\.tsv$",
+            "description": "Optional cell-cell interaction TSV path for this generated dataset."
+          }
         }
       }
     },
@@ -298,18 +597,228 @@
           "elapsed_s"
         ],
         "properties": {
-          "stage": { "type": "string", "minLength": 1 },
-          "label": { "type": "string", "minLength": 1 },
-          "detail": { "type": "string" },
-          "started_at": { "type": "string", "minLength": 1 },
-          "finished_at": { "type": "string", "minLength": 1 },
-          "elapsed_s": { "type": "number", "minimum": 0 }
+          "stage": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "finished_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed_s": {
+            "type": "number",
+            "minimum": 0
+          }
         }
       }
     },
     "notes": {
       "type": "string",
       "minLength": 1
+    },
+    "data_axes": {
+      "$ref": "#/$defs/data_axes"
+    },
+    "truth_requirements": {
+      "$ref": "#/$defs/truth_requirements"
+    }
+  },
+  "$defs": {
+    "data_axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measurement",
+        "resolution",
+        "column_kind",
+        "experimental_design"
+      ],
+      "properties": {
+        "measurement": {
+          "type": "string",
+          "enum": [
+            "rna_expression"
+          ]
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "bulk",
+            "single_cell",
+            "spatial",
+            "pseudo_bulk",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "column_kind": {
+          "type": "string",
+          "enum": [
+            "samples",
+            "cells",
+            "timepoints",
+            "perturbations",
+            "spots",
+            "metacells",
+            "conditions"
+          ]
+        },
+        "experimental_design": {
+          "type": "string",
+          "enum": [
+            "observational",
+            "steady_state",
+            "perturbational",
+            "time_series",
+            "trajectory",
+            "differentiation"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "cells"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "single_cell"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "spots"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "spatial"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "metacells"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "enum": [
+                  "single_cell",
+                  "pseudo_bulk"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "time_series"
+              }
+            },
+            "required": [
+              "experimental_design"
+            ]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": [
+                  "timepoints",
+                  "cells",
+                  "samples"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "perturbational"
+              }
+            },
+            "required": [
+              "experimental_design"
+            ]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": [
+                  "perturbations",
+                  "cells",
+                  "samples"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "truth_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contexts"
+      ],
+      "properties": {
+        "contexts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "global",
+              "group",
+              "column"
+            ]
+          },
+          "contains": {
+            "const": "global"
+          }
+        }
+      }
     }
   }
 }

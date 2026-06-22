@@ -74,7 +74,7 @@ DEFAULT_PARAMS: dict[str, Any] = {
 
 EXTRA_KEYS = [
     "groups",
-    "cell_phenotypes",
+    "column_phenotypes",
     "cluster_identities",
     "enrichment_background",
     "lineage_tree",
@@ -276,11 +276,35 @@ def normalize_params(raw_params: dict[str, Any]) -> dict[str, Any]:
     return params
 
 
-def validate_profile_and_params(profile: str, extras: set[str], params: dict[str, Any]) -> None:
-    if profile not in {"scrna_global", "scrna_grouped"}:
-        raise ValueError("SERGIO supports only scrna_global and scrna_grouped in this wrapper.")
-    if profile == "scrna_grouped" and params["number_bins"] < 2:
-        raise ValueError("scrna_grouped requires number_bins >= 2.")
+def truth_contexts(request: dict[str, Any]) -> set[str]:
+    raw = request.get("truth_requirements", {}).get("contexts", [])
+    if not isinstance(raw, list):
+        raise ValueError("truth_requirements.contexts must be an array.")
+    contexts = {str(item) for item in raw}
+    if "global" not in contexts:
+        raise ValueError("truth_requirements.contexts must include global.")
+    unsupported = sorted(contexts.difference({"global", "group"}))
+    if unsupported:
+        raise ValueError(
+            "SERGIO wrapper supports only global and group truth contexts; unsupported: "
+            + ", ".join(unsupported)
+        )
+    return contexts
+
+
+def validate_semantic_request(request: dict[str, Any], extras: set[str], params: dict[str, Any]) -> None:
+    axes = request.get("data_axes", {})
+    expected_design = params["simulation_mode"]
+    if axes != {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": expected_design,
+    }:
+        raise ValueError("SERGIO data_axes must match the selected simulation_mode.")
+    contexts = truth_contexts(request)
+    if "group" in contexts and params["number_bins"] < 2:
+        raise ValueError("group truth requires number_bins >= 2.")
     if params["input_preset"] == "demo_steady_state":
         if params["simulation_mode"] != "steady_state":
             raise ValueError("input_preset=demo_steady_state must use simulation_mode=steady_state.")
@@ -535,7 +559,7 @@ def truth_edges(edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "target": public_gene(target),
                 "score": abs(k_value),
                 "sign": "+" if k_value > 0 else "-",
-                "evidence": "sergio_input_grn",
+                "evidence": "simulated_truth",
                 "context": "global",
                 "k": k_value,
                 "hill": float(edge["hill"]),
@@ -617,7 +641,7 @@ def write_truth_networks(path: Path, global_edges: list[dict[str, Any]], groups:
 def write_groups(path: Path, cell_records: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "cluster"])
+        writer.writerow(["column", "cluster"])
         for record in cell_records:
             writer.writerow([record["cell_id"], record["group"]])
 
@@ -629,10 +653,10 @@ def topological_group_order(number_bins: int, bifurcation: np.ndarray | None) ->
     return {public_group(int(bin_id)): idx for idx, bin_id in enumerate(order)}
 
 
-def write_cell_phenotypes(path: Path, cell_records: list[dict[str, Any]], group_order: dict[str, int]) -> None:
+def write_column_phenotypes(path: Path, cell_records: list[dict[str, Any]], group_order: dict[str, int]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
-        writer.writerow(["cell", "phenotype", "order"])
+        writer.writerow(["column", "phenotype", "order"])
         for record in cell_records:
             group = str(record["group"])
             writer.writerow([record["cell_id"], group, group_order[group]])
@@ -722,10 +746,22 @@ def write_matrix_tsv(path: Path, expression: np.ndarray, cell_records: list[dict
     write_expression(path, expression, cell_records)
 
 
-def save_array(raw_dir: Path, name: str, value: np.ndarray, native_outputs: dict[str, str]) -> None:
+def save_array(
+    raw_dir: Path,
+    native_dir: Path,
+    name: str,
+    value: np.ndarray,
+    native_outputs: dict[str, str],
+    requested_native_outputs: set[str],
+) -> None:
     path = raw_dir / f"{name}.npy"
-    np.save(path, np.asarray(value))
-    native_outputs[name] = path.relative_to(raw_dir.parent.parent).as_posix()
+    array = np.asarray(value)
+    np.save(path, array)
+    if name in requested_native_outputs:
+        native_dir.mkdir(parents=True, exist_ok=True)
+        native_path = native_dir / f"{name}.npy"
+        np.save(native_path, array)
+        native_outputs[name] = f"native/{native_path.name}"
 
 
 def apply_technical_noise(
@@ -733,7 +769,9 @@ def apply_technical_noise(
     expression: np.ndarray,
     params: dict[str, Any],
     raw_dir: Path,
+    native_dir: Path,
     native_outputs: dict[str, str],
+    requested_native_outputs: set[str],
     *,
     unspliced: np.ndarray | None = None,
     spliced: np.ndarray | None = None,
@@ -743,20 +781,20 @@ def apply_technical_noise(
         current = np.asarray(expression)
         if noise["outlier_enabled"]:
             current = np.asarray(sim.outlier_effect(current, noise["outlier_prob"], noise["outlier_mean"], noise["outlier_scale"]))
-            save_array(raw_dir, "outlier_expression", current, native_outputs)
+            save_array(raw_dir, native_dir, "outlier_expression", current, native_outputs, requested_native_outputs)
         if noise["library_size_enabled"]:
             lib_factors, current = sim.lib_size_effect(current, noise["library_size_mean"], noise["library_size_scale"])
             current = np.asarray(current)
-            save_array(raw_dir, "library_size_factors", np.asarray(lib_factors), native_outputs)
-            save_array(raw_dir, "library_size_expression", current, native_outputs)
+            save_array(raw_dir, native_dir, "library_size_factors", np.asarray(lib_factors), native_outputs, requested_native_outputs)
+            save_array(raw_dir, native_dir, "library_size_expression", current, native_outputs, requested_native_outputs)
         if noise["dropout_enabled"]:
             mask = np.asarray(sim.dropout_indicator(current, noise["dropout_shape"], noise["dropout_percentile"]))
             current = np.multiply(mask, current)
-            save_array(raw_dir, "dropout_indicator", mask, native_outputs)
-            save_array(raw_dir, "dropout_expression", current, native_outputs)
+            save_array(raw_dir, native_dir, "dropout_indicator", mask, native_outputs, requested_native_outputs)
+            save_array(raw_dir, native_dir, "dropout_expression", current, native_outputs, requested_native_outputs)
         if noise["convert_to_umi"]:
             current = np.asarray(sim.convert_to_UMIcounts(current))
-            save_array(raw_dir, "umi_counts", current, native_outputs)
+            save_array(raw_dir, native_dir, "umi_counts", current, native_outputs, requested_native_outputs)
         if not np.all(np.isfinite(current)):
             raise ValueError("Technical-noise output contains non-finite values.")
         return current, None, None
@@ -773,8 +811,8 @@ def apply_technical_noise(
         )
         current_u = np.asarray(current_u)
         current_s = np.asarray(current_s)
-        save_array(raw_dir, "outlier_unspliced_expression", current_u, native_outputs)
-        save_array(raw_dir, "outlier_spliced_expression", current_s, native_outputs)
+        save_array(raw_dir, native_dir, "outlier_unspliced_expression", current_u, native_outputs, requested_native_outputs)
+        save_array(raw_dir, native_dir, "outlier_spliced_expression", current_s, native_outputs, requested_native_outputs)
     if noise["library_size_enabled"]:
         lib_factors, current_u, current_s = sim.lib_size_effect_dynamics(
             current_u,
@@ -784,9 +822,9 @@ def apply_technical_noise(
         )
         current_u = np.asarray(current_u)
         current_s = np.asarray(current_s)
-        save_array(raw_dir, "library_size_factors", np.asarray(lib_factors), native_outputs)
-        save_array(raw_dir, "library_size_unspliced_expression", current_u, native_outputs)
-        save_array(raw_dir, "library_size_spliced_expression", current_s, native_outputs)
+        save_array(raw_dir, native_dir, "library_size_factors", np.asarray(lib_factors), native_outputs, requested_native_outputs)
+        save_array(raw_dir, native_dir, "library_size_unspliced_expression", current_u, native_outputs, requested_native_outputs)
+        save_array(raw_dir, native_dir, "library_size_spliced_expression", current_s, native_outputs, requested_native_outputs)
     if noise["dropout_enabled"]:
         mask_u, mask_s = sim.dropout_indicator_dynamics(
             current_u,
@@ -798,14 +836,14 @@ def apply_technical_noise(
         mask_s = np.asarray(mask_s)
         current_u = np.multiply(mask_u, current_u)
         current_s = np.multiply(mask_s, current_s)
-        save_array(raw_dir, "dropout_indicator", np.stack([mask_u, mask_s]), native_outputs)
-        save_array(raw_dir, "dropout_unspliced_expression", current_u, native_outputs)
-        save_array(raw_dir, "dropout_spliced_expression", current_s, native_outputs)
+        save_array(raw_dir, native_dir, "dropout_indicator", np.stack([mask_u, mask_s]), native_outputs, requested_native_outputs)
+        save_array(raw_dir, native_dir, "dropout_unspliced_expression", current_u, native_outputs, requested_native_outputs)
+        save_array(raw_dir, native_dir, "dropout_spliced_expression", current_s, native_outputs, requested_native_outputs)
     if noise["convert_to_umi"]:
         current_u, current_s = sim.convert_to_UMIcounts_dynamics(current_u, current_s)
         current_u = np.asarray(current_u)
         current_s = np.asarray(current_s)
-        save_array(raw_dir, "umi_counts", select_differentiation_expression(current_u, current_s, params), native_outputs)
+        save_array(raw_dir, native_dir, "umi_counts", select_differentiation_expression(current_u, current_s, params), native_outputs, requested_native_outputs)
     if not np.all(np.isfinite(current_u)) or not np.all(np.isfinite(current_s)):
         raise ValueError("Technical-noise dynamics output contains non-finite values.")
     return select_differentiation_expression(current_u, current_s, params), current_u, current_s
@@ -824,7 +862,9 @@ def run_sergio(
     params: dict[str, Any],
     input_paths: dict[str, Path | None],
     raw_dir: Path,
+    native_dir: Path,
     native_outputs: dict[str, str],
+    requested_native_outputs: set[str],
 ) -> tuple[Sergio, np.ndarray, np.ndarray | None, np.ndarray | None]:
     bifurcation = None
     if params["simulation_mode"] == "differentiation":
@@ -860,13 +900,13 @@ def run_sergio(
         unspliced = np.asarray(unspliced)
         spliced = np.asarray(spliced)
         clean = select_differentiation_expression(unspliced, spliced, params)
-        save_array(raw_dir, "unspliced_expression", unspliced, native_outputs)
-        save_array(raw_dir, "spliced_expression", spliced, native_outputs)
-        save_array(raw_dir, "clean_expression", clean, native_outputs)
+        save_array(raw_dir, native_dir, "unspliced_expression", unspliced, native_outputs, requested_native_outputs)
+        save_array(raw_dir, native_dir, "spliced_expression", spliced, native_outputs, requested_native_outputs)
+        save_array(raw_dir, native_dir, "clean_expression", clean, native_outputs, requested_native_outputs)
         return sim, clean, unspliced, spliced
     sim.simulate()
     clean = np.asarray(sim.getExpressions())
-    save_array(raw_dir, "clean_expression", clean, native_outputs)
+    save_array(raw_dir, native_dir, "clean_expression", clean, native_outputs, requested_native_outputs)
     return sim, clean, None, None
 
 
@@ -901,14 +941,14 @@ def write_manifest(
     manifest = {
         "schema_version": "1.0",
         "simulator_id": "sergio",
-        "profile": request["profile"],
+        "data_axes": request["data_axes"],
+        "truth_requirements": request["truth_requirements"],
         "seed": int(request["seed"]),
         "expression": {
             "path": "expression.tsv",
             "genes": int(expression.shape[1]),
             "columns": int(expression.shape[0] * expression.shape[2]),
             "column_kind": "cells",
-            "expression_profile": "scrna",
         },
         "extras": {key: extras_paths.get(key) for key in EXTRA_KEYS},
         "native_outputs": native_outputs,
@@ -938,6 +978,7 @@ def main(argv: list[str] | None = None) -> int:
     (output_dir / "extras").mkdir(parents=True, exist_ok=True)
     (output_dir / "truth").mkdir(parents=True, exist_ok=True)
     raw_dir = output_dir / "provenance" / "raw"
+    native_dir = output_dir / "native"
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -945,7 +986,7 @@ def main(argv: list[str] | None = None) -> int:
         request = json.loads(args.request.read_text(encoding="utf-8"))
         if request.get("simulator_id") != "sergio":
             raise ValueError("simulator-run-request.json must have simulator_id='sergio'.")
-        for field in ("profile", "seed", "effective_extras", "params", "runtime_resources"):
+        for field in ("data_axes", "truth_requirements", "seed", "effective_extras", "params", "runtime_resources"):
             if field not in request:
                 raise ValueError(f"simulator-run-request.json is missing required field {field!r}.")
         write_json(raw_dir / "request.json", request)
@@ -955,7 +996,8 @@ def main(argv: list[str] | None = None) -> int:
 
         params = normalize_params(dict(request.get("params", {})))
         extras = {str(item) for item in request.get("effective_extras", [])}
-        validate_profile_and_params(str(request["profile"]), extras, params)
+        requested_native_outputs = {str(item) for item in request.get("native_outputs", [])}
+        validate_semantic_request(request, extras, params)
         write_json(raw_dir / "resolved_params.json", params)
 
         seed = as_int(request["seed"], "seed", minimum=1)
@@ -1002,13 +1044,22 @@ def main(argv: list[str] | None = None) -> int:
         heartbeat_thread.start()
         try:
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                sim, clean_expression, unspliced, spliced = run_sergio(params, input_paths, raw_dir, native_outputs)
+                sim, clean_expression, unspliced, spliced = run_sergio(
+                    params,
+                    input_paths,
+                    raw_dir,
+                    native_dir,
+                    native_outputs,
+                    requested_native_outputs,
+                )
                 expression, final_unspliced, final_spliced = apply_technical_noise(
                     sim,
                     clean_expression,
                     params,
                     raw_dir,
+                    native_dir,
                     native_outputs,
+                    requested_native_outputs,
                     unspliced=unspliced,
                     spliced=spliced,
                 )
@@ -1018,9 +1069,9 @@ def main(argv: list[str] | None = None) -> int:
         (raw_dir / "upstream_stdout.log").write_text(stdout.getvalue(), encoding="utf-8")
         (raw_dir / "upstream_stderr.log").write_text(stderr.getvalue(), encoding="utf-8")
         if final_unspliced is not None:
-            save_array(raw_dir, "final_unspliced_expression", final_unspliced, native_outputs)
+            save_array(raw_dir, native_dir, "final_unspliced_expression", final_unspliced, native_outputs, requested_native_outputs)
         if final_spliced is not None:
-            save_array(raw_dir, "final_spliced_expression", final_spliced, native_outputs)
+            save_array(raw_dir, native_dir, "final_spliced_expression", final_spliced, native_outputs, requested_native_outputs)
 
         write_progress(
             output_dir,
@@ -1036,19 +1087,19 @@ def main(argv: list[str] | None = None) -> int:
 
         write_expression(output_dir / "expression.tsv", expression, cell_records)
         write_gene_universe(output_dir / "truth" / "gene_universe.txt", params["number_genes"])
-        need_group_truth = request["profile"] == "scrna_grouped"
+        need_group_truth = "group" in truth_contexts(request)
         write_truth_networks(output_dir / "truth" / "networks.csv", global_edges, group_ids if need_group_truth else None)
         write_maps(raw_dir, params["number_genes"], cell_records)
         write_matrix_tsv(raw_dir / "final_expression.tsv", expression, cell_records)
 
         extras_paths: dict[str, str | None] = {key: None for key in EXTRA_KEYS}
-        need_groups = need_group_truth or bool(extras.intersection({"groups", "cell_phenotypes", "cluster_identities", "lineage_tree", "prior_grn_by_group"}))
+        need_groups = need_group_truth or bool(extras.intersection({"groups", "column_phenotypes", "cluster_identities", "lineage_tree", "prior_grn_by_group"}))
         if need_groups:
             write_groups(output_dir / "extras" / "groups.tsv", cell_records)
             extras_paths["groups"] = "extras/groups.tsv"
-        if "cell_phenotypes" in extras:
-            write_cell_phenotypes(output_dir / "extras" / "cell_phenotypes.tsv", cell_records, group_order)
-            extras_paths["cell_phenotypes"] = "extras/cell_phenotypes.tsv"
+        if "column_phenotypes" in extras:
+            write_column_phenotypes(output_dir / "extras" / "column_phenotypes.tsv", cell_records, group_order)
+            extras_paths["column_phenotypes"] = "extras/column_phenotypes.tsv"
         if "cluster_identities" in extras:
             write_cluster_identities(output_dir / "extras" / "cluster_identities.tsv", group_ids, group_order)
             extras_paths["cluster_identities"] = "extras/cluster_identities.tsv"

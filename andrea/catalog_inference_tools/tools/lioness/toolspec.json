@@ -20,7 +20,7 @@
   "implementation_url": "https://www.bioconductor.org/packages/release/bioc/html/lionessR.html",
   "docker_image": "adriansegura99/inference-tools_lioness:1.0.0",
   "execution_capabilities": [
-    "cell_native",
+    "column_native",
     "group_aggregated"
   ],
   "runtime_resources": {
@@ -59,8 +59,8 @@
         "execution": "mode",
         "op": "eq",
         "value": "group_aggregated",
-        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates LIONESS cell-native network rows by group.",
-        "usage": "ANDREA uses groups.tsv after the LIONESS cell-native run to average signed edge effects across cells in each group; lionessR itself does not consume groups.tsv."
+        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates LIONESS column-native network rows by group.",
+        "usage": "ANDREA uses groups.tsv after the LIONESS column-native run to average signed edge effects across expression columns in each group; lionessR itself does not consume groups.tsv."
       }
     ]
   },

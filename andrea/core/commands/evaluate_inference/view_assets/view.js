@@ -6,6 +6,14 @@
     { key: "epr_at_truth_count", label: "EPR@truth-count" }
   ];
   const levels = ["topology", "directed", "signed"];
+  const contextFamilyOrder = ["global", "group", "column", "sample", "timepoint", "perturbation", "other"];
+  const specificContextFamilies = ["column", "sample", "timepoint", "perturbation"];
+  const specificContextLabels = {
+    column: "Column Contexts",
+    sample: "Sample Contexts",
+    timepoint: "Timepoint Contexts",
+    perturbation: "Perturbation Contexts"
+  };
   let activeLevel = "topology";
   const tableColumns = [
     "tool_id", "catalog_tool_id", "context", "level", "status",
@@ -50,7 +58,10 @@
     if (text === "global") return "global";
     const prefixes = [
       ["group:", "group"],
-      ["cell:", "cell"]
+      ["column:", "column"],
+      ["sample:", "sample"],
+      ["timepoint:", "timepoint"],
+      ["perturbation:", "perturbation"]
     ];
     for (const [prefix, label] of prefixes) {
       if (text.startsWith(prefix)) {
@@ -65,12 +76,15 @@
     const text = String(context || "");
     if (text === "global") return "global";
     if (text.startsWith("group:")) return "group";
-    if (text.startsWith("cell:")) return "cell";
+    if (text.startsWith("column:")) return "column";
+    if (text.startsWith("sample:")) return "sample";
+    if (text.startsWith("timepoint:")) return "timepoint";
+    if (text.startsWith("perturbation:")) return "perturbation";
     return "other";
   }
 
   function sortContext(a, b) {
-    const order = { global: 0, group: 1, cell: 2, other: 3 };
+    const order = Object.fromEntries(contextFamilyOrder.map((family, idx) => [family, idx]));
     const familyDiff = order[contextFamily(a)] - order[contextFamily(b)];
     if (familyDiff !== 0) return familyDiff;
     return contextLabel(a).localeCompare(contextLabel(b), undefined, { numeric: true });
@@ -171,12 +185,12 @@
     return scaledWidth(value, metricKey, maxValue) * 100;
   }
 
-  function cellMissingByTool(report) {
+  function specificMissingByTool(report, family) {
     const entries = report?.context_matching?.missing_truth_contexts_by_tool;
     if (!Array.isArray(entries)) return new Map();
     return new Map(entries.map((entry) => [
       String(entry.tool_id || ""),
-      Number(entry.missing_context_counts_by_family?.cell || 0)
+      Number(entry.missing_context_counts_by_family?.[family] || 0)
     ]).filter(([tool]) => tool));
   }
 
@@ -331,7 +345,7 @@
     )).join("");
   }
 
-  function renderCellViolin(values, summary, metricKey, maxValue, gradientId) {
+  function renderSpecificViolin(values, summary, metricKey, maxValue, gradientId) {
     const min = plotPosition(summary.min, metricKey, maxValue);
     const q1 = plotPosition(summary.q1, metricKey, maxValue);
     const median = plotPosition(summary.median, metricKey, maxValue);
@@ -339,35 +353,37 @@
     const max = plotPosition(summary.max, metricKey, maxValue);
     const path = violinDensityPath(values, metricKey, maxValue);
     return `
-      <div class="cell-violin" title="min ${formatValue(summary.min)}, q1 ${formatValue(summary.q1)}, median ${formatValue(summary.median)}, q3 ${formatValue(summary.q3)}, max ${formatValue(summary.max)}">
+      <div class="specific-violin" title="min ${formatValue(summary.min)}, q1 ${formatValue(summary.q1)}, median ${formatValue(summary.median)}, q3 ${formatValue(summary.q3)}, max ${formatValue(summary.max)}">
         <svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="${gradientId}" x1="0%" x2="100%" y1="0%" y2="0%">
               ${violinGradientStops(metricKey, maxValue)}
             </linearGradient>
           </defs>
-          ${path ? `<path class="cell-violin-shape" d="${path}" fill="url(#${gradientId})"></path>` : ""}
-          <line class="cell-violin-range" x1="${min}" x2="${max}" y1="15" y2="15"></line>
-          <line class="cell-violin-iqr" x1="${q1}" x2="${q3}" y1="15" y2="15"></line>
-          <line class="cell-violin-median" x1="${median}" x2="${median}" y1="4" y2="26"></line>
+          ${path ? `<path class="specific-violin-shape" d="${path}" fill="url(#${gradientId})"></path>` : ""}
+          <line class="specific-violin-range" x1="${min}" x2="${max}" y1="15" y2="15"></line>
+          <line class="specific-violin-iqr" x1="${q1}" x2="${q3}" y1="15" y2="15"></line>
+          <line class="specific-violin-median" x1="${median}" x2="${median}" y1="4" y2="26"></line>
         </svg>
       </div>
     `;
   }
 
-  function renderCells(rows, metricKey, maxValue, report, level) {
-    const cellRows = rows.filter((row) => contextFamily(row.context) === "cell");
-    const missingByTool = cellMissingByTool(report);
-    const tools = [...new Set(cellRows
+  function renderSpecificContexts(rows, metricKey, maxValue, report, level, family) {
+    const familyRows = rows.filter((row) => {
+      return contextFamily(row.context) === family;
+    });
+    const missingByTool = specificMissingByTool(report, family);
+    const tools = [...new Set(familyRows
       .filter(statusOk)
       .filter((row) => metricValue(row, metricKey) !== null)
       .map((row) => row.tool_id)
       .filter(Boolean)
     )].sort((a, b) => String(a).localeCompare(String(b)));
-    if (!tools.length) return '<div class="empty">No applicable cell contexts.</div>';
+    if (!tools.length) return `<div class="empty">No applicable ${escapeHtml(family)} contexts.</div>`;
 
     const rowsHtml = tools.map((tool, index) => {
-      const toolRows = cellRows.filter((row) => row.tool_id === tool);
+      const toolRows = familyRows.filter((row) => row.tool_id === tool);
       const values = toolRows
         .filter(statusOk)
         .map((row) => metricValue(row, metricKey))
@@ -377,26 +393,26 @@
       const nMissing = missingByTool.get(tool) || 0;
       const unavailable = nUnavailable + nMissing;
       const stats = summary ? [
-        ["cells", values.length],
+        ["contexts", values.length],
         ["unmatched", unavailable],
         ["median", formatValue(summary.median)],
         ["q1-q3", `${formatValue(summary.q1)}-${formatValue(summary.q3)}`],
         ["min-max", `${formatValue(summary.min)}-${formatValue(summary.max)}`]
       ] : [
-        ["cells", 0],
+        ["contexts", 0],
         ["unmatched", unavailable]
       ];
       return `
-        <div class="cell-dist-row">
+        <div class="specific-dist-row">
           <div class="tool-label" title="${escapeHtml(tool)}">${escapeHtml(tool)}</div>
-          ${summary ? renderCellViolin(
+          ${summary ? renderSpecificViolin(
             values,
             summary,
             metricKey,
             maxValue,
-            `cell-violin-gradient-${svgIdPart(level)}-${svgIdPart(metricKey)}-${svgIdPart(tool)}-${index}`
-          ) : '<div class="empty compact">No evaluated cells.</div>'}
-          <div class="cell-stats">
+            `specific-violin-gradient-${svgIdPart(level)}-${svgIdPart(metricKey)}-${svgIdPart(family)}-${svgIdPart(tool)}-${index}`
+          ) : `<div class="empty compact">No evaluated ${escapeHtml(family)} contexts.</div>`}
+          <div class="specific-stats">
             ${stats.map(([label, value]) => `
               <span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(label)}</small></span>
             `).join("")}
@@ -404,14 +420,15 @@
         </div>
       `;
     }).join("");
-    return `<div class="cell-dist-list">${rowsHtml}</div>`;
+    return `<div class="specific-dist-list">${rowsHtml}</div>`;
   }
 
   function renderOtherContexts(rows, metricKey, maxValue) {
     const otherRows = rows
       .filter((row) => {
         const context = String(row.context || "");
-        return context && contextFamily(context) !== "global" && contextFamily(context) !== "group" && contextFamily(context) !== "cell";
+        const family = contextFamily(context);
+        return context && family !== "global" && family !== "group" && !specificContextFamilies.includes(family);
       })
       .sort((a, b) => sortContext(a.context, b.context) || String(a.tool_id).localeCompare(String(b.tool_id)));
     if (!otherRows.length) return "";
@@ -449,6 +466,14 @@
     const evaluated = rows.filter(statusOk).length;
     const na = rows.filter((row) => row.status === "not_applicable").length;
     const otherContexts = renderOtherContexts(rows, metricKey, maxValue);
+    const specificSections = specificContextFamilies
+      .filter((family) => rows.some((row) => contextFamily(row.context) === family))
+      .map((family) => `
+        <section class="column-contexts">
+          <div class="panel-title"><h3>${escapeHtml(specificContextLabels[family] || `${family[0].toUpperCase() + family.slice(1)} Contexts`)}</h3><span class="subtle">distributions by tool</span></div>
+          ${renderSpecificContexts(rows, metricKey, maxValue, report, level, family)}
+        </section>
+      `).join("");
     return `
       <article class="level-card">
         <div class="level-head">
@@ -472,10 +497,7 @@
             ${renderGroups(rows, metricKey, maxValue)}
           </section>
         </div>
-        <section class="cell-contexts">
-          <div class="panel-title"><h3>Cells</h3><span class="subtle">violins by tool</span></div>
-          ${renderCells(rows, metricKey, maxValue, report, level)}
-        </section>
+        ${specificSections}
         ${otherContexts}
         <div class="legend">
           <span>Scale</span>

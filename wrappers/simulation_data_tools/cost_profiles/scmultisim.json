@@ -9,7 +9,12 @@
     "dynamic_grn.num_steps",
     "dynamic_grn.cell_per_step",
     "technical_noise.enabled",
-    "batch_effect.enabled"
+    "batch_effect.enabled",
+    "spatial.enabled",
+    "spatial.single_cell_gt",
+    "spatial.grid_size",
+    "spatial.max_neighbors",
+    "spatial.step_size"
   ],
   "dimension_params": {
     "cells": "num_cells",
@@ -21,9 +26,12 @@
   ],
   "profiles": [
     {
-      "id": "scrna_global_builtin_static",
-      "profile": "scrna_global",
-      "sizes": ["101x40", "150x60", "200x80"],
+      "id": "single_cell_cells_differentiation_global_builtin_static",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
       "requested_extras": [],
       "group_count": 0,
       "population_count": 0,
@@ -40,12 +48,26 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
       }
     },
     {
-      "id": "scrna_global_builtin_static_full_extras",
-      "profile": "scrna_global",
-      "sizes": ["101x40", "150x60", "200x80"],
+      "id": "single_cell_cells_differentiation_global_builtin_static_full_extras",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
       "requested_extras": [
         "enrichment_background",
         "pseudotime",
@@ -67,12 +89,26 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
       }
     },
     {
-      "id": "scrna_grouped_builtin_dynamic_groups",
-      "profile": "scrna_grouped",
-      "sizes": ["101x40", "150x60", "200x80"],
+      "id": "single_cell_cells_differentiation_global_group_builtin_dynamic_groups",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
       "requested_extras": [
         "groups"
       ],
@@ -96,15 +132,30 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
       }
     },
     {
-      "id": "scrna_grouped_builtin_dynamic_full_extras",
-      "profile": "scrna_grouped",
-      "sizes": ["101x40", "150x60", "200x80"],
+      "id": "single_cell_cells_differentiation_global_group_builtin_dynamic_full_extras",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
       "requested_extras": [
         "groups",
-        "cell_phenotypes",
+        "column_phenotypes",
         "cluster_identities",
         "enrichment_background",
         "lineage_tree",
@@ -133,12 +184,27 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
       }
     },
     {
-      "id": "scrna_grouped_custom_grn_tree",
-      "profile": "scrna_grouped",
-      "sizes": ["50x20", "100x40", "200x80"],
+      "id": "single_cell_cells_differentiation_global_group_custom_grn_tree",
+      "sizes": [
+        "50x20",
+        "100x40",
+        "200x80"
+      ],
       "requested_extras": [
         "groups",
         "prior_grn",
@@ -168,12 +234,27 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
       }
     },
     {
-      "id": "scrna_cell_specific_builtin_dynamic_truth",
-      "profile": "scrna_cell_specific",
-      "sizes": ["101x40", "150x60", "200x80"],
+      "id": "single_cell_cells_differentiation_global_group_column_builtin_dynamic_truth",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
       "requested_extras": [],
       "group_count": 3,
       "population_count": 3,
@@ -195,15 +276,31 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
       }
     },
     {
-      "id": "scrna_cell_specific_builtin_dynamic_full_extras",
-      "profile": "scrna_cell_specific",
-      "sizes": ["101x40", "150x60", "200x80"],
+      "id": "single_cell_cells_differentiation_global_group_column_builtin_dynamic_full_extras",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
       "requested_extras": [
         "groups",
-        "cell_phenotypes",
+        "column_phenotypes",
         "cluster_identities",
         "enrichment_background",
         "lineage_tree",
@@ -232,12 +329,26 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
       }
     },
     {
-      "id": "scrna_global_builtin_1139_static",
-      "profile": "scrna_global",
-      "sizes": ["1140x40"],
+      "id": "single_cell_cells_differentiation_global_builtin_1139_static",
+      "sizes": [
+        "1140x40"
+      ],
       "requested_extras": [],
       "group_count": 0,
       "population_count": 0,
@@ -254,12 +365,24 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
       }
     },
     {
-      "id": "scrna_global_builtin_1139_static_full_extras",
-      "profile": "scrna_global",
-      "sizes": ["1140x40"],
+      "id": "single_cell_cells_differentiation_global_builtin_1139_static_full_extras",
+      "sizes": [
+        "1140x40"
+      ],
       "requested_extras": [
         "enrichment_background",
         "pseudotime",
@@ -281,12 +404,24 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
       }
     },
     {
-      "id": "scrna_grouped_builtin_1139_dynamic_groups",
-      "profile": "scrna_grouped",
-      "sizes": ["1140x40"],
+      "id": "single_cell_cells_differentiation_global_group_builtin_1139_dynamic_groups",
+      "sizes": [
+        "1140x40"
+      ],
       "requested_extras": [
         "groups"
       ],
@@ -310,15 +445,28 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
       }
     },
     {
-      "id": "scrna_grouped_builtin_1139_dynamic_full_extras",
-      "profile": "scrna_grouped",
-      "sizes": ["1140x40"],
+      "id": "single_cell_cells_differentiation_global_group_builtin_1139_dynamic_full_extras",
+      "sizes": [
+        "1140x40"
+      ],
       "requested_extras": [
         "groups",
-        "cell_phenotypes",
+        "column_phenotypes",
         "cluster_identities",
         "enrichment_background",
         "lineage_tree",
@@ -347,12 +495,25 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
       }
     },
     {
-      "id": "scrna_cell_specific_builtin_1139_dynamic_truth",
-      "profile": "scrna_cell_specific",
-      "sizes": ["1140x40"],
+      "id": "single_cell_cells_differentiation_global_group_column_builtin_1139_dynamic_truth",
+      "sizes": [
+        "1140x40"
+      ],
       "requested_extras": [],
       "group_count": 3,
       "population_count": 3,
@@ -374,15 +535,29 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
       }
     },
     {
-      "id": "scrna_cell_specific_builtin_1139_dynamic_full_extras",
-      "profile": "scrna_cell_specific",
-      "sizes": ["1140x40"],
+      "id": "single_cell_cells_differentiation_global_group_column_builtin_1139_dynamic_full_extras",
+      "sizes": [
+        "1140x40"
+      ],
       "requested_extras": [
         "groups",
-        "cell_phenotypes",
+        "column_phenotypes",
         "cluster_identities",
         "enrichment_background",
         "lineage_tree",
@@ -411,6 +586,246 @@
         "technical_noise": {
           "enabled": false
         }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      }
+    },
+    {
+      "id": "spatial_spots_differentiation_global_builtin_static",
+      "sizes": [
+        "120x20",
+        "140x30"
+      ],
+      "requested_extras": [
+        "spatial_coordinates"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_genes": 120,
+        "num_cifs": 20,
+        "speed_up": true,
+        "spatial": {
+          "enabled": true,
+          "single_cell_gt": true
+        },
+        "velocity": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "spatial",
+        "column_kind": "spots",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "spatial_spots_differentiation_global_group_builtin_dynamic",
+      "sizes": [
+        "120x20",
+        "140x30"
+      ],
+      "requested_extras": [
+        "groups",
+        "spatial_coordinates"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_genes": 120,
+        "num_cifs": 20,
+        "speed_up": true,
+        "spatial": {
+          "enabled": true,
+          "single_cell_gt": true
+        },
+        "velocity": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "spatial",
+        "column_kind": "spots",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      }
+    },
+    {
+      "id": "spatial_spots_differentiation_global_group_column_builtin_dynamic",
+      "sizes": [
+        "120x20",
+        "140x30"
+      ],
+      "requested_extras": [
+        "groups",
+        "spatial_coordinates"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_genes": 120,
+        "num_cifs": 20,
+        "speed_up": true,
+        "spatial": {
+          "enabled": true,
+          "single_cell_gt": true
+        },
+        "velocity": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "spatial",
+        "column_kind": "spots",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      }
+    },
+    {
+      "id": "spatial_spots_differentiation_global_builtin_static_cci",
+      "sizes": [
+        "120x20",
+        "140x30"
+      ],
+      "requested_extras": [
+        "spatial_coordinates",
+        "cell_cell_interactions"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_genes": 120,
+        "num_cifs": 20,
+        "speed_up": true,
+        "spatial": {
+          "enabled": true,
+          "single_cell_gt": true
+        },
+        "velocity": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "spatial",
+        "column_kind": "spots",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_differentiation_global_builtin_static_atac_extras",
+      "sizes": [
+        "120x20",
+        "140x30"
+      ],
+      "requested_extras": [
+        "chromatin_accessibility",
+        "chromatin_regions"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla1",
+        "num_genes": 120,
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
       }
     }
   ]

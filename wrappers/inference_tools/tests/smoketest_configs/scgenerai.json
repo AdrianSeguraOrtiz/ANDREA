@@ -1,8 +1,8 @@
 {
   "execution": {
-    "mode": "cell_native"
+    "mode": "column_native"
   },
-  "extra_files": ["cell_descriptors.tsv"],
+  "extra_files": ["column_descriptors.tsv"],
   "param_overrides": {
     "nepochs": 1
   },
@@ -11,11 +11,11 @@
   },
   "variants": [
     {
-      "name": "cell_native"
+      "name": "column_native"
     },
     {
       "name": "group_aggregated",
-      "extra_files": ["cell_descriptors.tsv", "groups.tsv"],
+      "extra_files": ["column_descriptors.tsv", "groups.tsv"],
       "execution": {
         "mode": "group_aggregated"
       }

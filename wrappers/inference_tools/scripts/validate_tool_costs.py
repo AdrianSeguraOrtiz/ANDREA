@@ -492,7 +492,7 @@ def semantic_errors_for_cost(
             "global": "single",
             "group_native": "native_grouped",
             "group_emulated": "andrea_group_emulated",
-            "cell_native": "cell_native",
+            "column_native": "column_native",
             "group_aggregated": "andrea_group_aggregated",
         }.get(mode)
         if expected_policy is not None and physical_task_policy != expected_policy:
@@ -501,7 +501,7 @@ def semantic_errors_for_cost(
             )
 
         group_count = execution_profile.get("group_count")
-        if mode in {"global", "cell_native"} and group_count != 0:
+        if mode in {"global", "column_native"} and group_count != 0:
             errors.append(
                 f"{profile_prefix}.benchmark_config.execution_profile.group_count must be 0 when mode='{mode}'."
             )

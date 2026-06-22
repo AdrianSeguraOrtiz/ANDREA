@@ -40,11 +40,11 @@
           "column_kind": "cells",
           "expression_profile": "synthetic_single_cell_benchmark",
           "extras_provided": [
-            "cell_phenotypes",
+            "column_phenotypes",
             "tf_list"
           ],
           "required_inputs_satisfied": [
-            "cell_phenotypes",
+            "column_phenotypes",
             "tf_list"
           ],
           "optional_inputs_provided": [],

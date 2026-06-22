@@ -83,7 +83,7 @@ validate-simulator-smoketest-configs:
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_smoketest_configs.py $(ARGS)
 
 validate-simulator-costs:
-	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_simulator_costs.py $(ARGS)
+	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_simulator_costs.py --require $(ARGS)
 
 validate-inference-catalog:
 	@$(MAKE) validate-toolspecs

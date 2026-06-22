@@ -15,7 +15,7 @@
   - `code/simiclasso/weighted_AUC_mat.py`
   - `setup.py`, `requirements.txt`, upstream `Dockerfile`
   - Catalog schema/input changes for this integration:
-    - `andrea/catalog_inference_tools/input_specs/cell_phenotypes.json`
+    - `andrea/catalog_inference_tools/input_specs/column_phenotypes.json`
     - `andrea/catalog_inference_tools/schemas/toolspec.schema.json`
     - `andrea/catalog_inference_tools/schemas/dataset-manifest.schema.json`
 
@@ -205,7 +205,7 @@ SimiC is a single-cell GRN inference framework for ordered cell phenotypes. It j
 ### `extra_inputs`
 
 - Chosen value:
-  - `required`: `["cell_phenotypes", "tf_list"]`
+  - `required`: `["column_phenotypes", "tf_list"]`
   - `optional`: `[]`
   - `conditional_required`: `[]`
 - Evidence:
@@ -213,10 +213,10 @@ SimiC is a single-cell GRN inference framework for ordered cell phenotypes. It j
   - `simicLASSO_op` requires `p2assignment` and `p2tf` paths in the documented call (`Tutorial/README.md:38-48`, `90-107`).
   - Source reads `p2assignment` as integer labels (`clus_regression.py:459-467`) and reads `p2tf` as a pickle list (`clus_regression.py:508-521`).
 - Rationale:
-  - Create and use normalized `cell_phenotypes` for SimiC's ordered cell-to-phenotype assignment because existing `groups` only represents an unordered grouping/cluster label.
+  - Create and use normalized `column_phenotypes` for SimiC's ordered cell-to-phenotype assignment because existing `groups` only represents an unordered grouping/cluster label.
   - Reuse existing normalized `tf_list` for driver genes.
   - No prior GRN or lineage tree is part of the upstream SimiC entrypoint.
-  - `cell_phenotypes` is always required because only `group_native` execution is exposed and SimiC's native grouped mode requires ordered phenotypes.
+  - `column_phenotypes` is always required because only `group_native` execution is exposed and SimiC's native grouped mode requires ordered phenotypes.
 - Uncertainty:
   - Low. The new input spec deliberately encodes the missing ordering semantics instead of using an artificial run parameter.
 
@@ -286,13 +286,13 @@ SimiC is a single-cell GRN inference framework for ordered cell phenotypes. It j
 ## Required inputs
 
 - `expression_matrix`: normalized ANDREA expression matrix, genes in rows and cells in columns. The wrapper must transpose to SimiC's pandas DataFrame shape where rows are cells and columns are genes.
-- `cell_phenotypes`: normalized `cell_phenotypes.tsv` mapping each expression column/cell to a phenotype label and integer phenotype order. Required for the exposed `group_native` mode.
+- `column_phenotypes`: normalized `column_phenotypes.tsv` mapping each expression column/cell to a phenotype label and integer phenotype order. Required for the exposed `group_native` mode.
 - `tf_list`: normalized one-TF-per-line text file. The wrapper must convert it to the pickle list expected by `simicLASSO_op`.
 
 ## Optional or conditional inputs
 
 - No optional extra input files.
-- No ToolSpec conditional extra input rules in Phase 1 because the only exposed execution capability is `group_native` and `cell_phenotypes` is always required.
+- No ToolSpec conditional extra input rules in Phase 1 because the only exposed execution capability is `group_native` and `column_phenotypes` is always required.
 - Conditional behavior is represented in params:
   - `cross_val=true` makes `lambda1`/`lambda2` selected by upstream cross-validation rather than fixed defaults.
 
@@ -325,15 +325,15 @@ SimiC is a single-cell GRN inference framework for ordered cell phenotypes. It j
 
 ### New input specs required
 
-- Added `andrea/catalog_inference_tools/input_specs/cell_phenotypes.json`.
+- Added `andrea/catalog_inference_tools/input_specs/column_phenotypes.json`.
 - Rationale:
   - SimiC requires an ordered cell phenotype assignment, not just arbitrary unordered cell groups.
   - Existing `groups.tsv` has only `sample`/`cluster` semantics and cannot represent phenotype order without an artificial tool parameter.
   - The new TSV requires first-column expression cell IDs plus `phenotype` and integer `order` columns.
   - Cross-checks require first-column values to be expression columns and row count to match the number of expression columns; with `unique_first_column=true`, this enforces one phenotype assignment per input cell.
 - Catalog/GUI support:
-  - Added `cell_phenotypes` to ToolSpec extra-input enums.
-  - Added `cell_phenotypes` to dataset manifest extras.
+  - Added `column_phenotypes` to ToolSpec extra-input enums.
+  - Added `column_phenotypes` to dataset manifest extras.
   - Added GUI bootstrap example/help through the generic input-spec loading path.
   - Native grouped tools now rely on their ToolSpec-required and ToolSpec-conditional extras; `group_emulated` group requirements are declared as `conditional_required` rules on the tools that support that execution mode.
 
@@ -385,9 +385,9 @@ Upstream Dockerfile decision:
 - Runtime input conversion:
   - expression TSV genes x cells -> pandas DataFrame cells x genes pickle
   - `tf_list.txt` -> pickle list expected by SimiC
-  - `cell_phenotypes.tsv` -> contiguous integer assignment file ordered by the `order` column
+  - `column_phenotypes.tsv` -> contiguous integer assignment file ordered by the `order` column
 - Runtime validation:
-  - every expression cell must appear exactly once in `cell_phenotypes.tsv`
+  - every expression cell must appear exactly once in `column_phenotypes.tsv`
   - every phenotype has exactly one integer order
   - every order maps to exactly one phenotype
   - each phenotype must have enough cells for SimiC's train/test diagnostics after the upstream 20% split: at least two train cells and two test cells per phenotype
@@ -414,7 +414,7 @@ Upstream Dockerfile decision:
 ## Smoketest
 
 - Config: `wrappers/inference_tools/tests/smoketest_configs/simic.json`.
-- Fixtures: shared `wrappers/inference_tools/tests/fixtures/expression.tsv`, `cell_phenotypes.tsv`, `tf_list.txt`.
+- Fixtures: shared `wrappers/inference_tools/tests/fixtures/expression.tsv`, `column_phenotypes.tsv`, `tf_list.txt`.
 - Dev override: `wrappers/inference_tools/param_overrides/simic.json` uses a small deterministic run (`random_seed=1`, `num_TFs=3`, `num_target_genes=4`, `max_rcd_iter=2000`, `lambda1=0`, `lambda2=0`).
 - Result:
   - Command: `python wrappers/inference_tools/scripts/run_smoketests.py --tool simic --timeout 900 --show-output --show-output-lines 80`
@@ -424,7 +424,7 @@ Upstream Dockerfile decision:
 
 ## Known Limitations / Open Questions
 
-- SimiC requires meaningful ordering of phenotypes for the similarity constraint. Phase 1 resolves this with a dedicated `cell_phenotypes` input spec instead of overloading `groups.tsv`.
+- SimiC requires meaningful ordering of phenotypes for the similarity constraint. Phase 1 resolves this with a dedicated `column_phenotypes` input spec instead of overloading `groups.tsv`.
 - The selected upstream public function silently runs RCD without a per-iteration callback, so progress is coarse.
 - Upstream has runtime-dependent randomness from the train/test split and RCD label selection; `random_seed=null` preserves that default, while an integer seed is a wrapper-level reproducibility option.
 - The wrapper preserves runtime-dependent randomness for the stratified 20% train/test split when `random_seed=null`; integer `random_seed` seeds the split and random coordinate descent.
@@ -442,9 +442,9 @@ Upstream Dockerfile decision:
 ## Validation
 
 - `make validate-toolspecs`: passed for all inference ToolSpecs, including `simic`.
-- `python wrappers/inference_tools/scripts/validate_input_specs.py`: passed for all input specs, including `cell_phenotypes`.
+- `python wrappers/inference_tools/scripts/validate_input_specs.py`: passed for all input specs, including `column_phenotypes`.
 - JSON syntax validation passed for the new/modified catalog schema and SimiC ToolSpec files.
 - `make validate-smoketest-configs ARGS="--tool simic"`: passed.
-- Shared fixture compatibility check passed: `expression.tsv`, `groups.tsv` and `cell_phenotypes.tsv` use the same 30 cell IDs; `tf_list`, `prior_grn`, `prior_grn_by_group` and `lineage_tree` remain consistent with the shared expression and group fixtures.
+- Shared fixture compatibility check passed: `expression.tsv`, `groups.tsv` and `column_phenotypes.tsv` use the same 30 cell IDs; `tf_list`, `prior_grn`, `prior_grn_by_group` and `lineage_tree` remain consistent with the shared expression and group fixtures.
 - `python -m py_compile wrappers/inference_tools/tools/simic/run_tool.py`: passed.
 - SimiC smoketest: passed.

@@ -92,6 +92,35 @@ class ToolSpecCatalogTest(unittest.TestCase):
             errors,
         )
 
+    def test_legacy_execution_scope_is_rejected(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["global"])
+        instance["execution_scope"] = "global"
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("execution_scope is legacy" in error for error in errors),
+            errors,
+        )
+
+    def test_legacy_cell_native_capability_is_rejected(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["cell_native"])
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("'cell_native' is legacy" in error for error in errors),
+            errors,
+        )
+
     def test_runtime_resources_supported_false_requires_one_thread(self) -> None:
         module = _load_validate_toolspecs_module()
         instance = self._minimal_toolspec(execution_capabilities=["global"])
@@ -127,7 +156,7 @@ class ToolSpecCatalogTest(unittest.TestCase):
             errors,
         )
 
-    def test_group_aggregated_requires_cell_native_capability(self) -> None:
+    def test_group_aggregated_requires_column_native_capability(self) -> None:
         module = _load_validate_toolspecs_module()
         instance = self._minimal_toolspec(
             execution_capabilities=["group_aggregated"],
@@ -137,7 +166,7 @@ class ToolSpecCatalogTest(unittest.TestCase):
                     "execution": "mode",
                     "op": "eq",
                     "value": "group_aggregated",
-                    "usage": "Used to aggregate native per-cell networks by group.",
+                    "usage": "Used to aggregate native per-column networks by group.",
                     "message": "groups is required when execution.mode=group_aggregated.",
                 }
             ],
@@ -149,14 +178,14 @@ class ToolSpecCatalogTest(unittest.TestCase):
         )
 
         self.assertTrue(
-            any("must also declare 'cell_native'" in error for error in errors),
+            any("must also declare 'column_native'" in error for error in errors),
             errors,
         )
 
     def test_group_aggregated_requires_groups_conditional_rule(self) -> None:
         module = _load_validate_toolspecs_module()
         instance = self._minimal_toolspec(
-            execution_capabilities=["cell_native", "group_aggregated"],
+            execution_capabilities=["column_native", "group_aggregated"],
         )
 
         errors = module.semantic_errors_for_toolspec(
@@ -169,17 +198,17 @@ class ToolSpecCatalogTest(unittest.TestCase):
             errors,
         )
 
-    def test_cell_native_group_aggregated_contract_can_validate(self) -> None:
+    def test_column_native_group_aggregated_contract_can_validate(self) -> None:
         module = _load_validate_toolspecs_module()
         instance = self._minimal_toolspec(
-            execution_capabilities=["cell_native", "group_aggregated"],
+            execution_capabilities=["column_native", "group_aggregated"],
             conditional_required=[
                 {
                     "input": "groups",
                     "execution": "mode",
                     "op": "eq",
                     "value": "group_aggregated",
-                    "usage": "Used to aggregate native per-cell networks by group.",
+                    "usage": "Used to aggregate native per-column networks by group.",
                     "message": "groups is required when execution.mode=group_aggregated.",
                 }
             ],

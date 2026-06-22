@@ -1,0 +1,57 @@
+{
+  "simulator_id": "dyngen",
+  "request": {
+    "seed": 41,
+    "effective_extras": [
+      "groups",
+      "timepoints"
+    ],
+    "inputs": {},
+    "params": {
+      "backbone_template": "bifurcating",
+      "simulation_params": {
+        "num_simulations": 2,
+        "num_knockdown_simulations": 0
+      },
+      "experiment_params": {
+        "kind": "synchronised",
+        "num_timepoints": 3
+      }
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "time_series"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group",
+        "column"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "extras/timepoints.tsv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "provenance/raw/group_networks_index.tsv",
+    "provenance/raw/column_networks_index.tsv",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "provenance/raw/model.rds",
+    "provenance/raw/dataset.rds"
+  ],
+  "required_truth_context_prefixes": [
+    "global",
+    "group:",
+    "column:"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "key": "chromatin_accessibility",
+  "file_kind": "tsv",
+  "description": "Chromatin accessibility matrix TSV: first column contains chromatin region identifiers and remaining columns match expression column identifiers.",
+  "example": "region\tspot_1\tspot_2\nregion_1\t0\t2\nregion_2\t1\t0",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 2,
+  "first_column_role": "none",
+  "unique_first_column": true,
+  "data_columns_type": "float",
+  "data_numeric_min_fraction": 1.0,
+  "cross_checks": [
+    {
+      "kind": "data_columns_match_expression_columns"
+    }
+  ]
+}

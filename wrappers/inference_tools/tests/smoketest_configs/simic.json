@@ -1,5 +1,5 @@
 {
-  "extra_files": ["cell_phenotypes.tsv", "tf_list.txt"],
+  "extra_files": ["column_phenotypes.tsv", "tf_list.txt"],
   "execution": {
     "mode": "group_native"
   },

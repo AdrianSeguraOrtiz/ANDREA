@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "key": "cell_cell_interactions",
+  "file_kind": "tsv",
+  "description": "Cell-cell interaction TSV: directed ligand-receptor effects between public expression columns.",
+  "example": "source_column\ttarget_column\tsource_group\ttarget_group\tligand\treceptor\tscore\tsign\teffect\nspot_1\tspot_2\tA\tB\tL1\tR1\t1.0\t+\t5.2",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 9,
+  "first_column_role": "none",
+  "required_columns": [
+    "source_column",
+    "target_column",
+    "source_group",
+    "target_group",
+    "ligand",
+    "receptor",
+    "score",
+    "sign",
+    "effect"
+  ],
+  "column_types": {
+    "source_column": "string",
+    "target_column": "string",
+    "source_group": "string",
+    "target_group": "string",
+    "ligand": "string",
+    "receptor": "string",
+    "score": "float",
+    "sign": "string",
+    "effect": "float"
+  },
+  "cross_checks": [
+    {
+      "kind": "column_subset_expression_columns",
+      "column": "source_column"
+    },
+    {
+      "kind": "column_subset_expression_columns",
+      "column": "target_column"
+    },
+    {
+      "kind": "column_subset_expression_genes",
+      "column": "ligand"
+    },
+    {
+      "kind": "column_subset_expression_genes",
+      "column": "receptor"
+    },
+    {
+      "kind": "column_subset_extra_column",
+      "column": "source_group",
+      "other_input": "groups",
+      "other_column": "cluster"
+    },
+    {
+      "kind": "column_subset_extra_column",
+      "column": "target_group",
+      "other_input": "groups",
+      "other_column": "cluster"
+    }
+  ]
+}

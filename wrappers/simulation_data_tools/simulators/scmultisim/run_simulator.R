@@ -105,7 +105,7 @@ write_progress <- function(status, phase, message = NULL, details = list()) {
 
 parse_request <- function(path) {
   req <- jsonlite::read_json(path, simplifyVector = TRUE)
-  required_fields <- c("simulator_id", "profile", "seed", "effective_extras", "params", "runtime_resources")
+  required_fields <- c("simulator_id", "data_axes", "truth_requirements", "seed", "effective_extras", "params", "runtime_resources")
   missing_fields <- required_fields[!required_fields %in% names(req)]
   if (length(missing_fields) > 0) {
     stop(
@@ -117,6 +117,22 @@ parse_request <- function(path) {
     )
   }
   req
+}
+
+truth_contexts <- function(req) {
+  contexts <- req$truth_requirements$contexts %||% character()
+  contexts <- as.character(contexts)
+  if (!("global" %in% contexts)) {
+    stop("truth_requirements.contexts must include global.", call. = FALSE)
+  }
+  unsupported <- setdiff(contexts, c("global", "group", "column"))
+  if (length(unsupported) > 0) {
+    stop(
+      sprintf("scMultiSim wrapper does not support truth context(s): %s", paste(unsupported, collapse = ", ")),
+      call. = FALSE
+    )
+  }
+  contexts
 }
 
 normalise_runtime_resources <- function(req) {
@@ -134,11 +150,55 @@ normalise_runtime_resources <- function(req) {
   list(threads = threads)
 }
 
+validate_semantic_request <- function(request, params, effective_extras) {
+  axes <- request$data_axes
+  if (!identical(as.character(axes$measurement %||% ""), "rna_expression")) {
+    stop("scMultiSim wrapper only supports data_axes.measurement=rna_expression.", call. = FALSE)
+  }
+  if (!identical(as.character(axes$experimental_design %||% ""), "differentiation")) {
+    stop("scMultiSim wrapper only supports data_axes.experimental_design=differentiation.", call. = FALSE)
+  }
+  resolution <- as.character(axes$resolution %||% "")
+  column_kind <- as.character(axes$column_kind %||% "")
+  if (identical(resolution, "single_cell")) {
+    if (!identical(column_kind, "cells")) {
+      stop("scMultiSim single_cell capabilities require data_axes.column_kind=cells.", call. = FALSE)
+    }
+    if (isTRUE(params$spatial$enabled)) {
+      stop("scMultiSim single_cell capabilities require spatial.enabled=false.", call. = FALSE)
+    }
+  } else if (identical(resolution, "spatial")) {
+    if (!identical(column_kind, "spots")) {
+      stop("scMultiSim spatial capabilities require data_axes.column_kind=spots.", call. = FALSE)
+    }
+    if (!isTRUE(params$spatial$enabled)) {
+      stop("scMultiSim spatial capabilities require spatial.enabled=true.", call. = FALSE)
+    }
+  } else {
+    stop("scMultiSim wrapper only supports single_cell/cells or spatial/spots data axes.", call. = FALSE)
+  }
+  if (any(c("spatial_coordinates", "cell_cell_interactions") %in% effective_extras) && !isTRUE(params$spatial$enabled)) {
+    stop("spatial_coordinates and cell_cell_interactions require spatial.enabled=true.", call. = FALSE)
+  }
+  if ("cell_cell_interactions" %in% effective_extras && !isTRUE(params$spatial$single_cell_gt)) {
+    stop("cell_cell_interactions requires spatial.single_cell_gt=true.", call. = FALSE)
+  }
+}
+
 as_nullable_numeric <- function(value) {
   if (is.null(value)) {
     return(NULL)
   }
   as.numeric(value)
+}
+
+as_int_vector <- function(value, default) {
+  out <- as.integer(value %||% default)
+  out <- out[!is.na(out)]
+  if (length(out) == 0) {
+    out <- as.integer(default)
+  }
+  out
 }
 
 normalise_params <- function(req) {
@@ -183,6 +243,17 @@ normalise_params <- function(req) {
       riv_mean = as.numeric(params$atac$riv_mean %||% 0.0),
       riv_prob = as.numeric(params$atac$riv_prob %||% 0.3),
       riv_sd = as.numeric(params$atac$riv_sd %||% 1.0)
+    ),
+    spatial = list(
+      enabled = is_true(params$spatial$enabled %||% FALSE),
+      grid_size = as.integer(params$spatial$grid_size %||% 13L),
+      max_neighbors = as.integer(params$spatial$max_neighbors %||% 4L),
+      step_size = as.numeric(params$spatial$step_size %||% 0.5),
+      layout = as.character(params$spatial$layout %||% "enhanced"),
+      same_type_prob = as.numeric(params$spatial$same_type_prob %||% 0.8),
+      cell_type_lr_pairs = as_int_vector(params$spatial$cell_type_lr_pairs, c(1L, 2L)),
+      ligand_receptor_effects = as.numeric(params$spatial$ligand_receptor_effects %||% c(5.2, -5.9)),
+      single_cell_gt = is_true(params$spatial$single_cell_gt %||% TRUE)
     ),
     rna_model = list(
       vary = as.character(params$rna_model$vary %||% "s"),
@@ -274,7 +345,8 @@ load_grn <- function(params, request) {
 load_tree <- function(params, request) {
   preset <- params$tree_preset
   if (identical(preset, "auto")) {
-    preset <- if (identical(request$profile, "scrna_global")) "phyla1" else "phyla5"
+    contexts <- truth_contexts(request)
+    preset <- if (identical(setdiff(contexts, "global"), character())) "phyla1" else "phyla5"
   }
   if (identical(preset, "phyla1")) {
     return(Phyla1())
@@ -392,6 +464,32 @@ build_sim_options <- function(request, params) {
   )
   if (!is.null(params$num_genes)) {
     opts$num.genes <- params$num_genes
+  }
+  if (isTRUE(params$spatial$enabled)) {
+    if (!is.null(params$num_genes) && params$num_genes < 104L) {
+      stop("spatial.enabled=true requires num_genes to be null or at least 104 for the built-in ligand-receptor preset.", call. = FALSE)
+    }
+    ligand_receptor_effects <- params$spatial$ligand_receptor_effects
+    if (length(ligand_receptor_effects) < 2L) {
+      stop("spatial.ligand_receptor_effects must contain at least two numeric effects.", call. = FALSE)
+    }
+    ligand_params <- data.frame(
+      target = c(101L, 102L),
+      regulator = c(103L, 104L),
+      effect = as.numeric(ligand_receptor_effects[seq_len(2L)])
+    )
+    opts$cci <- list(
+      params = ligand_params,
+      max.neighbors = params$spatial$max_neighbors,
+      grid.size = params$spatial$grid_size,
+      cell.type.interaction = "random",
+      cell.type.lr.pairs = params$spatial$cell_type_lr_pairs,
+      step.size = params$spatial$step_size,
+      start.layer = params$num_cells,
+      layout = params$spatial$layout,
+      same.type.prob = params$spatial$same_type_prob,
+      single.cell.gt = params$spatial$single_cell_gt
+    )
   }
   if (length(params$discrete_population$pop_size) > 0) {
     opts$discrete.pop.size <- as.integer(params$discrete_population$pop_size)
@@ -529,6 +627,15 @@ normalise_public_gene_ids <- function(results, params, raw_dir) {
     results$.grn$name_map <- normalise_name_map(results$.grn$name_map, gene_id_map)
   }
 
+  if (!is.null(results$cci_cell_type_param)) {
+    if ("ligand" %in% names(results$cci_cell_type_param)) {
+      results$cci_cell_type_param$ligand <- normalise_gene_vector(results$cci_cell_type_param$ligand, gene_id_map)
+    }
+    if ("receptor" %in% names(results$cci_cell_type_param)) {
+      results$cci_cell_type_param$receptor <- normalise_gene_vector(results$cci_cell_type_param$receptor, gene_id_map)
+    }
+  }
+
   results
 }
 
@@ -592,6 +699,67 @@ extract_counts_matrix <- function(results, params) {
     return(restore_missing_dimnames(results$counts_obs, true_counts))
   }
   true_counts
+}
+
+set_public_colnames <- function(mat, public_ids) {
+  if (is.null(mat)) {
+    return(mat)
+  }
+  mat <- as.matrix(mat)
+  if (ncol(mat) == length(public_ids)) {
+    colnames(mat) <- public_ids
+  }
+  mat
+}
+
+normalise_public_column_ids <- function(results, expr, request, raw_dir) {
+  axes <- request$data_axes
+  is_spatial <- identical(as.character(axes$resolution %||% ""), "spatial") ||
+    identical(as.character(axes$column_kind %||% ""), "spots")
+  if (!isTRUE(is_spatial)) {
+    return(list(results = results, expr = expr))
+  }
+  if (!identical(as.character(axes$resolution %||% ""), "spatial") ||
+      !identical(as.character(axes$column_kind %||% ""), "spots")) {
+    stop("scMultiSim spatial output requires data_axes.resolution=spatial and column_kind=spots.", call. = FALSE)
+  }
+
+  expr <- as.matrix(expr)
+  original_ids <- colnames(expr)
+  if (is.null(original_ids) || length(original_ids) != ncol(expr)) {
+    original_ids <- paste0("cell", seq_len(ncol(expr)))
+  }
+  public_ids <- paste0("spot_", seq_len(ncol(expr)))
+  colnames(expr) <- public_ids
+
+  results$counts <- set_public_colnames(results$counts, public_ids)
+  results$counts_with_batches <- set_public_colnames(results$counts_with_batches, public_ids)
+  if (!is.null(results$counts_obs)) {
+    if (is.list(results$counts_obs) && !is.null(results$counts_obs$counts)) {
+      results$counts_obs$counts <- set_public_colnames(results$counts_obs$counts, public_ids)
+    } else {
+      results$counts_obs <- set_public_colnames(results$counts_obs, public_ids)
+    }
+  }
+  results$velocity <- set_public_colnames(results$velocity, public_ids)
+  results$atac_counts <- set_public_colnames(results$atac_counts, public_ids)
+  results$atacseq_data <- set_public_colnames(results$atacseq_data, public_ids)
+  if (!is.null(results$cell_meta) && nrow(results$cell_meta) == length(public_ids)) {
+    rownames(results$cell_meta) <- public_ids
+  }
+  if (!is.null(results$cci_locs) && nrow(results$cci_locs) == length(public_ids)) {
+    rownames(results$cci_locs) <- public_ids
+  }
+
+  write_tsv(
+    data.frame(
+      original_column = as.character(original_ids),
+      public_column = public_ids,
+      stringsAsFactors = FALSE
+    ),
+    file.path(raw_dir, "public_column_id_normalization.tsv")
+  )
+  list(results = results, expr = expr)
 }
 
 gene_mapper <- function(grn_obj) {
@@ -708,31 +876,31 @@ derive_global_truth <- function(results, params) {
   truth_df[order(truth_df$source, truth_df$target), , drop = FALSE]
 }
 
-derive_cell_truth <- function(results, expr, raw_dir) {
+derive_column_truth <- function(results, expr, raw_dir) {
   if (is.null(results$cell_specific_grn)) {
-    stop("cell truth derivation requires dynamic_grn.enabled=true and results$cell_specific_grn.", call. = FALSE)
+    stop("column truth derivation requires dynamic_grn.enabled=true and results$cell_specific_grn.", call. = FALSE)
   }
   mats <- results$cell_specific_grn
   cell_ids <- colnames(expr)
   genes <- rownames(expr)
   if (length(mats) != length(cell_ids)) {
-    stop("cell_specific_grn length does not match expression cell count.", call. = FALSE)
+    stop("cell_specific_grn length does not match expression column count.", call. = FALSE)
   }
 
   truth_rows <- lapply(seq_along(cell_ids), function(idx) {
-    cell_truth <- matrix_edges(mats[[idx]], results$.grn, paste0("cell:", cell_ids[[idx]]))
-    cell_truth <- cell_truth[
-      cell_truth$score > 0 &
-        !is.na(cell_truth$score) &
-        cell_truth$source != cell_truth$target,
+    column_truth <- matrix_edges(mats[[idx]], results$.grn, paste0("column:", cell_ids[[idx]]))
+    column_truth <- column_truth[
+      column_truth$score > 0 &
+        !is.na(column_truth$score) &
+        column_truth$source != column_truth$target,
       ,
       drop = FALSE
     ]
-    cell_truth
+    column_truth
   })
   truth_df <- do.call(rbind, truth_rows)
   if (is.null(truth_df) || nrow(truth_df) == 0) {
-    stop("cell truth derivation produced no nonzero cell-specific edges.", call. = FALSE)
+    stop("column truth derivation produced no nonzero cell-specific edges.", call. = FALSE)
   }
 
   unknown_genes <- sort(unique(setdiff(unique(c(truth_df$source, truth_df$target)), genes)))
@@ -749,24 +917,24 @@ derive_cell_truth <- function(results, expr, raw_dir) {
   context_counts <- vapply(truth_rows, nrow, integer(1))
   write_tsv(
     data.frame(
-      cell = cell_ids,
-      context = paste0("cell:", cell_ids),
+      column = cell_ids,
+      context = paste0("column:", cell_ids),
       edge_count = as.integer(context_counts),
       stringsAsFactors = FALSE
     ),
-    file.path(raw_dir, "cell_networks_index.tsv")
+    file.path(raw_dir, "column_networks_index.tsv")
   )
 
   truth_df[order(truth_df$context, truth_df$source, truth_df$target), , drop = FALSE]
 }
 
-write_truth_networks <- function(global_truth, group_truth_rows, cell_truth_rows, output_dir) {
+write_truth_networks <- function(global_truth, group_truth_rows, column_truth_rows, output_dir) {
   truth_df <- global_truth
   if (length(group_truth_rows) > 0) {
     truth_df <- rbind(truth_df, do.call(rbind, group_truth_rows))
   }
-  if (!is.null(cell_truth_rows) && nrow(cell_truth_rows) > 0) {
-    truth_df <- rbind(truth_df, cell_truth_rows)
+  if (!is.null(column_truth_rows) && nrow(column_truth_rows) > 0) {
+    truth_df <- rbind(truth_df, column_truth_rows)
   }
   truth_df <- truth_df[
     truth_df$score > 0 &
@@ -824,6 +992,85 @@ write_enrichment_background <- function(expr, path) {
   writeLines(genes, con = path, sep = "\n", useBytes = TRUE)
 }
 
+write_spatial_coordinates <- function(results, expr, path) {
+  if (is.null(results$cci_locs)) {
+    stop("spatial_coordinates requires results$cci_locs from scMultiSim spatial/CCI mode.", call. = FALSE)
+  }
+  locs <- as.matrix(results$cci_locs)
+  if (nrow(locs) != ncol(expr) || ncol(locs) < 2L) {
+    stop("results$cci_locs dimensions do not match expression columns.", call. = FALSE)
+  }
+  out <- data.frame(
+    column = colnames(expr),
+    x = as.numeric(locs[, 1]),
+    y = as.numeric(locs[, 2]),
+    stringsAsFactors = FALSE
+  )
+  if (ncol(locs) >= 3L) {
+    out$z <- as.numeric(locs[, 3])
+  }
+  write_tsv(out, path)
+}
+
+chromatin_matrix <- function(results) {
+  if (!is.null(results$atac_counts)) {
+    return(as.matrix(results$atac_counts))
+  }
+  if (!is.null(results$atacseq_data)) {
+    return(as.matrix(results$atacseq_data))
+  }
+  NULL
+}
+
+region_ids_for_matrix <- function(mat) {
+  mat <- as.matrix(mat)
+  row_ids <- rownames(mat)
+  if (is.null(row_ids) || length(row_ids) != nrow(mat) || any(is.na(row_ids) | !nzchar(as.character(row_ids)))) {
+    return(paste0("region_", seq_len(nrow(mat))))
+  }
+  row_ids <- as.character(row_ids)
+  numeric_ids <- grepl("^[0-9]+$", row_ids)
+  row_ids[numeric_ids] <- paste0("region_", row_ids[numeric_ids])
+  row_ids
+}
+
+write_chromatin_accessibility <- function(results, expr, path) {
+  mat <- chromatin_matrix(results)
+  if (is.null(mat)) {
+    stop("chromatin_accessibility requires results$atac_counts or results$atacseq_data.", call. = FALSE)
+  }
+  if (ncol(mat) != ncol(expr)) {
+    stop("chromatin accessibility column count does not match expression columns.", call. = FALSE)
+  }
+  colnames(mat) <- colnames(expr)
+  rownames(mat) <- region_ids_for_matrix(mat)
+  write_matrix_tsv(mat, path, row_id = "region")
+  mat
+}
+
+write_chromatin_regions <- function(results, region_ids, gene_ids, path) {
+  if (is.null(results$region_to_gene)) {
+    stop("chromatin_regions requires results$region_to_gene.", call. = FALSE)
+  }
+  region_to_gene <- as.matrix(results$region_to_gene)
+  if (nrow(region_to_gene) != length(region_ids)) {
+    stop("region_to_gene row count does not match chromatin_accessibility regions.", call. = FALSE)
+  }
+  gene_ids <- as.character(gene_ids)
+  linked <- vapply(seq_len(nrow(region_to_gene)), function(idx) {
+    linked_idx <- which(region_to_gene[idx, ] != 0 & !is.na(region_to_gene[idx, ]))
+    linked_idx <- linked_idx[linked_idx <= length(gene_ids)]
+    paste(gene_ids[linked_idx], collapse = ";")
+  }, character(1))
+  out <- data.frame(
+    region = region_ids,
+    region_index = seq_along(region_ids),
+    linked_genes = linked,
+    stringsAsFactors = FALSE
+  )
+  write_tsv(out, path)
+}
+
 normalize_group_label <- function(value) {
   label <- gsub("[^A-Za-z0-9_.-]+", "_", as.character(value))
   label <- gsub("^_+|_+$", "", label)
@@ -875,7 +1122,7 @@ derive_pseudotime_values <- function(results, expr, groups = NULL) {
 
 write_pseudotime <- function(values, path) {
   out <- data.frame(
-    cell = names(values),
+    column = names(values),
     pseudotime = as.numeric(values),
     stringsAsFactors = FALSE
   )
@@ -889,7 +1136,7 @@ derive_groups <- function(results, expr) {
   }
   pop <- as.character(results$cell_meta$pop)
   if (length(pop) != length(cell_ids)) {
-    stop("cell_meta$pop length does not match expression cell count.", call. = FALSE)
+    stop("cell_meta$pop length does not match expression column count.", call. = FALSE)
   }
   data.frame(
     cell = cell_ids,
@@ -912,12 +1159,71 @@ group_order_from_pseudotime <- function(groups_df, pseudotime_values) {
 }
 
 write_groups <- function(groups_df, path) {
+  names(groups_df)[names(groups_df) == "cell"] <- "column"
   write_tsv(groups_df, path)
 }
 
-write_cell_phenotypes <- function(groups_df, group_order, path) {
+write_cell_cell_interactions <- function(results, expr, groups_df, path) {
+  if (is.null(results$cci_gt)) {
+    stop("cell_cell_interactions requires results$cci_gt; spatial.single_cell_gt must be true.", call. = FALSE)
+  }
+  if (is.null(results$cci_cell_type_param)) {
+    stop("cell_cell_interactions requires results$cci_cell_type_param.", call. = FALSE)
+  }
+  cci_gt <- results$cci_gt
+  if (length(dim(cci_gt)) != 3L) {
+    stop("results$cci_gt must be a three-dimensional target x source x ligand-receptor array.", call. = FALSE)
+  }
+  if (dim(cci_gt)[[1]] != ncol(expr) || dim(cci_gt)[[2]] != ncol(expr)) {
+    stop("results$cci_gt cell dimensions do not match expression columns.", call. = FALSE)
+  }
+
+  lr_pairs <- unique(results$cci_cell_type_param[, c("ligand", "receptor", "effect"), drop = FALSE])
+  if (nrow(lr_pairs) != dim(cci_gt)[[3]]) {
+    stop("results$cci_gt ligand-receptor dimension does not match cci_cell_type_param pairs.", call. = FALSE)
+  }
+  group_by_column <- setNames(as.character(groups_df$cluster), as.character(groups_df$cell))
+  column_ids <- colnames(expr)
+  rows <- list()
+  row_idx <- 1L
+  for (lr_idx in seq_len(dim(cci_gt)[[3]])) {
+    active <- which(cci_gt[, , lr_idx] != 0 & !is.na(cci_gt[, , lr_idx]), arr.ind = TRUE)
+    if (nrow(active) == 0) {
+      next
+    }
+    pair <- lr_pairs[lr_idx, , drop = FALSE]
+    effect <- as.numeric(pair$effect[[1]])
+    for (idx in seq_len(nrow(active))) {
+      target_idx <- active[idx, "row"]
+      source_idx <- active[idx, "col"]
+      source_column <- column_ids[[source_idx]]
+      target_column <- column_ids[[target_idx]]
+      rows[[row_idx]] <- data.frame(
+        source_column = source_column,
+        target_column = target_column,
+        source_group = group_by_column[[source_column]] %||% "",
+        target_group = group_by_column[[target_column]] %||% "",
+        ligand = as.character(pair$ligand[[1]]),
+        receptor = as.character(pair$receptor[[1]]),
+        score = abs(effect),
+        sign = ifelse(effect > 0, "+", ifelse(effect < 0, "-", "?")),
+        effect = effect,
+        stringsAsFactors = FALSE
+      )
+      row_idx <- row_idx + 1L
+    }
+  }
+  if (length(rows) == 0) {
+    stop("cell_cell_interactions derivation produced no active interactions.", call. = FALSE)
+  }
+  out <- do.call(rbind, rows)
+  out <- out[order(out$source_column, out$target_column, out$ligand, out$receptor), , drop = FALSE]
+  write_tsv(out, path)
+}
+
+write_column_phenotypes <- function(groups_df, group_order, path) {
   out <- data.frame(
-    cell = groups_df$cell,
+    column = groups_df$cell,
     phenotype = groups_df$cluster,
     order = as.integer(group_order[groups_df$cluster]),
     stringsAsFactors = FALSE
@@ -946,7 +1252,7 @@ derive_group_truth <- function(results, groups_df, raw_dir) {
   cell_ids <- groups_df$cell
   mats <- results$cell_specific_grn
   if (length(mats) != length(cell_ids)) {
-    stop("cell_specific_grn length does not match expression cell count.", call. = FALSE)
+    stop("cell_specific_grn length does not match expression column count.", call. = FALSE)
   }
   used_groups <- unique(groups_df$cluster)
   all_activity <- list()
@@ -1149,26 +1455,33 @@ write_native_outputs <- function(results, native_output_ids, output_dir) {
 }
 
 write_manifest <- function(request, results, expr, output_dir, native_outputs = structure(list(), names = character())) {
+  manifest_truth_requirements <- list(
+    contexts = I(as.character(request$truth_requirements$contexts %||% character()))
+  )
   manifest <- list(
     schema_version = "1.0",
     simulator_id = request$simulator_id,
-    profile = request$profile,
+    data_axes = request$data_axes,
+    truth_requirements = manifest_truth_requirements,
     seed = as.integer(request$seed),
     expression = list(
       path = "expression.tsv",
       genes = nrow(expr),
       columns = ncol(expr),
-      column_kind = "cells",
-      expression_profile = "scrna"
+      column_kind = as.character(request$data_axes$column_kind %||% "cells")
     ),
     extras = list(
       groups = if (file.exists(file.path(output_dir, "extras", "groups.tsv"))) "extras/groups.tsv" else NULL,
-      cell_phenotypes = if (file.exists(file.path(output_dir, "extras", "cell_phenotypes.tsv"))) "extras/cell_phenotypes.tsv" else NULL,
+      column_phenotypes = if (file.exists(file.path(output_dir, "extras", "column_phenotypes.tsv"))) "extras/column_phenotypes.tsv" else NULL,
       cluster_identities = if (file.exists(file.path(output_dir, "extras", "cluster_identities.tsv"))) "extras/cluster_identities.tsv" else NULL,
+      cell_cell_interactions = if (file.exists(file.path(output_dir, "extras", "cell_cell_interactions.tsv"))) "extras/cell_cell_interactions.tsv" else NULL,
+      chromatin_accessibility = if (file.exists(file.path(output_dir, "extras", "chromatin_accessibility.tsv"))) "extras/chromatin_accessibility.tsv" else NULL,
+      chromatin_regions = if (file.exists(file.path(output_dir, "extras", "chromatin_regions.tsv"))) "extras/chromatin_regions.tsv" else NULL,
       enrichment_background = if (file.exists(file.path(output_dir, "extras", "enrichment_background.txt"))) "extras/enrichment_background.txt" else NULL,
       lineage_tree = if (file.exists(file.path(output_dir, "extras", "lineage_tree.tsv"))) "extras/lineage_tree.tsv" else NULL,
       pseudotime = if (file.exists(file.path(output_dir, "extras", "pseudotime.tsv"))) "extras/pseudotime.tsv" else NULL,
       prior_grn = if (file.exists(file.path(output_dir, "extras", "prior_grn.tsv"))) "extras/prior_grn.tsv" else NULL,
+      spatial_coordinates = if (file.exists(file.path(output_dir, "extras", "spatial_coordinates.tsv"))) "extras/spatial_coordinates.tsv" else NULL,
       tf_list = if (file.exists(file.path(output_dir, "extras", "tf_list.txt"))) "extras/tf_list.txt" else NULL,
       prior_grn_by_group = if (file.exists(file.path(output_dir, "extras", "prior_grn_by_group.tsv"))) "extras/prior_grn_by_group.tsv" else NULL
     ),
@@ -1211,10 +1524,12 @@ tryCatch(
     if (params$batch_effect$enabled && !params$technical_noise$enabled) {
       stop("batch_effect.enabled=true requires technical_noise.enabled=true.", call. = FALSE)
     }
-    need_public_cell_truth <- identical(request$profile, "scrna_cell_specific")
-    needs_group_specific <- identical(request$profile, "scrna_grouped") || need_public_cell_truth || any(c("prior_grn_by_group", "lineage_tree") %in% effective_extras)
+    requested_truth_contexts <- truth_contexts(request)
+    validate_semantic_request(request, params, effective_extras)
+    need_public_column_truth <- "column" %in% requested_truth_contexts
+    needs_group_specific <- ("group" %in% requested_truth_contexts) || need_public_column_truth || any(c("prior_grn_by_group", "lineage_tree") %in% effective_extras)
     if (needs_group_specific && !params$dynamic_grn$enabled) {
-      stop("scrna_grouped or scrna_cell_specific group/cell truth, prior_grn_by_group and lineage_tree require dynamic_grn.enabled=true.", call. = FALSE)
+      stop("group/column truth, prior_grn_by_group and lineage_tree require dynamic_grn.enabled=true.", call. = FALSE)
     }
     if (!identical(params$mod_cif_giv_preset, "none")) {
       stop("Only mod_cif_giv_preset='none' is supported.", call. = FALSE)
@@ -1266,6 +1581,9 @@ tryCatch(
 
     write_progress("running", "package_outputs", "Writing normalized ANDREA outputs.")
     expr <- extract_counts_matrix(results, params)
+    normalised_columns <- normalise_public_column_ids(results, expr, request, raw_dir)
+    results <- normalised_columns$results
+    expr <- normalised_columns$expr
     write_matrix_tsv(expr, file.path(output_dir, "expression.tsv"))
     saveRDS(results, file.path(raw_dir, "result.rds"), compress = TRUE)
     write_matrix_tsv(results$counts, file.path(raw_dir, "true_counts.tsv"))
@@ -1274,18 +1592,18 @@ tryCatch(
     global_truth <- derive_global_truth(results, params)
     exported_native_outputs <- write_native_outputs(results, native_outputs, output_dir)
 
-    need_public_group_truth <- identical(request$profile, "scrna_grouped") || need_public_cell_truth
-    need_groups <- need_public_group_truth || any(c("groups", "cell_phenotypes", "cluster_identities", "lineage_tree", "prior_grn_by_group") %in% effective_extras)
+    need_public_group_truth <- ("group" %in% requested_truth_contexts) || need_public_column_truth
+    need_groups <- need_public_group_truth || any(c("groups", "column_phenotypes", "cluster_identities", "lineage_tree", "prior_grn_by_group", "cell_cell_interactions") %in% effective_extras)
     groups_df <- NULL
     pseudotime_values <- NULL
     group_order <- NULL
     group_truth_result <- NULL
     group_truth_rows <- list()
-    cell_truth_rows <- NULL
+    column_truth_rows <- NULL
 
-    if (need_public_cell_truth) {
-      write_progress("running", "derive_cell_truth", "Deriving cell regulatory truth from cell_specific_grn.")
-      cell_truth_rows <- derive_cell_truth(
+    if (need_public_column_truth) {
+      write_progress("running", "derive_column_truth", "Deriving column regulatory truth from cell_specific_grn.")
+      column_truth_rows <- derive_column_truth(
         results,
         expr,
         raw_dir
@@ -1314,10 +1632,36 @@ tryCatch(
     if ("tf_list" %in% effective_extras) {
       write_tf_list(results, file.path(output_dir, "extras", "tf_list.txt"))
     }
+    if ("spatial_coordinates" %in% effective_extras) {
+      write_spatial_coordinates(results, expr, file.path(output_dir, "extras", "spatial_coordinates.tsv"))
+    }
+    chromatin_public_matrix <- NULL
+    if ("chromatin_accessibility" %in% effective_extras) {
+      chromatin_public_matrix <- write_chromatin_accessibility(
+        results,
+        expr,
+        file.path(output_dir, "extras", "chromatin_accessibility.tsv")
+      )
+    }
+    if ("chromatin_regions" %in% effective_extras) {
+      if (is.null(chromatin_public_matrix)) {
+        chromatin_public_matrix <- chromatin_matrix(results)
+        if (is.null(chromatin_public_matrix)) {
+          stop("chromatin_regions requires results$atac_counts or results$atacseq_data.", call. = FALSE)
+        }
+        rownames(chromatin_public_matrix) <- region_ids_for_matrix(chromatin_public_matrix)
+      }
+      write_chromatin_regions(
+        results,
+        rownames(chromatin_public_matrix),
+        rownames(expr),
+        file.path(output_dir, "extras", "chromatin_regions.tsv")
+      )
+    }
 
     if (!is.null(groups_df)) {
-      if ("cell_phenotypes" %in% effective_extras) {
-        write_cell_phenotypes(groups_df, group_order, file.path(output_dir, "extras", "cell_phenotypes.tsv"))
+      if ("column_phenotypes" %in% effective_extras) {
+        write_column_phenotypes(groups_df, group_order, file.path(output_dir, "extras", "column_phenotypes.tsv"))
       }
       if ("cluster_identities" %in% effective_extras) {
         write_cluster_identities(groups_df, group_order, file.path(output_dir, "extras", "cluster_identities.tsv"))
@@ -1348,9 +1692,17 @@ tryCatch(
           raw_dir
         )
       }
+      if ("cell_cell_interactions" %in% effective_extras) {
+        write_cell_cell_interactions(
+          results,
+          expr,
+          groups_df,
+          file.path(output_dir, "extras", "cell_cell_interactions.tsv")
+        )
+      }
     }
 
-    write_truth_networks(global_truth, group_truth_rows, cell_truth_rows, output_dir)
+    write_truth_networks(global_truth, group_truth_rows, column_truth_rows, output_dir)
 
     write_progress("running", "write_manifest", "Writing simulator-output-manifest.json.")
     write_manifest(

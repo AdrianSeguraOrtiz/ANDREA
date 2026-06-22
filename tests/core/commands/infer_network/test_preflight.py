@@ -343,7 +343,7 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             self.assertEqual(extras_validation["status"], "ok")
             self.assertFalse(extras_validation["errors"])
 
-    def test_preflight_accepts_cell_native_extra_inputs(self) -> None:
+    def test_preflight_accepts_column_native_extra_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             self._write_expression_matrix(
@@ -354,7 +354,7 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                     "G2\t3\t4",
                 ],
             )
-            (base / "cell_descriptors.tsv").write_text(
+            (base / "column_descriptors.tsv").write_text(
                 "cell\tbatch\tcell_type\nC1\tbatch_a\troot\nC2\tbatch_b\tleaf\n",
                 encoding="utf-8",
             )
@@ -364,7 +364,7 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 column_kind="cells",
                 expression_profile="scrna",
                 extras={
-                    "cell_descriptors": "cell_descriptors.tsv",
+                    "column_descriptors": "column_descriptors.tsv",
                 },
             )
 
@@ -373,7 +373,98 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 tools_params_path=None,
             )
             extras_validation = preflight["input_validation"]["extras"]
-            self.assertEqual(extras_validation["cell_descriptors"]["status"], "ok")
+            self.assertEqual(extras_validation["column_descriptors"]["status"], "ok")
+
+    def test_preflight_supports_non_cell_column_kinds_for_generic_tools(
+        self,
+    ) -> None:
+        cases = [
+            (
+                "timepoints",
+                "bulk",
+                ["T0", "T1"],
+                {
+                    "timepoints": "timepoints.tsv",
+                },
+                {
+                    "timepoints.tsv": "column\ttimepoint\nT0\t0\nT1\t1\n",
+                },
+            ),
+            (
+                "perturbations",
+                "bulk",
+                ["P0", "P1"],
+                {
+                    "perturbation_design": "perturbation_design.tsv",
+                    "interventions": "interventions.tsv",
+                },
+                {
+                    "perturbation_design.tsv": (
+                        "column\tcondition\tperturbation\ttarget\n"
+                        "P0\tcontrol\tnone\t\n"
+                        "P1\tknockdown_G1\tknockdown\tG1\n"
+                    ),
+                    "interventions.tsv": (
+                        "intervention\ttarget\teffect\tsign\n"
+                        "knockdown_G1\tG1\tknockdown\t-1\n"
+                    ),
+                },
+            ),
+        ]
+
+        for column_kind, expression_profile, columns, extras, extra_files in cases:
+            with self.subTest(column_kind=column_kind):
+                with tempfile.TemporaryDirectory() as tmp:
+                    base = Path(tmp)
+                    self._write_expression_matrix(
+                        base,
+                        lines=[
+                            "gene\t" + "\t".join(columns),
+                            "G1\t1\t2",
+                            "G2\t3\t4",
+                        ],
+                    )
+                    for filename, content in extra_files.items():
+                        (base / filename).write_text(content, encoding="utf-8")
+                    manifest_path = self._write_manifest(
+                        base,
+                        expression_matrix="expression.tsv",
+                        column_kind=column_kind,
+                        expression_profile=expression_profile,
+                        extras=extras,
+                    )
+                    tools_params_path = self._write_tools_params(
+                        base,
+                        runs=[
+                            {
+                                "run_id": "genie3__01",
+                                "tool_id": "genie3",
+                                "execution": {"mode": "global"},
+                                "params": {},
+                            },
+                            {
+                                "run_id": "lioness__01",
+                                "tool_id": "lioness",
+                                "execution": {"mode": "column_native"},
+                                "params": {},
+                            },
+                        ],
+                    )
+
+                    preflight = self.mod.preflight_infer_network(
+                        dataset_manifest_path=manifest_path,
+                        tools_params_path=tools_params_path,
+                    )
+
+                self.assertEqual(preflight["runs"]["selected"], ["genie3__01"])
+                self.assertIn("lioness__01", preflight["runs"]["skipped"])
+                self.assertIn(
+                    f"dataset column_kind '{column_kind}' is not accepted",
+                    preflight["runs"]["skipped"]["lioness__01"],
+                )
+                extras_validation = preflight["input_validation"]["extras"]
+                for extra_key in extras:
+                    self.assertEqual(extras_validation[extra_key]["status"], "ok")
 
     def test_preflight_fails_when_expression_first_header_is_not_gene_like(
         self,

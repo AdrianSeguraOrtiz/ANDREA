@@ -1,15 +1,35 @@
 {
   "simulator_id": "dyngen",
   "request": {
-    "profile": "scrna_grouped",
     "seed": 13,
-    "effective_extras": ["groups"],
+    "effective_extras": [
+      "groups"
+    ],
     "inputs": {},
     "params": {
       "backbone_template": "bifurcating",
-      "distance_metric": "pearson"
+      "distance_metric": "pearson",
+      "simulation_params": {
+        "num_simulations": 2,
+        "census_interval": 2.0,
+        "num_knockdown_simulations": 0
+      }
     },
-    "runtime_resources": {"threads": 1}
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "trajectory"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    }
   },
   "expect_progress": true,
   "required_files": [
@@ -23,5 +43,8 @@
     "provenance/raw/model.rds",
     "provenance/raw/dataset.rds"
   ],
-  "required_truth_context_prefixes": ["global", "group:"]
+  "required_truth_context_prefixes": [
+    "global",
+    "group:"
+  ]
 }

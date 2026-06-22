@@ -7,12 +7,18 @@ import math
 from pathlib import Path
 from typing import Any
 
-from andrea.core.commands.generate_data.shared import (
-    required_truth_context_prefixes_for_profile,
+from andrea.core.shared.input_validation import (
+    read_tsv_column_values,
+    validate_text_list_with_spec,
+    validate_tsv_file_with_spec,
+)
+from andrea.core.commands.generate_data.semantic import (
+    parse_truth_requirements,
+    required_truth_context_prefixes,
 )
 from andrea.core.shared.input_specs import load_input_specs
 from andrea.core.shared.network_context import (
-    CELL_CONTEXT_PREFIX,
+    COLUMN_CONTEXT_PREFIX,
     GROUP_CONTEXT_PREFIX,
     GLOBAL_CONTEXT,
     normalize_network_context,
@@ -26,7 +32,8 @@ def validate_simulator_output_package(
     *,
     stage_dir: Path,
     dataset_id: str,
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     simulator_manifest: dict[str, Any],
     input_specs: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -39,6 +46,14 @@ def validate_simulator_output_package(
 
     if input_specs is None:
         input_specs = load_input_specs()
+    if simulator_manifest.get("data_axes") != data_axes:
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}].data_axes must match the resolved simulation request"
+        )
+    if simulator_manifest.get("truth_requirements") != truth_requirements:
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}].truth_requirements must match the resolved simulation request"
+        )
 
     expression_path, expression_genes, expression_columns = _validate_expression(
         stage_dir=stage_dir,
@@ -48,7 +63,7 @@ def validate_simulator_output_package(
     truth_paths, contexts = _validate_truth_outputs(
         stage_dir=stage_dir,
         dataset_id=dataset_id,
-        profile=profile,
+        truth_requirements=truth_requirements,
         simulator_manifest=simulator_manifest,
         expression_genes=expression_genes,
         expression_columns=expression_columns,
@@ -146,7 +161,7 @@ def _validate_truth_outputs(
     *,
     stage_dir: Path,
     dataset_id: str,
-    profile: str,
+    truth_requirements: dict[str, Any],
     simulator_manifest: dict[str, Any],
     expression_genes: set[str],
     expression_columns: set[str],
@@ -191,7 +206,7 @@ def _validate_truth_outputs(
         )
     contexts: set[str] = set()
     group_contexts: set[str] = set()
-    cell_contexts: set[str] = set()
+    column_contexts: set[str] = set()
     with networks_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required_columns = {"source", "target", "score", "sign", "evidence", "context"}
@@ -210,6 +225,11 @@ def _validate_truth_outputs(
                 raise ValueError(f"truth networks for dataset {dataset_id} contain empty source/target at line {line_no}")
             if source == target:
                 raise ValueError(f"truth networks for dataset {dataset_id} contain a self-loop at line {line_no}: {source}")
+            evidence = str(row.get("evidence", "")).strip()
+            if evidence != "simulated_truth":
+                raise ValueError(
+                    f"truth networks for dataset {dataset_id} must use evidence='simulated_truth' at line {line_no}"
+                )
             unknown_genes = sorted({source, target}.difference(gene_universe))
             if unknown_genes:
                 raise ValueError(
@@ -237,15 +257,15 @@ def _validate_truth_outputs(
                 if not group_id:
                     raise ValueError(f"truth networks for dataset {dataset_id} contain empty group context at line {line_no}")
                 group_contexts.add(group_id)
-            elif context.startswith(CELL_CONTEXT_PREFIX):
-                cell_id = context.removeprefix(CELL_CONTEXT_PREFIX)
-                if not cell_id:
-                    raise ValueError(f"truth networks for dataset {dataset_id} contain empty cell context at line {line_no}")
-                cell_contexts.add(cell_id)
+            elif context.startswith(COLUMN_CONTEXT_PREFIX):
+                column_id = context.removeprefix(COLUMN_CONTEXT_PREFIX)
+                if not column_id:
+                    raise ValueError(f"truth networks for dataset {dataset_id} contain empty column context at line {line_no}")
+                column_contexts.add(column_id)
     if row_count == 0:
         raise ValueError(f"truth networks for dataset {dataset_id} contain no edges")
 
-    required_exact, required_prefixes = _required_truth_contexts(profile)
+    required_exact, required_prefixes = _required_truth_contexts(truth_requirements)
     missing_exact = sorted(required_exact.difference(contexts))
     if missing_exact:
         raise ValueError(
@@ -257,19 +277,30 @@ def _validate_truth_outputs(
             raise ValueError(
                 f"truth networks for dataset {dataset_id} are missing required context prefix: {prefix}"
             )
-    unknown_cells = sorted(cell_contexts.difference(expression_columns))
-    if unknown_cells:
+    unknown_columns = sorted(column_contexts.difference(expression_columns))
+    if unknown_columns:
         raise ValueError(
-            f"truth networks for dataset {dataset_id} contain cell contexts not present in expression columns: "
-            + ", ".join(unknown_cells[:8])
+            f"truth networks for dataset {dataset_id} contain column contexts not present in expression columns: "
+            + ", ".join(unknown_columns[:8])
+        )
+    requested_truth = parse_truth_requirements(truth_requirements)
+    if "column" in requested_truth.contexts and column_contexts != expression_columns:
+        missing = sorted(expression_columns.difference(column_contexts))[:8]
+        extra = sorted(column_contexts.difference(expression_columns))[:8]
+        raise ValueError(
+            f"truth networks for dataset {dataset_id} must include exactly one column context family covering expression columns; "
+            f"missing={missing}, extra={extra}"
         )
     return {"gene_universe": str(gene_universe_rel), "networks": str(networks_rel)}, contexts
 
 
-def _required_truth_contexts(profile: str) -> tuple[set[str], list[str]]:
+def _required_truth_contexts(
+    truth_requirements: dict[str, Any],
+) -> tuple[set[str], list[str]]:
     exact_contexts: set[str] = set()
     context_prefixes: list[str] = []
-    for context in required_truth_context_prefixes_for_profile(profile):
+    requirements = parse_truth_requirements(truth_requirements)
+    for context in required_truth_context_prefixes(requirements):
         if context.endswith(":"):
             context_prefixes.append(context)
         else:
@@ -319,12 +350,10 @@ def _validate_extras(
             raise ValueError(
                 f"extra '{other_input}' required for cross-check column '{other_column}' was not generated"
             )
-        values = _read_tsv_column_values(
-            path=other_path,
-            spec=input_specs.get(other_input, {}),
-            column=other_column,
-            dataset_id=dataset_id,
-            input_id=other_input,
+        values = read_tsv_column_values(
+            other_path,
+            input_specs.get(other_input, {}),
+            other_column,
         )
         extra_columns_cache[cache_key] = values
         return values
@@ -336,38 +365,49 @@ def _validate_extras(
             raise ValueError(f"simulator-output-manifest[{dataset_id}] references unknown standardized extra '{key}'")
         file_kind = str(spec.get("file_kind", "tsv"))
         if file_kind == "txt_list":
-            row_count, values = _validate_text_list(
+            result = validate_text_list_with_spec(
                 key=key,
                 path=path,
                 spec=spec,
-                dataset_id=dataset_id,
                 expression_genes=expression_genes,
+                unknown_cross_check="error",
             )
-            summary[key] = {"rows": row_count, "columns": 1}
-            if key == "enrichment_background" and not values:
+            _raise_input_validation_errors(
+                result.errors,
+                dataset_id=dataset_id,
+                input_id=key,
+            )
+            summary[key] = result.summary
+            if key == "enrichment_background" and not result.line_values:
                 raise ValueError(f"extra enrichment_background is empty for dataset {dataset_id}")
         else:
-            rows, columns, values_by_column, first_column_values = _validate_tsv_extra(
+            result = validate_tsv_file_with_spec(
                 key=key,
                 path=path,
                 spec=spec,
-                dataset_id=dataset_id,
                 expression_genes=expression_genes,
                 expression_columns=expression_columns,
-                lookup_extra_column=lookup_extra_column,
+                expression_columns_count=len(expression_columns),
+                extra_column_lookup=lookup_extra_column,
+                unknown_cross_check="error",
             )
-            summary[key] = {"rows": rows, "columns": columns}
+            _raise_input_validation_errors(
+                result.errors,
+                dataset_id=dataset_id,
+                input_id=key,
+            )
+            summary[key] = result.summary
             if key == "groups":
-                if first_column_values != expression_columns:
-                    missing = sorted(expression_columns.difference(first_column_values))[:8]
-                    extra = sorted(first_column_values.difference(expression_columns))[:8]
+                if result.first_column_values != expression_columns:
+                    missing = sorted(expression_columns.difference(result.first_column_values))[:8]
+                    extra = sorted(result.first_column_values.difference(expression_columns))[:8]
                     raise ValueError(
                         f"extra groups must cover expression columns exactly for dataset {dataset_id}; "
                         f"missing={missing}, extra={extra}"
                     )
                 _validate_group_contexts(
                     dataset_id=dataset_id,
-                    group_values=values_by_column.get("cluster", set()),
+                    group_values=result.values_by_column.get("cluster", set()),
                     contexts=contexts,
                 )
             if key == "lineage_tree":
@@ -390,6 +430,20 @@ def _validate_extras(
             f"truth networks for dataset {dataset_id} contain group contexts but simulator-output-manifest is missing extras.groups"
         )
     return summary
+
+
+def _raise_input_validation_errors(
+    errors: list[str],
+    *,
+    dataset_id: str,
+    input_id: str,
+) -> None:
+    if not errors:
+        return
+    raise ValueError(
+        f"extra {input_id} for dataset {dataset_id} failed input-spec validation: "
+        + "; ".join(errors[:5])
+    )
 
 
 def _validate_group_contexts(
@@ -464,218 +518,6 @@ def _validate_lineage_tree_coverage(
             f"lineage_tree for dataset {dataset_id} references groups not present in groups.tsv: "
             + ", ".join(unknown[:8])
         )
-
-
-def _validate_text_list(
-    *,
-    key: str,
-    path: Path,
-    spec: dict[str, Any],
-    dataset_id: str,
-    expression_genes: set[str],
-) -> tuple[int, list[str]]:
-    values = [
-        line.strip()
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
-    min_rows = int(spec.get("min_rows", 0) or 0)
-    if len(values) < min_rows:
-        raise ValueError(
-            f"extra {key} for dataset {dataset_id} expected at least {min_rows} row(s), got {len(values)}"
-        )
-    for rule in spec.get("cross_checks", []):
-        if not isinstance(rule, dict):
-            continue
-        kind = str(rule.get("kind", "")).strip()
-        if kind == "line_subset_expression_genes":
-            unknown = sorted(set(values).difference(expression_genes))
-            if unknown:
-                raise ValueError(
-                    f"extra {key} for dataset {dataset_id} contains identifiers not present in expression genes: "
-                    + ", ".join(unknown[:8])
-                )
-        elif kind:
-            raise ValueError(f"extra {key} for dataset {dataset_id} uses unsupported cross-check: {kind}")
-    return len(values), values
-
-
-def _validate_tsv_extra(
-    *,
-    key: str,
-    path: Path,
-    spec: dict[str, Any],
-    dataset_id: str,
-    expression_genes: set[str],
-    expression_columns: set[str],
-    lookup_extra_column: Any,
-) -> tuple[int, int, dict[str, set[str]], set[str]]:
-    delimiter = str(spec.get("delimiter", "\t"))
-    required_columns = [str(x) for x in spec.get("required_columns", [])]
-    column_types = spec.get("column_types", {})
-    if not isinstance(column_types, dict):
-        column_types = {}
-    first_column_role = str(spec.get("first_column_role", "none") or "none")
-    unique_first_column = bool(spec.get("unique_first_column", False))
-    min_rows = int(spec.get("min_rows", 0) or 0)
-    min_columns = int(spec.get("min_columns", 1) or 1)
-    values_by_column: dict[str, set[str]] = {}
-    first_column_values: set[str] = set()
-    seen_first_column: set[str] = set()
-
-    with path.open("r", encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle, delimiter=delimiter)
-        fieldnames = [str(value).strip() for value in (reader.fieldnames or [])]
-        if not fieldnames:
-            raise ValueError(f"extra {key} for dataset {dataset_id} is missing a header row")
-        if len(fieldnames) < min_columns:
-            raise ValueError(
-                f"extra {key} for dataset {dataset_id} expected at least {min_columns} column(s), got {len(fieldnames)}"
-            )
-        missing_required = sorted(set(required_columns).difference(fieldnames))
-        if missing_required:
-            raise ValueError(
-                f"extra {key} for dataset {dataset_id} is missing required column(s): "
-                + ", ".join(missing_required)
-            )
-        row_count = 0
-        for line_no, row in enumerate(reader, start=2):
-            if None in row:
-                raise ValueError(
-                    f"extra {key} for dataset {dataset_id} has inconsistent width at line {line_no}"
-                )
-            row_count += 1
-            first_value = str(row.get(fieldnames[0], "")).strip()
-            if first_column_role == "expression_column_id":
-                if not first_value:
-                    raise ValueError(
-                        f"extra {key} for dataset {dataset_id} has empty expression-column identifier at line {line_no}"
-                    )
-                first_column_values.add(first_value)
-                if unique_first_column and first_value in seen_first_column:
-                    raise ValueError(
-                        f"extra {key} for dataset {dataset_id} duplicates expression-column identifier {first_value!r}"
-                    )
-                seen_first_column.add(first_value)
-            for column, raw_type in column_types.items():
-                if column not in fieldnames:
-                    continue
-                raw_value = str(row.get(str(column), "")).strip()
-                if not raw_value:
-                    continue
-                _validate_scalar_type(
-                    value=raw_value,
-                    type_name=str(raw_type),
-                    key=key,
-                    column=str(column),
-                    dataset_id=dataset_id,
-                    line_no=line_no,
-                )
-                values_by_column.setdefault(str(column), set()).add(raw_value)
-    if row_count < min_rows:
-        raise ValueError(
-            f"extra {key} for dataset {dataset_id} expected at least {min_rows} row(s), got {row_count}"
-        )
-
-    for rule in spec.get("cross_checks", []):
-        if not isinstance(rule, dict):
-            continue
-        kind = str(rule.get("kind", "")).strip()
-        column = str(rule.get("column", "")).strip()
-        if kind == "first_column_subset_expression_columns":
-            unknown = sorted(first_column_values.difference(expression_columns))
-            if unknown:
-                raise ValueError(
-                    f"extra {key} for dataset {dataset_id} first column contains identifiers not present in expression columns: "
-                    + ", ".join(unknown[:8])
-                )
-        elif kind == "row_count_matches_expression_columns":
-            if row_count != len(expression_columns):
-                raise ValueError(
-                    f"extra {key} for dataset {dataset_id} row count ({row_count}) must match expression columns ({len(expression_columns)})"
-                )
-        elif kind == "column_subset_expression_genes":
-            present = values_by_column.get(column, set())
-            unknown = sorted(present.difference(expression_genes))
-            if unknown:
-                raise ValueError(
-                    f"extra {key} for dataset {dataset_id} column {column!r} contains identifiers not present in expression genes: "
-                    + ", ".join(unknown[:8])
-                )
-        elif kind == "column_subset_extra_column":
-            present = values_by_column.get(column, set())
-            other_values = lookup_extra_column(
-                str(rule.get("other_input", "")).strip(),
-                str(rule.get("other_column", "")).strip(),
-            )
-            unknown = sorted(present.difference(other_values))
-            if unknown:
-                raise ValueError(
-                    f"extra {key} for dataset {dataset_id} column {column!r} contains identifiers not present in referenced extra: "
-                    + ", ".join(unknown[:8])
-                )
-        elif kind:
-            raise ValueError(f"extra {key} for dataset {dataset_id} uses unsupported cross-check: {kind}")
-    return row_count, len(fieldnames), values_by_column, first_column_values
-
-
-def _read_tsv_column_values(
-    *,
-    path: Path,
-    spec: dict[str, Any],
-    column: str,
-    dataset_id: str,
-    input_id: str,
-) -> set[str]:
-    delimiter = str(spec.get("delimiter", "\t"))
-    values: set[str] = set()
-    with path.open("r", encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle, delimiter=delimiter)
-        if column not in (reader.fieldnames or []):
-            raise ValueError(
-                f"extra {input_id} for dataset {dataset_id} is missing required cross-check column {column!r}"
-            )
-        for row in reader:
-            value = str(row.get(column, "")).strip()
-            if value:
-                values.add(value)
-    return values
-
-
-def _validate_scalar_type(
-    *,
-    value: str,
-    type_name: str,
-    key: str,
-    column: str,
-    dataset_id: str,
-    line_no: int,
-) -> None:
-    if type_name == "string":
-        return
-    if type_name == "int":
-        try:
-            int(value)
-        except ValueError as exc:
-            raise ValueError(
-                f"extra {key} for dataset {dataset_id} column {column!r} must be int at line {line_no}"
-            ) from exc
-        return
-    if type_name == "float":
-        try:
-            number = float(value)
-        except ValueError as exc:
-            raise ValueError(
-                f"extra {key} for dataset {dataset_id} column {column!r} must be float at line {line_no}"
-            ) from exc
-        if not math.isfinite(number):
-            raise ValueError(
-                f"extra {key} for dataset {dataset_id} column {column!r} must be finite at line {line_no}"
-            )
-        return
-    raise ValueError(
-        f"extra {key} for dataset {dataset_id} uses unsupported column type {type_name!r}"
-    )
 
 
 __all__ = ["ROOT_PARENT", "validate_simulator_output_package"]

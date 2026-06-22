@@ -408,7 +408,7 @@
                 <label><input name="custom-tool-execution-mode" type="radio" value="global" checked /> global</label>
                 <label><input name="custom-tool-execution-mode" type="radio" value="group_native" /> group native</label>
                 <label><input name="custom-tool-execution-mode" type="radio" value="group_emulated" /> group emulated</label>
-                <label><input name="custom-tool-execution-mode" type="radio" value="cell_native" /> cell native</label>
+                <label><input name="custom-tool-execution-mode" type="radio" value="column_native" /> column native</label>
                 <label><input name="custom-tool-execution-mode" type="radio" value="group_aggregated" /> group aggregated</label>
               </div>
               <details class="custom-tool-mode-guide">
@@ -465,7 +465,7 @@
                       </div>
                     </article>
                     <article class="mode-guide-card">
-                      <span class="mode-guide-mode-pill">cell native</span>
+                      <span class="mode-guide-mode-pill">column native</span>
                       <div class="mode-guide-flow">
                         <div>
                           <strong>Image receives</strong>
@@ -473,7 +473,7 @@
                         </div>
                         <div>
                           <strong>Image returns</strong>
-                          <p>Cell-level rows using <code>context=cell:&lt;cell_id&gt;</code>.</p>
+                          <p>Per-column rows using <code>context=column:&lt;column_id&gt;</code>.</p>
                         </div>
                       </div>
                     </article>
@@ -482,11 +482,11 @@
                       <div class="mode-guide-flow">
                         <div>
                           <strong>Image receives</strong>
-                          <p>One cell-native Docker run on the full expression matrix. ANDREA requires <code>groups.tsv</code>.</p>
+                          <p>One column-native Docker run on the full expression matrix. ANDREA requires <code>groups.tsv</code>.</p>
                         </div>
                         <div>
                           <strong>Image returns</strong>
-                          <p><code>cell:&lt;cell_id&gt;</code> rows; ANDREA aggregates them into group-level rows.</p>
+                          <p><code>column:&lt;column_id&gt;</code> rows; ANDREA aggregates them into group-level rows.</p>
                         </div>
                       </div>
                     </article>

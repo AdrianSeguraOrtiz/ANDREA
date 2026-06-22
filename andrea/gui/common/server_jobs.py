@@ -13,6 +13,13 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def start_background_thread(
+    *, target: Any, kwargs: dict[str, Any], daemon: bool = True
+) -> None:
+    """Start one background worker thread for GUI job execution."""
+    threading.Thread(target=target, kwargs=kwargs, daemon=daemon).start()
+
+
 def run_parallel(tasks: list[Any], *, max_workers: int) -> None:
     """Run callables in bounded thread batches and raise the first task error."""
     if len(tasks) <= 1 or max_workers <= 1:

@@ -381,7 +381,7 @@ export function addRunCard(initial = {}) {
   executionModeInput.title =
     modeOptions.length <= 1
       ? "This tool has a single execution mode."
-      : "Choose global, native grouped, ANDREA-emulated grouped, native per-cell, or ANDREA group aggregation from native per-cell output.";
+      : "Choose global, native grouped, ANDREA-emulated grouped, native per-column, or ANDREA group aggregation from native per-column output.";
 
   runIdInput.value = initial.run_id || buildRunId(tool.tool_id);
   renderRunParamsForm(node, tool, initial.params || null);

@@ -8,7 +8,8 @@
   "required": [
     "schema_version",
     "simulator_id",
-    "profile",
+    "data_axes",
+    "truth_requirements",
     "seed",
     "expression",
     "extras",
@@ -25,28 +26,43 @@
       "type": "string",
       "minLength": 1
     },
-    "profile": {
-      "type": "string",
-      "minLength": 1
-    },
     "seed": {
       "type": "integer"
     },
     "expression": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "genes", "columns", "column_kind", "expression_profile"],
+      "required": [
+        "path",
+        "genes",
+        "columns",
+        "column_kind"
+      ],
       "properties": {
-        "path": { "type": "string", "minLength": 1, "pattern": ".*\\.tsv$" },
-        "genes": { "type": "integer", "minimum": 1 },
-        "columns": { "type": "integer", "minimum": 1 },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": ".*\\.tsv$"
+        },
+        "genes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1
+        },
         "column_kind": {
           "type": "string",
-          "enum": ["samples", "cells", "timepoints", "perturbations"]
-        },
-        "expression_profile": {
-          "type": "string",
-          "enum": ["bulk", "scrna", "mixed", "unknown"]
+          "enum": [
+            "samples",
+            "cells",
+            "timepoints",
+            "perturbations",
+            "spots",
+            "metacells",
+            "conditions"
+          ]
         }
       }
     },
@@ -54,15 +70,140 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "groups": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
-        "cell_phenotypes": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
-        "cluster_identities": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
-        "enrichment_background": { "type": ["string", "null"], "pattern": ".*\\.txt$" },
-        "lineage_tree": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
-        "pseudotime": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
-        "prior_grn": { "type": ["string", "null"], "pattern": ".*\\.tsv$" },
-        "tf_list": { "type": ["string", "null"], "pattern": ".*\\.txt$" },
-        "prior_grn_by_group": { "type": ["string", "null"], "pattern": ".*\\.tsv$" }
+        "groups": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "column_descriptors": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "column_phenotypes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "cluster_identities": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "enrichment_background": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.txt$"
+        },
+        "interventions": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "lineage_tree": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "perturbation_design": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "pseudotime": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "prior_grn": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "tf_list": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.txt$"
+        },
+        "prior_grn_by_group": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "replicates": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "timepoints": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": ".*\\.tsv$"
+        },
+        "spatial_coordinates": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional spatial coordinate TSV path. Detailed content validation is defined in input_specs/spatial_coordinates.json."
+        },
+        "chromatin_accessibility": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional chromatin accessibility matrix TSV path. Detailed content validation is defined in input_specs/chromatin_accessibility.json."
+        },
+        "chromatin_regions": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional chromatin region metadata TSV path. Detailed content validation is defined in input_specs/chromatin_regions.json."
+        },
+        "cell_cell_interactions": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional cell-cell interaction TSV path. Detailed content validation is defined in input_specs/cell_cell_interactions.json."
+        }
       }
     },
     "native_outputs": {
@@ -74,25 +215,236 @@
       },
       "additionalProperties": {
         "type": "string",
-        "minLength": 1
+        "minLength": 1,
+        "pattern": "^native/.+"
       }
     },
     "truth": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["gene_universe", "networks"],
+      "required": [
+        "gene_universe",
+        "networks"
+      ],
       "properties": {
-        "gene_universe": { "type": "string", "pattern": ".*\\.txt$" },
-        "networks": { "type": "string", "pattern": ".*\\.csv$" }
+        "gene_universe": {
+          "type": "string",
+          "pattern": ".*\\.txt$"
+        },
+        "networks": {
+          "type": "string",
+          "pattern": ".*\\.csv$"
+        }
       }
     },
     "provenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["raw_dir"],
+      "required": [
+        "raw_dir"
+      ],
       "properties": {
-        "raw_dir": { "type": "string", "minLength": 1 },
-        "notes": { "type": "string", "minLength": 1 }
+        "raw_dir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "data_axes": {
+      "$ref": "#/$defs/data_axes"
+    },
+    "truth_requirements": {
+      "$ref": "#/$defs/truth_requirements"
+    }
+  },
+  "$defs": {
+    "data_axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measurement",
+        "resolution",
+        "column_kind",
+        "experimental_design"
+      ],
+      "properties": {
+        "measurement": {
+          "type": "string",
+          "enum": [
+            "rna_expression"
+          ]
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "bulk",
+            "single_cell",
+            "spatial",
+            "pseudo_bulk",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "column_kind": {
+          "type": "string",
+          "enum": [
+            "samples",
+            "cells",
+            "timepoints",
+            "perturbations",
+            "spots",
+            "metacells",
+            "conditions"
+          ]
+        },
+        "experimental_design": {
+          "type": "string",
+          "enum": [
+            "observational",
+            "steady_state",
+            "perturbational",
+            "time_series",
+            "trajectory",
+            "differentiation"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "cells"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "single_cell"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "spots"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "const": "spatial"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "column_kind": {
+                "const": "metacells"
+              }
+            },
+            "required": [
+              "column_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "resolution": {
+                "enum": [
+                  "single_cell",
+                  "pseudo_bulk"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "time_series"
+              }
+            },
+            "required": [
+              "experimental_design"
+            ]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": [
+                  "timepoints",
+                  "cells",
+                  "samples"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "experimental_design": {
+                "const": "perturbational"
+              }
+            },
+            "required": [
+              "experimental_design"
+            ]
+          },
+          "then": {
+            "properties": {
+              "column_kind": {
+                "enum": [
+                  "perturbations",
+                  "cells",
+                  "samples"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "truth_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contexts"
+      ],
+      "properties": {
+        "contexts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "global",
+              "group",
+              "column"
+            ]
+          },
+          "contains": {
+            "const": "global"
+          }
+        }
       }
     }
   }

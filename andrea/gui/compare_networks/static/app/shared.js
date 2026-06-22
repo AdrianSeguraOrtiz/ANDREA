@@ -1,3 +1,9 @@
+export {
+  contextFamily,
+  contextLabel,
+  sortContext,
+} from "/static-common/app/network_context.js?v=20260620a";
+
 export const $ = (selector) => document.querySelector(selector);
 
 export function escapeHtml(value) {
@@ -42,38 +48,4 @@ export function stableHash(text) {
     hash |= 0;
   }
   return Math.abs(hash);
-}
-
-export function contextFamily(context) {
-  const raw = String(context || "");
-  if (raw.includes(":")) {
-    return raw.split(":", 1)[0] || "other";
-  }
-  if (raw === "global") {
-    return "global";
-  }
-  return raw || "other";
-}
-
-export function sortContext(a, b) {
-  const order = { global: 0, group: 1, cell: 2, other: 3 };
-  const familyA = contextFamily(a);
-  const familyB = contextFamily(b);
-  const rankA = order[familyA] ?? order.other;
-  const rankB = order[familyB] ?? order.other;
-  if (rankA !== rankB) {
-    return rankA - rankB;
-  }
-  return contextSortLabel(a).localeCompare(contextSortLabel(b), undefined, { numeric: true });
-}
-
-function contextSortLabel(context) {
-  const text = String(context || "");
-  const idx = text.indexOf(":");
-  if (idx >= 0) {
-    const prefix = text.slice(0, idx);
-    const value = text.slice(idx + 1);
-    return value ? `${prefix} ${value}` : prefix;
-  }
-  return text;
 }

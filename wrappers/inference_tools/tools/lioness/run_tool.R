@@ -276,7 +276,7 @@ build_network <- function(long_weights) {
     score = scores,
     sign = ifelse(collapsed$weight > 0, "+", "-"),
     evidence = "association",
-    context = paste0("cell:", collapsed$cell),
+    context = paste0("column:", collapsed$cell),
     stringsAsFactors = FALSE
   )
   network[order(network$context, network$source, network$target), , drop = FALSE]
@@ -349,7 +349,7 @@ main <- function() {
     write_raw_weights(long_weights, file.path(raw_dir, "lioness_weights.tsv.gz"))
     network <- build_network(long_weights)
     write.csv(network, file.path(output_dir, "network.csv"), row.names = FALSE)
-    append_log(log_path, sprintf("Wrote network.csv with %d non-zero undirected cell-context rows.", nrow(network)))
+    append_log(log_path, sprintf("Wrote network.csv with %d non-zero undirected column-context rows.", nrow(network)))
     append_log(log_path, paste(capture.output(sessionInfo()), collapse = "\n"))
 
     write_progress(progress_path, "completed", 100L, "done", "LIONESS completed successfully")

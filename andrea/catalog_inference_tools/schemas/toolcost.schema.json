@@ -150,7 +150,7 @@
             "single",
             "native_grouped",
             "andrea_group_emulated",
-            "cell_native",
+            "column_native",
             "andrea_group_aggregated"
           ],
           "description": "How the logical run maps to physical wrapper/container tasks."
@@ -162,7 +162,7 @@
         },
         "aggregation_step": {
           "type": "string",
-          "enum": ["none", "cell_to_group"],
+          "enum": ["none", "column_to_group"],
           "description": "Deterministic ANDREA post-processing step represented by this profile, if any."
         }
       }
@@ -246,7 +246,7 @@
         },
         "aggregation_step": {
           "type": "string",
-          "enum": ["none", "cell_to_group"],
+          "enum": ["none", "column_to_group"],
           "description": "Post-processing aggregation step attached to this benchmark profile."
         },
         "notes": {

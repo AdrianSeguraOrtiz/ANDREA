@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "key": "timepoints",
+  "file_kind": "tsv",
+  "description": "Timepoint TSV: first column maps expression column identifiers to observed time coordinates or ordered sampling times.",
+  "example": "column\ttimepoint\nsample_1\t0\nsample_2\t6\nsample_3\t12",
+  "delimiter": "\t",
+  "header": true,
+  "min_rows": 1,
+  "min_columns": 2,
+  "first_column_role": "expression_column_id",
+  "required_columns": [
+    "timepoint"
+  ],
+  "unique_first_column": true,
+  "column_types": {
+    "timepoint": "float",
+    "timepoint_label": "string"
+  },
+  "cross_checks": [
+    {
+      "kind": "first_column_subset_expression_columns"
+    },
+    {
+      "kind": "row_count_matches_expression_columns"
+    }
+  ]
+}

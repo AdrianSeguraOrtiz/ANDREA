@@ -19,13 +19,22 @@ TAXONOMIC_GROUPS = frozenset(
 SIMULATION_EXTRA_IDS = frozenset(
     {
         "groups",
-        "cell_phenotypes",
+        "column_descriptors",
+        "column_phenotypes",
         "cluster_identities",
+        "cell_cell_interactions",
+        "chromatin_accessibility",
+        "chromatin_regions",
         "enrichment_background",
+        "interventions",
         "lineage_tree",
+        "perturbation_design",
         "pseudotime",
         "prior_grn",
-        "tf_list",
         "prior_grn_by_group",
+        "replicates",
+        "spatial_coordinates",
+        "tf_list",
+        "timepoints",
     }
 )

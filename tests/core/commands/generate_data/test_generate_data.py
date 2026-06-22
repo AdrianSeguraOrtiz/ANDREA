@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 
 from andrea.core.commands.generate_data.pipeline import (
     _copy_dataset_from_stage,
+    _validate_selected_native_outputs,
     _validate_truth_outputs,
     execute_generate_data,
     run_generate_data,
@@ -69,13 +70,105 @@ def _entry_by_id(entries: list[dict[str, object]], simulator_id: str) -> dict[st
     raise AssertionError(f"Missing simulator entry: {simulator_id}")
 
 
+TRAJECTORY_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "trajectory",
+}
+DIFFERENTIATION_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "differentiation",
+}
+STEADY_STATE_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "steady_state",
+}
+BULK_TIME_SERIES_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "bulk",
+    "column_kind": "timepoints",
+    "experimental_design": "time_series",
+}
+SINGLE_CELL_TIME_SERIES_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "time_series",
+}
+SINGLE_CELL_PERTURBATIONAL_AXES = {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "perturbational",
+}
+GLOBAL_TRUTH = {"contexts": ["global"]}
+GROUP_TRUTH = {"contexts": ["global", "group"]}
+COLUMN_TRUTH = {"contexts": ["global", "group", "column"]}
+
+
+def _copy_json(value: dict[str, object]) -> dict[str, object]:
+    return json.loads(json.dumps(value))
+
+
+def _truth_for_level(truth_level: str | None) -> dict[str, object]:
+    if truth_level == "column":
+        return _copy_json(COLUMN_TRUTH)
+    if truth_level == "group":
+        return _copy_json(GROUP_TRUTH)
+    return _copy_json(GLOBAL_TRUTH)
+
+
+def _axes_for_simulator(
+    *,
+    simulator_id: str | None = None,
+    simulator_params: dict[str, object] | None = None,
+) -> dict[str, object]:
+    if simulator_id == "scmultisim":
+        return _copy_json(DIFFERENTIATION_AXES)
+    if simulator_id == "sergio":
+        mode = str((simulator_params or {}).get("simulation_mode", "steady_state"))
+        if mode == "differentiation":
+            return _copy_json(DIFFERENTIATION_AXES)
+        return _copy_json(STEADY_STATE_AXES)
+    return _copy_json(TRAJECTORY_AXES)
+
+
+def _axes_for_request_id(request_id: str) -> dict[str, object]:
+    if request_id.startswith("scmultisim_"):
+        return _copy_json(DIFFERENTIATION_AXES)
+    if request_id.startswith("sergio_"):
+        return _copy_json(DIFFERENTIATION_AXES)
+    return _copy_json(TRAJECTORY_AXES)
+
+
+def _request_stub(
+    *,
+    truth_level: str | None = None,
+    data_axes: dict[str, object] | None = None,
+    truth_requirements: dict[str, object] | None = None,
+    **kwargs: object,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        data_axes=data_axes or _copy_json(TRAJECTORY_AXES),
+        truth_requirements=truth_requirements or _truth_for_level(truth_level),
+        **kwargs,
+    )
+
+
 class GenerateDataDyngenTests(unittest.TestCase):
     def _write_scenario_request(
         self,
         base: Path,
         *,
         request_id: str,
-        profile: str,
+        truth_level: str | None = None,
+        data_axes: dict[str, object] | None = None,
+        truth_requirements: dict[str, object] | None = None,
         requested_extras: list[str],
         inputs: dict[str, object] | None = None,
         organism: dict[str, object] | None = None,
@@ -83,7 +176,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
         payload = {
             "schema_version": "1.0",
             "id": request_id,
-            "profile": profile,
+            "data_axes": data_axes or _axes_for_request_id(request_id),
+            "truth_requirements": truth_requirements or _truth_for_level(truth_level),
             "organism": organism
             or {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
             "requested_extras": requested_extras,
@@ -101,7 +195,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
         base: Path,
         *,
         request_id: str,
-        profile: str,
+        truth_level: str | None = None,
+        data_axes: dict[str, object] | None = None,
+        truth_requirements: dict[str, object] | None = None,
         simulator_id: str,
         requested_extras: list[str],
         simulator_params: dict[str, object],
@@ -120,6 +216,16 @@ class GenerateDataDyngenTests(unittest.TestCase):
             "eta_source": "test_fixture",
             "warnings": [],
         }
+        resolved_data_axes = data_axes or _axes_for_simulator(
+            simulator_id=simulator_id,
+            simulator_params=simulator_params,
+        )
+        resolved_truth_requirements = truth_requirements or _truth_for_level(truth_level)
+        required_extras = (
+            {"groups"}
+            if "group" in set(resolved_truth_requirements.get("contexts", []))
+            else set()
+        )
         task_payloads = []
         waves = []
         for idx, seed in enumerate(seeds, start=1):
@@ -169,15 +275,12 @@ class GenerateDataDyngenTests(unittest.TestCase):
         payload = {
             "schema_version": "1.0",
             "id": request_id,
-            "profile": profile,
+            "data_axes": resolved_data_axes,
+            "truth_requirements": resolved_truth_requirements,
             "organism": organism
             or {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
             "requested_extras": requested_extras,
-            "effective_extras": sorted(
-                set(requested_extras).union(
-                    {"groups"} if profile == "scrna_grouped" else set()
-                )
-            ),
+            "effective_extras": sorted(set(requested_extras).union(required_extras)),
             "inputs": inputs or {},
             "base_seed": base_seed,
             "runs": [
@@ -296,8 +399,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             scenario_path = self._write_scenario_request(
                 Path(tmp),
-                request_id="scrna_grouped_lineage",
-                profile="scrna_grouped",
+                request_id="trajectory_grouped_lineage",
+                truth_level="group",
                 requested_extras=["lineage_tree"],
             )
             with patch(
@@ -311,7 +414,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
         dyngen_entry = _entry_by_id(report["warning"], "dyngen")
         self.assertEqual(
             dyngen_entry["truth_outputs"],
-            {"global": "native", "group": "derivable", "cell": "none"},
+            [
+                {"context": "global", "status": "native"},
+                {"context": "group", "status": "derivable"},
+            ],
         )
         self.assertIn("groups", dyngen_entry["derived_extras_used"])
         self.assertIn("lineage_tree", dyngen_entry["derived_extras_used"])
@@ -319,17 +425,6 @@ class GenerateDataDyngenTests(unittest.TestCase):
             any(
                 "canonical truth context 'group:'" in message
                 for message in _issue_messages(dyngen_entry, "warn")
-            )
-        )
-        sergio_entry = _entry_by_id(report["warning"], "sergio")
-        self.assertEqual(
-            sergio_entry["truth_outputs"],
-            {"global": "native", "group": "derivable", "cell": "none"},
-        )
-        self.assertTrue(
-            any(
-                "canonical truth context 'group:'" in message
-                for message in _issue_messages(sergio_entry, "warn")
             )
         )
 
@@ -351,7 +446,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="sergio_lineage_without_differentiation",
-                profile="scrna_grouped",
+                truth_level="group",
                 requested_extras=["lineage_tree"],
                 inputs={
                     "sergio_target_interactions": {"path": str(target_path)},
@@ -382,7 +477,268 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 ),
                 self.assertRaisesRegex(
                     ValueError,
-                    "lineage_tree requires simulation_mode=differentiation",
+                    "simulation_mode.*controlled by the selected scenario",
+                ),
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+
+    def test_sergio_differentiation_preflight_uses_bound_default_params(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="sergio_bound_preflight",
+                truth_level="group",
+                requested_extras=[],
+            )
+            with patch(
+                "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                return_value=None,
+            ):
+                report = preflight_generate_data_scenario(scenario_path)
+            sergio = _entry_by_id(
+                report["warning"] + report["eligible"] + report["blocked"],
+                "sergio",
+            )
+            self.assertNotEqual(sergio["status"], "blocked")
+            self.assertNotIn(
+                "differentiation data axes require simulation_mode=differentiation",
+                "\n".join(_issue_messages(sergio, "block")),
+            )
+
+    def test_sergio_differentiation_plan_binds_design_parameters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="sergio_bound_plan",
+                truth_level="group",
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "sergio_diff",
+                        "simulator_id": "sergio",
+                        "replicates": 1,
+                        "params": {},
+                    }
+                ],
+            )
+            with patch(
+                "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                return_value=None,
+            ):
+                planned_path = plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+            plan = json.loads(planned_path.read_text(encoding="utf-8"))
+            params = plan["runs"][0]["simulator_params"]
+            self.assertEqual(params["simulation_mode"], "differentiation")
+            self.assertEqual(params["input_preset"], "demo_differentiation")
+            self.assertEqual(params["number_bins"], 3)
+
+    def test_dyngen_trajectory_plan_rejects_synchronised_kind(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="dyngen_trajectory_kind_binding",
+                data_axes=_copy_json(TRAJECTORY_AXES),
+                truth_requirements=_copy_json(GLOBAL_TRUTH),
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "dyngen_bad_kind",
+                        "simulator_id": "dyngen",
+                        "replicates": 1,
+                        "params": {
+                            "experiment_params": {
+                                "kind": "synchronised"
+                            }
+                        },
+                    }
+                ],
+            )
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                    return_value=None,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "experiment_params.kind.*controlled by the selected scenario",
+                ),
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+
+    def test_dyngen_trajectory_plan_rejects_knockdown_simulations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="dyngen_trajectory_knockdown_binding",
+                data_axes=_copy_json(TRAJECTORY_AXES),
+                truth_requirements=_copy_json(GLOBAL_TRUTH),
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "dyngen_bad_knockdowns",
+                        "simulator_id": "dyngen",
+                        "replicates": 1,
+                        "params": {
+                            "simulation_params": {
+                                "num_knockdown_simulations": 1
+                            }
+                        },
+                    }
+                ],
+            )
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                    return_value=None,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "simulation_params.num_knockdown_simulations.*controlled by the selected scenario",
+                ),
+            ):
+                plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+
+    def test_dyngen_time_series_plan_adds_required_timepoints(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="dyngen_time_series_extras",
+                data_axes=_copy_json(SINGLE_CELL_TIME_SERIES_AXES),
+                truth_requirements=_copy_json(GROUP_TRUTH),
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "dyngen_time_series",
+                        "simulator_id": "dyngen",
+                        "replicates": 1,
+                        "params": {},
+                    }
+                ],
+            )
+            with patch(
+                "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                return_value=None,
+            ):
+                planned_path = plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+            plan = json.loads(planned_path.read_text(encoding="utf-8"))
+            self.assertEqual(plan["effective_extras"], ["groups", "timepoints"])
+            params = plan["runs"][0]["simulator_params"]
+            self.assertEqual(params["experiment_params"]["kind"], "synchronised")
+            self.assertEqual(params["simulation_params"]["num_knockdown_simulations"], 0)
+
+    def test_dyngen_perturbational_plan_adds_required_design_extras(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="dyngen_perturbational_extras",
+                data_axes=_copy_json(SINGLE_CELL_PERTURBATIONAL_AXES),
+                truth_requirements=_copy_json(GLOBAL_TRUTH),
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "dyngen_perturbational",
+                        "simulator_id": "dyngen",
+                        "replicates": 1,
+                        "params": {},
+                    }
+                ],
+            )
+            with patch(
+                "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                return_value=None,
+            ):
+                planned_path = plan_generate_data_request(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_path=base / "simulation-plan.json",
+                    max_parallel_tasks=1,
+                )
+            plan = json.loads(planned_path.read_text(encoding="utf-8"))
+            self.assertEqual(plan["effective_extras"], ["interventions", "perturbation_design"])
+            params = plan["runs"][0]["simulator_params"]
+            self.assertEqual(params["experiment_params"]["kind"], "snapshot")
+            self.assertEqual(params["simulation_params"]["num_knockdown_simulations"], 4)
+            self.assertEqual(params["knockdown_params"]["num_genes"], 1)
+
+    def test_dyngen_perturbational_plan_rejects_multi_gene_knockdowns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = self._write_scenario_request(
+                base,
+                request_id="dyngen_perturbational_knockdown_binding",
+                data_axes=_copy_json(SINGLE_CELL_PERTURBATIONAL_AXES),
+                truth_requirements=_copy_json(GLOBAL_TRUTH),
+                requested_extras=[],
+            )
+            simulator_runs_path = self._write_simulator_runs(
+                base,
+                [
+                    {
+                        "run_id": "dyngen_bad_knockdown_genes",
+                        "simulator_id": "dyngen",
+                        "replicates": 1,
+                        "params": {
+                            "knockdown_params": {
+                                "num_genes": 2
+                            }
+                        },
+                    }
+                ],
+            )
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+                    return_value=None,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "knockdown_params.num_genes.*controlled by the selected scenario",
                 ),
             ):
                 plan_generate_data_request(
@@ -397,7 +753,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 Path(tmp),
                 request_id="runtime_blocked",
-                profile="scrna_grouped",
+                truth_level="group",
                 requested_extras=["lineage_tree"],
             )
             with patch(
@@ -425,7 +781,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="unknown_input",
-                profile="scrna_grouped",
+                truth_level="group",
                 requested_extras=[],
                 inputs={"custom_backbone": {"path": "custom.tsv"}},
             )
@@ -442,7 +798,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 Path(tmp),
                 request_id="scmultisim_default_inputs",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
             )
             with patch(
@@ -487,7 +843,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
         inactive = validate_simulator_inputs(
             simulator_id="toy",
             simulator_spec=simulator_spec,
-            profile="scrna_grouped",
+            data_axes=_copy_json(TRAJECTORY_AXES),
+            truth_requirements=_copy_json(GROUP_TRUTH),
             requested_extras=[],
             simulator_params={},
             native_outputs=[],
@@ -496,7 +853,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
         missing = validate_simulator_inputs(
             simulator_id="toy",
             simulator_spec=simulator_spec,
-            profile="scrna_grouped",
+            data_axes=_copy_json(TRAJECTORY_AXES),
+            truth_requirements=_copy_json(GROUP_TRUTH),
             requested_extras=[],
             simulator_params={},
             native_outputs=["cell_meta"],
@@ -505,7 +863,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
         satisfied = validate_simulator_inputs(
             simulator_id="toy",
             simulator_spec=simulator_spec,
-            profile="scrna_grouped",
+            data_axes=_copy_json(TRAJECTORY_AXES),
+            truth_requirements=_copy_json(GROUP_TRUTH),
             requested_extras=[],
             simulator_params={},
             native_outputs=["cell_meta"],
@@ -519,14 +878,14 @@ class GenerateDataDyngenTests(unittest.TestCase):
         )
         self.assertEqual(satisfied, [])
 
-    def test_preflight_accepts_cell_specific_cumulative_truth(
+    def test_preflight_accepts_column_cumulative_truth(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             scenario_path = self._write_scenario_request(
                 Path(tmp),
-                request_id="cell_specific_contract",
-                profile="scrna_cell_specific",
+                request_id="column_truth_contract",
+                truth_level="column",
                 requested_extras=[],
             )
             with patch(
@@ -535,17 +894,15 @@ class GenerateDataDyngenTests(unittest.TestCase):
             ):
                 report = preflight_generate_data_scenario(scenario_path)
 
-        self.assertEqual(report["scenario"]["profile"], "scrna_cell_specific")
+        self.assertEqual(report["scenario"]["data_axes"], TRAJECTORY_AXES)
+        self.assertEqual(report["scenario"]["truth_requirements"], COLUMN_TRUTH)
         self.assertEqual(_entry_by_id(report["eligible"], "dyngen")["status"], "eligible")
-        self.assertEqual(
-            _entry_by_id(report["eligible"], "scmultisim")["status"],
-            "eligible",
-        )
 
     def test_preflight_missing_truth_issue_names_required_contexts(self) -> None:
         scenario = ResolvedScenarioRequest(
-            request_id="cell_specific_context_issue",
-            profile="scrna_cell_specific",
+            request_id="column_truth_context_issue",
+            data_axes=_copy_json(TRAJECTORY_AXES),
+            truth_requirements=_copy_json(COLUMN_TRUTH),
             organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
             requested_extras=[],
             effective_extras=[],
@@ -566,17 +923,18 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     "conditional_required": [],
                 },
                 "compatibility_rules": [],
-                "profile_capabilities": {
-                    "scrna_cell_specific": {
+                "capabilities": [
+                    {
+                        "data_axes": _copy_json(TRAJECTORY_AXES),
+                        "truth_requirements": _copy_json(COLUMN_TRUTH),
                         "native_extras": [],
                         "derivable_extras": [],
-                        "truth_outputs": {
-                            "global": "native",
-                            "group": "none",
-                            "cell": "native",
-                        },
+                        "truth_outputs": [
+                            {"context": "global", "status": "native"},
+                            {"context": "column", "status": "native"},
+                        ],
                     }
-                },
+                ],
             },
             scenario=scenario,
         )
@@ -597,7 +955,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="unused_input_is_allowed",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
                 inputs={"regulatory_network": {"path": "regulatory_network.tsv"}},
             )
@@ -608,9 +966,14 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 report = preflight_generate_data_scenario(scenario_path)
 
         self.assertEqual(_entry_by_id(report["eligible"], "dyngen")["status"], "eligible")
-        self.assertEqual(
-            _entry_by_id(report["warning"], "scmultisim")["status"],
-            "warning",
+        self.assertTrue(
+            any(
+                "requested data_axes/truth_requirements are not supported" in message
+                for message in _issue_messages(
+                    _entry_by_id(report["blocked"], "scmultisim"),
+                    "block",
+                )
+            )
         )
 
     def test_plan_rejects_scmultisim_input_grn_source_without_regulatory_network(
@@ -621,7 +984,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_missing_regulatory_network",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -649,15 +1012,15 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     max_parallel_tasks=1,
                 )
 
-    def test_plan_rejects_scmultisim_cell_specific_when_dynamic_grn_disabled(
+    def test_plan_rejects_scmultisim_column_truth_when_dynamic_grn_disabled(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             scenario_path = self._write_scenario_request(
                 base,
-                request_id="scmultisim_cell_specific_dynamic_required",
-                profile="scrna_cell_specific",
+                request_id="scmultisim_column_truth_dynamic_required",
+                truth_level="column",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -677,7 +1040,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(
                 ValueError,
-                "scrna_cell_specific group truth requires dynamic_grn.enabled=true",
+                "Column truth requires dynamic_grn.enabled=true",
             ):
                 plan_generate_data_request(
                     scenario_request_path=scenario_path,
@@ -694,7 +1057,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_grouped_dynamic_required",
-                profile="scrna_grouped",
+                truth_level="group",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -714,7 +1077,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(
                 ValueError,
-                "scrna_grouped group truth requires dynamic_grn.enabled=true",
+                "Group truth requires dynamic_grn.enabled=true",
             ):
                 plan_generate_data_request(
                     scenario_request_path=scenario_path,
@@ -734,7 +1097,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_with_regulatory_network",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
                 inputs={"regulatory_network": {"path": "regulatory_network.tsv"}},
             )
@@ -774,7 +1137,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_builtin_100_too_few",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -808,7 +1171,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_builtin_1139_too_few",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -849,7 +1212,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_input_grn_too_few",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
                 inputs={"regulatory_network": {"path": "regulatory_network.tsv"}},
             )
@@ -889,7 +1252,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_missing_tree_newick",
-                profile="scrna_grouped",
+                truth_level="group",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -925,7 +1288,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_with_tree_newick",
-                profile="scrna_grouped",
+                truth_level="group",
                 requested_extras=[],
                 inputs={"tree_newick": {"path": "tree_newick.txt"}},
             )
@@ -967,7 +1330,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="scmultisim_execute_missing_grn",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -1005,14 +1368,15 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 Path(tmp),
                 request_id="dyngen_lineage_ok",
-                profile="scrna_grouped",
+                truth_level="group",
                 simulator_id="dyngen",
                 requested_extras=["lineage_tree"],
                 simulator_params={"num_cells": 10},
             )
             resolved = validate_simulation_plan(plan_path)
 
-        self.assertEqual(resolved.profile, "scrna_grouped")
+        self.assertEqual(resolved.data_axes, TRAJECTORY_AXES)
+        self.assertEqual(resolved.truth_requirements, GROUP_TRUTH)
         self.assertEqual(len(resolved.simulator_runs), 1)
         self.assertEqual(resolved.simulator_runs[0].simulator_id, "dyngen")
         self.assertEqual(resolved.effective_extras, ["groups", "lineage_tree"])
@@ -1022,7 +1386,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 Path(tmp),
                 request_id="dyngen_native_outputs_ok",
-                profile="scrna_global",
+                truth_level="global",
                 simulator_id="dyngen",
                 requested_extras=[],
                 simulator_params={"num_cells": 10},
@@ -1040,13 +1404,16 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 Path(tmp),
                 request_id="dyngen_native_outputs_bad",
-                profile="scrna_global",
+                truth_level="global",
                 simulator_id="dyngen",
                 requested_extras=[],
                 simulator_params={"num_cells": 10},
                 native_outputs=["not_a_real_output"],
             )
-            with self.assertRaisesRegex(ValueError, "does not support native outputs"):
+            with self.assertRaisesRegex(
+                ValueError,
+                "does not support selected native outputs",
+            ):
                 validate_simulation_plan(plan_path)
 
     def test_validate_plan_rejects_unavailable_native_output(self) -> None:
@@ -1054,7 +1421,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 Path(tmp),
                 request_id="scmultisim_observed_counts_bad",
-                profile="scrna_global",
+                truth_level="global",
                 simulator_id="scmultisim",
                 requested_extras=[],
                 simulator_params={"num_cells": 10},
@@ -1072,7 +1439,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 Path(tmp),
                 request_id="scmultisim_builtin_100_bad_plan",
-                profile="scrna_global",
+                truth_level="global",
                 simulator_id="scmultisim",
                 requested_extras=[],
                 simulator_params={"grn_source": "builtin_100", "num_genes": 100},
@@ -1088,7 +1455,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 Path(tmp),
                 request_id="scmultisim_observed_counts_ok",
-                profile="scrna_global",
+                truth_level="global",
                 simulator_id="scmultisim",
                 requested_extras=[],
                 simulator_params={
@@ -1105,17 +1472,21 @@ class GenerateDataDyngenTests(unittest.TestCase):
             ["observed_counts"],
         )
 
-    def test_validate_plan_rejects_unsupported_profile(self) -> None:
+    def test_validate_plan_rejects_unsupported_semantic_request(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             plan_path = self._write_plan(
                 Path(tmp),
                 request_id="bulk_bad",
-                profile="bulk_time_series",
+                truth_level="global",
+                data_axes=_copy_json(BULK_TIME_SERIES_AXES),
                 simulator_id="dyngen",
                 requested_extras=[],
                 simulator_params={},
             )
-            with self.assertRaisesRegex(ValueError, "does not support profile"):
+            with self.assertRaisesRegex(
+                ValueError,
+                "does not support requested data_axes/truth_requirements",
+            ):
                 validate_simulation_plan(plan_path)
 
     def test_validate_plan_accepts_same_simulator_with_distinct_run_ids(self) -> None:
@@ -1124,7 +1495,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
             payload = {
                 "schema_version": "1.0",
                 "id": "multi_sim",
-                "profile": "scrna_global",
+                "data_axes": _copy_json(TRAJECTORY_AXES),
+                "truth_requirements": _copy_json(GLOBAL_TRUTH),
                 "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                 "requested_extras": [],
                 "effective_extras": [],
@@ -1265,7 +1637,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="plan_dyngen",
-                profile="scrna_grouped",
+                truth_level="group",
                 requested_extras=["lineage_tree", "tf_list"],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -1301,7 +1673,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
             [run["run_id"] for run in payload["runs"]],
             ["dyngen_small", "dyngen_linear"],
         )
-        self.assertEqual(payload["profile"], "scrna_grouped")
+        self.assertEqual(payload["data_axes"], TRAJECTORY_AXES)
+        self.assertEqual(payload["truth_requirements"], GROUP_TRUTH)
         self.assertEqual(payload["requested_extras"], ["lineage_tree", "tf_list"])
         simulator_params = payload["runs"][0]["simulator_params"]
         self.assertEqual(simulator_params["num_cells"], 25)
@@ -1329,7 +1702,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="plan_cost_profile",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -1352,10 +1725,11 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "schema_version": "1.0",
                 "profiles": [
                     {
-                        "profile_id": "scrna_global_test",
+                        "profile_id": "single_cell_cells_trajectory_global_test",
                         "benchmark_config": {
                             "simulator_id": "dyngen",
-                            "profile": "scrna_global",
+                            "data_axes": _copy_json(TRAJECTORY_AXES),
+                            "truth_requirements": _copy_json(GLOBAL_TRUTH),
                             "sizes": [{"genes": 10, "cells": 20}],
                             "threads_tested": [2],
                             "ram_gb_tested": [4.0],
@@ -1441,10 +1815,18 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(payload["execution"]["eta_total_seconds"], 7.0)
         self.assertEqual(len(payload["execution"]["waves"]), 1)
         features = payload["runs"][0]["eta_provenance"]["cost_profile"]["features"]
-        self.assertEqual(features["profile"], "scrna_global")
+        self.assertEqual(features["data_axes"], TRAJECTORY_AXES)
+        self.assertEqual(features["truth_requirements"], GLOBAL_TRUTH)
+        self.assertEqual(features["expression_profile"], "single_cell")
+        self.assertEqual(features["column_kind"], "cells")
+        self.assertEqual(features["experimental_design"], "trajectory")
+        self.assertEqual(features["truth_context_families"], ["global"])
+        self.assertEqual(features["extras"], [])
+        self.assertEqual(features["requested_extras"], [])
+        self.assertEqual(features["effective_extras"], [])
         self.assertEqual(features["n_cells"], 20)
         self.assertEqual(features["n_genes"], 10)
-        self.assertFalse(features["native_cell_truth_enabled"])
+        self.assertFalse(features["column_truth_requested"])
 
     def test_plan_uses_conservative_eta_fallback_without_cost_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1452,7 +1834,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             scenario_path = self._write_scenario_request(
                 base,
                 request_id="plan_cost_fallback",
-                profile="scrna_global",
+                truth_level="global",
                 requested_extras=[],
             )
             simulator_runs_path = self._write_simulator_runs(
@@ -1497,7 +1879,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 base,
                 request_id="missing_waves",
-                profile="scrna_global",
+                truth_level="global",
                 simulator_id="dyngen",
                 requested_extras=[],
                 simulator_params={"num_cells": 10},
@@ -1545,7 +1927,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             self.assertTrue((dataset_dir / "truth" / "networks.csv").exists())
             self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
 
-    def test_validate_truth_outputs_requires_group_context_for_cell_specific_profile(
+    def test_validate_truth_outputs_requires_group_context_for_column_truth(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1563,21 +1945,23 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
                 encoding="utf-8",
             )
-            request = SimpleNamespace(
-                profile="scrna_cell_specific",
+            request = _request_stub(
+                truth_level="column",
                 simulator_spec={
-                    "profile_capabilities": {
-                        "scrna_cell_specific": {
-                            "truth_outputs": {
-                                "global": "none",
-                                "group": "none",
-                                "cell": "native",
-                            }
+                    "capabilities": [
+                        {
+                            "data_axes": _copy_json(TRAJECTORY_AXES),
+                            "truth_requirements": _copy_json(COLUMN_TRUTH),
+                            "truth_outputs": [
+                                {"context": "column", "status": "native"}
+                            ],
                         }
-                    }
+                    ]
                 },
             )
             manifest = {
+                "data_axes": _copy_json(TRAJECTORY_AXES),
+                "truth_requirements": _copy_json(COLUMN_TRUTH),
                 "expression": {
                     "path": "expression.tsv",
                     "genes": 2,
@@ -1599,7 +1983,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     simulator_manifest=manifest,
                 )
 
-    def test_validate_truth_outputs_requires_cell_context_for_cell_specific_profile(
+    def test_validate_truth_outputs_requires_column_context_for_column_truth(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1619,8 +2003,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "G1,G2,1,+,simulated_truth,group:A\n",
                 encoding="utf-8",
             )
-            request = SimpleNamespace(profile="scrna_cell_specific")
+            request = _request_stub(truth_level="column")
             manifest = {
+                "data_axes": _copy_json(TRAJECTORY_AXES),
+                "truth_requirements": _copy_json(COLUMN_TRUTH),
                 "expression": {
                     "path": "expression.tsv",
                     "genes": 2,
@@ -1634,7 +2020,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 },
             }
 
-            with self.assertRaisesRegex(ValueError, "required context prefix: cell:"):
+            with self.assertRaisesRegex(ValueError, "required context prefix: column:"):
                 _validate_truth_outputs(
                     stage_dir=stage_dir,
                     dataset_id="cell_missing",
@@ -1642,7 +2028,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     simulator_manifest=manifest,
                 )
 
-    def test_validate_truth_outputs_accepts_cell_specific_contexts(self) -> None:
+    def test_validate_truth_outputs_accepts_column_specific_contexts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             stage_dir = Path(tmp)
             (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
@@ -1663,11 +2049,14 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "source,target,score,sign,evidence,context\n"
                 "G1,G2,1,+,simulated_truth,global\n"
                 "G1,G2,1,+,simulated_truth,group:A\n"
-                "G1,G2,1,+,simulated_truth,cell:C1\n",
+                "G1,G2,1,+,simulated_truth,column:C1\n"
+                "G1,G2,1,+,simulated_truth,column:C2\n",
                 encoding="utf-8",
             )
-            request = SimpleNamespace(profile="scrna_cell_specific")
+            request = _request_stub(truth_level="column")
             manifest = {
+                "data_axes": _copy_json(TRAJECTORY_AXES),
+                "truth_requirements": _copy_json(COLUMN_TRUTH),
                 "expression": {
                     "path": "expression.tsv",
                     "genes": 2,
@@ -1688,6 +2077,64 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 request=request,
                 simulator_manifest=manifest,
             )
+
+        self.assertEqual(paths["networks"], "truth/networks.csv")
+
+    def test_validate_truth_outputs_checks_column_context_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stage_dir = Path(tmp)
+            (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "expression.tsv").write_text(
+                "gene\tC1\tC2\nG1\t1\t0\nG2\t2\t3\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "gene_universe.txt").write_text(
+                "G1\nG2\n",
+                encoding="utf-8",
+            )
+            (stage_dir / "truth" / "networks.csv").write_text(
+                "source,target,score,sign,evidence,context\n"
+                "G1,G2,1,+,simulated_truth,global\n"
+                "G1,G2,1,+,simulated_truth,column:C1\n",
+                encoding="utf-8",
+            )
+            request = _request_stub(truth_level="global")
+            manifest = {
+                "data_axes": _copy_json(TRAJECTORY_AXES),
+                "truth_requirements": _copy_json(GLOBAL_TRUTH),
+                "expression": {
+                    "path": "expression.tsv",
+                    "genes": 2,
+                    "columns": 2,
+                    "column_kind": "cells",
+                    "expression_profile": "scrna",
+                },
+                "truth": {
+                    "gene_universe": "truth/gene_universe.txt",
+                    "networks": "truth/networks.csv",
+                },
+            }
+
+            paths = _validate_truth_outputs(
+                stage_dir=stage_dir,
+                dataset_id="column_ok",
+                request=request,
+                simulator_manifest=manifest,
+            )
+
+            (stage_dir / "truth" / "networks.csv").write_text(
+                "source,target,score,sign,evidence,context\n"
+                "G1,G2,1,+,simulated_truth,global\n"
+                "G1,G2,1,+,simulated_truth,column:C3\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "column contexts not present"):
+                _validate_truth_outputs(
+                    stage_dir=stage_dir,
+                    dataset_id="column_bad",
+                    request=request,
+                    simulator_manifest=manifest,
+                )
 
         self.assertEqual(paths["networks"], "truth/networks.csv")
 
@@ -1721,8 +2168,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "G1,G2,1,+,simulated_truth,group:B\n",
                 encoding="utf-8",
             )
-            request = SimpleNamespace(profile="scrna_grouped")
+            request = _request_stub(truth_level="group")
             manifest = {
+                "data_axes": _copy_json(TRAJECTORY_AXES),
+                "truth_requirements": _copy_json(GROUP_TRUTH),
                 "expression": {
                     "path": "expression.tsv",
                     "genes": 2,
@@ -1780,8 +2229,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "G1,G2,1,+,simulated_truth,group:B\n",
                 encoding="utf-8",
             )
-            request = SimpleNamespace(profile="scrna_grouped")
+            request = _request_stub(truth_level="group")
             manifest = {
+                "data_axes": _copy_json(TRAJECTORY_AXES),
+                "truth_requirements": _copy_json(GROUP_TRUTH),
                 "expression": {
                     "path": "expression.tsv",
                     "genes": 2,
@@ -1809,7 +2260,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     simulator_manifest=manifest,
                 )
 
-    def test_validate_truth_outputs_rejects_cell_context_outside_expression_columns(
+    def test_validate_truth_outputs_rejects_column_context_outside_expression_columns(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1827,11 +2278,13 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "source,target,score,sign,evidence,context\n"
                 "G1,G2,1,+,simulated_truth,global\n"
                 "G1,G2,1,+,simulated_truth,group:A\n"
-                "G1,G2,1,+,simulated_truth,cell:C2\n",
+                "G1,G2,1,+,simulated_truth,column:C2\n",
                 encoding="utf-8",
             )
-            request = SimpleNamespace(profile="scrna_cell_specific")
+            request = _request_stub(truth_level="column")
             manifest = {
+                "data_axes": _copy_json(TRAJECTORY_AXES),
+                "truth_requirements": _copy_json(COLUMN_TRUTH),
                 "expression": {
                     "path": "expression.tsv",
                     "genes": 2,
@@ -1891,6 +2344,48 @@ class GenerateDataDyngenTests(unittest.TestCase):
             self.assertTrue((dataset_dir / "native" / "rna_velocity.tsv").exists())
             self.assertTrue((dataset_dir / "truth" / "gene_universe.txt").exists())
 
+    def test_selected_native_outputs_must_live_under_native_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            stage_dir = Path(tmp)
+            (stage_dir / "provenance" / "raw").mkdir(parents=True)
+            (stage_dir / "provenance" / "raw" / "rna_velocity.tsv").write_text(
+                "gene\tC1\nG1\t0.1\n",
+                encoding="utf-8",
+            )
+            request = ResolvedSimulatorRun(
+                request_id="native_bad_path",
+                data_axes=_copy_json(TRAJECTORY_AXES),
+                truth_requirements=_copy_json(GLOBAL_TRUTH),
+                run_id="dyngen_native_bad_path",
+                simulator_id="dyngen",
+                organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
+                requested_extras=[],
+                effective_extras=[],
+                inputs={},
+                resolved_input_paths={},
+                simulator_params={},
+                runtime_resources={"threads": 1},
+                native_outputs=["rna_velocity"],
+                replicates=1,
+                base_seed=1,
+                replicate_seeds=[1],
+                notes=None,
+                simulator_spec={},
+            )
+            manifest = {
+                "native_outputs": {
+                    "rna_velocity": "provenance/raw/rna_velocity.tsv",
+                },
+            }
+
+            with self.assertRaisesRegex(ValueError, "must be under native/"):
+                _validate_selected_native_outputs(
+                    stage_dir=stage_dir,
+                    dataset_id="native_bad_path",
+                    request=request,
+                    simulator_manifest=manifest,
+                )
+
     def test_run_generate_data_freezes_reproducibility_assets_in_benchmark_root(
         self,
     ) -> None:
@@ -1899,7 +2394,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 base,
                 request_id="dyngen_repro",
-                profile="scrna_global",
+                truth_level="global",
                 simulator_id="dyngen",
                 run_id="dyngen_small",
                 requested_extras=[],
@@ -1935,14 +2430,14 @@ class GenerateDataDyngenTests(unittest.TestCase):
                         {
                             "schema_version": "1.0",
                             "simulator_id": "dyngen",
-                            "profile": "scrna_global",
+                            "data_axes": _copy_json(TRAJECTORY_AXES),
+                            "truth_requirements": _copy_json(GLOBAL_TRUTH),
                             "seed": 100,
                             "expression": {
                                 "path": "expression.tsv",
                                 "genes": 2,
                                 "columns": 1,
                                 "column_kind": "cells",
-                                "expression_profile": "scrna",
                             },
                             "extras": {},
                             "native_outputs": {
@@ -1966,7 +2461,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "schema_version": "1.0",
                 "scenario": {
                     "id": "dyngen_repro",
-                    "profile": "scrna_global",
+                    "data_axes": _copy_json(TRAJECTORY_AXES),
+                    "truth_requirements": _copy_json(GLOBAL_TRUTH),
                     "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                     "requested_extras": [],
                     "effective_extras": [],
@@ -2063,7 +2559,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 base,
                 request_id="dyngen_fail",
-                profile="scrna_global",
+                truth_level="global",
                 simulator_id="dyngen",
                 run_id="dyngen_small",
                 requested_extras=[],
@@ -2140,7 +2636,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 base,
                 request_id="sergio_unsafe_diff",
-                profile="scrna_grouped",
+                truth_level="group",
                 simulator_id="sergio",
                 run_id="sergio_diff",
                 requested_extras=[],
@@ -2167,7 +2663,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 base,
                 request_id="sergio_unsafe_cells",
-                profile="scrna_grouped",
+                truth_level="group",
                 simulator_id="sergio",
                 run_id="sergio_diff",
                 requested_extras=[],
@@ -2253,7 +2749,8 @@ class GenerateDataDyngenTests(unittest.TestCase):
 
             request = ResolvedSimulatorRun(
                 request_id="scenario",
-                profile="scrna_grouped",
+                data_axes=_copy_json(DIFFERENTIATION_AXES),
+                truth_requirements=_copy_json(GROUP_TRUTH),
                 run_id="scmultisim_01",
                 simulator_id="scmultisim",
                 organism={"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
@@ -2292,11 +2789,23 @@ class GenerateDataDyngenTests(unittest.TestCase):
                             {
                                 "schema_version": "1.0",
                                 "simulator_id": "scmultisim",
-                                "profile": "scrna_grouped",
-                                "expression_matrix": "expression.tsv",
-                                "truth_outputs": {
-                                    "networks": "truth/networks.csv",
+                                "seed": 1,
+                                "data_axes": _copy_json(DIFFERENTIATION_AXES),
+                                "truth_requirements": _copy_json(GROUP_TRUTH),
+                                "expression": {
+                                    "path": "expression.tsv",
+                                    "genes": 2,
+                                    "columns": 2,
+                                    "column_kind": "cells",
+                                },
+                                "extras": {},
+                                "native_outputs": {},
+                                "truth": {
                                     "gene_universe": "truth/gene_universe.txt",
+                                    "networks": "truth/networks.csv",
+                                },
+                                "provenance": {
+                                    "raw_dir": "provenance/raw",
                                 },
                             }
                         )
@@ -2358,7 +2867,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 base,
                 request_id="dyngen_stage1",
-                profile="scrna_grouped",
+                truth_level="group",
                 simulator_id="dyngen",
                 run_id="dyngen_small",
                 requested_extras=["tf_list"],
@@ -2408,7 +2917,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan_path = self._write_plan(
                 base,
                 request_id="dyngen_stage2",
-                profile="scrna_grouped",
+                truth_level="group",
                 simulator_id="dyngen",
                 run_id="dyngen_lineage",
                 requested_extras=["lineage_tree", "tf_list"],

@@ -8,7 +8,7 @@ import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
 from rich import print
@@ -30,9 +30,9 @@ from .output_validation import validate_simulator_output_package
 from .plan import plan_generate_data_request
 from .request import validate_simulation_plan
 from .selection import preflight_generate_data_scenario
+from .semantic import expression_profile_for_axes
 from .shared import (
     DEFAULT_OUTPUT_DIR,
-    PROFILE_SPECS,
     ResolvedSimulationPlan,
     ResolvedSimulatorRun,
     _copy_file,
@@ -49,6 +49,27 @@ INFERENCE_DATASET_MANIFEST_SCHEMA = (
     / "schemas"
     / "dataset-manifest.schema.json"
 )
+
+_NORMALIZED_EXTRA_FILENAMES = {
+    "groups": "groups.tsv",
+    "column_descriptors": "column_descriptors.tsv",
+    "column_phenotypes": "column_phenotypes.tsv",
+    "cluster_identities": "cluster_identities.tsv",
+    "cell_cell_interactions": "cell_cell_interactions.tsv",
+    "chromatin_accessibility": "chromatin_accessibility.tsv",
+    "chromatin_regions": "chromatin_regions.tsv",
+    "enrichment_background": "enrichment_background.txt",
+    "interventions": "interventions.tsv",
+    "lineage_tree": "lineage_tree.tsv",
+    "perturbation_design": "perturbation_design.tsv",
+    "pseudotime": "pseudotime.tsv",
+    "prior_grn": "prior_grn.tsv",
+    "prior_grn_by_group": "prior_grn_by_group.tsv",
+    "replicates": "replicates.tsv",
+    "spatial_coordinates": "spatial_coordinates.tsv",
+    "tf_list": "tf_list.txt",
+    "timepoints": "timepoints.tsv",
+}
 
 _STEP_PERCENT = {
     "prepare_image": 2,
@@ -237,7 +258,6 @@ def _dataset_manifest_payload(
 ) -> dict[str, Any]:
     expression = simulator_manifest["expression"]
     extras = simulator_manifest.get("extras", {})
-    spec_profile = PROFILE_SPECS[request.profile]
     dataset_spec = {
         "schema_version": "1.0",
         "id": dataset_id,
@@ -245,8 +265,8 @@ def _dataset_manifest_payload(
         "expression": {
             "genes": expression["genes"],
             "columns": expression["columns"],
-            "column_kind": spec_profile.column_kind,
-            "expression_profile": spec_profile.expression_profile,
+            "column_kind": request.data_axes["column_kind"],
+            "expression_profile": expression_profile_for_axes(request.data_axes),
         },
         "organism": dict(request.organism),
     }
@@ -259,17 +279,7 @@ def _dataset_manifest_payload(
         },
         "extras": {},
     }
-    for key in (
-        "groups",
-        "cell_phenotypes",
-        "cluster_identities",
-        "enrichment_background",
-        "lineage_tree",
-        "pseudotime",
-        "prior_grn",
-        "tf_list",
-        "prior_grn_by_group",
-    ):
+    for key in _NORMALIZED_EXTRA_FILENAMES:
         value = extras.get(key)
         if value is not None:
             payload["extras"][key] = value
@@ -289,7 +299,8 @@ def _ground_truth_manifest_payload(
         "schema_version": "1.0",
         "dataset_id": dataset_id,
         "simulator_id": request.simulator_id,
-        "profile": request.profile,
+        "data_axes": dict(request.data_axes),
+        "truth_requirements": dict(request.truth_requirements),
         "outputs": {
             "gene_universe": str(truth["gene_universe"]),
             "networks": str(truth["networks"]),
@@ -308,7 +319,8 @@ def _validate_truth_outputs(
     return validate_simulator_output_package(
         stage_dir=stage_dir,
         dataset_id=dataset_id,
-        profile=request.profile,
+        data_axes=request.data_axes,
+        truth_requirements=request.truth_requirements,
         simulator_manifest=simulator_manifest,
     )["truth"]
 
@@ -326,7 +338,8 @@ def _simulator_run_payload(
         "benchmark_id": request.request_id,
         "run_id": request.run_id,
         "simulator_id": request.simulator_id,
-        "profile": request.profile,
+        "data_axes": dict(request.data_axes),
+        "truth_requirements": dict(request.truth_requirements),
         "seed": seed,
         "inputs": request.inputs,
         "simulator_params": request.simulator_params,
@@ -417,7 +430,8 @@ def _frozen_scenario_payload(
     payload: dict[str, Any] = {
         "schema_version": "1.0",
         "id": resolved.request_id,
-        "profile": resolved.profile,
+        "data_axes": dict(resolved.data_axes),
+        "truth_requirements": dict(resolved.truth_requirements),
         "organism": dict(resolved.organism),
         "requested_extras": list(resolved.requested_extras),
     }
@@ -538,7 +552,8 @@ def validate_generate_data_plan(plan_path: Path) -> dict[str, Any]:
     resolved = validate_simulation_plan(plan_path)
     return {
         "request_id": resolved.request_id,
-        "profile": resolved.profile,
+        "data_axes": resolved.data_axes,
+        "truth_requirements": resolved.truth_requirements,
         "total_tasks": len(resolved.tasks),
         "requested_extras": resolved.requested_extras,
         "effective_extras": resolved.effective_extras,
@@ -647,6 +662,16 @@ def _validate_selected_native_outputs(
         if not isinstance(rel_path, str) or not rel_path.strip():
             raise ValueError(
                 f"simulator-output-manifest[{dataset_id}] is missing selected native_output '{output_id}'"
+            )
+        native_path = PurePosixPath(rel_path)
+        if (
+            native_path.is_absolute()
+            or ".." in native_path.parts
+            or not native_path.parts
+            or native_path.parts[0] != "native"
+        ):
+            raise ValueError(
+                f"simulator-output-manifest[{dataset_id}] native_output '{output_id}' must be under native/: {rel_path}"
             )
         output_path = stage_dir / rel_path
         if not output_path.exists():
@@ -818,6 +843,7 @@ def _execute_simulation_task(
             dataset_dir / "ground-truth-manifest.json", benchmark_root
         ),
     }
+    extras_root = dataset_dir / "extras"
     artifact_entry = {
         "dataset_id": dataset_id,
         "run_id": run.run_id,
@@ -829,66 +855,6 @@ def _execute_simulation_task(
             dataset_dir / truth_output_paths["gene_universe"],
             benchmark_root,
         ),
-        "groups": (
-            _relative_posix(dataset_dir / "extras" / "groups.tsv", benchmark_root)
-            if (dataset_dir / "extras" / "groups.tsv").exists()
-            else None
-        ),
-        "cell_phenotypes": (
-            _relative_posix(
-                dataset_dir / "extras" / "cell_phenotypes.tsv",
-                benchmark_root,
-            )
-            if (dataset_dir / "extras" / "cell_phenotypes.tsv").exists()
-            else None
-        ),
-        "cluster_identities": (
-            _relative_posix(
-                dataset_dir / "extras" / "cluster_identities.tsv",
-                benchmark_root,
-            )
-            if (dataset_dir / "extras" / "cluster_identities.tsv").exists()
-            else None
-        ),
-        "enrichment_background": (
-            _relative_posix(
-                dataset_dir / "extras" / "enrichment_background.txt",
-                benchmark_root,
-            )
-            if (dataset_dir / "extras" / "enrichment_background.txt").exists()
-            else None
-        ),
-        "lineage_tree": (
-            _relative_posix(
-                dataset_dir / "extras" / "lineage_tree.tsv",
-                benchmark_root,
-            )
-            if (dataset_dir / "extras" / "lineage_tree.tsv").exists()
-            else None
-        ),
-        "pseudotime": (
-            _relative_posix(dataset_dir / "extras" / "pseudotime.tsv", benchmark_root)
-            if (dataset_dir / "extras" / "pseudotime.tsv").exists()
-            else None
-        ),
-        "prior_grn": (
-            _relative_posix(dataset_dir / "extras" / "prior_grn.tsv", benchmark_root)
-            if (dataset_dir / "extras" / "prior_grn.tsv").exists()
-            else None
-        ),
-        "tf_list": (
-            _relative_posix(dataset_dir / "extras" / "tf_list.txt", benchmark_root)
-            if (dataset_dir / "extras" / "tf_list.txt").exists()
-            else None
-        ),
-        "prior_grn_by_group": (
-            _relative_posix(
-                dataset_dir / "extras" / "prior_grn_by_group.tsv",
-                benchmark_root,
-            )
-            if (dataset_dir / "extras" / "prior_grn_by_group.tsv").exists()
-            else None
-        ),
         "networks": _relative_posix(
             dataset_dir / truth_output_paths["networks"],
             benchmark_root,
@@ -898,6 +864,11 @@ def _execute_simulation_task(
             for output_id, rel_path in sorted(native_output_paths.items())
         },
     }
+    for key, filename in _NORMALIZED_EXTRA_FILENAMES.items():
+        path = extras_root / filename
+        artifact_entry[key] = (
+            _relative_posix(path, benchmark_root) if path.exists() else None
+        )
     return dataset_entry, artifact_entry
 
 
@@ -1046,7 +1017,8 @@ def run_generate_data(
     benchmark_manifest = {
         "schema_version": "1.0",
         "id": resolved.request_id,
-        "profile": resolved.profile,
+        "data_axes": dict(resolved.data_axes),
+        "truth_requirements": dict(resolved.truth_requirements),
         "organism": resolved.organism,
         "requested_extras": resolved.requested_extras,
         "effective_extras": resolved.effective_extras,

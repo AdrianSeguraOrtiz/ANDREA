@@ -37,7 +37,7 @@ Cost model written to cost.json:
 For `execution.mode=group_emulated`, each runtime point measures one physical
 wrapper task. The logical group count is stored in `execution_profile`; planner
 ETA code applies the group/task multiplier later. For `group_aggregated`, the
-benchmarkable upstream execution is still `cell_native`; ANDREA adds a
+benchmarkable upstream execution is still `column_native`; ANDREA adds a
 deterministic aggregation overhead during planning.
 """
 
@@ -699,7 +699,7 @@ def build_feature_vector(
     mode = str(execution_profile.get("mode") or "")
     group_count = int(execution_profile.get("group_count") or 0)
     n_cells = int(columns) if input_profile.get("column_kind") == "cells" else 0
-    if mode == "cell_native":
+    if mode == "column_native":
         expected_contexts = max(1, n_cells)
     elif mode in {"group_native", "group_emulated", "group_aggregated"}:
         expected_contexts = max(1, group_count)
@@ -708,7 +708,7 @@ def build_feature_vector(
     aggregation_step = str(
         execution_profile.get("aggregation_step")
         or input_profile.get("aggregation_step")
-        or ("cell_to_group" if mode == "group_aggregated" else "none")
+        or ("column_to_group" if mode == "group_aggregated" else "none")
     )
     return {
         "execution_mode": mode,
@@ -720,7 +720,7 @@ def build_feature_vector(
         "has_tf_list": "tf_list" in set(input_profile.get("extras_provided", [])),
         "output_density_class": str(
             input_profile.get("output_density_class")
-            or ("dense" if mode in {"cell_native", "group_aggregated"} else "sparse")
+            or ("dense" if mode in {"column_native", "group_aggregated"} else "sparse")
         ),
         "aggregation_step": aggregation_step,
         "threads": int(threads),

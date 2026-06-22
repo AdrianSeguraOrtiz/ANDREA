@@ -1,0 +1,1332 @@
+{
+  "schema_version": "1.0",
+  "id": "genespider2",
+  "name": "GeneSPIDER2",
+  "publication": [
+    "https://doi.org/10.1093/nargab/lqae121",
+    "https://doi.org/10.1039/c7mb00058h"
+  ],
+  "first_author": "Mateusz Garbulowski",
+  "year": 2024,
+  "simulation_summary": "Generates signed GeneSPIDER2 regulatory networks and perturbation-based bulk, bulk time-series or single-cell RNA expression data through the public MATLAB API, packaged as a MATLAB Compiler application for MATLAB Runtime execution.",
+  "simulation_keywords": [
+    "bulk",
+    "scrna",
+    "single_cell",
+    "perturbation",
+    "gene_regulatory_network",
+    "scale_free_network",
+    "dropout_noise",
+    "time_series",
+    "timepoints"
+  ],
+  "implementation_url": "https://bitbucket.org/sonnhammergrni/genespider",
+  "docker_image": "adriansegura99/simulator_genespider2:1.0.0",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "regulatory_network",
+        "usage": "Wrapper reads this signed regulator-target TSV into a GeneSPIDER network matrix A(target, regulator) when network_source=input_tsv.",
+        "conditions": [
+          {
+            "field": "param.network_source",
+            "op": "eq",
+            "value": "input_tsv"
+          }
+        ],
+        "message": "regulatory_network is required when network_source=input_tsv."
+      }
+    ]
+  },
+  "compatibility_rules": [
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "data_axes.resolution",
+          "op": "eq",
+          "value": "single_cell"
+        },
+        {
+          "field": "truth_requirement",
+          "op": "eq",
+          "value": "group"
+        },
+        {
+          "field": "param.single_cell.n_clusts",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "message": "Single-cell group truth requires single_cell.n_clusts >= 2 so public groups and group truth contexts are meaningful."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.single_cell.ds_min",
+          "op": "gt",
+          "value_from": "param.single_cell.ds_max"
+        }
+      ],
+      "message": "single_cell.ds_min must be <= single_cell.ds_max."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.network_source",
+          "op": "eq",
+          "value": "input_tsv"
+        },
+        {
+          "field": "param.num_genes",
+          "op": "ne",
+          "value_from": "input.regulatory_network.unique_gene_count"
+        }
+      ],
+      "message": "num_genes must equal the number of unique genes in regulatory_network when network_source=input_tsv."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "data_axes.experimental_design",
+          "op": "eq",
+          "value": "time_series"
+        },
+        {
+          "field": "param.time_series.perturbed_gene_index",
+          "op": "gt",
+          "value_from": "param.num_genes"
+        }
+      ],
+      "message": "time_series.perturbed_gene_index must reference one of the generated or input network genes."
+    }
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 64,
+      "upstream_mapping": "The MATLAB entrypoint calls maxNumCompThreads(runtime_resources.threads) before invoking public GeneSPIDER2 generation functions. The Docker runtime executes a MATLAB Compiler binary on MATLAB Runtime; no MATLAB license is required at run time."
+    }
+  },
+  "params": {
+    "network_source": {
+      "type": "enum",
+      "required": false,
+      "default": "scalefree2",
+      "enum": [
+        "scalefree2",
+        "input_tsv"
+      ],
+      "description": "Selects the GRN source. scalefree2 calls the public GeneSPIDER2 datastruct.scalefree2 generator; input_tsv loads the regulatory_network simulator input. The CVX-backed large_scalefree/stabilize route is not exposed because it is not portable in the MATLAB Runtime package."
+    },
+    "num_genes": {
+      "type": "int",
+      "required": false,
+      "default": 50,
+      "min": 2,
+      "description": "Number of genes in generated networks, or the expected number of unique genes when network_source=input_tsv."
+    },
+    "average_degree": {
+      "type": "float",
+      "required": false,
+      "default": 3.0,
+      "min": 1.0,
+      "description": "Average network degree passed as S/grn_degree to GeneSPIDER network generators."
+    },
+    "network": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "scalefree2_alpha": 1.2,
+        "activation_probability": 0.62
+      },
+      "description": "Network-generator options for datastruct.scalefree2.",
+      "properties": {
+        "scalefree2_alpha": {
+          "type": "float",
+          "required": false,
+          "default": 1.2,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Power-law alpha passed to datastruct.scalefree2 when network_source=scalefree2."
+        },
+        "activation_probability": {
+          "type": "float",
+          "required": false,
+          "default": 0.62,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Probability that generated edges are positive activations; GeneSPIDER defaults to 0.62 based on TRRUST."
+        }
+      }
+    },
+    "perturbation": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "replicates_per_gene": 2,
+        "strength": 1.0
+      },
+      "description": "Generated knockdown perturbation-design controls. The wrapper builds P = -strength * repmat(eye(num_genes), 1, replicates_per_gene).",
+      "properties": {
+        "replicates_per_gene": {
+          "type": "int",
+          "required": false,
+          "default": 2,
+          "min": 1,
+          "max": 100,
+          "description": "Number of perturbation columns/cells generated per gene."
+        },
+        "strength": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Positive knockdown strength; the wrapper writes negative perturbation values in P."
+        }
+      }
+    },
+    "bulk": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "snr": 0.1,
+        "snr_model": "SNR_L"
+      },
+      "description": "Bulk perturbational noise controls mapped to datastruct.noise.",
+      "properties": {
+        "snr": {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Signal-to-noise ratio passed to datastruct.noise for bulk perturbational output."
+        },
+        "snr_model": {
+          "type": "enum",
+          "required": false,
+          "default": "SNR_L",
+          "enum": [
+            "SNR_L",
+            "SNR_vov",
+            "SNR_movd",
+            "SNR_movd2",
+            "SNR_cov",
+            "SNR_manual"
+          ],
+          "description": "SNR model passed to datastruct.noise."
+        }
+      }
+    },
+    "single_cell": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "snr": 0.1,
+        "control_snr": 0.1,
+        "snr_model": "SNR_L",
+        "raw_counts": true,
+        "right_tail": 2.0,
+        "negbin_prob": 0.5,
+        "dispersion": 1.0,
+        "n_clusts": 5,
+        "logbase": 10.0,
+        "ds_min": 0.3,
+        "ds_max": 0.6
+      },
+      "description": "Options passed to datastruct.scdata for perturbed single-cell simulation.",
+      "properties": {
+        "snr": {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Signal-to-noise ratio for Gaussian expression noise in datastruct.scdata."
+        },
+        "control_snr": {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Signal-to-noise ratio for pseudo-control count noise, mapped to scdata SNRc."
+        },
+        "snr_model": {
+          "type": "enum",
+          "required": false,
+          "default": "SNR_L",
+          "enum": [
+            "SNR_L",
+            "SNR_vov",
+            "SNR_movd",
+            "SNR_movd2",
+            "SNR_cov",
+            "SNR_manual"
+          ],
+          "description": "SNR model passed to datastruct.scdata."
+        },
+        "raw_counts": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Maps to scdata raw_counts. true emits raw count-like values; false emits log fold-change values."
+        },
+        "right_tail": {
+          "type": "float",
+          "required": false,
+          "default": 2.0,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Power applied to the pseudo-control negative-binomial tail in scdata."
+        },
+        "negbin_prob": {
+          "type": "float",
+          "required": false,
+          "default": 0.5,
+          "min": 0.0,
+          "exclusive_min": true,
+          "max": 1.0,
+          "description": "Negative-binomial probability used to simulate pseudo-control means."
+        },
+        "dispersion": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Dropout dispersion parameter mapped to scdata disper."
+        },
+        "n_clusts": {
+          "type": "int",
+          "required": false,
+          "default": 5,
+          "min": 1,
+          "description": "Theoretical number of clusters passed to scdata. Group truth requires at least 2."
+        },
+        "logbase": {
+          "type": "float",
+          "required": false,
+          "default": 10.0,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Logarithm base used when reversing fold changes in scdata; also affects perturbation strength."
+        },
+        "ds_min": {
+          "type": "float",
+          "required": false,
+          "default": 0.3,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Minimum dissimilarity between theoretical clusters in scdata."
+        },
+        "ds_max": {
+          "type": "float",
+          "required": false,
+          "default": 0.6,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Maximum dissimilarity between theoretical clusters in scdata."
+        }
+      }
+    },
+    "grouping": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "method": "kmeans_expression"
+      },
+      "description": "Wrapper grouping presets for capabilities that require public groups.",
+      "properties": {
+        "method": {
+          "type": "enum",
+          "required": false,
+          "default": "kmeans_expression",
+          "enum": [
+            "kmeans_expression"
+          ],
+          "description": "Derive groups by deterministic k-means clustering on the generated expression matrix."
+        }
+      }
+    },
+    "time_series": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "time_points": 20,
+        "perturbed_gene_index": 1,
+        "perturbation_strength": -1.0,
+        "input_noise_std": 0.0
+      },
+      "description": "Options for datastruct.simts bulk time-series simulations.",
+      "properties": {
+        "time_points": {
+          "type": "int",
+          "required": false,
+          "default": 20,
+          "min": 1,
+          "description": "Maps to datastruct.simts tids. The wrapper exports the initial state plus tids simulated time points."
+        },
+        "perturbed_gene_index": {
+          "type": "int",
+          "required": false,
+          "default": 1,
+          "min": 1,
+          "description": "One-based gene index whose perturbation vector entry is set for datastruct.simts."
+        },
+        "perturbation_strength": {
+          "type": "float",
+          "required": false,
+          "default": -1.0,
+          "description": "Value assigned to the selected entry of the simts perturbation vector p."
+        },
+        "input_noise_std": {
+          "type": "float",
+          "required": false,
+          "default": 0.0,
+          "min": 0.0,
+          "description": "Maps to datastruct.simts stdp, the standard deviation of input noise at each time step."
+        }
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "native_extras": [
+        "perturbation_design"
+      ],
+      "derivable_extras": [
+        "enrichment_background",
+        "interventions",
+        "prior_grn",
+        "replicates",
+        "tf_list"
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A",
+            "regulatory_network input when network_source=input_tsv"
+          ],
+          "upstream_configuration": [
+            "network_source=scalefree2 calls datastruct.scalefree2(num_genes, average_degree, alpha=network.scalefree2_alpha, pasign=network.activation_probability).",
+            "The CVX-backed large_scalefree/stabilize route is intentionally not exposed in the ANDREA runtime package.",
+            "network_source=input_tsv loads regulatory_network into A(target, regulator)."
+          ],
+          "generation": "The wrapper normalizes every non-zero non-diagonal A(target, regulator) entry into truth/networks.csv with context=global, source=regulator and target=target.",
+          "score_semantics": "score is abs(A[target, regulator]); sign is + for positive activation effects and - for negative repression effects.",
+          "limitations": [
+            "The public scalefree2 generator determines the signed edge magnitudes exported as truth.",
+            "Diagonal self-degradation/stability terms are excluded from public GRN truth.",
+            "Custom input_tsv truth uses the loaded matrix and does not prove upstream biological validity."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "This capability does not request or export group truth contexts."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "GeneSPIDER2 uses one fixed GRN for all expression columns; no per-column GRN state is emitted."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "network_matrix",
+          "kind": "graph",
+          "description": "Signed GeneSPIDER GRN matrix A used to generate the dataset.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "perturbation_design",
+          "kind": "matrix",
+          "description": "Perturbation design matrix P used for steady-state response simulation.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "bulk_response",
+          "kind": "matrix",
+          "description": "Bulk perturbational expression response Y = Net.G * P + Gaussian noise.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "gaussian_noise",
+          "kind": "matrix",
+          "description": "Gaussian expression-noise matrix E generated by datastruct.noise.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public expression gene identifier as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The generated expression feature set is the correct background universe for downstream analyses."
+          ],
+          "limitations": [
+            "The background is synthetic and dataset-derived, not an organism-specific annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Export the same non-diagonal GRN edges used for global truth into extras/prior_grn.tsv with source, target, score and sign.",
+          "assumptions": [
+            "The selected simulator GRN can serve as an oracle structural prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived and not an independent noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Export unique public source/regulator identifiers from non-zero non-diagonal GRN edges, one per line.",
+          "assumptions": [
+            "Regulators in the simulated GRN define the synthetic TF/regulator universe."
+          ],
+          "limitations": [
+            "The TF list is simulator-derived and not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "interventions",
+          "source_artifacts": [
+            "perturbation_design matrix P",
+            "public column identifiers"
+          ],
+          "method": "For each expression column, inspect the corresponding perturbation-design vector and export the perturbed public gene IDs and signed perturbation strengths.",
+          "assumptions": [
+            "Each generated column is assumed to have a well-defined perturbation-design column in P."
+          ],
+          "limitations": [
+            "Generated designs currently represent direct single-gene knockdown/perturbation columns; arbitrary future P matrices may need richer intervention metadata."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "replicates",
+          "source_artifacts": [
+            "perturbation_design matrix P",
+            "perturbation.replicates_per_gene"
+          ],
+          "method": "Assign replicate labels by grouping expression columns that share the same perturbed gene and perturbation strength.",
+          "assumptions": [
+            "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
+          ],
+          "limitations": [
+            "Replicate labels are generated from the wrapper design, not returned as a separate upstream table."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "config_snapshot",
+          "kind": "metadata",
+          "description": "Resolved GeneSPIDER2 wrapper configuration for the run."
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mappings from native GeneSPIDER and input identifiers to public normalized identifiers."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "MATLAB/MATLAB Runtime version, pinned source commit and runtime environment details."
+        },
+        {
+          "id": "compiled_runtime",
+          "kind": "metadata",
+          "description": "MATLAB Compiler build and MATLAB Runtime execution metadata for the packaged GeneSPIDER2 entrypoint."
+        }
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "perturbations",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ]
+    },
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "timepoints",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "native_extras": [
+        "perturbation_design"
+      ],
+      "derivable_extras": [
+        "enrichment_background",
+        "interventions",
+        "prior_grn",
+        "tf_list",
+        "timepoints"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A",
+            "regulatory_network input when network_source=input_tsv"
+          ],
+          "upstream_configuration": [
+            "network_source=scalefree2 calls datastruct.scalefree2(...).",
+            "The CVX-backed large_scalefree/stabilize route is intentionally not exposed in the ANDREA runtime package.",
+            "network_source=input_tsv loads regulatory_network into A(target, regulator).",
+            "The wrapper calls datastruct.simts(A, p, time_series.time_points, time_series.input_noise_std, false) with a one-gene perturbation vector p."
+          ],
+          "generation": "The wrapper normalizes every non-zero non-diagonal A(target, regulator) entry into truth/networks.csv with context=global, source=regulator and target=target.",
+          "score_semantics": "score is abs(A[target, regulator]); sign is + for positive activation effects and - for negative repression effects.",
+          "limitations": [
+            "The GRN is fixed across the simulated time course.",
+            "Diagonal self-degradation/stability terms are excluded from public GRN truth.",
+            "simts models one perturbation vector over time and does not emit timepoint-specific rewiring."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "Bulk time-series output has no public groups."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "Expression columns are timepoints sharing one fixed GRN; GeneSPIDER2 does not emit timepoint-specific GRNs."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Write every public expression gene ID to extras/enrichment_background.txt.",
+          "assumptions": [
+            "The tested gene universe is the expression row universe."
+          ],
+          "limitations": [
+            "No independent pathway universe is simulated."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "interventions",
+          "source_artifacts": [
+            "perturbation_design matrix P",
+            "public column identifiers"
+          ],
+          "method": "For each expression column, inspect the corresponding perturbation-design vector and export the perturbed public gene IDs and signed perturbation strengths.",
+          "assumptions": [
+            "Each generated column is assumed to have a well-defined perturbation-design column in P."
+          ],
+          "limitations": [
+            "Generated designs currently represent direct single-gene knockdown/perturbation columns; arbitrary future P matrices may need richer intervention metadata."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Export global truth edges as an oracle prior in extras/prior_grn.tsv.",
+          "assumptions": [
+            "The selected GRN is the upstream simulated regulatory network."
+          ],
+          "limitations": [
+            "This is a truth-derived oracle prior, not an independently observed prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Export source/regulator genes with at least one non-zero outgoing edge.",
+          "assumptions": [
+            "Regulators are represented by non-zero source columns in A."
+          ],
+          "limitations": [
+            "Genes without outgoing simulated edges are omitted even if biologically TF-like."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "timepoints",
+          "source_artifacts": [
+            "datastruct.simts time grid",
+            "time_series.time_points",
+            "network matrix eigenvalues"
+          ],
+          "method": "Recompute the simts timestep tau*0.1 from min(abs(eig(A))) and export t0 plus each simulated timepoint in column order.",
+          "assumptions": [
+            "The wrapper uses the same timestep formula as datastruct.simts."
+          ],
+          "limitations": [
+            "The upstream function returns expression states but not an explicit metadata table; the timepoint table is wrapper-derived."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "network_matrix",
+          "kind": "graph",
+          "description": "Signed GeneSPIDER GRN matrix A used to generate the time series.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "perturbation_vector",
+          "kind": "matrix",
+          "description": "Perturbation vector p passed to datastruct.simts.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "time_series_expression",
+          "kind": "matrix",
+          "description": "Raw L matrix returned by datastruct.simts before ANDREA expression normalization.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "time_grid",
+          "kind": "table",
+          "description": "Wrapper-derived time grid matching datastruct.simts integration steps.",
+          "formats": [
+            "tsv"
+          ]
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "config_snapshot",
+          "kind": "metadata",
+          "description": "Resolved GeneSPIDER2 and wrapper options."
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mapping between MATLAB matrix indices and ANDREA public gene/column IDs."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "MATLAB Runtime and pinned GeneSPIDER2 source information."
+        },
+        {
+          "id": "compiled_runtime",
+          "kind": "metadata",
+          "description": "MATLAB Compiler build and MATLAB Runtime execution metadata for the packaged GeneSPIDER2 entrypoint."
+        }
+      ]
+    },
+    {
+      "native_extras": [
+        "perturbation_design"
+      ],
+      "derivable_extras": [
+        "enrichment_background",
+        "interventions",
+        "prior_grn",
+        "replicates",
+        "tf_list"
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "upstream_configuration": [
+            "Wrapper calls datastruct.scdata(A, P, SNR=single_cell.snr, SNRc=single_cell.control_snr, SNR_model=single_cell.snr_model, raw_counts=single_cell.raw_counts and the documented pseudo-control/dropout options).",
+            "The same selected fixed GRN matrix A is used for all simulated columns."
+          ],
+          "generation": "The wrapper normalizes every non-zero non-diagonal A(target, regulator) entry into truth/networks.csv with context=global.",
+          "score_semantics": "score is abs(A[target, regulator]); sign is + for positive activation effects and - for negative repression effects.",
+          "limitations": [
+            "GeneSPIDER2 does not emit column-specific or group-specific GRN matrices for scdata.",
+            "Global truth is fixed across all columns."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "This capability does not request or export group truth contexts."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "GeneSPIDER2 uses one fixed GRN for all expression columns; no per-column GRN state is emitted."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "network_matrix",
+          "kind": "graph",
+          "description": "Signed GeneSPIDER GRN matrix A used for single-cell simulation.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "perturbation_design",
+          "kind": "matrix",
+          "description": "Perturbation design matrix P consumed by datastruct.scdata.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "single_cell_expression",
+          "kind": "counts",
+          "description": "Y output from datastruct.scdata, containing raw counts when single_cell.raw_counts=true or fold-changes otherwise.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "noise_free_fold_change",
+          "kind": "matrix",
+          "description": "X output from datastruct.scdata, the original fold-change response before final count/dropout conversion.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "dropout_mask",
+          "kind": "matrix",
+          "description": "Ed output from datastruct.scdata, a binary dropout mask.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "gaussian_noise",
+          "kind": "matrix",
+          "description": "Eg output from datastruct.scdata, Gaussian noise added before count/dropout conversion.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "single_cell_control_counts",
+          "kind": "counts",
+          "description": "SCC output from datastruct.scdata, pseudo-control single-cell counts.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public expression gene identifier as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The generated expression feature set is the correct background universe for downstream analyses."
+          ],
+          "limitations": [
+            "The background is synthetic and dataset-derived, not an organism-specific annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Export the same non-diagonal GRN edges used for global truth into extras/prior_grn.tsv with source, target, score and sign.",
+          "assumptions": [
+            "The selected simulator GRN can serve as an oracle structural prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived and not an independent noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Export unique public source/regulator identifiers from non-zero non-diagonal GRN edges, one per line.",
+          "assumptions": [
+            "Regulators in the simulated GRN define the synthetic TF/regulator universe."
+          ],
+          "limitations": [
+            "The TF list is simulator-derived and not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "interventions",
+          "source_artifacts": [
+            "perturbation_design matrix P",
+            "public column identifiers"
+          ],
+          "method": "For each expression column, inspect the corresponding perturbation-design vector and export the perturbed public gene IDs and signed perturbation strengths.",
+          "assumptions": [
+            "Each generated column is assumed to have a well-defined perturbation-design column in P."
+          ],
+          "limitations": [
+            "Generated designs currently represent direct single-gene knockdown/perturbation columns; arbitrary future P matrices may need richer intervention metadata."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "replicates",
+          "source_artifacts": [
+            "perturbation_design matrix P",
+            "perturbation.replicates_per_gene"
+          ],
+          "method": "Assign replicate labels by grouping expression columns that share the same perturbed gene and perturbation strength.",
+          "assumptions": [
+            "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
+          ],
+          "limitations": [
+            "Replicate labels are generated from the wrapper design, not returned as a separate upstream table."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "config_snapshot",
+          "kind": "metadata",
+          "description": "Resolved GeneSPIDER2 wrapper configuration for the run."
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mappings from native GeneSPIDER and input identifiers to public normalized identifiers."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "MATLAB/MATLAB Runtime version, pinned source commit and runtime environment details."
+        },
+        {
+          "id": "compiled_runtime",
+          "kind": "metadata",
+          "description": "MATLAB Compiler build and MATLAB Runtime execution metadata for the packaged GeneSPIDER2 entrypoint."
+        }
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ]
+    },
+    {
+      "native_extras": [
+        "perturbation_design"
+      ],
+      "derivable_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "interventions",
+        "prior_grn",
+        "prior_grn_by_group",
+        "replicates",
+        "tf_list"
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "upstream_configuration": [
+            "Wrapper calls datastruct.scdata(A, P, ..., n_clusts=single_cell.n_clusts) to generate clustered single-cell expression.",
+            "The same selected fixed GRN matrix A is used for all simulated cells and groups."
+          ],
+          "generation": "The wrapper normalizes every non-zero non-diagonal A(target, regulator) entry into truth/networks.csv with context=global.",
+          "score_semantics": "score is abs(A[target, regulator]); sign is + for positive activation effects and - for negative repression effects.",
+          "limitations": [
+            "Global truth is fixed across all derived groups.",
+            "GeneSPIDER2 clustered expression does not imply group-specific GRN rewiring."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "derivable",
+          "source_artifacts": [
+            "expression.tsv",
+            "GeneSPIDER network matrix A"
+          ],
+          "upstream_configuration": [
+            "single_cell.n_clusts >= 2.",
+            "grouping.method=kmeans_expression derives public groups from the generated expression matrix because datastruct.scdata does not return native cluster labels."
+          ],
+          "generation": "The wrapper derives groups.tsv by deterministic expression clustering into single_cell.n_clusts groups, then duplicates global truth rows into one context=group:<group_id> network per observed group.",
+          "score_semantics": "Group truth uses the same score and sign as the fixed global truth edge.",
+          "limitations": [
+            "Group labels are wrapper-derived rather than native GeneSPIDER outputs.",
+            "All group networks are identical because GeneSPIDER2 uses one fixed GRN for the run."
+          ]
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "GeneSPIDER2 uses one fixed GRN for all expression columns; no per-column GRN state is emitted."
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "network_matrix",
+          "kind": "graph",
+          "description": "Signed GeneSPIDER GRN matrix A used for single-cell simulation.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "perturbation_design",
+          "kind": "matrix",
+          "description": "Perturbation design matrix P consumed by datastruct.scdata.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "single_cell_expression",
+          "kind": "counts",
+          "description": "Y output from datastruct.scdata, containing raw counts when single_cell.raw_counts=true or fold-changes otherwise.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "noise_free_fold_change",
+          "kind": "matrix",
+          "description": "X output from datastruct.scdata, the original fold-change response before final count/dropout conversion.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "dropout_mask",
+          "kind": "matrix",
+          "description": "Ed output from datastruct.scdata, a binary dropout mask.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "gaussian_noise",
+          "kind": "matrix",
+          "description": "Eg output from datastruct.scdata, Gaussian noise added before count/dropout conversion.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        },
+        {
+          "id": "single_cell_control_counts",
+          "kind": "counts",
+          "description": "SCC output from datastruct.scdata, pseudo-control single-cell counts.",
+          "formats": [
+            "mat",
+            "tsv"
+          ]
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "groups",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Cluster cells deterministically into single_cell.n_clusts groups using grouping.method=kmeans_expression on the normalized expression matrix, then write cell_id and group_id to extras/groups.tsv.",
+          "assumptions": [
+            "GeneSPIDER2 scdata is explicitly designed to produce clustered single-cell structure controlled by n_clusts.",
+            "Expression-derived groups are acceptable because upstream does not return the internal theoretical cluster labels."
+          ],
+          "limitations": [
+            "Groups are derived by the wrapper and can differ from GeneSPIDER2's internal shuffled theoretical cluster blocks."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "column_phenotypes",
+          "source_artifacts": [
+            "extras/groups.tsv"
+          ],
+          "method": "Write one phenotype label per cell using the derived group_id.",
+          "assumptions": [
+            "Derived groups are the only public cell-state labels for this integration."
+          ],
+          "limitations": [
+            "Phenotypes are synthetic cluster labels, not named biological cell types."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "cluster_identities",
+          "source_artifacts": [
+            "extras/groups.tsv"
+          ],
+          "method": "Write one row per derived group with a stable synthetic cluster label.",
+          "assumptions": [
+            "Derived group IDs define the cluster identity universe."
+          ],
+          "limitations": [
+            "No upstream biological annotations are available."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Export every public expression gene identifier as extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The generated expression feature set is the correct background universe for downstream analyses."
+          ],
+          "limitations": [
+            "The background is synthetic and dataset-derived, not an organism-specific annotation universe."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Export the same non-diagonal GRN edges used for global truth into extras/prior_grn.tsv with source, target, score and sign.",
+          "assumptions": [
+            "The selected simulator GRN can serve as an oracle structural prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived and not an independent noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Export unique public source/regulator identifiers from non-zero non-diagonal GRN edges, one per line.",
+          "assumptions": [
+            "Regulators in the simulated GRN define the synthetic TF/regulator universe."
+          ],
+          "limitations": [
+            "The TF list is simulator-derived and not an external organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn_by_group",
+          "source_artifacts": [
+            "extras/groups.tsv",
+            "GeneSPIDER network matrix A"
+          ],
+          "method": "Duplicate the global prior GRN once per derived public group and write group_id, source, target, score and sign.",
+          "assumptions": [
+            "GeneSPIDER2 uses a fixed GRN across derived groups, so a group-specific oracle prior is identical by construction."
+          ],
+          "limitations": [
+            "This is not evidence of group-specific regulatory rewiring."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "group",
+          "source_artifacts": [
+            "truth/networks.csv",
+            "extras/groups.tsv"
+          ],
+          "method": "For each observed derived group_id, duplicate the global truth edge set into context=group:<group_id>.",
+          "assumptions": [
+            "The fixed-GRN model means every derived group shares the same regulatory truth."
+          ],
+          "limitations": [
+            "Group truth is wrapper-derived and identical across groups."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "interventions",
+          "source_artifacts": [
+            "perturbation_design matrix P",
+            "public column identifiers"
+          ],
+          "method": "For each expression column, inspect the corresponding perturbation-design vector and export the perturbed public gene IDs and signed perturbation strengths.",
+          "assumptions": [
+            "Each generated column is assumed to have a well-defined perturbation-design column in P."
+          ],
+          "limitations": [
+            "Generated designs currently represent direct single-gene knockdown/perturbation columns; arbitrary future P matrices may need richer intervention metadata."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        },
+        {
+          "artifact": "replicates",
+          "source_artifacts": [
+            "perturbation_design matrix P",
+            "perturbation.replicates_per_gene"
+          ],
+          "method": "Assign replicate labels by grouping expression columns that share the same perturbed gene and perturbation strength.",
+          "assumptions": [
+            "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
+          ],
+          "limitations": [
+            "Replicate labels are generated from the wrapper design, not returned as a separate upstream table."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "config_snapshot",
+          "kind": "metadata",
+          "description": "Resolved GeneSPIDER2 wrapper configuration for the run."
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mappings from native GeneSPIDER and input identifiers to public normalized identifiers."
+        },
+        {
+          "id": "grouping_model",
+          "kind": "metadata",
+          "description": "Deterministic expression-clustering settings used to derive groups."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "MATLAB/MATLAB Runtime version, pinned source commit and runtime environment details."
+        },
+        {
+          "id": "compiled_runtime",
+          "kind": "metadata",
+          "description": "MATLAB Compiler build and MATLAB Runtime execution metadata for the packaged GeneSPIDER2 entrypoint."
+        }
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        },
+        {
+          "context": "group",
+          "status": "derivable"
+        }
+      ]
+    }
+  ]
+}

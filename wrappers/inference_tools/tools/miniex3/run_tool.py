@@ -168,28 +168,28 @@ def _read_groups(groups_path: Path, cells: list[str]) -> tuple[dict[str, str], l
         if "cluster" not in reader.fieldnames:
             raise ValueError("groups.tsv is missing required column: cluster.")
 
-        cell_to_group: dict[str, str] = {}
+        column_to_group: dict[str, str] = {}
         group_order: list[str] = []
         for line_number, row in enumerate(reader, start=2):
             cell = (row.get(first_col) or "").strip()
             group = (row.get("cluster") or "").strip()
             if not cell or not group:
                 raise ValueError(f"groups.tsv line {line_number} has an empty cell or cluster value.")
-            if cell in cell_to_group:
+            if cell in column_to_group:
                 raise ValueError(f"groups.tsv contains duplicated cell id: {cell}")
-            cell_to_group[cell] = group
+            column_to_group[cell] = group
             if group not in group_order:
                 group_order.append(group)
 
-    missing = [cell for cell in cells if cell not in cell_to_group]
-    extra = sorted(set(cell_to_group).difference(cells))
+    missing = [cell for cell in cells if cell not in column_to_group]
+    extra = sorted(set(column_to_group).difference(cells))
     if missing:
         raise ValueError(f"groups.tsv is missing expression cells: {missing[:8]}")
     if extra:
         raise ValueError(f"groups.tsv contains cells not present in expression.tsv: {extra[:8]}")
     if len(group_order) < 1:
         raise ValueError("groups.tsv must define at least one group.")
-    return cell_to_group, group_order
+    return column_to_group, group_order
 
 
 def _read_cluster_identities(path: Path, groups: list[str]) -> dict[str, tuple[str, Optional[str]]]:
@@ -248,13 +248,13 @@ def _write_cells_to_clusters(
     path: Path,
     *,
     cells: list[str],
-    cell_to_group: dict[str, str],
+    column_to_group: dict[str, str],
     original_to_internal: dict[str, str],
 ) -> None:
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
         for cell in cells:
-            writer.writerow([cell, original_to_internal[cell_to_group[cell]]])
+            writer.writerow([cell, original_to_internal[column_to_group[cell]]])
 
 
 def _write_cluster_identities(
@@ -418,7 +418,7 @@ def _prepare_inputs(
     identities_path = require_extra_file(extra_dir, "cluster_identities.tsv", "cluster_identities")
     tf_list_path = require_extra_file(extra_dir, "tf_list.txt", "tf_list")
 
-    cell_to_group, group_order = _read_groups(groups_path, cells)
+    column_to_group, group_order = _read_groups(groups_path, cells)
     identities = _read_cluster_identities(identities_path, group_order)
     original_to_internal, internal_to_original = _make_cluster_maps(group_order)
 
@@ -435,7 +435,7 @@ def _prepare_inputs(
     _write_cells_to_clusters(
         cells_to_clusters_out,
         cells=cells,
-        cell_to_group=cell_to_group,
+        column_to_group=column_to_group,
         original_to_internal=original_to_internal,
     )
     _write_cluster_identities(

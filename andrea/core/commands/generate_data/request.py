@@ -21,44 +21,35 @@ from andrea.core.shared.compatibility_rules import (
 
 from .catalog import (
     _load_simulator_catalog,
-    get_profile_capability,
+    get_semantic_capability,
     load_simulation_input_specs,
 )
+from .semantic import (
+    parse_data_axes,
+    parse_truth_requirements,
+    required_extras_for_request,
+    supported_artifacts,
+    truth_output_statuses,
+)
 from .shared import (
-    PROFILE_SPECS,
     ResolvedSimulationPlan,
     ResolvedSimulatorRun,
     TAXONOMIC_GROUPS,
     _load_json_object,
     _validate_json_instance,
-    required_truth_outputs_for_profile,
 )
 
 def _supported_requested_artifacts(
-    profile_capability: dict[str, Any],
+    capability: dict[str, Any],
 ) -> tuple[set[str], set[str]]:
-    native = set(profile_capability.get("native_extras", []))
-    derivable = set(profile_capability.get("derivable_extras", []))
-    truth_outputs = profile_capability.get("truth_outputs", {})
-    if isinstance(truth_outputs, dict):
-        native.update(
-            key
-            for key, mode in truth_outputs.items()
-            if key in SIMULATION_EXTRA_IDS and mode == "native"
-        )
-        derivable.update(
-            key
-            for key, mode in truth_outputs.items()
-            if key in SIMULATION_EXTRA_IDS and mode == "derivable"
-        )
-    return native, derivable
+    return supported_artifacts(capability)
 
 
 def _supported_native_outputs(
-    profile_capability: dict[str, Any],
+    capability: dict[str, Any],
 ) -> dict[str, dict[str, Any]]:
     supported: dict[str, dict[str, Any]] = {}
-    for item in profile_capability.get("native_outputs", []):
+    for item in capability.get("native_outputs", []):
         if not isinstance(item, dict):
             continue
         output_id = str(item.get("id", "")).strip()
@@ -70,14 +61,15 @@ def _supported_native_outputs(
 def _resolve_native_outputs(
     *,
     simulator_id: str,
-    profile: str,
-    profile_capability: dict[str, Any],
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
+    capability: dict[str, Any],
     requested_extras: list[str],
     simulator_params: dict[str, Any],
     raw_native_outputs: Any,
     label: str,
 ) -> list[str]:
-    supported = _supported_native_outputs(profile_capability)
+    supported = _supported_native_outputs(capability)
     if raw_native_outputs is None:
         return []
     if not isinstance(raw_native_outputs, list):
@@ -99,7 +91,7 @@ def _resolve_native_outputs(
     unsupported = sorted(set(resolved).difference(supported))
     if unsupported:
         raise ValueError(
-            f"Simulator '{simulator_id}' does not support native outputs for profile '{profile}': "
+            f"Simulator '{simulator_id}' does not support selected native outputs: "
             f"{unsupported}"
         )
     requested_extra_set = set(requested_extras)
@@ -109,7 +101,8 @@ def _resolve_native_outputs(
         if not _conditional_item_matches(
             supported[output_id],
             default_if_no_conditions=True,
-            profile=profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested_extra_set,
             simulator_params=simulator_params,
         )
@@ -127,7 +120,7 @@ def _resolve_native_outputs(
             messages.append(f"{output_id}: {message}")
         raise ValueError(
             f"Simulator '{simulator_id}' cannot produce selected native output(s) "
-            f"for profile '{profile}': {'; '.join(messages)}"
+            f"for the requested data_axes/truth_requirements: {'; '.join(messages)}"
         )
     return resolved
 
@@ -137,8 +130,10 @@ def _resolve_simulator_params(
     simulator_id: str,
     user_params: dict[str, Any],
     spec_params: dict[str, Any],
+    capability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     warnings: list[str] = []
+    raw_params: dict[str, Any] = {}
     resolved: dict[str, Any] = {}
     errors: list[str] = []
 
@@ -152,10 +147,26 @@ def _resolve_simulator_params(
         if not isinstance(param_def, dict):
             errors.append(f"invalid param definition for '{param_name}'")
             continue
-        if param_name in user_params:
-            raw_value = user_params[param_name]
-        else:
-            raw_value = copy.deepcopy(param_def.get("default"))
+        raw_params[param_name] = (
+            copy.deepcopy(user_params[param_name])
+            if param_name in user_params
+            else copy.deepcopy(param_def.get("default"))
+        )
+
+    errors.extend(
+        _apply_parameter_bindings(
+            simulator_id=simulator_id,
+            raw_params=raw_params,
+            user_params=user_params,
+            spec_params=spec_params,
+            capability=capability or {},
+        )
+    )
+
+    for param_name, param_def in spec_params.items():
+        if not isinstance(param_def, dict):
+            continue
+        raw_value = raw_params.get(param_name)
 
         if raw_value is None:
             if bool(param_def.get("required")) and param_def.get("default") is None:
@@ -177,6 +188,127 @@ def _resolve_simulator_params(
             f"[{simulator_id}] invalid simulator_params: {'; '.join(errors)}"
         )
     return resolved
+
+
+def _split_param_path(path: Any) -> list[str]:
+    return [part for part in str(path or "").split(".") if part]
+
+
+def _nested_path_exists(payload: Any, parts: list[str]) -> bool:
+    current = payload
+    for part in parts:
+        if not isinstance(current, dict) or part not in current:
+            return False
+        current = current[part]
+    return True
+
+
+def _nested_get(payload: Any, parts: list[str]) -> Any:
+    current = payload
+    for part in parts:
+        if not isinstance(current, dict) or part not in current:
+            return None
+        current = current[part]
+    return current
+
+
+def _nested_set(payload: dict[str, Any], parts: list[str], value: Any) -> None:
+    current = payload
+    for part in parts[:-1]:
+        child = current.get(part)
+        if not isinstance(child, dict):
+            child = {}
+            current[part] = child
+        current = child
+    current[parts[-1]] = copy.deepcopy(value)
+
+
+def _schema_path_exists(schema: dict[str, Any], parts: list[str]) -> bool:
+    current = schema
+    for index, part in enumerate(parts):
+        if not isinstance(current, dict) or part not in current:
+            return False
+        param_def = current[part]
+        if not isinstance(param_def, dict):
+            return False
+        if index == len(parts) - 1:
+            return True
+        if param_def.get("type") != "object":
+            return False
+        current = param_def.get("properties", {})
+    return False
+
+
+def _json_equal(left: Any, right: Any) -> bool:
+    return left == right
+
+
+def _apply_parameter_bindings(
+    *,
+    simulator_id: str,
+    raw_params: dict[str, Any],
+    user_params: dict[str, Any],
+    spec_params: dict[str, Any],
+    capability: dict[str, Any],
+) -> list[str]:
+    errors: list[str] = []
+    bindings = capability.get("parameter_bindings", [])
+    if bindings is None:
+        return errors
+    if not isinstance(bindings, list):
+        return ["parameter_bindings must be an array"]
+
+    for index, binding in enumerate(bindings, start=1):
+        if not isinstance(binding, dict):
+            errors.append(f"parameter_bindings[{index}] must be an object")
+            continue
+        param_path = str(binding.get("param", "")).strip()
+        parts = _split_param_path(param_path)
+        policy = str(binding.get("policy", "")).strip()
+        if not parts:
+            errors.append(f"parameter_bindings[{index}].param is required")
+            continue
+        if policy not in {"locked", "default_if_unset"}:
+            errors.append(
+                f"parameter_bindings[{index}].policy must be locked or default_if_unset"
+            )
+            continue
+        if "value" not in binding:
+            errors.append(f"parameter_bindings[{index}].value is required")
+            continue
+        if not _schema_path_exists(spec_params, parts):
+            errors.append(
+                f"parameter_bindings[{index}] references unknown simulator param "
+                f"'{param_path}'"
+            )
+            continue
+
+        value = binding.get("value")
+        user_supplied = _nested_path_exists(user_params, parts)
+        current_value = _nested_get(raw_params, parts)
+
+        if policy == "locked":
+            if user_supplied and not _json_equal(_nested_get(user_params, parts), value):
+                errors.append(
+                    f"simulator param '{param_path}' is controlled by the selected "
+                    f"scenario and must be {value!r}"
+                )
+                continue
+            _nested_set(raw_params, parts, value)
+            current_value = value
+        elif policy == "default_if_unset" and not user_supplied:
+            _nested_set(raw_params, parts, value)
+            current_value = value
+
+        allowed_values = binding.get("allowed_values")
+        if isinstance(allowed_values, list) and allowed_values:
+            if not any(_json_equal(current_value, allowed) for allowed in allowed_values):
+                errors.append(
+                    f"simulator param '{param_path}' must be one of "
+                    f"{allowed_values!r} for the selected scenario"
+                )
+
+    return errors
 
 
 def _resolve_inputs(
@@ -239,13 +371,19 @@ def _compare_condition_value(actual: Any, op: str, expected: Any) -> bool:
 def _condition_actual_value(
     field: str,
     *,
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: set[str],
     native_outputs: set[str],
     simulator_params: dict[str, Any],
 ) -> Any:
-    if field == "profile":
-        return profile
+    if field.startswith("data_axes."):
+        return data_axes.get(field.removeprefix("data_axes."))
+    if field == "truth_requirement":
+        raw_contexts = truth_requirements.get("contexts", [])
+        if not isinstance(raw_contexts, list):
+            return []
+        return [str(item) for item in raw_contexts]
     if field == "requested_extra":
         return sorted(requested_extras)
     if field == "native_output":
@@ -259,7 +397,8 @@ def _conditional_item_matches(
     item: dict[str, Any],
     *,
     default_if_no_conditions: bool,
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: set[str],
     native_outputs: set[str] | None = None,
     simulator_params: dict[str, Any],
@@ -276,21 +415,25 @@ def _conditional_item_matches(
         expected = condition.get("value")
         actual = _condition_actual_value(
             field,
-            profile=profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested_extras,
             native_outputs=native_outputs,
             simulator_params=simulator_params,
         )
-        if field == "requested_extra" and op in {"eq", "ne"}:
-            matches = expected in requested_extras
+        if field in {"requested_extra", "truth_requirement"} and op in {"eq", "ne"}:
+            values = set(actual if isinstance(actual, list) else [])
+            matches = expected in values
             if op == "ne":
                 matches = not matches
-        elif field == "requested_extra" and op == "in":
+        elif field in {"requested_extra", "truth_requirement"} and op == "in":
+            values = set(actual if isinstance(actual, list) else [])
             expected_values = set(expected if isinstance(expected, list) else [])
-            matches = bool(expected_values.intersection(requested_extras))
-        elif field == "requested_extra" and op == "not_in":
+            matches = bool(expected_values.intersection(values))
+        elif field in {"requested_extra", "truth_requirement"} and op == "not_in":
+            values = set(actual if isinstance(actual, list) else [])
             expected_values = set(expected if isinstance(expected, list) else [])
-            matches = not bool(expected_values.intersection(requested_extras))
+            matches = not bool(expected_values.intersection(values))
         elif field == "native_output" and op in {"eq", "ne"}:
             matches = expected in native_outputs
             if op == "ne":
@@ -311,7 +454,8 @@ def _conditional_item_matches(
 def _conditional_input_matches(
     requirement: dict[str, Any],
     *,
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: set[str],
     native_outputs: set[str] | None = None,
     simulator_params: dict[str, Any],
@@ -319,7 +463,8 @@ def _conditional_input_matches(
     return _conditional_item_matches(
         requirement,
         default_if_no_conditions=False,
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         native_outputs=native_outputs or set(),
         simulator_params=simulator_params,
@@ -328,17 +473,19 @@ def _conditional_input_matches(
 
 def validate_truth_parameter_requirements(
     *,
-    profile_capability: dict[str, Any],
-    profile: str,
+    capability: dict[str, Any],
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: list[str],
     native_outputs: list[str] | None = None,
     simulator_params: dict[str, Any],
 ) -> list[str]:
-    required_truth_outputs = set(required_truth_outputs_for_profile(profile))
+    parsed_truth = parse_truth_requirements(truth_requirements)
+    required_truth_outputs = set(parsed_truth.contexts)
     requested_extra_set = set(requested_extras)
     native_output_set = set(native_outputs or [])
     errors: list[str] = []
-    for requirement in profile_capability.get("truth_parameter_requirements", []):
+    for requirement in capability.get("truth_parameter_requirements", []):
         if not isinstance(requirement, dict):
             continue
         truth_output = str(requirement.get("truth_output", "")).strip()
@@ -347,7 +494,8 @@ def validate_truth_parameter_requirements(
         if not _conditional_item_matches(
             requirement,
             default_if_no_conditions=True,
-            profile=profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested_extra_set,
             native_outputs=native_output_set,
             simulator_params=simulator_params,
@@ -406,7 +554,8 @@ def _input_metric_value(
 def _compatibility_condition_value(
     *,
     field: str,
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: set[str],
     native_outputs: set[str],
     simulator_params: dict[str, Any],
@@ -419,7 +568,8 @@ def _compatibility_condition_value(
         )
     return _condition_actual_value(
         field,
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         native_outputs=native_outputs,
         simulator_params=simulator_params,
@@ -429,7 +579,8 @@ def _compatibility_condition_value(
 def _compatibility_condition_matches(
     *,
     condition: dict[str, Any],
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: set[str],
     native_outputs: set[str],
     simulator_params: dict[str, Any],
@@ -441,7 +592,8 @@ def _compatibility_condition_matches(
         attribute_separator=" ",
         value_from_resolver=lambda value_from: _compatibility_condition_value(
             field=value_from,
-            profile=profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested_extras,
             native_outputs=native_outputs,
             simulator_params=simulator_params,
@@ -450,18 +602,21 @@ def _compatibility_condition_matches(
     )
     actual = _compatibility_condition_value(
         field=field,
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         native_outputs=native_outputs,
         simulator_params=simulator_params,
         resolved_input_paths=resolved_input_paths,
     )
-    if field == "requested_extra" and op in {"eq", "ne"}:
-        matches = expected in requested_extras
+    if field in {"requested_extra", "truth_requirement"} and op in {"eq", "ne"}:
+        actual_values = set(actual if isinstance(actual, list) else [])
+        matches = expected in actual_values
         return not matches if op == "ne" else matches
-    if field == "requested_extra" and op in {"in", "not_in"}:
+    if field in {"requested_extra", "truth_requirement"} and op in {"in", "not_in"}:
+        actual_values = set(actual if isinstance(actual, list) else [])
         expected_values = set(expected if isinstance(expected, list) else [])
-        matches = bool(expected_values.intersection(requested_extras))
+        matches = bool(expected_values.intersection(actual_values))
         return not matches if op == "not_in" else matches
     if field == "native_output" and op in {"eq", "ne"}:
         matches = expected in native_outputs
@@ -476,7 +631,8 @@ def _compatibility_condition_matches(
 def _compatibility_rule_matches(
     *,
     rule: dict[str, Any],
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: set[str],
     native_outputs: set[str],
     simulator_params: dict[str, Any],
@@ -485,7 +641,8 @@ def _compatibility_rule_matches(
     def _condition_matches(condition: dict[str, Any], _index: int) -> bool:
         return _compatibility_condition_matches(
             condition=condition,
-            profile=profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested_extras,
             native_outputs=native_outputs,
             simulator_params=simulator_params,
@@ -506,7 +663,8 @@ def collect_simulator_compatibility_rule_issues(
     *,
     simulator_id: str,
     simulator_spec: dict[str, Any],
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: list[str],
     simulator_params: dict[str, Any],
     native_outputs: list[str] | None = None,
@@ -547,7 +705,8 @@ def collect_simulator_compatibility_rule_issues(
         try:
             matches = _compatibility_rule_matches(
                 rule=rule,
-                profile=profile,
+                data_axes=data_axes,
+                truth_requirements=truth_requirements,
                 requested_extras=requested_extra_set,
                 native_outputs=native_output_set,
                 simulator_params=simulator_params,
@@ -573,7 +732,8 @@ def validate_simulator_inputs(
     *,
     simulator_id: str,
     simulator_spec: dict[str, Any],
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     requested_extras: list[str],
     simulator_params: dict[str, Any],
     native_outputs: list[str] | None = None,
@@ -601,7 +761,8 @@ def validate_simulator_inputs(
         if (
             _conditional_input_matches(
                 requirement,
-                profile=profile,
+                data_axes=data_axes,
+                truth_requirements=truth_requirements,
                 requested_extras=requested_extra_set,
                 native_outputs=native_output_set,
                 simulator_params=simulator_params,
@@ -715,18 +876,23 @@ def _validate_common_plan_fields(
     payload: dict[str, Any],
     *,
     label: str,
-) -> tuple[str, dict[str, Any], list[str], list[str], int | None]:
-    profile = str(payload.get("profile", "")).strip()
-    if profile not in PROFILE_SPECS:
-        raise ValueError(f"Unknown benchmark profile: {profile}")
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[str], list[str], int | None]:
+    data_axes = parse_data_axes(payload.get("data_axes"), label=f"{label}.data_axes")
+    truth_requirements = parse_truth_requirements(
+        payload.get("truth_requirements"),
+        label=f"{label}.truth_requirements",
+    )
 
     requested_extras = list(payload.get("requested_extras", []))
     if any(extra not in SIMULATION_EXTRA_IDS for extra in requested_extras):
         unsupported = sorted(set(requested_extras).difference(SIMULATION_EXTRA_IDS))
         raise ValueError(f"Unknown requested_extras: {unsupported}")
 
-    profile_required = set(PROFILE_SPECS[profile].required_extras)
-    effective_extras = sorted(set(requested_extras).union(profile_required))
+    effective_extras = sorted(
+        set(requested_extras).union(
+            required_extras_for_request(data_axes, truth_requirements)
+        )
+    )
 
     organism = payload.get("organism")
     if not isinstance(organism, dict):
@@ -739,13 +905,21 @@ def _validate_common_plan_fields(
     if base_seed is not None and int(base_seed) < 1:
         raise ValueError(f"{label}.base_seed must be >= 1")
 
-    return profile, organism, requested_extras, effective_extras, base_seed
+    return (
+        data_axes.to_json(),
+        truth_requirements.to_json(),
+        organism,
+        requested_extras,
+        effective_extras,
+        base_seed,
+    )
 
 
 def _resolve_simulator_run(
     *,
     request_id: str,
-    profile: str,
+    data_axes: dict[str, Any],
+    truth_requirements: dict[str, Any],
     run_id: str,
     organism: dict[str, Any],
     requested_extras: list[str],
@@ -761,38 +935,35 @@ def _resolve_simulator_run(
         raise ValueError(f"Unknown simulator_id in simulation-plan: {simulator_id}")
     simulator_spec = catalog[simulator_id]
 
-    profile_capability = get_profile_capability(simulator_spec, profile)
-    if profile_capability is None:
+    capability = get_semantic_capability(
+        simulator_spec,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
+    )
+    if capability is None:
         raise ValueError(
-            f"Simulator '{simulator_id}' does not support profile '{profile}'"
+            f"Simulator '{simulator_id}' does not support requested data_axes/truth_requirements"
         )
-    truth_outputs = profile_capability.get("truth_outputs", {})
+    parsed_truth = parse_truth_requirements(truth_requirements)
+    truth_outputs = truth_output_statuses(capability)
     missing_truth = [
-        output_id
-        for output_id in required_truth_outputs_for_profile(profile)
-        if truth_outputs.get(output_id) not in {"native", "derivable"}
+        context
+        for context in parsed_truth.contexts
+        if truth_outputs.get(context) not in {"native", "derivable"}
     ]
     if missing_truth:
         raise ValueError(
-            f"Simulator '{simulator_id}' cannot satisfy required truth outputs for "
-            f"profile '{profile}': {missing_truth}"
+            f"Simulator '{simulator_id}' cannot satisfy required truth context(s): "
+            f"{missing_truth}"
         )
 
-    native, derivable = _supported_requested_artifacts(profile_capability)
+    native, derivable = _supported_requested_artifacts(capability)
     supported_extras = native.union(derivable)
-    unsupported_requested = sorted(set(requested_extras).difference(supported_extras))
+    unsupported_requested = sorted(set(effective_extras).difference(supported_extras))
     if unsupported_requested:
         raise ValueError(
-            f"Simulator '{simulator_id}' does not support requested extras for profile '{profile}': "
+            f"Simulator '{simulator_id}' does not support requested/effective extras: "
             f"{unsupported_requested}"
-        )
-
-    profile_required = set(PROFILE_SPECS[profile].required_extras)
-    missing_profile_support = sorted(profile_required.difference(supported_extras))
-    if missing_profile_support:
-        raise ValueError(
-            f"Simulator '{simulator_id}' cannot satisfy required extras for profile '{profile}': "
-            f"{missing_profile_support}"
         )
 
     raw_simulator_params = run_payload.get("simulator_params", {})
@@ -804,10 +975,12 @@ def _resolve_simulator_run(
         simulator_id=simulator_id,
         user_params=raw_simulator_params,
         spec_params=simulator_spec.get("params", {}),
+        capability=capability,
     )
     truth_parameter_errors = validate_truth_parameter_requirements(
-        profile_capability=profile_capability,
-        profile=profile,
+        capability=capability,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         simulator_params=resolved_params,
     )
@@ -823,8 +996,9 @@ def _resolve_simulator_run(
     )
     native_outputs = _resolve_native_outputs(
         simulator_id=simulator_id,
-        profile=profile,
-        profile_capability=profile_capability,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
+        capability=capability,
         requested_extras=requested_extras,
         simulator_params=resolved_params,
         raw_native_outputs=run_payload.get("native_outputs"),
@@ -834,7 +1008,8 @@ def _resolve_simulator_run(
     input_errors = validate_simulator_inputs(
         simulator_id=simulator_id,
         simulator_spec=simulator_spec,
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         requested_extras=requested_extras,
         simulator_params=resolved_params,
         native_outputs=native_outputs,
@@ -849,7 +1024,8 @@ def _resolve_simulator_run(
         collect_simulator_compatibility_rule_issues(
             simulator_id=simulator_id,
             simulator_spec=simulator_spec,
-            profile=profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             requested_extras=requested_extras,
             simulator_params=resolved_params,
             native_outputs=native_outputs,
@@ -898,7 +1074,8 @@ def _resolve_simulator_run(
 
     return ResolvedSimulatorRun(
         request_id=request_id,
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         run_id=run_id,
         simulator_id=simulator_id,
         organism=organism,
@@ -929,7 +1106,7 @@ def validate_simulation_plan_payload(
         label="simulation-plan",
     )
 
-    profile, organism, requested_extras, effective_extras, base_seed = (
+    data_axes, truth_requirements, organism, requested_extras, effective_extras, base_seed = (
         _validate_common_plan_fields(plan_payload, label="simulation-plan")
     )
     raw_inputs = plan_payload.get("inputs", {})
@@ -944,7 +1121,8 @@ def validate_simulation_plan_payload(
     simulator_runs = [
         _resolve_simulator_run(
             request_id=str(plan_payload["id"]),
-            profile=profile,
+            data_axes=data_axes,
+            truth_requirements=truth_requirements,
             run_id=str(run_payload["run_id"]),
             organism=organism,
             requested_extras=requested_extras,
@@ -1036,7 +1214,8 @@ def validate_simulation_plan_payload(
 
     return ResolvedSimulationPlan(
         request_id=str(plan_payload["id"]),
-        profile=profile,
+        data_axes=data_axes,
+        truth_requirements=truth_requirements,
         organism=organism,
         requested_extras=requested_extras,
         effective_extras=effective_extras,

@@ -1,0 +1,88 @@
+{
+  "simulator_id": "genespider2",
+  "request": {
+    "seed": 504,
+    "effective_extras": [
+      "groups",
+      "column_phenotypes",
+      "cluster_identities",
+      "perturbation_design",
+      "interventions",
+      "replicates",
+      "enrichment_background",
+      "prior_grn",
+      "prior_grn_by_group",
+      "tf_list"
+    ],
+    "native_outputs": [
+      "network_matrix",
+      "perturbation_design",
+      "single_cell_expression",
+      "noise_free_fold_change",
+      "dropout_mask",
+      "gaussian_noise",
+      "single_cell_control_counts"
+    ],
+    "inputs": {},
+    "params": {
+      "num_genes": 6,
+      "average_degree": 2.0,
+      "perturbation": {
+        "replicates_per_gene": 2
+      },
+      "single_cell": {
+        "n_clusts": 2,
+        "raw_counts": false,
+        "snr": 1.0,
+        "control_snr": 1.0
+      }
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "perturbational"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/groups.tsv",
+    "extras/column_phenotypes.tsv",
+    "extras/cluster_identities.tsv",
+    "extras/perturbation_design.tsv",
+    "extras/interventions.tsv",
+    "extras/replicates.tsv",
+    "extras/enrichment_background.txt",
+    "extras/prior_grn.tsv",
+    "extras/prior_grn_by_group.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "native/network_matrix.tsv",
+    "native/perturbation_design.tsv",
+    "native/single_cell_expression.tsv",
+    "native/noise_free_fold_change.tsv",
+    "native/dropout_mask.tsv",
+    "native/gaussian_noise.tsv",
+    "native/single_cell_control_counts.tsv",
+    "provenance/raw/matlab_outputs/network_matrix.tsv",
+    "provenance/raw/matlab_outputs/single_cell_perturbational_raw.mat",
+    "provenance/raw/matlab_outputs/matlab_session_info.txt"
+  ],
+  "required_truth_context_prefixes": [
+    "global",
+    "group:"
+  ]
+}

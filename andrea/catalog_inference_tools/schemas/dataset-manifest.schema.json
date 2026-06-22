@@ -5,31 +5,42 @@
   "description": "Run-time manifest for GRN inference. Describes the embedded dataset spec, expression matrix path, and optional extra artefacts. This is the main orchestrator input.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "id", "dataset"],
+  "required": [
+    "schema_version",
+    "id",
+    "dataset"
+  ],
   "properties": {
     "schema_version": {
       "type": "string",
       "const": "1.0",
       "description": "DatasetManifest schema version."
     },
-
     "id": {
       "type": "string",
       "minLength": 1,
       "pattern": "^[a-z0-9][a-z0-9_-]*$",
       "description": "Stable manifest identifier."
     },
-
     "dataset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["spec", "expression_matrix"],
+      "required": [
+        "spec",
+        "expression_matrix"
+      ],
       "description": "Core dataset inputs (embedded semantic spec + expression matrix path).",
       "properties": {
         "spec": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["schema_version", "id", "name", "expression", "organism"],
+          "required": [
+            "schema_version",
+            "id",
+            "name",
+            "expression",
+            "organism"
+          ],
           "description": "Embedded dataset semantic annotation.",
           "properties": {
             "schema_version": {
@@ -50,7 +61,12 @@
             "expression": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["genes", "columns", "column_kind", "expression_profile"],
+              "required": [
+                "genes",
+                "columns",
+                "column_kind",
+                "expression_profile"
+              ],
               "properties": {
                 "genes": {
                   "type": "integer",
@@ -64,17 +80,37 @@
                 },
                 "column_kind": {
                   "type": "string",
-                  "enum": ["samples", "cells", "timepoints", "perturbations"],
+                  "enum": [
+                    "samples",
+                    "cells",
+                    "timepoints",
+                    "perturbations",
+                    "spots",
+                    "metacells",
+                    "conditions"
+                  ],
                   "description": "What each column represents."
                 },
                 "expression_profile": {
                   "type": "string",
-                  "enum": ["bulk", "scrna", "mixed", "unknown"],
+                  "enum": [
+                    "bulk",
+                    "scrna",
+                    "spatial",
+                    "mixed",
+                    "unknown"
+                  ],
                   "description": "Statistical nature of the expression matrix (bulk RNA-seq, single-cell RNA-seq, mixed, or unknown)."
                 },
                 "gene_id_kind": {
                   "type": "string",
-                  "enum": ["symbol", "ensembl", "entrez", "mixed", "unknown"],
+                  "enum": [
+                    "symbol",
+                    "ensembl",
+                    "entrez",
+                    "mixed",
+                    "unknown"
+                  ],
                   "default": "unknown",
                   "description": "Identifier kind used for gene names in rows."
                 }
@@ -83,11 +119,24 @@
             "organism": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["taxonomic_group", "ncbi_taxon_id"],
+              "required": [
+                "taxonomic_group",
+                "ncbi_taxon_id"
+              ],
               "properties": {
                 "taxonomic_group": {
                   "type": "string",
-                  "enum": ["animal", "plant", "fungi", "bacteria", "archaea", "protist", "viral", "synthetic", "unknown"],
+                  "enum": [
+                    "animal",
+                    "plant",
+                    "fungi",
+                    "bacteria",
+                    "archaea",
+                    "protist",
+                    "viral",
+                    "synthetic",
+                    "unknown"
+                  ],
                   "description": "Broad taxonomic group used for tool compatibility checks."
                 },
                 "ncbi_taxon_id": {
@@ -108,10 +157,20 @@
                   "if": {
                     "properties": {
                       "taxonomic_group": {
-                        "enum": ["animal", "plant", "fungi", "bacteria", "archaea", "protist", "viral"]
+                        "enum": [
+                          "animal",
+                          "plant",
+                          "fungi",
+                          "bacteria",
+                          "archaea",
+                          "protist",
+                          "viral"
+                        ]
                       }
                     },
-                    "required": ["taxonomic_group"]
+                    "required": [
+                      "taxonomic_group"
+                    ]
                   },
                   "then": {
                     "properties": {
@@ -126,10 +185,15 @@
                   "if": {
                     "properties": {
                       "taxonomic_group": {
-                        "enum": ["synthetic", "unknown"]
+                        "enum": [
+                          "synthetic",
+                          "unknown"
+                        ]
                       }
                     },
-                    "required": ["taxonomic_group"]
+                    "required": [
+                      "taxonomic_group"
+                    ]
                   },
                   "then": {
                     "properties": {
@@ -187,93 +251,202 @@
         }
       }
     },
-
     "extras": {
       "type": "object",
       "additionalProperties": false,
       "description": "Optional extra artefacts (paths) that some tools may consume. Use null when not provided.",
       "properties": {
         "groups": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
-          "description": "Optional groups TSV path. Detailed content validation is defined in input_specs/groups.json."
+          "description": "Optional expression-column groups TSV path. Detailed content validation is defined in input_specs/groups.json."
         },
-        "cell_phenotypes": {
-          "type": ["string", "null"],
+        "column_descriptors": {
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
-          "description": "Optional ordered cell phenotype TSV path. Detailed content validation is defined in input_specs/cell_phenotypes.json."
+          "description": "Optional expression-column descriptor TSV path. Detailed content validation is defined in input_specs/column_descriptors.json."
         },
-        "cell_descriptors": {
-          "type": ["string", "null"],
+        "column_phenotypes": {
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
-          "description": "Optional cell descriptor TSV path. Detailed content validation is defined in input_specs/cell_descriptors.json."
+          "description": "Optional ordered expression-column phenotype/state TSV path. Detailed content validation is defined in input_specs/column_phenotypes.json."
         },
         "cluster_identities": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
           "description": "Optional cluster identity TSV path. Detailed content validation is defined in input_specs/cluster_identities.json."
         },
         "cluster_markers": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
           "description": "Optional cluster marker TSV path. Detailed content validation is defined in input_specs/cluster_markers.json."
         },
         "enrichment_background": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.txt$",
           "description": "Optional enrichment background gene-list path. Detailed content validation is defined in input_specs/enrichment_background.json."
         },
         "grnboost_network": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
           "description": "Optional precomputed GRNBoost2 network TSV path. Detailed content validation is defined in input_specs/grnboost_network.json."
         },
+        "interventions": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional intervention-definition TSV path. Detailed content validation is defined in input_specs/interventions.json."
+        },
         "lineage_tree": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
           "description": "Optional lineage tree TSV path. Detailed content validation is defined in input_specs/lineage_tree.json."
         },
+        "perturbation_design": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional expression-column perturbation design TSV path. Detailed content validation is defined in input_specs/perturbation_design.json."
+        },
         "pseudotime": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
           "description": "Optional pseudotime TSV path. Detailed content validation is defined in input_specs/pseudotime.json."
         },
         "terms_of_interest": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.txt$",
           "description": "Optional terms-of-interest list path. Detailed content validation is defined in input_specs/terms_of_interest.json."
         },
         "tf_list": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.txt$",
           "description": "Optional TF list text file path. Detailed content validation is defined in input_specs/tf_list.json."
         },
         "prior_grn": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
           "description": "Optional global prior GRN TSV path. Detailed content validation is defined in input_specs/prior_grn.json."
         },
         "prior_grn_by_group": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
           "description": "Optional group-specific prior GRN TSV path. Detailed content validation is defined in input_specs/prior_grn_by_group.json."
+        },
+        "replicates": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional expression-column replicate TSV path. Detailed content validation is defined in input_specs/replicates.json."
+        },
+        "timepoints": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional expression-column timepoint TSV path. Detailed content validation is defined in input_specs/timepoints.json."
+        },
+        "spatial_coordinates": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional spatial coordinate TSV path. Detailed content validation is defined in input_specs/spatial_coordinates.json."
+        },
+        "chromatin_accessibility": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional chromatin accessibility matrix TSV path. Detailed content validation is defined in input_specs/chromatin_accessibility.json."
+        },
+        "chromatin_regions": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional chromatin region metadata TSV path. Detailed content validation is defined in input_specs/chromatin_regions.json."
+        },
+        "cell_cell_interactions": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "pattern": ".*\\.tsv$",
+          "description": "Optional cell-cell interaction TSV path. Detailed content validation is defined in input_specs/cell_cell_interactions.json."
         }
       }
     },
-
     "notes": {
       "type": "string",
       "minLength": 1,

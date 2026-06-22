@@ -13,6 +13,7 @@ import {
 } from "/static-common/app/uploads/progress.js?v=20260521a";
 import {
   $,
+  contextLabel,
   contextFamily,
   escapeHtml,
   formatValue,
@@ -244,22 +245,6 @@ function sourceDisplayName(report, sourceId) {
   return source?.label || sourceId;
 }
 
-function contextLabel(context) {
-  const text = String(context || "");
-  if (text === "global") return "global";
-  const prefixes = [
-    ["group:", "group"],
-    ["cell:", "cell"]
-  ];
-  for (const [prefix, label] of prefixes) {
-    if (text.startsWith(prefix)) {
-      const value = text.slice(prefix.length);
-      return value ? `${label} ${value}` : label;
-    }
-  }
-  return text;
-}
-
 function evaluationSummaryValue(summary) {
   const value = Number(summary?.median);
   return Number.isFinite(value) ? value : null;
@@ -336,9 +321,7 @@ function evaluationMetricIsBounded(metricKey) {
 }
 
 function edgeContextType(context) {
-  const text = String(context || "");
-  const separator = text.indexOf(":");
-  return separator > 0 ? text.slice(0, separator) : (text || "context");
+  return contextFamily(context);
 }
 
 function edgeContextElementLabel(context) {
@@ -379,12 +362,40 @@ function contextVisual(type) {
       bg: "#ecfdf5",
       text: "#0f766e",
     },
-    cell: {
+    column: {
       shape: "grid",
       color: "#7c3aed",
       border: "#ddd6fe",
       bg: "#f5f3ff",
       text: "#6d28d9",
+    },
+    sample: {
+      shape: "square",
+      color: "#0891b2",
+      border: "#a5f3fc",
+      bg: "#ecfeff",
+      text: "#0e7490",
+    },
+    timepoint: {
+      shape: "diamond",
+      color: "#9333ea",
+      border: "#e9d5ff",
+      bg: "#faf5ff",
+      text: "#7e22ce",
+    },
+    perturbation: {
+      shape: "hex",
+      color: "#c2410c",
+      border: "#fed7aa",
+      bg: "#fff7ed",
+      text: "#9a3412",
+    },
+    other: {
+      shape: "triangle",
+      color: "#475569",
+      border: "#cbd5e1",
+      bg: "#f8fafc",
+      text: "#334155",
     },
   };
   if (known[normalized]) return known[normalized];
@@ -422,7 +433,15 @@ function contextChipHtml(type) {
 }
 
 function edgeContextTypeOptions(sourceNetworks) {
-  const order = { global: 0, group: 1, cell: 2 };
+  const order = {
+    global: 0,
+    group: 1,
+    column: 2,
+    sample: 3,
+    timepoint: 4,
+    perturbation: 5,
+    other: 6,
+  };
   return [...new Set(sourceNetworks.map((row) => edgeContextType(row.context)))]
     .sort((a, b) => (order[a] ?? 99) - (order[b] ?? 99) || String(a).localeCompare(String(b), undefined, { numeric: true }));
 }
@@ -488,7 +507,15 @@ function distanceFamilies(report) {
     .filter(([_family, count]) => Number(count) > 0)
     .map(([family]) => family)
     .sort((a, b) => {
-      const order = { global: 0, group: 1, cell: 2, other: 3 };
+      const order = {
+        global: 0,
+        group: 1,
+        column: 2,
+        sample: 3,
+        timepoint: 4,
+        perturbation: 5,
+        other: 6,
+      };
       return (order[a] ?? 10) - (order[b] ?? 10) || a.localeCompare(b);
     });
 }
@@ -496,7 +523,10 @@ function distanceFamilies(report) {
 function distanceFamilyLabel(family) {
   if (family === "global") return "global";
   if (family === "group") return "group";
-  if (family === "cell") return "cell";
+  if (family === "column") return "column";
+  if (family === "sample") return "sample";
+  if (family === "timepoint") return "timepoint";
+  if (family === "perturbation") return "perturbation";
   return family || "context";
 }
 

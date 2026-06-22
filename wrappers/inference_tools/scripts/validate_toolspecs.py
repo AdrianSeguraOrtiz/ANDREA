@@ -238,6 +238,9 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     if not isinstance(instance, dict):
         return ["ToolSpec root must be a JSON object."]
 
+    if "execution_scope" in instance:
+        errors.append("execution_scope is legacy; use execution_capabilities instead.")
+
     raw_id = instance.get("id")
     if not isinstance(raw_id, str) or raw_id.strip() != tool_id:
         errors.append(
@@ -254,6 +257,10 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     execution_modes = {
         x for x in execution_capabilities if isinstance(x, str) and x.strip()
     }
+    if "cell_native" in execution_modes:
+        errors.append(
+            "execution_capabilities value 'cell_native' is legacy; use 'column_native' instead."
+        )
 
     taxonomic_scope = instance.get("taxonomic_scope")
     if not isinstance(taxonomic_scope, dict):
@@ -442,9 +449,9 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
             )
 
     if "group_aggregated" in execution_modes:
-        if "cell_native" not in execution_modes:
+        if "column_native" not in execution_modes:
             errors.append(
-                "tools with execution_capabilities including 'group_aggregated' must also declare 'cell_native'."
+                "tools with execution_capabilities including 'group_aggregated' must also declare 'column_native'."
             )
         has_group_aggregated_requirement = False
         if isinstance(conditional, list):

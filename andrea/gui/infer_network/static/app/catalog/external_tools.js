@@ -4,7 +4,7 @@ const CAPABILITIES = [
   "global",
   "group_native",
   "group_emulated",
-  "cell_native",
+  "column_native",
   "group_aggregated",
 ];
 const DEFAULT_CUSTOM_TOOL_OUTPUTS = {
@@ -15,7 +15,7 @@ const DEFAULT_CUSTOM_TOOL_OUTPUTS = {
 
 function capabilitiesForExecutionMode(executionMode) {
   if (executionMode === "group_aggregated") {
-    return ["cell_native", "group_aggregated"];
+    return ["column_native", "group_aggregated"];
   }
   return executionMode ? [executionMode] : [];
 }

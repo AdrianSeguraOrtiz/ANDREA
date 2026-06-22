@@ -27,7 +27,7 @@
     }
   },
   "execution_capabilities": [
-    "cell_native",
+    "column_native",
     "group_aggregated"
   ],
   "taxonomic_scope": {
@@ -53,8 +53,8 @@
     "required": [],
     "optional": [
       {
-        "input": "cell_descriptors",
-        "usage": "Optional categorical cell/sample descriptors such as batch, donor, condition or cell type. When provided, the wrapper aligns them to expression columns and passes them as scGeneRAI descriptors during both fit() and predict_networks(); when absent, descriptors are omitted to preserve upstream default behavior."
+        "input": "column_descriptors",
+        "usage": "Optional categorical expression-column descriptors such as batch, donor, condition or cell type. When provided, the wrapper aligns them to expression columns and passes them as scGeneRAI descriptors during both fit() and predict_networks(); when absent, descriptors are omitted to preserve upstream default behavior."
       }
     ],
     "conditional_required": [
@@ -63,8 +63,8 @@
         "execution": "mode",
         "op": "eq",
         "value": "group_aggregated",
-        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates scGeneRAI cell-native network rows by group.",
-        "usage": "ANDREA uses groups.tsv after the native scGeneRAI per-cell run to aggregate cell:<cell_id> rows into group:<group_id> rows; scGeneRAI itself does not consume groups.tsv."
+        "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates scGeneRAI column-native network rows by group.",
+        "usage": "ANDREA uses groups.tsv after the native scGeneRAI per-column run to aggregate column:<column_id> rows into group:<group_id> rows; scGeneRAI itself does not consume groups.tsv."
       }
     ]
   },

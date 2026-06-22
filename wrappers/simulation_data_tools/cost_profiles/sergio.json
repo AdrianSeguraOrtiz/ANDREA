@@ -1,0 +1,201 @@
+{
+  "cost_relevant_params": [
+    "input_preset",
+    "simulation_mode",
+    "number_bins",
+    "noise_params",
+    "noise_params_splice",
+    "decays",
+    "sampling_state",
+    "window_length",
+    "dt",
+    "dt_splice",
+    "shared_coop_state",
+    "splice_ratio",
+    "differentiation_expression",
+    "technical_noise.outlier_enabled",
+    "technical_noise.dropout_enabled",
+    "technical_noise.convert_to_umi"
+  ],
+  "dimension_params": {
+    "cells": {
+      "param": "number_sc",
+      "multiplier_param": "number_bins"
+    },
+    "genes": "number_genes"
+  },
+  "input_source_params": [
+    "input_preset"
+  ],
+  "profiles": [
+    {
+      "id": "single_cell_cells_steady_state_global_custom_default",
+      "sizes": [
+        "3x4"
+      ],
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "inputs": {
+        "sergio_target_interactions": "../tests/fixtures/sergio/target_interactions.csv",
+        "sergio_master_regulators": "../tests/fixtures/sergio/master_regulators.csv"
+      },
+      "param_overrides": {
+        "input_preset": "custom_files",
+        "simulation_mode": "steady_state",
+        "number_bins": 2,
+        "noise_params": 0.1,
+        "decays": 0.8,
+        "sampling_state": 1,
+        "window_length": 3,
+        "dt": 0.01,
+        "shared_coop_state": 2
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "steady_state"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_steady_state_global_group_custom_full_extras",
+      "sizes": [
+        "3x4"
+      ],
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "prior_grn",
+        "prior_grn_by_group",
+        "tf_list"
+      ],
+      "group_count": 2,
+      "population_count": 2,
+      "inputs": {
+        "sergio_target_interactions": "../tests/fixtures/sergio/target_interactions.csv",
+        "sergio_master_regulators": "../tests/fixtures/sergio/master_regulators.csv"
+      },
+      "param_overrides": {
+        "input_preset": "custom_files",
+        "simulation_mode": "steady_state",
+        "number_bins": 2,
+        "noise_params": 0.1,
+        "decays": 0.8,
+        "sampling_state": 1,
+        "window_length": 3,
+        "dt": 0.01,
+        "shared_coop_state": 2
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "steady_state"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_differentiation_global_custom_default",
+      "sizes": [
+        "3x4"
+      ],
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "inputs": {
+        "sergio_target_interactions": "../tests/fixtures/sergio/target_interactions.csv",
+        "sergio_master_regulators": "../tests/fixtures/sergio/master_regulators.csv",
+        "sergio_bifurcation_matrix": "../tests/fixtures/sergio/bifurcation_matrix.tsv"
+      },
+      "param_overrides": {
+        "input_preset": "custom_files",
+        "simulation_mode": "differentiation",
+        "number_bins": 2,
+        "noise_params": 0.1,
+        "noise_params_splice": 0.05,
+        "decays": 0.8,
+        "sampling_state": 1,
+        "window_length": 3,
+        "dt": 0.01,
+        "dt_splice": 0.01,
+        "shared_coop_state": 2,
+        "splice_ratio": 1.5,
+        "differentiation_expression": "total"
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_differentiation_global_group_custom_full_extras",
+      "sizes": [
+        "3x4"
+      ],
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "tf_list"
+      ],
+      "group_count": 2,
+      "population_count": 2,
+      "inputs": {
+        "sergio_target_interactions": "../tests/fixtures/sergio/target_interactions.csv",
+        "sergio_master_regulators": "../tests/fixtures/sergio/master_regulators.csv",
+        "sergio_bifurcation_matrix": "../tests/fixtures/sergio/bifurcation_matrix.tsv"
+      },
+      "param_overrides": {
+        "input_preset": "custom_files",
+        "simulation_mode": "differentiation",
+        "number_bins": 2,
+        "noise_params": 0.1,
+        "noise_params_splice": 0.05,
+        "decays": 0.8,
+        "sampling_state": 1,
+        "window_length": 3,
+        "dt": 0.01,
+        "dt_splice": 0.01,
+        "shared_coop_state": 2,
+        "splice_ratio": 1.5,
+        "differentiation_expression": "total"
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      }
+    }
+  ]
+}

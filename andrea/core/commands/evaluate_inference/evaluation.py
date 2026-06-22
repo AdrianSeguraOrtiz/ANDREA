@@ -17,7 +17,7 @@ from typing import Any, Iterable, Optional
 from andrea.core.shared.json_io import load_json_object as _load_json_object
 from andrea.core.shared.issues import issue_messages
 from andrea.core.shared.network_context import (
-    network_context_family,
+    network_context_counts_by_family,
     network_context_sort_key,
     normalize_network_context,
     normalize_network_sign,
@@ -249,7 +249,8 @@ def evaluate_inference(
         "ground_truth": {
             "dataset_id": manifest.get("dataset_id"),
             "simulator_id": manifest.get("simulator_id"),
-            "profile": manifest.get("profile"),
+            "data_axes": manifest.get("data_axes"),
+            "truth_requirements": manifest.get("truth_requirements"),
             "contexts": sorted(truth_networks.keys(), key=network_context_sort_key),
             "context_counts_by_family": _context_counts_by_family(
                 truth_networks.keys()
@@ -353,15 +354,7 @@ def _context_matching_summary(
 
 
 def _context_counts_by_family(contexts: Iterable[str]) -> dict[str, int]:
-    counts = {
-        "global": 0,
-        "group": 0,
-        "cell": 0,
-        "other": 0,
-    }
-    for context in contexts:
-        counts[network_context_family(context)] += 1
-    return counts
+    return network_context_counts_by_family(contexts)
 
 
 def _resolve_merged_network_path_from_run_report(

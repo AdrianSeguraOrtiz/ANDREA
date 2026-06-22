@@ -9,14 +9,14 @@
 - Smoketest fixtures: `wrappers/inference_tools/tests/fixtures/kscreni/expression.tsv`, `wrappers/inference_tools/tests/fixtures/kscreni/groups.tsv`.
 - Selected upstream entrypoint: `ScReNI::Infer_kScReNI_scNetworks()`.
 - Implemented entrypoint behavior: the wrapper mirrors the selected kScReNI public function but inlines that function body to pass a data-dependent safe `npcs` to `Seurat::RunPCA()`.
-- Selected ANDREA capabilities: `cell_native` and `group_aggregated`.
+- Selected ANDREA capabilities: `column_native` and `group_aggregated`.
 - New normalized input specs: none.
 - Final Phase 3 validation:
   - `make validate-toolspecs ARGS="--tool kscreni"` passed.
   - `make validate-input-specs` passed for all 16 inference input specs, including relevant `expression_matrix` and `groups`.
   - `make validate-smoketest-configs ARGS="--tool kscreni"` passed.
 - Final Phase 3 smoke command: `make run-tool-smoketests ARGS="--tool kscreni --threads 2 --timeout 2400 --show-output-lines 20"`.
-- Final Phase 3 smoke result: passed for `cell_native` and `group_aggregated`; each variant wrote 3081 positive non-self rows and validated 2 auxiliary artifacts.
+- Final Phase 3 smoke result: passed for `column_native` and `group_aggregated`; each variant wrote 3081 positive non-self rows and validated 2 auxiliary artifacts.
 
 ## Sources Reviewed
 
@@ -37,8 +37,8 @@ ScReNI is a single-cell regulatory network inference method for scRNA-seq plus s
 
 | Upstream public entrypoint | Required inputs | Output | ANDREA mapping | Exposed | Rationale |
 |---|---|---|---|---|---|
-| `Infer_kScReNI_scNetworks(exprMatrix, nfeatures=4000, knn=20, nthread=20, nTrees=100)` | Gene x cell expression matrix | Named list of one directed weight matrix per expression cell | `cell_native`; `group_aggregated` is ANDREA aggregation over cell contexts | Yes | Cleanly matches normalized expression input. The tutorial says kScReNI uses transcriptomes alone and calls this function for single-cell networks (`docs/ScReNI_tutorial.Rmd:135-168`). |
-| `Infer_wScReNI_scNetworks(exprMatrix, gene_peak_overlap_matrix, gene_peak_overlap_labs, nearest.neighbors.idx, network.path, data.name, ...)` | Expression, peak-associated matrix, gene/peak/TF labels, nearest-neighbor index, output path/name | One network per cell, written in batches and returned as a list | Could be `cell_native` in principle | No | Requires intermediate gene-peak labels and neighbor indices not represented by current ANDREA inputs (`R/Infer_wScReNI_scNetworks.R:19-24`, `docs/ScReNI_tutorial.Rmd:171-205`). |
+| `Infer_kScReNI_scNetworks(exprMatrix, nfeatures=4000, knn=20, nthread=20, nTrees=100)` | Gene x cell expression matrix | Named list of one directed weight matrix per expression cell | `column_native`; `group_aggregated` is ANDREA aggregation over column contexts | Yes | Cleanly matches normalized expression input. The tutorial says kScReNI uses transcriptomes alone and calls this function for single-cell networks (`docs/ScReNI_tutorial.Rmd:135-168`). |
+| `Infer_wScReNI_scNetworks(exprMatrix, gene_peak_overlap_matrix, gene_peak_overlap_labs, nearest.neighbors.idx, network.path, data.name, ...)` | Expression, peak-associated matrix, gene/peak/TF labels, nearest-neighbor index, output path/name | One network per cell, written in batches and returned as a list | Could be `column_native` in principle | No | Requires intermediate gene-peak labels and neighbor indices not represented by current ANDREA inputs (`R/Infer_wScReNI_scNetworks.R:19-24`, `docs/ScReNI_tutorial.Rmd:171-205`). |
 | `Infer_gene_peak_relationships(gtf_data, scrna, scatac, motif_database, motif_pwm, genome_database, ...)` | GTF, scRNA, scATAC, motif database, motif PWM, genome database | Gene-peak-TF relationship object | Preprocessing for wScReNI | No | It is an upstream preprocessing step, not a direct GRN output, and its genomic resources are outside current normalized input specs (`R/Infer_gene_peak_relationships.R:21-52`). |
 | `Integrate_scRNA_scATAC(...)` | Seurat scRNA/scATAC objects, integration dims, KNN, data type, species | Integrated Seurat object / weighted neighbors | Preprocessing for wScReNI | No | Integration step only; it does not produce ANDREA `network.csv` edges (`docs/ScReNI_tutorial.Rmd:101-133`). |
 | `Get_scRNA_scATAC_neighbors(...)` | Integrated Seurat object | RNA/ATAC neighbor mapping | Preprocessing for wScReNI | No | Auxiliary neighbor extraction, not network inference. |
@@ -47,15 +47,15 @@ ScReNI is a single-cell regulatory network inference method for scRNA-seq plus s
 
 ## Execution Capability Decision
 
-- `cell_native`: selected because `Infer_kScReNI_scNetworks()` runs one logical ScReNI call and returns one network per cell (`R/Infer_kScReNI_scNetworks.R:32-48`).
-- `group_aggregated`: selected because ANDREA can aggregate native `cell:<cell_id>` rows into group-level rows when `groups.tsv` is provided. The wrapper must still emit only native cell contexts; ANDREA owns the aggregation step.
+- `column_native`: selected because `Infer_kScReNI_scNetworks()` runs one logical ScReNI call and returns one network per cell (`R/Infer_kScReNI_scNetworks.R:32-48`).
+- `group_aggregated`: selected because ANDREA can aggregate native `column:<column_id>` rows into group-level rows when `groups.tsv` is provided. The wrapper must still emit only native column contexts; ANDREA owns the aggregation step.
 - `global`, `group_native`, `group_emulated`: not exposed. kScReNI is defined as a cell-specific method; the selected public entrypoint does not natively consume group metadata or return one whole-dataset/global network.
 
 ## Input Contract
 
 - Always required: normalized expression matrix, genes x cells, with non-negative numeric values. Evidence: the kScReNI entrypoint accepts `exprMatrix`, constructs a Seurat object from `counts = exprMatrix`, and names outputs with `colnames(exprMatrix)` (`R/Infer_kScReNI_scNetworks.R:17-30`, `R/Infer_kScReNI_scNetworks.R:46`). The wrapper validates non-negative counts because the upstream call passes the matrix as Seurat counts and runs `NormalizeData()`.
 - Conditional required:
-  - `groups` only when `execution.mode=group_aggregated`. ANDREA uses it after wrapper completion to aggregate cell-native edges. The upstream function does not consume group metadata.
+  - `groups` only when `execution.mode=group_aggregated`. ANDREA uses it after wrapper completion to aggregate column-native edges. The upstream function does not consume group metadata.
 - Optional inputs: none for the selected kScReNI contract.
 - Not reused for the selected contract:
   - `chromatin_accessibility_matrix` is not enough for wScReNI. The public wScReNI path also needs gene-peak labels, motif/PWM/genome/GTF resources, and nearest-neighbor indices (`R/Infer_gene_peak_relationships.R:21-52`, `docs/ScReNI_tutorial.Rmd:171-205`). No new input spec is proposed because wScReNI is intentionally excluded from this phase.
@@ -67,7 +67,7 @@ ScReNI is a single-cell regulatory network inference method for scRNA-seq plus s
 - Evidence:
   - The public signature exposes `nthread=20` (`R/Infer_kScReNI_scNetworks.R:17`).
   - The implementation creates `parallel::makeCluster(nthread)`, registers `doParallel`, and runs `foreach(i = 1:ncell) %dopar%` over cells (`R/Infer_kScReNI_scNetworks.R:34-44`).
-  - The inner `GENIE3::GENIE3()` call is fixed to `nCores=1`, so assigned threads control the outer cell-level worker pool, not nested GENIE3 threads (`R/Infer_kScReNI_scNetworks.R:40`).
+  - The inner `GENIE3::GENIE3()` call is fixed to `nCores=1`, so assigned threads control the outer column-level worker pool, not nested GENIE3 threads (`R/Infer_kScReNI_scNetworks.R:40`).
 - Rationale: this is a safe public in-process worker mapping. `nthread` is runtime resource control, not a user-facing method parameter.
 - Uncertainty: scaling is workload-dependent and no `cost.json` exists yet, so `max_threads=8` is a conservative planner cap until benchmarking.
 - Excluded runtime controls:
@@ -105,7 +105,7 @@ Fixed implementation choices not exposed:
 - Direction: directed regulator-target edges. The ScReNI paper states that obtained cell-specific networks are directed from regulators to target genes and weights represent regulatory strengths (`papers/ScReNI.txt:230-238`). GENIE3 documentation states `weightMat[i,j]` is the weight of the link from gene `i` to gene `j`; the wrapper exports row gene as `source` and column gene as `target`.
 - Evidence type: association. The method infers regulatory relationships from expression-neighborhood/random-forest importance rather than intervention or temporal causality.
 - Filtering: omit self-loops and rows with `score <= 0`.
-- Context: one row context per upstream cell network, `cell:<original_cell_id>`.
+- Context: one row context per upstream cell network, `column:<original_column_id>`.
 - Identifier preservation: use expression matrix row names as gene IDs and expression column names as cell IDs. `Infer_kScReNI_scNetworks()` uses the original `exprMatrix` columns to select neighborhoods and names output list entries with `colnames(exprMatrix)` (`R/Infer_kScReNI_scNetworks.R:38`, `R/Infer_kScReNI_scNetworks.R:46`). The wrapper introduces no aliases and errors if upstream cell names differ from expression column identifiers.
 - Dense output warning: kScReNI returns one dense gene x gene matrix per cell. The wrapper filters positive edges during conversion; smoketests use small fixtures.
 
@@ -136,7 +136,7 @@ Fixed implementation choices not exposed:
 | `method_keywords` | `single_cell`, `cell_specific_network`, `k_nearest_neighbors`, `random_forest`, `genie3`, `directed` | Paper keywords/method and code GENIE3 call (`papers/ScReNI.txt:54`, `papers/ScReNI.txt:165-168`, `R/Infer_kScReNI_scNetworks.R:40`) | Captures method family and selected implementation; certain. |
 | `implementation_url` | `https://github.com/Xuxl2020/ScReNI` | Paper code availability and README (`papers/ScReNI.txt:700-706`, `README.md:41-46`) | Canonical install source; certain. |
 | `docker_image` | `adriansegura99/inference-tools_kscreni:1.0.0` | Existing inference-tool image naming convention | Project convention; local smoketest image `kscreni-smoketest:local` built successfully in Phase 2. |
-| `execution_capabilities` | `cell_native`, `group_aggregated` | kScReNI returns one network per cell (`R/Infer_kScReNI_scNetworks.R:32-48`) | Matches ANDREA cell-native plus ANDREA-owned aggregation; certain. |
+| `execution_capabilities` | `column_native`, `group_aggregated` | kScReNI returns one network per cell (`R/Infer_kScReNI_scNetworks.R:32-48`) | Matches ANDREA column-native plus ANDREA-owned aggregation; certain. |
 | `runtime_resources` | Threading supported; default 1; max 8; `--threads -> kScReNI nthread worker pattern` | kScReNI `nthread` and foreach worker pool (`R/Infer_kScReNI_scNetworks.R:17`, `R/Infer_kScReNI_scNetworks.R:34-44`) | Safe resource mapping; max is conservative until cost profiling. |
 | `taxonomic_scope` | All broad groups, no species IDs | Selected kScReNI uses expression matrix only; species-specific motif/genome resources occur only in excluded wScReNI tutorial (`docs/ScReNI_tutorial.Rmd:171-187`) | No species restriction for kScReNI; moderate confidence. |
 | `compatibility_rules` | `[]` | No selected species- or parameter-specific hard block found | Wrapper validates matrix size and `knn + 1 <= number_of_cells`; schema cannot encode cell-count bounds. |
@@ -151,20 +151,20 @@ Fixed implementation choices not exposed:
 ## Implemented Wrapper Behavior
 
 - Runtime contract: generated `run_tool.sh` calls `Rscript /app/run_tool.R` with `--input`, `--params`, `--extra`, `--output-dir`, and `--threads`.
-- Execution modes: accepts `cell_native` and `group_aggregated`; defaults to `cell_native` when `execution.json` is absent.
-- Group handling: when `execution.mode=group_aggregated`, the wrapper requires and validates `groups.tsv` against expression columns, but still emits `cell:<cell_id>` contexts. ANDREA core owns the logical group aggregation.
+- Execution modes: accepts `column_native` and `group_aggregated`; defaults to `column_native` when `execution.json` is absent.
+- Group handling: when `execution.mode=group_aggregated`, the wrapper requires and validates `groups.tsv` against expression columns, but still emits `column:<column_id>` contexts. ANDREA core owns the logical group aggregation.
 - Parameter handling: requires resolved `nfeatures` and `knn`; rejects invalid integer values and rejects `knn + 1 > number_of_cells`.
 - Input validation: requires unique non-empty gene and cell IDs, finite numeric non-negative expression values, at least 2 genes and 2 cells.
 - Upstream behavior: mirrors `ScReNI::Infer_kScReNI_scNetworks(exprMatrix=expr, nfeatures=params$nfeatures, knn=params$knn, nthread=threads)` and preserves the same Seurat preprocessing, SNN neighbor extraction, outer foreach worker pool, `set.seed(100)`, and `GENIE3(..., nCores=1, nTrees=100)` calls. The function body is inlined only to pass a safe data-dependent `npcs` to `Seurat::RunPCA()`.
 - PCA guard: uses `npcs = min(50, length(VariableFeatures(pbmc)), ncol(expr) - 1, nrow(expr) - 1)`. This fixes GUI datasets with exactly 50 cells where Seurat's default `npcs=50` reaches `irlba`'s strict bound and fails with `max(nu, nv) must be strictly less than min(nrow(A), ncol(A))`.
-- Output conversion: writes `network.csv` with original gene IDs, `score` as raw positive upstream weights, `sign="?"`, `evidence="association"`, and `context="cell:<cell_id>"`; filters self-loops and non-positive/non-finite scores.
+- Output conversion: writes `network.csv` with original gene IDs, `score` as raw positive upstream weights, `sign="?"`, `evidence="association"`, and `context="column:<column_id>"`; filters self-loops and non-positive/non-finite scores.
 - Auxiliary artifacts: writes `kscreni.log` and `raw/kscreni_networks.rds`.
 - Identifier aliases: no aliasing is introduced; wrapper errors if upstream per-cell list names do not match expression cell IDs exactly.
 
 ## Smoketest Outcome
 
 - Fixture: `wrappers/inference_tools/tests/fixtures/kscreni/expression.tsv` has 15 cells and 15 variable non-negative genes so Seurat's default neighbor dimensions are available; `groups.tsv` maps the same 15 cells to two groups.
-- Config: `nfeatures=15`, `knn=2`; variants cover `cell_native` and `group_aggregated`.
+- Config: `nfeatures=15`, `knn=2`; variants cover `column_native` and `group_aggregated`.
 - Final command: `make run-tool-smoketests ARGS="--tool kscreni --threads 2 --timeout 2400 --show-output-lines 20"`.
 - Result: passed.
 - Output checks: each variant produced `network.csv` with 3081 positive non-self rows, final `progress.json` status `completed`, and required auxiliary artifacts `kscreni.log` plus `raw/kscreni_networks.rds`.
@@ -173,10 +173,10 @@ Fixed implementation choices not exposed:
 ## GUI Regression 2026-06-17
 
 - Failing GUI run inspected: `inferred_networks/gui_dataset_20260617T124221Z`.
-- Failure: both `kscreni__01` and `kscreni__02/upstream_cell_native` failed in `Seurat::RunPCA()` with `max(nu, nv) must be strictly less than min(nrow(A), ncol(A))` on a 137 gene x 50 cell expression matrix.
+- Failure: both `kscreni__01` and `kscreni__02/upstream_column_native` failed in `Seurat::RunPCA()` with `max(nu, nv) must be strictly less than min(nrow(A), ncol(A))` on a 137 gene x 50 cell expression matrix.
 - Cause: upstream kScReNI does not pass `npcs`, so Seurat's default `npcs=50` hits the exact cell-count boundary.
 - Fix: wrapper now preserves the kScReNI public behavior but sets safe `RunPCA(npcs=49)` for that dataset via the data-dependent PCA guard above.
-- Verification: rebuilt `adriansegura99/inference-tools_kscreni:1.0.0` and reran the GUI `kscreni__01` input directly in Docker; the run completed and wrote 610353 positive non-self cell-context edges. The same output aggregates with the GUI `groups.tsv` into 95328 group-context edges across 7 groups.
+- Verification: rebuilt `adriansegura99/inference-tools_kscreni:1.0.0` and reran the GUI `kscreni__01` input directly in Docker; the run completed and wrote 610353 positive non-self column-context edges. The same output aggregates with the GUI `groups.tsv` into 95328 group-context edges across 7 groups.
 
 ## Known Limitations / Open Questions
 

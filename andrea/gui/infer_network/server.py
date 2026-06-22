@@ -61,6 +61,7 @@ from andrea.gui.common.server_files import (
     resolve_virtual_source,
     save_upload,
 )
+from andrea.gui.common.server_jobs import start_background_thread
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 COMMON_STATIC_DIR = Path(__file__).resolve().parents[1] / "common" / "static"
@@ -116,12 +117,17 @@ def _load_tools_bootstrap() -> dict[str, Any]:
     expr_spec = input_specs.get("expression_matrix", {})
 
     extra_examples = {
-        "groups": "sample\tcluster\nS1\tA\nS2\tB",
-        "cell_phenotypes": "cell\tphenotype\torder\ncell_1\tIP\t0\ncell_2\tIP\t0\ncell_3\tD12\t1",
+        "groups": "column\tcluster\nS1\tA\nS2\tB",
+        "column_descriptors": "column\tbatch\tcondition\nS1\tbatch_a\tcontrol\nS2\tbatch_b\tstimulated",
+        "column_phenotypes": "column\tphenotype\torder\ncell_1\tIP\t0\ncell_2\tIP\t0\ncell_3\tD12\t1",
+        "interventions": "intervention\ttarget\teffect\tsign\tdose\nknockdown_G1\tG1\tknockdown\t-1\t1.0",
         "lineage_tree": "child\tparent\tgain_rate\tloss_rate\nC2\tC1\t0.2\t0.1",
-        "pseudotime": "cell\tpseudotime\ncell_1\t0.0\ncell_2\t0.4\ncell_3\t1.0",
+        "perturbation_design": "column\tcondition\tperturbation\ttarget\tdose\ttimepoint\treplicate\tcontrol\ncell_1\tcontrol\tnone\t\t0\t0\tr1\ttrue\ncell_2\tknockdown_G1\tknockdown\tG1\t1\t24\tr1\tfalse",
+        "pseudotime": "column\tpseudotime\ncell_1\t0.0\ncell_2\t0.4\ncell_3\t1.0",
         "tf_list": "SOX2\nMYC\nTP53",
         "prior_grn_by_group": "group\tsource\ttarget\tscore\nA\tG1\tG2\t0.82\nB\tG1\tG3\t0.41",
+        "replicates": "column\treplicate\tbatch\nS1\tr1\tbatch_a\nS2\tr2\tbatch_a",
+        "timepoints": "column\ttimepoint\nS1\t0\nS2\t24",
     }
 
     tools: list[dict[str, Any]] = []
@@ -1535,7 +1541,7 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             "tips": [
                 "Use this file for downstream evaluation and network comparison.",
                 "Rows keep the unified schema: source, target, score, sign, evidence, context and tool_id.",
-                "The context column identifies global, group or cell-specific inferred networks.",
+                "The context column identifies global, group or column-level inferred networks.",
             ],
         }
     if basename == "merged_network_raw.csv":
@@ -1564,7 +1570,7 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
                 "The run-level handoff remains merged_network_normalized.csv.",
             ],
         }
-    if basename in {"network.normalized.csv", "network.cell_native.csv"}:
+    if basename in {"network.normalized.csv", "network.column_native.csv"}:
         return {
             "title": "Tool normalized network",
             "summary": (
@@ -2465,7 +2471,7 @@ def create_app() -> FastAPI:
         with STATE.lock:
             STATE.jobs[job_id] = job
 
-        worker = threading.Thread(
+        start_background_thread(
             target=_run_job,
             kwargs={
                 "job_id": job_id,
@@ -2474,7 +2480,6 @@ def create_app() -> FastAPI:
             },
             daemon=True,
         )
-        worker.start()
         return JSONResponse(
             {
                 "job_id": job_id,
@@ -2557,7 +2562,7 @@ def create_app() -> FastAPI:
             job.plan_path = None
             job.run_report_path = None
 
-        worker = threading.Thread(
+        start_background_thread(
             target=_run_job,
             kwargs={
                 "job_id": job_id,
@@ -2566,7 +2571,6 @@ def create_app() -> FastAPI:
             },
             daemon=True,
         )
-        worker.start()
         return JSONResponse(
             {
                 "job_id": job_id,
@@ -2611,7 +2615,7 @@ def create_app() -> FastAPI:
             job.error = None
             job.traceback = None
 
-        worker = threading.Thread(
+        start_background_thread(
             target=_run_job,
             kwargs={
                 "job_id": job_id,
@@ -2620,7 +2624,6 @@ def create_app() -> FastAPI:
             },
             daemon=True,
         )
-        worker.start()
         return JSONResponse({"job_id": job_id, "status": "queued", "stage": "planned"})
 
     return app

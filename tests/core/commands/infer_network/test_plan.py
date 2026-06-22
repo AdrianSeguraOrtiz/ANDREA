@@ -13,7 +13,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         return {
             "id": "fakecell",
             "docker_image": "fake/cell:latest",
-            "execution_capabilities": ["cell_native", "group_aggregated"],
+            "execution_capabilities": ["column_native", "group_aggregated"],
             "runtime_resources": {
                 "threading": {
                     "supported": False,
@@ -32,7 +32,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                         "execution": "mode",
                         "op": "eq",
                         "value": "group_aggregated",
-                        "usage": "Used by ANDREA to aggregate cell-native network rows by group.",
+                        "usage": "Used by ANDREA to aggregate column-native network rows by group.",
                         "message": "groups is required when execution.mode=group_aggregated.",
                     }
                 ],
@@ -66,7 +66,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             },
         }
 
-    def test_group_aggregated_plan_uses_cell_native_physical_task(self) -> None:
+    def test_group_aggregated_plan_uses_column_native_physical_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             output_dir = base / "out"
@@ -127,11 +127,11 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         logical_run = plan_payload["runs"][0]
         self.assertEqual(logical_run["execution"]["mode"], "group_aggregated")
         physical = logical_run["physical_tasks"][0]
-        self.assertEqual(physical["task_id"], "cellrun__cell_native")
+        self.assertEqual(physical["task_id"], "cellrun__column_native")
         self.assertEqual(physical["postprocess"], "group_aggregated_mean_signed_effect")
-        self.assertIn("upstream_cell_native", physical["output_dir"])
+        self.assertIn("upstream_column_native", physical["output_dir"])
         wave_task = plan_payload["waves"][0]["tasks"][0]
-        self.assertEqual(wave_task["tool_id"], "cellrun__cell_native")
+        self.assertEqual(wave_task["tool_id"], "cellrun__column_native")
         self.assertEqual(wave_task["run_id"], "cellrun")
         self.assertEqual(
             wave_task["eta_provenance"]["group_aggregation"]["rule"],
@@ -143,16 +143,16 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         )
         self.assertEqual(
             wave_task["eta_provenance"]["cost_features"]["aggregation_step"],
-            "cell_to_group",
+            "column_to_group",
         )
         self.assertEqual(
             wave_task["eta_provenance"]["cost_features"][
                 "upstream_cost_execution_mode"
             ],
-            "cell_native",
+            "column_native",
         )
 
-    def test_group_aggregated_plan_rejects_toolspec_without_cell_native(self) -> None:
+    def test_group_aggregated_plan_rejects_toolspec_without_column_native(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             output_dir = base / "out"
@@ -203,7 +203,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 ),
                 self.assertRaisesRegex(
                     ValueError,
-                    "execution_capabilities includes 'group_aggregated'.*'cell_native'",
+                    "execution_capabilities includes 'group_aggregated'.*'column_native'",
                 ),
             ):
                 self.mod.plan_infer_network(
