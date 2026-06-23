@@ -25,13 +25,22 @@ def _compare_values(*, actual: Any, op: str, expected: Any) -> bool:
     )
 
 
-def _condition_value_from(*, toolspec: dict[str, Any], value_from: str) -> Any:
+def _condition_value_from(
+    *,
+    toolspec: dict[str, Any],
+    dataset: DatasetContext,
+    value_from: str,
+) -> Any:
     if value_from == "taxonomic_scope.supported_species":
         taxonomic_scope = toolspec.get("taxonomic_scope", {})
         if isinstance(taxonomic_scope, dict):
             supported = taxonomic_scope.get("supported_species", [])
             if isinstance(supported, list):
                 return supported
+    if value_from == "dataset.expression.genes":
+        return dataset.genes
+    if value_from == "dataset.expression.columns":
+        return dataset.columns
     raise ValueError(f"unsupported compatibility value_from: {value_from}")
 
 
@@ -46,6 +55,10 @@ def _condition_actual_value(
         return dataset.taxonomic_group
     if field == "dataset.organism.ncbi_taxon_id":
         return dataset.ncbi_taxon_id
+    if field == "dataset.expression.genes":
+        return dataset.genes
+    if field == "dataset.expression.columns":
+        return dataset.columns
     if field == "execution.mode":
         return resolved_execution.get("mode")
     if field.startswith("param."):
@@ -72,6 +85,7 @@ def _compatibility_rule_matches(
             condition_label=f"compatibility rule condition[{idx}]",
             value_from_resolver=lambda value_from: _condition_value_from(
                 toolspec=toolspec,
+                dataset=dataset,
                 value_from=value_from,
             ),
         )

@@ -217,7 +217,7 @@ Fixed implementation choices, not exposed:
 | `accepts` | `cells` | README requires count matrix shape `(ncells, ngenes)` and method is single-cell specific. | None |
 | `assumes` | `scrna_specific` | Paper targets scRNA-seq, single-cell multi-omics and spatial transcriptomics. | None |
 | `taxonomic_scope` | all broad groups, no species IDs | Method is statistical and examples include human, mouse and Drosophila; no species-specific packaged database is required for selected paths. | Low |
-| `compatibility_rules` | `[]` | No organism-specific hard blocks for selected expression/spatial/TF-list paths. | Low |
+| `compatibility_rules` | dimension checks for minimum cells, preserved `batch_size=null`, `n_neigh` and `pca_components` bounds | Selected paths are species-agnostic, but upstream kNN/PCA/minibatch rules have deterministic dataset-size failure cases. Preflight now blocks `columns <= 5`, `batch_size=null` with `columns < 10`, `n_neigh > columns`, `pca_components > columns`, and `pca_components > genes`. | Low |
 | `extra_inputs` | conditional `groups`, `spatial_coordinates`, `tf_list` | ANDREA group aggregation contract; paper spatial kernel; paper TF prior. | None for selected paths |
 | `outputs` | undirected, signed, association | Paper Section 2.5 and discussion; repo benchmark symmetry checks and signed metrics. | None |
 | `progress` | `iterations` | `train()` loops over minibatches and ADMM iterations and prints `n_iter` diagnostics. | Medium; wrapper may fall back to coarse phases if parsing is brittle. |
@@ -263,6 +263,9 @@ Fixed implementation choices, not exposed:
 - `batch_size=null` omits `batchsize` so upstream uses `int(ncells/10)`. For
   fewer than 10 cells the wrapper raises a clear error because the preserved
   upstream rule would resolve to zero.
+- ToolSpec preflight mirrors deterministic runtime dimension guards: at least 6
+  cells for the selected kernel path, `batch_size=null` requires at least 10
+  cells, `n_neigh <= cells`, and `pca_components <= min(cells, genes)`.
 - `network.csv` contains one unordered, non-self edge per cell/gene pair with
   `score=abs(partial_correlation)`, `sign=+/-`, `evidence=association`, and
   `context=column:<original_cell_id>`.

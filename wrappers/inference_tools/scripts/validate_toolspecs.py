@@ -44,10 +44,17 @@ TAXONOMIC_GROUPS = {
 COMPATIBILITY_FIELDS = {
     "dataset.organism.taxonomic_group",
     "dataset.organism.ncbi_taxon_id",
+    "dataset.expression.genes",
+    "dataset.expression.columns",
     "execution.mode",
 }
 COMPATIBILITY_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
 COMPATIBILITY_ACTIONS = {"block", "warn"}
+COMPATIBILITY_VALUE_FROM = {
+    "taxonomic_scope.supported_species",
+    "dataset.expression.genes",
+    "dataset.expression.columns",
+}
 
 
 @dataclass(frozen=True)
@@ -406,8 +413,7 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                     )
                 if (
                     has_value_from
-                    and condition.get("value_from")
-                    != "taxonomic_scope.supported_species"
+                    and condition.get("value_from") not in COMPATIBILITY_VALUE_FROM
                 ):
                     errors.append(
                         f"compatibility_rules[{rule_idx}].conditions[{cond_idx}].value_from is unsupported."

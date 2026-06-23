@@ -70,6 +70,7 @@ Implemented wrapper validations:
 - `gene_set` must be a human KEGG id present in the bundled KEGG resource, or `all_expression_genes`.
 - `all_expression_genes` writes a temporary upstream gene-list CSV from expression gene IDs, but it does not relax DigNet's human-resource requirement. The selected IDs must still match DigNet's bundled human gene symbols and contain RegNetwork source-target overlap.
 - Selected genes must be 10 to 200 genes, matching upstream `from_cancer_create()` limits.
+- Preflight compatibility blocks `gene_set=all_expression_genes` when `dataset.expression.genes > 200`, because that parameter selects every expression gene and would exceed the public CSV/pathway limit.
 - Selected genes must contain at least one bundled RegNetwork edge.
 - `knn <= number_of_cells` when `metacell=true`, because upstream calls nearest-neighbor search before returning original columns for small datasets.
 - The bundled `S33_Cancer_cell_pca_model.pkl` requires exactly 100 features after upstream metacell preprocessing. The wrapper validates this before calling DigNet.
@@ -162,7 +163,7 @@ DigNet diffusion generation is stochastic, so exact edge counts can vary between
 ## Known Limitations
 
 - The selected public CSV/pathway path is human-specific.
-- `all_expression_genes` is only suitable when the expression gene IDs are human symbols with bundled RegNetwork overlap. Synthetic IDs such as dyngen-style custom gene names can fail even when the dataset metadata says human.
+- `all_expression_genes` is only suitable when the expression gene IDs are human symbols with bundled RegNetwork overlap and the dataset has 200 or fewer genes. Synthetic IDs such as dyngen-style custom gene names can fail even when the dataset metadata says human.
 - Every invocation must produce exactly 100 expression features after metacell preprocessing to match the bundled PCA model. This applies to each group-emulated child run.
 - The wrapper exposes the public pretrained inference path only; training and simulated `.data` testing remain excluded.
 
@@ -172,3 +173,9 @@ Observed on `inferred_networks/gui_dataset_20260617T143834Z`:
 
 - Global `all_expression_genes` selected 137 dyngen-style expression IDs, but none formed a bundled human RegNetwork source-target edge. The wrapper error now states that `all_expression_genes` does not bypass DigNet's human gene-symbol/resource requirement.
 - Group-emulated child runs previously failed before DigNet preparation because the wrapper compared each already-partitioned child expression matrix against the full `groups.tsv`. The wrapper no longer validates `groups.tsv`; group validation and partitioning are orchestrator responsibilities.
+
+Observed on `inferred_networks/gui_dataset_20260623T214216Z`:
+
+- A default DigNet run with `ensemble=30` and `diffusion_timesteps=1000` remained in the first diffusion ensemble member after more than 18 minutes while planned through the generic 4 GB fallback.
+- Added `andrea/catalog_inference_tools/tools/dignet/cost.json` as a conservative planner profile so future plans reserve 8 GB per default DigNet task and display multi-hour ETA instead of the previous fallback estimate.
+- The ToolSpec descriptions for `ensemble` and `diffusion_timesteps` now document runtime scaling and bounded-runtime overrides. The defaults themselves remain aligned with the selected upstream public configuration.

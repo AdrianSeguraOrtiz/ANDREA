@@ -22,11 +22,11 @@ import { applyDatasetDefaults, handleExpressionSelected, initExpressionDropzone,
 import { closeExtraInputModal, getExtraRows, initExtras, listProvidedExtraKeys, openExtraInputModal, updateExtrasEmptyState } from "./dataset/extras.js";
 import { renderAndreaExecutionProgress, renderRuntimeProgress } from "./runtime/view.js";
 import { fetchFiles, resetFilesView } from "./files/explorer.js?v=20260611a";
-import { freezeActions, startPolling, syncActionButtons, updateResultsExplorerVisibility } from "./jobs/controller.js";
-import { resetPlanView } from "./plan/view.js";
+import { freezeActions, startPolling, syncActionButtons, updateResultsExplorerVisibility } from "./jobs/controller.js?v=20260623b";
+import { resetPlanView } from "./plan/view.js?v=20260623b";
 import { closeReproducibilityStepsModal, initReproducibility, resetReproducibility } from "./repro/view.js";
 import { closeParamsModal, initParamsModal, openParamsModal, applyParamsModal, setParamsModalStatus } from "./runs/params_modal.js";
-import { addRunCard, collectRuns, initRunCards, readParamsFromCard, refreshRunCardsValidation, renderRunParamsForm, updateRunsEmptyState } from "./runs/cards.js";
+import { addRunCard, collectRuns, initRunCards, readParamsFromCard, refreshRunCardsValidation, renderRunParamsForm, updateRunsEmptyState } from "./runs/cards.js?v=20260623b";
 import { executionModeAvailability } from "./runs/execution_modes.js";
 import { readParamsFromHost, renderParamsHost, resolvedDefaultParams } from "/static-common/app/params/schema_form.js?v=20260617d";
 import { buildInfoTooltip, hideInfoTooltip, readHelpPayload, showInfoTooltip } from "./ui/popovers.js";

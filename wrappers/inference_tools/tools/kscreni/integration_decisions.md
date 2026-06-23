@@ -139,7 +139,7 @@ Fixed implementation choices not exposed:
 | `execution_capabilities` | `column_native`, `group_aggregated` | kScReNI returns one network per cell (`R/Infer_kScReNI_scNetworks.R:32-48`) | Matches ANDREA column-native plus ANDREA-owned aggregation; certain. |
 | `runtime_resources` | Threading supported; default 1; max 8; `--threads -> kScReNI nthread worker pattern` | kScReNI `nthread` and foreach worker pool (`R/Infer_kScReNI_scNetworks.R:17`, `R/Infer_kScReNI_scNetworks.R:34-44`) | Safe resource mapping; max is conservative until cost profiling. |
 | `taxonomic_scope` | All broad groups, no species IDs | Selected kScReNI uses expression matrix only; species-specific motif/genome resources occur only in excluded wScReNI tutorial (`docs/ScReNI_tutorial.Rmd:171-187`) | No species restriction for kScReNI; moderate confidence. |
-| `compatibility_rules` | `[]` | No selected species- or parameter-specific hard block found | Wrapper validates matrix size and `knn + 1 <= number_of_cells`; schema cannot encode cell-count bounds. |
+| `compatibility_rules` | block `knn >= dataset.expression.columns` | This is equivalent to the wrapper runtime guard `knn + 1 <= number_of_cells` and the upstream neighborhood extraction `1:(knn+1)`. | No species-specific hard block found for selected kScReNI. |
 | `accepts` | `cells` | ScReNI is cell-specific and kScReNI names one result per expression column/cell (`papers/ScReNI.txt:42-54`, `R/Infer_kScReNI_scNetworks.R:46`) | Certain. |
 | `assumes` | `scrna_specific` | kScReNI is for scRNA-seq alone and cell-specific network inference (`papers/ScReNI.txt:149-177`) | Certain. |
 | `extra_inputs` | No required/optional; `groups` conditional for `group_aggregated` | Upstream does not consume groups; ANDREA aggregation does | Certain. |
@@ -154,6 +154,8 @@ Fixed implementation choices not exposed:
 - Execution modes: accepts `column_native` and `group_aggregated`; defaults to `column_native` when `execution.json` is absent.
 - Group handling: when `execution.mode=group_aggregated`, the wrapper requires and validates `groups.tsv` against expression columns, but still emits `column:<column_id>` contexts. ANDREA core owns the logical group aggregation.
 - Parameter handling: requires resolved `nfeatures` and `knn`; rejects invalid integer values and rejects `knn + 1 > number_of_cells`.
+- ToolSpec preflight now blocks `knn >= number_of_expression_columns`; the
+  wrapper keeps the same runtime check as a second barrier.
 - Input validation: requires unique non-empty gene and cell IDs, finite numeric non-negative expression values, at least 2 genes and 2 cells.
 - Upstream behavior: mirrors `ScReNI::Infer_kScReNI_scNetworks(exprMatrix=expr, nfeatures=params$nfeatures, knn=params$knn, nthread=threads)` and preserves the same Seurat preprocessing, SNN neighbor extraction, outer foreach worker pool, `set.seed(100)`, and `GENIE3(..., nCores=1, nTrees=100)` calls. The function body is inlined only to pass a safe data-dependent `npcs` to `Seurat::RunPCA()`.
 - PCA guard: uses `npcs = min(50, length(VariableFeatures(pbmc)), ncol(expr) - 1, nrow(expr) - 1)`. This fixes GUI datasets with exactly 50 cells where Seurat's default `npcs=50` reaches `irlba`'s strict bound and fails with `max(nu, nv) must be strictly less than min(nrow(A), ncol(A))`.

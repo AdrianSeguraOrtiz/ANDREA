@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "global_default_conservative",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 120,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 1,
+        "timeout_seconds": 14400,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "scrna",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "notes": [
+            "Conservative planner profile added after GUI run inferred_networks/gui_dataset_20260623T214216Z showed the default diffusion configuration still in its first ensemble member after more than 18 minutes under the previous 4 GB fallback."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults",
+          "override_file": null,
+          "resolved_params": {
+            "metacell": true,
+            "knn": 20,
+            "metacell_count": 100,
+            "ensemble": 30,
+            "diffusion_timesteps": 1000
+          },
+          "cost_relevant_params": [
+            "metacell",
+            "knn",
+            "metacell_count",
+            "ensemble",
+            "diffusion_timesteps"
+          ],
+          "cost_relevant_values": {
+            "metacell": true,
+            "knn": 20,
+            "metacell_count": 100,
+            "ensemble": 30,
+            "diffusion_timesteps": 1000
+          }
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 120,
+          "columns": 200,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "partial",
+          "repeats_total": 1,
+          "repeats_ok": 0,
+          "repeats_failed": 1,
+          "ok_rate": 0.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 3600,
+          "seconds_p90": 7200
+        }
+      ]
+    },
+    {
+      "profile_id": "group_emulated_default_conservative",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 120,
+            "columns": 100
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 1,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "group_emulated",
+          "physical_task_policy": "andrea_group_emulated",
+          "group_count": 2
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "scrna",
+          "extras_provided": [
+            "groups"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [
+            "groups"
+          ],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 2,
+          "notes": [
+            "Conservative planner profile for group-emulated DigNet child tasks using the same default diffusion configuration as the global profile."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults",
+          "override_file": null,
+          "resolved_params": {
+            "metacell": true,
+            "knn": 20,
+            "metacell_count": 100,
+            "ensemble": 30,
+            "diffusion_timesteps": 1000
+          },
+          "cost_relevant_params": [
+            "metacell",
+            "knn",
+            "metacell_count",
+            "ensemble",
+            "diffusion_timesteps"
+          ],
+          "cost_relevant_values": {
+            "metacell": true,
+            "knn": 20,
+            "metacell_count": 100,
+            "ensemble": 30,
+            "diffusion_timesteps": 1000
+          }
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 120,
+          "columns": 100,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "partial",
+          "repeats_total": 1,
+          "repeats_ok": 0,
+          "repeats_failed": 1,
+          "ok_rate": 0.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1800,
+          "seconds_p90": 3600
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "execution": {
+    "mode": "global"
+  },
+  "param_overrides": {
+    "gene_set": "hsa05224",
+    "metacell": false,
+    "ensemble": 1,
+    "diffusion_timesteps": 20,
+    "sampling_timesteps": 20
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "global"
+    },
+    {
+      "name": "group_emulated_contract",
+      "extra_files": [
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_emulated"
+      }
+    }
+  ]
+}

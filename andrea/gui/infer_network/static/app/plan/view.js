@@ -20,6 +20,38 @@ export function resetPlanView(message) {
   $("plan-waves").innerHTML = "";
 }
 
+export function renderPlanFailure(job = {}) {
+  stopPlanningProgress();
+  state.lastPlan = null;
+
+  const summary = $("plan-summary");
+  const wavesRoot = $("plan-waves");
+  if (!summary || !wavesRoot) {
+    return;
+  }
+
+  summary.classList.remove("planning-progress-card", "is-over-limit");
+  summary.replaceChildren();
+
+  const title = document.createElement("strong");
+  title.textContent = "Planning failed";
+  const detail = document.createElement("div");
+  detail.className = "planning-progress-detail";
+  detail.textContent = String(
+    job.error ||
+      job.progress_detail ||
+      "The execution plan could not be generated. Review the selected run configuration."
+  );
+  summary.append(title, detail);
+
+  wavesRoot.innerHTML = "";
+  const hint = document.createElement("div");
+  hint.className = "muted-box warning-box";
+  hint.textContent =
+    "Fix the blocked run configuration in Selected Runs, then generate the plan again.";
+  wavesRoot.appendChild(hint);
+}
+
 function elapsedSecondsFromIso(value) {
   const startedAt = Date.parse(String(value || ""));
   if (!Number.isFinite(startedAt)) {

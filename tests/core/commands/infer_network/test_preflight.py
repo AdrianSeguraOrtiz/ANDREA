@@ -27,6 +27,30 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 messages.append(message)
         return messages
 
+    def _write_cell_expression_dataset(
+        self,
+        base: Path,
+        *,
+        genes: int,
+        columns: int,
+    ) -> Path:
+        lines = ["gene\t" + "\t".join(f"C{i}" for i in range(1, columns + 1))]
+        for gene_idx in range(1, genes + 1):
+            values = "\t".join(
+                str(gene_idx + column_idx) for column_idx in range(1, columns + 1)
+            )
+            lines.append(f"G{gene_idx}\t{values}")
+        self._write_expression_matrix(base, lines=lines)
+        return self._write_manifest(
+            base,
+            expression_matrix="expression.tsv",
+            genes=genes,
+            columns=columns,
+            column_kind="cells",
+            expression_profile="scrna",
+            organism={"taxonomic_group": "animal", "ncbi_taxon_id": 9606},
+        )
+
     def test_preflight_fails_when_input_spec_cross_check_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -144,6 +168,452 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
             any(
                 "missing required parameter: gene_set" in issue.get("message", "")
                 for issue in issues
+            )
+        )
+
+    def test_catalog_blocks_dataset_only_dimension_rules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=1,
+                columns=5,
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=None,
+            )
+
+        blocked = {item["tool_id"]: item for item in report["catalog"]["blocked"]}
+        self.assertIn("cespgrn", blocked)
+        self.assertIn("metasem", blocked)
+        self.assertTrue(
+            any(
+                "requires at least 6" in message
+                for message in self._issue_messages(blocked["cespgrn"], "block")
+            )
+        )
+        self.assertTrue(
+            any(
+                "at least two expression genes" in message
+                for message in self._issue_messages(blocked["metasem"], "block")
+            )
+        )
+
+    def test_catalog_does_not_block_parameter_dependent_dimension_rules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=10,
+                columns=10,
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=None,
+            )
+
+        blocked_ids = {item["tool_id"] for item in report["catalog"]["blocked"]}
+        visible_ids = {
+            item["tool_id"]
+            for bucket in ("eligible", "warning")
+            for item in report["catalog"][bucket]
+        }
+        self.assertNotIn("kscreni", blocked_ids)
+        self.assertIn("kscreni", visible_ids)
+
+    def test_preflight_blocks_dataset_expression_gene_rule(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            lines = ["gene\tC1\tC2"]
+            lines.extend(f"G{i}\t1\t2" for i in range(1, 101))
+            self._write_expression_matrix(base, lines=lines)
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                genes=100,
+                columns=2,
+                column_kind="cells",
+                expression_profile="scrna",
+                organism={"taxonomic_group": "animal", "ncbi_taxon_id": 9606},
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "planet__01",
+                        "tool_id": "planet",
+                        "execution": {"mode": "global"},
+                        "params": {"gene_set": "all_expression_genes"},
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("planet__01", report["runs"]["skipped"])
+        issues = report["runs"]["issues"]["planet__01"]
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "supports at most 99 selected genes" in issue.get("message", "")
+                for issue in issues
+            )
+        )
+
+    def test_preflight_blocks_dignet_all_expression_gene_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            lines = ["gene\tC1\tC2"]
+            lines.extend(f"G{i}\t1\t2" for i in range(1, 202))
+            self._write_expression_matrix(base, lines=lines)
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                genes=201,
+                columns=2,
+                column_kind="cells",
+                expression_profile="scrna",
+                organism={"taxonomic_group": "animal", "ncbi_taxon_id": 9606},
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "dignet__01",
+                        "tool_id": "dignet",
+                        "execution": {"mode": "global"},
+                        "params": {"gene_set": "all_expression_genes"},
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("dignet__01", report["runs"]["skipped"])
+        issues = report["runs"]["issues"]["dignet__01"]
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "accepts at most 200 selected genes" in issue.get("message", "")
+                for issue in issues
+            )
+        )
+
+    def test_preflight_all_expression_genes_limits_are_tool_specific(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=120,
+                columns=2,
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "dignet__01",
+                        "tool_id": "dignet",
+                        "execution": {"mode": "global"},
+                        "params": {"gene_set": "all_expression_genes"},
+                    },
+                    {
+                        "run_id": "planet__01",
+                        "tool_id": "planet",
+                        "execution": {"mode": "global"},
+                        "params": {"gene_set": "all_expression_genes"},
+                    },
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], ["dignet__01"])
+        self.assertIn("planet__01", report["runs"]["skipped"])
+        issues = report["runs"]["issues"]["planet__01"]
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "supports at most 99 selected genes" in issue.get("message", "")
+                for issue in issues
+            )
+        )
+
+    def test_preflight_blocks_cespgrn_too_few_cells(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=20,
+                columns=5,
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "cespgrn__01",
+                        "tool_id": "cespgrn",
+                        "execution": {"mode": "column_native"},
+                        "params": {
+                            "batch_size": 1,
+                            "n_neigh": 2,
+                            "pca_components": 2,
+                        },
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("cespgrn__01", report["runs"]["skipped"])
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "requires at least 6" in issue.get("message", "")
+                for issue in report["runs"]["issues"]["cespgrn__01"]
+            )
+        )
+
+    def test_preflight_blocks_cespgrn_null_batch_size_small_cells(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=20,
+                columns=9,
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "cespgrn__01",
+                        "tool_id": "cespgrn",
+                        "execution": {"mode": "column_native"},
+                        "params": {
+                            "batch_size": None,
+                            "n_neigh": 2,
+                            "pca_components": 2,
+                        },
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("cespgrn__01", report["runs"]["skipped"])
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "batch_size=null" in issue.get("message", "")
+                for issue in report["runs"]["issues"]["cespgrn__01"]
+            )
+        )
+
+    def test_preflight_blocks_cespgrn_n_neigh_over_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=20,
+                columns=10,
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "cespgrn__01",
+                        "tool_id": "cespgrn",
+                        "execution": {"mode": "column_native"},
+                        "params": {
+                            "batch_size": 1,
+                            "n_neigh": 11,
+                            "pca_components": 2,
+                        },
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("cespgrn__01", report["runs"]["skipped"])
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "n_neigh" in issue.get("message", "")
+                for issue in report["runs"]["issues"]["cespgrn__01"]
+            )
+        )
+
+    def test_preflight_blocks_cespgrn_pca_components_over_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=20,
+                columns=10,
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "cespgrn__01",
+                        "tool_id": "cespgrn",
+                        "execution": {"mode": "column_native"},
+                        "params": {
+                            "batch_size": 1,
+                            "n_neigh": 2,
+                            "pca_components": 11,
+                        },
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("cespgrn__01", report["runs"]["skipped"])
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "number of expression columns" in issue.get("message", "")
+                for issue in report["runs"]["issues"]["cespgrn__01"]
+            )
+        )
+
+    def test_preflight_blocks_cespgrn_pca_components_over_genes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=5,
+                columns=20,
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "cespgrn__01",
+                        "tool_id": "cespgrn",
+                        "execution": {"mode": "column_native"},
+                        "params": {
+                            "batch_size": 1,
+                            "n_neigh": 2,
+                            "pca_components": 6,
+                        },
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("cespgrn__01", report["runs"]["skipped"])
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "number of expression genes" in issue.get("message", "")
+                for issue in report["runs"]["issues"]["cespgrn__01"]
+            )
+        )
+
+    def test_preflight_blocks_kscreni_knn_at_cell_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=10,
+                columns=10,
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "kscreni__01",
+                        "tool_id": "kscreni",
+                        "execution": {"mode": "column_native"},
+                        "params": {"nfeatures": 10, "knn": 10},
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("kscreni__01", report["runs"]["skipped"])
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "knn must be smaller" in issue.get("message", "")
+                for issue in report["runs"]["issues"]["kscreni__01"]
+            )
+        )
+
+    def test_preflight_blocks_metasem_single_gene(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path = self._write_cell_expression_dataset(
+                base,
+                genes=1,
+                columns=2,
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "metasem__01",
+                        "tool_id": "metasem",
+                        "execution": {"mode": "global"},
+                        "params": {},
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("metasem__01", report["runs"]["skipped"])
+        self.assertTrue(
+            any(
+                issue.get("code") == "compatibility_rule"
+                and "at least two expression genes" in issue.get("message", "")
+                for issue in report["runs"]["issues"]["metasem__01"]
             )
         )
 

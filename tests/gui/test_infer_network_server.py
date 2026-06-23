@@ -54,6 +54,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         jobs_controller = (
             Path(gui_server.STATIC_DIR) / "app" / "jobs" / "controller.js"
         ).read_text(encoding="utf-8")
+        run_cards = (
+            Path(gui_server.STATIC_DIR) / "app" / "runs" / "cards.js"
+        ).read_text(encoding="utf-8")
 
         self.assertIn("bundle-modal", index)
         self.assertIn("Explorer view: available output files", index)
@@ -73,6 +76,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         self.assertIn("available_outputs", jobs_controller)
         self.assertIn("customToolsPayload", script)
         self.assertIn("custom_tools", script)
+        self.assertIn("renderPlanFailure", jobs_controller)
+        self.assertIn("dataset.expression.genes", run_cards)
+        self.assertIn("dataset.expression.columns", run_cards)
         self.assertIn(".tool-item-custom-badge", style)
         self.assertIn(".external-tool-callout", style)
         self.assertIn("Request New Tool", index)

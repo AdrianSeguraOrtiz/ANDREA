@@ -44,7 +44,19 @@
     ],
     "supported_species": []
   },
-  "compatibility_rules": [],
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "param.knn",
+          "op": "gte",
+          "value_from": "dataset.expression.columns"
+        }
+      ],
+      "action": "block",
+      "message": "kScReNI knn must be smaller than the number of expression columns/cells because each per-cell run uses the cell plus knn neighbors."
+    }
+  ],
   "accepts": [
     "cells"
   ],

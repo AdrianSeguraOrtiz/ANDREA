@@ -3,7 +3,12 @@ import { fetchJobData, fetchPlanData } from "../core/api.js";
 import { state } from "../core/state.js";
 import { updateToolEligibilityView } from "../catalog/view.js";
 import { fetchFiles, resetFilesView } from "../files/explorer.js?v=20260611a";
-import { renderPlan, renderPlanningProgress, stopPlanningProgress } from "../plan/view.js";
+import {
+  renderPlan,
+  renderPlanFailure,
+  renderPlanningProgress,
+  stopPlanningProgress,
+} from "../plan/view.js?v=20260623b";
 import { resetReproducibility, renderReproducibility } from "../repro/view.js";
 import {
   renderAndreaExecutionProgress,
@@ -12,7 +17,7 @@ import {
 } from "../runtime/view.js";
 import { setStepState, setActiveStep } from "../ui/steps.js";
 import { pushToast } from "../ui/toasts.js";
-import { refreshRunCardsValidation } from "../runs/cards.js";
+import { refreshRunCardsValidation } from "../runs/cards.js?v=20260623b";
 
 const EXPLORER_FILES_MODE = "available_outputs";
 
@@ -248,6 +253,24 @@ export async function pollJob(jobId) {
     renderPlanningProgress(job);
   } else {
     stopPlanningProgress();
+  }
+  const planFailed = job.status === "failed" && job.tools_params_path && !job.plan_path;
+  if (planFailed) {
+    renderPlanFailure(job);
+    const failureKey = `${job.job_id}:plan:${job.error || job.progress_detail || ""}`;
+    if (!state.notifiedFailures.has(failureKey)) {
+      state.notifiedFailures.add(failureKey);
+      pushToast({
+        title: "Planning failed",
+        message: String(
+          job.error ||
+            job.progress_detail ||
+            "The execution plan could not be generated."
+        ),
+        kind: "error",
+        ttlMs: 12000,
+      });
+    }
   }
 
   updateToolEligibilityView(preflightReport);

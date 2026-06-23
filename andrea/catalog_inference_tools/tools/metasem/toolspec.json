@@ -44,7 +44,19 @@
     ],
     "supported_species": []
   },
-  "compatibility_rules": [],
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.genes",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "MetaSEM requires at least two expression genes."
+    }
+  ],
   "accepts": [
     "cells"
   ],

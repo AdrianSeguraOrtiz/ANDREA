@@ -1,24 +1,25 @@
 {
   "schema_version": "1.0",
-  "id": "dignet",
-  "name": "DigNet",
+  "id": "planet",
+  "name": "Planet",
   "publication": [
-    "https://doi.org/10.1101/gr.279551.124"
+    "https://doi.org/10.3390/genes16111255"
   ],
-  "first_author": "Chuanyuan Wang",
-  "year": 2024,
-  "method_summary": "DigNet generates gene regulatory networks from scRNA-seq expression profiles with a discrete diffusion generative model and graph-transformer denoising in non-Euclidean graph space. The method models GRN edges as binary on/off states, uses meta-cell integration for noisy scRNA-seq profiles, and aggregates repeated diffusion generations into a final directed network.",
+  "first_author": "Shiyu Xu",
+  "year": 2025,
+  "method_summary": "Planet is an attention-guided probabilistic diffusion framework for constructing cell-specific gene regulatory networks from gene expression profiles. It models directed TF-to-target edges as binary graph states, uses a Triple Hybrid-Attention Transformer during reverse diffusion, and aggregates repeated generations into edge-level confidence.",
   "method_keywords": [
     "single_cell",
     "diffusion_model",
-    "discrete_generation",
-    "graph_transformer",
+    "probabilistic_generation",
+    "hybrid_attention",
+    "graph_attention",
     "metacell",
     "cell_specific_network",
     "directed"
   ],
-  "implementation_url": "https://github.com/zpliulab/DigNet",
-  "docker_image": "adriansegura99/inference-tools_dignet:1.0.0",
+  "implementation_url": "https://github.com/wangchuanyuan1/project-Planet/tree/3d8be3ca788dc436e8d2c888facdeffe49553c61",
+  "docker_image": "adriansegura99/inference-tools_planet:1.0.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -28,7 +29,7 @@
       "supported": true,
       "default_threads": 1,
       "max_threads": 8,
-      "upstream_mapping": "The wrapper maps ANDREA --threads to DigNet args.n_job=min(threads, ensemble) for the joblib Parallel(n_jobs=n_job) ensemble execution in DigNet.test(). The wrapper also keeps PyTorch and BLAS/OpenMP intra-process thread counts at 1 to avoid nested oversubscription while joblib runs independent diffusion ensemble members."
+      "upstream_mapping": "Wrapper --threads maps to Planet args.n_job=min(threads, ensemble) for the joblib Parallel(n_jobs=n_job) ensemble execution in Planet.test(). The wrapper pins PyTorch and common BLAS/OpenMP intra-process thread counts to 1 so joblib workers run independent diffusion ensemble members without nested oversubscription."
     }
   },
   "taxonomic_scope": {
@@ -54,7 +55,7 @@
         }
       ],
       "action": "block",
-      "message": "DigNet's selected CSV/pathway inference path uses human KEGG, human RegNetwork and human TF resources; only Homo sapiens datasets are supported when a dataset NCBI taxon id is declared."
+      "message": "Planet's selected CSV/pathway inference contract uses bundled human TF, KEGG and RegNetwork resources; only Homo sapiens datasets are supported when a dataset NCBI taxon id is declared."
     },
     {
       "conditions": [
@@ -66,11 +67,11 @@
         {
           "field": "dataset.expression.genes",
           "op": "gt",
-          "value": 200
+          "value": 99
         }
       ],
       "action": "block",
-      "message": "DigNet's selected CSV/pathway inference path accepts at most 200 selected genes. gene_set=all_expression_genes selects every expression gene, so use a dataset with 200 or fewer genes or choose a KEGG pathway whose intersection with the expression matrix retains 10 to 200 human genes."
+      "message": "Planet's bundled pretrained checkpoint supports at most 99 selected genes. gene_set=all_expression_genes selects every expression gene, so use a dataset with 99 or fewer genes or choose a KEGG pathway whose intersection with the expression matrix retains 10 to 99 human genes."
     }
   ],
   "accepts": [
@@ -86,35 +87,35 @@
         "execution": "mode",
         "op": "eq",
         "value": "group_emulated",
-        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running DigNet.",
-        "usage": "ANDREA uses groups.tsv to create one DigNet child run per group; each child receives that group's expression matrix and DigNet itself does not consume groups.tsv."
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running Planet independently per group.",
+        "usage": "ANDREA uses groups.tsv to create one Planet child run per group; each child receives that group's expression matrix and Planet itself does not consume groups.tsv."
       }
     ]
   },
   "artifacts_aux": [
     {
-      "path_pattern": "dignet.log",
+      "path_pattern": "planet.log",
       "kind": "file",
       "require_non_empty": true,
-      "description": "Combined stdout/stderr log from DigNet preprocessing, model loading and diffusion generation."
+      "description": "Combined wrapper and upstream Planet stdout/stderr log."
     },
     {
       "path_pattern": "raw/adj_final.csv",
       "kind": "file",
       "require_non_empty": true,
-      "description": "Raw DigNet final directed adjacency/vote matrix before conversion to ANDREA network.csv."
+      "description": "Raw Planet final directed adjacency/vote matrix returned by cal_final_net() before conversion to ANDREA network.csv."
     },
     {
-      "path_pattern": "raw/model_config.json",
+      "path_pattern": "raw/planet_config.json",
       "kind": "file",
       "require_non_empty": true,
-      "description": "Resolved DigNet inference configuration, including selected pretrained model, PCA file, gene_set, metacell settings, ensemble and diffusion timesteps."
+      "description": "Resolved Planet parameters, selected gene set, resource files, checkpoint, expression dimensions and runtime thread mapping."
     },
     {
       "path_pattern": "raw/selected_genes.tsv",
       "kind": "file",
       "require_non_empty": true,
-      "description": "Gene identifiers retained by DigNet after applying the selected KEGG or wrapper-generated gene set."
+      "description": "Gene identifiers retained by Planet after applying the selected KEGG pathway or wrapper-generated all-expression-gene set."
     }
   ],
   "outputs": {
@@ -124,14 +125,14 @@
   },
   "progress": {
     "kind": "none",
-    "note": "The selected DigNet public API runs preprocessing, then DigNet.test() executes independent diffusion ensemble members with optional joblib parallelism. It does not expose a stable progress callback; the wrapper reports coarse lifecycle states in progress.json and records upstream diagnostics in dignet.log."
+    "note": "The selected public API runs preprocessing and then Planet.test() executes independent reverse-diffusion ensemble members. It does not expose a stable progress callback; the wrapper reports coarse lifecycle states in progress.json and preserves upstream diagnostics in planet.log."
   },
   "params": {
     "gene_set": {
       "type": "enum",
       "required": true,
       "default": null,
-      "description": "Gene set passed to upstream args.test_pathway. Use all_expression_genes to create a temporary user-defined list from the expression gene ids, or select one of DigNet's bundled human KEGG pathway ids. The selected upstream CSV path accepts only selected gene sets with 10 to 200 genes and still requires expression gene ids to match DigNet's bundled human RegNetwork/KEGG gene symbols; all_expression_genes does not make synthetic or non-human ids compatible.",
+      "description": "Gene set passed to upstream args.test_pathway. Use all_expression_genes to create a temporary user-defined list from the expression gene ids, or select one of Planet's bundled human KEGG pathway ids. The selected pretrained Planet CSV path requires 10 to 99 retained genes and still requires expression gene ids to match Planet's bundled human RegNetwork/KEGG gene symbols; all_expression_genes does not make synthetic or non-human ids compatible.",
       "enum": [
         "all_expression_genes",
         "hsa00010",
@@ -482,35 +483,42 @@
       "type": "bool",
       "required": false,
       "default": true,
-      "description": "Whether to use DigNet's meta-cell preprocessing before inference. The bundled pretrained CSV/PCA model used by this wrapper requires each invocation to produce exactly 100 expression features after this preprocessing step."
+      "description": "Whether to use upstream metacell preprocessing before Planet inference. Upstream Config.metacell defaults to true."
     },
     "knn": {
       "type": "int",
       "required": false,
       "default": 20,
       "min": 1,
-      "description": "K nearest-neighbor parameter used by DigNet meta-cell construction when metacell=true; the wrapper must require knn <= number of input cells."
+      "description": "K nearest-neighbor value passed to upstream args.KNN for metacell construction. When metacell=true, the wrapper requires knn to be no greater than the number of expression columns."
     },
     "metacell_count": {
       "type": "int",
       "required": false,
       "default": 100,
       "min": 1,
-      "description": "Cnum meta-cell count passed to DigNet's cal_metacell() when metacell=true. If the number of input cells is less than or equal to this value, upstream returns the original expression columns after neighbor calculation. The wrapper validates that the effective feature count is 100 to match the bundled S33_Cancer_cell_pca_model.pkl."
+      "description": "Number of metacells passed to upstream args.Cnum. If the number of expression columns is less than or equal to this value, upstream cal_metacell() returns the original columns."
     },
     "ensemble": {
       "type": "int",
       "required": false,
       "default": 30,
       "min": 1,
-      "description": "Number of independent DigNet diffusion generations aggregated by cal_final_net(); raw output scores are vote counts from 1 to ensemble. Runtime scales with this value; choose a smaller value when the available runtime budget is limited."
+      "description": "Number of independent reverse-diffusion ensemble generations passed to upstream args.ensemble. Raw network.csv scores preserve the summed positive vote counts returned by cal_final_net(), not score/ensemble normalization. Runtime scales with this value; choose a smaller value when the available runtime budget is limited."
     },
     "diffusion_timesteps": {
       "type": "int",
       "required": false,
       "default": 1000,
       "min": 1,
-      "description": "Number of reverse diffusion timesteps used by GaussianDiffusion1D during DigNet test generation. Runtime scales with this value; choose a smaller value when the available runtime budget is limited."
+      "description": "Total diffusion time steps passed to upstream args.diffusion_timesteps. Upstream Config defaults to 1000. Runtime scales with this value; choose a smaller value when the available runtime budget is limited."
+    },
+    "sampling_timesteps": {
+      "type": "int",
+      "required": false,
+      "default": 1000,
+      "min": 1,
+      "description": "Reverse sampling steps passed to upstream args.sampling_timesteps. The Planet paper describes accelerated sampling by reducing the sampling path from 1000 steps to 500 or fewer while preserving generation quality. Keep this value no larger than diffusion_timesteps; runtime scales with this value."
     }
   }
 }

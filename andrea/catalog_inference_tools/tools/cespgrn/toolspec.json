@@ -45,7 +45,68 @@
     ],
     "supported_species": []
   },
-  "compatibility_rules": [],
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lte",
+          "value": 5
+        }
+      ],
+      "action": "block",
+      "message": "CeSpGRN's public kernel path starts kNN search at k=5 and requires at least 6 expression columns/cells."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.batch_size",
+          "op": "eq",
+          "value": null
+        },
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 10
+        }
+      ],
+      "action": "block",
+      "message": "CeSpGRN batch_size=null preserves upstream int(ncells/10), which is zero for fewer than 10 expression columns/cells; provide an explicit batch_size or use at least 10 cells."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.n_neigh",
+          "op": "gt",
+          "value_from": "dataset.expression.columns"
+        }
+      ],
+      "action": "block",
+      "message": "CeSpGRN n_neigh must be no greater than the number of expression columns/cells."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.pca_components",
+          "op": "gt",
+          "value_from": "dataset.expression.columns"
+        }
+      ],
+      "action": "block",
+      "message": "CeSpGRN pca_components must be no greater than the number of expression columns/cells."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.pca_components",
+          "op": "gt",
+          "value_from": "dataset.expression.genes"
+        }
+      ],
+      "action": "block",
+      "message": "CeSpGRN pca_components must be no greater than the number of expression genes."
+    }
+  ],
   "accepts": [
     "cells"
   ],

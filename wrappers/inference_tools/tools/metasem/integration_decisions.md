@@ -146,7 +146,7 @@ Pinned source:
 | `execution_capabilities` | `global`, `group_emulated` | selected entrypoint returns one matrix for one expression input; ANDREA supports group emulation for global tools | No native grouped or cell-specific public output. |
 | `runtime_resources` | threading supported via PyTorch/BLAS env | PyTorch source imports and training loops; no worker controls found | Wrapper sets PyTorch intra-op threads and BLAS/OpenMP env vars from `--threads`, with inter-op threads pinned to 1. |
 | `taxonomic_scope` | all broad groups, no species IDs | method uses expression and supplied prior/pseudo GRN; paper evaluates mouse/human data but no bundled species resource is required | No species-level restriction found. |
-| `compatibility_rules` | empty | no species restriction found | Gene-count limitation should be removed by the Phase 2 dynamic-dimension patch rather than represented as a dataset rule. |
+| `compatibility_rules` | block `dataset.expression.genes < 2` | no species restriction found; MetaSEM's directed edge output and pseudo-GRN scaffold require at least two expression genes. | Deterministic dimension guard now represented declaratively in ToolSpec preflight. |
 | `accepts` | `cells` | title, abstract and tutorial refer to scRNA-seq and sample-gene matrices | Single-cell expression is the primary method domain. |
 | `assumes` | `scrna_specific` | paper title and problem statement | MetaSEM is designed for scRNA-seq GRN inference. |
 | `extra_inputs.required` | none | tutorial allows no ground-truth GRN via pseudo GRN and `is_label=None`; wrapper can generate MetaSEM's required `net_path` scaffold | Avoids blocking users who do not have a prior/ground truth. |
@@ -179,6 +179,8 @@ New input specs required:
 - Wrapper converts ANDREA expression into upstream sample-gene CSV while preserving gene and cell IDs.
 - For `pseudo_grn_mode=provided_prior`, wrapper converts `prior_grn.tsv` to upstream `Gene1,Gene2` CSV and runs with `is_label=True`.
 - For `pseudo_grn_mode=unlabeled_all_genes`, wrapper writes one cyclic non-self pseudo edge per expression gene and runs with `is_label=False`.
+- ToolSpec preflight blocks expression matrices with fewer than 2 genes; the
+  wrapper still validates expression/prior alignment at runtime.
 - Wrapper preserves raw `EdgeWeight` in `raw/metasem_edges.tsv` and exports `network.csv` with `score=abs(EdgeWeight)`, `sign` as `+`/`-`, `evidence=association`, and `context=global`.
 - Wrapper records upstream ref, source patch list, parameter values, gene/cell counts, prior/pseudo edge count, label mode and runtime thread assignment in `raw/metasem_config.json`.
 

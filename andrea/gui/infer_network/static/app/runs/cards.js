@@ -1,4 +1,5 @@
 import { $ } from "../core/dom.js";
+import { state } from "../core/state.js";
 import { conditionalRuleMatches, deepEqualJson, readParamsFromHost, renderParamsHost, resolvedDefaultParams, setParamFieldError } from "/static-common/app/params/schema_form.js?v=20260617d";
 import { executionModeAvailability, executionModeLabel } from "./execution_modes.js";
 
@@ -50,21 +51,43 @@ function currentDatasetOrganism() {
   };
 }
 
-function conditionValue(rule, condition) {
+function currentDatasetExpression() {
+  const dataset = state.preflightReport?.dataset || {};
+  const genes = Number(dataset.genes);
+  const columns = Number(dataset.columns);
+  return {
+    genes: Number.isFinite(genes) ? genes : null,
+    columns: Number.isFinite(columns) ? columns : null,
+  };
+}
+
+function conditionValue(tool, condition, dataset) {
   if (condition?.value_from === "taxonomic_scope.supported_species") {
-    return Array.isArray(rule?.taxonomic_scope?.supported_species)
-      ? rule.taxonomic_scope.supported_species
+    return Array.isArray(tool?.taxonomic_scope?.supported_species)
+      ? tool.taxonomic_scope.supported_species
       : [];
+  }
+  if (condition?.value_from === "dataset.expression.genes") {
+    return dataset.genes;
+  }
+  if (condition?.value_from === "dataset.expression.columns") {
+    return dataset.columns;
   }
   return condition?.value;
 }
 
-function conditionActualValue({ field, params, execution, organism }) {
+function conditionActualValue({ field, params, execution, organism, dataset }) {
   if (field === "dataset.organism.taxonomic_group") {
     return organism.taxonomic_group;
   }
   if (field === "dataset.organism.ncbi_taxon_id") {
     return organism.ncbi_taxon_id;
+  }
+  if (field === "dataset.expression.genes") {
+    return dataset.genes;
+  }
+  if (field === "dataset.expression.columns") {
+    return dataset.columns;
   }
   if (field === "execution.mode") {
     return execution.mode;
@@ -89,8 +112,18 @@ function compareCompatibilityValue(actual, op, expected) {
     return Array.isArray(expected) && !expected.includes(actual);
   }
   if (
+    actual === null ||
+    actual === undefined ||
+    actual === "" ||
+    expected === null ||
+    expected === undefined ||
+    expected === "" ||
+    Array.isArray(actual) ||
+    Array.isArray(expected) ||
     typeof actual === "boolean" ||
     typeof expected === "boolean" ||
+    typeof actual === "object" ||
+    typeof expected === "object" ||
     Number.isNaN(Number(actual)) ||
     Number.isNaN(Number(expected))
   ) {
@@ -113,7 +146,7 @@ function compareCompatibilityValue(actual, op, expected) {
   return false;
 }
 
-function compatibilityRuleMatches(rule, params, execution, organism, tool) {
+function compatibilityRuleMatches(rule, params, execution, organism, dataset, tool) {
   const conditions = Array.isArray(rule?.conditions) ? rule.conditions : [];
   if (!conditions.length) {
     return false;
@@ -124,8 +157,9 @@ function compatibilityRuleMatches(rule, params, execution, organism, tool) {
       params,
       execution,
       organism,
+      dataset,
     });
-    const expected = conditionValue(tool, condition);
+    const expected = conditionValue(tool, condition, dataset);
     if (!compareCompatibilityValue(actual, String(condition?.op || "").trim(), expected)) {
       return false;
     }
@@ -222,6 +256,7 @@ function validateRunCard(card) {
 
   if (tool) {
     const organism = currentDatasetOrganism();
+    const dataset = currentDatasetExpression();
     const allowedGroups = Array.isArray(tool.taxonomic_scope?.allowed_groups)
       ? tool.taxonomic_scope.allowed_groups
       : [];
@@ -281,7 +316,7 @@ function validateRunCard(card) {
       if (String(rule?.action || "").trim() !== "block") {
         continue;
       }
-      if (compatibilityRuleMatches(rule, params, execution, organism, tool)) {
+      if (compatibilityRuleMatches(rule, params, execution, organism, dataset, tool)) {
         messages.push(String(rule?.message || "Tool compatibility rule blocks this run.").trim());
       }
     }
