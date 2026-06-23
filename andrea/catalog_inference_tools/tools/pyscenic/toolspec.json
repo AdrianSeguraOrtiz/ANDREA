@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0",
+  "id": "pyscenic",
+  "name": "pySCENIC",
+  "publication": [
+    "https://doi.org/10.1038/s41596-020-0336-2",
+    "https://doi.org/10.1038/nmeth.4463"
+  ],
+  "first_author": "Bram Van de Sande",
+  "year": 2020,
+  "method_summary": "pySCENIC is a Python implementation of the SCENIC workflow for single-cell gene regulatory network analysis. The selected integration mirrors the pySCENIC GRN step, which infers TF-target adjacencies from a cell-by-gene expression matrix and a predefined transcription-factor list using GRNBoost2 by default or GENIE3 as an alternative tree-based regression method.",
+  "method_keywords": [
+    "single_cell",
+    "scenic",
+    "regression_per_target",
+    "grnboost2",
+    "genie3",
+    "tree_ensemble",
+    "feature_importance",
+    "directed"
+  ],
+  "implementation_url": "https://pypi.org/project/pyscenic/",
+  "docker_image": "adriansegura99/inference-tools_pyscenic:1.0.0",
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "Wrapper --threads maps to the public pySCENIC GRN runtime control by passing pyscenic grn --num_workers=<threads> with --client_or_address=local. In pySCENIC 0.12.1, find_adjacencies_command() prepares a Dask LocalCluster through _prepare_client(..., num_workers=args.num_workers); that helper uses n_workers=num_workers and threads_per_worker=1. The CLI source pins OPENBLAS_NUM_THREADS and MKL_NUM_THREADS to 1, and the wrapper should also avoid exposing worker controls as user params."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [
+      {
+        "input": "tf_list",
+        "usage": "Required by the selected public entrypoint pyscenic grn as tfs_fname: a TXT file containing one transcription-factor identifier per line. The identifiers must match expression gene ids after any wrapper-internal aliasing."
+      }
+    ],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running pySCENIC GRN independently per group.",
+        "usage": "ANDREA uses groups.tsv to create one pySCENIC GRN child run per group; each child receives that group's expression matrix and tf_list, and pySCENIC itself does not consume groups.tsv."
+      }
+    ]
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "pyscenic.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined wrapper and pySCENIC GRN stdout/stderr log."
+    },
+    {
+      "path_pattern": "raw/adjacencies.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw pySCENIC GRN adjacency table with TF, target and importance columns before conversion to ANDREA network.csv."
+    },
+    {
+      "path_pattern": "raw/pyscenic_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Resolved pySCENIC GRN parameters, installation version, execution mode and runtime worker mapping."
+    },
+    {
+      "path_pattern": "raw/gene_alias_map.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Map from any wrapper-internal upstream-safe gene aliases back to exact ANDREA expression gene identifiers."
+    }
+  ],
+  "outputs": {
+    "directed": true,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "The selected public CLI command logs coarse lifecycle states such as loading expression, inferring regulatory networks and writing results, but it does not expose a stable target-gene or task-partition progress callback through the documented pyscenic grn interface. The wrapper can write coarse progress.json states and preserve upstream diagnostics in pyscenic.log."
+  },
+  "params": {
+    "method": {
+      "type": "enum",
+      "required": false,
+      "default": "grnboost2",
+      "enum": [
+        "grnboost2",
+        "genie3"
+      ],
+      "description": "Algorithm passed to pyscenic grn --method. pySCENIC documents grnboost2 as the default GRN reconstruction method and genie3 as the alternative tree-based method."
+    },
+    "seed": {
+      "type": "union",
+      "required": false,
+      "default": null,
+      "description": "Seed passed to pyscenic grn --seed for regressor random-state initialization. Use null to preserve the upstream default of a random seed by omitting --seed.",
+      "oneOf": [
+        {
+          "type": "int",
+          "required": false,
+          "default": 0,
+          "description": "Deterministic seed value."
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null to omit --seed and let pySCENIC choose a random seed."
+        }
+      ]
+    }
+  }
+}

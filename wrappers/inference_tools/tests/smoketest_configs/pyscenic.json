@@ -1,0 +1,26 @@
+{
+  "extra_files": [
+    "tf_list.txt"
+  ],
+  "param_overrides": {
+    "seed": 1
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "global_grnboost2"
+    },
+    {
+      "name": "group_emulated_contract",
+      "extra_files": [
+        "tf_list.txt",
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_emulated"
+      }
+    }
+  ]
+}
