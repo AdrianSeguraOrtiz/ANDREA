@@ -40,6 +40,7 @@ CONTEXT_IGNORE_PATTERNS = (
 RUNTIME_ENTRYPOINTS = {
     "python": ("python", "/app/run_tool.py"),
     "r": ("Rscript", "/app/run_tool.R"),
+    "julia": ("julia", "/app/run_tool.jl"),
 }
 
 
@@ -350,6 +351,8 @@ def runtime_script_name(runtime: str) -> str:
         return "run_tool.py"
     if runtime == "r":
         return "run_tool.R"
+    if runtime == "julia":
+        return "run_tool.jl"
     raise RuntimeError(f"Unsupported runtime: {runtime!r}")
 
 

@@ -95,6 +95,10 @@
       "bundles": [
         "python_runtime_contract"
       ]
+    },
+    "pidc": {
+      "runtime": "julia",
+      "bundles": []
     }
   }
 }

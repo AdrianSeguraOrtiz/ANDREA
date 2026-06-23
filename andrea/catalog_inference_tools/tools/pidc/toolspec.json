@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "id": "pidc",
+  "name": "PIDC",
+  "publication": [
+    "https://doi.org/10.1016/j.cels.2017.08.014"
+  ],
+  "first_author": "Thalia E. Chan",
+  "year": 2017,
+  "method_summary": "PIDC infers gene regulatory networks from single-cell expression data by using partial information decomposition over gene triplets to score proportional unique contribution and then applying network context to each gene pair. It returns an undirected weighted gene-gene association network whose edge weights rank confidence in putative functional or regulatory relationships.",
+  "method_keywords": [
+    "partial_information_decomposition",
+    "mutual_information",
+    "multivariate_information",
+    "network_context",
+    "single_cell",
+    "undirected"
+  ],
+  "implementation_url": "https://github.com/Tchanders/NetworkInference.jl",
+  "docker_image": "adriansegura99/inference-tools_pidc:1.0.0",
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "Wrapper --threads maps to Julia distributed processes for one public PIDC run: threads=1 launches Julia with no extra workers; threads=N launches Julia with N total processes by using N-1 workers. NetworkInference.jl uses Distributed @distributed loops and SharedArrays in get_mi_scores and get_puc_scores, and the README documents julia -p as the supported speedup mechanism. Scaling benefit is workload-dependent and too many processes can degrade performance."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [],
+  "accepts": [
+    "samples",
+    "cells",
+    "timepoints",
+    "perturbations"
+  ],
+  "assumes": "generic",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions expression columns by group before running PIDC independently per group.",
+        "usage": "ANDREA uses groups.tsv to create one PIDC child run per group; each child runs the same NetworkInference.jl PIDC entrypoint on that group's expression matrix."
+      }
+    ]
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "pidc.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined wrapper and NetworkInference.jl lifecycle log."
+    },
+    {
+      "path_pattern": "raw/pidc_edges.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw PIDC edge table before conversion to ANDREA network.csv."
+    },
+    {
+      "path_pattern": "raw/pidc_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Resolved PIDC parameters, upstream source reference and runtime process mapping."
+    },
+    {
+      "path_pattern": "raw/gene_alias_map.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Map from internal upstream-safe node aliases back to exact ANDREA expression gene identifiers."
+    }
+  ],
+  "outputs": {
+    "directed": false,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "NetworkInference.jl prints coarse lifecycle messages such as Getting nodes, Inferring network and Writing network to file, but exposes no stable per-edge, per-triplet or per-loop progress callback. The wrapper can write coarse progress.json states only."
+  },
+  "params": {
+    "discretizer": {
+      "type": "enum",
+      "required": false,
+      "default": "bayesian_blocks",
+      "enum": [
+        "bayesian_blocks",
+        "uniform_width",
+        "uniform_count"
+      ],
+      "description": "Expression discretization method passed to NetworkInference.jl get_nodes. Bayesian blocks is the documented default and chooses a data-dependent number and width of bins."
+    },
+    "estimator": {
+      "type": "enum",
+      "required": false,
+      "default": "maximum_likelihood",
+      "enum": [
+        "maximum_likelihood",
+        "dirichlet",
+        "shrinkage"
+      ],
+      "description": "Probability estimator passed to NetworkInference.jl. The README recommends maximum_likelihood for PUC and PIDC."
+    },
+    "number_of_bins": {
+      "type": "int",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "description": "Number of bins for uniform_width or uniform_count discretization. NetworkInference.jl documents that this value is ignored when discretizer=bayesian_blocks."
+    },
+    "base": {
+      "type": "float",
+      "required": false,
+      "default": 2,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "Logarithm base used for information measures in NetworkInference.jl."
+    }
+  }
+}
