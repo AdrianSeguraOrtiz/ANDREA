@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "id": "gnw_dynamical_network",
+  "name": "GeneNetWeaver dynamical network",
+  "format": "xml",
+  "accepted_extensions": [".xml"],
+  "description": "GeneNetWeaver dynamical network XML/SBML model consumed by the GNW CLI with --simulate --input-net. The file stores the gene list, signed regulatory structure and kinetic parameters used to simulate expression benchmarks.",
+  "example": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<sbml xmlns=\"http://www.sbml.org/sbml/level2\" level=\"2\" version=\"1\">\n  <model name=\"InSilicoSize10-Example\">\n    <listOfSpecies>\n      <species id=\"G1\" name=\"G1\" compartment=\"cell\" />\n      <species id=\"G2\" name=\"G2\" compartment=\"cell\" />\n    </listOfSpecies>\n  </model>\n</sbml>",
+  "validation_notes": [
+    "The file must be accepted by GeneNetWeaver's --simulate loader as a dynamical network model.",
+    "Species identifiers in the SBML model define the public gene universe after wrapper normalization.",
+    "Synthesis reactions and modifier species encode the regulatory edges that GNW exports to *_goldstandard.tsv and *_goldstandard_signed.tsv.",
+    "The wrapper must preserve a copy of the input XML under provenance/raw/ because the XML contains kinetic parameters that affect expression but are not fully represented in truth/networks.csv."
+  ]
+}

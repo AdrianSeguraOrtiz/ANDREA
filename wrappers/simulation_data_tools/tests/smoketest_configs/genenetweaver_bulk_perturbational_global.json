@@ -1,0 +1,81 @@
+{
+  "simulator_id": "genenetweaver",
+  "request": {
+    "seed": 601,
+    "effective_extras": [
+      "perturbation_design",
+      "interventions",
+      "enrichment_background",
+      "prior_grn",
+      "tf_list"
+    ],
+    "native_outputs": [
+      "gnw_goldstandard",
+      "gnw_goldstandard_signed",
+      "gnw_expression_tables",
+      "gnw_perturbation_tables",
+      "gnw_sbml_model",
+      "gnw_normalization_constant"
+    ],
+    "inputs": {},
+    "params": {
+      "network_preset": "in_silico_size10_yeast1",
+      "simulation_design": "perturbational_steady_state",
+      "steady_state_experiment": "knockouts",
+      "solver": "ode",
+      "expression_variant": "normalized",
+      "experimental_noise": {
+        "normal": false,
+        "lognormal": false,
+        "microarray": true,
+        "normalize_after_adding_noise": true
+      }
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "bulk",
+      "column_kind": "perturbations",
+      "experimental_design": "perturbational"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/perturbation_design.tsv",
+    "extras/interventions.tsv",
+    "extras/enrichment_background.txt",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "native/gnw_goldstandard.tsv",
+    "native/gnw_goldstandard_signed.tsv",
+    "native/gnw_expression_tables",
+    "native/gnw_perturbation_tables",
+    "native/gnw_sbml_model.xml",
+    "native/gnw_normalization_constant.tsv",
+    "provenance/raw/settings.txt",
+    "provenance/raw/resolved_params.json",
+    "provenance/raw/session_info.txt",
+    "provenance/raw/gnw_command.json",
+    "provenance/raw/input_network.xml",
+    "provenance/raw/public_gene_id_map.tsv",
+    "provenance/raw/public_column_id_map.tsv",
+    "provenance/raw/gnw_output/input_network_goldstandard_signed.tsv",
+    "provenance/raw/gnw_output/input_network_knockouts.tsv",
+    "provenance/raw/gnw_output/input_network_normalization_constant.tsv"
+  ],
+  "required_truth_context_prefixes": [
+    "global"
+  ]
+}

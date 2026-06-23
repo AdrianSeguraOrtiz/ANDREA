@@ -257,6 +257,7 @@ def _accept_from_formats(formats: list[str]) -> str:
         "rds": [".rds"],
         "tsv": [".tsv", ".txt"],
         "txt": [".txt"],
+        "xml": [".xml"],
     }
     extensions: set[str] = set()
     for value in formats:

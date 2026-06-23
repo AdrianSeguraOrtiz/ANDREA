@@ -1,0 +1,66 @@
+{
+  "simulator_id": "genenetweaver",
+  "request": {
+    "seed": 603,
+    "effective_extras": [
+      "perturbation_design",
+      "interventions"
+    ],
+    "native_outputs": [
+      "gnw_goldstandard_signed",
+      "gnw_expression_tables",
+      "gnw_perturbation_tables"
+    ],
+    "inputs": {
+      "gnw_dynamical_network": "../fixtures/genenetweaver/InSilicoSize10-Yeast1.xml"
+    },
+    "params": {
+      "network_preset": "custom_xml",
+      "simulation_design": "perturbational_steady_state",
+      "steady_state_experiment": "knockdowns",
+      "solver": "ode",
+      "expression_variant": "normalized",
+      "experimental_noise": {
+        "normal": false,
+        "lognormal": false,
+        "microarray": false,
+        "normalize_after_adding_noise": true
+      }
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "bulk",
+      "column_kind": "perturbations",
+      "experimental_design": "perturbational"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/perturbation_design.tsv",
+    "extras/interventions.tsv",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "native/gnw_goldstandard_signed.tsv",
+    "native/gnw_expression_tables",
+    "native/gnw_perturbation_tables",
+    "provenance/raw/settings.txt",
+    "provenance/raw/resolved_params.json",
+    "provenance/raw/input_network.xml",
+    "provenance/raw/gnw_output/input_network_goldstandard_signed.tsv",
+    "provenance/raw/gnw_output/input_network_knockdowns.tsv"
+  ],
+  "required_truth_context_prefixes": [
+    "global"
+  ]
+}

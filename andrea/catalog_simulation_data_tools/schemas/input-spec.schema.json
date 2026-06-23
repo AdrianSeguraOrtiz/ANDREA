@@ -33,7 +33,8 @@
       "enum": [
         "newick",
         "tsv",
-        "txt"
+        "txt",
+        "xml"
       ]
     },
     "accepted_extensions": {
@@ -130,7 +131,7 @@
       "if": {
         "properties": {
           "format": {
-            "enum": ["newick", "txt"]
+            "enum": ["newick", "txt", "xml"]
           }
         },
         "required": ["format"]

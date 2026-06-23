@@ -1,0 +1,884 @@
+{
+  "schema_version": "1.0",
+  "id": "genenetweaver",
+  "name": "GeneNetWeaver",
+  "publication": [
+    "https://doi.org/10.1093/bioinformatics/btr373"
+  ],
+  "first_author": "Thomas Schaffter",
+  "year": 2011,
+  "simulation_summary": "Generates in silico bulk RNA expression benchmarks from GeneNetWeaver dynamical network XML/SBML models, including perturbational steady-state experiments and time-series experiments with native signed global GRN gold standards.",
+  "simulation_keywords": [
+    "bulk",
+    "rna_expression",
+    "gene_regulatory_network",
+    "perturbation",
+    "time_series",
+    "knockout",
+    "knockdown",
+    "multifactorial",
+    "ode",
+    "sde"
+  ],
+  "implementation_url": "https://github.com/tschaffter/genenetweaver",
+  "docker_image": "adriansegura99/simulator_genenetweaver:1.0.0",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "gnw_dynamical_network",
+        "usage": "Wrapper passes this GeneNetWeaver XML/SBML model to java -jar gnw-3.1.2b.jar --simulate --input-net when network_preset=custom_xml.",
+        "conditions": [
+          {
+            "field": "param.network_preset",
+            "op": "eq",
+            "value": "custom_xml"
+          }
+        ],
+        "message": "gnw_dynamical_network is required when network_preset=custom_xml."
+      }
+    ]
+  },
+  "compatibility_rules": [
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.perturbations.min_gene_deletion_effect",
+          "op": "gt",
+          "value_from": "param.perturbations.max_gene_deletion_effect"
+        }
+      ],
+      "message": "perturbations.min_gene_deletion_effect must be <= max_gene_deletion_effect."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.perturbations.min_gene_overexpression_effect",
+          "op": "gt",
+          "value_from": "param.perturbations.max_gene_overexpression_effect"
+        }
+      ],
+      "message": "perturbations.min_gene_overexpression_effect must be <= max_gene_overexpression_effect."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.perturbations.min_fraction_direct_targets",
+          "op": "gt",
+          "value_from": "param.perturbations.max_fraction_direct_targets"
+        }
+      ],
+      "message": "perturbations.min_fraction_direct_targets must be <= max_fraction_direct_targets."
+    }
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "GeneNetWeaver 3.1.2 Beta is executed through the public Java CLI. The reviewed CLI help and settings file expose no thread, worker, OpenMP, BLAS or process-count control for benchmark simulation, so ANDREA must run the wrapper with runtime_resources.threads=1."
+    }
+  },
+  "params": {
+    "network_preset": {
+      "type": "enum",
+      "required": false,
+      "default": "in_silico_size10_yeast1",
+      "enum": [
+        "in_silico_size10_yeast1",
+        "custom_xml"
+      ],
+      "description": "Selects the dynamical network XML used by GNW. The default uses the official sandbox InSilicoSize10-Yeast1.xml from the pinned upstream repository; custom_xml requires the gnw_dynamical_network simulator input."
+    },
+    "network_name": {
+      "type": "string",
+      "required": false,
+      "default": "andrea_gnw",
+      "description": "Network root name used for normalized output identifiers and, when supported by the CLI route, upstream output filenames."
+    },
+    "simulation_design": {
+      "type": "enum",
+      "required": false,
+      "default": "perturbational_steady_state",
+      "enum": [
+        "perturbational_steady_state",
+        "time_series"
+      ],
+      "description": "Scenario-controlled design selector. Capabilities lock this value from data_axes.experimental_design so users cannot switch the scientific design from run parameters."
+    },
+    "solver": {
+      "type": "enum",
+      "required": false,
+      "default": "ode",
+      "enum": [
+        "ode",
+        "sde"
+      ],
+      "description": "Chooses which GNW solver family supplies normalized expression.tsv. The wrapper maps ode to simulateODE=1/simulateSDE=0 and sde to simulateODE=0/simulateSDE=1, while preserving raw generated files under provenance/raw/."
+    },
+    "expression_variant": {
+      "type": "enum",
+      "required": false,
+      "default": "normalized",
+      "enum": [
+        "normalized",
+        "nonoise",
+        "noexpnoise"
+      ],
+      "description": "Selects the GNW mRNA expression table family normalized into expression.tsv. Protein tables are preserved as native outputs but are not normalized as RNA expression."
+    },
+    "steady_state_experiment": {
+      "type": "enum",
+      "required": false,
+      "default": "knockouts",
+      "enum": [
+        "knockouts",
+        "knockdowns",
+        "multifactorial",
+        "dual_knockouts",
+        "dream4_time_series_perturbations",
+        "all"
+      ],
+      "description": "Selects which GNW steady-state perturbation family is normalized for the bulk perturbational capability. The wrapper maps this to ssKnockouts, ssKnockdowns, ssMultifactorial, ssDualKnockouts and ssDREAM4TimeSeries settings."
+    },
+    "time_series_experiment": {
+      "type": "enum",
+      "required": false,
+      "default": "dream4_timeseries",
+      "enum": [
+        "dream4_timeseries",
+        "knockouts",
+        "knockdowns",
+        "multifactorial",
+        "dual_knockouts",
+        "all"
+      ],
+      "description": "Selects which GNW time-series experiment family is normalized for the bulk time-series capability. The wrapper maps this to tsDREAM4TimeSeries, tsKnockouts, tsKnockdowns, tsMultifactorial and tsDualKnockouts settings."
+    },
+    "steady_state": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "maxt_ode": 2000,
+        "maxt_sde": -1,
+        "mint_sde": 100
+      },
+      "description": "GNW steady-state integration settings.",
+      "properties": {
+        "maxt_ode": {
+          "type": "int",
+          "required": false,
+          "default": 2000,
+          "min": 1,
+          "description": "Maps to maxtSteadyStateODE, the maximum deterministic integration time before returning the current state."
+        },
+        "maxt_sde": {
+          "type": "int",
+          "required": false,
+          "default": -1,
+          "description": "Maps to maxtSteadyStateSDE. Negative values make GNW use 1.5 times the matching ODE convergence time."
+        },
+        "mint_sde": {
+          "type": "int",
+          "required": false,
+          "default": 100,
+          "min": 0,
+          "description": "Maps to mintSDE, the minimum stochastic simulation time used to sample independent wild-type states."
+        }
+      }
+    },
+    "time_series": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "num_time_series": 10,
+        "maxt": 1000,
+        "dt": 50
+      },
+      "description": "GNW measured time-series settings.",
+      "properties": {
+        "num_time_series": {
+          "type": "int",
+          "required": false,
+          "default": 10,
+          "min": 1,
+          "description": "Maps to numTimeSeries, the number of independent perturbation time courses generated for time-series experiment families."
+        },
+        "maxt": {
+          "type": "int",
+          "required": false,
+          "default": 1000,
+          "min": 1,
+          "description": "Maps to maxtTimeSeries, the maximum measured time in each time course."
+        },
+        "dt": {
+          "type": "int",
+          "required": false,
+          "default": 50,
+          "min": 1,
+          "description": "Maps to dt, the measured time interval. GNW requires maxt to be an exact multiple of dt; the wrapper must reject incompatible values before execution."
+        }
+      }
+    },
+    "perturbations": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "multifactorial_stdev": 0.25,
+        "perturbation_probability": 0.33,
+        "min_gene_deletion_effect": 1.0,
+        "max_gene_deletion_effect": 1.0,
+        "min_gene_overexpression_effect": 1.0,
+        "max_gene_overexpression_effect": 1.0,
+        "min_fraction_direct_targets": 0.05,
+        "max_fraction_direct_targets": 0.3
+      },
+      "description": "GNW perturbation generation settings. loadPerturbations is intentionally fixed to false because it requires GNW-specific sidecar files that are not part of this Phase 1 public contract.",
+      "properties": {
+        "multifactorial_stdev": {
+          "type": "float",
+          "required": false,
+          "default": 0.25,
+          "min": 0.0,
+          "description": "Maps to multifactorialStdev."
+        },
+        "perturbation_probability": {
+          "type": "float",
+          "required": false,
+          "default": 0.33,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Maps to perturbationProbability for DREAM4-style time-series perturbations."
+        },
+        "min_gene_deletion_effect": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Maps to minGeneDeletionEffect."
+        },
+        "max_gene_deletion_effect": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Maps to maxGeneDeletionEffect."
+        },
+        "min_gene_overexpression_effect": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Maps to minGeneOverexpressionEffect."
+        },
+        "max_gene_overexpression_effect": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "description": "Maps to maxGeneOverexpressionEffect."
+        },
+        "min_fraction_direct_targets": {
+          "type": "float",
+          "required": false,
+          "default": 0.05,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Maps to minFractionDirectTargets."
+        },
+        "max_fraction_direct_targets": {
+          "type": "float",
+          "required": false,
+          "default": 0.3,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Maps to maxFractionDirectTargets."
+        }
+      }
+    },
+    "ode": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "absolute_precision": 0.00001,
+        "relative_precision": 0.001
+      },
+      "description": "GNW deterministic ODE solver tolerances.",
+      "properties": {
+        "absolute_precision": {
+          "type": "float",
+          "required": false,
+          "default": 0.00001,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Maps to absolutePrecision."
+        },
+        "relative_precision": {
+          "type": "float",
+          "required": false,
+          "default": 0.001,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Maps to relativePrecision."
+        }
+      }
+    },
+    "sde": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "time_step": 1.0,
+        "noise_coefficient": 0.05
+      },
+      "description": "GNW stochastic SDE solver settings.",
+      "properties": {
+        "time_step": {
+          "type": "float",
+          "required": false,
+          "default": 1.0,
+          "min": 0.0,
+          "exclusive_min": true,
+          "description": "Maps to timeStepSDE, the internal stochastic integration step size."
+        },
+        "noise_coefficient": {
+          "type": "float",
+          "required": false,
+          "default": 0.05,
+          "min": 0.0,
+          "description": "Maps to noiseCoefficientSDE."
+        }
+      }
+    },
+    "experimental_noise": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "normal": false,
+        "lognormal": false,
+        "microarray": true,
+        "normal_stdev": 0.025,
+        "lognormal_stdev": 0.075,
+        "normalize_after_adding_noise": true
+      },
+      "description": "GNW measurement-noise settings applied after ODE/SDE simulation.",
+      "properties": {
+        "normal": {
+          "type": "bool",
+          "required": false,
+          "default": false,
+          "description": "Maps to addNormalNoise."
+        },
+        "lognormal": {
+          "type": "bool",
+          "required": false,
+          "default": false,
+          "description": "Maps to addLognormalNoise."
+        },
+        "microarray": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Maps to addMicroarrayNoise."
+        },
+        "normal_stdev": {
+          "type": "float",
+          "required": false,
+          "default": 0.025,
+          "min": 0.0,
+          "description": "Maps to normalStdev."
+        },
+        "lognormal_stdev": {
+          "type": "float",
+          "required": false,
+          "default": 0.075,
+          "min": 0.0,
+          "description": "Maps to lognormalStdev."
+        },
+        "normalize_after_adding_noise": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Maps to normalizeAfterAddingNoise."
+        }
+      }
+    },
+    "goldstandard": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "ignore_autoregulatory_interactions": true,
+        "append_zero_interactions": true
+      },
+      "description": "GNW gold-standard export controls. Public truth/networks.csv always uses non-zero signed edges only.",
+      "properties": {
+        "ignore_autoregulatory_interactions": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Maps to ignoreAutoregulatoryInteractionsInEvaluation."
+        },
+        "append_zero_interactions": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Maps to appendZeroInteractionsInGoldStandardFiles; wrapper truth normalization ignores zero rows."
+        }
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "perturbations",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "parameter_bindings": [
+        {
+          "param": "simulation_design",
+          "policy": "locked",
+          "value": "perturbational_steady_state",
+          "source": "data_axes.experimental_design",
+          "description": "Bulk perturbational capabilities use GNW steady-state perturbation outputs: knockouts, knockdowns, multifactorial, dual knockouts or DREAM4 perturbation steady states."
+        }
+      ],
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "interventions",
+        "perturbation_design",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "*_goldstandard_signed.tsv",
+            "*_goldstandard.tsv",
+            "GNW dynamical network XML/SBML"
+          ],
+          "upstream_configuration": [
+            "java -jar gnw-3.1.2b.jar --simulate --input-net <network.xml> -c <settings.txt> with simulation_design=perturbational_steady_state.",
+            "Wrapper enables exactly the selected steady-state perturbation family through ssKnockouts, ssKnockdowns, ssMultifactorial, ssDualKnockouts or ssDREAM4TimeSeries.",
+            "settings.txt outputDirectory must be an absolute /work/out/provenance/raw path; --output-path alone is not sufficient for reliable output placement."
+          ],
+          "generation": "The wrapper reads *_goldstandard_signed.tsv rows as source, target and sign, emits one truth/networks.csv row per signed non-self edge with context=global, and ignores zero rows from *_goldstandard.tsv.",
+          "score_semantics": "score is 1.0 because GNW's signed gold-standard file stores topology and sign but not edge magnitudes; sign is copied from the native '+' or '-' field.",
+          "limitations": [
+            "The public GRN is fixed for the whole dataset and does not vary by perturbation column.",
+            "Kinetic parameters in the XML drive expression but are not exported as public edge magnitudes.",
+            "Autoregulatory interactions are excluded by default through GNW settings."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "GNW steady-state perturbation outputs do not define groups of expression columns with distinct regulatory networks; duplicating the global GRN by perturbation family would not be native or biologically distinct group truth."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "Each perturbation column is simulated from the same fixed GNW dynamical network, and GNW does not emit perturbation-specific GRN rewiring."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "perturbation_design",
+          "source_artifacts": [
+            "selected GNW expression table name",
+            "*_multifactorial_perturbations.tsv when present",
+            "*_dualknockouts_indexes.tsv when present",
+            "*_dualknockouts_perturbations.tsv when present"
+          ],
+          "method": "For systematic knockout and knockdown tables, infer one direct intervention per expression column from column order and gene identifiers. For multifactorial, DREAM4 and dual-knockout outputs, parse the upstream perturbation sidecar files and align rows to normalized expression columns. Write extras/perturbation_design.tsv with one row per expression column.",
+          "assumptions": [
+            "GNW file naming and row order follow the public DREAM benchmark conventions produced by BenchmarkGeneratorDream4.",
+            "The selected expression table and perturbation sidecars are generated in the same run from the same settings."
+          ],
+          "limitations": [
+            "Systematic knockout and knockdown interventions are implicit in GNW output shape rather than emitted as a separate sidecar file.",
+            "Different steady-state experiment families use different upstream perturbation encodings, so Phase 2 must test each supported family."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "interventions",
+          "source_artifacts": [
+            "extras/perturbation_design.tsv"
+          ],
+          "method": "Collapse distinct intervention definitions from perturbation_design into extras/interventions.tsv, preserving perturbed gene IDs, intervention type and signed effect when available.",
+          "assumptions": [
+            "Perturbation columns with the same intervention metadata represent the same intervention class."
+          ],
+          "limitations": [
+            "GNW perturbation strengths are not always comparable across knockout, knockdown, drug-like and multifactorial families."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Write every normalized expression gene identifier to extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The simulated expression row universe is the appropriate synthetic background for downstream enrichment workflows."
+          ],
+          "limitations": [
+            "No organism-specific functional annotation universe is simulated."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "*_goldstandard_signed.tsv"
+          ],
+          "method": "Write the same signed non-self edges used for global truth into extras/prior_grn.tsv with source, target, score and sign.",
+          "assumptions": [
+            "The simulator gold standard may be useful as an oracle prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived, not an independent noisy prior."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "*_goldstandard_signed.tsv"
+          ],
+          "method": "Write unique source genes from signed non-self global truth edges to extras/tf_list.txt, one gene per line.",
+          "assumptions": [
+            "Genes with outgoing simulated regulatory edges define the synthetic regulator universe."
+          ],
+          "limitations": [
+            "The list is simulator-derived and not an organism-specific TF catalogue."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "gnw_goldstandard",
+          "kind": "graph",
+          "description": "Native GNW *_goldstandard.tsv file, optionally including zero interactions.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "gnw_goldstandard_signed",
+          "kind": "graph",
+          "description": "Native GNW *_goldstandard_signed.tsv signed edge list.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "gnw_expression_tables",
+          "kind": "directory",
+          "description": "Raw GNW mRNA and protein expression tables for selected solver/noise variants.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "gnw_perturbation_tables",
+          "kind": "directory",
+          "description": "Raw GNW perturbation sidecar tables such as multifactorial perturbations, DREAM4 time-series perturbations and dual-knockout indexes.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "gnw_sbml_model",
+          "kind": "metadata",
+          "description": "The GNW XML/SBML dynamical model copied or regenerated for the run.",
+          "formats": [
+            "xml"
+          ]
+        },
+        {
+          "id": "gnw_normalization_constant",
+          "kind": "table",
+          "description": "Native GNW normalization constant file when GNW writes normalized noisy outputs.",
+          "formats": [
+            "tsv"
+          ]
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "settings_txt",
+          "kind": "metadata",
+          "description": "Resolved GNW settings.txt used for the Java CLI run."
+        },
+        {
+          "id": "run_log",
+          "kind": "metadata",
+          "description": "Captured stdout/stderr from the GNW Java process."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Java version, GNW jar version and pinned upstream commit."
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mappings from native GNW gene and experiment identifiers to normalized public IDs."
+        }
+      ]
+    },
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "timepoints",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "parameter_bindings": [
+        {
+          "param": "simulation_design",
+          "policy": "locked",
+          "value": "time_series",
+          "source": "data_axes.experimental_design",
+          "description": "Bulk time-series capabilities use GNW time-series outputs and lock the run to ts* settings rather than steady-state ss* settings."
+        }
+      ],
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "interventions",
+        "perturbation_design",
+        "prior_grn",
+        "tf_list",
+        "timepoints"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "*_goldstandard_signed.tsv",
+            "*_goldstandard.tsv",
+            "GNW dynamical network XML/SBML"
+          ],
+          "upstream_configuration": [
+            "java -jar gnw-3.1.2b.jar --simulate --input-net <network.xml> -c <settings.txt> with simulation_design=time_series.",
+            "Wrapper enables exactly the selected time-series family through tsDREAM4TimeSeries, tsKnockouts, tsKnockdowns, tsMultifactorial or tsDualKnockouts.",
+            "time_series.maxt must be an exact multiple of time_series.dt because GNW validates maxtTimeSeries/dt before simulation."
+          ],
+          "generation": "The wrapper reads *_goldstandard_signed.tsv rows as source, target and sign, emits one truth/networks.csv row per signed non-self edge with context=global, and ignores zero rows from *_goldstandard.tsv.",
+          "score_semantics": "score is 1.0 because GNW's signed gold-standard file stores topology and sign but not edge magnitudes; sign is copied from the native '+' or '-' field.",
+          "limitations": [
+            "The GRN is fixed across the whole time course.",
+            "GNW time-series outputs do not model timepoint-specific network rewiring.",
+            "Kinetic parameters in the XML drive dynamics but are not exported as public truth edge magnitudes."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "GNW time-series outputs do not emit groups of timepoint columns with distinct regulatory networks."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "Expression columns are timepoint observations generated from one fixed GNW dynamical network; no timepoint-specific GRNs are emitted."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "timepoints",
+          "source_artifacts": [
+            "*_dream4_timeseries.tsv or selected time-series table",
+            "settings.txt maxtTimeSeries",
+            "settings.txt dt"
+          ],
+          "method": "Parse each GNW time-series block, assign one normalized column per measured row, and write extras/timepoints.tsv with column_id, timepoint and series_id aligned to expression.tsv column order.",
+          "assumptions": [
+            "The native time column in each GNW time-series table is the public time coordinate."
+          ],
+          "limitations": [
+            "Multiple GNW time courses share time values but represent different perturbation trajectories; series_id is required to disambiguate them."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "perturbation_design",
+          "source_artifacts": [
+            "*_dream4_timeseries_perturbations.tsv or selected time-series perturbation sidecar",
+            "selected GNW time-series table"
+          ],
+          "method": "Align each time-series block and timepoint row to its upstream perturbation vector, then write one perturbation_design row per normalized expression column.",
+          "assumptions": [
+            "GNW writes perturbation sidecars in the same series order as the time-series expression blocks."
+          ],
+          "limitations": [
+            "A perturbation applies to a whole time course; repeated rows across timepoints are wrapper-derived column annotations."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "interventions",
+          "source_artifacts": [
+            "extras/perturbation_design.tsv"
+          ],
+          "method": "Collapse distinct intervention definitions from perturbation_design into extras/interventions.tsv, preserving perturbed gene IDs, intervention type and signed effect when available.",
+          "assumptions": [
+            "Timepoint columns from the same series share the same direct intervention definition."
+          ],
+          "limitations": [
+            "The intervention table describes experiment-level perturbations, not dynamic causal effects at individual timepoints."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Write every normalized expression gene identifier to extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The simulated expression row universe is the appropriate synthetic background for downstream enrichment workflows."
+          ],
+          "limitations": [
+            "No organism-specific functional annotation universe is simulated."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "*_goldstandard_signed.tsv"
+          ],
+          "method": "Write the same signed non-self edges used for global truth into extras/prior_grn.tsv with source, target, score and sign.",
+          "assumptions": [
+            "The simulator gold standard may be useful as an oracle prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived, not an independent noisy prior."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "*_goldstandard_signed.tsv"
+          ],
+          "method": "Write unique source genes from signed non-self global truth edges to extras/tf_list.txt, one gene per line.",
+          "assumptions": [
+            "Genes with outgoing simulated regulatory edges define the synthetic regulator universe."
+          ],
+          "limitations": [
+            "The list is simulator-derived and not an organism-specific TF catalogue."
+          ],
+          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "gnw_goldstandard",
+          "kind": "graph",
+          "description": "Native GNW *_goldstandard.tsv file, optionally including zero interactions.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "gnw_goldstandard_signed",
+          "kind": "graph",
+          "description": "Native GNW *_goldstandard_signed.tsv signed edge list.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "gnw_expression_tables",
+          "kind": "directory",
+          "description": "Raw GNW mRNA and protein time-series expression tables for selected solver/noise variants.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "gnw_perturbation_tables",
+          "kind": "directory",
+          "description": "Raw GNW time-series perturbation sidecar tables.",
+          "formats": [
+            "tsv"
+          ]
+        },
+        {
+          "id": "gnw_sbml_model",
+          "kind": "metadata",
+          "description": "The GNW XML/SBML dynamical model copied or regenerated for the run.",
+          "formats": [
+            "xml"
+          ]
+        },
+        {
+          "id": "gnw_normalization_constant",
+          "kind": "table",
+          "description": "Native GNW normalization constant file when GNW writes normalized noisy outputs.",
+          "formats": [
+            "tsv"
+          ]
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "settings_txt",
+          "kind": "metadata",
+          "description": "Resolved GNW settings.txt used for the Java CLI run."
+        },
+        {
+          "id": "run_log",
+          "kind": "metadata",
+          "description": "Captured stdout/stderr from the GNW Java process."
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Java version, GNW jar version and pinned upstream commit."
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mappings from native GNW gene, timepoint and experiment identifiers to normalized public IDs."
+        }
+      ]
+    }
+  ]
+}

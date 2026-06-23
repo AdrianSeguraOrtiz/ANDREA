@@ -178,7 +178,7 @@ def semantic_errors_for_input_spec(
                     "column_types must define every required column: "
                     + ", ".join(missing_types)
                 )
-    elif fmt in {"newick", "txt"}:
+    elif fmt in {"newick", "txt", "xml"}:
         if required_columns:
             errors.append(f"{fmt} InputSpecs must not declare required_columns.")
 
