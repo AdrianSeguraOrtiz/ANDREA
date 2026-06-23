@@ -1,0 +1,94 @@
+{
+  "simulator_id": "syntren",
+  "request": {
+    "seed": 701,
+    "effective_extras": [
+      "enrichment_background",
+      "prior_grn",
+      "tf_list"
+    ],
+    "native_outputs": [
+      "syntren_unnormalized_dataset",
+      "syntren_maxexpr_dataset",
+      "syntren_network_sif",
+      "syntren_network_xml",
+      "syntren_external_inputs",
+      "syntren_ini_file"
+    ],
+    "inputs": {},
+    "params": {
+      "source_network": {
+        "preset": "ecoli_full"
+      },
+      "subnetwork": {
+        "enabled": true,
+        "method": "neighbor_addition",
+        "num_nodes": 30,
+        "num_background_nodes": 5
+      },
+      "interactions": {
+        "use_edge_types_from_sif": true,
+        "percent_activators": 0.5,
+        "interaction_category": "DEFAULT"
+      },
+      "external_inputs": {
+        "mode": "randomized",
+        "num_externals": 5,
+        "num_correlated_externals": 0,
+        "correlation_noise": 0.0
+      },
+      "sampling": {
+        "burn_in": 10,
+        "num_experiments": 4,
+        "samples_per_experiment": 1
+      },
+      "noise": {
+        "biological": 0.01,
+        "input": 0.01,
+        "experimental": 0.01
+      },
+      "expression_variant": "unnormalized"
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "bulk",
+      "column_kind": "samples",
+      "experimental_design": "observational"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/enrichment_background.txt",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "native/syntren_unnormalized_dataset.txt",
+    "native/syntren_maxexpr_dataset.txt",
+    "native/syntren_network_sif.sif",
+    "native/syntren_network_xml.xml",
+    "native/syntren_external_inputs.tsv",
+    "native/syntren.ini",
+    "provenance/raw/syntren.ini",
+    "provenance/raw/resolved_params.json",
+    "provenance/raw/session_info.txt",
+    "provenance/raw/syntren_command.json",
+    "provenance/raw/generated_network.sif",
+    "provenance/raw/syntren_output/generated.xml",
+    "provenance/raw/upstream_stdout.log"
+  ],
+  "required_truth_context_prefixes": [
+    "global"
+  ]
+}

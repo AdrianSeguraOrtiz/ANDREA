@@ -1,0 +1,84 @@
+{
+  "simulator_id": "syntren",
+  "request": {
+    "seed": 703,
+    "effective_extras": [
+      "perturbation_design",
+      "interventions",
+      "prior_grn",
+      "tf_list"
+    ],
+    "native_outputs": [
+      "syntren_network_sif",
+      "syntren_network_xml",
+      "syntren_external_inputs",
+      "syntren_ini_file"
+    ],
+    "inputs": {
+      "syntren_source_network_sif": "../fixtures/syntren/source_network.sif",
+      "syntren_externals_table": "../fixtures/syntren/externals.tsv"
+    },
+    "params": {
+      "source_network": {
+        "preset": "custom_sif"
+      },
+      "subnetwork": {
+        "enabled": false
+      },
+      "external_inputs": {
+        "mode": "from_file",
+        "fixed_source": "custom_table",
+        "num_externals": -1,
+        "num_correlated_externals": 0
+      },
+      "sampling": {
+        "burn_in": 0,
+        "num_experiments": 4,
+        "samples_per_experiment": 1
+      },
+      "noise": {
+        "biological": 0.0001,
+        "input": 0.0001,
+        "experimental": 0.0001
+      },
+      "expression_variant": "unnormalized"
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "bulk",
+      "column_kind": "perturbations",
+      "experimental_design": "perturbational"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/perturbation_design.tsv",
+    "extras/interventions.tsv",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "native/syntren_network_sif.sif",
+    "native/syntren_network_xml.xml",
+    "native/syntren_external_inputs.tsv",
+    "native/syntren.ini",
+    "provenance/raw/input_source_network.sif",
+    "provenance/raw/externalsFile.txt",
+    "provenance/raw/generated_network.sif",
+    "provenance/raw/syntren_output/generated.xml"
+  ],
+  "required_truth_context_prefixes": [
+    "global"
+  ]
+}

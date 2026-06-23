@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "id": "syntren_source_network_sif",
+  "name": "SynTReN source network SIF",
+  "format": "txt",
+  "accepted_extensions": [".sif", ".txt"],
+  "description": "SynTReN source regulatory network in SIF format. Each non-empty row contains source regulator, interaction token and target gene, separated by whitespace or tabs.",
+  "example": "arcA\tre\taceBAK\narcA\tac\tappCBA\naraC\tdu\taraBAD",
+  "validation_notes": [
+    "The first token is the upstream regulator identifier and the third token is the target gene identifier.",
+    "The second token uses SynTReN interaction labels: ac for activation, re for repression and du or other labels for unknown/dual interactions.",
+    "The wrapper must validate row arity and reject rows that cannot be parsed as three-token SIF interactions before invoking SynTReN."
+  ]
+}

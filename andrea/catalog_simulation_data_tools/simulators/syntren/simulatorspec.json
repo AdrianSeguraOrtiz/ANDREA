@@ -1,0 +1,731 @@
+{
+  "schema_version": "1.0",
+  "id": "syntren",
+  "name": "SynTReN",
+  "publication": [
+    "https://doi.org/10.1186/1471-2105-7-43"
+  ],
+  "first_author": "Tim Van den Bulcke",
+  "year": 2006,
+  "simulation_summary": "Generates synthetic transcriptional regulatory networks and bulk microarray-like RNA expression datasets from known source-network topology, nonlinear regulatory functions, external-condition inputs and configurable biological/experimental noise.",
+  "simulation_keywords": [
+    "bulk",
+    "rna_expression",
+    "microarray",
+    "gene_regulatory_network",
+    "transcriptional_regulation",
+    "external_conditions",
+    "perturbation",
+    "synthetic_network",
+    "java"
+  ],
+  "implementation_url": "https://web.archive.org/web/20191023060930/http://bioinformatics.intec.ugent.be/kmarchal/SynTReN/index.html",
+  "docker_image": "adriansegura99/simulator_syntren:1.0.0",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "syntren_source_network_sif",
+        "usage": "Wrapper passes this SIF file to SynTReN as NetworkSIFFile when source_network.preset=custom_sif.",
+        "conditions": [
+          {
+            "field": "param.source_network.preset",
+            "op": "eq",
+            "value": "custom_sif"
+          }
+        ],
+        "message": "syntren_source_network_sif is required when source_network.preset=custom_sif."
+      },
+      {
+        "input": "syntren_externals_table",
+        "usage": "Wrapper passes this table to SynTReN as externalsFile when external_inputs.fixed_source=custom_table.",
+        "conditions": [
+          {
+            "field": "param.external_inputs.fixed_source",
+            "op": "eq",
+            "value": "custom_table"
+          }
+        ],
+        "message": "syntren_externals_table is required when external_inputs.fixed_source=custom_table."
+      }
+    ]
+  },
+  "compatibility_rules": [
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.external_inputs.num_externals",
+          "op": "gte",
+          "value": 0
+        },
+        {
+          "field": "param.external_inputs.num_correlated_externals",
+          "op": "gte",
+          "value_from": "param.external_inputs.num_externals"
+        }
+      ],
+      "message": "external_inputs.num_correlated_externals must be smaller than num_externals when num_externals is non-negative."
+    },
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.external_inputs.mode",
+          "op": "eq",
+          "value": "from_file"
+        },
+        {
+          "field": "param.subnetwork.enabled",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "message": "SynTReN requires subnetwork.enabled=false when external_inputs.mode=from_file."
+    }
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "SynTReN 1.2 is executed through the public Java CLI/API. The reviewed ini settings, CLI documentation and release notes expose no thread, worker, OpenMP, BLAS or process-count control, so ANDREA must run the wrapper with runtime_resources.threads=1."
+    }
+  },
+  "params": {
+    "source_network": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "preset": "ecoli_full"
+      },
+      "description": "Source topology consumed by SynTReN as NetworkSIFFile.",
+      "properties": {
+        "preset": {
+          "type": "enum",
+          "required": false,
+          "default": "ecoli_full",
+          "enum": [
+            "ecoli_full",
+            "ecoli_hongwu_ma",
+            "yeast_full",
+            "yeast_neighbor_sample",
+            "dag1_clean",
+            "custom_sif"
+          ],
+          "description": "Selects a bundled SynTReN source SIF file or a user-provided syntren_source_network_sif input. The executable container vendors the verified local SynTReN 1.2 release because the archived official 1.2 ZIP is no longer retrievable."
+        }
+      }
+    },
+    "subnetwork": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "enabled": true,
+        "method": "cluster_addition",
+        "num_nodes": 100,
+        "num_background_nodes": 100
+      },
+      "description": "Controls SynTReN subnetwork selection from the source SIF. Perturbational predefined-external runs lock enabled=false because fixedExternals is only supported on complete source networks.",
+      "properties": {
+        "enabled": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Maps to selectSubnetwork."
+        },
+        "method": {
+          "type": "enum",
+          "required": false,
+          "default": "cluster_addition",
+          "enum": [
+            "cluster_addition",
+            "neighbor_addition"
+          ],
+          "description": "Maps to subnetworkSelection=clusterAddition or neighborAddition."
+        },
+        "num_nodes": {
+          "type": "int",
+          "required": false,
+          "default": 100,
+          "min": 2,
+          "description": "Maps to nrNodes, the number of foreground nodes selected when subnetwork.enabled=true."
+        },
+        "num_background_nodes": {
+          "type": "int",
+          "required": false,
+          "default": 100,
+          "min": 0,
+          "description": "Maps to nrBackgroundNodes, the number of background nodes selected when subnetwork.enabled=true."
+        }
+      }
+    },
+    "interactions": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "use_edge_types_from_sif": true,
+        "percent_activators": 0.2,
+        "interaction_category": "SIGMOIDAL",
+        "higher_order_probability": 0.0
+      },
+      "description": "Controls assignment of SynTReN regulatory interaction categories and nonlinear transfer-function families. The exported public truth is topological because SynTReN's public SIF export writes generated edges with token un.",
+      "properties": {
+        "use_edge_types_from_sif": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Maps to useEdgeTypesFromSIF. ac/re SIF tokens affect upstream interaction generation, but the public generated SIF exported by SynTReN 1.2 writes topological edges as un."
+        },
+        "percent_activators": {
+          "type": "float",
+          "required": false,
+          "default": 0.2,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Maps to percentActivators, the desired fraction of activating interactions in SynTReN's internal transfer-function assignment."
+        },
+        "interaction_category": {
+          "type": "enum",
+          "required": false,
+          "default": "SIGMOIDAL",
+          "enum": [
+            "LINEARLIKE",
+            "SIGMOIDAL",
+            "STEP",
+            "STEEP",
+            "LINEAR",
+            "MIXED",
+            "DEFAULT",
+            "RANDOM"
+          ],
+          "description": "Maps to interactionCategory."
+        },
+        "higher_order_probability": {
+          "type": "float",
+          "required": false,
+          "default": 0.0,
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Maps to higherOrderProbability for synergistic or antagonistic two-input interactions."
+        }
+      }
+    },
+    "external_inputs": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "mode": "randomized",
+        "fixed_source": "builtin_concentration_series",
+        "num_externals": -1,
+        "num_correlated_externals": 0,
+        "correlation_noise": 0.1
+      },
+      "description": "Controls SynTReN external input values. The selected semantic capability locks mode so users cannot change the experimental design chosen in the scenario.",
+      "properties": {
+        "mode": {
+          "type": "enum",
+          "required": false,
+          "default": "randomized",
+          "enum": [
+            "randomized",
+            "from_file",
+            "fixed"
+          ],
+          "description": "Scenario-controlled mapping to externalInputValues=RANDOMIZED, FROM_EXTERNALS_FILE or FIXED."
+        },
+        "fixed_source": {
+          "type": "enum",
+          "required": false,
+          "default": "builtin_concentration_series",
+          "enum": [
+            "builtin_concentration_series",
+            "custom_table"
+          ],
+          "description": "Selects the predefined externalsFile used when mode=from_file. custom_table requires the syntren_externals_table simulator input."
+        },
+        "num_externals": {
+          "type": "int",
+          "required": false,
+          "default": -1,
+          "min": -1,
+          "description": "Maps to nrExternals. -1 means all top nodes are external nodes."
+        },
+        "num_correlated_externals": {
+          "type": "int",
+          "required": false,
+          "default": 0,
+          "min": -1,
+          "description": "Maps to nrCorrelatedExternals. -1 means SynTReN uses half independent and half correlated external nodes."
+        },
+        "correlation_noise": {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "min": 0.0,
+          "description": "Maps to correlationNoise for correlated external inputs."
+        }
+      }
+    },
+    "sampling": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "burn_in": 1000,
+        "num_experiments": 10,
+        "samples_per_experiment": 1
+      },
+      "description": "Controls simulated expression sampling from the generated network.",
+      "properties": {
+        "burn_in": {
+          "type": "int",
+          "required": false,
+          "default": 1000,
+          "min": 0,
+          "description": "Maps to burnIn."
+        },
+        "num_experiments": {
+          "type": "int",
+          "required": false,
+          "default": 10,
+          "min": 1,
+          "description": "Maps to nrExperiments when external_inputs.mode=randomized."
+        },
+        "samples_per_experiment": {
+          "type": "int",
+          "required": false,
+          "default": 1,
+          "min": 1,
+          "description": "Maps to nrSamplesPerExp."
+        }
+      }
+    },
+    "noise": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "biological": 0.1,
+        "input": 0.1,
+        "experimental": 0.1
+      },
+      "description": "SynTReN biological, input and microarray experimental noise levels.",
+      "properties": {
+        "biological": {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "min": 0.0,
+          "description": "Maps to bioNoise."
+        },
+        "input": {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "min": 0.0,
+          "description": "Maps to inputNoise."
+        },
+        "experimental": {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "min": 0.0,
+          "description": "Maps to expNoise."
+        }
+      }
+    },
+    "expression_variant": {
+      "type": "enum",
+      "required": false,
+      "default": "unnormalized",
+      "enum": [
+        "unnormalized",
+        "max_expr_1"
+      ],
+      "description": "Selects which SynTReN expression dataset is normalized into expression.tsv. The v1.2 documentation recommends the unnormalized dataset; max_expr_1 preserves the old 0..1 output range."
+    }
+  },
+  "capabilities": [
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "samples",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "*_network.sif",
+            "GeneNetworkXMLFile"
+          ],
+          "upstream_configuration": [
+            "createGeneNetwork=true",
+            "generateExpressionData=true",
+            "externalInputValues=RANDOMIZED",
+            "fixedExternals=false"
+          ],
+          "generation": "The wrapper exports the generated GeneNetwork XML to SIF through SynTReN's public GeneNetwork API and emits one truth/networks.csv row per non-self regulator-target edge with context=global and evidence=simulated_truth.",
+          "score_semantics": "score is 1.0 because SynTReN exposes simulated topology but not a public edge-confidence score; sign is '?' because the verified generated SIF export uses token un for generated edges.",
+          "limitations": [
+            "SynTReN uses one fixed regulatory network for every expression column in the run.",
+            "Internal transfer-function signs affect expression generation but are not preserved in a stable public signed edge artifact by the verified API route."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "SynTReN does not define column groups with distinct regulatory networks; random external-condition samples all share the same generated TRN."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "SynTReN does not emit sample-specific regulatory rewiring; every expression column is simulated from the same generated TRN."
+        }
+      ],
+      "parameter_bindings": [
+        {
+          "param": "external_inputs.mode",
+          "policy": "locked",
+          "value": "randomized",
+          "source": "data_axes.experimental_design",
+          "description": "Bulk observational runs use randomized external conditions rather than a predefined perturbation table."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Write every normalized expression gene identifier to extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The simulated expression row universe is the appropriate synthetic background for downstream enrichment workflows."
+          ],
+          "limitations": [
+            "No organism-specific functional annotation universe is simulated."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/syntren/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "*_network.sif",
+            "truth/networks.csv"
+          ],
+          "method": "Write the same non-self topological edges used for global truth into extras/prior_grn.tsv with source, target and score.",
+          "assumptions": [
+            "The simulator truth may be useful as an oracle prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived, not an independent noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/syntren/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "truth/networks.csv"
+          ],
+          "method": "Write unique source genes from non-self global truth edges to extras/tf_list.txt, one gene per line.",
+          "assumptions": [
+            "Genes with outgoing simulated regulatory edges define the synthetic regulator universe."
+          ],
+          "limitations": [
+            "The list is simulator-derived and not an organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/syntren/run_simulator.py"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "syntren_unnormalized_dataset",
+          "kind": "matrix",
+          "description": "Native SynTReN *_unnormalized_dataset.txt expression matrix.",
+          "formats": [
+            "txt"
+          ]
+        },
+        {
+          "id": "syntren_maxexpr_dataset",
+          "kind": "matrix",
+          "description": "Native SynTReN normalized dataset artifact, including *_maxExpr1_dataset.txt naming when emitted by a SynTReN release.",
+          "formats": [
+            "txt"
+          ]
+        },
+        {
+          "id": "syntren_network_sif",
+          "kind": "graph",
+          "description": "Native generated network SIF file.",
+          "formats": [
+            "sif",
+            "txt"
+          ]
+        },
+        {
+          "id": "syntren_network_xml",
+          "kind": "metadata",
+          "description": "Native generated GeneNetwork XML file.",
+          "formats": [
+            "xml"
+          ]
+        },
+        {
+          "id": "syntren_external_inputs",
+          "kind": "table",
+          "description": "Resolved external input table consumed by SynTReN for the run, preserved as a native-facing output when requested.",
+          "formats": [
+            "txt"
+          ]
+        },
+        {
+          "id": "syntren_ini_file",
+          "kind": "metadata",
+          "description": "Resolved SynTReN ini configuration executed by the wrapper.",
+          "formats": [
+            "ini",
+            "txt"
+          ]
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "syntren_resolved_ini",
+          "kind": "metadata",
+          "description": "Wrapper-generated ini file with absolute /work paths and resolved scenario-controlled bindings."
+        }
+      ]
+    },
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "perturbations",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "interventions",
+        "perturbation_design",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "*_network.sif",
+            "GeneNetworkXMLFile"
+          ],
+          "upstream_configuration": [
+            "createGeneNetwork=true",
+            "selectSubnetwork=false",
+            "fixedExternals=true",
+            "generateExpressionData=true",
+            "externalInputValues=FROM_EXTERNALS_FILE"
+          ],
+          "generation": "The wrapper exports the generated GeneNetwork XML to SIF through SynTReN's public GeneNetwork API and emits one truth/networks.csv row per non-self regulator-target edge with context=global and evidence=simulated_truth.",
+          "score_semantics": "score is 1.0 because SynTReN exposes simulated topology but not a public edge-confidence score; sign is '?' because the verified generated SIF export uses token un for generated edges.",
+          "limitations": [
+            "Predefined external conditions perturb inputs but do not rewire the generated TRN.",
+            "The public GRN therefore remains global for all perturbation columns."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "SynTReN predefined external-input experiments do not produce group-specific regulatory networks."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "Each perturbation column changes external input values but is simulated from the same generated TRN; SynTReN does not emit perturbation-specific GRN rewiring."
+        }
+      ],
+      "parameter_bindings": [
+        {
+          "param": "external_inputs.mode",
+          "policy": "locked",
+          "value": "from_file",
+          "source": "data_axes.experimental_design",
+          "description": "Bulk perturbational runs use predefined external input values from an externalsFile."
+        },
+        {
+          "param": "subnetwork.enabled",
+          "policy": "locked",
+          "value": false,
+          "source": "data_axes.experimental_design",
+          "description": "SynTReN fixedExternals=true is documented as only possible when selectSubnetwork=false."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "perturbation_design",
+          "source_artifacts": [
+            "externalsFile",
+            "expression.tsv"
+          ],
+          "method": "Treat each externalsFile experiment column as one public perturbation column, record the external regulators with values different from the column baseline, and align rows to normalized expression column identifiers.",
+          "assumptions": [
+            "The predefined external-input columns are the intended perturbation/condition labels.",
+            "The wrapper uses the same externalsFile that SynTReN consumed for the expression run."
+          ],
+          "limitations": [
+            "SynTReN external values are continuous expression inputs, not explicit knockout/overexpression operators.",
+            "Intervention effect magnitudes are comparable within the selected externalsFile but not necessarily across independently designed externals files."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/syntren/run_simulator.py"
+        },
+        {
+          "artifact": "interventions",
+          "source_artifacts": [
+            "extras/perturbation_design.tsv"
+          ],
+          "method": "Collapse distinct external-input vectors from perturbation_design into extras/interventions.tsv, preserving regulator IDs, signed direction relative to baseline and numeric values when available.",
+          "assumptions": [
+            "Columns with identical external-input vectors represent the same intervention class."
+          ],
+          "limitations": [
+            "The direction is defined relative to a wrapper-documented baseline, not an upstream causal operator label."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/syntren/run_simulator.py"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Write every normalized expression gene identifier to extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The simulated expression row universe is the appropriate synthetic background for downstream enrichment workflows."
+          ],
+          "limitations": [
+            "No organism-specific functional annotation universe is simulated."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/syntren/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "*_network.sif",
+            "truth/networks.csv"
+          ],
+          "method": "Write the same non-self topological edges used for global truth into extras/prior_grn.tsv with source, target and score.",
+          "assumptions": [
+            "The simulator truth may be useful as an oracle prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived, not an independent noisy prior."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/syntren/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "truth/networks.csv"
+          ],
+          "method": "Write unique source genes from non-self global truth edges to extras/tf_list.txt, one gene per line.",
+          "assumptions": [
+            "Genes with outgoing simulated regulatory edges define the synthetic regulator universe."
+          ],
+          "limitations": [
+            "The list is simulator-derived and not an organism-specific TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/syntren/run_simulator.py"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "syntren_unnormalized_dataset",
+          "kind": "matrix",
+          "description": "Native SynTReN *_unnormalized_dataset.txt expression matrix.",
+          "formats": [
+            "txt"
+          ]
+        },
+        {
+          "id": "syntren_maxexpr_dataset",
+          "kind": "matrix",
+          "description": "Native SynTReN normalized dataset artifact, including *_maxExpr1_dataset.txt naming when emitted by a SynTReN release.",
+          "formats": [
+            "txt"
+          ]
+        },
+        {
+          "id": "syntren_network_sif",
+          "kind": "graph",
+          "description": "Native generated network SIF file.",
+          "formats": [
+            "sif",
+            "txt"
+          ]
+        },
+        {
+          "id": "syntren_network_xml",
+          "kind": "metadata",
+          "description": "Native generated GeneNetwork XML file.",
+          "formats": [
+            "xml"
+          ]
+        },
+        {
+          "id": "syntren_external_inputs",
+          "kind": "table",
+          "description": "Resolved external input table consumed by SynTReN for the run, preserved as a native-facing output when requested.",
+          "formats": [
+            "txt"
+          ]
+        },
+        {
+          "id": "syntren_ini_file",
+          "kind": "metadata",
+          "description": "Resolved SynTReN ini configuration executed by the wrapper.",
+          "formats": [
+            "ini",
+            "txt"
+          ]
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "syntren_resolved_ini",
+          "kind": "metadata",
+          "description": "Wrapper-generated ini file with absolute /work paths and resolved scenario-controlled bindings."
+        }
+      ]
+    }
+  ]
+}

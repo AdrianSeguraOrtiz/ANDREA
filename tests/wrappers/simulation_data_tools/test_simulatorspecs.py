@@ -407,6 +407,8 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
                 "sergio_bifurcation_matrix",
                 "sergio_master_regulators",
                 "sergio_target_interactions",
+                "syntren_externals_table",
+                "syntren_source_network_sif",
                 "tree_newick",
             },
         )

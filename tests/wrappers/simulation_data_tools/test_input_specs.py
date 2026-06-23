@@ -56,10 +56,13 @@ class SimulationInputSpecCatalogTests(unittest.TestCase):
                 "boolode_boolean_model",
                 "boolode_initial_conditions",
                 "boolode_interaction_strengths",
+                "gnw_dynamical_network",
                 "regulatory_network",
                 "sergio_bifurcation_matrix",
                 "sergio_master_regulators",
                 "sergio_target_interactions",
+                "syntren_externals_table",
+                "syntren_source_network_sif",
                 "tree_newick",
             },
         )
