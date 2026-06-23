@@ -1,0 +1,257 @@
+{
+  "schema_version": "1.0",
+  "id": "scing",
+  "name": "SCING",
+  "publication": [
+    "https://doi.org/10.1016/j.isci.2023.107124",
+    "https://doi.org/10.1101/2022.09.07.506959"
+  ],
+  "first_author": "Russell Littman",
+  "year": 2023,
+  "method_summary": "SCING infers robust gene regulatory networks from single-cell, single-nucleus, or spatial transcriptomics by clustering observations into supercells, building many subsampled GRNs with gene-neighborhood-limited gradient boosting regressors, retaining consensus edges, and pruning reversed, cyclic, and conditionally redundant edges with conditional mutual information.",
+  "method_keywords": [
+    "single_cell",
+    "spatial_transcriptomics",
+    "supercells",
+    "bagging",
+    "gradient_boosting_regression",
+    "conditional_mutual_information",
+    "directed"
+  ],
+  "implementation_url": "https://github.com/XiaYangLabOrg/SCING/tree/fcea8c5c9a806ee3dbc8123c2d13d1d357137f1d",
+  "docker_image": "adriansegura99/inference-tools_scing:1.0.0",
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "Wrapper --threads maps to SCING grnBuilder(ncore=threads) and NetworkMerger(ncore=threads). grnBuilder uses ncore for sklearn NearestNeighbors(n_jobs=ncore) and a Dask LocalCluster with n_workers=ncore; NetworkMerger uses ncore for its Dask LocalCluster during conditional mutual-information pruning. The wrapper should pin BLAS/OpenMP/NUMEXPR intra-process thread counts to 1 to avoid nested oversubscription while SCING's Dask worker pools own the assigned worker count."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.genes",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "SCING requires at least two expression genes because the selected GRN interface predicts each target gene from candidate upstream genes."
+    },
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "SCING requires at least two expression columns because the selected interface clusters cells/spots into supercells before building subsampled networks."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.network_hvgs",
+          "op": "gte",
+          "value": 0
+        },
+        {
+          "field": "param.network_hvgs",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "SCING network_hvgs must be -1 to keep all available genes or at least 2 to leave a possible regulator-target pair."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.gene_neighbors",
+          "op": "gte",
+          "value_from": "dataset.expression.genes"
+        }
+      ],
+      "action": "block",
+      "message": "SCING gene_neighbors must be smaller than the number of expression genes because grnBuilder asks sklearn for gene_neighbors + 1 gene neighbors before dropping self-neighbors."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.gene_pcs",
+          "op": "gte",
+          "value_from": "dataset.expression.genes"
+        }
+      ],
+      "action": "block",
+      "message": "SCING gene_pcs must be smaller than the number of expression genes for the gene-level PCA used before nearest-neighbor feature selection."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.gene_pcs",
+          "op": "gte",
+          "value_from": "dataset.expression.columns"
+        }
+      ],
+      "action": "block",
+      "message": "SCING gene_pcs must be smaller than the number of expression columns; after supercell construction and subsampling there cannot be more independent expression columns than the input dataset provides."
+    }
+  ],
+  "accepts": [
+    "cells",
+    "spots"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group and runs SCING independently for each group.",
+        "usage": "ANDREA uses groups.tsv to create one SCING child run per group; each child receives that group's expression matrix and SCING itself does not consume groups.tsv."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "The selected public notebook/API runs supercell construction, repeated grnBuilder jobs, and NetworkMerger pruning without a stable progress callback. The wrapper reports coarse lifecycle states in progress.json and preserves upstream diagnostics in scing.log."
+  },
+  "params": {
+    "n_supercells": {
+      "type": "int",
+      "required": false,
+      "default": 500,
+      "min": 2,
+      "description": "Target number of Leiden-derived supercells passed to supercells.supercell_pipeline(..., ncell=n_supercells). The paper selected 500 supercells as a balance between sparsity reduction, runtime and robustness."
+    },
+    "supercell_hvgs": {
+      "type": "int",
+      "required": false,
+      "default": 2000,
+      "min": 1,
+      "description": "Number of highly variable genes used inside supercells.supercell_pipeline(..., ngenes=supercell_hvgs) for the preprocessing step that builds the cell/spot graph before merging observations into supercells."
+    },
+    "supercell_pcs": {
+      "type": "int",
+      "required": false,
+      "default": 20,
+      "min": 1,
+      "description": "Number of principal components requested by supercells.supercell_pipeline(..., npcs=supercell_pcs) while constructing the graph used for Leiden supercell clustering. Upstream clips this value against the available observations in preprocess_data()."
+    },
+    "n_subsample_networks": {
+      "type": "int",
+      "required": false,
+      "default": 100,
+      "min": 1,
+      "description": "Number of subsampled GRNs to build before consensus merging. The paper identifies 100 subsampled networks as the default study setting after benchmarking larger and smaller values."
+    },
+    "network_hvgs": {
+      "type": "int",
+      "required": false,
+      "default": -1,
+      "min": -1,
+      "description": "Number of genes retained by grnBuilder.filter_genes() for each subsampled network. -1 preserves upstream tutorial behavior by keeping all non-empty, non-duplicate genes after SCING preprocessing; positive values select that many highly variable genes."
+    },
+    "gene_neighbors": {
+      "type": "int",
+      "required": false,
+      "default": 100,
+      "min": 1,
+      "description": "Number of nearest gene neighbors passed to grnBuilder(..., nneighbors=gene_neighbors) to limit candidate upstream regulators for each target gene before gradient boosting regression."
+    },
+    "gene_pcs": {
+      "type": "int",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "description": "Number of principal components passed to grnBuilder(..., npcs=gene_pcs) for gene-level PCA before candidate regulator nearest-neighbor search. The paper's cell-type example uses 10 PCs."
+    },
+    "subsample_fraction": {
+      "type": "float",
+      "required": false,
+      "default": 0.7,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "description": "Fraction of supercells sampled without replacement for each intermediate grnBuilder run. SCING applications report 70 percent subsamples; 1 disables subsampling in upstream grnBuilder.subsample_cells()."
+    },
+    "edge_consensus_threshold": {
+      "type": "float",
+      "required": false,
+      "default": 0.2,
+      "min": 0,
+      "max": 1,
+      "exclusive_max": true,
+      "description": "Minimum fraction of subsampled networks required during NetworkMerger consensus filtering. The paper uses 20 percent as the default; the source keeps edges whose FractionAppeared is strictly greater than this threshold."
+    },
+    "remove_cycles": {
+      "type": "bool",
+      "required": false,
+      "default": true,
+      "description": "Whether to pass cycles=true to NetworkMerger so the selected pipeline removes directed cycles before conditional mutual-information pruning, matching the paper's final-network description."
+    },
+    "random_seed": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "description": "Base seed for grnBuilder subsampling. The wrapper should pass random_seed + network_index to repeated public grnBuilder invocations so the bagging step is reproducible while using distinct subsamples."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "scing.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined wrapper and upstream SCING stdout/stderr log."
+    },
+    {
+      "path_pattern": "raw/final.network.merged.csv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw SCING merged directed network with source, target and importance columns before conversion to ANDREA network.csv."
+    },
+    {
+      "path_pattern": "raw/intermediate_networks/*.csv.gz",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw per-subsample grnBuilder edge lists produced before NetworkMerger consensus merging."
+    },
+    {
+      "path_pattern": "raw/scing_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Resolved SCING parameters, expression dimensions, selected execution mode, runtime thread mapping and pinned upstream commit."
+    }
+  ]
+}

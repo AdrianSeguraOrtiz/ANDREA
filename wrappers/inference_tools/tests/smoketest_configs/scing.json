@@ -1,0 +1,32 @@
+{
+  "param_overrides": {
+    "n_supercells": 5,
+    "supercell_hvgs": 8,
+    "supercell_pcs": 3,
+    "n_subsample_networks": 2,
+    "network_hvgs": -1,
+    "gene_neighbors": 2,
+    "gene_pcs": 2,
+    "subsample_fraction": 1.0,
+    "edge_consensus_threshold": 0.0,
+    "remove_cycles": false,
+    "random_seed": 1
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "global"
+    },
+    {
+      "name": "group_emulated_contract",
+      "extra_files": [
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_emulated"
+      }
+    }
+  ]
+}
