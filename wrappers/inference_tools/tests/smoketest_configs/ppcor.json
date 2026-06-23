@@ -1,0 +1,20 @@
+{
+  "checks": {
+    "require_unique_unordered_pairs": true,
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "global_pearson"
+    },
+    {
+      "name": "group_emulated_contract",
+      "extra_files": [
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_emulated"
+      }
+    }
+  ]
+}

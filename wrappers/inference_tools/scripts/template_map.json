@@ -66,6 +66,10 @@
       "runtime": "r",
       "bundles": []
     },
+    "ppcor": {
+      "runtime": "r",
+      "bundles": []
+    },
     "infercsn": {
       "runtime": "r",
       "bundles": []

@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.0",
+  "id": "ppcor",
+  "name": "ppcor",
+  "publication": [
+    "https://doi.org/10.5351/CSAM.2015.22.6.665",
+    "https://doi.org/10.32614/CRAN.package.ppcor"
+  ],
+  "first_author": "Seongho Kim",
+  "year": 2015,
+  "method_summary": "ppcor implements fast matrix-based partial and semi-partial correlation calculations with p-values and test statistics. This integration mirrors ppcor::pcor(), which computes a signed pairwise partial-correlation matrix for every gene pair while controlling for all other genes.",
+  "method_keywords": [
+    "partial_correlation",
+    "covariance_inverse",
+    "signed_association",
+    "pearson",
+    "spearman",
+    "kendall",
+    "undirected"
+  ],
+  "implementation_url": "https://CRAN.R-project.org/package=ppcor",
+  "docker_image": "adriansegura99/inference-tools_ppcor:1.0.0",
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "The selected ppcor::pcor() entrypoint exposes no documented thread, worker, core, scheduler or process-level sharding control. The wrapper requires ANDREA --threads=1 and pins common BLAS/OpenMP environment variables to 1; any BLAS-level parallelism is not a safe user-mapped upstream control."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [],
+  "accepts": [
+    "samples",
+    "cells",
+    "timepoints",
+    "perturbations"
+  ],
+  "assumes": "generic",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions expression columns by group before running ppcor independently per group.",
+        "usage": "ANDREA uses groups.tsv to create one ppcor child run per group; each child calls the same ppcor::pcor() entrypoint on that group's expression matrix."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": false,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "ppcor::pcor() is a synchronous R function that returns a complete result list and exposes no stable progress callback, counter or incremental output. The wrapper can only report coarse lifecycle states."
+  },
+  "params": {
+    "method": {
+      "type": "enum",
+      "required": false,
+      "default": "pearson",
+      "enum": [
+        "pearson",
+        "kendall",
+        "spearman"
+      ],
+      "description": "Correlation coefficient used by ppcor::pcor before partial-correlation calculation. Upstream default is pearson."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "ppcor.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined wrapper and R session lifecycle log."
+    },
+    {
+      "path_pattern": "raw/estimate.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw signed partial-correlation coefficient matrix returned as ppcor::pcor(x)$estimate."
+    },
+    {
+      "path_pattern": "raw/p.value.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw p-value matrix returned as ppcor::pcor(x)$p.value; entries may be missing when upstream cannot provide p-values for singular high-dimensional inputs."
+    },
+    {
+      "path_pattern": "raw/statistic.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw test-statistic matrix returned as ppcor::pcor(x)$statistic; entries may be missing when upstream cannot provide statistics for singular high-dimensional inputs."
+    },
+    {
+      "path_pattern": "raw/ppcor_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Resolved ppcor parameters, upstream package version, expression dimensions and runtime resource mapping."
+    }
+  ]
+}
