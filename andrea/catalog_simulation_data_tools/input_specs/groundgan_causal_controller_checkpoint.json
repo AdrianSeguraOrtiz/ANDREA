@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "id": "groundgan_causal_controller_checkpoint",
+  "name": "GRouNdGAN causal-controller checkpoint",
+  "format": "torch_checkpoint",
+  "accepted_extensions": [".pth", ".pt"],
+  "description": "PyTorch checkpoint for the pretrained causal-controller GAN used internally by GRouNdGAN before the causal model is instantiated.",
+  "example": "cc_step_200000.pth",
+  "validation_notes": [
+    "The file must be loadable by torch.load in the GRouNdGAN runtime.",
+    "The checkpoint must contain the generator_state_dict entry expected by GRouNdGAN's CausalGAN constructor.",
+    "The checkpoint must match the CC Model architecture, number of genes and library-size settings used by the final model checkpoint."
+  ]
+}

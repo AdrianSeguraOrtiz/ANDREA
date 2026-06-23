@@ -1,0 +1,582 @@
+{
+  "schema_version": "1.0",
+  "id": "groundgan",
+  "name": "GRouNdGAN",
+  "publication": [
+    "https://doi.org/10.1038/s41467-024-48516-6",
+    "https://doi.org/10.5281/zenodo.11068246"
+  ],
+  "first_author": "Yazdan Zinati",
+  "year": 2024,
+  "simulation_summary": "Reference-based causal GAN simulator for single-cell RNA-seq data with an imposed global causal GRN and optional in silico TF perturbation experiments.",
+  "simulation_keywords": [
+    "single_cell",
+    "rna_expression",
+    "gene_regulatory_network",
+    "causal_gan",
+    "reference_based",
+    "perturbation",
+    "knockout",
+    "grn_benchmark"
+  ],
+  "implementation_url": "https://github.com/Emad-COMBINE-lab/GRouNdGAN",
+  "docker_image": "adriansegura99/simulator_groundgan:1.0.0",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groundgan_reference_h5ad",
+        "usage": "Wrapper reads AnnData var_names as the public gene universe, model/checkpoint gene order and fixed output gene count.",
+        "conditions": [
+          {
+            "field": "param.input_bundle",
+            "op": "eq",
+            "value": "custom_files"
+          }
+        ],
+        "message": "Custom GroundGAN bundles require a reference h5ad whose var_names match the supplied causal graph and checkpoints."
+      },
+      {
+        "input": "groundgan_causal_graph_pickle",
+        "usage": "Wrapper passes this native GRouNdGAN causal graph pickle to the public CausalGANFactory and maps graph indices through reference AnnData var_names for truth/networks.csv.",
+        "conditions": [
+          {
+            "field": "param.input_bundle",
+            "op": "eq",
+            "value": "custom_files"
+          }
+        ],
+        "message": "Custom GroundGAN bundles require a causal graph pickle compatible with the reference h5ad gene order."
+      },
+      {
+        "input": "groundgan_model_checkpoint",
+        "usage": "Wrapper passes this trained GRouNdGAN model checkpoint to CausalGAN.generate_cells().",
+        "conditions": [
+          {
+            "field": "param.input_bundle",
+            "op": "eq",
+            "value": "custom_files"
+          }
+        ],
+        "message": "Custom GroundGAN bundles require a trained causal-GAN model checkpoint."
+      },
+      {
+        "input": "groundgan_causal_controller_checkpoint",
+        "usage": "Wrapper stages this causal-controller checkpoint at the path expected by upstream CausalGANFactory.",
+        "conditions": [
+          {
+            "field": "param.input_bundle",
+            "op": "eq",
+            "value": "custom_files"
+          }
+        ],
+        "message": "Custom GroundGAN bundles require the causal-controller checkpoint corresponding to the model checkpoint."
+      }
+    ]
+  },
+  "compatibility_rules": [
+    {
+      "action": "block",
+      "conditions": [
+        {
+          "field": "param.perturbation.target_source",
+          "op": "eq",
+          "value": "explicit_list"
+        },
+        {
+          "field": "param.perturbation.tf_targets",
+          "op": "eq",
+          "value": []
+        }
+      ],
+      "message": "perturbation.tf_targets must be non-empty when perturbation.target_source=explicit_list."
+    }
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 64,
+      "upstream_mapping": "The wrapper sets torch.set_num_threads(runtime_resources.threads) and numeric-library CPU thread environment variables such as OMP_NUM_THREADS, MKL_NUM_THREADS, OPENBLAS_NUM_THREADS and NUMEXPR_NUM_THREADS before invoking the public GRouNdGAN Python API. Upstream exposes no explicit CLI --threads or DataLoader worker option for generation."
+    }
+  },
+  "params": {
+    "input_bundle": {
+      "type": "enum",
+      "required": false,
+      "default": "toy_4gene",
+      "enum": [
+        "toy_4gene",
+        "toy_20gene",
+        "toy_50gene",
+        "custom_files"
+      ],
+      "description": "Input bundle used for checkpoint inference. toy_* options use demo bundles embedded in the Docker image; custom_files requires the four GroundGAN bundle input files."
+    },
+    "run_command": {
+      "type": "enum",
+      "required": false,
+      "default": "generate",
+      "enum": [
+        "generate",
+        "perturb"
+      ],
+      "description": "Scenario-controlled upstream operation. Capabilities lock this value so users cannot switch the selected experimental design from run parameters."
+    },
+    "generation": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "num_cells": 100
+      },
+      "description": "Controls the number of generated single-cell columns.",
+      "properties": {
+        "num_cells": {
+          "type": "int",
+          "required": false,
+          "default": 100,
+          "min": 1,
+          "description": "Number of cells generated for observational runs and matched control/perturbed pairs generated for perturbational runs."
+        }
+      }
+    },
+    "preprocessing": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "library_size": 1000
+      },
+      "description": "Reference normalization setting required to instantiate the supplied checkpoint.",
+      "properties": {
+        "library_size": {
+          "type": "int",
+          "required": false,
+          "default": 1000,
+          "min": 1,
+          "description": "Maps to upstream [Preprocessing]/library size and must be compatible with the supplied checkpoint."
+        }
+      }
+    },
+    "perturbation": {
+      "type": "object",
+      "required": false,
+      "default": {
+        "target_source": "first_regulators",
+        "tf_targets": [],
+        "perturbation_values": [
+          0
+        ]
+      },
+      "description": "Controls upstream perturbation mode for perturbational capabilities.",
+      "properties": {
+        "target_source": {
+          "type": "enum",
+          "required": false,
+          "default": "first_regulators",
+          "enum": [
+            "first_regulators",
+            "explicit_list"
+          ],
+          "description": "Selects perturbation TF targets. first_regulators chooses the first regulator in the imposed causal graph; explicit_list uses perturbation.tf_targets."
+        },
+        "tf_targets": {
+          "type": "array",
+          "required": false,
+          "default": [],
+          "description": "TF gene identifiers to perturb when target_source=explicit_list.",
+          "items": {
+            "type": "string",
+            "required": true,
+            "default": "",
+            "description": "One TF gene identifier present in the reference and causal graph regulator set."
+          }
+        },
+        "perturbation_values": {
+          "type": "array",
+          "required": false,
+          "default": [
+            0
+          ],
+          "description": "Replacement TF expression values used in upstream perturbation mode. One value applies to all targets; otherwise provide one value per target.",
+          "items": {
+            "type": "float",
+            "required": true,
+            "default": 0,
+            "description": "One replacement TF expression value."
+          }
+        }
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "parameter_bindings": [
+        {
+          "param": "run_command",
+          "policy": "locked",
+          "value": "generate",
+          "source": "data_axes.experimental_design",
+          "description": "Observational single-cell capabilities use the public CausalGAN.generate_cells() path."
+        },
+        {
+          "param": "perturbation",
+          "policy": "locked",
+          "value": {
+            "target_source": "first_regulators",
+            "tf_targets": [],
+            "perturbation_values": [
+              0
+            ]
+          },
+          "source": "data_axes.experimental_design",
+          "description": "Perturbation controls are hidden for observational runs because they are only used by the perturbational capability."
+        }
+      ],
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "groundgan_causal_graph_pickle",
+            "groundgan_reference_h5ad.var_names",
+            "GRouNdGAN CausalGANFactory"
+          ],
+          "upstream_configuration": [
+            "[Model]/type='causal GAN'",
+            "[Data]/causal graph points to a GRouNdGAN causal graph pickle",
+            "[EXPERIMENT]/checkpoint points to the trained GRouNdGAN model checkpoint"
+          ],
+          "generation": "The wrapper maps each target/regulator index in the imposed causal graph through reference AnnData var_names and emits one truth/networks.csv row per TF-target edge with context=global.",
+          "score_semantics": "score is 1.0 because the native causal graph stores topology only; sign is '?' because GRouNdGAN does not encode activation or repression sign in causal_graph.pkl.",
+          "limitations": [
+            "The imposed GRN is global for the whole generated dataset.",
+            "Checkpoint, causal graph and reference gene order must match exactly."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "A single GRouNdGAN run does not emit group-specific GRNs; duplicating the global GRN for generated clusters would be misleading."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "GRouNdGAN does not emit cell-specific GRNs; cell-specific networks discussed in the publication are outputs of benchmarked inference tools, not simulator truth."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Write every normalized expression gene identifier to extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The generated expression gene universe is the appropriate synthetic background for downstream analyses."
+          ],
+          "limitations": [
+            "No external organism-specific enrichment universe is simulated."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "groundgan_causal_graph_pickle",
+            "groundgan_reference_h5ad.var_names"
+          ],
+          "method": "Export the same global imposed causal graph used for truth as extras/prior_grn.tsv with score=1.0.",
+          "assumptions": [
+            "The imposed causal graph can serve as an oracle prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived, not an independent noisy prior.",
+            "The prior is unsigned."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "groundgan_causal_graph_pickle",
+            "groundgan_reference_h5ad.var_names"
+          ],
+          "method": "Write unique regulator IDs from the imposed causal graph to extras/tf_list.txt, one gene per line.",
+          "assumptions": [
+            "Regulator indices in the imposed causal graph define the simulated TF universe."
+          ],
+          "limitations": [
+            "The TF list is simulator-derived and may be narrower than an organism-wide TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "simulated_h5ad",
+          "kind": "matrix",
+          "description": "Generated AnnData matrix written by the wrapper from public upstream CausalGAN.generate_cells() output.",
+          "formats": [
+            "h5ad"
+          ]
+        },
+        {
+          "id": "causal_graph_pickle",
+          "kind": "graph",
+          "description": "Native GRouNdGAN causal_graph.pkl used to impose the global GRN.",
+          "formats": [
+            "pkl"
+          ]
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "resolved_config",
+          "kind": "metadata",
+          "description": "Resolved upstream configparser INI file used for the run.",
+          "formats": [
+            "cfg"
+          ]
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Pinned git commit, Python version, dependency versions and runtime resource mapping.",
+          "formats": [
+            "json"
+          ]
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mapping from native causal graph index identifiers to normalized public IDs.",
+          "formats": [
+            "json"
+          ]
+        }
+      ]
+    },
+    {
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "parameter_bindings": [
+        {
+          "param": "run_command",
+          "policy": "locked",
+          "value": "perturb",
+          "source": "data_axes.experimental_design",
+          "description": "Perturbational single-cell capabilities use upstream CausalGAN perturbation mode with frozen TF expression and noise."
+        }
+      ],
+      "native_extras": [],
+      "derivable_extras": [
+        "enrichment_background",
+        "interventions",
+        "perturbation_design",
+        "prior_grn",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        }
+      ],
+      "truth_contexts": [
+        {
+          "context": "global",
+          "status": "native",
+          "source_artifacts": [
+            "groundgan_causal_graph_pickle",
+            "groundgan_reference_h5ad.var_names",
+            "GRouNdGAN CausalGANFactory",
+            "GRouNdGAN CausalGenerator perturbation mode"
+          ],
+          "upstream_configuration": [
+            "[Model]/type='causal GAN'",
+            "[Perturbation]/tfs to perturb and [Perturbation]/perturbation values define intervention columns",
+            "Upstream perturbation mode uses frozen TF expressions, noise vectors and LSN state"
+          ],
+          "generation": "The wrapper maps the imposed causal graph through reference AnnData var_names and emits one truth/networks.csv row per TF-target edge with context=global for both control and perturbed generated cells.",
+          "score_semantics": "score is 1.0 because the native causal graph stores topology only; sign is '?' because GRouNdGAN does not encode activation or repression sign in causal_graph.pkl.",
+          "limitations": [
+            "The public GRN is fixed across control and perturbed cells.",
+            "Perturbations change generated expression values but do not rewire the imposed truth graph.",
+            "Perturbation targets must be TFs present in the dataset and causal graph regulator set."
+          ]
+        },
+        {
+          "context": "group",
+          "status": "none",
+          "explanation": "GRouNdGAN perturbation runs do not emit group-specific regulatory networks."
+        },
+        {
+          "context": "column",
+          "status": "none",
+          "explanation": "GRouNdGAN perturbation runs do not emit cell-specific regulatory networks."
+        }
+      ],
+      "derivations": [
+        {
+          "artifact": "perturbation_design",
+          "source_artifacts": [
+            "GRouNdGAN before/after generated matrices",
+            "resolved perturbation config"
+          ],
+          "method": "Write one row per normalized expression column. Control columns receive no direct intervention; perturbed columns receive the configured TF target/value intervention and retain matched_pair_id linking to their control generated cell.",
+          "assumptions": [
+            "Upstream perturbation mode generates before and after matrices from the same deterministic batch, so columns can be paired by native row order."
+          ],
+          "limitations": [
+            "The perturbation design describes direct TF replacement values, not downstream causal effect sizes."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
+        },
+        {
+          "artifact": "interventions",
+          "source_artifacts": [
+            "extras/perturbation_design.tsv"
+          ],
+          "method": "Collapse the configured TF replacement value from perturbation_design into extras/interventions.tsv.",
+          "assumptions": [
+            "Columns with the same TF target and replacement value represent one intervention class."
+          ],
+          "limitations": [
+            "GRouNdGAN supports setting TF expression values, not typed biological perturbation categories beyond wrapper labels such as knockout when value=0."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
+        },
+        {
+          "artifact": "enrichment_background",
+          "source_artifacts": [
+            "expression.tsv"
+          ],
+          "method": "Write every normalized expression gene identifier to extras/enrichment_background.txt, one gene per line.",
+          "assumptions": [
+            "The generated expression gene universe is the appropriate synthetic background for downstream analyses."
+          ],
+          "limitations": [
+            "No external organism-specific enrichment universe is simulated."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
+        },
+        {
+          "artifact": "prior_grn",
+          "source_artifacts": [
+            "groundgan_causal_graph_pickle",
+            "groundgan_reference_h5ad.var_names"
+          ],
+          "method": "Export the same global imposed causal graph used for truth as extras/prior_grn.tsv with score=1.0.",
+          "assumptions": [
+            "The imposed causal graph can serve as an oracle prior only when explicitly requested."
+          ],
+          "limitations": [
+            "This is truth-derived, not an independent noisy prior.",
+            "The prior is unsigned."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
+        },
+        {
+          "artifact": "tf_list",
+          "source_artifacts": [
+            "groundgan_causal_graph_pickle",
+            "groundgan_reference_h5ad.var_names"
+          ],
+          "method": "Write unique regulator IDs from the imposed causal graph to extras/tf_list.txt, one gene per line.",
+          "assumptions": [
+            "Regulator indices in the imposed causal graph define the simulated TF universe."
+          ],
+          "limitations": [
+            "The TF list is simulator-derived and may be narrower than an organism-wide TF catalogue."
+          ],
+          "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "before_perturbation_h5ad",
+          "kind": "matrix",
+          "description": "Generated control AnnData matrix from upstream perturbation mode.",
+          "formats": [
+            "h5ad"
+          ]
+        },
+        {
+          "id": "after_perturbation_h5ad",
+          "kind": "matrix",
+          "description": "Generated perturbed AnnData matrix from upstream perturbation mode.",
+          "formats": [
+            "h5ad"
+          ]
+        },
+        {
+          "id": "causal_graph_pickle",
+          "kind": "graph",
+          "description": "Native GRouNdGAN causal_graph.pkl used to impose the global GRN.",
+          "formats": [
+            "pkl"
+          ]
+        }
+      ],
+      "artifacts_aux": [
+        {
+          "id": "resolved_config",
+          "kind": "metadata",
+          "description": "Resolved upstream configparser INI file used for the run.",
+          "formats": [
+            "cfg"
+          ]
+        },
+        {
+          "id": "session_info",
+          "kind": "metadata",
+          "description": "Pinned git commit, Python version, dependency versions and runtime resource mapping.",
+          "formats": [
+            "json"
+          ]
+        },
+        {
+          "id": "public_id_maps",
+          "kind": "metadata",
+          "description": "Mapping from native causal graph index identifiers to normalized public IDs.",
+          "formats": [
+            "json"
+          ]
+        }
+      ]
+    }
+  ]
+}

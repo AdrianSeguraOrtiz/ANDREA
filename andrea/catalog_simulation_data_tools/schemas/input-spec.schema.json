@@ -31,7 +31,10 @@
     "format": {
       "type": "string",
       "enum": [
+        "h5ad",
         "newick",
+        "pickle",
+        "torch_checkpoint",
         "tsv",
         "txt",
         "xml"
@@ -131,7 +134,7 @@
       "if": {
         "properties": {
           "format": {
-            "enum": ["newick", "txt", "xml"]
+            "enum": ["h5ad", "newick", "pickle", "torch_checkpoint", "txt", "xml"]
           }
         },
         "required": ["format"]

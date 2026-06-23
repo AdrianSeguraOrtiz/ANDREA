@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "id": "groundgan_model_checkpoint",
+  "name": "GRouNdGAN trained model checkpoint",
+  "format": "torch_checkpoint",
+  "accepted_extensions": [".pth", ".pt"],
+  "description": "PyTorch checkpoint for the trained GRouNdGAN causal model used by upstream generate and perturb commands.",
+  "example": "step_1000000.pth",
+  "validation_notes": [
+    "The file must be loadable by torch.load in the GRouNdGAN runtime.",
+    "The checkpoint must contain the generator_state_dict and critic_state_dict entries expected by GRouNdGAN's CausalGAN._load method.",
+    "The checkpoint must be compatible with the supplied reference AnnData, causal graph, model hyperparameters and causal-controller checkpoint."
+  ]
+}

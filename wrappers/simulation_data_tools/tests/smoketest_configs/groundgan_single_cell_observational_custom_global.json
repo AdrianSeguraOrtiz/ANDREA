@@ -1,0 +1,70 @@
+{
+  "simulator_id": "groundgan",
+  "request": {
+    "seed": 703,
+    "effective_extras": [
+      "enrichment_background",
+      "prior_grn",
+      "tf_list"
+    ],
+    "native_outputs": [
+      "simulated_h5ad",
+      "causal_graph_pickle"
+    ],
+    "inputs": {
+      "groundgan_reference_h5ad": "../fixtures/groundgan/reference.h5ad",
+      "groundgan_causal_graph_pickle": "../fixtures/groundgan/causal_graph.pkl",
+      "groundgan_model_checkpoint": "../fixtures/groundgan/model_checkpoint.pth",
+      "groundgan_causal_controller_checkpoint": "../fixtures/groundgan/causal_controller_checkpoint.pth"
+    },
+    "params": {
+      "input_bundle": "custom_files",
+      "run_command": "generate",
+      "generation": {
+        "num_cells": 5
+      },
+      "preprocessing": {
+        "library_size": 100
+      }
+    },
+    "runtime_resources": {
+      "threads": 1
+    },
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "observational"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global"
+      ]
+    }
+  },
+  "expect_progress": true,
+  "required_files": [
+    "expression.tsv",
+    "extras/enrichment_background.txt",
+    "extras/prior_grn.tsv",
+    "extras/tf_list.txt",
+    "truth/networks.csv",
+    "truth/gene_universe.txt",
+    "simulator-output-manifest.json",
+    "progress.json",
+    "native/simulated.h5ad",
+    "native/causal_graph.pkl",
+    "provenance/raw/input_reference.h5ad",
+    "provenance/raw/causal_graph.pkl",
+    "provenance/raw/model_checkpoint.pth",
+    "provenance/raw/resolved_groundgan.cfg",
+    "provenance/raw/request_snapshot.json",
+    "provenance/raw/resolved_params.json",
+    "provenance/raw/session_info.json",
+    "provenance/raw/public_id_maps.json",
+    "provenance/raw/run_log.txt"
+  ],
+  "required_truth_context_prefixes": [
+    "global"
+  ]
+}

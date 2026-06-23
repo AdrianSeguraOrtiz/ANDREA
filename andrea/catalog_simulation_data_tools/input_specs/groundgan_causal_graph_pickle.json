@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "id": "groundgan_causal_graph_pickle",
+  "name": "GRouNdGAN causal graph pickle",
+  "format": "pickle",
+  "accepted_extensions": [".pkl", ".pickle"],
+  "description": "Pickled GRouNdGAN causal graph dictionary. Keys are target gene indices and values are sets of regulator/TF gene indices in the reference AnnData var_names order.",
+  "example": "causal_graph.pkl",
+  "validation_notes": [
+    "The file must unpickle to a dictionary compatible with GRouNdGAN CausalGANFactory.",
+    "Dictionary keys and values must be zero-based integer indices into groundgan_reference_h5ad.var_names.",
+    "The graph must be directed, acyclic and bipartite in the sense required by GRouNdGAN: regulators cannot also be regulated target genes.",
+    "The pickle stores topology only; activation/repression sign is not represented natively."
+  ]
+}

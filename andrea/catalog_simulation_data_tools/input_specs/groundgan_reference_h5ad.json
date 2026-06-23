@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "id": "groundgan_reference_h5ad",
+  "name": "GRouNdGAN reference AnnData",
+  "format": "h5ad",
+  "accepted_extensions": [".h5ad"],
+  "description": "AnnData file used by GRouNdGAN as the reference expression dataset and public gene-order source. For pretrained checkpoint execution, var_names must match the gene order used by the checkpoint and causal graph.",
+  "example": "reference.h5ad",
+  "validation_notes": [
+    "The file must be readable by scanpy.read_h5ad.",
+    "Rows are cells and columns are genes in AnnData convention; wrapper normalization transposes generated data into ANDREA expression.tsv with genes as rows.",
+    "var_names define the public gene IDs used to map numeric GRouNdGAN causal graph indices to truth/networks.csv rows.",
+    "For perturbation runs, obs.cluster should be present when the upstream perturbation plotting route is used, because GRouNdGAN's SCDataset loader expects a cluster column.",
+    "The gene order must be identical to the order used when training the supplied GRouNdGAN checkpoints."
+  ]
+}
