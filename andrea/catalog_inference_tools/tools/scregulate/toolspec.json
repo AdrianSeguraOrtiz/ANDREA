@@ -1,0 +1,414 @@
+{
+  "schema_version": "1.0",
+  "id": "scregulate",
+  "name": "scRegulate",
+  "publication": [
+    "https://doi.org/10.1093/bioinformatics/btaf638"
+  ],
+  "first_author": "Mehrdad Zandigohar",
+  "year": 2025,
+  "method_summary": "scRegulate infers transcription factor activity and weighted TF-target GRNs from scRNA-seq data with a prior-guided variational autoencoder. The model embeds curated TF-target priors into the decoder GRN layer, progressively relaxes prior constraints during training, and fine-tunes GRN weights per cell type or cluster for context-specific regulation.",
+  "method_keywords": [
+    "single_cell",
+    "variational_autoencoder",
+    "transcription_factor_activity",
+    "prior_guided",
+    "cell_type_specific",
+    "signed_grn"
+  ],
+  "implementation_url": "https://pypi.org/project/scRegulate/1.0.1/",
+  "docker_image": "adriansegura99/inference-tools_scregulate:1.0.0",
+  "execution_capabilities": [
+    "global",
+    "group_native",
+    "group_emulated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": 8,
+      "upstream_mapping": "scRegulate exposes no public n_jobs, worker or DataLoader num_workers argument through train_model() or fine_tune_clusters(); create_dataloader() hard-codes num_workers=0 unless called directly. The selected runtime is PyTorch/NumPy based, so the wrapper should map ANDREA --threads to torch.set_num_threads(threads), keep torch inter-op threads at 1, and set OMP_NUM_THREADS, MKL_NUM_THREADS, OPENBLAS_NUM_THREADS, NUMEXPR_NUM_THREADS, BLIS_NUM_THREADS and VECLIB_MAXIMUM_THREADS before invoking scRegulate."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "scRegulate train_model() performs a train/validation split and requires at least two expression columns."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.prior_source",
+          "op": "eq",
+          "value": "collectri_human"
+        },
+        {
+          "field": "dataset.organism.taxonomic_group",
+          "op": "not_in",
+          "value": [
+            "animal",
+            "unknown"
+          ]
+        }
+      ],
+      "action": "block",
+      "message": "scRegulate prior_source=collectri_human uses a human CollecTRI prior and is only compatible with animal datasets or datasets with unknown taxonomy."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.prior_source",
+          "op": "eq",
+          "value": "collectri_mouse"
+        },
+        {
+          "field": "dataset.organism.taxonomic_group",
+          "op": "not_in",
+          "value": [
+            "animal",
+            "unknown"
+          ]
+        }
+      ],
+      "action": "block",
+      "message": "scRegulate prior_source=collectri_mouse uses a mouse CollecTRI prior and is only compatible with animal datasets or datasets with unknown taxonomy."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.prior_source",
+          "op": "eq",
+          "value": "collectri_human"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": null
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 9606
+        }
+      ],
+      "action": "block",
+      "message": "scRegulate prior_source=collectri_human uses Homo sapiens TF-target resources; choose collectri_mouse or provided_prior for other declared taxa."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.prior_source",
+          "op": "eq",
+          "value": "collectri_mouse"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": null
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 10090
+        }
+      ],
+      "action": "block",
+      "message": "scRegulate prior_source=collectri_mouse uses Mus musculus TF-target resources; choose collectri_human or provided_prior for other declared taxa."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.prior_source",
+          "op": "eq",
+          "value": "collectri_human"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "eq",
+          "value": null
+        }
+      ],
+      "action": "warn",
+      "message": "scRegulate prior_source=collectri_human expects expression gene ids compatible with human CollecTRI symbols; the dataset taxon is unknown."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.prior_source",
+          "op": "eq",
+          "value": "collectri_mouse"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "eq",
+          "value": null
+        }
+      ],
+      "action": "warn",
+      "message": "scRegulate prior_source=collectri_mouse expects expression gene ids compatible with mouse CollecTRI symbols; the dataset taxon is unknown."
+    }
+  ],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "prior_grn",
+        "param": "prior_source",
+        "op": "eq",
+        "value": "provided_prior",
+        "message": "prior_grn is required when prior_source=provided_prior because scRegulate train_model() requires a TF-target prior network as its net argument.",
+        "usage": "The wrapper maps normalized prior_grn.tsv source, target and score columns to scRegulate's source, target and weight net DataFrame, preserving public gene identifiers and using signed scores as prior weights."
+      },
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_native",
+        "message": "groups is required when execution.mode=group_native because scRegulate fine_tune_clusters() consumes cluster annotations to produce cluster-specific GRNs.",
+        "usage": "The wrapper stores groups.tsv labels in AnnData.obs and passes that column as cluster_key to fine_tune_clusters(); exported network.csv contexts use the original public group ids as group:<id>."
+      },
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the global scRegulate path independently per group.",
+        "usage": "ANDREA uses groups.tsv to create one scRegulate child run per group. Each child follows the global train_model()+fine_tune_clusters(cluster_key=None) path; the wrapper accepts a full parent groups.tsv or a subset matching the current expression matrix, subsets it to the current expression columns, and uses it only to assign public group:<id> contexts."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "iterations",
+    "note": "train_model() and fine_tune_clusters() both run explicit epoch loops and log epoch summaries at configurable intervals. The wrapper reports coarse lifecycle phases in progress.json and preserves upstream training/fine-tuning epoch diagnostics in scregulate.log."
+  },
+  "params": {
+    "prior_source": {
+      "type": "enum",
+      "required": true,
+      "default": null,
+      "enum": [
+        "collectri_human",
+        "collectri_mouse",
+        "provided_prior"
+      ],
+      "description": "Source of the TF-target prior passed to scRegulate as net: bundled CollecTRI human, bundled CollecTRI mouse, or a user-provided normalized prior_grn.tsv."
+    },
+    "epochs": {
+      "type": "int",
+      "required": false,
+      "default": 2000,
+      "min": 1,
+      "description": "Total epochs passed to train_model(). Upstream scRegulate 1.0.1 source default is 2000."
+    },
+    "freeze_epochs": {
+      "type": "int",
+      "required": false,
+      "default": 1500,
+      "min": 20,
+      "description": "Epoch count used by train_model() for gradually applying the prior mask. The wrapper uses a minimum of 20 because upstream schedule_mask_factor divides by freeze_epochs // 20."
+    },
+    "train_val_split_ratio": {
+      "type": "float",
+      "required": false,
+      "default": 0.8,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "exclusive_max": true,
+      "description": "Fraction of cells assigned to the training split in train_model(); the remaining cells are validation cells. Upstream source default is 0.8."
+    },
+    "batch_size": {
+      "type": "union",
+      "required": false,
+      "default": 3500,
+      "description": "Batch size passed to train_model() and ULM. Use null to preserve scRegulate's data-dependent rule batch_size=int(train_val_split_ratio * n_cells).",
+      "oneOf": [
+        {
+          "type": "int",
+          "required": false,
+          "default": 3500,
+          "min": 1,
+          "description": "Explicit train_model() batch size."
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null so the wrapper passes batch_size=None and scRegulate computes int(train_val_split_ratio * n_cells)."
+        }
+      ]
+    },
+    "learning_rate": {
+      "type": "float",
+      "required": false,
+      "default": 0.00025,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "Adam learning rate passed to train_model(). Upstream source default is 2.5e-4."
+    },
+    "alpha_max": {
+      "type": "float",
+      "required": false,
+      "default": 0.7,
+      "min": 0,
+      "max": 1,
+      "description": "Maximum alpha for the transition from prior-driven ULM TF estimates to data-driven VAE TF activity in train_model()."
+    },
+    "alpha_scale": {
+      "type": "float",
+      "required": false,
+      "default": 0.06,
+      "min": 0,
+      "description": "Increment scale used by train_model() when validation loss improves and alpha is increased toward alpha_max."
+    },
+    "beta_max": {
+      "type": "float",
+      "required": false,
+      "default": 0.4,
+      "min": 0,
+      "description": "Maximum KL-divergence weight scheduled during train_model()."
+    },
+    "gamma_max": {
+      "type": "float",
+      "required": false,
+      "default": 2.6,
+      "min": 0,
+      "description": "Maximum L1 GRN-mask regularization weight scheduled during train_model()."
+    },
+    "early_stopping_patience": {
+      "type": "int",
+      "required": false,
+      "default": 350,
+      "min": 1,
+      "description": "train_model() early-stopping patience in epochs after alpha reaches its maximum."
+    },
+    "min_targets": {
+      "type": "int",
+      "required": false,
+      "default": 20,
+      "min": 1,
+      "description": "Minimum number of target genes per TF. The wrapper first drops prior TFs with fewer than this many distinct targets to keep scRegulate's adapt_prior_and_data() and ULM filters aligned for weighted priors, then passes the same value to train_model(). Upstream 1.0.1 source default is 20, although paper text and tutorial examples often use 10."
+    },
+    "min_TFs": {
+      "type": "int",
+      "required": false,
+      "default": 1,
+      "min": 1,
+      "description": "Minimum number of TFs per target gene retained from the prior by adapt_prior_and_data()."
+    },
+    "fine_tune_epochs": {
+      "type": "int",
+      "required": false,
+      "default": 500,
+      "min": 1,
+      "description": "Epoch budget passed to fine_tune_clusters(). In group_native mode scRegulate scales the actual epochs for each cluster as max(fine_tune_min_epochs, int(fine_tune_epochs * cluster_size / total_cells))."
+    },
+    "fine_tune_batch_size": {
+      "type": "int",
+      "required": false,
+      "default": 3500,
+      "min": 1,
+      "description": "Batch size passed to fine_tune_clusters()."
+    },
+    "fine_tune_min_epochs": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "description": "Minimum epochs per cluster passed to fine_tune_clusters(); relevant when execution.mode=group_native."
+    },
+    "fine_tune_beta_max": {
+      "type": "float",
+      "required": false,
+      "default": 0.5,
+      "min": 0,
+      "description": "Maximum beta warm-up value passed to fine_tune_clusters()."
+    },
+    "fine_tune_max_weight_norm": {
+      "type": "float",
+      "required": false,
+      "default": 4,
+      "min": 0,
+      "exclusive_min": true,
+      "description": "Absolute clipping bound for fine_tune_clusters() tf_mapping weights."
+    },
+    "fine_tune_early_stopping_patience": {
+      "type": "int",
+      "required": false,
+      "default": 250,
+      "min": 1,
+      "description": "Early-stopping patience passed to fine_tune_clusters()."
+    },
+    "random_state": {
+      "type": "int",
+      "required": false,
+      "default": 42,
+      "min": 0,
+      "description": "Seed passed to train_model(random_state=...) for reproducible train/validation splitting and PyTorch/NumPy random seeds."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "scregulate.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined wrapper and scRegulate training/fine-tuning log."
+    },
+    {
+      "path_pattern": "raw/scregulate_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Resolved scRegulate parameters, prior source, expression preprocessing, prior min_targets filter summary, expression dimensions, execution mode and runtime thread mapping."
+    },
+    {
+      "path_pattern": "raw/prior_network.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "TF-target prior network actually passed to scRegulate after loading CollecTRI or normalized prior_grn, applying wrapper validation, and dropping TFs with fewer than min_targets distinct targets."
+    },
+    {
+      "path_pattern": "raw/grn_raw_weights.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw signed scRegulate TF-target weights before conversion to positive-score network.csv rows."
+    },
+    {
+      "path_pattern": "raw/model_state.pt",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Serialized PyTorch state dictionary for the final scRegulate model used to export the network."
+    }
+  ]
+}

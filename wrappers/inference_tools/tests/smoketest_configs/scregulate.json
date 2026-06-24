@@ -1,0 +1,58 @@
+{
+  "extra_files": [
+    "prior_grn.tsv"
+  ],
+  "param_overrides": {
+    "prior_source": "provided_prior",
+    "epochs": 2,
+    "freeze_epochs": 20,
+    "batch_size": 8,
+    "learning_rate": 0.001,
+    "early_stopping_patience": 5,
+    "min_targets": 1,
+    "min_TFs": 1,
+    "fine_tune_epochs": 2,
+    "fine_tune_batch_size": 8,
+    "fine_tune_min_epochs": 1,
+    "fine_tune_early_stopping_patience": 5,
+    "random_state": 1
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "global_provided_prior"
+    },
+    {
+      "name": "group_native_provided_prior",
+      "extra_files": [
+        "prior_grn.tsv",
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_native"
+      },
+      "checks": {
+        "forbid_self_loops": true,
+        "require_group_context": true
+      }
+    },
+    {
+      "name": "group_emulated_contract",
+      "extra_files": [
+        "prior_grn.tsv",
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_emulated"
+      }
+    },
+    {
+      "name": "provided_prior_weighted_min_targets_filter",
+      "param_overrides": {
+        "min_targets": 20
+      }
+    }
+  ]
+}

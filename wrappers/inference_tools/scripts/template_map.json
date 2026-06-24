@@ -120,6 +120,12 @@
       "runtime": "r",
       "bundles": []
     },
+    "scregulate": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ]
+    },
     "planet": {
       "runtime": "python",
       "bundles": [
