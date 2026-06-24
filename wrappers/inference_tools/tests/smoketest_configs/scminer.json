@@ -1,0 +1,39 @@
+{
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "global_custom_tf",
+      "extra_files": [
+        "tf_list.txt"
+      ],
+      "param_overrides": {
+        "driver_source": "custom_tf_list",
+        "downSample_N": null,
+        "n_bootstraps": 1,
+        "consensus_pvalue": 1
+      }
+    },
+    {
+      "name": "group_emulated_custom_tf",
+      "extra_files": [
+        "tf_list.txt",
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "param_overrides": {
+        "driver_source": "custom_tf_list",
+        "downSample_N": null,
+        "n_bootstraps": 1,
+        "consensus_pvalue": 1
+      },
+      "checks": {
+        "require_group_context": true,
+        "forbid_self_loops": true
+      }
+    }
+  ]
+}

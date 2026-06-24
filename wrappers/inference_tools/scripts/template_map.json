@@ -116,6 +116,10 @@
         "python_runtime_contract"
       ]
     },
+    "scminer": {
+      "runtime": "r",
+      "bundles": []
+    },
     "planet": {
       "runtime": "python",
       "bundles": [

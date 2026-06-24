@@ -1,0 +1,335 @@
+{
+  "schema_version": "1.0",
+  "id": "scminer",
+  "name": "scMINER",
+  "publication": [
+    "https://doi.org/10.1038/s41467-025-59620-6",
+    "https://doi.org/10.1093/bioinformatics/bty907"
+  ],
+  "first_author": "Qingfei Pan",
+  "year": 2025,
+  "method_summary": "scMINER is a mutual information-based systems biology framework for single-cell transcriptomics that combines MI-based clustering, cell type-specific TF and signaling-gene network inference, and hidden-driver activity analysis. The selected integration mirrors its network-inference path, where scMINER prepares homogeneous-cell expression and candidate-driver files for SJARACNe, and SJARACNe reconstructs directed driver-target networks with mutual-information edge weights and correlation-derived signs.",
+  "method_keywords": [
+    "single_cell",
+    "mutual_information",
+    "sjaracne",
+    "driver_target_network",
+    "tf_network",
+    "signaling_network",
+    "directed"
+  ],
+  "implementation_url": "https://github.com/jyyulab/scMINER/tree/48d4bc4e7fe7ccc880e5816857f264eb7c2161e9",
+  "docker_image": "adriansegura99/inference-tools_scminer:1.0.0",
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "No safe public mapping from ANDREA --threads to the selected scMINER/SJARACNe network-inference path was found. scMINER's R functions expose no worker count. SJARACNe local mode documents parallel execution through cwltool --parallel, but does not expose a bounded worker/thread count; the wrapper requires --threads=1, runs sjaracne local with --serial, and keeps BLAS/OpenMP-style environment variables at 1."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.genes",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "scMINER/SJARACNe requires at least two expression genes to infer driver-target edges."
+    },
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "scMINER/SJARACNe requires at least two expression columns because mutual-information and correlation statistics cannot be estimated from a single cell/sample."
+    },
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 100
+        }
+      ],
+      "action": "warn",
+      "message": "scMINER warns that SJARACNe needs at least 100 single cells to generate a high-quality single-cell network."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.downSample_N",
+          "op": "gt",
+          "value": 0
+        },
+        {
+          "field": "param.downSample_N",
+          "op": "lt",
+          "value": 100
+        }
+      ],
+      "action": "warn",
+      "message": "downSample_N below 100 can force scMINER below its stated high-quality single-cell network recommendation."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.driver_source",
+          "op": "in",
+          "value": [
+            "built_in_tf_sig",
+            "built_in_tf",
+            "built_in_sig"
+          ]
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": null
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "not_in",
+          "value": [
+            9606,
+            10090
+          ]
+        }
+      ],
+      "action": "block",
+      "message": "scMINER built-in driver resources are available only for human (hg, NCBI 9606) and mouse (mm, NCBI 10090). Use driver_source=custom_tf_list with a compatible tf_list for other declared taxa."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.driver_source",
+          "op": "in",
+          "value": [
+            "built_in_tf_sig",
+            "built_in_tf",
+            "built_in_sig"
+          ]
+        },
+        {
+          "field": "param.species_type",
+          "op": "eq",
+          "value": "hg"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": null
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 9606
+        }
+      ],
+      "action": "block",
+      "message": "species_type=hg uses scMINER's human driver list and requires dataset.organism.ncbi_taxon_id=9606 when a taxon id is declared."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.driver_source",
+          "op": "in",
+          "value": [
+            "built_in_tf_sig",
+            "built_in_tf",
+            "built_in_sig"
+          ]
+        },
+        {
+          "field": "param.species_type",
+          "op": "eq",
+          "value": "mm"
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": null
+        },
+        {
+          "field": "dataset.organism.ncbi_taxon_id",
+          "op": "ne",
+          "value": 10090
+        }
+      ],
+      "action": "block",
+      "message": "species_type=mm uses scMINER's mouse driver list and requires dataset.organism.ncbi_taxon_id=10090 when a taxon id is declared."
+    }
+  ],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the selected scMINER/SJARACNe network path.",
+        "usage": "ANDREA uses groups.tsv to create one scMINER child run per group. The wrapper accepts a groups.tsv covering the full dataset or just the current expression matrix, subsets it to the expression columns being executed, and uses it only to assign public group:<id> contexts; scMINER/SJARACNe itself does not consume groups.tsv in the selected wrapper contract."
+      },
+      {
+        "input": "tf_list",
+        "param": "driver_source",
+        "op": "eq",
+        "value": "custom_tf_list",
+        "message": "tf_list is required when driver_source=custom_tf_list because the wrapper passes those genes as scMINER customDriver_TF and SJARACNe candidate hubs.",
+        "usage": "The wrapper validates tf_list.txt against expression gene ids, passes matching entries as the candidate TF driver list, and runs the TF-only SJARACNe path with those public gene identifiers."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "The selected public path consists of scMINER-style input preparation plus one or more SJARACNe local --serial runs. Upstream logs expose coarse CWL/workflow phases, but no stable bounded progress callback or thread-counted task stream; the wrapper reports coarse lifecycle states in progress.json and preserves upstream logs."
+  },
+  "params": {
+    "driver_source": {
+      "type": "enum",
+      "required": false,
+      "default": "built_in_tf_sig",
+      "enum": [
+        "built_in_tf_sig",
+        "built_in_tf",
+        "built_in_sig",
+        "custom_tf_list"
+      ],
+      "description": "Candidate-driver source for SJARACNe hubs. built_in_tf_sig, built_in_tf and built_in_sig use scMINER's built-in human/mouse TF and/or signaling-gene resources according to species_type. custom_tf_list requires tf_list and runs the TF-only custom-driver path."
+    },
+    "species_type": {
+      "type": "enum",
+      "required": false,
+      "default": "hg",
+      "enum": [
+        "hg",
+        "mm"
+      ],
+      "description": "Species code used by scMINER getDriverList() when driver_source uses built-in driver resources: hg for human and mm for mouse. Ignored when driver_source=custom_tf_list."
+    },
+    "downSample_N": {
+      "type": "union",
+      "required": false,
+      "default": 1000,
+      "description": "Maximum number of expression columns retained before writing SJARACNe input. An integer preserves scMINER's downsampling behavior for groups larger than the threshold; null passes no downsampling and preserves all columns.",
+      "oneOf": [
+        {
+          "type": "int",
+          "required": false,
+          "default": 1000,
+          "min": 2,
+          "description": "Downsample groups with more columns than this value to exactly this many columns."
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null to skip scMINER downsampling, matching generateSJARACNeInput(downSample_N=NULL)."
+        }
+      ]
+    },
+    "n_bootstraps": {
+      "type": "int",
+      "required": false,
+      "default": 100,
+      "min": 1,
+      "description": "Number of SJARACNe bootstrap networks passed to the public CLI as -n. scMINER's generated commands and network-inference benchmarks use 100."
+    },
+    "consensus_pvalue": {
+      "type": "float",
+      "required": false,
+      "default": 0.01,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "description": "SJARACNe consensus p-value threshold passed as -pc. The selected non-metacell single-cell path uses 1e-2 by default."
+    },
+    "random_seed": {
+      "type": "int",
+      "required": false,
+      "default": 123,
+      "min": 0,
+      "description": "Seed passed to scMINER's sampling step before optional downsampling."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "scminer.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined wrapper, scMINER and SJARACNe stdout/stderr log."
+    },
+    {
+      "path_pattern": "raw/scminer_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Resolved scMINER/SJARACNe parameters, execution mode, selected driver source, input dimensions, installation commits and runtime thread decision."
+    },
+    {
+      "path_pattern": "raw/gene_alias_map.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Public expression gene id to upstream-safe gene id map used to round-trip every source and target in network.csv back to ANDREA ids."
+    },
+    {
+      "path_pattern": "raw/sjaracne_inputs/*.exp.txt",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "SJARACNe expression matrix files generated by the selected scMINER network-input path before running the upstream CLI."
+    },
+    {
+      "path_pattern": "raw/sjaracne_inputs/*drivers.txt",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Candidate driver hub lists supplied to SJARACNe after built-in or custom-driver resolution."
+    },
+    {
+      "path_pattern": "raw/sjaracne_outputs/*/consensus_network_ncol_.txt",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw SJARACNe directed network file(s) before conversion to ANDREA network.csv."
+    },
+    {
+      "path_pattern": "raw/sjaracne_outputs/*/sjaracne_workflow.yml",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "SJARACNe CWL workflow input file emitted by sjaracne local, preserving resolved expression, driver, p-value, depth and bootstrap settings for each upstream run."
+    }
+  ]
+}
