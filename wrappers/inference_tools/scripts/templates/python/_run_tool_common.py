@@ -39,6 +39,7 @@ def write_progress(
     completed: Optional[int] = None,
     total: Optional[int] = None,
     error: Optional[str] = None,
+    warnings: Optional[Sequence[str]] = None,
 ) -> None:
     payload: dict[str, Any] = {
         "status": status,
@@ -53,6 +54,8 @@ def write_progress(
         payload["total"] = int(total)
     if error is not None:
         payload["error"] = error
+    if warnings:
+        payload["warnings"] = [str(warning) for warning in warnings if str(warning).strip()]
 
     tmp_path = progress_path.with_suffix(".json.tmp")
     with tmp_path.open("w", encoding="utf-8") as fh:

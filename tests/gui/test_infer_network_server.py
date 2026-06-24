@@ -176,9 +176,13 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             "total": 1,
             "queued": 0,
             "running": 1 if tool_status == "running" else 0,
-            "completed": 1 if tool_status == "completed" else 0,
+            "completed": (
+                1
+                if tool_status in {"completed", "completed_with_warnings"}
+                else 0
+            ),
             "failed": 1 if tool_status == "failed" else 0,
-            "warnings": 0,
+            "warnings": 1 if tool_status == "completed_with_warnings" else 0,
         }
         payload["waves"][0].update(
             {
@@ -199,6 +203,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                 "percent": percent if tool_status == "running" else 100,
                 "message": message,
                 "errors": [message] if tool_status == "failed" else [],
+                "warnings": (
+                    [message] if tool_status == "completed_with_warnings" else []
+                ),
             }
         )
         payload["logical_runs"]["run_01"].update(
@@ -208,6 +215,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                 "percent": percent if tool_status == "running" else 100,
                 "message": message,
                 "errors": [message] if tool_status == "failed" else [],
+                "warnings": (
+                    [message] if tool_status == "completed_with_warnings" else []
+                ),
             }
         )
         payload["phase_history"].append(
@@ -842,6 +852,124 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         self.assertEqual(payload["execution_state"]["status"], "completed")
         self.assertEqual(payload["run_report"]["status"], "executed")
         self.assertEqual(payload["runtime_progress"]["summary"]["completed"], 1)
+
+    def test_job_payload_preserves_completed_with_warnings_execution_state(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "run"
+            self._write_execution_state(
+                run_dir,
+                status="completed",
+                phase="completed",
+                percent=100,
+                message="wrapper produced a best-effort result",
+                tool_status="completed_with_warnings",
+            )
+            self._register_job(
+                job_id="job_warning_state",
+                run_dir=run_dir,
+                status="completed",
+                stage="executed",
+            )
+
+            client = TestClient(gui_server.create_app())
+            payload = client.get("/api/infer-network/jobs/job_warning_state").json()
+
+        self.assertEqual(payload["runtime_progress"]["summary"]["completed"], 1)
+        self.assertEqual(payload["runtime_progress"]["summary"]["warnings"], 1)
+        self.assertEqual(
+            payload["runtime_progress"]["tools"][0]["status"],
+            "completed_with_warnings",
+        )
+        self.assertEqual(
+            payload["runtime_progress"]["tools"][0]["warnings"],
+            ["wrapper produced a best-effort result"],
+        )
+
+    def test_job_payload_runtime_progress_accepts_completed_with_warnings_fallback(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "run"
+            progress_dir = run_dir / "tools" / "run_01" / "io" / "out"
+            progress_dir.mkdir(parents=True, exist_ok=True)
+            (run_dir / "plan.json").write_text(
+                json.dumps(
+                    {
+                        "runs": [
+                            {
+                                "run_id": "run_01",
+                                "tool_id": "dummy",
+                                "execution": {"mode": "global"},
+                                "physical_tasks": [
+                                    {
+                                        "task_id": "run_01",
+                                        "output_dir": "tools/run_01",
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (run_dir / "run_report.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "run",
+                        "status": "executed",
+                        "tools": {
+                            "status_by_tool": {
+                                "run_01": "completed_with_warnings",
+                            }
+                        },
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (progress_dir / "progress.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_with_warnings",
+                        "phase": "done",
+                        "percent": 100,
+                        "message": "Completed with warning(s)",
+                        "warnings": ["wrapper produced a best-effort result"],
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            self._register_job(
+                job_id="job_warning_fallback",
+                run_dir=run_dir,
+                status="completed",
+                stage="executed",
+            )
+
+            client = TestClient(gui_server.create_app())
+            payload = client.get("/api/infer-network/jobs/job_warning_fallback").json()
+
+        self.assertIsNone(payload["execution_state"])
+        self.assertEqual(payload["runtime_progress"]["summary"]["completed"], 1)
+        self.assertEqual(payload["runtime_progress"]["summary"]["warnings"], 1)
+        self.assertEqual(
+            payload["runtime_progress"]["tools"][0]["status"],
+            "completed_with_warnings",
+        )
+        self.assertEqual(
+            payload["runtime_progress"]["tools"][0]["warnings"],
+            ["wrapper produced a best-effort result"],
+        )
 
     def test_failed_job_payload_can_use_state_without_final_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

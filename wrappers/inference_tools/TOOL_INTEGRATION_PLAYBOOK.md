@@ -250,6 +250,7 @@ Requirements:
 - Preserve data-dependent or runtime-dependent upstream defaults; if the ToolSpec uses a sentinel such as `null` to mean "defer to upstream default", implement that by omitting the argument rather than hard-coding a replacement value
 - Map the wrapper `--threads` runtime argument to the upstream thread/worker/process/runtime control or documented execution pattern declared in `toolspec.runtime_resources.threading.upstream_mapping`; if the mapping is process-level sharding over independent work units, split work into at most `--threads` public upstream invocations, preserve per-shard raw outputs/configs/logs, and merge deterministically; do not reintroduce thread controls as user-facing tool params
 - Make the wrapper produce raw positive `network.csv` score magnitudes for the chosen upstream interface and `progress.json`
+- If the wrapper completes with a valid `network.csv` but has method-level caveats, degraded fallbacks, or best-effort behavior, write them as a `warnings` list in the final `progress.json`; ANDREA will surface the run as `completed_with_warnings`.
 - Do not apply ANDREA-specific score normalization in the wrapper; downstream normalization is handled later by [merge.py](andrea/core/commands/infer_network/commons/merge.py)
 - Do not write rows with `score <= 0` to `network.csv`; if the upstream method produces a dense matrix, filter zero-magnitude edges in the wrapper before export
 - Preserve expression gene ids, expression column ids and group ids exactly in `network.csv`.

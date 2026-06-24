@@ -126,6 +126,12 @@
         "python_runtime_contract"
       ]
     },
+    "scsgl": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ]
+    },
     "planet": {
       "runtime": "python",
       "bundles": [

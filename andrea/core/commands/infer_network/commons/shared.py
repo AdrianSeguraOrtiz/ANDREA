@@ -89,6 +89,7 @@ class ToolExecutionResult:
     progress_path: Optional[str]
     logs_path: Optional[str]
     error: Optional[str]
+    warnings: tuple[str, ...] = ()
 
 
 @dataclass

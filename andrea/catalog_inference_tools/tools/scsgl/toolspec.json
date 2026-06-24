@@ -1,0 +1,165 @@
+{
+  "schema_version": "1.0",
+  "id": "scsgl",
+  "name": "scSGL",
+  "publication": [
+    "https://doi.org/10.1093/bioinformatics/btac288"
+  ],
+  "first_author": "Abdullah Karaaslanli",
+  "year": 2022,
+  "method_summary": "scSGL infers signed gene regulatory graphs from single-cell RNA-seq expression by learning a signed graph whose gene-expression signals are smooth over activating edges and non-smooth over inhibitory edges. Its kernelized formulation supports dot product, correlation, proportionality and zero-inflated Kendall association kernels, and solves the density-controlled graph-learning problem with an ADMM framework.",
+  "method_keywords": [
+    "single_cell",
+    "signed_graph_learning",
+    "graph_signal_processing",
+    "kernel_methods",
+    "admm",
+    "dropout_aware",
+    "undirected"
+  ],
+  "implementation_url": "https://github.com/Single-Cell-Graph-Learning/scSGL/tree/7fb2a011f6e1061daf4c976225027e76f4e0e4ea",
+  "docker_image": "adriansegura99/inference-tools_scsgl:1.0.0",
+  "execution_capabilities": [
+    "global",
+    "group_emulated"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "The selected public entrypoint pysrc.graphlearning.learn_signed_graph exposes no thread, worker, process, scheduler or bounded sharding control. The wrapper must require ANDREA --threads=1 and pin common BLAS/OpenMP/NUMBA/R environment variables to 1; the R pcaPP dependency used by the zikendall kernel is not a safe public thread-mapping mechanism."
+    }
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.genes",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "scSGL requires at least two expression genes because the selected interface learns gene-gene edges."
+    },
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "scSGL requires at least two expression columns/cells to compute association kernels over gene-expression profiles."
+    }
+  ],
+  "accepts": [
+    "cells"
+  ],
+  "assumes": "scrna_specific",
+  "extra_inputs": {
+    "required": [],
+    "optional": [],
+    "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA partitions expression columns by group before running scSGL independently per group.",
+        "usage": "The wrapper uses groups.tsv to partition expression columns and call the same learn_signed_graph entrypoint once per group, emitting group:<id> contexts. scSGL itself does not consume groups.tsv."
+      }
+    ]
+  },
+  "outputs": {
+    "directed": false,
+    "sign": "signed",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "none",
+    "note": "learn_signed_graph is a synchronous Python function with an internal binary search and ADMM solves but no stable callback, task counter or incremental output. The wrapper can only report coarse lifecycle states in progress.json and preserve upstream diagnostics in scsgl.log."
+  },
+  "params": {
+    "pos_density": {
+      "type": "float",
+      "required": true,
+      "default": null,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "exclusive_max": true,
+      "description": "Desired density of the positive/activating part of the learned signed graph passed to learn_signed_graph(pos_density=...). Upstream provides no default; the demo uses 0.45 for one GSD example, but the upstream notebook notes that density search can fail for some requested values. Higher densities request denser graphs and can substantially increase runtime."
+    },
+    "neg_density": {
+      "type": "float",
+      "required": true,
+      "default": null,
+      "min": 0,
+      "exclusive_min": true,
+      "max": 1,
+      "exclusive_max": true,
+      "description": "Desired density of the negative/inhibitory part of the learned signed graph passed to learn_signed_graph(neg_density=...). Upstream provides no default; the demo uses 0.45 for one GSD example, but the upstream notebook notes that density search can fail for some requested values. Higher densities request denser graphs and can substantially increase runtime."
+    },
+    "association_kernel": {
+      "type": "enum",
+      "required": false,
+      "default": "dotprod",
+      "enum": [
+        "dotprod",
+        "correlation",
+        "proprho",
+        "zikendall"
+      ],
+      "description": "Association kernel passed to learn_signed_graph(assoc=...). The public source default is dotprod; correlation maps to Pearson correlation, proprho maps to proportionality rho, and zikendall maps to the zero-inflated Kendall kernel that requires the R pcaPP dependency through rpy2."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "scsgl.log",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Combined wrapper and upstream Python/R lifecycle log."
+    },
+    {
+      "path_pattern": "raw/scsgl_edges.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Raw upstream scSGL edge table with Gene1, Gene2 and signed EdgeWeight before ANDREA undirected de-duplication and network.csv conversion."
+    },
+    {
+      "path_pattern": "raw/scsgl_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Resolved scSGL parameters, expression dimensions, selected execution mode, runtime resource mapping and pinned upstream commit."
+    },
+    {
+      "path_pattern": "raw/density_search.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Per-context positive and negative density-search diagnostics, including requested density, whether the upstream search bracketed it, best upper-bound density and actual density in the exported graph."
+    },
+    {
+      "path_pattern": "raw/retained_genes.tsv",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Public expression gene ids retained by scSGL after its all-zero-gene filter, plus status for any all-zero genes omitted by the upstream function."
+    }
+  ]
+}

@@ -11,7 +11,11 @@ from andrea.core.commands.infer_network.commons.execution_state import (
     execution_state_path,
     read_execution_state,
 )
-from andrea.core.commands.infer_network.commons.shared import ToolExecutionResult
+from andrea.core.commands.infer_network.commons.shared import (
+    PlanWave,
+    ToolExecutionResult,
+    ToolPlanItem,
+)
 
 from ._helpers import InferNetworkCoreTestCase
 
@@ -219,6 +223,108 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             self.assertFalse((filtered.io_dir / "extra" / "groups.tsv").exists())
             self.assertTrue((unfiltered.io_dir / "extra" / "tf_list.txt").exists())
             self.assertTrue((unfiltered.io_dir / "extra" / "groups.tsv").exists())
+
+    def test_run_wave_promotes_wrapper_progress_warnings(self) -> None:
+        from andrea.core.commands.infer_network.commons import runtime_helpers
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            shared_expression = base / "expression.tsv"
+            shared_expression.write_text("gene\tS1\tS2\nG1\t1\t2\n", encoding="utf-8")
+            tool_io = runtime_helpers._prepare_tool_runtime_io(
+                run_dir=base,
+                tool_id="warn_tool",
+                run_id="warn_tool",
+                output_dir="tools/warn_tool",
+                resolved_params={},
+                resolved_execution={"mode": "global"},
+                shared_expression=shared_expression,
+                shared_extras={},
+            )
+            wave = PlanWave(
+                index=1,
+                threads_used=1,
+                ram_gb_used=1.0,
+                eta_seconds=1.0,
+                tasks=[
+                    ToolPlanItem(
+                        tool_id="warn_tool",
+                        run_id="warn_tool",
+                        image="example/warn:1.0",
+                        threads=1,
+                        ram_gb=1.0,
+                        eta_seconds=1.0,
+                        eta_source="test",
+                        output_dir="tools/warn_tool",
+                    )
+                ],
+            )
+
+            def fake_docker_run_detached(**_kwargs):
+                (tool_io.out_dir / "network.csv").write_text(
+                    "source,target,score,sign,evidence,context\n"
+                    "G1,G2,1,+,test,global\n",
+                    encoding="utf-8",
+                )
+                (tool_io.out_dir / "progress.json").write_text(
+                    json.dumps(
+                        {
+                            "status": "completed_with_warnings",
+                            "phase": "done",
+                            "percent": 100,
+                            "message": "done",
+                            "warnings": ["wrapper produced a best-effort result"],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                return "container-1"
+
+            runtime_warnings: list[str] = []
+            with (
+                patch.object(
+                    runtime_helpers,
+                    "_ensure_docker_image",
+                    return_value="local",
+                ),
+                patch.object(
+                    runtime_helpers,
+                    "_docker_run_detached",
+                    side_effect=fake_docker_run_detached,
+                ),
+                patch.object(
+                    runtime_helpers,
+                    "_docker_inspect_status",
+                    return_value="exited",
+                ),
+                patch.object(
+                    runtime_helpers,
+                    "_docker_wait_exit_code",
+                    return_value=0,
+                ),
+                patch.object(runtime_helpers, "_docker_logs", return_value=""),
+                patch.object(runtime_helpers, "_docker_rm"),
+            ):
+                results = runtime_helpers._run_wave(
+                    wave=wave,
+                    runtime_io_by_tool={"warn_tool": tool_io},
+                    pulled_images=set(),
+                    poll_interval_s=0.01,
+                    warnings=runtime_warnings,
+                    state_writer=None,
+                )
+
+        result = results["warn_tool"]
+        self.assertEqual(result.status, "completed_with_warnings")
+        self.assertEqual(
+            result.warnings,
+            ("wrapper produced a best-effort result",),
+        )
+        self.assertEqual(
+            runtime_warnings,
+            ["[warn_tool] wrapper produced a best-effort result"],
+        )
 
     def test_group_aggregated_run_writes_group_rows_and_keeps_column_auxiliary(
         self,
@@ -511,6 +617,104 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 "completed",
             ):
                 self.assertIn(expected_phase, phase_history)
+
+    def test_run_plan_counts_completed_with_warnings_as_completed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            run_dir = self._prepare_planned_run(base)
+
+            def fake_run_wave(
+                *,
+                wave,
+                runtime_io_by_tool,
+                pulled_images,
+                poll_interval_s,
+                warnings,
+                state_writer=None,
+            ):
+                out = {}
+                for task in wave.tasks:
+                    warning = "wrapper produced a best-effort result"
+                    warnings.append(f"[{task.tool_id}] {warning}")
+                    out[task.tool_id] = ToolExecutionResult(
+                        tool_id=task.tool_id,
+                        status="completed_with_warnings",
+                        exit_code=0,
+                        duration_seconds=0.5,
+                        network_path=str(
+                            (
+                                run_dir
+                                / "tools"
+                                / task.tool_id
+                                / "io"
+                                / "out"
+                                / "network.csv"
+                            )
+                        ),
+                        progress_path=None,
+                        logs_path=str(
+                            (run_dir / "tools" / task.tool_id / "container.log")
+                        ),
+                        error=None,
+                        warnings=(warning,),
+                    )
+                return out
+
+            def fake_merge(
+                *, run_dir, execution_results, warnings, progress_callback=None
+            ):
+                raw = run_dir / "merged_network_raw.csv"
+                norm = run_dir / "merged_network_normalized.csv"
+                raw.write_text(
+                    "source,target,score,sign,evidence,context,tool_id\n",
+                    encoding="utf-8",
+                )
+                norm.write_text(
+                    "source,target,score,sign,evidence,context,tool_id\n",
+                    encoding="utf-8",
+                )
+                rows = {
+                    tool_id: 1
+                    for tool_id, result in execution_results.items()
+                    if result.status in {"completed", "completed_with_warnings"}
+                }
+                return execution_results, rows, raw, norm
+
+            with (
+                patch("andrea.core.commands.infer_network.run._ensure_docker_cli"),
+                patch(
+                    "andrea.core.commands.infer_network.run._run_wave",
+                    side_effect=fake_run_wave,
+                ),
+                patch(
+                    "andrea.core.commands.infer_network.run._merge_network_outputs",
+                    side_effect=fake_merge,
+                ),
+            ):
+                self.mod.run_infer_network_plan(
+                    run_dir=run_dir,
+                    progress_poll_seconds=0.1,
+                )
+
+            report_payload = json.loads(
+                (run_dir / "run_report.json").read_text(encoding="utf-8")
+            )
+            state_payload = read_execution_state(execution_state_path(run_dir))
+
+        self.assertEqual(report_payload["execution"]["tools_completed"], 1)
+        self.assertEqual(report_payload["execution"]["tools_failed"], 0)
+        self.assertEqual(
+            report_payload["tools"]["status_by_tool"]["aracne__01"],
+            "completed_with_warnings",
+        )
+        self.assertEqual(
+            report_payload["tools"]["results"]["aracne__01"]["warnings"],
+            ["wrapper produced a best-effort result"],
+        )
+        self.assertEqual(
+            state_payload["logical_runs"]["aracne__01"]["status"],
+            "completed_with_warnings",
+        )
 
     def test_run_plan_rejects_input_fingerprint_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

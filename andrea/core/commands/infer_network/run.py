@@ -146,6 +146,12 @@ def _sync_warning_messages_to_state(
     return len(warnings)
 
 
+def _append_warning_once(warnings: list[str], message: str) -> None:
+    text = str(message).strip()
+    if text and text not in warnings:
+        warnings.append(text)
+
+
 def _write_expression_subset(
     *,
     source_path: Path,
@@ -322,6 +328,7 @@ def _finalize_group_aggregated_logical_run(
     network_path: str | None = None
     status = "failed"
     error: str | None = None
+    result_warnings: list[str] = []
     column_row_count = 0
     aggregated_row_count = 0
 
@@ -341,7 +348,12 @@ def _finalize_group_aggregated_logical_run(
         "output_dir": str(physical_tasks[0].get("output_dir", "")),
     }
 
-    if child_result.status != "completed" or not child_result.network_path:
+    result_warnings.extend(str(item) for item in child_result.warnings)
+
+    if (
+        child_result.status not in {"completed", "completed_with_warnings"}
+        or not child_result.network_path
+    ):
         error = child_result.error or "Column-native upstream execution failed."
     else:
         try:
@@ -363,7 +375,8 @@ def _finalize_group_aggregated_logical_run(
                 group_to_columns=group_to_columns,
             )
             if not aggregated_rows:
-                warnings.append(
+                _append_warning_once(
+                    warnings,
                     f"[{run_id}] group_aggregated produced no non-zero aggregated group edges."
                 )
             column_row_count = len(column_rows)
@@ -386,6 +399,12 @@ def _finalize_group_aggregated_logical_run(
         except Exception as exc:  # noqa: BLE001
             error = str(exc)
 
+    if status == "completed" and result_warnings:
+        status = "completed_with_warnings"
+
+    for warning in result_warnings:
+        _append_warning_once(warnings, f"[{run_id}] {warning}")
+
     duration = round(
         float(child_result.duration_seconds) + time.perf_counter() - started_at,
         3,
@@ -393,13 +412,18 @@ def _finalize_group_aggregated_logical_run(
     progress_payload = {
         "percent": 100,
         "status": status,
-        "phase": "done" if status == "completed" else "failed",
+        "phase": (
+            "done"
+            if status in {"completed", "completed_with_warnings"}
+            else "failed"
+        ),
         "message": (
             f"Aggregated {column_row_count} column-context row(s) into "
             f"{aggregated_row_count} group-context row(s)"
-            if status == "completed"
+            if status in {"completed", "completed_with_warnings"}
             else error or "Aggregation failed"
         ),
+        "warnings": result_warnings,
     }
     _write_json(progress_path, progress_payload)
 
@@ -417,12 +441,13 @@ def _finalize_group_aggregated_logical_run(
     logical_result = ToolExecutionResult(
         tool_id=run_id,
         status=status,
-        exit_code=0 if status == "completed" else 1,
+        exit_code=0 if status in {"completed", "completed_with_warnings"} else 1,
         duration_seconds=duration,
         network_path=network_path,
         progress_path=str(progress_path.resolve()),
         logs_path=str(logs_path.resolve()),
         error=error,
+        warnings=tuple(result_warnings),
     )
     logical_payload = {
         **asdict(logical_result),
@@ -456,6 +481,7 @@ def _finalize_grouped_logical_run(
     child_failures: list[tuple[str, ToolExecutionResult]] = []
     child_rows: list[dict[str, Any]] = []
     durations: list[float] = []
+    result_warnings: list[str] = []
 
     for physical in logical_spec["physical_tasks"]:
         task_id = str(physical.get("task_id", "")).strip()
@@ -478,7 +504,15 @@ def _finalize_grouped_logical_run(
             "group_label": group_label,
             "output_dir": str(physical.get("output_dir", "")),
         }
-        if result.status == "completed" and result.network_path:
+        for warning in result.warnings:
+            text = f"[group:{group_label}] {warning}"
+            if text not in result_warnings:
+                result_warnings.append(text)
+
+        if (
+            result.status in {"completed", "completed_with_warnings"}
+            and result.network_path
+        ):
             try:
                 rows = _read_network_rows(Path(result.network_path), tool_id=task_id)
             except Exception as exc:  # noqa: BLE001
@@ -517,7 +551,8 @@ def _finalize_grouped_logical_run(
         failure_summary = f"{len(child_failures)}/{len(logical_spec['physical_tasks'])} grouped executions failed"
         if failed_groups:
             failure_summary += f" ({', '.join(failed_groups)})"
-        warnings.append(f"[{run_id}] {failure_summary}.")
+        _append_warning_once(warnings, f"[{run_id}] {failure_summary}.")
+        result_warnings.append(failure_summary + ".")
         status = "completed"
         error = None
     elif child_failures:
@@ -535,13 +570,24 @@ def _finalize_grouped_logical_run(
             _write_network_rows(path=parent_network, rows=[], include_tool_id=False)
             network_path = str(parent_network.resolve())
 
+    if status == "completed" and result_warnings:
+        status = "completed_with_warnings"
+
+    for warning in result_warnings:
+        _append_warning_once(warnings, f"[{run_id}] {warning}")
+
     progress_payload = {
         "percent": 100,
         "status": status,
-        "phase": "done" if status == "completed" else "failed",
+        "phase": (
+            "done"
+            if status in {"completed", "completed_with_warnings"}
+            else "failed"
+        ),
         "message": (
             f"{len(logical_spec['physical_tasks']) - len(child_failures)}/{len(logical_spec['physical_tasks'])} grouped executions completed"
         ),
+        "warnings": result_warnings,
     }
     _write_json(progress_path, progress_payload)
 
@@ -554,17 +600,20 @@ def _finalize_grouped_logical_run(
     for group_label, result in child_failures:
         reason = str(result.error or f"exit_code={result.exit_code}").strip()
         log_lines.append(f"[group:{group_label}] {reason}")
+    for warning in result_warnings:
+        log_lines.append(f"warning={warning}")
     logs_path.write_text("\n".join(log_lines) + "\n", encoding="utf-8")
 
     logical_result = ToolExecutionResult(
         tool_id=run_id,
         status=status,
-        exit_code=0 if status == "completed" else 1,
+        exit_code=0 if status in {"completed", "completed_with_warnings"} else 1,
         duration_seconds=round(sum(durations), 3),
         network_path=network_path,
         progress_path=str(progress_path.resolve()),
         logs_path=str(logs_path.resolve()),
         error=error,
+        warnings=tuple(result_warnings),
     )
     logical_payload = {
         **asdict(logical_result),
@@ -1148,12 +1197,12 @@ def run_infer_network_plan(
     completed_tools = sorted(
         tool_id
         for tool_id, result in execution_results.items()
-        if result.status == "completed"
+        if result.status in {"completed", "completed_with_warnings"}
     )
     failed_tools = {
         tool_id: (result.error or "unknown error")
         for tool_id, result in execution_results.items()
-        if result.status != "completed"
+        if result.status not in {"completed", "completed_with_warnings"}
     }
     for logical_run_id, result in execution_results.items():
         status_by_tool[logical_run_id] = result.status

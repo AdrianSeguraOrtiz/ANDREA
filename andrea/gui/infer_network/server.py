@@ -877,6 +877,29 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
 
 
 def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
+    completed_statuses = {"completed", "completed_with_warnings"}
+    terminal_statuses = completed_statuses | {"failed"}
+    valid_statuses = {
+        "pending",
+        "running",
+        "completed",
+        "completed_with_warnings",
+        "failed",
+    }
+
+    def _progress_warnings(payload: dict[str, Any]) -> list[str]:
+        raw = payload.get("warnings", [])
+        if isinstance(raw, str):
+            raw = [raw]
+        if not isinstance(raw, list):
+            return []
+        warnings: list[str] = []
+        for item in raw:
+            text = str(item).strip()
+            if text and text not in warnings:
+                warnings.append(text)
+        return warnings
+
     if run_dir is None or not run_dir.exists() or not run_dir.is_dir():
         return {
             "tools": [],
@@ -886,6 +909,7 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                 "failed": 0,
                 "running": 0,
                 "pending": 0,
+                "warnings": 0,
             },
         }
 
@@ -930,6 +954,7 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
             status = status_by_tool.get(run_id, "pending")
             phase = "pending"
             message = ""
+            tool_warnings: list[str] = []
             updated_at: Optional[str] = None
 
             if progress_file.exists() and progress_file.is_file():
@@ -943,6 +968,7 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                 status = str(direct_payload.get("status", status))
                 phase = str(direct_payload.get("phase", phase))
                 message = str(direct_payload.get("message", ""))
+                tool_warnings = _progress_warnings(direct_payload)
                 updated_at = (
                     datetime.fromtimestamp(
                         progress_file.stat().st_mtime, tz=timezone.utc
@@ -1005,11 +1031,14 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                             ):
                                 payload = child_results[task_id]
                                 child_status = str(payload.get("status", "pending"))
-                                if child_status in {"completed", "failed"}:
+                                if (
+                                    child_status.lower().strip()
+                                    in terminal_statuses
+                                ):
                                     child_percent = 100
 
                         child_status = child_status.lower().strip()
-                        if child_status == "completed":
+                        if child_status in completed_statuses:
                             completed += 1
                         elif child_status == "failed":
                             failed += 1
@@ -1026,7 +1055,7 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
 
                     if weighted_total > 0:
                         percent = int(round(weighted_progress / weighted_total))
-                    if status not in {"completed", "failed"}:
+                    if status not in terminal_statuses:
                         if running > 0:
                             status = "running"
                         elif pending == len(physical_tasks):
@@ -1043,13 +1072,13 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                         + (f", {failed} failed" if failed else "")
                         + (f", {running} running" if running else "")
                     )
-                elif status in {"completed", "failed"}:
+                elif status in terminal_statuses:
                     percent = 100
-                    phase = "done" if status == "completed" else "failed"
+                    phase = "done" if status in completed_statuses else "failed"
 
             percent = max(0, min(100, int(percent)))
             normalized_status = status.lower().strip()
-            if normalized_status not in {"pending", "running", "completed", "failed"}:
+            if normalized_status not in valid_statuses:
                 normalized_status = "running" if percent > 0 else "pending"
             tool_entries.append(
                 {
@@ -1059,6 +1088,7 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                     "phase": phase,
                     "message": message,
                     "updated_at": updated_at,
+                    "warnings": tool_warnings,
                 }
             )
     else:
@@ -1073,6 +1103,7 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                 status = status_by_tool.get(run_id, "pending")
                 phase = "pending"
                 message = ""
+                tool_warnings: list[str] = []
                 updated_at: Optional[str] = None
 
                 if progress_file.exists() and progress_file.is_file():
@@ -1084,6 +1115,7 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                     status = str(payload.get("status", status))
                     phase = str(payload.get("phase", phase))
                     message = str(payload.get("message", ""))
+                    tool_warnings = _progress_warnings(payload)
                     updated_at = (
                         datetime.fromtimestamp(
                             progress_file.stat().st_mtime, tz=timezone.utc
@@ -1091,18 +1123,17 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                         .isoformat()
                         .replace("+00:00", "Z")
                     )
-                elif status in {"completed", "failed"}:
+                elif status.lower().strip() in terminal_statuses:
                     percent = 100
-                    phase = "done" if status == "completed" else "failed"
+                    phase = (
+                        "done"
+                        if status.lower().strip() in completed_statuses
+                        else "failed"
+                    )
 
                 percent = max(0, min(100, int(percent)))
                 normalized_status = status.lower().strip()
-                if normalized_status not in {
-                    "pending",
-                    "running",
-                    "completed",
-                    "failed",
-                }:
+                if normalized_status not in valid_statuses:
                     normalized_status = "running" if percent > 0 else "pending"
                 tool_entries.append(
                     {
@@ -1112,15 +1143,23 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                         "phase": phase,
                         "message": message,
                         "updated_at": updated_at,
+                        "warnings": tool_warnings,
                     }
                 )
 
     summary = {
         "total": len(tool_entries),
-        "completed": sum(1 for item in tool_entries if item["status"] == "completed"),
+        "completed": sum(
+            1 for item in tool_entries if item["status"] in completed_statuses
+        ),
         "failed": sum(1 for item in tool_entries if item["status"] == "failed"),
         "running": sum(1 for item in tool_entries if item["status"] == "running"),
         "pending": sum(1 for item in tool_entries if item["status"] == "pending"),
+        "warnings": sum(
+            len(item.get("warnings", []))
+            for item in tool_entries
+            if isinstance(item.get("warnings", []), list)
+        ),
     }
     return {"tools": tool_entries, "summary": summary}
 
@@ -1147,9 +1186,13 @@ def _runtime_progress_from_execution_state(
         value = str(status or "").strip().lower()
         if value == "queued":
             return "pending"
-        if value == "completed_with_warnings":
-            return "completed"
-        if value in {"pending", "running", "completed", "failed"}:
+        if value in {
+            "pending",
+            "running",
+            "completed",
+            "completed_with_warnings",
+            "failed",
+        }:
             return value
         return "running" if value else "pending"
 
@@ -1188,7 +1231,9 @@ def _runtime_progress_from_execution_state(
         summary = {
             "total": len(tool_entries),
             "completed": sum(
-                1 for item in tool_entries if item["status"] == "completed"
+                1
+                for item in tool_entries
+                if item["status"] in {"completed", "completed_with_warnings"}
             ),
             "failed": sum(1 for item in tool_entries if item["status"] == "failed"),
             "running": sum(

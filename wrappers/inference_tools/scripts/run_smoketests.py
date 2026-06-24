@@ -801,9 +801,10 @@ def validate_progress(path: Path) -> None:
     with path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
 
-    if data.get("status") != "completed":
+    if data.get("status") not in {"completed", "completed_with_warnings"}:
         raise RuntimeError(
-            f"Expected final status='completed', got: {data.get('status')!r}"
+            "Expected final status='completed' or 'completed_with_warnings', "
+            f"got: {data.get('status')!r}"
         )
     if int(data.get("percent", -1)) != 100:
         raise RuntimeError(f"Expected final percent=100, got: {data.get('percent')!r}")

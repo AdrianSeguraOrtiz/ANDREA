@@ -129,7 +129,8 @@ def _merge_network_outputs(
     completed_results = [
         (tool_id, updated[tool_id])
         for tool_id in sorted(updated.keys())
-        if updated[tool_id].status == "completed" and updated[tool_id].network_path
+        if updated[tool_id].status in {"completed", "completed_with_warnings"}
+        and updated[tool_id].network_path
     ]
     total_completed = max(1, len(completed_results))
 
@@ -156,6 +157,7 @@ def _merge_network_outputs(
                 progress_path=result.progress_path,
                 logs_path=result.logs_path,
                 error=str(exc),
+                warnings=result.warnings,
             )
             continue
 

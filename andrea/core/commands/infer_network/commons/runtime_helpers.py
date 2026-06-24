@@ -225,6 +225,24 @@ def _parse_progress_snapshot(path: Path) -> tuple[int, str, str, str]:
     return percent, status, phase, message
 
 
+def _read_progress_warnings(path: Path) -> tuple[str, ...]:
+    if not path.exists():
+        return ()
+    with path.open("r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    raw_warnings = data.get("warnings", [])
+    if isinstance(raw_warnings, str):
+        raw_warnings = [raw_warnings]
+    if not isinstance(raw_warnings, list):
+        return ()
+    warnings: list[str] = []
+    for item in raw_warnings:
+        text = str(item).strip()
+        if text and text not in warnings:
+            warnings.append(text)
+    return tuple(warnings)
+
+
 def _link_or_copy_file(src: Path, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.exists():
@@ -468,10 +486,22 @@ def _run_wave(
 
                 duration = round(time.perf_counter() - state.started_at, 3)
                 network_file = tool_io.out_dir / "network.csv"
+                progress_warnings: tuple[str, ...] = ()
+                if tool_io.progress_file.exists():
+                    try:
+                        progress_warnings = _read_progress_warnings(tool_io.progress_file)
+                    except Exception as exc:  # noqa: BLE001
+                        progress_warnings = (
+                            f"could not read wrapper warnings from progress.json: {exc}",
+                        )
 
                 if error is None and exit_code == 0 and network_file.exists():
                     network_path = str(network_file.resolve())
-                    final_status = "completed"
+                    final_status = (
+                        "completed_with_warnings"
+                        if progress_warnings
+                        else "completed"
+                    )
                 else:
                     final_status = "failed"
                     if error is None:
@@ -499,27 +529,50 @@ def _run_wave(
                     ),
                     logs_path=str(logs_path.resolve()),
                     error=error,
+                    warnings=progress_warnings,
                 )
+
+                for warning in progress_warnings:
+                    warnings.append(f"[{tool_id}] {warning}")
 
                 progress.update(
                     tool_id,
                     percent=100,
                     status=final_status,
-                    phase="done" if final_status == "completed" else "failed",
+                    phase=(
+                        "done"
+                        if final_status in {"completed", "completed_with_warnings"}
+                        else "failed"
+                    ),
                     message=f"{duration:.2f}s",
                 )
                 if state_writer is not None:
                     state_writer.update_tool(
                         tool_id,
                         status=final_status,
-                        phase="done" if final_status == "completed" else "failed",
+                        phase=(
+                            "done"
+                            if final_status
+                            in {"completed", "completed_with_warnings"}
+                            else "failed"
+                        ),
                         percent=100,
                         message=(
-                            f"{duration:.2f}s"
-                            if final_status == "completed"
+                            (
+                                f"{duration:.2f}s"
+                                if final_status == "completed"
+                                else f"{duration:.2f}s with warning(s)"
+                            )
+                            if final_status
+                            in {"completed", "completed_with_warnings"}
                             else error or "Execution failed"
                         ),
-                        error=error if final_status != "completed" else None,
+                        error=(
+                            error
+                            if final_status
+                            not in {"completed", "completed_with_warnings"}
+                            else None
+                        ),
                     )
 
                 del running[tool_id]

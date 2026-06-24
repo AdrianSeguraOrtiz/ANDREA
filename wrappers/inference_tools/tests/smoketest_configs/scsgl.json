@@ -1,0 +1,32 @@
+{
+  "param_overrides": {
+    "pos_density": 0.25,
+    "neg_density": 0.25,
+    "association_kernel": "correlation"
+  },
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "global",
+      "checks": {
+        "require_unique_unordered_pairs": true,
+        "forbid_self_loops": true
+      }
+    },
+    {
+      "name": "group_emulated_contract",
+      "extra_files": [
+        "groups.tsv"
+      ],
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "checks": {
+        "require_group_context": true,
+        "forbid_self_loops": true
+      }
+    }
+  ]
+}

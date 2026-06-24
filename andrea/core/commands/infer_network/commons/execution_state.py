@@ -689,18 +689,30 @@ class ExecutionStateWriter:
             return
         status = str(getattr(result, "status", "failed") or "failed")
         error = getattr(result, "error", None)
+        result_warnings = tuple(getattr(result, "warnings", ()) or ())
+        completed_statuses = {"completed", "completed_with_warnings"}
         self.update_tool(
             tool_id,
             status=status if status in TOOL_STATUSES else "failed",
-            phase="done" if status == "completed" else "failed",
+            phase="done" if status in completed_statuses else "failed",
             percent=100,
             message=(
-                "Completed"
-                if status == "completed"
+                (
+                    "Completed with warning(s)"
+                    if status == "completed_with_warnings"
+                    else "Completed"
+                )
+                if status in completed_statuses
                 else str(error or "Execution failed")
             ),
             error=str(error) if error else None,
         )
+        for warning in result_warnings:
+            self._add_tool_warning(tool_id, str(warning))
+        self._sync_wave_for_tool(tool_id)
+        self._sync_logical_runs()
+        self._recompute_summary()
+        self._persist()
 
     def mark_logical_result(self, result: Any) -> None:
         run_id = str(getattr(result, "tool_id", "")).strip()
@@ -709,16 +721,31 @@ class ExecutionStateWriter:
             return
         status = str(getattr(result, "status", "failed") or "failed")
         error = getattr(result, "error", None)
+        result_warnings = tuple(getattr(result, "warnings", ()) or ())
+        completed_statuses = {"completed", "completed_with_warnings"}
         logical["status"] = status if status in TOOL_STATUSES else "failed"
-        logical["phase"] = "done" if status == "completed" else "failed"
+        logical["phase"] = "done" if status in completed_statuses else "failed"
         logical["percent"] = 100
         logical["message"] = (
-            "Completed" if status == "completed" else str(error or "Execution failed")
+            (
+                "Completed with warning(s)"
+                if status == "completed_with_warnings"
+                else "Completed"
+            )
+            if status in completed_statuses
+            else str(error or "Execution failed")
         )
         if error:
             errors = logical.setdefault("errors", [])
             if str(error) not in errors:
                 errors.append(str(error))
+        for warning in result_warnings:
+            warnings = logical.setdefault("warnings", [])
+            if str(warning) not in warnings:
+                warnings.append(str(warning))
+        if logical["status"] == "completed" and logical.get("warnings"):
+            logical["status"] = "completed_with_warnings"
+            logical["message"] = "Completed with warning(s)"
         self._recompute_summary()
         self._persist()
 
