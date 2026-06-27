@@ -1,11 +1,37 @@
 [project]
 name = "ANDREA"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Platform for aggregated network discovery, simulation, inference, and benchmarking workflows."
-authors = [{ name = "Adrian Segura Ortiz", email = "adrianseor.99@uma.es" }]
+authors = [
+    { name = "Adrian Segura Ortiz", email = "adrianseor.99@uma.es" },
+    { name = "George K. Georgakilas", email = "ggeorgakilas@athenarc.gr" },
+    { name = "Theodore Dalamagas", email = "dalamag@athenarc.gr" },
+    { name = "Jose F. Aldana-Montes", email = "jfaldana@uma.es" },
+]
+maintainers = [{ name = "Adrian Segura Ortiz", email = "adrianseor.99@uma.es" }]
 license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
+keywords = [
+    "gene regulatory networks",
+    "GRN inference",
+    "benchmarking",
+    "single-cell",
+    "systems biology",
+    "bioinformatics",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 dependencies = [
     "typer>=0.23.1,<0.24.0",
     "rich>=15.0.0,<16.0.0",
@@ -26,6 +52,16 @@ dev = [
     "black>=24.0.0,<25.0.0",
     "isort>=5.13.0,<6.0.0",
 ]
+release = [
+    "build>=1.2.0,<2.0.0",
+    "twine>=6.0.0,<7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/AdrianSeguraOrtiz/ANDREA"
+Repository = "https://github.com/AdrianSeguraOrtiz/ANDREA"
+Issues = "https://github.com/AdrianSeguraOrtiz/ANDREA/issues"
+Documentation = "https://github.com/AdrianSeguraOrtiz/ANDREA/tree/main/docs"
 
 [project.scripts]
 andrea = "andrea.__main__:main"
@@ -35,6 +71,9 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["andrea*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "andrea.config.__version__" }
 
 [tool.setuptools.package-data]
 "andrea.catalog_inference_tools" = [
@@ -56,6 +95,8 @@ include = ["andrea*"]
 "andrea.catalog_simulation_data_tools" = [
     "schemas/*",
     "schemas/**/*",
+    "input_specs/*",
+    "input_specs/**/*",
     "simulators/*",
     "simulators/**/*",
 ]

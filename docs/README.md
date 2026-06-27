@@ -11,6 +11,7 @@ Current documentation priorities:
 - bundle families: `analysis`, `report`, `graphs` and `full`;
 - catalog integration playbooks for inference tools and simulators;
 - performance profiling and runtime profile interpretation.
+- release packaging and PyPI publication checks (`release.md`).
 
 `compare-networks` deserves one explicit distinction: the CLI writes complete
 portable artifacts, while the local GUI uses `comparison.sqlite` for scalable

@@ -19,6 +19,33 @@ build:
 	@$(PYTHON) -m pip install --upgrade build
 	@$(PYTHON) -m build
 
+build-package:
+	@$(PYTHON) -m pip install --upgrade build
+	@rm -rf dist
+	@$(PYTHON) -m build
+
+check-package:
+	@$(PYTHON) -m pip install --upgrade twine
+	@$(PYTHON) -m twine check dist/*
+
+smoke-wheel:
+	@test -d dist || (echo "dist/ does not exist. Run 'make build-package' first." && exit 2)
+	@tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	$(PYTHON) -m venv "$$tmp_dir/venv"; \
+	"$$tmp_dir/venv/bin/python" -m pip install --upgrade pip; \
+	"$$tmp_dir/venv/bin/python" -m pip install dist/*.whl; \
+	"$$tmp_dir/venv/bin/andrea" --help >/dev/null; \
+	echo "Wheel smoke test passed."
+
+publish-testpypi:
+	@$(PYTHON) -m pip install --upgrade twine
+	@$(PYTHON) -m twine upload --repository testpypi dist/*
+
+publish-pypi:
+	@$(PYTHON) -m pip install --upgrade twine
+	@$(PYTHON) -m twine upload dist/*
+
 clean:
 	@find . -type d -name '.mypy_cache' -exec rm -rf {} +
 	@find . -type d -name '.pytest_cache' -exec rm -rf {} +
