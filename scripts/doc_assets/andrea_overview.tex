@@ -1,0 +1,282 @@
+\definecolor{andreaBlue}{HTML}{0B78A6}
+\definecolor{andreaTeal}{HTML}{0B8F86}
+\definecolor{andreaGreen}{HTML}{2E9D57}
+\definecolor{andreaOrange}{HTML}{C56A09}
+\definecolor{andreaPurple}{HTML}{6750A4}
+\definecolor{andreaSlate}{HTML}{46566E}
+\definecolor{andreaRed}{HTML}{B42318}
+
+\begin{tikzpicture}[
+  font=\sffamily,
+  >=Latex,
+  every node/.style={align=center},
+  command/.style={
+    rounded corners=7pt,
+    draw=#1!58,
+    fill=#1!6,
+    line width=0.75pt,
+    minimum width=4.05cm,
+    minimum height=5.85cm,
+    inner sep=0pt
+  },
+  cmdtitle/.style={
+    font=\sffamily\bfseries\small,
+    text=andreaSlate,
+    text width=3.35cm
+  },
+  cmdsummary/.style={
+    font=\sffamily\scriptsize,
+    text=andreaSlate,
+    text width=3.42cm,
+    align=center
+  },
+  output/.style={
+    rounded corners=4pt,
+    draw=#1!42,
+    fill=white,
+    line width=0.45pt,
+    minimum height=0.50cm,
+    text width=3.38cm,
+    inner sep=2.5pt,
+    font=\sffamily\scriptsize
+  },
+  countbadge/.style={
+    rounded corners=4pt,
+    draw=#1!42,
+    fill=#1!7,
+    line width=0.45pt,
+    minimum height=0.42cm,
+    inner xsep=5pt,
+    inner ysep=2pt,
+    font=\sffamily\tiny\bfseries,
+    text=#1!72!black
+  },
+  brandbox/.style={
+    rounded corners=6pt,
+    draw=andreaBlue!18,
+    fill=andreaBlue!4,
+    line width=0.45pt,
+    inner xsep=12pt,
+    inner ysep=5pt
+  },
+  handoff/.style={
+    rounded corners=5pt,
+    draw=#1!46,
+    fill=white,
+    line width=0.5pt,
+    minimum height=0.66cm,
+    text width=3.15cm,
+    inner sep=3pt,
+    font=\sffamily\scriptsize
+  },
+  flow/.style={
+    ->,
+    line width=1.1pt,
+    draw=andreaSlate!68,
+    shorten >=2pt,
+    shorten <=2pt
+  },
+  handoffflow/.style={
+    ->,
+    line width=0.95pt,
+    draw=#1!78,
+    rounded corners=6pt,
+    shorten >=2pt,
+    shorten <=2pt
+  },
+  chip/.style={
+    rounded corners=3pt,
+    draw=#1!45,
+    fill=#1!10,
+    line width=0.45pt,
+    minimum height=0.40cm,
+    inner xsep=5pt,
+    inner ysep=2pt,
+    font=\sffamily\scriptsize\bfseries,
+    text=#1!75!black
+  }
+]
+
+\coordinate (p0) at (0,0);
+\coordinate (p1) at (4.55,0);
+\coordinate (p2) at (9.10,0);
+\coordinate (p3) at (13.65,0);
+
+\node[command=andreaGreen] (generate) at (p0) {};
+\node[command=andreaOrange] (infer) at (p1) {};
+\node[command=andreaPurple] (evaluate) at (p2) {};
+\node[command=andreaTeal] (compare) at (p3) {};
+
+\node[
+  brandbox,
+  font=\sffamily\bfseries\Large,
+  text=andreaSlate
+] (brand) at (6.82,3.95) {A\kern0.16em N\kern0.16em D\kern0.16em R\kern0.16em E\kern0.16em A};
+\node[
+  font=\sffamily\scriptsize,
+  text=andreaSlate
+] at ($(brand.south)+(0,-0.22)$) {standardized and reproducible GRN benchmarking};
+
+\draw[flow] ($(generate.east)+(0,0.78)$) -- ($(infer.west)+(0,0.78)$);
+\draw[flow] ($(infer.east)+(0,0.78)$) -- ($(evaluate.west)+(0,0.78)$);
+\draw[flow] ($(evaluate.east)+(0,0.78)$) -- ($(compare.west)+(0,0.78)$);
+
+% -------------------------------------------------------------------------
+% generate-data icon: simulators produce expression matrix and truth network.
+\begin{scope}[shift={($(generate.north)+(0,-1.00)$)}, scale=0.35]
+  \foreach \x/\y in {-1.45/0.38,-1.02/-0.05,-1.38/-0.52,-0.65/-0.52} {
+    \fill[andreaGreen!18] (\x,\y) circle (0.19);
+    \draw[andreaGreen!80, line width=0.9pt] (\x,\y) circle (0.19);
+  }
+  \draw[->, draw=andreaSlate!55, line width=0.9pt] (-0.32,-0.10) -- (0.28,-0.10);
+  \draw[draw=andreaGreen!80, fill=white, line width=0.9pt] (0.48,-0.72) rectangle (1.35,0.72);
+  \foreach \x in {0.77,1.06} {
+    \draw[draw=andreaGreen!35, line width=0.5pt] (\x,-0.72) -- (\x,0.72);
+  }
+  \foreach \y in {-0.36,0,0.36} {
+    \draw[draw=andreaGreen!35, line width=0.5pt] (0.48,\y) -- (1.35,\y);
+  }
+  \draw[draw=andreaGreen!78, line width=0.9pt] (1.75,0.52) -- (2.16,0.0) -- (1.82,-0.62) -- (1.75,0.52);
+  \fill[andreaGreen!78] (1.75,0.52) circle (0.07);
+  \fill[andreaGreen!78] (2.16,0.0) circle (0.07);
+  \fill[andreaGreen!78] (1.82,-0.62) circle (0.07);
+\end{scope}
+
+\node[chip=andreaGreen] at ($(generate.north)+(0,-0.18)$) {\texttt{generate-data}};
+\node[cmdtitle] at ($(generate.north)+(0,-1.82)$) {Benchmark generation};
+\node[cmdsummary] at ($(generate.north)+(0,-2.58)$)
+  {Simulate expression and ground-truth networks under canonical profiles.};
+\node[output=andreaGreen] at ($(generate.north)+(0,-3.52)$)
+  {\texttt{expression.tsv}\\\texttt{truth/networks.csv}};
+\node[output=andreaGreen] at ($(generate.north)+(0,-4.38)$)
+  {\texttt{ground-truth-manifest.json}\\dataset manifests and extras};
+\node[countbadge=andreaGreen] at ($(generate.south)+(0,0.30)$)
+  {__ANDREA_SIMULATOR_COUNT__ simulators};
+% -------------------------------------------------------------------------
+% infer-network icon: Docker tools generate and merge networks.
+\begin{scope}[shift={($(infer.north)+(0,-1.00)$)}, scale=0.35]
+  \draw[rounded corners=2pt, draw=andreaOrange!82, fill=white, line width=0.9pt]
+    (-1.78,-0.75) rectangle (-0.7,0.75);
+  \foreach \y in {-0.38,0,0.38} {
+    \draw[draw=andreaOrange!62, line width=0.75pt] (-1.55,\y) -- (-0.92,\y);
+  }
+  \foreach \x/\y in {0.0/0.58,0.7/0.2,0.35/-0.58,1.23/0.58} {
+    \fill[andreaOrange!16] (\x,\y) circle (0.15);
+    \draw[andreaOrange!82, line width=0.9pt] (\x,\y) circle (0.15);
+  }
+  \draw[draw=andreaSlate!58, line width=0.85pt] (0.0,0.58) -- (0.7,0.2) -- (0.35,-0.58) -- (0.0,0.58);
+  \draw[draw=andreaSlate!58, line width=0.85pt] (0.7,0.2) -- (1.23,0.58);
+  \draw[->, draw=andreaSlate!55, line width=0.9pt] (-0.48,0) -- (-0.12,0);
+\end{scope}
+
+\node[chip=andreaOrange] at ($(infer.north)+(0,-0.18)$) {\texttt{infer-network}};
+\node[cmdtitle] at ($(infer.north)+(0,-1.82)$) {Inference orchestration};
+\node[cmdsummary] at ($(infer.north)+(0,-2.58)$)
+  {Run catalog or external Docker tools and merge context-aware networks.};
+\node[output=andreaOrange] at ($(infer.north)+(0,-3.52)$)
+  {\texttt{network.csv} per run\\\texttt{merged\_network\_*.csv}};
+\node[output=andreaOrange] at ($(infer.north)+(0,-4.22)$)
+  {Cytoscape/Gephi exports\\\texttt{GEXF}, \texttt{GraphML}};
+\node[output=andreaOrange] at ($(infer.north)+(0,-4.92)$)
+  {\texttt{run\_report.json}\\\texttt{plan.json} and logs};
+\node[countbadge=andreaOrange] at ($(infer.south)+(0,0.30)$)
+  {__ANDREA_INFERENCE_TOOL_COUNT__ inference tools};
+% -------------------------------------------------------------------------
+% evaluate-inference icon: inferred network plus truth into metrics.
+\begin{scope}[shift={($(evaluate.north)+(0,-1.00)$)}, scale=0.35]
+  \draw[draw=andreaPurple!76, line width=0.8pt] (-1.75,0.45) -- (-1.18,0.05) -- (-1.48,-0.58) -- (-1.75,0.45);
+  \foreach \x/\y in {-1.75/0.45,-1.18/0.05,-1.48/-0.58} {
+    \fill[white] (\x,\y) circle (0.12);
+    \draw[andreaPurple!76, line width=0.8pt] (\x,\y) circle (0.12);
+  }
+  \draw[->, draw=andreaSlate!55, line width=0.9pt] (-0.85,0) -- (-0.34,0);
+  \draw[->, draw=andreaSlate!55, line width=0.9pt] (-0.02,-0.72) -- (-0.02,0.78);
+  \draw[->, draw=andreaSlate!55, line width=0.9pt] (-0.02,-0.72) -- (1.34,-0.72);
+  \fill[andreaPurple!28] (0.18,-0.72) rectangle (0.45,0.06);
+  \fill[andreaPurple!47] (0.60,-0.72) rectangle (0.87,0.48);
+  \fill[andreaPurple!63] (1.02,-0.72) rectangle (1.29,-0.12);
+\end{scope}
+
+\node[chip=andreaPurple] at ($(evaluate.north)+(0,-0.18)$) {\texttt{evaluate-inference}};
+\node[cmdtitle] at ($(evaluate.north)+(0,-1.82)$) {Ground-truth evaluation};
+\node[cmdsummary] at ($(evaluate.north)+(0,-2.52)$)
+  {Score inferred networks against simulator truth by context and level.};
+\node[output=andreaPurple] at ($(evaluate.north)+(0,-3.42)$)
+  {\texttt{metrics.csv}\\\texttt{pairings.csv}};
+\node[output=andreaPurple] at ($(evaluate.north)+(0,-4.25)$)
+  {\texttt{evaluation\_report.json}\\interactive/static view};
+\node[countbadge=andreaPurple] at ($(evaluate.south)+(0,0.30)$)
+  {AUROC, AUPR, F1, EPR};
+
+% -------------------------------------------------------------------------
+% compare-networks icon: distance matrix and 2D map.
+\begin{scope}[shift={($(compare.north)+(0,-1.00)$)}, scale=0.35]
+  \draw[draw=andreaTeal!78, fill=white, line width=0.9pt] (-1.75,-0.70) rectangle (-0.45,0.70);
+  \foreach \x in {-1.32,-0.88} {
+    \draw[draw=andreaTeal!32, line width=0.5pt] (\x,-0.70) -- (\x,0.70);
+  }
+  \foreach \y in {-0.25,0.25} {
+    \draw[draw=andreaTeal!32, line width=0.5pt] (-1.75,\y) -- (-0.45,\y);
+  }
+  \fill[andreaTeal!55] (-1.32,-0.25) rectangle (-0.88,0.25);
+  \fill[andreaTeal!35] (-0.88,-0.70) rectangle (-0.45,-0.25);
+  \foreach \x/\y in {0.15/0.45,0.88/0.15,0.55/-0.48,1.45/0.58} {
+    \fill[andreaTeal!14] (\x,\y) circle (0.13);
+    \draw[andreaTeal!82, line width=0.9pt] (\x,\y) circle (0.13);
+  }
+  \draw[draw=andreaTeal!75, line width=0.8pt] (0.15,0.45) -- (0.88,0.15) -- (0.55,-0.48);
+  \draw[draw=andreaTeal!75, line width=0.8pt] (0.88,0.15) -- (1.45,0.58);
+\end{scope}
+
+\node[chip=andreaTeal] at ($(compare.north)+(0,-0.18)$) {\texttt{compare-networks}};
+\node[cmdtitle] at ($(compare.north)+(0,-1.82)$) {Cross-run comparison};
+\node[cmdsummary] at ($(compare.north)+(0,-2.52)$)
+  {Compare tools, sources and contexts with distance maps and edge differences.};
+\node[output=andreaTeal] at ($(compare.north)+(0,-3.42)$)
+  {\texttt{distances.csv}\\\texttt{edge\_scores.csv}};
+\node[output=andreaTeal] at ($(compare.north)+(0,-4.25)$)
+  {\texttt{comparison.sqlite}\\\texttt{comparison\_report.json}};
+\node[countbadge=andreaTeal] at ($(compare.south)+(0,0.30)$)
+  {distance maps + edge differences};
+
+% -------------------------------------------------------------------------
+% Handoff rail: explicit non-crossing data dependencies between commands.
+\node[
+  rounded corners=7pt,
+  draw=andreaSlate!28,
+  fill=andreaSlate!4,
+  minimum width=17.55cm,
+  minimum height=2.35cm,
+  inner sep=0pt
+] (railbox) at (6.82,-4.70) {};
+\node[
+  font=\sffamily\scriptsize\bfseries,
+  text=andreaSlate,
+  anchor=west
+] at ($(railbox.north west)+(0.25,-0.22)$) {Strict handoff bundles and files};
+
+\node[handoff=andreaGreen] (truth) at ($(railbox.center)+(-6.82,-0.05)$)
+  {ground truth\\\texttt{truth/networks.csv}};
+\node[handoff=andreaOrange] (merged) at ($(railbox.center)+(-2.27,-0.05)$)
+  {inferred networks\\\texttt{merged\_network\_*.csv}};
+\node[handoff=andreaPurple] (evalmetrics) at ($(railbox.center)+(2.27,-0.05)$)
+  {metric overlay\\\texttt{evaluation\_report.json}};
+\node[handoff=andreaTeal] (query) at ($(railbox.center)+(6.82,-0.05)$)
+  {scalable exploration\\CSV + SQLite store};
+
+\draw[handoffflow=andreaGreen] (truth.north) |- ($(evalmetrics.north)+(0,0.32)$) -| (evalmetrics.north);
+\draw[handoffflow=andreaOrange] ($(merged.east)+(0,0.18)$) -- ($(evalmetrics.west)+(0,0.18)$);
+\draw[handoffflow=andreaOrange] (merged.south) |- ($(query.south)+(0,-0.52)$) -| (query.south);
+\draw[handoffflow=andreaPurple] ($(evalmetrics.east)+(0,0.18)$) -- ($(query.west)+(0,0.18)$);
+
+\begin{scope}[on background layer]
+  \node[
+    rounded corners=9pt,
+    draw=andreaSlate!22,
+    fill=white,
+    fit=(brand)(generate)(infer)(evaluate)(compare)(railbox),
+    inner sep=8pt
+  ] {};
+\end{scope}
+
+\end{tikzpicture}

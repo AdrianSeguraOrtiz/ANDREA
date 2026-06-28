@@ -51,6 +51,9 @@ clean:
 	@find . -type d -name '.pytest_cache' -exec rm -rf {} +
 	@find . -type d -name '__pycache__' -exec rm -rf {} +
 
+render-doc-assets:
+	@$(PYTHON) scripts/render_doc_assets.py
+
 black:
 	@$(PYTHON) -m isort --profile black --skip-glob 'wrappers/**/repo/**' --skip-glob 'wrappers/**/papers/**' andrea wrappers tests
 	@$(PYTHON) -m black --extend-exclude 'wrappers/.*/(repo|papers)/' andrea wrappers tests
