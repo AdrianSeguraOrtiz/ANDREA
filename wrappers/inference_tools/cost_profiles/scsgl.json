@@ -1,0 +1,43 @@
+{
+  "cost_relevant_params": [
+    "pos_density",
+    "neg_density",
+    "association_kernel"
+  ],
+  "profiles": [
+    {
+      "id": "global_correlation_density_025",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "pos_density": 0.25,
+        "neg_density": 0.25,
+        "association_kernel": "correlation"
+      }
+    },
+    {
+      "id": "global_dotprod_density_025",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "pos_density": 0.25,
+        "neg_density": 0.25,
+        "association_kernel": "dotprod"
+      }
+    },
+    {
+      "id": "group_emulated_correlation_density_025_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "pos_density": 0.25,
+        "neg_density": 0.25,
+        "association_kernel": "correlation"
+      }
+    }
+  ]
+}

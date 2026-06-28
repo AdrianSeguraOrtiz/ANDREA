@@ -1,0 +1,364 @@
+{
+  "cost_relevant_params": [
+    "input_bundle",
+    "run_command",
+    "generation.num_cells",
+    "preprocessing.library_size",
+    "perturbation.target_source",
+    "perturbation.perturbation_values"
+  ],
+  "input_source_params": [
+    "input_bundle"
+  ],
+  "profiles": [
+    {
+      "id": "single_cell_cells_observational_global_toy4_default",
+      "sizes": [
+        "4x8"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 4
+        },
+        "cells": "generation.num_cells"
+      },
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "input_bundle": "toy_4gene",
+        "run_command": "generate",
+        "generation": {
+          "num_cells": 8
+        },
+        "preprocessing": {
+          "library_size": 100
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_observational_global_toy4_full_extras",
+      "sizes": [
+        "4x8"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 4
+        },
+        "cells": "generation.num_cells"
+      },
+      "requested_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "input_bundle": "toy_4gene",
+        "run_command": "generate",
+        "generation": {
+          "num_cells": 8
+        },
+        "preprocessing": {
+          "library_size": 100
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_observational_global_toy20_full_extras",
+      "sizes": [
+        "20x8"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 20
+        },
+        "cells": "generation.num_cells"
+      },
+      "requested_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "input_bundle": "toy_20gene",
+        "run_command": "generate",
+        "generation": {
+          "num_cells": 8
+        },
+        "preprocessing": {
+          "library_size": 100
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_observational_global_toy50_full_extras",
+      "sizes": [
+        "50x8"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 50
+        },
+        "cells": "generation.num_cells"
+      },
+      "requested_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "input_bundle": "toy_50gene",
+        "run_command": "generate",
+        "generation": {
+          "num_cells": 8
+        },
+        "preprocessing": {
+          "library_size": 100
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_observational_global_custom_files_full_extras",
+      "sizes": [
+        "4x5"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 4
+        },
+        "cells": "generation.num_cells"
+      },
+      "requested_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "input_bundle": "custom_files",
+        "run_command": "generate",
+        "generation": {
+          "num_cells": 5
+        },
+        "preprocessing": {
+          "library_size": 100
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "inputs": {
+        "groundgan_reference_h5ad": "../tests/fixtures/groundgan/reference.h5ad",
+        "groundgan_causal_graph_pickle": "../tests/fixtures/groundgan/causal_graph.pkl",
+        "groundgan_model_checkpoint": "../tests/fixtures/groundgan/model_checkpoint.pth",
+        "groundgan_causal_controller_checkpoint": "../tests/fixtures/groundgan/causal_controller_checkpoint.pth"
+      }
+    },
+    {
+      "id": "single_cell_cells_perturbational_global_toy4_full_extras",
+      "sizes": [
+        "4x6"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 4
+        },
+        "cells": "generation.num_cells"
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "input_bundle": "toy_4gene",
+        "run_command": "perturb",
+        "generation": {
+          "num_cells": 6
+        },
+        "preprocessing": {
+          "library_size": 100
+        },
+        "perturbation": {
+          "target_source": "first_regulators",
+          "tf_targets": [],
+          "perturbation_values": [
+            0
+          ]
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_perturbational_global_toy20_full_extras",
+      "sizes": [
+        "20x6"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 20
+        },
+        "cells": "generation.num_cells"
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "input_bundle": "toy_20gene",
+        "run_command": "perturb",
+        "generation": {
+          "num_cells": 6
+        },
+        "preprocessing": {
+          "library_size": 100
+        },
+        "perturbation": {
+          "target_source": "first_regulators",
+          "tf_targets": [],
+          "perturbation_values": [
+            0
+          ]
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_perturbational_global_toy50_full_extras",
+      "sizes": [
+        "50x6"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 50
+        },
+        "cells": "generation.num_cells"
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "input_bundle": "toy_50gene",
+        "run_command": "perturb",
+        "generation": {
+          "num_cells": 6
+        },
+        "preprocessing": {
+          "library_size": 100
+        },
+        "perturbation": {
+          "target_source": "first_regulators",
+          "tf_targets": [],
+          "perturbation_values": [
+            0
+          ]
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    }
+  ]
+}

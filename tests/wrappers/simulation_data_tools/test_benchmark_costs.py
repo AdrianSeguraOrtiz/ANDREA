@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -39,7 +40,16 @@ TRAJECTORY_AXES = {
     "experimental_design": "trajectory",
 }
 GLOBAL_TRUTH = {"contexts": ["global"]}
-ACTIVE_SIMULATORS = ("boolode", "dyngen", "scmultisim", "sergio")
+ACTIVE_SIMULATORS = (
+    "boolode",
+    "dyngen",
+    "genenetweaver",
+    "genespider2",
+    "groundgan",
+    "scmultisim",
+    "sergio",
+    "syntren",
+)
 
 
 def _load_script(module_name: str, path: Path):
@@ -265,6 +275,56 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
 
                 self.assertEqual(supported - configured, set())
 
+    def test_cost_profile_configs_cover_supported_extras(self) -> None:
+        for simulator_id in ACTIVE_SIMULATORS:
+            with self.subTest(simulator_id=simulator_id):
+                spec = json.loads(
+                    (
+                        CATALOG_SIMULATORS_ROOT
+                        / simulator_id
+                        / "simulatorspec.json"
+                    ).read_text(encoding="utf-8")
+                )
+                profiles = json.loads(
+                    (COST_PROFILES_DIR / f"{simulator_id}.json").read_text(
+                        encoding="utf-8"
+                    )
+                )["profiles"]
+                for capability in spec["capabilities"]:
+                    data_axes = capability["data_axes"]
+                    truth_requirements = capability["truth_requirements"]
+                    required_extras = set(
+                        benchmark_costs.required_extras_for_request(
+                            data_axes,
+                            truth_requirements,
+                        )
+                    )
+                    supported_extras = (
+                        set(capability.get("native_extras", []))
+                        | set(capability.get("derivable_extras", []))
+                        | required_extras
+                    )
+                    matched_profiles = [
+                        profile
+                        for profile in profiles
+                        if profile["data_axes"] == data_axes
+                        and profile["truth_requirements"] == truth_requirements
+                    ]
+                    covered_extras: set[str] = set()
+                    for profile in matched_profiles:
+                        covered_extras.update(profile.get("requested_extras", []))
+                        covered_extras.update(required_extras)
+
+                    self.assertEqual(
+                        supported_extras - covered_extras,
+                        set(),
+                        msg=(
+                            simulator_id,
+                            data_axes,
+                            truth_requirements,
+                        ),
+                    )
+
     def test_column_truth_cost_profiles_record_group_dimensions(self) -> None:
         for simulator_id in ACTIVE_SIMULATORS:
             with self.subTest(simulator_id=simulator_id):
@@ -345,6 +405,186 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         self.assertEqual(profile.dimension_profile["cells_param"]["multiplier_param"], "number_bins")
         self.assertEqual(params["number_sc"], 2)
         self.assertEqual(params["number_genes"], 3)
+
+    def test_benchmark_thread_filter_respects_simulatorspec_threading(self) -> None:
+        boolode_spec = json.loads(
+            (CATALOG_SIMULATORS_ROOT / "boolode" / "simulatorspec.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        dyngen_spec = json.loads(
+            (CATALOG_SIMULATORS_ROOT / "dyngen" / "simulatorspec.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            benchmark_costs.filter_threads_for_simulator(
+                simulator_id="boolode",
+                spec=boolode_spec,
+                requested_threads=[1, 2, 4, 8],
+            ),
+            [1],
+        )
+        self.assertEqual(
+            benchmark_costs.filter_threads_for_simulator(
+                simulator_id="dyngen",
+                spec=dyngen_spec,
+                requested_threads=[1, 2, 4, 8],
+            ),
+            [1, 2, 4, 8],
+        )
+
+    def test_run_filters_serial_simulator_threads_before_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            catalog_root = tmp_root / "catalog_simulators"
+            wrappers_root = tmp_root / "wrappers"
+            workdir = tmp_root / "benchmark_work"
+            (catalog_root / "boolode").mkdir(parents=True)
+            (wrappers_root / "boolode").mkdir(parents=True)
+            shutil.copy2(
+                CATALOG_SIMULATORS_ROOT / "boolode" / "simulatorspec.json",
+                catalog_root / "boolode" / "simulatorspec.json",
+            )
+
+            with (
+                patch.object(
+                    benchmark_costs,
+                    "run_container_once",
+                    return_value=("ok", 1.25, 4321, None, ""),
+                ) as run_container,
+                patch.object(
+                    benchmark_costs,
+                    "allocate_simulator_workdir",
+                    return_value=(workdir, None),
+                ),
+            ):
+                exit_code = benchmark_costs.run(
+                    [
+                        "--catalog-simulators-root",
+                        str(catalog_root),
+                        "--wrappers-root",
+                        str(wrappers_root),
+                        "--param-overrides-dir",
+                        str(PARAM_OVERRIDES_DIR),
+                        "--cost-profiles-dir",
+                        str(COST_PROFILES_DIR),
+                        "--simulator",
+                        "boolode",
+                        "--profile",
+                        "single_cell_cells_trajectory_global_custom_default",
+                        "--threads",
+                        "1,2,4",
+                        "--ram-gb",
+                        "1",
+                        "--skip-build",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(run_container.call_count, 1)
+            payload = json.loads(
+                (catalog_root / "boolode" / "cost.json").read_text(encoding="utf-8")
+            )
+            profile = payload["profiles"][0]
+            self.assertEqual(profile["benchmark_config"]["threads_tested"], [1])
+            self.assertEqual(profile["runtime_points"][0]["threads"], 1)
+
+    def test_run_plan_only_does_not_build_or_execute(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            catalog_root = tmp_root / "catalog_simulators"
+            wrappers_root = tmp_root / "wrappers"
+            (catalog_root / "boolode").mkdir(parents=True)
+            (wrappers_root / "boolode").mkdir(parents=True)
+            shutil.copy2(
+                CATALOG_SIMULATORS_ROOT / "boolode" / "simulatorspec.json",
+                catalog_root / "boolode" / "simulatorspec.json",
+            )
+
+            with (
+                patch.object(benchmark_costs, "build_image") as build_image,
+                patch.object(benchmark_costs, "run_container_once") as run_container,
+            ):
+                exit_code = benchmark_costs.run(
+                    [
+                        "--catalog-simulators-root",
+                        str(catalog_root),
+                        "--wrappers-root",
+                        str(wrappers_root),
+                        "--param-overrides-dir",
+                        str(PARAM_OVERRIDES_DIR),
+                        "--cost-profiles-dir",
+                        str(COST_PROFILES_DIR),
+                        "--simulator",
+                        "boolode",
+                        "--profile",
+                        "single_cell_cells_trajectory_global_custom_default",
+                        "--threads",
+                        "1,2",
+                        "--ram-gb",
+                        "1",
+                        "--plan-only",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            build_image.assert_not_called()
+            run_container.assert_not_called()
+            self.assertFalse((catalog_root / "boolode" / "cost.json").exists())
+
+    def test_run_container_timeout_removes_container(self) -> None:
+        profile = benchmark_costs.SimulatorBenchmarkProfile(
+            simulator_id="boolode",
+            profile_id="profile",
+            profile="single_cell_cells_trajectory_global",
+            data_axes=copy.deepcopy(TRAJECTORY_AXES),
+            truth_requirements=copy.deepcopy(GLOBAL_TRUTH),
+            sizes=None,
+            requested_extras=(),
+            effective_extras=(),
+            params={},
+            params_profile={},
+            runtime_resources_profile={},
+            dimension_profile={},
+            input_profile={},
+            input_paths={},
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            workdir = Path(tmp)
+            docker_run_timeout = subprocess.TimeoutExpired(
+                cmd=["docker", "run"],
+                timeout=1,
+            )
+            cleanup_ok = subprocess.CompletedProcess(
+                args=["docker", "rm", "-f", "container"],
+                returncode=0,
+                stdout="",
+                stderr="",
+            )
+            with patch.object(
+                benchmark_costs,
+                "run_cmd",
+                side_effect=[docker_run_timeout, cleanup_ok],
+            ) as run_cmd:
+                status, _elapsed, _bytes, _memory, error = benchmark_costs.run_container_once(
+                    image_tag="image",
+                    workdir=workdir,
+                    simulator_id="boolode",
+                    profile=profile,
+                    params={},
+                    threads=1,
+                    ram_gb=1,
+                    seed=1,
+                    timeout_s=1,
+                )
+
+            self.assertEqual(status, "timeout")
+            self.assertIn("Run exceeded timeout 1s", error)
+            self.assertGreaterEqual(run_cmd.call_count, 2)
+            cleanup_cmd = run_cmd.call_args_list[1].args[0]
+            self.assertEqual(cleanup_cmd[:3], ["docker", "rm", "-f"])
 
     def test_run_writes_selected_simulator_cost_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -509,6 +749,35 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         )
 
         self.assertTrue(any("missing profile for capability" in item for item in errors))
+
+    def test_validator_rejects_threads_tested_incompatible_with_simulatorspec(self) -> None:
+        boolode_spec = json.loads(
+            (CATALOG_SIMULATORS_ROOT / "boolode" / "simulatorspec.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        profile = {
+            "benchmark_config": {
+                "threads_tested": [1, 2],
+            },
+            "runtime_points": [
+                {"threads": 1},
+                {"threads": 2},
+            ],
+        }
+
+        errors = validate_simulator_costs.semantic_runtime_errors(
+            spec=boolode_spec,
+            runtime_profile={
+                "threading_supported": False,
+                "max_threads": 1,
+            },
+            profile=profile,
+            prefix="profiles[1]",
+        )
+
+        self.assertTrue(any("threads_tested" in item for item in errors), errors)
+        self.assertTrue(any("runtime_points[2].threads" in item for item in errors), errors)
 
 
 if __name__ == "__main__":

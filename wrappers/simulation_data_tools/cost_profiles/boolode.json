@@ -102,6 +102,48 @@
           "group"
         ]
       }
+    },
+    {
+      "id": "single_cell_cells_trajectory_global_custom_full_extras",
+      "sizes": [
+        "3x3"
+      ],
+      "requested_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "inputs": {
+        "boolode_boolean_model": "../tests/fixtures/boolode/boolean_model.tsv",
+        "boolode_initial_conditions": "../tests/fixtures/boolode/initial_conditions.tsv",
+        "boolode_interaction_strengths": "../tests/fixtures/boolode/interaction_strengths.tsv"
+      },
+      "param_overrides": {
+        "model_preset": "custom_files",
+        "model_type": "hill",
+        "simulation_time": 0.08,
+        "n_clusters": 1,
+        "sample_cells": false,
+        "sample_parameters": false,
+        "integration_step_size": 0.01,
+        "dropout": {
+          "enabled": false
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
     }
   ]
 }

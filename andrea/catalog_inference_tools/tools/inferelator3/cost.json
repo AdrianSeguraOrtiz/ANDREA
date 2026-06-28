@@ -34,11 +34,13 @@
         "execution_profile": {
           "mode": "global",
           "physical_task_policy": "single",
-          "group_count": 0
+          "group_count": 0,
+          "aggregation_step": "none"
         },
         "input_profile": {
           "column_kind": "samples",
           "expression_profile": "synthetic_benchmark",
+          "gene_id_source": "synthetic",
           "extras_provided": [
             "prior_grn",
             "tf_list"
@@ -52,6 +54,9 @@
           "tf_count_policy": "max(3, genes/5)",
           "prior_density": 0.05,
           "group_count": 0,
+          "has_tf_list": true,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
           "notes": [
             "Resolved by benchmark_profiles.py from ToolSpec defaults."
           ]
@@ -98,8 +103,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.223768,
-          "seconds_p90": 3.223768
+          "seconds_p50": 2.997174,
+          "seconds_p90": 2.997174,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -116,8 +134,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.127744,
-          "seconds_p90": 3.127744
+          "seconds_p50": 2.989073,
+          "seconds_p90": 2.989073,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -134,8 +165,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.187805,
-          "seconds_p90": 3.187805
+          "seconds_p50": 3.102386,
+          "seconds_p90": 3.102386,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -152,8 +196,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.150971,
-          "seconds_p90": 5.150971
+          "seconds_p50": 5.189849,
+          "seconds_p90": 5.189849,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -170,8 +227,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.169493,
-          "seconds_p90": 5.169493
+          "seconds_p50": 5.191115,
+          "seconds_p90": 5.191115,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -188,8 +258,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.218072,
-          "seconds_p90": 5.218072
+          "seconds_p50": 5.249737,
+          "seconds_p90": 5.249737,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -206,8 +289,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.106866,
-          "seconds_p90": 5.106866
+          "seconds_p50": 5.145653,
+          "seconds_p90": 5.145653,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -224,8 +320,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.369081,
-          "seconds_p90": 5.369081
+          "seconds_p50": 5.113961,
+          "seconds_p90": 5.113961,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -242,8 +351,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.206131,
-          "seconds_p90": 5.206131
+          "seconds_p50": 5.214594,
+          "seconds_p90": 5.214594,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -260,8 +382,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.927506,
-          "seconds_p90": 5.927506
+          "seconds_p50": 6.209084,
+          "seconds_p90": 6.209084,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -278,8 +413,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.04093,
-          "seconds_p90": 5.04093
+          "seconds_p50": 6.161869,
+          "seconds_p90": 6.161869,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -296,8 +444,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.950658,
-          "seconds_p90": 5.950658
+          "seconds_p50": 6.30785,
+          "seconds_p90": 6.30785,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -314,8 +475,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.51538,
-          "seconds_p90": 3.51538
+          "seconds_p50": 3.432282,
+          "seconds_p90": 3.432282,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -332,8 +506,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.586504,
-          "seconds_p90": 3.586504
+          "seconds_p50": 3.373154,
+          "seconds_p90": 3.373154,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -350,8 +537,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.619096,
-          "seconds_p90": 3.619096
+          "seconds_p50": 3.38575,
+          "seconds_p90": 3.38575,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -368,8 +568,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.483548,
-          "seconds_p90": 5.483548
+          "seconds_p50": 5.413339,
+          "seconds_p90": 5.413339,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -386,8 +599,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.461227,
-          "seconds_p90": 5.461227
+          "seconds_p50": 5.486044,
+          "seconds_p90": 5.486044,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -404,8 +630,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.308306,
-          "seconds_p90": 5.308306
+          "seconds_p50": 5.490677,
+          "seconds_p90": 5.490677,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -422,8 +661,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.267874,
-          "seconds_p90": 5.267874
+          "seconds_p50": 5.416543,
+          "seconds_p90": 5.416543,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -440,8 +692,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.605579,
-          "seconds_p90": 5.605579
+          "seconds_p50": 5.402149,
+          "seconds_p90": 5.402149,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -458,8 +723,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.518095,
-          "seconds_p90": 5.518095
+          "seconds_p50": 5.331912,
+          "seconds_p90": 5.331912,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -476,8 +754,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.047008,
-          "seconds_p90": 6.047008
+          "seconds_p50": 6.507071,
+          "seconds_p90": 6.507071,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -494,8 +785,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.058524,
-          "seconds_p90": 6.058524
+          "seconds_p50": 6.172983,
+          "seconds_p90": 6.172983,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -512,8 +816,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.615231,
-          "seconds_p90": 5.615231
+          "seconds_p50": 6.585067,
+          "seconds_p90": 6.585067,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -530,8 +847,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 4.906199,
-          "seconds_p90": 4.906199
+          "seconds_p50": 4.659559,
+          "seconds_p90": 4.659559,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -548,8 +878,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 4.816747,
-          "seconds_p90": 4.816747
+          "seconds_p50": 4.621477,
+          "seconds_p90": 4.621477,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -566,8 +909,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 4.850691,
-          "seconds_p90": 4.850691
+          "seconds_p50": 4.637409,
+          "seconds_p90": 4.637409,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -584,8 +940,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.358855,
-          "seconds_p90": 6.358855
+          "seconds_p50": 6.226403,
+          "seconds_p90": 6.226403,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -602,8 +971,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.305566,
-          "seconds_p90": 6.305566
+          "seconds_p50": 6.276711,
+          "seconds_p90": 6.276711,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -620,8 +1002,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.331508,
-          "seconds_p90": 6.331508
+          "seconds_p50": 6.272963,
+          "seconds_p90": 6.272963,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -638,8 +1033,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.595636,
-          "seconds_p90": 5.595636
+          "seconds_p50": 5.89283,
+          "seconds_p90": 5.89283,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -656,8 +1064,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.691188,
-          "seconds_p90": 5.691188
+          "seconds_p50": 5.837578,
+          "seconds_p90": 5.837578,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -674,8 +1095,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.494503,
-          "seconds_p90": 5.494503
+          "seconds_p50": 5.866804,
+          "seconds_p90": 5.866804,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -692,8 +1126,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.740799,
-          "seconds_p90": 5.740799
+          "seconds_p50": 7.048165,
+          "seconds_p90": 7.048165,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -710,8 +1157,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.810773,
-          "seconds_p90": 5.810773
+          "seconds_p50": 6.874419,
+          "seconds_p90": 6.874419,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -728,8 +1188,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.39048,
-          "seconds_p90": 5.39048
+          "seconds_p50": 6.826319,
+          "seconds_p90": 6.826319,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         }
       ]
     },
@@ -766,11 +1239,13 @@
         "execution_profile": {
           "mode": "group_native",
           "physical_task_policy": "native_grouped",
-          "group_count": 2
+          "group_count": 2,
+          "aggregation_step": "none"
         },
         "input_profile": {
           "column_kind": "cells",
           "expression_profile": "synthetic_single_cell_benchmark",
+          "gene_id_source": "synthetic",
           "extras_provided": [
             "groups",
             "prior_grn",
@@ -787,6 +1262,9 @@
           "tf_count_policy": "max(3, genes/5)",
           "prior_density": 0.05,
           "group_count": 2,
+          "has_tf_list": true,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
           "notes": [
             "Resolved by benchmark_profiles.py from ToolSpec defaults."
           ]
@@ -833,8 +1311,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 13.546024,
-          "seconds_p90": 13.546024
+          "seconds_p50": 13.178785,
+          "seconds_p90": 13.178785,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -851,8 +1342,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 13.493904,
-          "seconds_p90": 13.493904
+          "seconds_p50": 13.102944,
+          "seconds_p90": 13.102944,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -869,8 +1373,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 13.587138,
-          "seconds_p90": 13.587138
+          "seconds_p50": 13.07209,
+          "seconds_p90": 13.07209,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -887,8 +1404,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.970939,
-          "seconds_p90": 10.970939
+          "seconds_p50": 11.032674,
+          "seconds_p90": 11.032674,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -905,8 +1435,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.970157,
-          "seconds_p90": 10.970157
+          "seconds_p50": 11.13454,
+          "seconds_p90": 11.13454,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -923,8 +1466,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.785238,
-          "seconds_p90": 10.785238
+          "seconds_p50": 10.964325,
+          "seconds_p90": 10.964325,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -941,8 +1497,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 8.240942,
-          "seconds_p90": 8.240942
+          "seconds_p50": 8.294073,
+          "seconds_p90": 8.294073,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -959,8 +1528,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 8.156162,
-          "seconds_p90": 8.156162
+          "seconds_p50": 8.236333,
+          "seconds_p90": 8.236333,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -977,8 +1559,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 8.128124,
-          "seconds_p90": 8.128124
+          "seconds_p50": 8.332966,
+          "seconds_p90": 8.332966,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -995,8 +1590,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.704637,
-          "seconds_p90": 6.704637
+          "seconds_p50": 8.188727,
+          "seconds_p90": 8.188727,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -1013,8 +1621,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 7.737697,
-          "seconds_p90": 7.737697
+          "seconds_p50": 8.355645,
+          "seconds_p90": 8.355645,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -1031,8 +1652,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 7.013226,
-          "seconds_p90": 7.013226
+          "seconds_p50": 8.345074,
+          "seconds_p90": 8.345074,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -1049,8 +1683,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 33.715433,
-          "seconds_p90": 33.715433
+          "seconds_p50": 33.510778,
+          "seconds_p90": 33.510778,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -1067,8 +1714,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 33.862474,
-          "seconds_p90": 33.862474
+          "seconds_p50": 33.568366,
+          "seconds_p90": 33.568366,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -1085,8 +1745,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 33.938254,
-          "seconds_p90": 33.938254
+          "seconds_p50": 33.224926,
+          "seconds_p90": 33.224926,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -1103,8 +1776,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 21.944897,
-          "seconds_p90": 21.944897
+          "seconds_p50": 22.09303,
+          "seconds_p90": 22.09303,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -1121,8 +1807,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 22.046224,
-          "seconds_p90": 22.046224
+          "seconds_p50": 21.887514,
+          "seconds_p90": 21.887514,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -1139,8 +1838,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 22.023281,
-          "seconds_p90": 22.023281
+          "seconds_p50": 22.249327,
+          "seconds_p90": 22.249327,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -1157,8 +1869,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 13.888081,
-          "seconds_p90": 13.888081
+          "seconds_p50": 13.892624,
+          "seconds_p90": 13.892624,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -1175,8 +1900,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 14.054554,
-          "seconds_p90": 14.054554
+          "seconds_p50": 14.043974,
+          "seconds_p90": 14.043974,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -1193,8 +1931,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 13.794643,
-          "seconds_p90": 13.794643
+          "seconds_p50": 13.968391,
+          "seconds_p90": 13.968391,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -1211,8 +1962,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 11.353018,
-          "seconds_p90": 11.353018
+          "seconds_p50": 12.128871,
+          "seconds_p90": 12.128871,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -1229,8 +1993,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.448676,
-          "seconds_p90": 10.448676
+          "seconds_p50": 11.934304,
+          "seconds_p90": 11.934304,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -1247,8 +2024,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.732377,
-          "seconds_p90": 10.732377
+          "seconds_p50": 12.141075,
+          "seconds_p90": 12.141075,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -1265,8 +2055,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 112.377177,
-          "seconds_p90": 112.377177
+          "seconds_p50": 121.156795,
+          "seconds_p90": 121.156795,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -1283,8 +2086,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 111.719999,
-          "seconds_p90": 111.719999
+          "seconds_p50": 120.057007,
+          "seconds_p90": 120.057007,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -1301,8 +2117,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 111.117918,
-          "seconds_p90": 111.117918
+          "seconds_p50": 119.989671,
+          "seconds_p90": 119.989671,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -1319,8 +2148,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 64.445646,
-          "seconds_p90": 64.445646
+          "seconds_p50": 69.964654,
+          "seconds_p90": 69.964654,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -1337,8 +2179,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 64.321524,
-          "seconds_p90": 64.321524
+          "seconds_p50": 69.740395,
+          "seconds_p90": 69.740395,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -1355,8 +2210,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 64.148023,
-          "seconds_p90": 64.148023
+          "seconds_p50": 70.337762,
+          "seconds_p90": 70.337762,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -1373,8 +2241,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 34.889721,
-          "seconds_p90": 34.889721
+          "seconds_p50": 37.977539,
+          "seconds_p90": 37.977539,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -1391,8 +2272,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 34.851648,
-          "seconds_p90": 34.851648
+          "seconds_p50": 38.586354,
+          "seconds_p90": 38.586354,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -1409,8 +2303,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 34.96998,
-          "seconds_p90": 34.96998
+          "seconds_p50": 38.812644,
+          "seconds_p90": 38.812644,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -1427,8 +2334,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 22.742558,
-          "seconds_p90": 22.742558
+          "seconds_p50": 28.383356,
+          "seconds_p90": 28.383356,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -1445,8 +2365,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 22.394708,
-          "seconds_p90": 22.394708
+          "seconds_p50": 28.506965,
+          "seconds_p90": 28.506965,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -1463,8 +2396,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 23.115088,
-          "seconds_p90": 23.115088
+          "seconds_p50": 28.063963,
+          "seconds_p90": 28.063963,
+          "feature_vector": {
+            "execution_mode": "group_native",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         }
       ]
     },
@@ -1501,11 +2447,13 @@
         "execution_profile": {
           "mode": "group_emulated",
           "physical_task_policy": "andrea_group_emulated",
-          "group_count": 2
+          "group_count": 2,
+          "aggregation_step": "none"
         },
         "input_profile": {
           "column_kind": "cells",
           "expression_profile": "synthetic_single_cell_benchmark",
+          "gene_id_source": "synthetic",
           "extras_provided": [
             "groups",
             "prior_grn",
@@ -1522,6 +2470,9 @@
           "tf_count_policy": "max(3, genes/5)",
           "prior_density": 0.05,
           "group_count": 2,
+          "has_tf_list": true,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
           "notes": [
             "Resolved by benchmark_profiles.py from ToolSpec defaults."
           ]
@@ -1568,8 +2519,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.13974,
-          "seconds_p90": 3.13974
+          "seconds_p50": 2.904997,
+          "seconds_p90": 2.904997,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -1586,8 +2550,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.250379,
-          "seconds_p90": 3.250379
+          "seconds_p50": 2.949631,
+          "seconds_p90": 2.949631,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -1604,8 +2581,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.261542,
-          "seconds_p90": 3.261542
+          "seconds_p50": 2.996328,
+          "seconds_p90": 2.996328,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -1622,8 +2612,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.31924,
-          "seconds_p90": 5.31924
+          "seconds_p50": 5.22272,
+          "seconds_p90": 5.22272,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -1640,8 +2643,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.171644,
-          "seconds_p90": 5.171644
+          "seconds_p50": 5.258992,
+          "seconds_p90": 5.258992,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -1658,8 +2674,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.337596,
-          "seconds_p90": 5.337596
+          "seconds_p50": 5.329703,
+          "seconds_p90": 5.329703,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -1676,8 +2705,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.043592,
-          "seconds_p90": 5.043592
+          "seconds_p50": 5.225211,
+          "seconds_p90": 5.225211,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -1694,8 +2736,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 4.975563,
-          "seconds_p90": 4.975563
+          "seconds_p50": 5.25031,
+          "seconds_p90": 5.25031,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -1712,8 +2767,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.440102,
-          "seconds_p90": 5.440102
+          "seconds_p50": 5.257313,
+          "seconds_p90": 5.257313,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 50,
@@ -1730,8 +2798,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.388344,
-          "seconds_p90": 5.388344
+          "seconds_p50": 6.131468,
+          "seconds_p90": 6.131468,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 50,
@@ -1748,8 +2829,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.456337,
-          "seconds_p90": 5.456337
+          "seconds_p50": 6.494677,
+          "seconds_p90": 6.494677,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 50,
@@ -1766,8 +2860,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.141266,
-          "seconds_p90": 5.141266
+          "seconds_p50": 6.326483,
+          "seconds_p90": 6.326483,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 20,
+            "n_genes": 50,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 49000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -1784,8 +2891,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.511622,
-          "seconds_p90": 3.511622
+          "seconds_p50": 3.430316,
+          "seconds_p90": 3.430316,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -1802,8 +2922,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.522511,
-          "seconds_p90": 3.522511
+          "seconds_p50": 3.466709,
+          "seconds_p90": 3.466709,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -1820,8 +2953,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 3.511403,
-          "seconds_p90": 3.511403
+          "seconds_p50": 3.389766,
+          "seconds_p90": 3.389766,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -1838,8 +2984,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.410891,
-          "seconds_p90": 5.410891
+          "seconds_p50": 5.462783,
+          "seconds_p90": 5.462783,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -1856,8 +3015,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.462779,
-          "seconds_p90": 5.462779
+          "seconds_p50": 5.486964,
+          "seconds_p90": 5.486964,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -1874,8 +3046,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.4867,
-          "seconds_p90": 5.4867
+          "seconds_p50": 5.491602,
+          "seconds_p90": 5.491602,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -1892,8 +3077,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.237425,
-          "seconds_p90": 5.237425
+          "seconds_p50": 5.39372,
+          "seconds_p90": 5.39372,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -1910,8 +3108,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.129569,
-          "seconds_p90": 5.129569
+          "seconds_p50": 5.279957,
+          "seconds_p90": 5.279957,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -1928,8 +3139,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.575362,
-          "seconds_p90": 5.575362
+          "seconds_p50": 5.435928,
+          "seconds_p90": 5.435928,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 100,
@@ -1946,8 +3170,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.037646,
-          "seconds_p90": 6.037646
+          "seconds_p50": 6.525225,
+          "seconds_p90": 6.525225,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 100,
@@ -1964,8 +3201,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.390043,
-          "seconds_p90": 5.390043
+          "seconds_p50": 6.680749,
+          "seconds_p90": 6.680749,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 100,
@@ -1982,8 +3232,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.902082,
-          "seconds_p90": 5.902082
+          "seconds_p50": 6.820237,
+          "seconds_p90": 6.820237,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 40,
+            "n_genes": 100,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 396000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -2000,8 +3263,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 4.797184,
-          "seconds_p90": 4.797184
+          "seconds_p50": 4.614679,
+          "seconds_p90": 4.614679,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -2018,8 +3294,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 4.945499,
-          "seconds_p90": 4.945499
+          "seconds_p50": 4.709721,
+          "seconds_p90": 4.709721,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -2036,8 +3325,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 4.704097,
-          "seconds_p90": 4.704097
+          "seconds_p50": 4.647671,
+          "seconds_p90": 4.647671,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -2054,8 +3356,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.113861,
-          "seconds_p90": 6.113861
+          "seconds_p50": 6.446295,
+          "seconds_p90": 6.446295,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -2072,8 +3387,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.279016,
-          "seconds_p90": 6.279016
+          "seconds_p50": 6.349762,
+          "seconds_p90": 6.349762,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -2090,8 +3418,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.347175,
-          "seconds_p90": 6.347175
+          "seconds_p50": 6.215854,
+          "seconds_p90": 6.215854,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -2108,8 +3449,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.624049,
-          "seconds_p90": 5.624049
+          "seconds_p50": 5.790334,
+          "seconds_p90": 5.790334,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -2126,8 +3480,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.809965,
-          "seconds_p90": 5.809965
+          "seconds_p50": 5.841479,
+          "seconds_p90": 5.841479,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -2144,8 +3511,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.781415,
-          "seconds_p90": 5.781415
+          "seconds_p50": 5.834772,
+          "seconds_p90": 5.834772,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 4,
+            "ram_gb": 32.0
+          }
         },
         {
           "genes": 200,
@@ -2162,8 +3542,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 5.675491,
-          "seconds_p90": 5.675491
+          "seconds_p50": 6.896688,
+          "seconds_p90": 6.896688,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 8.0
+          }
         },
         {
           "genes": 200,
@@ -2180,8 +3573,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.180531,
-          "seconds_p90": 6.180531
+          "seconds_p50": 6.777916,
+          "seconds_p90": 6.777916,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 16.0
+          }
         },
         {
           "genes": 200,
@@ -2198,8 +3604,21 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.358854,
-          "seconds_p90": 6.358854
+          "seconds_p50": 6.792511,
+          "seconds_p90": 6.792511,
+          "feature_vector": {
+            "execution_mode": "group_emulated",
+            "n_cells": 80,
+            "n_genes": 200,
+            "n_groups": 2,
+            "expected_contexts": 2,
+            "expected_dense_edges": 3184000,
+            "has_tf_list": true,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 8,
+            "ram_gb": 32.0
+          }
         }
       ]
     }

@@ -1,0 +1,43 @@
+{
+  "sizes": [
+    "100x100"
+  ],
+  "gene_id_source": "human_breast_cancer_pathway",
+  "column_kind": "cells",
+  "expression_profile": "human_single_cell_benchmark",
+  "cost_relevant_params": [
+    "gene_set",
+    "metacell",
+    "knn",
+    "metacell_count",
+    "ensemble",
+    "diffusion_timesteps"
+  ],
+  "profiles": [
+    {
+      "id": "global_hsa05224_fast_diffusion",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "gene_set": "hsa05224",
+        "metacell": false,
+        "ensemble": 3,
+        "diffusion_timesteps": 25
+      }
+    },
+    {
+      "id": "group_emulated_hsa05224_fast_diffusion_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "gene_set": "hsa05224",
+        "metacell": false,
+        "ensemble": 3,
+        "diffusion_timesteps": 25
+      }
+    }
+  ]
+}

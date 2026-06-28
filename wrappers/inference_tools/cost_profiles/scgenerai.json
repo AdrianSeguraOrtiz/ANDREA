@@ -1,0 +1,53 @@
+{
+  "sizes": [
+    "50x20",
+    "100x40"
+  ],
+  "column_kind": "cells",
+  "expression_profile": "synthetic_single_cell_benchmark",
+  "cost_relevant_params": [
+    "nepochs",
+    "model_depth",
+    "lr",
+    "batch_size",
+    "lr_decay",
+    "early_stopping"
+  ],
+  "profiles": [
+    {
+      "id": "column_native_fast",
+      "execution": {
+        "mode": "column_native"
+      },
+      "optional_inputs": [],
+      "param_overrides": {
+        "nepochs": 1
+      }
+    },
+    {
+      "id": "column_native_fast_column_descriptors",
+      "execution": {
+        "mode": "column_native"
+      },
+      "optional_inputs": [
+        "column_descriptors"
+      ],
+      "param_overrides": {
+        "nepochs": 1
+      }
+    },
+    {
+      "id": "group_aggregated_fast_groups_2",
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "group_count": 2,
+      "optional_inputs": [
+        "column_descriptors"
+      ],
+      "param_overrides": {
+        "nepochs": 1
+      }
+    }
+  ]
+}

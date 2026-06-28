@@ -1,0 +1,225 @@
+{
+  "cost_relevant_params": [
+    "network_preset",
+    "simulation_design",
+    "solver",
+    "expression_variant",
+    "steady_state_experiment",
+    "time_series_experiment",
+    "steady_state.maxt_ode",
+    "time_series.num_time_series",
+    "time_series.maxt",
+    "time_series.dt",
+    "experimental_noise.normal",
+    "experimental_noise.lognormal",
+    "experimental_noise.microarray",
+    "goldstandard.ignore_autoregulatory_interactions",
+    "goldstandard.append_zero_interactions"
+  ],
+  "input_source_params": [
+    "network_preset"
+  ],
+  "profiles": [
+    {
+      "id": "bulk_perturbations_perturbational_global_builtin_knockouts_default",
+      "sizes": [
+        "10x10"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 10
+        },
+        "cells": {
+          "fixed": 10
+        }
+      },
+      "requested_extras": [],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "network_preset": "in_silico_size10_yeast1",
+        "simulation_design": "perturbational_steady_state",
+        "steady_state_experiment": "knockouts",
+        "solver": "ode",
+        "expression_variant": "normalized",
+        "steady_state": {
+          "maxt_ode": 200
+        },
+        "experimental_noise": {
+          "normal": false,
+          "lognormal": false,
+          "microarray": true,
+          "normalize_after_adding_noise": true
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "perturbations",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "bulk_perturbations_perturbational_global_builtin_knockouts_full_extras",
+      "sizes": [
+        "10x10"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 10
+        },
+        "cells": {
+          "fixed": 10
+        }
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "network_preset": "in_silico_size10_yeast1",
+        "simulation_design": "perturbational_steady_state",
+        "steady_state_experiment": "knockouts",
+        "solver": "ode",
+        "expression_variant": "normalized",
+        "steady_state": {
+          "maxt_ode": 200
+        },
+        "experimental_noise": {
+          "normal": false,
+          "lognormal": false,
+          "microarray": true,
+          "normalize_after_adding_noise": true
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "perturbations",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "bulk_perturbations_perturbational_global_custom_xml_knockdowns_full_extras",
+      "sizes": [
+        "10x10"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 10
+        },
+        "cells": {
+          "fixed": 10
+        }
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "inputs": {
+        "gnw_dynamical_network": "../tests/fixtures/genenetweaver/InSilicoSize10-Yeast1.xml"
+      },
+      "param_overrides": {
+        "network_preset": "custom_xml",
+        "simulation_design": "perturbational_steady_state",
+        "steady_state_experiment": "knockdowns",
+        "solver": "ode",
+        "expression_variant": "normalized",
+        "steady_state": {
+          "maxt_ode": 200
+        },
+        "experimental_noise": {
+          "normal": false,
+          "lognormal": false,
+          "microarray": false,
+          "normalize_after_adding_noise": true
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "perturbations",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "bulk_timepoints_time_series_global_builtin_dream4_full_extras",
+      "sizes": [
+        "10x6"
+      ],
+      "dimension_params": {
+        "genes": {
+          "fixed": 10
+        },
+        "cells": {
+          "param": "time_series.num_time_series",
+          "multiplier": 3
+        }
+      },
+      "requested_extras": [
+        "timepoints",
+        "perturbation_design",
+        "interventions",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "network_preset": "in_silico_size10_yeast1",
+        "simulation_design": "time_series",
+        "time_series_experiment": "dream4_timeseries",
+        "solver": "ode",
+        "expression_variant": "normalized",
+        "time_series": {
+          "num_time_series": 2,
+          "maxt": 100,
+          "dt": 50
+        },
+        "experimental_noise": {
+          "normal": false,
+          "lognormal": false,
+          "microarray": false,
+          "normalize_after_adding_noise": true
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "timepoints",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    }
+  ]
+}

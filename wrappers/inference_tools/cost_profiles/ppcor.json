@@ -1,0 +1,44 @@
+{
+  "cost_relevant_params": [
+    "method"
+  ],
+  "profiles": [
+    {
+      "id": "global_pearson",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "method": "pearson"
+      }
+    },
+    {
+      "id": "global_spearman",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "method": "spearman"
+      }
+    },
+    {
+      "id": "global_kendall",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "method": "kendall"
+      }
+    },
+    {
+      "id": "group_emulated_pearson_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "method": "pearson"
+      }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "sizes": [
+    "50x20",
+    "100x40"
+  ],
+  "cost_relevant_params": [
+    "pseudo_grn_mode",
+    "epochs",
+    "batch_size",
+    "alpha",
+    "lr",
+    "lr_meta",
+    "gamma",
+    "gamma_meta"
+  ],
+  "profiles": [
+    {
+      "id": "global_unlabeled_fast",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "epochs": 2,
+        "batch_size": 8
+      }
+    },
+    {
+      "id": "global_provided_prior_fast",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "pseudo_grn_mode": "provided_prior",
+        "epochs": 2,
+        "batch_size": 8
+      }
+    },
+    {
+      "id": "group_emulated_unlabeled_fast_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "epochs": 2,
+        "batch_size": 8
+      }
+    },
+    {
+      "id": "group_emulated_provided_prior_fast_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "pseudo_grn_mode": "provided_prior",
+        "epochs": 2,
+        "batch_size": 8
+      }
+    }
+  ]
+}

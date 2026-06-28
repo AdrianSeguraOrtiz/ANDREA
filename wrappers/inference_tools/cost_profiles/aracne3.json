@@ -1,5 +1,7 @@
 {
   "cost_relevant_params": [
+    "alpha",
+    "x",
     "method",
     "subsample",
     "adaptive",

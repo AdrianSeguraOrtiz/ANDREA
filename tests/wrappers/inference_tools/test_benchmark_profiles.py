@@ -23,6 +23,32 @@ PARAM_OVERRIDES_DIR = REPO_ROOT / "wrappers" / "inference_tools" / "param_overri
 COST_PROFILES_DIR = REPO_ROOT / "wrappers" / "inference_tools" / "cost_profiles"
 
 
+def _load_toolspec(tool_id: str) -> dict[str, object]:
+    return json.loads((CATALOG_TOOLS_ROOT / tool_id / "toolspec.json").read_text())
+
+
+def _tool_ids() -> list[str]:
+    return sorted(
+        path.name
+        for path in CATALOG_TOOLS_ROOT.iterdir()
+        if (path / "toolspec.json").exists()
+    )
+
+
+def _extra_input_ids(toolspec: dict[str, object], field: str) -> set[str]:
+    extra_inputs = toolspec.get("extra_inputs", {})
+    if not isinstance(extra_inputs, dict):
+        return set()
+    entries = extra_inputs.get(field, [])
+    if not isinstance(entries, list):
+        return set()
+    out = set()
+    for entry in entries:
+        if isinstance(entry, dict) and isinstance(entry.get("input"), str):
+            out.add(str(entry["input"]))
+    return out
+
+
 class BenchmarkProfileResolverTest(unittest.TestCase):
     def test_scmtni_profiles_satisfy_param_conditionals(self) -> None:
         profiles = resolve_benchmark_profiles(
@@ -61,7 +87,6 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             set(q0_profile.input_profile["extras_provided"]),
             {"groups", "tf_list"},
         )
-
     def test_repository_profiles_capture_tool_specific_input_contracts(self) -> None:
         expected = {
             ("genie3", "global_default"): {
@@ -100,7 +125,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                 "optional": set(),
                 "conditional": set(),
             },
-            ("miniex3", "group_native_motif_off_grnboost_background"): {
+            ("miniex3", "group_native_motif_off_all_optional_inputs"): {
                 "mode": "group_native",
                 "required": {
                     "cluster_identities",
@@ -108,10 +133,20 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                     "groups",
                     "tf_list",
                 },
-                "optional": {"enrichment_background", "grnboost_network"},
+                "optional": {
+                    "enrichment_background",
+                    "grnboost_network",
+                    "terms_of_interest",
+                },
                 "conditional": set(),
             },
-            ("infercsn", "group_emulated_groups_2_no_pseudotime"): {
+            ("infercsn", "group_emulated_groups_2_default"): {
+                "mode": "group_emulated",
+                "required": {"groups"},
+                "optional": set(),
+                "conditional": set(),
+            },
+            ("infercsn", "group_emulated_groups_2_tf_list"): {
                 "mode": "group_emulated",
                 "required": {"groups"},
                 "optional": {"tf_list"},
@@ -156,6 +191,116 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                     | expectation["optional"]
                     | expectation["conditional"],
                 )
+
+    def test_every_tool_has_cost_profiles_covering_execution_and_inputs(self) -> None:
+        for tool_id in _tool_ids():
+            with self.subTest(tool_id=tool_id):
+                config_path = COST_PROFILES_DIR / f"{tool_id}.json"
+                self.assertTrue(config_path.is_file(), f"missing {config_path}")
+
+                toolspec = _load_toolspec(tool_id)
+                profiles = resolve_benchmark_profiles(
+                    tool_id=tool_id,
+                    catalog_tools_root=CATALOG_TOOLS_ROOT,
+                    param_overrides_dir=PARAM_OVERRIDES_DIR,
+                    cost_profiles_dir=COST_PROFILES_DIR,
+                )
+                self.assertGreater(len(profiles), 0)
+
+                declared_modes = set(toolspec.get("execution_capabilities", []))
+                resolved_modes = {profile.execution_profile["mode"] for profile in profiles}
+                self.assertTrue(
+                    declared_modes.issubset(resolved_modes),
+                    f"{tool_id}: missing modes {declared_modes - resolved_modes}",
+                )
+
+                required_inputs = _extra_input_ids(toolspec, "required")
+                for profile in profiles:
+                    self.assertTrue(
+                        required_inputs.issubset(
+                            set(profile.input_profile["required_inputs_satisfied"])
+                        ),
+                        f"{tool_id}/{profile.profile_id}: missing required inputs",
+                    )
+
+                optional_inputs = _extra_input_ids(toolspec, "optional")
+                resolved_optional = set().union(
+                    *[
+                        set(profile.input_profile["optional_inputs_provided"])
+                        for profile in profiles
+                    ]
+                )
+                self.assertTrue(
+                    optional_inputs.issubset(resolved_optional),
+                    f"{tool_id}: optional inputs not benchmarked "
+                    f"{optional_inputs - resolved_optional}",
+                )
+
+                conditional_inputs = _extra_input_ids(
+                    toolspec, "conditional_required"
+                )
+                resolved_conditional = set().union(
+                    *[
+                        set(profile.input_profile["conditional_inputs_satisfied"])
+                        for profile in profiles
+                    ]
+                )
+                self.assertTrue(
+                    conditional_inputs.issubset(resolved_conditional),
+                    f"{tool_id}: conditional inputs not benchmarked "
+                    f"{conditional_inputs - resolved_conditional}",
+                )
+
+    def test_profile_level_size_and_gene_id_source_are_inherited(self) -> None:
+        profiles = resolve_benchmark_profiles(
+            tool_id="dignet",
+            catalog_tools_root=CATALOG_TOOLS_ROOT,
+            param_overrides_dir=PARAM_OVERRIDES_DIR,
+            cost_profiles_dir=COST_PROFILES_DIR,
+        )
+
+        for profile in profiles:
+            self.assertEqual(profile.sizes, ("100x100",))
+            self.assertEqual(
+                profile.input_profile["gene_id_source"],
+                "human_breast_cancer_pathway",
+            )
+            self.assertEqual(profile.input_profile["column_kind"], "cells")
+
+    def test_scminer_builtin_profile_uses_human_gene_ids(self) -> None:
+        profiles = resolve_benchmark_profiles(
+            tool_id="scminer",
+            catalog_tools_root=CATALOG_TOOLS_ROOT,
+            param_overrides_dir=PARAM_OVERRIDES_DIR,
+            cost_profiles_dir=COST_PROFILES_DIR,
+        )
+        by_id = {profile.profile_id: profile for profile in profiles}
+
+        builtin = by_id["global_builtin_tf_sig_fast"]
+        self.assertEqual(builtin.sizes, ("50x20", "100x40"))
+        self.assertEqual(
+            builtin.input_profile["gene_id_source"],
+            "human_breast_cancer_pathway",
+        )
+        self.assertEqual(builtin.input_profile["column_kind"], "cells")
+        self.assertEqual(builtin.params["species_type"], "hg")
+
+        custom = by_id["global_custom_tf_fast"]
+        self.assertEqual(custom.input_profile["gene_id_source"], "synthetic")
+
+    def test_human_gene_fixture_source_writes_real_symbols(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = write_benchmark_io_dir(
+                Path(tmp),
+                BenchmarkInputSize(genes=3, columns=2),
+                BenchmarkInputProfile(
+                    gene_id_source="human_breast_cancer_pathway",
+                    column_kind="cells",
+                ),
+            )
+
+        self.assertEqual(bundle.genes, ("ESR1", "ESR2", "NCOA1"))
+        self.assertEqual(bundle.columns, ("cell_1", "cell_2"))
 
     def test_configured_profiles_resolve_execution_inputs_and_params(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

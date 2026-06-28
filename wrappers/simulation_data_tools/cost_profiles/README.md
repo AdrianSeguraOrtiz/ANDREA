@@ -11,10 +11,27 @@ context families (`truth_requirements`), requested extras, inputs, params and
 runtime resources. The script expands each selected benchmark profile across the
 requested size, thread and RAM matrix.
 
+Before running a full benchmark, inspect the resolved matrix with:
+
+```bash
+make benchmark-simulator-costs ARGS="--plan-only"
+```
+
+By default the benchmarker requests sizes `50x20`, `100x40`, `200x80`, threads
+`1,2,4,8`, RAM limits `8,16,32,64` GB, one repeat and a per-run timeout of
+1800 seconds. Thread values are filtered against each simulator's
+`runtime_resources.threading` contract, so serial simulators are benchmarked
+only with `threads=1`. RAM values and CPU counts are also capped by host-level
+`--max-ram-gb` and `--max-cpu`.
+
+If a run exceeds `--timeout`, the benchmarker classifies it as `timeout` and
+explicitly removes the Docker container before continuing.
+
 The size matrix uses `GENESxCELLS`. `dimension_params` tells the benchmarker how
 to map those dimensions to simulator params. Use a string when one param controls
-the dimension, or a weighted object when total genes are split across multiple
-params.
+the dimension, a weighted object when total genes are split across multiple
+params, or `{"fixed": N}` when an upstream bundle/model has a fixed public gene
+or column count and no simulator parameter can change it.
 
 Example:
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -307,6 +308,24 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
             ["global_default", "group_emulated_groups_2"],
         )
 
+    def test_tool_run_summary_reports_timeouts_separately_from_failures(self) -> None:
+        summary = benchmark_costs.summarize_tool_runs(
+            [
+                {"status": "ok"},
+                {"status": "timeout"},
+                {"status": "error"},
+            ]
+        )
+
+        self.assertEqual(summary["total_runs"], 3)
+        self.assertEqual(summary["successful_runs"], 1)
+        self.assertEqual(summary["timeout_runs"], 1)
+        self.assertEqual(summary["failed_runs"], 1)
+        self.assertEqual(
+            summary["status_counts"],
+            {"error": 1, "ok": 1, "timeout": 1},
+        )
+
     def test_run_writes_selected_profiles_without_pooling_runtime_points(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
@@ -446,6 +465,154 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
             self.assertTrue((io_dir / "execution.json").is_file())
             self.assertTrue((io_dir / "extra").is_dir())
             self.assertTrue((io_dir / "out").is_dir())
+
+    def test_run_uses_profile_specific_sizes_when_cli_size_is_not_explicit(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            catalog_root = tmp_root / "catalog_tools"
+            tool_sources_root = tmp_root / "tool_sources"
+            cost_profiles_root = tmp_root / "cost_profiles"
+            (catalog_root / "genie3").mkdir(parents=True)
+            (tool_sources_root / "genie3").mkdir(parents=True)
+            cost_profiles_root.mkdir(parents=True)
+            _write_catalog_toolspec(
+                catalog_root / "genie3" / "toolspec.json",
+                "genie3",
+            )
+            (cost_profiles_root / "genie3.json").write_text(
+                json.dumps(
+                    {
+                        "sizes": ["9x5"],
+                        "profiles": [
+                            {
+                                "id": "global_small",
+                                "execution": {"mode": "global"},
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with patch.object(
+                benchmark_costs,
+                "run_container_once",
+                return_value=("ok", 1.25, ""),
+            ):
+                exit_code = benchmark_costs.run(
+                    [
+                        "--catalog-tools-root",
+                        str(catalog_root),
+                        "--tool-sources-root",
+                        str(tool_sources_root),
+                        "--param-overrides-dir",
+                        str(PARAM_OVERRIDES_DIR),
+                        "--cost-profiles-dir",
+                        str(cost_profiles_root),
+                        "--tool",
+                        "genie3",
+                        "--threads",
+                        "1",
+                        "--ram-gb",
+                        "1",
+                        "--skip-build",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            payload = json.loads((catalog_root / "genie3" / "cost.json").read_text())
+            profile = payload["profiles"][0]
+            self.assertEqual(
+                profile["benchmark_config"]["sizes"],
+                [{"genes": 9, "columns": 5}],
+            )
+            self.assertEqual(profile["runtime_points"][0]["genes"], 9)
+            self.assertEqual(profile["runtime_points"][0]["columns"], 5)
+
+    def test_run_plan_only_does_not_build_run_or_write_cost(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            catalog_root = tmp_root / "catalog_tools"
+            tool_sources_root = tmp_root / "tool_sources"
+            (catalog_root / "genie3").mkdir(parents=True)
+            _write_catalog_toolspec(
+                catalog_root / "genie3" / "toolspec.json",
+                "genie3",
+            )
+
+            with (
+                patch.object(benchmark_costs, "build_image") as build_image,
+                patch.object(benchmark_costs, "run_container_once") as run_container,
+            ):
+                exit_code = benchmark_costs.run(
+                    [
+                        "--catalog-tools-root",
+                        str(catalog_root),
+                        "--tool-sources-root",
+                        str(tool_sources_root),
+                        "--param-overrides-dir",
+                        str(PARAM_OVERRIDES_DIR),
+                        "--cost-profiles-dir",
+                        str(COST_PROFILES_DIR),
+                        "--tool",
+                        "genie3",
+                        "--profile",
+                        "global_default",
+                        "--threads",
+                        "1",
+                        "--ram-gb",
+                        "1",
+                        "--plan-only",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            build_image.assert_not_called()
+            run_container.assert_not_called()
+            self.assertFalse((catalog_root / "genie3" / "cost.json").exists())
+
+    def test_run_container_timeout_cleans_up_named_container(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            io_dir = Path(tmp)
+            calls: list[list[str]] = []
+
+            def fake_run_cmd(cmd, **_kwargs):
+                command = list(cmd)
+                calls.append(command)
+                if command[:2] == ["docker", "run"]:
+                    raise subprocess.TimeoutExpired(command, 1)
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout="removed",
+                    stderr="",
+                )
+
+            with (
+                patch.object(benchmark_costs, "run_cmd", side_effect=fake_run_cmd),
+                patch.object(
+                    benchmark_costs,
+                    "docker_container_name",
+                    return_value="andrea_timeout_test",
+                ),
+            ):
+                status, _elapsed, message = benchmark_costs.run_container_once(
+                    image_tag="test-image",
+                    io_dir=io_dir,
+                    threads=1,
+                    ram_gb=1,
+                    timeout_s=1,
+                )
+
+        self.assertEqual(status, "timeout")
+        self.assertIn("Run exceeded timeout", message)
+        self.assertTrue(
+            any(command[:4] == ["docker", "rm", "-f", "andrea_timeout_test"] for command in calls),
+            calls,
+        )
 
 
 if __name__ == "__main__":

@@ -397,13 +397,34 @@ def semantic_runtime_errors(
     if runtime_profile.get("max_threads") != int(threading.get("max_threads", 1)):
         errors.append(f"{prefix}.runtime_resources_profile.max_threads mismatch.")
     max_threads = int(threading.get("max_threads", 1))
+    supported = bool(threading.get("supported", False))
+    benchmark_config = profile.get("benchmark_config", {})
+    threads_tested = (
+        benchmark_config.get("threads_tested")
+        if isinstance(benchmark_config, dict)
+        else None
+    )
+    if isinstance(threads_tested, list):
+        for thread_idx, thread_value in enumerate(threads_tested, start=1):
+            if not isinstance(thread_value, int) or isinstance(thread_value, bool):
+                continue
+            if thread_value > max_threads or (not supported and thread_value != 1):
+                errors.append(
+                    f"{prefix}.benchmark_config.threads_tested[{thread_idx}] "
+                    "is incompatible with simulatorspec.runtime_resources.threading."
+                )
     for point_idx, point in enumerate(profile.get("runtime_points", []), start=1):
         if not isinstance(point, dict):
             continue
         threads = point.get("threads")
-        if isinstance(threads, int) and threads > max_threads:
+        if (
+            isinstance(threads, int)
+            and not isinstance(threads, bool)
+            and (threads > max_threads or (not supported and threads != 1))
+        ):
             errors.append(
-                f"{prefix}.runtime_points[{point_idx}].threads exceeds max_threads={max_threads}."
+                f"{prefix}.runtime_points[{point_idx}].threads is incompatible "
+                "with simulatorspec.runtime_resources.threading."
             )
     return errors
 

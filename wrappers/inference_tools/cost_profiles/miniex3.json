@@ -9,17 +9,20 @@
   ],
   "profiles": [
     {
-      "id": "group_native_motif_off_grnboost_background",
+      "id": "group_native_motif_off_all_optional_inputs",
       "execution": {
         "mode": "group_native"
       },
       "group_count": 2,
+      "marker_count_per_group": 25,
+      "prior_density": 0.15,
       "optional_inputs": [
         "enrichment_background",
-        "grnboost_network"
+        "grnboost_network",
+        "terms_of_interest"
       ],
       "param_overrides": {
-        "reference_species": "none",
+        "reference_species": "ath",
         "doMotifAnalysis": false
       }
     }

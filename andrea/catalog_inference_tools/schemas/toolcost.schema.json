@@ -193,6 +193,11 @@
           "minLength": 1,
           "description": "Expression data profile used by the benchmark fixture generator."
         },
+        "gene_id_source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Gene identifier source used by the benchmark fixture generator. Defaults to synthetic when omitted in older measured profiles."
+        },
         "extras_provided": {
           "$ref": "#/$defs/input_key_array"
         },
@@ -229,6 +234,11 @@
             }
           ],
           "description": "Prior GRN density used by the benchmark input generator, when relevant."
+        },
+        "marker_count_per_group": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Synthetic cluster marker count per group used by the benchmark input generator, when relevant."
         },
         "group_count": {
           "type": "integer",

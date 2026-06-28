@@ -1,0 +1,59 @@
+{
+  "sizes": [
+    "50x20",
+    "100x40"
+  ],
+  "cost_relevant_params": [
+    "n_supercells",
+    "supercell_hvgs",
+    "supercell_pcs",
+    "n_subsample_networks",
+    "network_hvgs",
+    "gene_neighbors",
+    "gene_pcs",
+    "subsample_fraction",
+    "edge_consensus_threshold",
+    "remove_cycles"
+  ],
+  "profiles": [
+    {
+      "id": "global_fast",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "n_supercells": 5,
+        "supercell_hvgs": 8,
+        "supercell_pcs": 3,
+        "n_subsample_networks": 2,
+        "network_hvgs": -1,
+        "gene_neighbors": 2,
+        "gene_pcs": 2,
+        "subsample_fraction": 1.0,
+        "edge_consensus_threshold": 0.0,
+        "remove_cycles": false,
+        "random_seed": 1
+      }
+    },
+    {
+      "id": "group_emulated_fast_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "n_supercells": 5,
+        "supercell_hvgs": 8,
+        "supercell_pcs": 3,
+        "n_subsample_networks": 2,
+        "network_hvgs": -1,
+        "gene_neighbors": 2,
+        "gene_pcs": 2,
+        "subsample_fraction": 1.0,
+        "edge_consensus_threshold": 0.0,
+        "remove_cycles": false,
+        "random_seed": 1
+      }
+    }
+  ]
+}

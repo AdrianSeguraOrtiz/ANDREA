@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -29,6 +30,7 @@ MINIEX_DIR = Path("/opt/MINI-EX")
 MINIEX_NF = MINIEX_DIR / "miniex.nf"
 DATASET_ID = "andrea"
 DEFAULT_GRNBOOST_SUBJOBS = 20
+DECIMAL_EXPRESSION_SCALE = 1000
 
 
 @dataclass(frozen=True)
@@ -155,8 +157,57 @@ def _read_expression(input_path: Path) -> tuple[str, list[str], list[str]]:
     return gene_header, cells, genes
 
 
-def _copy_expression(input_path: Path, output_path: Path) -> None:
-    shutil.copy2(input_path, output_path)
+def _write_miniex_expression(input_path: Path, output_path: Path) -> None:
+    """Write a MINI-EX-compatible integer count matrix from ANDREA expression.tsv."""
+    needs_scaling = False
+    with input_path.open("r", encoding="utf-8", newline="") as fh:
+        reader = csv.reader(fh, delimiter="\t")
+        header = next(reader)
+        for line_number, row in enumerate(reader, start=2):
+            if not row or all(not value.strip() for value in row):
+                continue
+            for column_number, value in enumerate(row[1:], start=2):
+                text = value.strip()
+                try:
+                    parsed = float(text)
+                except ValueError as exc:
+                    raise ValueError(
+                        "MINI-EX expression adapter requires numeric values; "
+                        f"line {line_number}, column {column_number} has {text!r}."
+                    ) from exc
+                if not math.isfinite(parsed):
+                    raise ValueError(
+                        "MINI-EX expression adapter requires finite values; "
+                        f"line {line_number}, column {column_number} has {text!r}."
+                    )
+                if parsed < 0:
+                    raise ValueError(
+                        "MINI-EX expression adapter requires non-negative values; "
+                        f"line {line_number}, column {column_number} has {text!r}."
+                    )
+                if not parsed.is_integer():
+                    needs_scaling = True
+
+    scale = DECIMAL_EXPRESSION_SCALE if needs_scaling else 1
+    with (
+        input_path.open("r", encoding="utf-8", newline="") as in_fh,
+        output_path.open("w", encoding="utf-8", newline="") as out_fh,
+    ):
+        reader = csv.reader(in_fh, delimiter="\t")
+        writer = csv.writer(out_fh, delimiter="\t", lineterminator="\n")
+        header = next(reader)
+        writer.writerow(header)
+        for row in reader:
+            if not row or all(not value.strip() for value in row):
+                continue
+            converted = []
+            for value in row[1:]:
+                parsed = float(value.strip())
+                count = int(round(parsed * scale))
+                if parsed > 0 and count == 0:
+                    count = 1
+                converted.append(str(count))
+            writer.writerow([row[0].strip()] + converted)
 
 
 def _read_groups(groups_path: Path, cells: list[str]) -> tuple[dict[str, str], list[str]]:
@@ -431,7 +482,7 @@ def _prepare_inputs(
     background_out = runtime_input_dir / "enrichment_background.txt"
     grnboost_out = runtime_input_dir / f"{DATASET_ID}_grnboost2.tsv"
 
-    _copy_expression(input_path, expression_out)
+    _write_miniex_expression(input_path, expression_out)
     _write_cells_to_clusters(
         cells_to_clusters_out,
         cells=cells,

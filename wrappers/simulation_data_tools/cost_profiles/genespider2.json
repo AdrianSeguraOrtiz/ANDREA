@@ -34,6 +34,8 @@
         "6x6"
       ],
       "requested_extras": [
+        "perturbation_design",
+        "interventions",
         "enrichment_background",
         "prior_grn",
         "replicates",
@@ -65,6 +67,9 @@
         "6x5"
       ],
       "requested_extras": [
+        "timepoints",
+        "perturbation_design",
+        "interventions",
         "enrichment_background",
         "prior_grn",
         "tf_list"
@@ -99,6 +104,8 @@
         "6x6"
       ],
       "requested_extras": [
+        "perturbation_design",
+        "interventions",
         "enrichment_background",
         "prior_grn",
         "replicates",
@@ -133,8 +140,11 @@
         "6x12"
       ],
       "requested_extras": [
+        "groups",
         "column_phenotypes",
         "cluster_identities",
+        "perturbation_design",
+        "interventions",
         "enrichment_background",
         "prior_grn",
         "prior_grn_by_group",

@@ -44,6 +44,7 @@ deterministic aggregation overhead during planning.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -236,6 +237,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--skip-build",
         action="store_true",
         help="Skip Docker image build step and assume images already exist.",
+    )
+    parser.add_argument(
+        "--plan-only",
+        action="store_true",
+        help="Resolve and print the benchmark matrix without building images or running containers.",
     )
     parser.add_argument(
         "--no-write-cost",
@@ -437,6 +443,49 @@ def safe_path_token(value: str) -> str:
     return "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in value)
 
 
+def docker_container_name(
+    *,
+    image_tag: str,
+    io_dir: Path,
+    threads: int,
+    ram_gb: int,
+) -> str:
+    raw = f"{image_tag}|{io_dir}|{threads}|{ram_gb}|{time.time_ns()}"
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+    image_token = safe_path_token(image_tag.lower())[:40].strip("._-") or "tool"
+    return f"andrea_tool_cost_{image_token}_{digest}"
+
+
+def cleanup_timed_out_container(*, container_name: str, cidfile: Path) -> str:
+    """Best-effort cleanup for docker run timeouts."""
+    targets: list[str] = []
+    if cidfile.exists():
+        cid = cidfile.read_text(encoding="utf-8", errors="ignore").strip()
+        if cid:
+            targets.append(cid)
+    targets.append(container_name)
+
+    messages: list[str] = []
+    seen: set[str] = set()
+    for target in targets:
+        if target in seen:
+            continue
+        seen.add(target)
+        result = run_cmd(
+            ["docker", "rm", "-f", target],
+            cwd=REPO_ROOT,
+            timeout_s=30,
+            capture_output=True,
+        )
+        if result.returncode == 0:
+            messages.append(f"Cleaned timed-out container {target}.")
+        else:
+            err = (result.stderr or result.stdout or "").strip()
+            if err:
+                messages.append(f"Could not cleanup container {target}: {err}")
+    return "\n".join(messages)
+
+
 def run_cmd(
     cmd: Sequence[str],
     *,
@@ -514,10 +563,21 @@ def run_container_once(
     timeout_s: int,
 ) -> tuple[str, float, str]:
     uid_gid = f"{os.getuid()}:{os.getgid()}"
+    container_name = docker_container_name(
+        image_tag=image_tag,
+        io_dir=io_dir,
+        threads=threads,
+        ram_gb=ram_gb,
+    )
+    cidfile = io_dir / ".docker-container.cid"
     cmd = [
         "docker",
         "run",
         "--rm",
+        "--name",
+        container_name,
+        "--cidfile",
+        str(cidfile),
         "--user",
         uid_gid,
         "--cpus",
@@ -548,7 +608,14 @@ def run_container_once(
             return (classify_failure(logs), elapsed, logs.strip())
     except subprocess.TimeoutExpired:
         elapsed = time.perf_counter() - started
-        return ("timeout", elapsed, f"Run exceeded timeout of {timeout_s} seconds.")
+        cleanup = cleanup_timed_out_container(
+            container_name=container_name,
+            cidfile=cidfile,
+        )
+        message = f"Run exceeded timeout of {timeout_s} seconds."
+        if cleanup:
+            message = f"{message}\n{cleanup}"
+        return ("timeout", elapsed, message)
 
     network_path = io_dir / "out" / "network.csv"
     deadline = time.perf_counter() + 2.0
@@ -778,6 +845,77 @@ def resolve_benchmark_dimensions(
     return sizes, threads, ram_gb, int(effective_cores), float(effective_ram_gb)
 
 
+def sizes_for_profile(
+    *,
+    profile: BenchmarkProfile,
+    default_sizes: list[SizePoint],
+    cli_sizes_explicit: bool,
+) -> list[SizePoint]:
+    """Resolve the size matrix for one profile.
+
+    Explicit CLI --size values intentionally override profile-local size hints so
+    a user can force a narrow debug run across any profile.
+    """
+    if cli_sizes_explicit or not profile.sizes:
+        return list(default_sizes)
+    return [parse_size(token) for token in profile.sizes]
+
+
+def benchmark_plan_rows(
+    *,
+    targets: Sequence[ToolBenchmarkTarget],
+    default_sizes: list[SizePoint],
+    threads_by_tool: dict[str, list[int]],
+    ram_gb: list[int],
+    repeats: int,
+    cli_sizes_explicit: bool,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for target in targets:
+        for profile in target.profiles:
+            profile_sizes = sizes_for_profile(
+                profile=profile,
+                default_sizes=default_sizes,
+                cli_sizes_explicit=cli_sizes_explicit,
+            )
+            run_count = (
+                len(profile_sizes)
+                * len(threads_by_tool[target.tool_id])
+                * len(ram_gb)
+                * repeats
+            )
+            rows.append(
+                {
+                    "tool_id": target.tool_id,
+                    "profile_id": profile.profile_id,
+                    "sizes": profile_sizes,
+                    "threads": threads_by_tool[target.tool_id],
+                    "ram_gb": ram_gb,
+                    "runs": run_count,
+                }
+            )
+    return rows
+
+
+def print_benchmark_plan_summary(rows: Sequence[dict[str, Any]]) -> None:
+    total_runs = sum(int(row["runs"]) for row in rows)
+    tools = sorted({str(row["tool_id"]) for row in rows})
+    print(
+        f"Benchmark plan: tools={len(tools)} profiles={len(rows)} planned_runs={total_runs}"
+    )
+    for row in rows:
+        size_tokens = [
+            f"{size.genes}x{size.columns}" for size in row["sizes"]
+        ]
+        print(
+            f"- {row['tool_id']}/{row['profile_id']}: "
+            f"sizes={','.join(size_tokens)} "
+            f"threads={','.join(str(v) for v in row['threads'])} "
+            f"ram_gb={','.join(str(v) for v in row['ram_gb'])} "
+            f"runs={row['runs']}"
+        )
+
+
 def _threading_config(toolspec: dict[str, Any]) -> dict[str, Any]:
     runtime_resources = toolspec.get("runtime_resources")
     if not isinstance(runtime_resources, dict):
@@ -886,7 +1024,8 @@ def allocate_tool_workdir(
 def summarize_tool_runs(tool_runs: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate run-level status counters for tool-level reporting."""
     successful = [r for r in tool_runs if r["status"] == "ok"]
-    failed = [r for r in tool_runs if r["status"] != "ok"]
+    timed_out = [r for r in tool_runs if r["status"] == "timeout"]
+    failed = [r for r in tool_runs if r["status"] not in {"ok", "timeout"}]
     status_counts: dict[str, int] = defaultdict(int)
     for run_item in tool_runs:
         status_counts[str(run_item["status"])] += 1
@@ -894,6 +1033,7 @@ def summarize_tool_runs(tool_runs: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "total_runs": len(tool_runs),
         "successful_runs": len(successful),
+        "timeout_runs": len(timed_out),
         "failed_runs": len(failed),
         "status_counts": dict(sorted(status_counts.items())),
     }
@@ -1006,9 +1146,10 @@ def execute_tool_benchmarks(
 def run(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     validate_runtime_args(args)
-    sizes, threads, ram_gb, _effective_cores, _effective_ram_gb = (
+    default_sizes, threads, ram_gb, _effective_cores, _effective_ram_gb = (
         resolve_benchmark_dimensions(args)
     )
+    cli_sizes_explicit = bool(args.size)
 
     discovered = discover_catalog_tools(args.catalog_tools_root)
     selected = select_tools(discovered, args.tool)
@@ -1033,17 +1174,23 @@ def run(argv: Sequence[str] | None = None) -> int:
         )
         for target in targets
     }
-    total_runs = sum(
-        len(target.profiles)
-        * len(sizes)
-        * len(threads_by_tool[target.tool_id])
-        * len(ram_gb)
-        * args.repeats
-        for target in targets
+    plan_rows = benchmark_plan_rows(
+        targets=targets,
+        default_sizes=default_sizes,
+        threads_by_tool=threads_by_tool,
+        ram_gb=ram_gb,
+        repeats=args.repeats,
+        cli_sizes_explicit=cli_sizes_explicit,
     )
+    total_runs = sum(int(row["runs"]) for row in plan_rows)
+    if args.plan_only:
+        print_benchmark_plan_summary(plan_rows)
+        return 0
+
     run_index = 0
     fail_fast_triggered = False
     global_success = 0
+    global_timeout = 0
     global_fail = 0
 
     for target in targets:
@@ -1080,11 +1227,17 @@ def run(argv: Sequence[str] | None = None) -> int:
             cost_profile_entries: list[dict[str, Any]] = []
             tool_total_runs = 0
             tool_success_runs = 0
+            tool_timeout_runs = 0
             tool_failed_runs = 0
             for profile in target.profiles:
                 print(f"[{tool_id}] profile: {profile.profile_id}")
+                profile_sizes = sizes_for_profile(
+                    profile=profile,
+                    default_sizes=default_sizes,
+                    cli_sizes_explicit=cli_sizes_explicit,
+                )
                 benchmark_config = build_benchmark_config(
-                    sizes=sizes,
+                    sizes=profile_sizes,
                     threads=tool_threads,
                     ram_gb=ram_gb,
                     params_profile=profile.params_profile,
@@ -1098,7 +1251,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                     profile_id=profile.profile_id,
                     image_tag=image_tag,
                     workdir=profile_workdir,
-                    sizes=sizes,
+                    sizes=profile_sizes,
                     threads=tool_threads,
                     ram_gb=ram_gb,
                     repeats=args.repeats,
@@ -1115,8 +1268,10 @@ def run(argv: Sequence[str] | None = None) -> int:
                 profile_summary = summarize_tool_runs(profile_runs)
                 tool_total_runs += profile_summary["total_runs"]
                 tool_success_runs += profile_summary["successful_runs"]
+                tool_timeout_runs += profile_summary["timeout_runs"]
                 tool_failed_runs += profile_summary["failed_runs"]
                 global_success += profile_summary["successful_runs"]
+                global_timeout += profile_summary["timeout_runs"]
                 global_fail += profile_summary["failed_runs"]
 
                 runtime_points = aggregate_runtime_points(
@@ -1137,6 +1292,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                     f"[{tool_id}/{profile.profile_id}] summary: "
                     f"total={profile_summary['total_runs']} "
                     f"ok={profile_summary['successful_runs']} "
+                    f"timeout={profile_summary['timeout_runs']} "
                     f"failed={profile_summary['failed_runs']}"
                 )
                 if fail_fast_triggered:
@@ -1155,7 +1311,8 @@ def run(argv: Sequence[str] | None = None) -> int:
 
             print(
                 f"[{tool_id}] summary: profiles={len(cost_profile_entries)}/{len(target.profiles)} "
-                f"total={tool_total_runs} ok={tool_success_runs} failed={tool_failed_runs} "
+                f"total={tool_total_runs} ok={tool_success_runs} "
+                f"timeout={tool_timeout_runs} failed={tool_failed_runs} "
                 f"wrote_cost={wrote_cost}"
             )
 
@@ -1173,6 +1330,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     print()
     print(
         f"Benchmark finished. successful_runs={global_success} "
+        f"timeout_runs={global_timeout} "
         f"failed_runs={global_fail}"
     )
     return 0

@@ -1,0 +1,36 @@
+{
+  "sizes": [
+    "50x20",
+    "100x40",
+    "200x80"
+  ],
+  "column_kind": "cells",
+  "expression_profile": "synthetic_single_cell_benchmark",
+  "cost_relevant_params": [
+    "nfeatures",
+    "knn"
+  ],
+  "profiles": [
+    {
+      "id": "column_native_default",
+      "execution": {
+        "mode": "column_native"
+      },
+      "param_overrides": {
+        "nfeatures": 15,
+        "knn": 2
+      }
+    },
+    {
+      "id": "group_aggregated_groups_2",
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "nfeatures": 15,
+        "knn": 2
+      }
+    }
+  ]
+}

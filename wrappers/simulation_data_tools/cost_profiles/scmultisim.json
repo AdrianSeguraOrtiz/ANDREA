@@ -827,6 +827,331 @@
           "global"
         ]
       }
+    },
+    {
+      "id": "single_cell_cells_differentiation_global_builtin_static_all_extras",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
+      "requested_extras": [
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "enrichment_background",
+        "prior_grn",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla1",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_differentiation_global_group_builtin_dynamic_all_extras",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "lineage_tree",
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "enrichment_background",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      }
+    },
+    {
+      "id": "single_cell_cells_differentiation_global_group_column_builtin_dynamic_all_extras",
+      "sizes": [
+        "101x40",
+        "150x60",
+        "200x80"
+      ],
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "lineage_tree",
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "enrichment_background",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      }
+    },
+    {
+      "id": "spatial_spots_differentiation_global_builtin_static_all_extras",
+      "sizes": [
+        "120x20",
+        "140x30"
+      ],
+      "requested_extras": [
+        "spatial_coordinates",
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "cell_cell_interactions",
+        "enrichment_background",
+        "prior_grn",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 0,
+      "population_count": 0,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_genes": 120,
+        "num_cifs": 20,
+        "speed_up": true,
+        "spatial": {
+          "enabled": true,
+          "single_cell_gt": true
+        },
+        "velocity": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": false
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "spatial",
+        "column_kind": "spots",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      }
+    },
+    {
+      "id": "spatial_spots_differentiation_global_group_builtin_dynamic_all_extras",
+      "sizes": [
+        "120x20",
+        "140x30"
+      ],
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "lineage_tree",
+        "spatial_coordinates",
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "cell_cell_interactions",
+        "enrichment_background",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_genes": 120,
+        "num_cifs": 20,
+        "speed_up": true,
+        "spatial": {
+          "enabled": true,
+          "single_cell_gt": true
+        },
+        "velocity": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "spatial",
+        "column_kind": "spots",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      }
+    },
+    {
+      "id": "spatial_spots_differentiation_global_group_column_builtin_dynamic_all_extras",
+      "sizes": [
+        "120x20",
+        "140x30"
+      ],
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "lineage_tree",
+        "spatial_coordinates",
+        "chromatin_accessibility",
+        "chromatin_regions",
+        "cell_cell_interactions",
+        "enrichment_background",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "group_count": 3,
+      "population_count": 3,
+      "param_overrides": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_genes": 120,
+        "num_cifs": 20,
+        "speed_up": true,
+        "spatial": {
+          "enabled": true,
+          "single_cell_gt": true
+        },
+        "velocity": {
+          "enabled": false
+        },
+        "technical_noise": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        }
+      },
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "spatial",
+        "column_kind": "spots",
+        "experimental_design": "differentiation"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      }
     }
   ]
 }

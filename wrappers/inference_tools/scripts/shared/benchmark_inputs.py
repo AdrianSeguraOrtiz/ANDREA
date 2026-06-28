@@ -52,6 +52,156 @@ EXTRA_FILENAMES = {
     "timepoints": "timepoints.tsv",
 }
 
+HUMAN_BREAST_CANCER_PATHWAY_GENES = (
+    "ESR1",
+    "ESR2",
+    "NCOA1",
+    "NCOA3",
+    "FOS",
+    "JUN",
+    "SP1",
+    "CCND1",
+    "MYC",
+    "PGR",
+    "WNT1",
+    "WNT4",
+    "TNFSF11",
+    "ERBB2",
+    "FGF1",
+    "FGF2",
+    "FGF3",
+    "FGF4",
+    "FGF17",
+    "FGF6",
+    "FGF7",
+    "FGF8",
+    "FGF9",
+    "FGF10",
+    "FGF16",
+    "FGF5",
+    "FGF18",
+    "FGF20",
+    "FGF22",
+    "FGF19",
+    "FGF21",
+    "FGF23",
+    "FGFR1",
+    "IGF1",
+    "IGF1R",
+    "EGF",
+    "EGFR",
+    "KIT",
+    "SHC1",
+    "SHC2",
+    "SHC3",
+    "SHC4",
+    "GRB2",
+    "SOS1",
+    "SOS2",
+    "HRAS",
+    "KRAS",
+    "NRAS",
+    "ARAF",
+    "BRAF",
+    "RAF1",
+    "MAP2K1",
+    "MAP2K2",
+    "MAPK1",
+    "MAPK3",
+    "PIK3CA",
+    "PIK3CD",
+    "PIK3CB",
+    "PIK3R1",
+    "PIK3R2",
+    "PIK3R3",
+    "PTEN",
+    "AKT1",
+    "AKT2",
+    "AKT3",
+    "MTOR",
+    "RPS6KB1",
+    "RPS6KB2",
+    "JAG1",
+    "JAG2",
+    "DLL3",
+    "DLL1",
+    "DLL4",
+    "NOTCH1",
+    "NOTCH2",
+    "NOTCH3",
+    "NOTCH4",
+    "HES1",
+    "HES5",
+    "HEYL",
+    "HEY1",
+    "HEY2",
+    "FLT4",
+    "CDKN1A",
+    "NFKB2",
+    "WNT2",
+    "WNT2B",
+    "WNT3",
+    "WNT3A",
+    "WNT5A",
+    "WNT5B",
+    "WNT6",
+    "WNT7A",
+    "WNT7B",
+    "WNT8A",
+    "WNT8B",
+    "WNT9A",
+    "WNT9B",
+    "WNT10B",
+    "WNT10A",
+    "WNT11",
+    "WNT16",
+    "FZD1",
+    "FZD7",
+    "FZD2",
+    "FZD3",
+    "FZD4",
+    "FZD5",
+    "FZD8",
+    "FZD6",
+    "FZD10",
+    "FZD9",
+    "LRP5",
+    "LRP6",
+    "DVL3",
+    "DVL2",
+    "DVL1",
+    "FRAT1",
+    "FRAT2",
+    "GSK3B",
+    "AXIN1",
+    "AXIN2",
+    "APC",
+    "APC2",
+    "CTNNB1",
+    "CSNK1A1L",
+    "CSNK1A1",
+    "TCF7",
+    "TCF7L1",
+    "TCF7L2",
+    "LEF1",
+    "TP53",
+    "GADD45A",
+    "GADD45B",
+    "GADD45G",
+    "BAX",
+    "BAK1",
+    "DDB2",
+    "POLK",
+    "CDK4",
+    "CDK6",
+    "RB1",
+    "E2F1",
+    "E2F2",
+    "E2F3",
+    "BRCA1",
+    "BRCA2",
+)
+
 
 @dataclass(frozen=True)
 class BenchmarkInputSize:
@@ -64,6 +214,7 @@ class BenchmarkInputProfile:
     seed: int = 12345
     column_kind: str = "samples"
     expression_profile: str = "synthetic_benchmark"
+    gene_id_source: str = "synthetic"
     extras_provided: tuple[str, ...] = ()
     group_count: int = 0
     tf_count_policy: str | None = "max(3, genes/5)"
@@ -88,6 +239,9 @@ class BenchmarkInputProfile:
                 payload.get("expression_profile", "synthetic_benchmark")
                 or "synthetic_benchmark"
             ),
+            gene_id_source=str(
+                payload.get("gene_id_source", "synthetic") or "synthetic"
+            ),
             extras_provided=tuple(
                 dict.fromkeys(str(item).strip() for item in extras if str(item).strip())
             ),
@@ -98,6 +252,10 @@ class BenchmarkInputProfile:
                 else None
             ),
             prior_density=_as_optional_density(payload.get("prior_density")),
+            marker_count_per_group=_as_int(
+                payload.get("marker_count_per_group", 4),
+                default=4,
+            ),
         )
 
 
@@ -159,8 +317,10 @@ def write_benchmark_io_dir(
             write_network_edges(
                 path,
                 genes=genes,
+                groups=groups,
                 tfs=tfs,
                 density=resolved_prior_density(profile),
+                marker_count_per_group=profile.marker_count_per_group,
                 seed=stable_seed(size=size, profile=profile, namespace=input_key),
             )
         elif input_key == "groups":
@@ -175,8 +335,10 @@ def write_benchmark_io_dir(
             write_network_edges(
                 path,
                 genes=genes,
+                groups=groups,
                 tfs=tfs,
                 density=resolved_prior_density(profile),
+                marker_count_per_group=profile.marker_count_per_group,
                 seed=stable_seed(size=size, profile=profile, namespace=input_key),
             )
         elif input_key == "prior_grn_by_group":
@@ -219,7 +381,7 @@ def write_expression_matrix(
     size: BenchmarkInputSize,
     profile: BenchmarkInputProfile,
 ) -> tuple[list[str], list[str]]:
-    genes = gene_names(size.genes)
+    genes = gene_names(size.genes, source=profile.gene_id_source)
     columns = column_names(size.columns, profile.column_kind)
     rng = random.Random(stable_seed(size=size, profile=profile, namespace="expression"))
 
@@ -268,11 +430,20 @@ def write_network_edges(
     path: Path,
     *,
     genes: Sequence[str],
+    groups: Sequence[str] = (),
     tfs: Sequence[str],
     density: float,
+    marker_count_per_group: int = 4,
     seed: int,
 ) -> None:
-    edges = select_directed_edges(genes=genes, tfs=tfs, density=density, seed=seed)
+    edges = select_directed_edges(
+        genes=genes,
+        groups=groups,
+        tfs=tfs,
+        density=density,
+        marker_count_per_group=marker_count_per_group,
+        seed=seed,
+    )
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
         writer.writerow(["source", "target", "score"])
@@ -450,7 +621,7 @@ def write_cluster_identities(path: Path, groups: Sequence[str]) -> None:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
         writer.writerow(["cluster", "annotation", "order"])
         for idx, group in enumerate(groups, start=1):
-            writer.writerow([group, f"Cluster{idx}", idx])
+            writer.writerow([group, f"Type{idx}", idx])
 
 
 def write_cluster_markers(
@@ -480,7 +651,7 @@ def write_cluster_markers(
             for marker_idx in range(marker_count):
                 gene = genes[(offset + marker_idx) % len(genes)]
                 p_val = 0.0005 * (marker_idx + 1)
-                p_adj = min(0.99, 0.01 * (marker_idx + 1))
+                p_adj = min(0.049, 0.0005 * (marker_idx + 1))
                 avg_logfc = 0.5 + (0.1 * marker_idx)
                 writer.writerow(
                     [
@@ -507,8 +678,17 @@ def write_gene_list(path: Path, genes: Sequence[str]) -> None:
     path.write_text("".join(f"{gene}\n" for gene in genes), encoding="utf-8")
 
 
-def gene_names(count: int) -> list[str]:
-    return [f"G{idx + 1}" for idx in range(count)]
+def gene_names(count: int, *, source: str = "synthetic") -> list[str]:
+    if source == "synthetic":
+        return [f"G{idx + 1}" for idx in range(count)]
+    if source == "human_breast_cancer_pathway":
+        if count > len(HUMAN_BREAST_CANCER_PATHWAY_GENES):
+            raise ValueError(
+                "gene_id_source=human_breast_cancer_pathway supports at most "
+                f"{len(HUMAN_BREAST_CANCER_PATHWAY_GENES)} genes."
+            )
+        return list(HUMAN_BREAST_CANCER_PATHWAY_GENES[:count])
+    raise ValueError(f"Unsupported gene_id_source: {source}")
 
 
 def column_names(count: int, column_kind: str) -> list[str]:
@@ -552,8 +732,10 @@ def select_tfs(genes: Sequence[str], policy: str | None) -> list[str]:
 def select_directed_edges(
     *,
     genes: Sequence[str],
+    groups: Sequence[str] = (),
     tfs: Sequence[str],
     density: float,
+    marker_count_per_group: int = 4,
     seed: int,
 ) -> list[tuple[str, str, float]]:
     candidates = [
@@ -563,12 +745,56 @@ def select_directed_edges(
         return []
 
     rng = random.Random(seed)
+    seeded_edges = marker_coherent_edges(
+        genes=genes,
+        groups=groups,
+        tfs=tfs,
+        marker_count_per_group=marker_count_per_group,
+        rng=rng,
+    )
+    seeded_pairs = {(source, target) for source, target, _score in seeded_edges}
+
     rng.shuffle(candidates)
     edge_count = max(1, min(len(candidates), round(len(candidates) * density)))
-    edges = []
-    for source, target in candidates[:edge_count]:
+    edges = list(seeded_edges)
+    for source, target in candidates:
+        if len(edges) >= edge_count and len(edges) >= len(seeded_edges):
+            break
+        if (source, target) in seeded_pairs:
+            continue
         score = rng.uniform(0.01, 1.0)
         edges.append((source, target, score))
+    return edges
+
+
+def marker_coherent_edges(
+    *,
+    genes: Sequence[str],
+    groups: Sequence[str],
+    tfs: Sequence[str],
+    marker_count_per_group: int,
+    rng: random.Random,
+) -> list[tuple[str, str, float]]:
+    """Create marker-focused prior edges for grouped synthetic benchmark inputs."""
+    if not groups or not tfs:
+        return []
+
+    marker_count = max(1, min(len(genes), marker_count_per_group))
+    edges: list[tuple[str, str, float]] = []
+    seen: set[tuple[str, str]] = set()
+    for group_idx, _group in enumerate(groups):
+        source = tfs[group_idx % len(tfs)]
+        offset = (group_idx * marker_count) % len(genes)
+        for marker_idx in range(marker_count):
+            target = genes[(offset + marker_idx) % len(genes)]
+            if source == target:
+                continue
+            pair = (source, target)
+            if pair in seen:
+                continue
+            seen.add(pair)
+            score = rng.uniform(0.75, 1.0)
+            edges.append((source, target, score))
     return edges
 
 
@@ -584,6 +810,7 @@ def stable_seed(
         "profile": {
             "column_kind": profile.column_kind,
             "expression_profile": profile.expression_profile,
+            "gene_id_source": profile.gene_id_source,
             "extras_provided": sorted(profile.extras_provided),
             "group_count": profile.group_count,
             "tf_count_policy": profile.tf_count_policy,
@@ -618,6 +845,7 @@ def _validate_profile(
         raise ValueError("BenchmarkInputSize.columns must be >= 1.")
     if profile.group_count < 0:
         raise ValueError("BenchmarkInputProfile.group_count must be >= 0.")
+    gene_names(size.genes, source=profile.gene_id_source)
     unknown = sorted(set(profile.extras_provided).difference(GENERATED_EXTRA_INPUTS))
     if unknown:
         raise ValueError(f"Unknown synthetic extra input(s): {unknown}")

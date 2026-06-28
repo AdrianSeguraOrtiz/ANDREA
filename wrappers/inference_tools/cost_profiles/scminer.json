@@ -1,0 +1,56 @@
+{
+  "cost_relevant_params": [
+    "driver_source",
+    "species_type",
+    "downSample_N",
+    "n_bootstraps",
+    "consensus_pvalue"
+  ],
+  "profiles": [
+    {
+      "id": "global_builtin_tf_sig_fast",
+      "execution": {
+        "mode": "global"
+      },
+      "sizes": [
+        "50x20",
+        "100x40"
+      ],
+      "gene_id_source": "human_breast_cancer_pathway",
+      "column_kind": "cells",
+      "expression_profile": "human_single_cell_benchmark",
+      "param_overrides": {
+        "driver_source": "built_in_tf_sig",
+        "species_type": "hg",
+        "downSample_N": null,
+        "n_bootstraps": 1,
+        "consensus_pvalue": 1
+      }
+    },
+    {
+      "id": "global_custom_tf_fast",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "driver_source": "custom_tf_list",
+        "downSample_N": null,
+        "n_bootstraps": 1,
+        "consensus_pvalue": 1
+      }
+    },
+    {
+      "id": "group_emulated_custom_tf_fast_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "driver_source": "custom_tf_list",
+        "downSample_N": null,
+        "n_bootstraps": 1,
+        "consensus_pvalue": 1
+      }
+    }
+  ]
+}

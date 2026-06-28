@@ -198,7 +198,8 @@ Fixture resolution order:
 
 Runs Docker benchmarks and writes `cost.json` profiles under the packaged catalog.
 Benchmark params are derived from ToolSpec defaults plus optional overrides in
-`wrappers/inference_tools/param_overrides/`.
+`wrappers/inference_tools/param_overrides/` and benchmark profile configs in
+`wrappers/inference_tools/cost_profiles/`.
 
 ```bash
 python wrappers/inference_tools/scripts/benchmark_costs.py
@@ -206,6 +207,9 @@ python wrappers/inference_tools/scripts/benchmark_costs.py
 
 Notes:
 - the script builds and uses a local benchmark tag of the form `inference-tools-<tool_id>:benchmark-local`
+- use `--plan-only` to inspect the fully resolved matrix without building images or running containers
+- profile configs may pin `sizes`, `column_kind`, `expression_profile` and `gene_id_source` when a generic synthetic matrix is not valid for a tool
+- each run has a timeout guard (`--timeout`, default 1800 seconds), and timed-out containers are removed with a best-effort `docker rm -f`
 - only use `--skip-build` if that benchmark-local image already exists
 
 ### `sync_tool_repos.py`

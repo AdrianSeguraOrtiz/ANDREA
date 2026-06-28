@@ -1,0 +1,113 @@
+{
+  "sizes": [
+    "50x40",
+    "100x80"
+  ],
+  "cost_relevant_params": [
+    "kernel_source",
+    "prior_mode",
+    "expression_preprocessing",
+    "pca_components",
+    "bandwidth",
+    "n_neigh",
+    "lamb",
+    "prior_beta",
+    "max_iters",
+    "n_intervals",
+    "batch_size"
+  ],
+  "profiles": [
+    {
+      "id": "column_native_expression_default",
+      "execution": {
+        "mode": "column_native"
+      },
+      "param_overrides": {
+        "pca_components": 3,
+        "n_neigh": 6,
+        "lamb": 0.01,
+        "max_iters": 1,
+        "n_intervals": 1,
+        "batch_size": 30
+      }
+    },
+    {
+      "id": "group_aggregated_expression_groups_2",
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "pca_components": 3,
+        "n_neigh": 6,
+        "lamb": 0.01,
+        "max_iters": 1,
+        "n_intervals": 1,
+        "batch_size": 30
+      }
+    },
+    {
+      "id": "column_native_spatial_kernel",
+      "execution": {
+        "mode": "column_native"
+      },
+      "param_overrides": {
+        "kernel_source": "spatial",
+        "pca_components": 3,
+        "n_neigh": 6,
+        "lamb": 0.01,
+        "max_iters": 1,
+        "n_intervals": 1,
+        "batch_size": 30
+      }
+    },
+    {
+      "id": "group_aggregated_spatial_kernel_groups_2",
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "kernel_source": "spatial",
+        "pca_components": 3,
+        "n_neigh": 6,
+        "lamb": 0.01,
+        "max_iters": 1,
+        "n_intervals": 1,
+        "batch_size": 30
+      }
+    },
+    {
+      "id": "column_native_tf_prior",
+      "execution": {
+        "mode": "column_native"
+      },
+      "param_overrides": {
+        "prior_mode": "tf_list",
+        "pca_components": 3,
+        "n_neigh": 6,
+        "lamb": 0.01,
+        "max_iters": 1,
+        "n_intervals": 1,
+        "batch_size": 30
+      }
+    },
+    {
+      "id": "group_aggregated_spatial_tf_prior_groups_2",
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "kernel_source": "spatial",
+        "prior_mode": "tf_list",
+        "pca_components": 3,
+        "n_neigh": 6,
+        "lamb": 0.01,
+        "max_iters": 1,
+        "n_intervals": 1,
+        "batch_size": 30
+      }
+    }
+  ]
+}

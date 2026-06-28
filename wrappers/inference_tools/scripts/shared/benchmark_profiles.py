@@ -31,6 +31,7 @@ PRIOR_LIKE_INPUTS = {"grnboost_network", "prior_grn", "prior_grn_by_group"}
 class BenchmarkProfile:
     tool_id: str
     profile_id: str
+    sizes: tuple[str, ...] | None
     execution: dict[str, Any]
     execution_profile: dict[str, Any]
     params: dict[str, Any]
@@ -131,6 +132,18 @@ def _configured_profiles(
             raise ValueError(
                 "cost profile config must include a non-empty profiles array."
             )
+        inherited_profile_fields = {
+            "sizes": profile_config.get("sizes"),
+            "column_kind": profile_config.get("column_kind"),
+            "expression_profile": profile_config.get("expression_profile"),
+            "gene_id_source": profile_config.get("gene_id_source"),
+            "tf_count_policy": profile_config.get("tf_count_policy"),
+            "prior_density": profile_config.get("prior_density"),
+            "marker_count_per_group": profile_config.get("marker_count_per_group"),
+        }
+        inherited_sizes = inherited_profile_fields["sizes"]
+        if inherited_sizes is not None and not isinstance(inherited_sizes, list):
+            raise ValueError("cost profile config sizes must be an array.")
         out: list[dict[str, Any]] = []
         for idx, profile in enumerate(raw_profiles, start=1):
             if not isinstance(profile, dict):
@@ -145,6 +158,9 @@ def _configured_profiles(
                 profile_copy["cost_relevant_params"] = copy.deepcopy(
                     inherited_cost_relevant
                 )
+            for key, value in inherited_profile_fields.items():
+                if key not in profile_copy and value is not None:
+                    profile_copy[key] = copy.deepcopy(value)
             out.append(profile_copy)
         return out
 
@@ -224,6 +240,7 @@ def _resolve_one_profile(
     return BenchmarkProfile(
         tool_id=tool_id,
         profile_id=profile_id,
+        sizes=_profile_sizes(raw_profile=raw_profile, profile_id=profile_id),
         execution=execution,
         execution_profile=execution_profile,
         params=params,
@@ -233,6 +250,31 @@ def _resolve_one_profile(
         optional_inputs=tuple(selected_optional),
         conditional_inputs=tuple(conditional_inputs),
     )
+
+
+def _profile_sizes(
+    *,
+    raw_profile: dict[str, Any],
+    profile_id: str,
+) -> tuple[str, ...] | None:
+    raw_sizes = raw_profile.get("sizes")
+    if raw_sizes is None:
+        return None
+    if not isinstance(raw_sizes, list) or not raw_sizes:
+        raise ValueError(f"profile {profile_id}: sizes must be a non-empty array.")
+    sizes: list[str] = []
+    for raw_size in raw_sizes:
+        if not isinstance(raw_size, str) or not raw_size.strip():
+            raise ValueError(
+                f"profile {profile_id}: sizes entries must be non-empty strings."
+            )
+        token = raw_size.strip()
+        if "x" not in token.lower():
+            raise ValueError(
+                f"profile {profile_id}: invalid size {token!r}; expected GENESxCOLUMNS."
+            )
+        sizes.append(token)
+    return tuple(dict.fromkeys(sizes))
 
 
 def _load_json_object(path: Path, label: str) -> dict[str, Any]:
@@ -659,9 +701,13 @@ def _build_input_profile(
             if mode == "global"
             else "synthetic_single_cell_benchmark"
         )
+    gene_id_source = raw_profile.get("gene_id_source", "synthetic")
     prior_density = raw_profile.get("prior_density")
     if prior_density is None and set(extras).intersection(PRIOR_LIKE_INPUTS):
         prior_density = default_prior_density
+    marker_count_per_group = raw_profile.get("marker_count_per_group", 4)
+    if isinstance(marker_count_per_group, bool) or not isinstance(marker_count_per_group, int):
+        raise ValueError("profile.marker_count_per_group must be an integer.")
     tf_count_policy = raw_profile.get("tf_count_policy")
     if tf_count_policy is None and "tf_list" in extras:
         tf_count_policy = "max(3, genes/5)"
@@ -674,6 +720,7 @@ def _build_input_profile(
     return {
         "column_kind": str(column_kind),
         "expression_profile": str(expression_profile),
+        "gene_id_source": str(gene_id_source),
         "extras_provided": extras,
         "required_inputs_satisfied": sorted(set(required_inputs)),
         "optional_inputs_provided": sorted(set(optional_inputs)),
@@ -684,6 +731,7 @@ def _build_input_profile(
         "prior_density": (
             _validate_density(prior_density) if prior_density is not None else None
         ),
+        "marker_count_per_group": marker_count_per_group,
         "group_count": group_count,
         "has_tf_list": "tf_list" in extras,
         "output_density_class": (

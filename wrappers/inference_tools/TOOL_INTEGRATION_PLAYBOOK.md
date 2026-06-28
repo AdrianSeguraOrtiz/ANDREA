@@ -300,6 +300,20 @@ If you need a smaller or custom benchmark matrix, customize `ARGS`, for example:
 make benchmark-tool-costs ARGS="--tool <tool_id> --size 50x20 --size 100x40 --threads 1,2 --ram-gb 8,16 --repeats 1"
 ```
 
+Before launching a long run, inspect the resolved matrix:
+
+```bash
+make benchmark-tool-costs ARGS="--tool <tool_id> --plan-only"
+```
+
+The script combines the CLI matrix with
+[cost_profiles](cost_profiles/README.md). Profile configs must cover every
+declared `execution_capabilities` mode and every required/optional/conditional
+input path that materially changes runtime. Use profile-local `sizes`,
+`column_kind`, `expression_profile` or `gene_id_source` when the generic
+synthetic matrix is invalid for the tool, for example tools whose bundled public
+resources require human gene symbols.
+
 Each benchmarked Docker run has a timeout guard. The default is 1800 seconds
 per run; override it with `--timeout <seconds>` or use `--timeout 0` only when
 you intentionally want no timeout.
@@ -312,7 +326,9 @@ Timeouts are stored in `cost.json` as `status=timeout` when no repeat succeeds,
 or inside `failure_breakdown.timeout` when a benchmark point is only partially
 successful. The planner does not use fully timed-out points as runtime evidence.
 Partially successful points remain usable, but their ETA receives a conservative
-risk penalty and carries a provenance warning.
+risk penalty and carries a provenance warning. The benchmarker also names each
+container and performs a best-effort `docker rm -f` when Docker itself times out,
+so interrupted points should not leave orphaned containers.
 
 The requested `--threads` matrix must be compatible with
 `toolspec.runtime_resources.threading`. Tools with `supported=false` may only

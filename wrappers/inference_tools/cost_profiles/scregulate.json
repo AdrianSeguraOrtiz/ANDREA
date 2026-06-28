@@ -1,0 +1,109 @@
+{
+  "sizes": [
+    "50x20",
+    "100x40"
+  ],
+  "cost_relevant_params": [
+    "prior_source",
+    "epochs",
+    "freeze_epochs",
+    "batch_size",
+    "learning_rate",
+    "early_stopping_patience",
+    "min_targets",
+    "min_TFs",
+    "fine_tune_epochs",
+    "fine_tune_batch_size",
+    "fine_tune_min_epochs",
+    "fine_tune_early_stopping_patience"
+  ],
+  "profiles": [
+    {
+      "id": "global_provided_prior_fast",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "prior_source": "provided_prior",
+        "epochs": 2,
+        "freeze_epochs": 20,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "early_stopping_patience": 5,
+        "min_targets": 1,
+        "min_TFs": 1,
+        "fine_tune_epochs": 2,
+        "fine_tune_batch_size": 8,
+        "fine_tune_min_epochs": 1,
+        "fine_tune_early_stopping_patience": 5,
+        "random_state": 1
+      }
+    },
+    {
+      "id": "group_native_provided_prior_fast_groups_2",
+      "execution": {
+        "mode": "group_native"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "prior_source": "provided_prior",
+        "epochs": 2,
+        "freeze_epochs": 20,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "early_stopping_patience": 5,
+        "min_targets": 1,
+        "min_TFs": 1,
+        "fine_tune_epochs": 2,
+        "fine_tune_batch_size": 8,
+        "fine_tune_min_epochs": 1,
+        "fine_tune_early_stopping_patience": 5,
+        "random_state": 1
+      }
+    },
+    {
+      "id": "group_emulated_provided_prior_fast_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "prior_source": "provided_prior",
+        "epochs": 2,
+        "freeze_epochs": 20,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "early_stopping_patience": 5,
+        "min_targets": 1,
+        "min_TFs": 1,
+        "fine_tune_epochs": 2,
+        "fine_tune_batch_size": 8,
+        "fine_tune_min_epochs": 1,
+        "fine_tune_early_stopping_patience": 5,
+        "random_state": 1
+      }
+    },
+    {
+      "id": "global_provided_prior_min_targets_20",
+      "execution": {
+        "mode": "global"
+      },
+      "prior_density": 1.0,
+      "param_overrides": {
+        "prior_source": "provided_prior",
+        "epochs": 2,
+        "freeze_epochs": 20,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "early_stopping_patience": 5,
+        "min_targets": 20,
+        "min_TFs": 1,
+        "fine_tune_epochs": 2,
+        "fine_tune_batch_size": 8,
+        "fine_tune_min_epochs": 1,
+        "fine_tune_early_stopping_patience": 5,
+        "random_state": 1
+      }
+    }
+  ]
+}

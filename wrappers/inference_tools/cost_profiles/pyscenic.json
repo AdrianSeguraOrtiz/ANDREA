@@ -1,0 +1,50 @@
+{
+  "cost_relevant_params": [
+    "method",
+    "seed"
+  ],
+  "profiles": [
+    {
+      "id": "global_grnboost2",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "method": "grnboost2",
+        "seed": 1
+      }
+    },
+    {
+      "id": "global_genie3",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "method": "genie3",
+        "seed": 1
+      }
+    },
+    {
+      "id": "group_emulated_grnboost2_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "method": "grnboost2",
+        "seed": 1
+      }
+    },
+    {
+      "id": "group_emulated_genie3_groups_2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "param_overrides": {
+        "method": "genie3",
+        "seed": 1
+      }
+    }
+  ]
+}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import math
 import os
@@ -214,6 +215,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--fail-fast",
         action="store_true",
         help="Stop after the first failed run.",
+    )
+    parser.add_argument(
+        "--plan-only",
+        action="store_true",
+        help="Print the resolved benchmark matrix and exit without building images or running containers.",
     )
     return parser.parse_args(argv)
 
@@ -868,6 +874,11 @@ def normalize_cells_dimension(
         return cells_param
     if not isinstance(raw, dict):
         raise RuntimeError("dimension_params.cells must be a parameter path or object.")
+    if set(raw) == {"fixed"}:
+        fixed = raw.get("fixed")
+        if not isinstance(fixed, int) or isinstance(fixed, bool) or fixed < 1:
+            raise RuntimeError("dimension_params.cells.fixed must be an integer >= 1.")
+        return {"fixed": fixed}
     param = str(raw.get("param") or "").strip()
     if not param:
         raise RuntimeError("dimension_params.cells.param must be a parameter path.")
@@ -1140,6 +1151,33 @@ def runtime_resources_profile_from_spec(spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def filter_threads_for_simulator(
+    *,
+    simulator_id: str,
+    spec: dict[str, Any],
+    requested_threads: list[int],
+) -> list[int]:
+    threading = spec.get("runtime_resources", {}).get("threading", {})
+    supported = bool(threading.get("supported", False))
+    max_threads = int(threading.get("max_threads", 1))
+    if supported:
+        allowed = [value for value in requested_threads if 1 <= value <= max_threads]
+    else:
+        allowed = [value for value in requested_threads if value == 1]
+    ignored = sorted(set(requested_threads).difference(allowed))
+    if ignored:
+        print(
+            f"[{simulator_id}] ignoring thread value(s) incompatible with "
+            f"simulatorspec.runtime_resources.threading: {ignored}"
+        )
+    if not allowed:
+        raise RuntimeError(
+            f"[{simulator_id}] no requested thread values are compatible with "
+            "simulatorspec.runtime_resources.threading."
+        )
+    return allowed
+
+
 def apply_dimensions_to_params(
     *,
     base_params: dict[str, Any],
@@ -1177,6 +1215,13 @@ def apply_cells_dimension(
         return
     if not isinstance(cells_param, dict):
         raise RuntimeError("Invalid dimension_profile.cells_param.")
+    if "fixed" in cells_param:
+        fixed = int(cells_param["fixed"])
+        if size.cells != fixed:
+            raise RuntimeError(
+                f"Benchmark size requests {size.cells} columns, but this profile has fixed column count {fixed}."
+            )
+        return
     offset = int(cells_param.get("offset", 0))
     adjusted_cells = size.cells - offset
     if adjusted_cells < 1:
@@ -1261,6 +1306,7 @@ def run_container_once(
     request_dir = workdir / "request"
     inputs_dir = workdir / "inputs"
     out_dir = workdir / "out"
+    cidfile = workdir / "container.cid"
     request_dir.mkdir(parents=True, exist_ok=True)
     inputs_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1282,10 +1328,18 @@ def run_container_once(
     save_json(request_dir / "simulator-run-request.json", request_payload)
 
     uid_gid = f"{os.getuid()}:{os.getgid()}"
+    container_name = docker_container_name(
+        simulator_id=simulator_id,
+        workdir=workdir,
+    )
     cmd = [
         "docker",
         "run",
         "--rm",
+        "--name",
+        container_name,
+        "--cidfile",
+        str(cidfile),
         "--user",
         uid_gid,
         "--cpus",
@@ -1309,7 +1363,14 @@ def run_container_once(
             return (classify_failure(logs), elapsed, None, None, logs.strip())
     except subprocess.TimeoutExpired:
         elapsed = time.perf_counter() - started
-        return ("timeout", elapsed, None, None, f"Run exceeded timeout {timeout_s}s.")
+        cleanup_error = cleanup_timed_out_container(
+            container_name=container_name,
+            cidfile=cidfile,
+        )
+        message = f"Run exceeded timeout {timeout_s}s."
+        if cleanup_error:
+            message += f" Container cleanup warning: {cleanup_error}"
+        return ("timeout", elapsed, None, None, message)
 
     manifest_path = out_dir / "simulator-output-manifest.json"
     expression_path = out_dir / "expression.tsv"
@@ -1323,6 +1384,37 @@ def run_container_once(
             "Container finished but normalized output files are missing.",
         )
     return ("ok", elapsed, output_tree_size_bytes(out_dir), None, "")
+
+
+def docker_container_name(*, simulator_id: str, workdir: Path) -> str:
+    digest = hashlib.sha1(str(workdir).encode("utf-8")).hexdigest()[:12]
+    return f"andrea_simcost_{safe_path_token(simulator_id)}_{digest}"
+
+
+def cleanup_timed_out_container(*, container_name: str, cidfile: Path) -> str:
+    refs: list[str] = []
+    if cidfile.exists():
+        cid = cidfile.read_text(encoding="utf-8", errors="replace").strip()
+        if cid:
+            refs.append(cid)
+    refs.append(container_name)
+    errors: list[str] = []
+    seen: set[str] = set()
+    for ref in refs:
+        if ref in seen:
+            continue
+        seen.add(ref)
+        result = run_cmd(
+            ["docker", "rm", "-f", ref],
+            timeout_s=30,
+            capture_output=True,
+        )
+        if result.returncode == 0:
+            return ""
+        stderr = " ".join((result.stderr or result.stdout or "").split())
+        if "No such container" not in stderr:
+            errors.append(stderr or f"docker rm -f {ref} exited {result.returncode}")
+    return "; ".join(errors)
 
 
 def stage_inputs(input_paths: dict[str, Path], inputs_dir: Path) -> dict[str, str]:
@@ -1723,6 +1815,81 @@ def summarize_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def benchmark_plan_summary(
+    *,
+    targets: list[SimulatorBenchmarkTarget],
+    cli_sizes: list[SizePoint],
+    cli_sizes_were_explicit: bool,
+    threads_by_simulator: dict[str, list[int]],
+    ram_gb: list[int],
+    repeats: int,
+    timeout: int,
+) -> dict[str, Any]:
+    simulators: list[dict[str, Any]] = []
+    total_runs = 0
+    for target in targets:
+        simulator_runs = 0
+        profile_items: list[dict[str, Any]] = []
+        simulator_threads = threads_by_simulator[target.simulator_id]
+        for profile in target.profiles:
+            profile_sizes = sizes_for_profile(
+                profile=profile,
+                cli_sizes=cli_sizes,
+                cli_sizes_were_explicit=cli_sizes_were_explicit,
+            )
+            runs = len(profile_sizes) * len(simulator_threads) * len(ram_gb) * repeats
+            simulator_runs += runs
+            profile_items.append(
+                {
+                    "profile_id": profile.profile_id,
+                    "sizes": [
+                        {"genes": item.genes, "cells": item.cells}
+                        for item in profile_sizes
+                    ],
+                    "runs": runs,
+                }
+            )
+        total_runs += simulator_runs
+        simulators.append(
+            {
+                "simulator_id": target.simulator_id,
+                "profiles": len(target.profiles),
+                "threads": [int(item) for item in simulator_threads],
+                "ram_gb": [int(item) for item in ram_gb],
+                "runs": simulator_runs,
+                "profile_runs": profile_items,
+            }
+        )
+    return {
+        "total_runs": total_runs,
+        "repeats": int(repeats),
+        "timeout_seconds": int(timeout),
+        "simulators": simulators,
+    }
+
+
+def print_benchmark_plan_summary(summary: dict[str, Any]) -> None:
+    print("Benchmark plan")
+    print(f"  total_runs: {summary['total_runs']}")
+    print(f"  repeats: {summary['repeats']}")
+    print(f"  timeout_seconds_per_run: {summary['timeout_seconds']}")
+    for simulator in summary["simulators"]:
+        print(
+            f"  - {simulator['simulator_id']}: profiles={simulator['profiles']} "
+            f"threads={simulator['threads']} ram_gb={simulator['ram_gb']} "
+            f"runs={simulator['runs']}"
+        )
+        largest = sorted(
+            simulator["profile_runs"],
+            key=lambda item: (-int(item["runs"]), str(item["profile_id"])),
+        )[:3]
+        for profile in largest:
+            sizes = ",".join(
+                f"{item['genes']}x{item['cells']}" for item in profile["sizes"]
+            )
+            print(f"      {profile['profile_id']}: runs={profile['runs']} sizes={sizes}")
+
+
 def run(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     validate_runtime_args(args)
@@ -1740,6 +1907,27 @@ def run(argv: Sequence[str] | None = None) -> int:
         profile_filters=args.profile,
     )
 
+    threads_by_simulator = {
+        target.simulator_id: filter_threads_for_simulator(
+            simulator_id=target.simulator_id,
+            spec=target.spec,
+            requested_threads=threads,
+        )
+        for target in targets
+    }
+    if args.plan_only:
+        print_benchmark_plan_summary(
+            benchmark_plan_summary(
+                targets=targets,
+                cli_sizes=sizes,
+                cli_sizes_were_explicit=cli_sizes_were_explicit,
+                threads_by_simulator=threads_by_simulator,
+                ram_gb=ram_gb,
+                repeats=args.repeats,
+                timeout=args.timeout,
+            )
+        )
+        return 0
     total_runs = sum(
         len(
             sizes_for_profile(
@@ -1748,7 +1936,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 cli_sizes_were_explicit=cli_sizes_were_explicit,
             )
         )
-        * len(threads)
+        * len(threads_by_simulator[target.simulator_id])
         * len(ram_gb)
         * args.repeats
         for target in targets
@@ -1761,6 +1949,7 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     for target in targets:
         simulator_id = target.simulator_id
+        simulator_threads = threads_by_simulator[simulator_id]
         image_tag = docker_image_tag(simulator_id)
         wrapper_dir = args.wrappers_root / simulator_id
         if not wrapper_dir.is_dir():
@@ -1801,7 +1990,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                     workdir=profile_workdir,
                     profile=profile,
                     sizes=profile_sizes,
-                    threads=threads,
+                    threads=simulator_threads,
                     ram_gb=ram_gb,
                     repeats=args.repeats,
                     seed=args.seed,
@@ -1828,7 +2017,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                                 simulator_id=simulator_id,
                                 profile=profile,
                                 sizes=profile_sizes,
-                                threads=threads,
+                                threads=simulator_threads,
                                 ram_gb=ram_gb,
                                 args=args,
                             ),

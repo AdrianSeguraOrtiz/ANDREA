@@ -29,6 +29,14 @@
       "optional_inputs": [
         "tf_list"
       ]
+    },
+    {
+      "id": "group_emulated_groups_2_default",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "group_count": 2,
+      "optional_inputs": []
     }
   ]
 }
