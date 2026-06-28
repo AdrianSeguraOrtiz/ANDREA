@@ -860,17 +860,17 @@ function renderDistanceMap(level) {
   if (aggregatePoints.length < 2 || allPoints.length < 2) {
     return '<div class="empty">Distance map is not available for this level.</div>';
   }
-  const width = 520;
-  const height = 340;
-  const pad = 44;
+  const width = 760;
+  const height = 500;
+  const pad = 28;
   let minX = Math.min(...allPoints.map((point) => point.x));
   let maxX = Math.max(...allPoints.map((point) => point.x));
   let minY = Math.min(...allPoints.map((point) => point.y));
   let maxY = Math.max(...allPoints.map((point) => point.y));
   if (minX === maxX) { minX -= 1; maxX += 1; }
   if (minY === maxY) { minY -= 1; maxY += 1; }
-  const xPad = (maxX - minX) * 0.12;
-  const yPad = (maxY - minY) * 0.12;
+  const xPad = (maxX - minX) * 0.04;
+  const yPad = (maxY - minY) * 0.04;
   minX -= xPad; maxX += xPad; minY -= yPad; maxY += yPad;
   const x = (value) => pad + ((value - minX) / (maxX - minX)) * (width - (pad * 2));
   const y = (value) => height - pad - ((value - minY) / (maxY - minY)) * (height - (pad * 2));

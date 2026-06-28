@@ -24,6 +24,7 @@ body {
 .app-shell {
   width: min(1500px, calc(100vw - 32px));
   margin: 24px auto 44px;
+  --distance-visual-height: clamp(360px, 30vw, 500px);
 }
 .topbar {
   display: flex;
@@ -469,7 +470,7 @@ summary {
   display: grid;
   grid-template-columns: minmax(360px, 1.05fr) minmax(360px, 0.95fr);
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
 }
 .distance-level-body > section {
   min-width: 0;
@@ -477,13 +478,19 @@ summary {
   border-radius: 8px;
   background: #f8fbff;
   padding: 10px;
+  display: grid;
+  grid-template-rows: auto minmax(0, auto);
+  align-content: start;
 }
 .distance-heatmap-wrap {
   width: 100%;
+  height: var(--distance-visual-height);
+  max-height: var(--distance-visual-height);
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
+  scrollbar-gutter: stable;
 }
 .distance-heatmap {
   width: 100%;
@@ -502,6 +509,15 @@ summary {
   background: #f8fafc;
   color: #334155;
   font-weight: 800;
+}
+.distance-heatmap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.distance-heatmap thead th:first-child {
+  left: 0;
+  z-index: 3;
 }
 .heatmap-tool-label {
   display: grid;
@@ -542,7 +558,7 @@ summary {
   text-align: left;
   position: sticky;
   left: 0;
-  z-index: 1;
+  z-index: 2;
 }
 .distance-heatmap .matrix-diagonal {
   background: #f1f5f9;
@@ -569,7 +585,8 @@ summary {
 .distance-map-svg {
   display: block;
   width: 100%;
-  min-height: 300px;
+  height: var(--distance-visual-height);
+  min-height: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;

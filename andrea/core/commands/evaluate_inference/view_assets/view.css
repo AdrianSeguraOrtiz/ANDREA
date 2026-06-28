@@ -19,6 +19,7 @@ body {
 .andrea-evaluation-view {
   width: min(1480px, calc(100vw - 32px));
   margin: 24px auto 40px;
+  --evaluation-visual-max-height: 280px;
 }
 .andrea-evaluation-view header.page {
   display: grid;
@@ -165,6 +166,11 @@ body {
   display: grid;
   gap: 7px;
 }
+.andrea-evaluation-view .viz-scroll-panel {
+  max-height: var(--evaluation-visual-max-height);
+  overflow-y: auto;
+  padding-right: 3px;
+}
 .andrea-evaluation-view .bar-row {
   display: grid;
   grid-template-columns: minmax(92px, 0.42fr) minmax(120px, 1fr) 54px;
@@ -202,7 +208,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fff;
-  max-height: 420px;
+  max-height: var(--evaluation-visual-max-height);
 }
 .andrea-evaluation-view .other-contexts {
   margin-top: 14px;
@@ -213,6 +219,9 @@ body {
 .andrea-evaluation-view .specific-dist-list {
   display: grid;
   gap: 8px;
+  max-height: var(--evaluation-visual-max-height);
+  overflow-y: auto;
+  padding-right: 3px;
 }
 .andrea-evaluation-view .specific-dist-row {
   display: grid;
@@ -326,6 +335,12 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.andrea-evaluation-view table.group-matrix th:first-child,
+.andrea-evaluation-view table.group-matrix td:first-child {
+  width: 118px;
+  min-width: 118px;
+  max-width: 118px;
 }
 .andrea-evaluation-view table.other-context-table {
   width: 100%;

@@ -294,7 +294,7 @@
       }).join("");
       return `<tr><td title="${escapeHtml(tool)}">${escapeHtml(tool)}</td>${cells}</tr>`;
     }).join("");
-    return `<div class="matrix-wrap"><table class="matrix">${head}${body}</table></div>`;
+    return `<div class="matrix-wrap group-matrix-wrap"><table class="matrix group-matrix">${head}${body}</table></div>`;
   }
 
   function violinDensityPath(values, metricKey, maxValue) {
@@ -490,7 +490,7 @@
         <div class="viz-grid">
           <section>
             <div class="panel-title"><h3>Global</h3><span class="subtle">bars</span></div>
-            ${renderGlobal(rows, metricKey, maxValue)}
+            <div class="viz-scroll-panel">${renderGlobal(rows, metricKey, maxValue)}</div>
           </section>
           <section>
             <div class="panel-title"><h3>Groups</h3><span class="subtle">heatmap</span></div>
