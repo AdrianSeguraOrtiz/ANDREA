@@ -102,8 +102,8 @@ git push origin --tags
 
 ## Notes
 
-- The current package metadata targets Python `>=3.13,<3.14`. Broaden this only
-  after running the test suite on the additional Python versions.
+- The current package metadata targets Python `>=3.11,<3.14`. Keep this range
+  aligned with the Python versions covered by the release test matrix.
 - The Docker images used by wrappers are not bundled in the wheel. The package
   ships catalogs, schemas, GUIs and orchestration code; Docker pulls/builds are
   handled by the normal wrapper workflows.

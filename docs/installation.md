@@ -5,7 +5,7 @@ wrappers through Docker when a workflow needs to run external tools.
 
 ## Requirements
 
-- Python `>=3.13,<3.14`
+- Python `>=3.11,<3.14`
 - Docker for `generate-data` and `infer-network` executions
 
 The CLI can inspect reports and validate many schemas without Docker, but

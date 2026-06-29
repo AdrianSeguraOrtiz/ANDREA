@@ -12,7 +12,7 @@ maintainers = [{ name = "Adrian Segura Ortiz", email = "adrianseor.99@uma.es" }]
 license = "MIT"
 license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.11,<3.14"
 keywords = [
     "gene regulatory networks",
     "GRN inference",
@@ -29,10 +29,13 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
+    "numpy>=2.0.2,<2.5; python_version < '3.12'",
     "typer>=0.23.1,<0.24.0",
     "rich>=15.0.0,<16.0.0",
     "docker>=7.1.0,<8.0.0",
