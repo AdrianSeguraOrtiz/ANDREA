@@ -62,31 +62,42 @@ PY
 
 ## 3. TestPyPI
 
-Upload to TestPyPI first:
+Upload to TestPyPI first. The full target rebuilds the package, runs Twine's
+metadata check, installs the wheel locally, uploads to TestPyPI, then installs
+the published package from TestPyPI in a clean virtual environment:
 
 ```sh
-make publish-testpypi
+make publish-testpypi-full \
+  PACKAGE_VERSION=0.1.0 \
+  TWINE_USERNAME=__token__ \
+  TWINE_PASSWORD=pypi-...
 ```
 
-Then install from TestPyPI in a clean environment. Use PyPI as an extra index so
-runtime dependencies are resolved from the main package index:
+`PACKAGE_VERSION` must match `andrea.config.__version__`. `TWINE_USERNAME` and
+`TWINE_PASSWORD` are passed directly to Twine and no `~/.pypirc` entry is
+required. The TestPyPI install uses PyPI as an extra index so runtime
+dependencies are resolved from the main package index.
+
+If the upload already happened and only the published artifact needs checking,
+run:
 
 ```sh
-python -m venv /tmp/andrea-testpypi
-/tmp/andrea-testpypi/bin/python -m pip install --upgrade pip
-/tmp/andrea-testpypi/bin/python -m pip install \
-  --index-url https://test.pypi.org/simple/ \
-  --extra-index-url https://pypi.org/simple/ \
-  ANDREA
-/tmp/andrea-testpypi/bin/andrea --help
+make smoke-testpypi PACKAGE_VERSION=0.1.0
 ```
 
 ## 4. PyPI
 
-Publish to PyPI only after the TestPyPI installation works:
+Publish to PyPI only after the TestPyPI installation works. The full target
+rebuilds, checks, installs locally and uploads to PyPI. The post-upload PyPI
+smoke test is kept separate because package propagation can lag briefly after
+upload.
 
 ```sh
-make publish-pypi
+make publish-pypi-full \
+  PACKAGE_VERSION=0.1.0 \
+  TWINE_USERNAME=__token__ \
+  TWINE_PASSWORD=pypi-...
+make smoke-pypi PACKAGE_VERSION=0.1.0
 ```
 
 Create the Git tag from the same commit:

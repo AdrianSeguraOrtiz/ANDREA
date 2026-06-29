@@ -6,6 +6,12 @@ ARGS ?=
 TOOL ?=
 SIMULATOR ?=
 WRAPPER ?= python
+PACKAGE_NAME ?= ANDREA
+PACKAGE_VERSION ?= $(shell $(PYTHON) -c "from andrea.config import __version__; print(__version__)")
+TESTPYPI_REPOSITORY_URL ?= https://test.pypi.org/legacy/
+PYPI_REPOSITORY_URL ?= https://upload.pypi.org/legacy/
+TESTPYPI_INDEX_URL ?= https://test.pypi.org/simple/
+PYPI_INDEX_URL ?= https://pypi.org/simple/
 
 install:
 	@$(PYTHON) -m pip install --upgrade pip
@@ -28,8 +34,22 @@ check-package:
 	@$(PYTHON) -m pip install --upgrade twine
 	@$(PYTHON) -m twine check dist/*
 
-smoke-wheel:
+check-package-version:
+	@actual=$$($(PYTHON) -c "from andrea.config import __version__; print(__version__)"); \
+	if [ "$$actual" != "$(PACKAGE_VERSION)" ]; then \
+		echo "PACKAGE_VERSION=$(PACKAGE_VERSION) does not match andrea.config.__version__=$$actual"; \
+		exit 2; \
+	fi
+
+check-dist:
 	@test -d dist || (echo "dist/ does not exist. Run 'make build-package' first." && exit 2)
+
+check-twine-credentials:
+	@test -n "$(TWINE_USERNAME)" || (echo "Set TWINE_USERNAME=__token__" && exit 2)
+	@test -n "$(TWINE_PASSWORD)" || (echo "Set TWINE_PASSWORD=<pypi-token>" && exit 2)
+
+smoke-wheel:
+	@$(MAKE) check-dist
 	@tmp_dir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp_dir"' EXIT; \
 	$(PYTHON) -m venv "$$tmp_dir/venv"; \
@@ -38,13 +58,53 @@ smoke-wheel:
 	"$$tmp_dir/venv/bin/andrea" --help >/dev/null; \
 	echo "Wheel smoke test passed."
 
-publish-testpypi:
-	@$(PYTHON) -m pip install --upgrade twine
-	@$(PYTHON) -m twine upload --repository testpypi dist/*
+smoke-testpypi:
+	@tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	$(PYTHON) -m venv "$$tmp_dir/venv"; \
+	"$$tmp_dir/venv/bin/python" -m pip install --upgrade pip; \
+	"$$tmp_dir/venv/bin/python" -m pip install \
+		--index-url "$(TESTPYPI_INDEX_URL)" \
+		--extra-index-url "$(PYPI_INDEX_URL)" \
+		"$(PACKAGE_NAME)==$(PACKAGE_VERSION)"; \
+	"$$tmp_dir/venv/bin/andrea" --help >/dev/null; \
+	echo "TestPyPI smoke test passed for $(PACKAGE_NAME)==$(PACKAGE_VERSION)."
 
-publish-pypi:
+smoke-pypi:
+	@tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	$(PYTHON) -m venv "$$tmp_dir/venv"; \
+	"$$tmp_dir/venv/bin/python" -m pip install --upgrade pip; \
+	"$$tmp_dir/venv/bin/python" -m pip install \
+		--index-url "$(PYPI_INDEX_URL)" \
+		"$(PACKAGE_NAME)==$(PACKAGE_VERSION)"; \
+	"$$tmp_dir/venv/bin/andrea" --help >/dev/null; \
+	echo "PyPI smoke test passed for $(PACKAGE_NAME)==$(PACKAGE_VERSION)."
+
+publish-testpypi: check-dist check-twine-credentials
 	@$(PYTHON) -m pip install --upgrade twine
-	@$(PYTHON) -m twine upload dist/*
+	@TWINE_USERNAME="$(TWINE_USERNAME)" TWINE_PASSWORD="$(TWINE_PASSWORD)" \
+		$(PYTHON) -m twine upload --non-interactive \
+		--repository-url "$(TESTPYPI_REPOSITORY_URL)" dist/*
+
+publish-pypi: check-dist check-twine-credentials
+	@$(PYTHON) -m pip install --upgrade twine
+	@TWINE_USERNAME="$(TWINE_USERNAME)" TWINE_PASSWORD="$(TWINE_PASSWORD)" \
+		$(PYTHON) -m twine upload --non-interactive \
+		--repository-url "$(PYPI_REPOSITORY_URL)" dist/*
+
+publish-testpypi-full: check-package-version
+	@$(MAKE) build-package
+	@$(MAKE) check-package
+	@$(MAKE) smoke-wheel
+	@$(MAKE) publish-testpypi PACKAGE_VERSION="$(PACKAGE_VERSION)" TWINE_USERNAME="$(TWINE_USERNAME)" TWINE_PASSWORD="$(TWINE_PASSWORD)"
+	@$(MAKE) smoke-testpypi PACKAGE_NAME="$(PACKAGE_NAME)" PACKAGE_VERSION="$(PACKAGE_VERSION)"
+
+publish-pypi-full: check-package-version
+	@$(MAKE) build-package
+	@$(MAKE) check-package
+	@$(MAKE) smoke-wheel
+	@$(MAKE) publish-pypi PACKAGE_VERSION="$(PACKAGE_VERSION)" TWINE_USERNAME="$(TWINE_USERNAME)" TWINE_PASSWORD="$(TWINE_PASSWORD)"
 
 clean:
 	@find . -type d -name '.mypy_cache' -exec rm -rf {} +
