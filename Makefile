@@ -127,6 +127,9 @@ push-tool-images:
 pull-tool-images:
 	@$(PYTHON) $(INFERENCE_WRAPPER_SCRIPTS)/sync_tool_images.py pull $(ARGS)
 
+list-tool-images:
+	@$(PYTHON) $(INFERENCE_WRAPPER_SCRIPTS)/sync_tool_images.py list $(ARGS)
+
 run-tool-smoketests:
 	@$(PYTHON) $(INFERENCE_WRAPPER_SCRIPTS)/run_smoketests.py $(ARGS)
 
