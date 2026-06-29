@@ -224,6 +224,7 @@ benchmarks/
 evaluations/
 comparisons/
 benchmark_runs/
+case_studies/*/outputs/
 
 # Paper
 paper/*

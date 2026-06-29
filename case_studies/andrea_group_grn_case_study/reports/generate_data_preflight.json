@@ -1,0 +1,510 @@
+{
+  "schema_version": "1.0",
+  "scenario": {
+    "id": "andrea_group_grn_case_study",
+    "data_axes": {
+      "measurement": "rna_expression",
+      "resolution": "single_cell",
+      "column_kind": "cells",
+      "experimental_design": "differentiation"
+    },
+    "truth_requirements": {
+      "contexts": [
+        "global",
+        "group"
+      ]
+    },
+    "organism": {
+      "taxonomic_group": "synthetic",
+      "ncbi_taxon_id": null
+    },
+    "requested_extras": [
+      "groups",
+      "column_phenotypes",
+      "cluster_identities",
+      "enrichment_background",
+      "lineage_tree",
+      "prior_grn",
+      "prior_grn_by_group",
+      "pseudotime",
+      "tf_list"
+    ],
+    "effective_extras": [
+      "cluster_identities",
+      "column_phenotypes",
+      "enrichment_background",
+      "groups",
+      "lineage_tree",
+      "prior_grn",
+      "prior_grn_by_group",
+      "pseudotime",
+      "tf_list"
+    ],
+    "inputs": {},
+    "base_seed": 1729
+  },
+  "catalog_summary": {
+    "total": 8,
+    "eligible": 0,
+    "warning": 1,
+    "blocked": 7
+  },
+  "eligible": [],
+  "warning": [
+    {
+      "simulator_id": "scmultisim",
+      "name": "scMultiSim",
+      "requested_data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "requested_truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "effective_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "inputs_used": [],
+      "native_extras_used": [],
+      "derived_extras_used": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "derivable"
+        },
+        {
+          "context": "group",
+          "status": "derivable"
+        }
+      ],
+      "status": "warning",
+      "issues": [
+        {
+          "severity": "warn",
+          "code": "primary_truth_context_derived",
+          "message": "requested canonical truth context 'group:' is derived by this simulator rather than produces natively",
+          "simulator_id": "scmultisim",
+          "context": "group:"
+        }
+      ]
+    }
+  ],
+  "blocked": [
+    {
+      "simulator_id": "boolode",
+      "name": "BoolODE",
+      "requested_data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "requested_truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "effective_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "inputs_used": [],
+      "native_extras_used": [],
+      "derived_extras_used": [],
+      "truth_outputs": [],
+      "status": "blocked",
+      "issues": [
+        {
+          "severity": "block",
+          "code": "unsupported_semantic_capability",
+          "message": "requested data_axes/truth_requirements are not supported",
+          "simulator_id": "boolode"
+        }
+      ]
+    },
+    {
+      "simulator_id": "dyngen",
+      "name": "dyngen",
+      "requested_data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "requested_truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "effective_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "inputs_used": [],
+      "native_extras_used": [],
+      "derived_extras_used": [],
+      "truth_outputs": [],
+      "status": "blocked",
+      "issues": [
+        {
+          "severity": "block",
+          "code": "unsupported_semantic_capability",
+          "message": "requested data_axes/truth_requirements are not supported",
+          "simulator_id": "dyngen"
+        }
+      ]
+    },
+    {
+      "simulator_id": "genenetweaver",
+      "name": "GeneNetWeaver",
+      "requested_data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "requested_truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "effective_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "inputs_used": [],
+      "native_extras_used": [],
+      "derived_extras_used": [],
+      "truth_outputs": [],
+      "status": "blocked",
+      "issues": [
+        {
+          "severity": "block",
+          "code": "unsupported_semantic_capability",
+          "message": "requested data_axes/truth_requirements are not supported",
+          "simulator_id": "genenetweaver"
+        }
+      ]
+    },
+    {
+      "simulator_id": "genespider2",
+      "name": "GeneSPIDER2",
+      "requested_data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "requested_truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "effective_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "inputs_used": [],
+      "native_extras_used": [],
+      "derived_extras_used": [],
+      "truth_outputs": [],
+      "status": "blocked",
+      "issues": [
+        {
+          "severity": "block",
+          "code": "unsupported_semantic_capability",
+          "message": "requested data_axes/truth_requirements are not supported",
+          "simulator_id": "genespider2"
+        }
+      ]
+    },
+    {
+      "simulator_id": "groundgan",
+      "name": "GRouNdGAN",
+      "requested_data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "requested_truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "effective_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "inputs_used": [],
+      "native_extras_used": [],
+      "derived_extras_used": [],
+      "truth_outputs": [],
+      "status": "blocked",
+      "issues": [
+        {
+          "severity": "block",
+          "code": "unsupported_semantic_capability",
+          "message": "requested data_axes/truth_requirements are not supported",
+          "simulator_id": "groundgan"
+        }
+      ]
+    },
+    {
+      "simulator_id": "sergio",
+      "name": "SERGIO",
+      "requested_data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "requested_truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "effective_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "inputs_used": [],
+      "native_extras_used": [],
+      "derived_extras_used": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "tf_list"
+      ],
+      "truth_outputs": [
+        {
+          "context": "global",
+          "status": "native"
+        },
+        {
+          "context": "group",
+          "status": "derivable"
+        }
+      ],
+      "status": "blocked",
+      "issues": [
+        {
+          "severity": "warn",
+          "code": "primary_truth_context_derived",
+          "message": "requested canonical truth context 'group:' is derived by this simulator rather than produces natively",
+          "simulator_id": "sergio",
+          "context": "group:"
+        },
+        {
+          "severity": "block",
+          "code": "unsupported_extras",
+          "message": "unsupported extras for this semantic capability: pseudotime",
+          "simulator_id": "sergio"
+        }
+      ]
+    },
+    {
+      "simulator_id": "syntren",
+      "name": "SynTReN",
+      "requested_data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "differentiation"
+      },
+      "requested_truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "effective_extras": [
+        "cluster_identities",
+        "column_phenotypes",
+        "enrichment_background",
+        "groups",
+        "lineage_tree",
+        "prior_grn",
+        "prior_grn_by_group",
+        "pseudotime",
+        "tf_list"
+      ],
+      "inputs_used": [],
+      "native_extras_used": [],
+      "derived_extras_used": [],
+      "truth_outputs": [],
+      "status": "blocked",
+      "issues": [
+        {
+          "severity": "block",
+          "code": "unsupported_semantic_capability",
+          "message": "requested data_axes/truth_requirements are not supported",
+          "simulator_id": "syntren"
+        }
+      ]
+    }
+  ]
+}

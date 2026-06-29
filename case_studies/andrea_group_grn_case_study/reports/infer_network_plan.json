@@ -1,0 +1,3893 @@
+{
+  "schema_version": "1.3",
+  "generated_at_utc": "2026-06-28T23:53:30.201398Z",
+  "run_id": "clr_group_emulated",
+  "planner": {
+    "requested": "auto",
+    "used": "cp_sat",
+    "cp_sat_time_limit_seconds": 100.0
+  },
+  "resource_limits": {
+    "max_cores": 8,
+    "max_ram_gb": 32.0
+  },
+  "totals": {
+    "logical_runs_total": 8,
+    "physical_tasks_total": 17,
+    "tasks_total": 17,
+    "waves_total": 5,
+    "threads_peak": 8,
+    "ram_peak_gb": 32.0
+  },
+  "runs": [
+    {
+      "run_id": "scmtni_group_native",
+      "tool_id": "scmtni",
+      "tool_origin": "catalog",
+      "execution": {
+        "mode": "group_native"
+      },
+      "physical_tasks_total": 1,
+      "eta_start_seconds": 129.088,
+      "eta_end_seconds": 131.962,
+      "eta_seconds": 2.874,
+      "physical_tasks": [
+        {
+          "task_id": "scmtni_group_native",
+          "group_label": null,
+          "columns": 60,
+          "output_dir": "tools/scmtni_group_native",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.874,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 129.088,
+          "eta_end_seconds": 131.962,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_native",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "scmtni",
+              "profile_id": "group_native_groups_2_q2_with_prior",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_native",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "x",
+                "q",
+                "indep",
+                "split_genes"
+              ],
+              "cost_relevant_values": {
+                "x": 3,
+                "q": 2,
+                "indep": false,
+                "split_genes": true
+              },
+              "planned_cost_relevant_values": {
+                "x": 50,
+                "q": 2.0,
+                "indep": false,
+                "split_genes": true
+              },
+              "nearest_runtime_point": {
+                "genes": 200,
+                "columns": 80,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.038108,
+                "seconds_p90": 1.038108,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.75,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.768245,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.768245,
+                "param_details": [
+                  {
+                    "param": "x",
+                    "planned": 50,
+                    "profiled": 3,
+                    "penalty": 0.768245
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.038108,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_native",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[scmtni_group_native] selected approximate cost profile group_native_groups_2_q2_with_prior: 1 cost-relevant parameter value(s) differ.",
+                "[scmtni_group_native] selected approximate cost profile group_native_groups_2_q2_with_prior: group count differs by 2."
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "simic_group_native",
+      "tool_id": "simic",
+      "tool_origin": "catalog",
+      "execution": {
+        "mode": "group_native"
+      },
+      "physical_tasks_total": 1,
+      "eta_start_seconds": 129.088,
+      "eta_end_seconds": 140.124,
+      "eta_seconds": 11.036,
+      "physical_tasks": [
+        {
+          "task_id": "simic_group_native",
+          "group_label": null,
+          "columns": 60,
+          "output_dir": "tools/simic_group_native",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 11.036,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 129.088,
+          "eta_end_seconds": 140.124,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_native",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "simic",
+              "profile_id": "group_native_phenotypes_2_default",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_native",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "similarity",
+                "cross_val",
+                "num_TFs",
+                "num_target_genes",
+                "max_rcd_iter",
+                "num_rep"
+              ],
+              "cost_relevant_values": {
+                "similarity": true,
+                "cross_val": false,
+                "num_TFs": 3,
+                "num_target_genes": 4,
+                "max_rcd_iter": 2000,
+                "num_rep": 1
+              },
+              "planned_cost_relevant_values": {
+                "similarity": true,
+                "cross_val": false,
+                "num_TFs": -1,
+                "num_target_genes": -1,
+                "max_rcd_iter": 500000,
+                "num_rep": 1
+              },
+              "nearest_runtime_point": {
+                "genes": 200,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 2.37323,
+                "seconds_p90": 2.37323,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.75,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 4.65,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 2.65,
+                "param_details": [
+                  {
+                    "param": "num_TFs",
+                    "planned": -1,
+                    "profiled": 3,
+                    "penalty": 0.85
+                  },
+                  {
+                    "param": "num_target_genes",
+                    "planned": -1,
+                    "profiled": 4,
+                    "penalty": 0.85
+                  },
+                  {
+                    "param": "max_rcd_iter",
+                    "planned": 500000,
+                    "profiled": 2000,
+                    "penalty": 0.95
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 2.37323,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_native",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[simic_group_native] selected approximate cost profile group_native_phenotypes_2_default: 3 cost-relevant parameter value(s) differ.",
+                "[simic_group_native] selected approximate cost profile group_native_phenotypes_2_default: group count differs by 2."
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "scregulate_group_native",
+      "tool_id": "scregulate",
+      "tool_origin": "catalog",
+      "execution": {
+        "mode": "group_native"
+      },
+      "physical_tasks_total": 1,
+      "eta_start_seconds": 129.088,
+      "eta_end_seconds": 143.706,
+      "eta_seconds": 14.618,
+      "physical_tasks": [
+        {
+          "task_id": "scregulate_group_native",
+          "group_label": null,
+          "columns": 60,
+          "output_dir": "tools/scregulate_group_native",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 14.618,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 129.088,
+          "eta_end_seconds": 143.706,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_native",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "scregulate",
+              "profile_id": "group_native_provided_prior_fast_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_native",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "prior_source",
+                "epochs",
+                "freeze_epochs",
+                "batch_size",
+                "learning_rate",
+                "early_stopping_patience",
+                "min_targets",
+                "min_TFs",
+                "fine_tune_epochs",
+                "fine_tune_batch_size",
+                "fine_tune_min_epochs",
+                "fine_tune_early_stopping_patience"
+              ],
+              "cost_relevant_values": {
+                "prior_source": "provided_prior",
+                "epochs": 2,
+                "freeze_epochs": 20,
+                "batch_size": 8,
+                "learning_rate": 0.001,
+                "early_stopping_patience": 5,
+                "min_targets": 1,
+                "min_TFs": 1,
+                "fine_tune_epochs": 2,
+                "fine_tune_batch_size": 8,
+                "fine_tune_min_epochs": 1,
+                "fine_tune_early_stopping_patience": 5
+              },
+              "planned_cost_relevant_values": {
+                "prior_source": "provided_prior",
+                "epochs": 2,
+                "freeze_epochs": 20,
+                "batch_size": 8,
+                "learning_rate": 0.001,
+                "early_stopping_patience": 5,
+                "min_targets": 1,
+                "min_TFs": 1,
+                "fine_tune_epochs": 2,
+                "fine_tune_batch_size": 8,
+                "fine_tune_min_epochs": 1,
+                "fine_tune_early_stopping_patience": 5
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 4.872708,
+                "seconds_p90": 4.872708,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 1.5,
+              "size_scale": 1.5,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 4.872708,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_native",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[scregulate_group_native] selected approximate cost profile group_native_provided_prior_fast_groups_2: group count differs by 2."
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "inferelator3_group_native",
+      "tool_id": "inferelator3",
+      "tool_origin": "catalog",
+      "execution": {
+        "mode": "group_native"
+      },
+      "physical_tasks_total": 1,
+      "eta_start_seconds": 22.425,
+      "eta_end_seconds": 102.83,
+      "eta_seconds": 80.405,
+      "physical_tasks": [
+        {
+          "task_id": "inferelator3_group_native",
+          "group_label": null,
+          "columns": 60,
+          "output_dir": "tools/inferelator3_group_native",
+          "threads": 8,
+          "ram_gb": 32.0,
+          "eta_seconds": 80.405,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 22.425,
+          "eta_end_seconds": 102.83,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_native",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "inferelator3",
+              "profile_id": "group_native_groups_2_prior_sparse",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_native",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regression",
+                "num_bootstraps",
+                "bsr_feature_num",
+                "clr_only"
+              ],
+              "cost_relevant_values": {
+                "regression": "auto",
+                "num_bootstraps": 1,
+                "bsr_feature_num": 2,
+                "clr_only": false
+              },
+              "planned_cost_relevant_values": {
+                "regression": "auto",
+                "num_bootstraps": 2,
+                "bsr_feature_num": 10,
+                "clr_only": false
+              },
+              "nearest_runtime_point": {
+                "genes": 200,
+                "columns": 80,
+                "threads": 8,
+                "ram_gb": 32.0,
+                "status": "ok",
+                "seconds_p50": 28.063963,
+                "seconds_p90": 28.063963,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.75,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.86507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.86507,
+                "param_details": [
+                  {
+                    "param": "num_bootstraps",
+                    "planned": 2,
+                    "profiled": 1,
+                    "penalty": 0.34
+                  },
+                  {
+                    "param": "bsr_feature_num",
+                    "planned": 10,
+                    "profiled": 2,
+                    "penalty": 0.52507
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 28.063963,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_native",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[inferelator3_group_native] selected approximate cost profile group_native_groups_2_prior_sparse: 2 cost-relevant parameter value(s) differ.",
+                "[inferelator3_group_native] selected approximate cost profile group_native_groups_2_prior_sparse: group count differs by 2."
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "kscreni_group_aggregated",
+      "tool_id": "kscreni",
+      "tool_origin": "catalog",
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "physical_tasks_total": 1,
+      "eta_start_seconds": 129.088,
+      "eta_end_seconds": 145.335,
+      "eta_seconds": 16.247,
+      "physical_tasks": [
+        {
+          "task_id": "kscreni_group_aggregated__column_native",
+          "group_label": null,
+          "columns": 60,
+          "output_dir": "tools/kscreni_group_aggregated/upstream_column_native",
+          "threads": 4,
+          "ram_gb": 8.0,
+          "eta_seconds": 16.247,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 129.088,
+          "eta_end_seconds": 145.335,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_aggregated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "dense",
+              "aggregation_step": "column_to_group",
+              "upstream_cost_execution_mode": "column_native"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "kscreni",
+              "profile_id": "column_native_default",
+              "match_quality": "exact_mode_exact_inputs_exact_params_exact_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "column_native",
+              "profile_group_count": 0,
+              "cost_relevant_params": [
+                "nfeatures",
+                "knn"
+              ],
+              "cost_relevant_values": {
+                "nfeatures": 15,
+                "knn": 2
+              },
+              "planned_cost_relevant_values": {
+                "nfeatures": 15,
+                "knn": 2
+              },
+              "nearest_runtime_point": {
+                "genes": 200,
+                "columns": 80,
+                "threads": 4,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 15.638397,
+                "seconds_p90": 15.638397,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.75,
+              "size_scale": 0.75,
+              "size_scale_floor": 0.75,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 1.3,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.0,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 15.638397,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": null
+              },
+              "cost_features": {
+                "execution_mode": "group_aggregated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "dense",
+                "aggregation_step": "column_to_group",
+                "upstream_cost_execution_mode": "column_native"
+              },
+              "warnings": []
+            },
+            "group_aggregation": {
+              "rule": "mean_signed_effect_by_group",
+              "eta_seconds": 1.0,
+              "group_count": 4,
+              "estimated_dense_column_edges": 1341000
+            }
+          },
+          "postprocess": "group_aggregated_mean_signed_effect"
+        }
+      ]
+    },
+    {
+      "run_id": "genie3_group_emulated",
+      "tool_id": "genie3",
+      "tool_origin": "catalog",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "physical_tasks_total": 4,
+      "eta_start_seconds": 102.83,
+      "eta_end_seconds": 126.575,
+      "eta_seconds": 23.745,
+      "physical_tasks": [
+        {
+          "task_id": "genie3_group_emulated__group_01_pop_4_5",
+          "group_label": "pop_4_5",
+          "columns": 13,
+          "output_dir": "tools/genie3_group_emulated/subruns/01_pop_4_5",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 23.745,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 102.83,
+          "eta_end_seconds": 126.575,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "genie3",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_type",
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 11.872733,
+                "seconds_p90": 11.872733,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 11.872733,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[genie3_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "genie3_group_emulated__group_02_pop_5_2",
+          "group_label": "pop_5_2",
+          "columns": 13,
+          "output_dir": "tools/genie3_group_emulated/subruns/02_pop_5_2",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 23.745,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 102.83,
+          "eta_end_seconds": 126.575,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "genie3",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_type",
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 11.872733,
+                "seconds_p90": 11.872733,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 11.872733,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[genie3_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "genie3_group_emulated__group_03_pop_5_3",
+          "group_label": "pop_5_3",
+          "columns": 13,
+          "output_dir": "tools/genie3_group_emulated/subruns/03_pop_5_3",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 23.745,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 102.83,
+          "eta_end_seconds": 126.575,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "genie3",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_type",
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 11.872733,
+                "seconds_p90": 11.872733,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 11.872733,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[genie3_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "genie3_group_emulated__group_04_pop_4_1",
+          "group_label": "pop_4_1",
+          "columns": 21,
+          "output_dir": "tools/genie3_group_emulated/subruns/04_pop_4_1",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 23.745,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 102.83,
+          "eta_end_seconds": 126.575,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 21,
+              "n_cells": 21,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 469350,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "genie3",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_type",
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 11.872733,
+                "seconds_p90": 11.872733,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.887412,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 11.872733,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 21,
+                "n_cells": 21,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 469350,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[genie3_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "grnboost2_group_emulated",
+      "tool_id": "grnboost2",
+      "tool_origin": "catalog",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "physical_tasks_total": 4,
+      "eta_start_seconds": 0.0,
+      "eta_end_seconds": 22.425,
+      "eta_seconds": 22.425,
+      "physical_tasks": [
+        {
+          "task_id": "grnboost2_group_emulated__group_01_pop_4_5",
+          "group_label": "pop_4_5",
+          "columns": 13,
+          "output_dir": "tools/grnboost2_group_emulated/subruns/01_pop_4_5",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 22.425,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 0.0,
+          "eta_end_seconds": 22.425,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "grnboost2",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 500,
+                "regressor_kwargs.max_features": 0.1
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 8.080816,
+                "seconds_p90": 8.080816,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.77507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.77507,
+                "param_details": [
+                  {
+                    "param": "regressor_kwargs.n_estimators",
+                    "planned": 500,
+                    "profiled": 100,
+                    "penalty": 0.52507
+                  },
+                  {
+                    "param": "regressor_kwargs.max_features",
+                    "planned": 0.1,
+                    "profiled": "sqrt",
+                    "penalty": 0.25
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 8.080816,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[grnboost2_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+                "[grnboost2_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "grnboost2_group_emulated__group_02_pop_5_2",
+          "group_label": "pop_5_2",
+          "columns": 13,
+          "output_dir": "tools/grnboost2_group_emulated/subruns/02_pop_5_2",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 22.425,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 0.0,
+          "eta_end_seconds": 22.425,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "grnboost2",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 500,
+                "regressor_kwargs.max_features": 0.1
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 8.080816,
+                "seconds_p90": 8.080816,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.77507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.77507,
+                "param_details": [
+                  {
+                    "param": "regressor_kwargs.n_estimators",
+                    "planned": 500,
+                    "profiled": 100,
+                    "penalty": 0.52507
+                  },
+                  {
+                    "param": "regressor_kwargs.max_features",
+                    "planned": 0.1,
+                    "profiled": "sqrt",
+                    "penalty": 0.25
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 8.080816,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[grnboost2_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+                "[grnboost2_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "grnboost2_group_emulated__group_03_pop_5_3",
+          "group_label": "pop_5_3",
+          "columns": 13,
+          "output_dir": "tools/grnboost2_group_emulated/subruns/03_pop_5_3",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 22.425,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 0.0,
+          "eta_end_seconds": 22.425,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "grnboost2",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 500,
+                "regressor_kwargs.max_features": 0.1
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 8.080816,
+                "seconds_p90": 8.080816,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.77507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.77507,
+                "param_details": [
+                  {
+                    "param": "regressor_kwargs.n_estimators",
+                    "planned": 500,
+                    "profiled": 100,
+                    "penalty": 0.52507
+                  },
+                  {
+                    "param": "regressor_kwargs.max_features",
+                    "planned": 0.1,
+                    "profiled": "sqrt",
+                    "penalty": 0.25
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 8.080816,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[grnboost2_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+                "[grnboost2_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "grnboost2_group_emulated__group_04_pop_4_1",
+          "group_label": "pop_4_1",
+          "columns": 21,
+          "output_dir": "tools/grnboost2_group_emulated/subruns/04_pop_4_1",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 22.425,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 0.0,
+          "eta_end_seconds": 22.425,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 21,
+              "n_cells": 21,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 469350,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "grnboost2",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 500,
+                "regressor_kwargs.max_features": 0.1
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 8.080816,
+                "seconds_p90": 8.080816,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.887412,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.77507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.77507,
+                "param_details": [
+                  {
+                    "param": "regressor_kwargs.n_estimators",
+                    "planned": 500,
+                    "profiled": 100,
+                    "penalty": 0.52507
+                  },
+                  {
+                    "param": "regressor_kwargs.max_features",
+                    "planned": 0.1,
+                    "profiled": "sqrt",
+                    "penalty": 0.25
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 8.080816,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 21,
+                "n_cells": 21,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 469350,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[grnboost2_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+                "[grnboost2_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "clr_group_emulated",
+      "tool_id": "clr",
+      "tool_origin": "catalog",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "physical_tasks_total": 4,
+      "eta_start_seconds": 126.575,
+      "eta_end_seconds": 129.088,
+      "eta_seconds": 2.513,
+      "physical_tasks": [
+        {
+          "task_id": "clr_group_emulated__group_01_pop_4_5",
+          "group_label": "pop_4_5",
+          "columns": 13,
+          "output_dir": "tools/clr_group_emulated/subruns/01_pop_4_5",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.513,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 126.575,
+          "eta_end_seconds": 129.088,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "clr",
+              "profile_id": "group_emulated_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "estimator",
+                "disc",
+                "nbins"
+              ],
+              "cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "planned_cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.256679,
+                "seconds_p90": 1.256679,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.256679,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[clr_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "clr_group_emulated__group_02_pop_5_2",
+          "group_label": "pop_5_2",
+          "columns": 13,
+          "output_dir": "tools/clr_group_emulated/subruns/02_pop_5_2",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.513,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 126.575,
+          "eta_end_seconds": 129.088,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "clr",
+              "profile_id": "group_emulated_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "estimator",
+                "disc",
+                "nbins"
+              ],
+              "cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "planned_cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.256679,
+                "seconds_p90": 1.256679,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.256679,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[clr_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "clr_group_emulated__group_03_pop_5_3",
+          "group_label": "pop_5_3",
+          "columns": 13,
+          "output_dir": "tools/clr_group_emulated/subruns/03_pop_5_3",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.513,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 126.575,
+          "eta_end_seconds": 129.088,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "clr",
+              "profile_id": "group_emulated_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "estimator",
+                "disc",
+                "nbins"
+              ],
+              "cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "planned_cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.256679,
+                "seconds_p90": 1.256679,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.256679,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[clr_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+              ]
+            }
+          }
+        },
+        {
+          "task_id": "clr_group_emulated__group_04_pop_4_1",
+          "group_label": "pop_4_1",
+          "columns": 21,
+          "output_dir": "tools/clr_group_emulated/subruns/04_pop_4_1",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.513,
+          "eta_source": "cost_profile",
+          "eta_start_seconds": 126.575,
+          "eta_end_seconds": 129.088,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 21,
+              "n_cells": 21,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 469350,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "clr",
+              "profile_id": "group_emulated_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "estimator",
+                "disc",
+                "nbins"
+              ],
+              "cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "planned_cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.256679,
+                "seconds_p90": 1.256679,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.887412,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.256679,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 21,
+                "n_cells": 21,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 469350,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[clr_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "waves": [
+    {
+      "index": 1,
+      "threads_used": 8,
+      "ram_gb_used": 32.0,
+      "eta_seconds": 22.425,
+      "eta_start_seconds": 0.0,
+      "eta_end_seconds": 22.425,
+      "tasks": [
+        {
+          "tool_id": "grnboost2_group_emulated__group_01_pop_4_5",
+          "run_id": "grnboost2_group_emulated",
+          "image": "adriansegura99/inference-tools_grnboost2:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 22.425,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/grnboost2_group_emulated/subruns/01_pop_4_5",
+          "group_label": "pop_4_5",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "grnboost2",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 500,
+                "regressor_kwargs.max_features": 0.1
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 8.080816,
+                "seconds_p90": 8.080816,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.77507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.77507,
+                "param_details": [
+                  {
+                    "param": "regressor_kwargs.n_estimators",
+                    "planned": 500,
+                    "profiled": 100,
+                    "penalty": 0.52507
+                  },
+                  {
+                    "param": "regressor_kwargs.max_features",
+                    "planned": 0.1,
+                    "profiled": "sqrt",
+                    "penalty": 0.25
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 8.080816,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[grnboost2_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+                "[grnboost2_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 0.0,
+          "eta_end_seconds": 22.425
+        },
+        {
+          "tool_id": "grnboost2_group_emulated__group_02_pop_5_2",
+          "run_id": "grnboost2_group_emulated",
+          "image": "adriansegura99/inference-tools_grnboost2:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 22.425,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/grnboost2_group_emulated/subruns/02_pop_5_2",
+          "group_label": "pop_5_2",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "grnboost2",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 500,
+                "regressor_kwargs.max_features": 0.1
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 8.080816,
+                "seconds_p90": 8.080816,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.77507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.77507,
+                "param_details": [
+                  {
+                    "param": "regressor_kwargs.n_estimators",
+                    "planned": 500,
+                    "profiled": 100,
+                    "penalty": 0.52507
+                  },
+                  {
+                    "param": "regressor_kwargs.max_features",
+                    "planned": 0.1,
+                    "profiled": "sqrt",
+                    "penalty": 0.25
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 8.080816,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[grnboost2_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+                "[grnboost2_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 0.0,
+          "eta_end_seconds": 22.425
+        },
+        {
+          "tool_id": "grnboost2_group_emulated__group_03_pop_5_3",
+          "run_id": "grnboost2_group_emulated",
+          "image": "adriansegura99/inference-tools_grnboost2:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 22.425,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/grnboost2_group_emulated/subruns/03_pop_5_3",
+          "group_label": "pop_5_3",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "grnboost2",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 500,
+                "regressor_kwargs.max_features": 0.1
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 8.080816,
+                "seconds_p90": 8.080816,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.77507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.77507,
+                "param_details": [
+                  {
+                    "param": "regressor_kwargs.n_estimators",
+                    "planned": 500,
+                    "profiled": 100,
+                    "penalty": 0.52507
+                  },
+                  {
+                    "param": "regressor_kwargs.max_features",
+                    "planned": 0.1,
+                    "profiled": "sqrt",
+                    "penalty": 0.25
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 8.080816,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[grnboost2_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+                "[grnboost2_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 0.0,
+          "eta_end_seconds": 22.425
+        },
+        {
+          "tool_id": "grnboost2_group_emulated__group_04_pop_4_1",
+          "run_id": "grnboost2_group_emulated",
+          "image": "adriansegura99/inference-tools_grnboost2:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 22.425,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/grnboost2_group_emulated/subruns/04_pop_4_1",
+          "group_label": "pop_4_1",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 21,
+              "n_cells": 21,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 469350,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "grnboost2",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_kwargs.n_estimators": 500,
+                "regressor_kwargs.max_features": 0.1
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 8.080816,
+                "seconds_p90": 8.080816,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.887412,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.77507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.77507,
+                "param_details": [
+                  {
+                    "param": "regressor_kwargs.n_estimators",
+                    "planned": 500,
+                    "profiled": 100,
+                    "penalty": 0.52507
+                  },
+                  {
+                    "param": "regressor_kwargs.max_features",
+                    "planned": 0.1,
+                    "profiled": "sqrt",
+                    "penalty": 0.25
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 8.080816,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 21,
+                "n_cells": 21,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 469350,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[grnboost2_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+                "[grnboost2_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 0.0,
+          "eta_end_seconds": 22.425
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "threads_used": 8,
+      "ram_gb_used": 32.0,
+      "eta_seconds": 80.405,
+      "eta_start_seconds": 22.425,
+      "eta_end_seconds": 102.83,
+      "tasks": [
+        {
+          "tool_id": "inferelator3_group_native",
+          "run_id": "inferelator3_group_native",
+          "image": "adriansegura99/inference-tools_inferelator3:1.0.0",
+          "threads": 8,
+          "ram_gb": 32.0,
+          "eta_seconds": 80.405,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/inferelator3_group_native",
+          "group_label": null,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_native",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "inferelator3",
+              "profile_id": "group_native_groups_2_prior_sparse",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_native",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regression",
+                "num_bootstraps",
+                "bsr_feature_num",
+                "clr_only"
+              ],
+              "cost_relevant_values": {
+                "regression": "auto",
+                "num_bootstraps": 1,
+                "bsr_feature_num": 2,
+                "clr_only": false
+              },
+              "planned_cost_relevant_values": {
+                "regression": "auto",
+                "num_bootstraps": 2,
+                "bsr_feature_num": 10,
+                "clr_only": false
+              },
+              "nearest_runtime_point": {
+                "genes": 200,
+                "columns": 80,
+                "threads": 8,
+                "ram_gb": 32.0,
+                "status": "ok",
+                "seconds_p50": 28.063963,
+                "seconds_p90": 28.063963,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.75,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.86507,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.86507,
+                "param_details": [
+                  {
+                    "param": "num_bootstraps",
+                    "planned": 2,
+                    "profiled": 1,
+                    "penalty": 0.34
+                  },
+                  {
+                    "param": "bsr_feature_num",
+                    "planned": 10,
+                    "profiled": 2,
+                    "penalty": 0.52507
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 28.063963,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_native",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[inferelator3_group_native] selected approximate cost profile group_native_groups_2_prior_sparse: 2 cost-relevant parameter value(s) differ.",
+                "[inferelator3_group_native] selected approximate cost profile group_native_groups_2_prior_sparse: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 22.425,
+          "eta_end_seconds": 102.83
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "threads_used": 8,
+      "ram_gb_used": 32.0,
+      "eta_seconds": 23.745,
+      "eta_start_seconds": 102.83,
+      "eta_end_seconds": 126.575,
+      "tasks": [
+        {
+          "tool_id": "genie3_group_emulated__group_01_pop_4_5",
+          "run_id": "genie3_group_emulated",
+          "image": "adriansegura99/inference-tools_genie3:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 23.745,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/genie3_group_emulated/subruns/01_pop_4_5",
+          "group_label": "pop_4_5",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "genie3",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_type",
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 11.872733,
+                "seconds_p90": 11.872733,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 11.872733,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[genie3_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 102.83,
+          "eta_end_seconds": 126.575
+        },
+        {
+          "tool_id": "genie3_group_emulated__group_02_pop_5_2",
+          "run_id": "genie3_group_emulated",
+          "image": "adriansegura99/inference-tools_genie3:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 23.745,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/genie3_group_emulated/subruns/02_pop_5_2",
+          "group_label": "pop_5_2",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "genie3",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_type",
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 11.872733,
+                "seconds_p90": 11.872733,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 11.872733,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[genie3_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 102.83,
+          "eta_end_seconds": 126.575
+        },
+        {
+          "tool_id": "genie3_group_emulated__group_03_pop_5_3",
+          "run_id": "genie3_group_emulated",
+          "image": "adriansegura99/inference-tools_genie3:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 23.745,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/genie3_group_emulated/subruns/03_pop_5_3",
+          "group_label": "pop_5_3",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "genie3",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_type",
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 11.872733,
+                "seconds_p90": 11.872733,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 11.872733,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[genie3_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 102.83,
+          "eta_end_seconds": 126.575
+        },
+        {
+          "tool_id": "genie3_group_emulated__group_04_pop_4_1",
+          "run_id": "genie3_group_emulated",
+          "image": "adriansegura99/inference-tools_genie3:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 23.745,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/genie3_group_emulated/subruns/04_pop_4_1",
+          "group_label": "pop_4_1",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 21,
+              "n_cells": 21,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 469350,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "genie3",
+              "profile_id": "group_emulated_groups_2_tf_list",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "regressor_type",
+                "regressor_kwargs.n_estimators",
+                "regressor_kwargs.max_features"
+              ],
+              "cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "planned_cost_relevant_values": {
+                "regressor_type": "RF",
+                "regressor_kwargs.n_estimators": 100,
+                "regressor_kwargs.max_features": "sqrt"
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 11.872733,
+                "seconds_p90": 11.872733,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.887412,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 11.872733,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 21,
+                "n_cells": 21,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 469350,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[genie3_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 102.83,
+          "eta_end_seconds": 126.575
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "threads_used": 4,
+      "ram_gb_used": 32.0,
+      "eta_seconds": 2.513,
+      "eta_start_seconds": 126.575,
+      "eta_end_seconds": 129.088,
+      "tasks": [
+        {
+          "tool_id": "clr_group_emulated__group_01_pop_4_5",
+          "run_id": "clr_group_emulated",
+          "image": "adriansegura99/inference-tools_clr:1.0.0",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.513,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/clr_group_emulated/subruns/01_pop_4_5",
+          "group_label": "pop_4_5",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "clr",
+              "profile_id": "group_emulated_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "estimator",
+                "disc",
+                "nbins"
+              ],
+              "cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "planned_cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.256679,
+                "seconds_p90": 1.256679,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.256679,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[clr_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 126.575,
+          "eta_end_seconds": 129.088
+        },
+        {
+          "tool_id": "clr_group_emulated__group_02_pop_5_2",
+          "run_id": "clr_group_emulated",
+          "image": "adriansegura99/inference-tools_clr:1.0.0",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.513,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/clr_group_emulated/subruns/02_pop_5_2",
+          "group_label": "pop_5_2",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "clr",
+              "profile_id": "group_emulated_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "estimator",
+                "disc",
+                "nbins"
+              ],
+              "cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "planned_cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.256679,
+                "seconds_p90": 1.256679,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.256679,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[clr_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 126.575,
+          "eta_end_seconds": 129.088
+        },
+        {
+          "tool_id": "clr_group_emulated__group_03_pop_5_3",
+          "run_id": "clr_group_emulated",
+          "image": "adriansegura99/inference-tools_clr:1.0.0",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.513,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/clr_group_emulated/subruns/03_pop_5_3",
+          "group_label": "pop_5_3",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 13,
+              "n_cells": 13,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 290550,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "clr",
+              "profile_id": "group_emulated_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "estimator",
+                "disc",
+                "nbins"
+              ],
+              "cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "planned_cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.256679,
+                "seconds_p90": 1.256679,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.698212,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.256679,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 13,
+                "n_cells": 13,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 290550,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[clr_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 126.575,
+          "eta_end_seconds": 129.088
+        },
+        {
+          "tool_id": "clr_group_emulated__group_04_pop_4_1",
+          "run_id": "clr_group_emulated",
+          "image": "adriansegura99/inference-tools_clr:1.0.0",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.513,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/clr_group_emulated/subruns/04_pop_4_1",
+          "group_label": "pop_4_1",
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_emulated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 21,
+              "n_cells": 21,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 469350,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "clr",
+              "profile_id": "group_emulated_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_emulated",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "estimator",
+                "disc",
+                "nbins"
+              ],
+              "cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "planned_cost_relevant_values": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.256679,
+                "seconds_p90": 1.256679,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.887412,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.256679,
+              "multipliers": {
+                "physical_tasks": 4,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_emulated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 21,
+                "n_cells": 21,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 469350,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[clr_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 126.575,
+          "eta_end_seconds": 129.088
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "threads_used": 8,
+      "ram_gb_used": 32.0,
+      "eta_seconds": 16.247,
+      "eta_start_seconds": 129.088,
+      "eta_end_seconds": 145.335,
+      "tasks": [
+        {
+          "tool_id": "kscreni_group_aggregated__column_native",
+          "run_id": "kscreni_group_aggregated",
+          "image": "adriansegura99/inference-tools_kscreni:1.0.0",
+          "threads": 4,
+          "ram_gb": 8.0,
+          "eta_seconds": 16.247,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/kscreni_group_aggregated/upstream_column_native",
+          "group_label": null,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_aggregated",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "dense",
+              "aggregation_step": "column_to_group",
+              "upstream_cost_execution_mode": "column_native"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "kscreni",
+              "profile_id": "column_native_default",
+              "match_quality": "exact_mode_exact_inputs_exact_params_exact_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "column_native",
+              "profile_group_count": 0,
+              "cost_relevant_params": [
+                "nfeatures",
+                "knn"
+              ],
+              "cost_relevant_values": {
+                "nfeatures": 15,
+                "knn": 2
+              },
+              "planned_cost_relevant_values": {
+                "nfeatures": 15,
+                "knn": 2
+              },
+              "nearest_runtime_point": {
+                "genes": 200,
+                "columns": 80,
+                "threads": 4,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 15.638397,
+                "seconds_p90": 15.638397,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.75,
+              "size_scale": 0.75,
+              "size_scale_floor": 0.75,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 1.3,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.0,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 15.638397,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": null
+              },
+              "cost_features": {
+                "execution_mode": "group_aggregated",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "dense",
+                "aggregation_step": "column_to_group",
+                "upstream_cost_execution_mode": "column_native"
+              },
+              "warnings": []
+            },
+            "group_aggregation": {
+              "rule": "mean_signed_effect_by_group",
+              "eta_seconds": 1.0,
+              "group_count": 4,
+              "estimated_dense_column_edges": 1341000
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 129.088,
+          "eta_end_seconds": 145.335
+        },
+        {
+          "tool_id": "scmtni_group_native",
+          "run_id": "scmtni_group_native",
+          "image": "adriansegura99/inference-tools_scmtni:1.0.0",
+          "threads": 2,
+          "ram_gb": 8.0,
+          "eta_seconds": 2.874,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/scmtni_group_native",
+          "group_label": null,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_native",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "scmtni",
+              "profile_id": "group_native_groups_2_q2_with_prior",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_native",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "x",
+                "q",
+                "indep",
+                "split_genes"
+              ],
+              "cost_relevant_values": {
+                "x": 3,
+                "q": 2,
+                "indep": false,
+                "split_genes": true
+              },
+              "planned_cost_relevant_values": {
+                "x": 50,
+                "q": 2.0,
+                "indep": false,
+                "split_genes": true
+              },
+              "nearest_runtime_point": {
+                "genes": 200,
+                "columns": 80,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 1.038108,
+                "seconds_p90": 1.038108,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.75,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.768245,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.768245,
+                "param_details": [
+                  {
+                    "param": "x",
+                    "planned": 50,
+                    "profiled": 3,
+                    "penalty": 0.768245
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 1.038108,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_native",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[scmtni_group_native] selected approximate cost profile group_native_groups_2_q2_with_prior: 1 cost-relevant parameter value(s) differ.",
+                "[scmtni_group_native] selected approximate cost profile group_native_groups_2_q2_with_prior: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 129.088,
+          "eta_end_seconds": 131.962
+        },
+        {
+          "tool_id": "scregulate_group_native",
+          "run_id": "scregulate_group_native",
+          "image": "adriansegura99/inference-tools_scregulate:1.0.0",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 14.618,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/scregulate_group_native",
+          "group_label": null,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_native",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "scregulate",
+              "profile_id": "group_native_provided_prior_fast_groups_2",
+              "match_quality": "exact_mode_exact_inputs_exact_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_native",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "prior_source",
+                "epochs",
+                "freeze_epochs",
+                "batch_size",
+                "learning_rate",
+                "early_stopping_patience",
+                "min_targets",
+                "min_TFs",
+                "fine_tune_epochs",
+                "fine_tune_batch_size",
+                "fine_tune_min_epochs",
+                "fine_tune_early_stopping_patience"
+              ],
+              "cost_relevant_values": {
+                "prior_source": "provided_prior",
+                "epochs": 2,
+                "freeze_epochs": 20,
+                "batch_size": 8,
+                "learning_rate": 0.001,
+                "early_stopping_patience": 5,
+                "min_targets": 1,
+                "min_TFs": 1,
+                "fine_tune_epochs": 2,
+                "fine_tune_batch_size": 8,
+                "fine_tune_min_epochs": 1,
+                "fine_tune_early_stopping_patience": 5
+              },
+              "planned_cost_relevant_values": {
+                "prior_source": "provided_prior",
+                "epochs": 2,
+                "freeze_epochs": 20,
+                "batch_size": 8,
+                "learning_rate": 0.001,
+                "early_stopping_patience": 5,
+                "min_targets": 1,
+                "min_TFs": 1,
+                "fine_tune_epochs": 2,
+                "fine_tune_batch_size": 8,
+                "fine_tune_min_epochs": 1,
+                "fine_tune_early_stopping_patience": 5
+              },
+              "nearest_runtime_point": {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 4.872708,
+                "seconds_p90": 4.872708,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 1.5,
+              "size_scale": 1.5,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 2.0,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 0.0,
+                "param_details": [],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 4.872708,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_native",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[scregulate_group_native] selected approximate cost profile group_native_provided_prior_fast_groups_2: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 129.088,
+          "eta_end_seconds": 143.706
+        },
+        {
+          "tool_id": "simic_group_native",
+          "run_id": "simic_group_native",
+          "image": "adriansegura99/inference-tools_simic:1.0.0",
+          "threads": 1,
+          "ram_gb": 8.0,
+          "eta_seconds": 11.036,
+          "eta_source": "cost_profile",
+          "output_dir": "tools/simic_group_native",
+          "group_label": null,
+          "eta_provenance": {
+            "eta_source": "cost_profile",
+            "cost_features": {
+              "execution_mode": "group_native",
+              "column_kind": "cells",
+              "expression_profile": "scrna",
+              "n_columns": 60,
+              "n_cells": 60,
+              "n_genes": 150,
+              "n_groups": 4,
+              "expected_contexts": 4,
+              "expected_dense_edges": 1341000,
+              "has_tf_list": true,
+              "output_density_class": "sparse",
+              "aggregation_step": "none"
+            },
+            "cost_profile": {
+              "estimation_policy": "cost_profile_v2",
+              "tool_id": "simic",
+              "profile_id": "group_native_phenotypes_2_default",
+              "match_quality": "exact_mode_exact_inputs_approx_params_approx_groups_nearest_size_exact_resources",
+              "profile_execution_mode": "group_native",
+              "profile_group_count": 2,
+              "cost_relevant_params": [
+                "similarity",
+                "cross_val",
+                "num_TFs",
+                "num_target_genes",
+                "max_rcd_iter",
+                "num_rep"
+              ],
+              "cost_relevant_values": {
+                "similarity": true,
+                "cross_val": false,
+                "num_TFs": 3,
+                "num_target_genes": 4,
+                "max_rcd_iter": 2000,
+                "num_rep": 1
+              },
+              "planned_cost_relevant_values": {
+                "similarity": true,
+                "cross_val": false,
+                "num_TFs": -1,
+                "num_target_genes": -1,
+                "max_rcd_iter": 500000,
+                "num_rep": 1
+              },
+              "nearest_runtime_point": {
+                "genes": 200,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "status": "ok",
+                "seconds_p50": 2.37323,
+                "seconds_p90": 2.37323,
+                "ok_rate": 1.0
+              },
+              "raw_size_scale": 0.75,
+              "size_scale": 1.0,
+              "size_scale_floor": 1.0,
+              "risk_penalty": 1.0,
+              "uncertainty_penalty": 4.65,
+              "uncertainty_components": {
+                "extra_input_penalty": 0.0,
+                "param_penalty": 2.65,
+                "param_details": [
+                  {
+                    "param": "num_TFs",
+                    "planned": -1,
+                    "profiled": 3,
+                    "penalty": 0.85
+                  },
+                  {
+                    "param": "num_target_genes",
+                    "planned": -1,
+                    "profiled": 4,
+                    "penalty": 0.85
+                  },
+                  {
+                    "param": "max_rcd_iter",
+                    "planned": 500000,
+                    "profiled": 2000,
+                    "penalty": 0.95
+                  }
+                ],
+                "group_penalty": 0.7,
+                "nearest_size_penalty": 0.1,
+                "nearest_resource_penalty": 0.0,
+                "sample_count_penalty": 0.2
+              },
+              "robust_base_seconds": 2.37323,
+              "multipliers": {
+                "physical_tasks": 1,
+                "group_count": 4
+              },
+              "cost_features": {
+                "execution_mode": "group_native",
+                "column_kind": "cells",
+                "expression_profile": "scrna",
+                "n_columns": 60,
+                "n_cells": 60,
+                "n_genes": 150,
+                "n_groups": 4,
+                "expected_contexts": 4,
+                "expected_dense_edges": 1341000,
+                "has_tf_list": true,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              },
+              "warnings": [
+                "[simic_group_native] selected approximate cost profile group_native_phenotypes_2_default: 3 cost-relevant parameter value(s) differ.",
+                "[simic_group_native] selected approximate cost profile group_native_phenotypes_2_default: group count differs by 2."
+              ]
+            }
+          },
+          "network_disabled": false,
+          "eta_start_seconds": 129.088,
+          "eta_end_seconds": 140.124
+        }
+      ]
+    }
+  ],
+  "eta_total_seconds": 145.335,
+  "warnings": [
+    "[scmtni_group_native] selected approximate cost profile group_native_groups_2_q2_with_prior: 1 cost-relevant parameter value(s) differ.",
+    "[scmtni_group_native] selected approximate cost profile group_native_groups_2_q2_with_prior: group count differs by 2.",
+    "[simic_group_native] selected approximate cost profile group_native_phenotypes_2_default: 3 cost-relevant parameter value(s) differ.",
+    "[simic_group_native] selected approximate cost profile group_native_phenotypes_2_default: group count differs by 2.",
+    "[scregulate_group_native] selected approximate cost profile group_native_provided_prior_fast_groups_2: group count differs by 2.",
+    "[inferelator3_group_native] selected approximate cost profile group_native_groups_2_prior_sparse: 2 cost-relevant parameter value(s) differ.",
+    "[inferelator3_group_native] selected approximate cost profile group_native_groups_2_prior_sparse: group count differs by 2.",
+    "[genie3_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2.",
+    "[genie3_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2.",
+    "[genie3_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2.",
+    "[genie3_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2.",
+    "[grnboost2_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+    "[grnboost2_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2.",
+    "[grnboost2_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+    "[grnboost2_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2.",
+    "[grnboost2_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+    "[grnboost2_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2.",
+    "[grnboost2_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: 2 cost-relevant parameter value(s) differ.",
+    "[grnboost2_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2_tf_list: group count differs by 2.",
+    "[clr_group_emulated__group_01_pop_4_5] selected approximate cost profile group_emulated_groups_2: group count differs by 2.",
+    "[clr_group_emulated__group_02_pop_5_2] selected approximate cost profile group_emulated_groups_2: group count differs by 2.",
+    "[clr_group_emulated__group_03_pop_5_3] selected approximate cost profile group_emulated_groups_2: group count differs by 2.",
+    "[clr_group_emulated__group_04_pop_4_1] selected approximate cost profile group_emulated_groups_2: group count differs by 2."
+  ],
+  "input_fingerprints": {
+    "input/dataset-manifest.json": {
+      "size_bytes": 1436,
+      "sha256": "36bc9b7d53d52695d84fe9e3172469bfd9b7d7edaba15e66af240b17755eb1be"
+    },
+    "input/tools_params.json": {
+      "size_bytes": 2503,
+      "sha256": "9824cea5198a83cf6a3e8f3e3db3a45c78db06e61a920ddbdf8905d360432aac"
+    },
+    "input/expression.tsv": {
+      "size_bytes": 25413,
+      "sha256": "5acdb2eca16cd3692fe10798891684739e9cafd048f1ed4e8d6a63893a0a1dbc"
+    },
+    "input/extra/cluster_identities.tsv": {
+      "size_bytes": 97,
+      "sha256": "5824e7d87656aafd5167ada45e5722b7cea39d070783167e9d29b420edfa5945"
+    },
+    "input/extra/column_phenotypes.tsv": {
+      "size_bytes": 1034,
+      "sha256": "89e26cffc7bd0740e9ab8c0961ff47e65c48eb361240bdbe25b52879a73cd84f"
+    },
+    "input/extra/enrichment_background.txt": {
+      "size_bytes": 492,
+      "sha256": "f295bcc8930982eb387132316e976692f490af26f3c76eeeda8d8aab6c1445ef"
+    },
+    "input/extra/groups.tsv": {
+      "size_bytes": 906,
+      "sha256": "e5647b9d5d29a901caa35cb5ba44deef0c7ce6052049037a1fa08eee2b8de49e"
+    },
+    "input/extra/lineage_tree.tsv": {
+      "size_bytes": 181,
+      "sha256": "3f5d92e47e9461e2e6079c0b402e4ba6a74f2204f05bb5ffcddc40d3ab31daf9"
+    },
+    "input/extra/prior_grn.tsv": {
+      "size_bytes": 3028,
+      "sha256": "48a32cde15df09d239c145a86d00ab77d09b8327c7e9edf52987bfe86c0b4cbc"
+    },
+    "input/extra/prior_grn_by_group.tsv": {
+      "size_bytes": 17321,
+      "sha256": "b33d2b425eab479f1737efa6633d60a42981e7ba2d524c883fb11916aba01cf8"
+    },
+    "input/extra/pseudotime.tsv": {
+      "size_bytes": 1361,
+      "sha256": "a80855807e165aef795261fdd79e430425206b86651c48587e66674855011f09"
+    },
+    "input/extra/tf_list.txt": {
+      "size_bytes": 16,
+      "sha256": "a701d9d456517770932c0a5cd8cf177f0f6a16870f557713fc358f72d9ca62ef"
+    }
+  }
+}

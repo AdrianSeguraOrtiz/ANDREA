@@ -1,0 +1,580 @@
+{
+  "case_id": "andrea_group_grn_case_study",
+  "preset": "paper",
+  "genes": 150,
+  "cells": 60,
+  "selected_tools": [
+    {
+      "run_id": "scmtni_group_native",
+      "tool_id": "scmtni",
+      "execution": {
+        "mode": "group_native"
+      },
+      "params": {
+        "q": 2,
+        "indep": false,
+        "split_genes": true
+      }
+    },
+    {
+      "run_id": "simic_group_native",
+      "tool_id": "simic",
+      "execution": {
+        "mode": "group_native"
+      },
+      "params": {
+        "random_seed": 1729
+      }
+    },
+    {
+      "run_id": "scregulate_group_native",
+      "tool_id": "scregulate",
+      "execution": {
+        "mode": "group_native"
+      },
+      "params": {
+        "prior_source": "provided_prior",
+        "epochs": 2,
+        "freeze_epochs": 20,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "early_stopping_patience": 5,
+        "min_targets": 1,
+        "min_TFs": 1,
+        "fine_tune_epochs": 2,
+        "fine_tune_batch_size": 8,
+        "fine_tune_min_epochs": 1,
+        "fine_tune_early_stopping_patience": 5,
+        "random_state": 1729
+      }
+    },
+    {
+      "run_id": "inferelator3_group_native",
+      "tool_id": "inferelator3",
+      "execution": {
+        "mode": "group_native"
+      },
+      "params": {
+        "num_bootstraps": 2,
+        "random_seed": 1729,
+        "bsr_feature_num": 10,
+        "prior_weight": 1.0,
+        "no_prior_weight": 1.0,
+        "clr_only": false
+      }
+    },
+    {
+      "run_id": "kscreni_group_aggregated",
+      "tool_id": "kscreni",
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "params": {
+        "nfeatures": 15,
+        "knn": 2
+      }
+    },
+    {
+      "run_id": "genie3_group_emulated",
+      "tool_id": "genie3",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "params": {
+        "seed": 1729,
+        "regressor_kwargs": {
+          "n_estimators": 100,
+          "max_features": "sqrt"
+        }
+      }
+    },
+    {
+      "run_id": "grnboost2_group_emulated",
+      "tool_id": "grnboost2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "params": {
+        "seed": 1729,
+        "regressor_kwargs": {
+          "learning_rate": 0.01,
+          "n_estimators": 500,
+          "max_features": 0.1,
+          "subsample": 0.9
+        }
+      }
+    },
+    {
+      "run_id": "clr_group_emulated",
+      "tool_id": "clr",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "params": {
+        "estimator": "spearman",
+        "disc": "none",
+        "nbins": null
+      }
+    }
+  ],
+  "paths": {
+    "case_root": "<case_root>",
+    "scenario": "<case_root>/inputs/scenario.json",
+    "simulator_runs": "<case_root>/inputs/simulator_runs.json",
+    "tools_params": "<case_root>/inputs/tools_params.json",
+    "benchmark_root": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z",
+    "dataset_manifest": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/dataset-manifest.json",
+    "ground_truth_manifest": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/ground-truth-manifest.json",
+    "infer_run_dir": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z",
+    "run_report": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/run_report.json",
+    "evaluation_report": "<case_root>/outputs/03_evaluate_inference/evaluation_andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z__andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235553Z/evaluation_report.json",
+    "comparison_request": "<case_root>/inputs/comparison_request.json",
+    "resource_usage_by_stage": "<case_root>/summaries/resource_usage_by_stage.tsv",
+    "resource_usage_by_task": "<case_root>/summaries/resource_usage_by_task.tsv",
+    "resource_usage_by_container": "<case_root>/summaries/resource_usage_by_container.tsv",
+    "resource_usage_samples": "<case_root>/summaries/resource_usage_samples.tsv",
+    "infer_network_plan_copy": "<case_root>/reports/infer_network_plan.json",
+    "infer_network_run_report_copy": "<case_root>/reports/infer_network_run_report.json",
+    "evaluation_report_copy": "<case_root>/reports/evaluation_report.json",
+    "comparison_report_copy": "<case_root>/reports/comparison_report.json"
+  },
+  "stage_timings": [
+    {
+      "stage": "generate-data preflight",
+      "status": "ok",
+      "elapsed_seconds": 0.446
+    },
+    {
+      "stage": "generate-data plan",
+      "status": "ok",
+      "elapsed_seconds": 0.791
+    },
+    {
+      "stage": "generate-data run",
+      "status": "ok",
+      "elapsed_seconds": 9.559
+    },
+    {
+      "stage": "infer-network preflight",
+      "status": "ok",
+      "elapsed_seconds": 0.024
+    },
+    {
+      "stage": "infer-network plan",
+      "status": "ok",
+      "elapsed_seconds": 100.44
+    },
+    {
+      "stage": "infer-network run",
+      "status": "ok",
+      "elapsed_seconds": 138.912
+    },
+    {
+      "stage": "evaluate-inference",
+      "status": "ok",
+      "elapsed_seconds": 1.637
+    },
+    {
+      "stage": "compare-networks",
+      "status": "ok",
+      "elapsed_seconds": 3.742
+    }
+  ],
+  "resource_monitoring": {
+    "enabled": true,
+    "poll_seconds": 1.0,
+    "stage_summary": [
+      {
+        "stage": "compare-networks",
+        "sample_count": 2,
+        "peak_process_rss_mb": 339.624,
+        "peak_process_tree_rss_mb": 358.953,
+        "peak_docker_total_mem_mb": 0.0,
+        "peak_observed_total_mem_mb": 358.953,
+        "max_docker_containers": 0.0,
+        "docker_error_count": 0
+      },
+      {
+        "stage": "evaluate-inference",
+        "sample_count": 2,
+        "peak_process_rss_mb": 337.24,
+        "peak_process_tree_rss_mb": 358.146,
+        "peak_docker_total_mem_mb": 0.0,
+        "peak_observed_total_mem_mb": 358.146,
+        "max_docker_containers": 0.0,
+        "docker_error_count": 0
+      },
+      {
+        "stage": "generate-data plan",
+        "sample_count": 1,
+        "peak_process_rss_mb": 40.051,
+        "peak_process_tree_rss_mb": 40.051,
+        "peak_docker_total_mem_mb": 0.0,
+        "peak_observed_total_mem_mb": 40.051,
+        "max_docker_containers": 0.0,
+        "docker_error_count": 0
+      },
+      {
+        "stage": "generate-data preflight",
+        "sample_count": 2,
+        "peak_process_rss_mb": 37.274,
+        "peak_process_tree_rss_mb": 37.274,
+        "peak_docker_total_mem_mb": 0.0,
+        "peak_observed_total_mem_mb": 37.274,
+        "max_docker_containers": 0.0,
+        "docker_error_count": 0
+      },
+      {
+        "stage": "generate-data run",
+        "sample_count": 3,
+        "peak_process_rss_mb": 40.526,
+        "peak_process_tree_rss_mb": 64.909,
+        "peak_docker_total_mem_mb": 0.0,
+        "peak_observed_total_mem_mb": 64.909,
+        "max_docker_containers": 0.0,
+        "docker_error_count": 0
+      },
+      {
+        "stage": "infer-network plan",
+        "sample_count": 29,
+        "peak_process_rss_mb": 386.773,
+        "peak_process_tree_rss_mb": 386.773,
+        "peak_docker_total_mem_mb": 0.0,
+        "peak_observed_total_mem_mb": 386.773,
+        "max_docker_containers": 0.0,
+        "docker_error_count": 0
+      },
+      {
+        "stage": "infer-network preflight",
+        "sample_count": 1,
+        "peak_process_rss_mb": 40.526,
+        "peak_process_tree_rss_mb": 65.368,
+        "peak_docker_total_mem_mb": 0.0,
+        "peak_observed_total_mem_mb": 65.368,
+        "max_docker_containers": 0.0,
+        "docker_error_count": 0
+      },
+      {
+        "stage": "infer-network run",
+        "sample_count": 37,
+        "peak_process_rss_mb": 672.768,
+        "peak_process_tree_rss_mb": 672.768,
+        "peak_docker_total_mem_mb": 2027.317,
+        "peak_observed_total_mem_mb": 2328.029,
+        "max_docker_containers": 4.0,
+        "docker_error_count": 0
+      }
+    ],
+    "task_summary": [
+      {
+        "stage": "infer-network run",
+        "task_id": "genie3_group_emulated__01_pop_4_5",
+        "sample_count": 5,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 507.825,
+        "images": [
+          "adriansegura99/inference-tools_genie3:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/genie3_group_emulated/subruns/01_pop_4_5/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "genie3_group_emulated__02_pop_5_2",
+        "sample_count": 5,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 507.196,
+        "images": [
+          "adriansegura99/inference-tools_genie3:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/genie3_group_emulated/subruns/02_pop_5_2/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "genie3_group_emulated__03_pop_5_3",
+        "sample_count": 5,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 506.148,
+        "images": [
+          "adriansegura99/inference-tools_genie3:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/genie3_group_emulated/subruns/03_pop_5_3/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "genie3_group_emulated__04_pop_4_1",
+        "sample_count": 5,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 506.148,
+        "images": [
+          "adriansegura99/inference-tools_genie3:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/genie3_group_emulated/subruns/04_pop_4_1/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "grnboost2_group_emulated__01_pop_4_5",
+        "sample_count": 3,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 502.373,
+        "images": [
+          "adriansegura99/inference-tools_grnboost2:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/grnboost2_group_emulated/subruns/01_pop_4_5/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "grnboost2_group_emulated__02_pop_5_2",
+        "sample_count": 3,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 505.623,
+        "images": [
+          "adriansegura99/inference-tools_grnboost2:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/grnboost2_group_emulated/subruns/02_pop_5_2/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "grnboost2_group_emulated__03_pop_5_3",
+        "sample_count": 3,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 501.01,
+        "images": [
+          "adriansegura99/inference-tools_grnboost2:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/grnboost2_group_emulated/subruns/03_pop_5_3/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "grnboost2_group_emulated__04_pop_4_1",
+        "sample_count": 3,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 501.01,
+        "images": [
+          "adriansegura99/inference-tools_grnboost2:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/grnboost2_group_emulated/subruns/04_pop_4_1/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "inferelator3_group_native",
+        "sample_count": 15,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 1311.039,
+        "images": [
+          "adriansegura99/inference-tools_inferelator3:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/inferelator3_group_native/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "kscreni_group_aggregated__upstream_column_native",
+        "sample_count": 3,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 746.586,
+        "images": [
+          "adriansegura99/inference-tools_kscreni:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/kscreni_group_aggregated/upstream_column_native/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "scregulate_group_native",
+        "sample_count": 1,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 253.755,
+        "images": [
+          "adriansegura99/inference-tools_scregulate:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/scregulate_group_native/io"
+        ]
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "simic_group_native",
+        "sample_count": 4,
+        "containers_observed": 1,
+        "peak_docker_mem_mb": 143.655,
+        "images": [
+          "adriansegura99/inference-tools_simic:1.0.0"
+        ],
+        "mount_sources": [
+          "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/simic_group_native/io"
+        ]
+      }
+    ],
+    "container_summary": [
+      {
+        "stage": "infer-network run",
+        "task_id": "genie3_group_emulated__01_pop_4_5",
+        "container_id": "c6622355cfdf",
+        "container_name": "clever_booth",
+        "image": "adriansegura99/inference-tools_genie3:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/genie3_group_emulated/subruns/01_pop_4_5/io",
+        "mount_destination": "/io",
+        "sample_count": 5,
+        "peak_docker_mem_mb": 507.825
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "genie3_group_emulated__02_pop_5_2",
+        "container_id": "ed481ae2b902",
+        "container_name": "stoic_cerf",
+        "image": "adriansegura99/inference-tools_genie3:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/genie3_group_emulated/subruns/02_pop_5_2/io",
+        "mount_destination": "/io",
+        "sample_count": 5,
+        "peak_docker_mem_mb": 507.196
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "genie3_group_emulated__03_pop_5_3",
+        "container_id": "55e6b3de463b",
+        "container_name": "angry_perlman",
+        "image": "adriansegura99/inference-tools_genie3:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/genie3_group_emulated/subruns/03_pop_5_3/io",
+        "mount_destination": "/io",
+        "sample_count": 5,
+        "peak_docker_mem_mb": 506.148
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "genie3_group_emulated__04_pop_4_1",
+        "container_id": "1fa50c78a628",
+        "container_name": "frosty_ganguly",
+        "image": "adriansegura99/inference-tools_genie3:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/genie3_group_emulated/subruns/04_pop_4_1/io",
+        "mount_destination": "/io",
+        "sample_count": 5,
+        "peak_docker_mem_mb": 506.148
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "grnboost2_group_emulated__01_pop_4_5",
+        "container_id": "121c3f14b8e9",
+        "container_name": "funny_benz",
+        "image": "adriansegura99/inference-tools_grnboost2:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/grnboost2_group_emulated/subruns/01_pop_4_5/io",
+        "mount_destination": "/io",
+        "sample_count": 3,
+        "peak_docker_mem_mb": 502.373
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "grnboost2_group_emulated__02_pop_5_2",
+        "container_id": "6310e7616361",
+        "container_name": "pedantic_elion",
+        "image": "adriansegura99/inference-tools_grnboost2:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/grnboost2_group_emulated/subruns/02_pop_5_2/io",
+        "mount_destination": "/io",
+        "sample_count": 3,
+        "peak_docker_mem_mb": 505.623
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "grnboost2_group_emulated__03_pop_5_3",
+        "container_id": "cbd8443d31ec",
+        "container_name": "cool_montalcini",
+        "image": "adriansegura99/inference-tools_grnboost2:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/grnboost2_group_emulated/subruns/03_pop_5_3/io",
+        "mount_destination": "/io",
+        "sample_count": 3,
+        "peak_docker_mem_mb": 501.01
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "grnboost2_group_emulated__04_pop_4_1",
+        "container_id": "54b89be22667",
+        "container_name": "crazy_bohr",
+        "image": "adriansegura99/inference-tools_grnboost2:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/grnboost2_group_emulated/subruns/04_pop_4_1/io",
+        "mount_destination": "/io",
+        "sample_count": 3,
+        "peak_docker_mem_mb": 501.01
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "inferelator3_group_native",
+        "container_id": "b1609808fe38",
+        "container_name": "gracious_faraday",
+        "image": "adriansegura99/inference-tools_inferelator3:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/inferelator3_group_native/io",
+        "mount_destination": "/io",
+        "sample_count": 15,
+        "peak_docker_mem_mb": 1311.039
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "kscreni_group_aggregated__upstream_column_native",
+        "container_id": "6b26422d6bf5",
+        "container_name": "suspicious_burnell",
+        "image": "adriansegura99/inference-tools_kscreni:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/kscreni_group_aggregated/upstream_column_native/io",
+        "mount_destination": "/io",
+        "sample_count": 3,
+        "peak_docker_mem_mb": 746.586
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "scregulate_group_native",
+        "container_id": "68907d15976b",
+        "container_name": "beautiful_chaplygin",
+        "image": "adriansegura99/inference-tools_scregulate:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/scregulate_group_native/io",
+        "mount_destination": "/io",
+        "sample_count": 1,
+        "peak_docker_mem_mb": 253.755
+      },
+      {
+        "stage": "infer-network run",
+        "task_id": "simic_group_native",
+        "container_id": "a0a5469bf756",
+        "container_name": "priceless_banzai",
+        "image": "adriansegura99/inference-tools_simic:1.0.0",
+        "mount_source": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/tools/simic_group_native/io",
+        "mount_destination": "/io",
+        "sample_count": 4,
+        "peak_docker_mem_mb": 143.655
+      }
+    ]
+  },
+  "inference_execution": {
+    "elapsed_seconds": 138.903,
+    "planner_requested": "auto",
+    "planner_used": "cp_sat",
+    "planner_time_limit_seconds": 100.0,
+    "waves_total": 5,
+    "tools_selected": 8,
+    "physical_tasks_total": 17,
+    "tools_completed": 8,
+    "tools_failed": 0
+  },
+  "comparison_summary": {
+    "sources": 1,
+    "network_instances": 96,
+    "edge_score_rows": 203377,
+    "distance_rows": 672,
+    "coordinate_rows": 128,
+    "warnings": 4
+  }
+}

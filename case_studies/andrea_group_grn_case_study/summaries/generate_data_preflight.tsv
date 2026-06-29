@@ -1,0 +1,9 @@
+command	item_id	status	issue_count	truth_outputs	native_extras_used	derived_extras_used
+generate-data	scmultisim	warning	1	"[{""context"": ""global"", ""status"": ""derivable""}, {""context"": ""group"", ""status"": ""derivable""}]"	[]	"[""cluster_identities"", ""column_phenotypes"", ""enrichment_background"", ""groups"", ""lineage_tree"", ""prior_grn"", ""prior_grn_by_group"", ""pseudotime"", ""tf_list""]"
+generate-data	boolode	blocked	1	[]	[]	[]
+generate-data	dyngen	blocked	1	[]	[]	[]
+generate-data	genenetweaver	blocked	1	[]	[]	[]
+generate-data	genespider2	blocked	1	[]	[]	[]
+generate-data	groundgan	blocked	1	[]	[]	[]
+generate-data	sergio	blocked	2	"[{""context"": ""global"", ""status"": ""native""}, {""context"": ""group"", ""status"": ""derivable""}]"	[]	"[""cluster_identities"", ""column_phenotypes"", ""enrichment_background"", ""groups"", ""lineage_tree"", ""prior_grn"", ""prior_grn_by_group"", ""tf_list""]"
+generate-data	syntren	blocked	1	[]	[]	[]

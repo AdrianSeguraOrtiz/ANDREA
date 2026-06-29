@@ -1,0 +1,9 @@
+stage	status	elapsed_seconds
+generate-data preflight	ok	0.446
+generate-data plan	ok	0.791
+generate-data run	ok	9.559
+infer-network preflight	ok	0.024
+infer-network plan	ok	100.44
+infer-network run	ok	138.912
+evaluate-inference	ok	1.637
+compare-networks	ok	3.742

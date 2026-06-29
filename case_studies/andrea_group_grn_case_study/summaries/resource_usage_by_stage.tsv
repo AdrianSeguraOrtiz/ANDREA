@@ -1,0 +1,9 @@
+stage	sample_count	peak_process_rss_mb	peak_process_tree_rss_mb	peak_docker_total_mem_mb	peak_observed_total_mem_mb	max_docker_containers	docker_error_count
+compare-networks	2	339.624	358.953	0.0	358.953	0.0	0
+evaluate-inference	2	337.24	358.146	0.0	358.146	0.0	0
+generate-data plan	1	40.051	40.051	0.0	40.051	0.0	0
+generate-data preflight	2	37.274	37.274	0.0	37.274	0.0	0
+generate-data run	3	40.526	64.909	0.0	64.909	0.0	0
+infer-network plan	29	386.773	386.773	0.0	386.773	0.0	0
+infer-network preflight	1	40.526	65.368	0.0	65.368	0.0	0
+infer-network run	37	672.768	672.768	2027.317	2328.029	4.0	0

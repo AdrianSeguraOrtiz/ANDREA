@@ -1,0 +1,116 @@
+{
+  "runs": [
+    {
+      "run_id": "scmtni_group_native",
+      "tool_id": "scmtni",
+      "execution": {
+        "mode": "group_native"
+      },
+      "params": {
+        "q": 2,
+        "indep": false,
+        "split_genes": true
+      }
+    },
+    {
+      "run_id": "simic_group_native",
+      "tool_id": "simic",
+      "execution": {
+        "mode": "group_native"
+      },
+      "params": {
+        "random_seed": 1729
+      }
+    },
+    {
+      "run_id": "scregulate_group_native",
+      "tool_id": "scregulate",
+      "execution": {
+        "mode": "group_native"
+      },
+      "params": {
+        "prior_source": "provided_prior",
+        "epochs": 2,
+        "freeze_epochs": 20,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "early_stopping_patience": 5,
+        "min_targets": 1,
+        "min_TFs": 1,
+        "fine_tune_epochs": 2,
+        "fine_tune_batch_size": 8,
+        "fine_tune_min_epochs": 1,
+        "fine_tune_early_stopping_patience": 5,
+        "random_state": 1729
+      }
+    },
+    {
+      "run_id": "inferelator3_group_native",
+      "tool_id": "inferelator3",
+      "execution": {
+        "mode": "group_native"
+      },
+      "params": {
+        "num_bootstraps": 2,
+        "random_seed": 1729,
+        "bsr_feature_num": 10,
+        "prior_weight": 1.0,
+        "no_prior_weight": 1.0,
+        "clr_only": false
+      }
+    },
+    {
+      "run_id": "kscreni_group_aggregated",
+      "tool_id": "kscreni",
+      "execution": {
+        "mode": "group_aggregated"
+      },
+      "params": {
+        "nfeatures": 15,
+        "knn": 2
+      }
+    },
+    {
+      "run_id": "genie3_group_emulated",
+      "tool_id": "genie3",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "params": {
+        "seed": 1729,
+        "regressor_kwargs": {
+          "n_estimators": 100,
+          "max_features": "sqrt"
+        }
+      }
+    },
+    {
+      "run_id": "grnboost2_group_emulated",
+      "tool_id": "grnboost2",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "params": {
+        "seed": 1729,
+        "regressor_kwargs": {
+          "learning_rate": 0.01,
+          "n_estimators": 500,
+          "max_features": 0.1,
+          "subsample": 0.9
+        }
+      }
+    },
+    {
+      "run_id": "clr_group_emulated",
+      "tool_id": "clr",
+      "execution": {
+        "mode": "group_emulated"
+      },
+      "params": {
+        "estimator": "spearman",
+        "disc": "none",
+        "nbins": null
+      }
+    }
+  ]
+}

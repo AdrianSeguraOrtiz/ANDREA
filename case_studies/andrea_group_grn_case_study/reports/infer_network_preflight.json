@@ -1,0 +1,562 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-06-28T23:51:47.804858Z",
+  "inputs": {
+    "dataset_id": "andrea_group_grn_case_study__scmultisim_group_dynamic__r01",
+    "tools_params": "provided",
+    "custom_tools": "none"
+  },
+  "dataset": {
+    "dataset_id": "andrea_group_grn_case_study__scmultisim_group_dynamic__r01",
+    "column_kind": "cells",
+    "expression_profile": "scrna",
+    "organism": {
+      "taxonomic_group": "synthetic",
+      "ncbi_taxon_id": null
+    },
+    "genes": 150,
+    "columns": 60,
+    "expression_matrix_path": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/expression.tsv",
+    "extras": {
+      "cell_cell_interactions": null,
+      "chromatin_accessibility": null,
+      "chromatin_regions": null,
+      "cluster_identities": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/cluster_identities.tsv",
+      "cluster_markers": null,
+      "column_descriptors": null,
+      "column_phenotypes": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/column_phenotypes.tsv",
+      "enrichment_background": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/enrichment_background.txt",
+      "grnboost_network": null,
+      "groups": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/groups.tsv",
+      "interventions": null,
+      "lineage_tree": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/lineage_tree.tsv",
+      "perturbation_design": null,
+      "prior_grn": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/prior_grn.tsv",
+      "prior_grn_by_group": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/prior_grn_by_group.tsv",
+      "pseudotime": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/pseudotime.tsv",
+      "replicates": null,
+      "spatial_coordinates": null,
+      "terms_of_interest": null,
+      "tf_list": "<case_root>/outputs/01_generate_data/andrea_group_grn_case_study_20260628T235137Z/datasets/andrea_group_grn_case_study__scmultisim_group_dynamic__r01/extras/tf_list.txt",
+      "timepoints": null
+    }
+  },
+  "input_validation": {
+    "expression_matrix": {
+      "status": "ok",
+      "errors": [],
+      "warnings": [],
+      "summary": {
+        "rows": 150,
+        "columns": 61
+      }
+    },
+    "extras": {
+      "cell_cell_interactions": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "chromatin_accessibility": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "chromatin_regions": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "cluster_identities": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 4,
+          "columns": 3
+        }
+      },
+      "cluster_markers": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "column_descriptors": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "column_phenotypes": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 60,
+          "columns": 3
+        }
+      },
+      "enrichment_background": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 150,
+          "columns": 1
+        }
+      },
+      "grnboost_network": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "groups": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 60,
+          "columns": 2
+        }
+      },
+      "interventions": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "lineage_tree": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 4,
+          "columns": 4
+        }
+      },
+      "perturbation_design": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "prior_grn": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 132,
+          "columns": 3
+        }
+      },
+      "prior_grn_by_group": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 562,
+          "columns": 4
+        }
+      },
+      "pseudotime": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 60,
+          "columns": 2
+        }
+      },
+      "replicates": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "spatial_coordinates": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "terms_of_interest": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      },
+      "tf_list": {
+        "status": "ok",
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "rows": 6,
+          "columns": 1
+        }
+      },
+      "timepoints": {
+        "status": "missing",
+        "errors": [],
+        "warnings": [],
+        "summary": null
+      }
+    }
+  },
+  "catalog": {
+    "tools_total": 24,
+    "eligible": [
+      {
+        "tool_id": "aracne3",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "cespgrn",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "clr",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "genie3",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "grnboost2",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "infercsn",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "inferelator3",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "kscreni",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "lioness",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "metasem",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "pidc",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "ppcor",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "pyscenic",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "scing",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "scmtni",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "scregulate",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "scsgl",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "simic",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      },
+      {
+        "tool_id": "tigress",
+        "status": "eligible",
+        "tool_origin": "catalog",
+        "issues": []
+      }
+    ],
+    "warning": [
+      {
+        "tool_id": "scgenerai",
+        "status": "warning",
+        "tool_origin": "catalog",
+        "issues": [
+          {
+            "severity": "warn",
+            "code": "catalog_warning",
+            "message": "optional extra not provided: column_descriptors",
+            "tool_id": "scgenerai"
+          }
+        ]
+      },
+      {
+        "tool_id": "scminer",
+        "status": "warning",
+        "tool_origin": "catalog",
+        "issues": [
+          {
+            "severity": "warn",
+            "code": "catalog_warning",
+            "message": "scMINER warns that SJARACNe needs at least 100 single cells to generate a high-quality single-cell network.",
+            "tool_id": "scminer"
+          }
+        ]
+      }
+    ],
+    "blocked": [
+      {
+        "tool_id": "dignet",
+        "status": "blocked",
+        "tool_origin": "catalog",
+        "issues": [
+          {
+            "severity": "block",
+            "code": "compatibility",
+            "message": "dataset taxonomic_group 'synthetic' is not accepted by tool; accepted groups: animal",
+            "tool_id": "dignet"
+          }
+        ]
+      },
+      {
+        "tool_id": "miniex3",
+        "status": "blocked",
+        "tool_origin": "catalog",
+        "issues": [
+          {
+            "severity": "block",
+            "code": "compatibility",
+            "message": "dataset taxonomic_group 'synthetic' is not accepted by tool; accepted groups: plant",
+            "tool_id": "miniex3"
+          },
+          {
+            "severity": "block",
+            "code": "compatibility",
+            "message": "required extra input missing in manifest: cluster_markers",
+            "tool_id": "miniex3"
+          },
+          {
+            "severity": "warn",
+            "code": "catalog_warning",
+            "message": "optional extra not provided: terms_of_interest",
+            "tool_id": "miniex3"
+          },
+          {
+            "severity": "warn",
+            "code": "catalog_warning",
+            "message": "optional extra not provided: grnboost_network",
+            "tool_id": "miniex3"
+          }
+        ]
+      },
+      {
+        "tool_id": "planet",
+        "status": "blocked",
+        "tool_origin": "catalog",
+        "issues": [
+          {
+            "severity": "block",
+            "code": "compatibility",
+            "message": "dataset taxonomic_group 'synthetic' is not accepted by tool; accepted groups: animal",
+            "tool_id": "planet"
+          }
+        ]
+      }
+    ]
+  },
+  "runs": {
+    "requested_total": 8,
+    "selected": [
+      "scmtni_group_native",
+      "simic_group_native",
+      "scregulate_group_native",
+      "inferelator3_group_native",
+      "kscreni_group_aggregated",
+      "genie3_group_emulated",
+      "grnboost2_group_emulated",
+      "clr_group_emulated"
+    ],
+    "catalog_tool_ids": {
+      "scmtni_group_native": "scmtni",
+      "simic_group_native": "simic",
+      "scregulate_group_native": "scregulate",
+      "inferelator3_group_native": "inferelator3",
+      "kscreni_group_aggregated": "kscreni",
+      "genie3_group_emulated": "genie3",
+      "grnboost2_group_emulated": "grnboost2",
+      "clr_group_emulated": "clr"
+    },
+    "tool_origins": {
+      "scmtni_group_native": "catalog",
+      "simic_group_native": "catalog",
+      "scregulate_group_native": "catalog",
+      "inferelator3_group_native": "catalog",
+      "kscreni_group_aggregated": "catalog",
+      "genie3_group_emulated": "catalog",
+      "grnboost2_group_emulated": "catalog",
+      "clr_group_emulated": "catalog"
+    },
+    "resolved_params": {
+      "scmtni_group_native": {
+        "x": 50,
+        "p": 0.2,
+        "b": -0.9,
+        "q": 2.0,
+        "indep": false,
+        "split_genes": true
+      },
+      "simic_group_native": {
+        "similarity": true,
+        "lambda1": 0.01,
+        "lambda2": 1e-05,
+        "cross_val": false,
+        "num_TFs": -1,
+        "num_target_genes": -1,
+        "normalization_factor": 1.0,
+        "max_rcd_iter": 500000,
+        "num_rep": 1,
+        "random_seed": 1729,
+        "wauc_percent_of_target": 1.0,
+        "wauc_sort_by": "expression",
+        "wauc_adj_r2_threshold": 0.7
+      },
+      "scregulate_group_native": {
+        "prior_source": "provided_prior",
+        "epochs": 2,
+        "freeze_epochs": 20,
+        "train_val_split_ratio": 0.8,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "alpha_max": 0.7,
+        "alpha_scale": 0.06,
+        "beta_max": 0.4,
+        "gamma_max": 2.6,
+        "early_stopping_patience": 5,
+        "min_targets": 1,
+        "min_TFs": 1,
+        "fine_tune_epochs": 2,
+        "fine_tune_batch_size": 8,
+        "fine_tune_min_epochs": 1,
+        "fine_tune_beta_max": 0.5,
+        "fine_tune_max_weight_norm": 4.0,
+        "fine_tune_early_stopping_patience": 5,
+        "random_state": 1729
+      },
+      "inferelator3_group_native": {
+        "regression": "auto",
+        "num_bootstraps": 2,
+        "random_seed": 1729,
+        "bsr_feature_num": 10,
+        "prior_weight": 1.0,
+        "no_prior_weight": 1.0,
+        "clr_only": false
+      },
+      "kscreni_group_aggregated": {
+        "nfeatures": 15,
+        "knn": 2
+      },
+      "genie3_group_emulated": {
+        "regressor_type": "RF",
+        "regressor_kwargs": {
+          "n_estimators": 100,
+          "max_features": "sqrt"
+        },
+        "limit": null,
+        "seed": 1729
+      },
+      "grnboost2_group_emulated": {
+        "regressor_kwargs": {
+          "learning_rate": 0.01,
+          "n_estimators": 500,
+          "max_features": 0.1,
+          "subsample": 0.9
+        },
+        "limit": null,
+        "seed": 1729
+      },
+      "clr_group_emulated": {
+        "estimator": "spearman",
+        "disc": "none",
+        "nbins": null
+      }
+    },
+    "resolved_execution": {
+      "scmtni_group_native": {
+        "mode": "group_native"
+      },
+      "simic_group_native": {
+        "mode": "group_native"
+      },
+      "scregulate_group_native": {
+        "mode": "group_native"
+      },
+      "inferelator3_group_native": {
+        "mode": "group_native"
+      },
+      "kscreni_group_aggregated": {
+        "mode": "group_aggregated"
+      },
+      "genie3_group_emulated": {
+        "mode": "group_emulated"
+      },
+      "grnboost2_group_emulated": {
+        "mode": "group_emulated"
+      },
+      "clr_group_emulated": {
+        "mode": "group_emulated"
+      }
+    },
+    "issues": {},
+    "skipped": {}
+  },
+  "issues": []
+}

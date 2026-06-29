@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "id": "andrea_group_grn_case_study",
+  "sources": [
+    {
+      "source_id": "case_study_inference",
+      "label": "Case-study inferred networks",
+      "run_report": "<case_root>/outputs/02_infer_network/andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z/run_report.json",
+      "evaluation_report": "<case_root>/outputs/03_evaluate_inference/evaluation_andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235330Z__andrea_group_grn_case_study__scmultisim_group_dynamic__r01_20260628T235553Z/evaluation_report.json"
+    }
+  ]
+}

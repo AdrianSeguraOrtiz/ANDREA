@@ -1,0 +1,9 @@
+run_id	tool_id	catalog_tool_id	requested_mode	resolved_execution	issue_count	runtime_status	merged_rows	params
+clr_group_emulated	clr	clr	group_emulated	"{""mode"": ""group_emulated""}"	0	completed	15743	"{""disc"": ""none"", ""estimator"": ""spearman"", ""nbins"": null}"
+genie3_group_emulated	genie3	genie3	group_emulated	"{""mode"": ""group_emulated""}"	0	completed	3555	"{""regressor_kwargs"": {""max_features"": ""sqrt"", ""n_estimators"": 100}, ""seed"": 1729}"
+grnboost2_group_emulated	grnboost2	grnboost2	group_emulated	"{""mode"": ""group_emulated""}"	0	completed	3558	"{""regressor_kwargs"": {""learning_rate"": 0.01, ""max_features"": 0.1, ""n_estimators"": 500, ""subsample"": 0.9}, ""seed"": 1729}"
+inferelator3_group_native	inferelator3	inferelator3	group_native	"{""mode"": ""group_native""}"	0	completed	3420	"{""bsr_feature_num"": 10, ""clr_only"": false, ""no_prior_weight"": 1.0, ""num_bootstraps"": 2, ""prior_weight"": 1.0, ""random_seed"": 1729}"
+kscreni_group_aggregated	kscreni	kscreni	group_aggregated	"{""mode"": ""group_aggregated""}"	0	completed	87836	"{""knn"": 2, ""nfeatures"": 15}"
+scmtni_group_native	scmtni	scmtni	group_native	"{""mode"": ""group_native""}"	0	completed	536	"{""indep"": false, ""q"": 2, ""split_genes"": true}"
+scregulate_group_native	scregulate	scregulate	group_native	"{""mode"": ""group_native""}"	0	completed	1680	"{""batch_size"": 8, ""early_stopping_patience"": 5, ""epochs"": 2, ""fine_tune_batch_size"": 8, ""fine_tune_early_stopping_patience"": 5, ""fine_tune_epochs"": 2, ""fine_tune_min_epochs"": 1, ""freeze_epochs"": 20, ""learning_rate"": 0.001, ""min_TFs"": 1, ""min_targets"": 1, ""prior_source"": ""provided_prior"", ""random_state"": 1729}"
+simic_group_native	simic	simic	group_native	"{""mode"": ""group_native""}"	0	completed	3456	"{""random_seed"": 1729}"

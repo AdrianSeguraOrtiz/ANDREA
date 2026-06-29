@@ -1,0 +1,97 @@
+tool_id	catalog_tool_id	context	level	status	auroc	aupr	f1_at_truth_count	epr_at_truth_count	n_truth_edges	n_predicted_edges	reason
+clr_group_emulated	clr	group:pop_4_1	directed	not_applicable					144	0	inferred network is not directed
+genie3_group_emulated	genie3	group:pop_4_1	directed	ok	0.9844311347283516	0.18708642036747436	0.2013888888888889	31.257233796296298	144	894	
+grnboost2_group_emulated	grnboost2	group:pop_4_1	directed	ok	0.9822736222442383	0.14877169233371196	0.125	19.401041666666668	144	894	
+inferelator3_group_native	inferelator3	group:pop_4_1	directed	ok	0.9337051985449378	0.19113546695773795	0.2222222222222222	34.49074074074074	144	807	
+kscreni_group_aggregated	kscreni	group:pop_4_1	directed	ok	0.4748294379897325	0.0065413742671697845	0.006944444444444444	1.0778356481481481	144	22151	
+scmtni_group_native	scmtni	group:pop_4_1	directed	ok	0.8817170909764128	0.6884309107999881	0.7638888888888888	118.56192129629629	144	118	
+scregulate_group_native	scregulate	group:pop_4_1	directed	ok	0.9281004821019344	0.2850771722152222	0.3680555555555556	57.125289351851855	144	420	
+simic_group_native	simic	group:pop_4_1	directed	ok	0.9851106933061134	0.19380093452520286	0.1875	29.1015625	144	864	
+clr_group_emulated	clr	group:pop_4_5	directed	not_applicable					138	0	inferred network is not directed
+genie3_group_emulated	genie3	group:pop_4_5	directed	ok	0.9819550145240724	0.17958585250026135	0.15942028985507245	25.819155639571516	138	882	
+grnboost2_group_emulated	grnboost2	group:pop_4_5	directed	ok	0.9806128754009453	0.17374368874822152	0.17391304347826086	28.166351606805293	138	882	
+inferelator3_group_native	inferelator3	group:pop_4_5	directed	ok	0.969648375209118	0.1685490672707192	0.21014492753623187	34.034341524889726	138	868	
+kscreni_group_aggregated	kscreni	group:pop_4_5	directed	ok	0.5145703980352702	0.006553856759057739	0.0	0.0	138	21758	
+scmtni_group_native	scmtni	group:pop_4_5	directed	ok	0.8946533340119064	0.6937218705269188	0.7898550724637681	127.9221802142407	138	118	
+scregulate_group_native	scregulate	group:pop_4_5	directed	ok	0.8923280796122738	0.2311828329132533	0.3115942028985507	50.46471329552615	138	420	
+simic_group_native	simic	group:pop_4_5	directed	ok	0.9835746182374328	0.16249350445538915	0.16666666666666666	26.992753623188406	138	864	
+clr_group_emulated	clr	group:pop_5_2	directed	not_applicable					140	0	inferred network is not directed
+genie3_group_emulated	genie3	group:pop_5_2	directed	ok	0.9845976715765099	0.18541050115948862	0.17857142857142858	28.507653061224488	140	892	
+grnboost2_group_emulated	grnboost2	group:pop_5_2	directed	ok	0.9843362063420595	0.19106310701555268	0.18571428571428572	29.647959183673468	140	894	
+inferelator3_group_native	inferelator3	group:pop_5_2	directed	ok	0.9552550331253618	0.15269673962486088	0.17142857142857143	27.36734693877551	140	869	
+kscreni_group_aggregated	kscreni	group:pop_5_2	directed	ok	0.5227855856435325	0.007071182585879315	0.007142857142857143	1.1403061224489794	140	22014	
+scmtni_group_native	scmtni	group:pop_5_2	directed	ok	0.9242897343538946	0.6300332390473599	0.8357142857142857	133.4158163265306	140	142	
+scregulate_group_native	scregulate	group:pop_5_2	directed	ok	0.9081887180806586	0.2533181204433916	0.3357142857142857	53.594387755102034	140	420	
+simic_group_native	simic	group:pop_5_2	directed	ok	0.9839972341930919	0.16136403889159007	0.16428571428571428	26.22704081632653	140	864	
+clr_group_emulated	clr	group:pop_5_3	directed	not_applicable					140	0	inferred network is not directed
+genie3_group_emulated	genie3	group:pop_5_3	directed	ok	0.9860609763941597	0.19722096854387403	0.20714285714285716	33.06887755102041	140	887	
+grnboost2_group_emulated	grnboost2	group:pop_5_3	directed	ok	0.9849697690872837	0.18056825257216103	0.15	23.94642857142857	140	888	
+inferelator3_group_native	inferelator3	group:pop_5_3	directed	ok	0.9783065864797067	0.14702655635081263	0.15714285714285714	25.08673469387755	140	876	
+kscreni_group_aggregated	kscreni	group:pop_5_3	directed	ok	0.49230140863189037	0.006274506386310868	0.0	0.0	140	21913	
+scmtni_group_native	scmtni	group:pop_5_3	directed	ok	0.9129674535280118	0.5085418012513612	0.7	111.74999999999999	140	158	
+scregulate_group_native	scregulate	group:pop_5_3	directed	ok	0.926089760082331	0.2709627356833677	0.34285714285714286	54.73469387755102	140	420	
+simic_group_native	simic	group:pop_5_3	directed	ok	0.9846330481764971	0.17335300231806264	0.17857142857142858	28.507653061224488	140	864	
+clr_group_emulated	clr	group:pop_4_1	signed	not_applicable					144	0	inferred network is not directed
+genie3_group_emulated	genie3	group:pop_4_1	signed	not_applicable					144	0	inferred network is not signed
+grnboost2_group_emulated	grnboost2	group:pop_4_1	signed	not_applicable					144	0	inferred network is not signed
+inferelator3_group_native	inferelator3	group:pop_4_1	signed	ok	0.7903152929895961	0.149061383325424	0.2361111111111111	73.29282407407408	144	591	
+kscreni_group_aggregated	kscreni	group:pop_4_1	signed	not_applicable					144	0	inferred network is not signed
+scmtni_group_native	scmtni	group:pop_4_1	signed	not_applicable					144	0	inferred network is not signed
+scregulate_group_native	scregulate	group:pop_4_1	signed	ok	0.7046351158591935	0.08277608448195571	0.2222222222222222	68.98148148148148	144	420	
+simic_group_native	simic	group:pop_4_1	signed	ok	0.758665359323099	0.04768317196257971	0.0625	19.401041666666668	144	864	
+clr_group_emulated	clr	group:pop_4_5	signed	not_applicable					138	0	inferred network is not directed
+genie3_group_emulated	genie3	group:pop_4_5	signed	not_applicable					138	0	inferred network is not signed
+grnboost2_group_emulated	grnboost2	group:pop_4_5	signed	not_applicable					138	0	inferred network is not signed
+inferelator3_group_native	inferelator3	group:pop_4_5	signed	ok	0.780739292397695	0.09272527230202371	0.18840579710144928	61.02709514807814	138	588	
+kscreni_group_aggregated	kscreni	group:pop_4_5	signed	not_applicable					138	0	inferred network is not signed
+scmtni_group_native	scmtni	group:pop_4_5	signed	not_applicable					138	0	inferred network is not signed
+scregulate_group_native	scregulate	group:pop_4_5	signed	ok	0.69916689920378	0.07574175601831594	0.1956521739130435	63.37429111531191	138	420	
+simic_group_native	simic	group:pop_4_5	signed	ok	0.7487614552985614	0.051377776032730166	0.09420289855072464	30.51354757403907	138	864	
+clr_group_emulated	clr	group:pop_5_2	signed	not_applicable					140	0	inferred network is not directed
+genie3_group_emulated	genie3	group:pop_5_2	signed	not_applicable					140	0	inferred network is not signed
+grnboost2_group_emulated	grnboost2	group:pop_5_2	signed	not_applicable					140	0	inferred network is not signed
+inferelator3_group_native	inferelator3	group:pop_5_2	signed	ok	0.6908166356758143	0.0431293737688664	0.09285714285714286	29.647959183673468	140	542	
+kscreni_group_aggregated	kscreni	group:pop_5_2	signed	not_applicable					140	0	inferred network is not signed
+scmtni_group_native	scmtni	group:pop_5_2	signed	not_applicable					140	0	inferred network is not signed
+scregulate_group_native	scregulate	group:pop_5_2	signed	ok	0.7070071652987946	0.08143772622295102	0.21428571428571427	68.41836734693877	140	420	
+simic_group_native	simic	group:pop_5_2	signed	ok	0.7914218389330597	0.061439382561824435	0.09285714285714286	29.647959183673468	140	864	
+clr_group_emulated	clr	group:pop_5_3	signed	not_applicable					140	0	inferred network is not directed
+genie3_group_emulated	genie3	group:pop_5_3	signed	not_applicable					140	0	inferred network is not signed
+grnboost2_group_emulated	grnboost2	group:pop_5_3	signed	not_applicable					140	0	inferred network is not signed
+inferelator3_group_native	inferelator3	group:pop_5_3	signed	ok	0.7367782604513978	0.05139099448341227	0.08571428571428572	27.36734693877551	140	576	
+kscreni_group_aggregated	kscreni	group:pop_5_3	signed	not_applicable					140	0	inferred network is not signed
+scmtni_group_native	scmtni	group:pop_5_3	signed	not_applicable					140	0	inferred network is not signed
+scregulate_group_native	scregulate	group:pop_5_3	signed	ok	0.7105605604001026	0.0826103209699686	0.21428571428571427	68.41836734693877	140	420	
+simic_group_native	simic	group:pop_5_3	signed	ok	0.8022636413182868	0.06701329466087995	0.1	31.928571428571427	140	864	
+clr_group_emulated	clr	group:pop_4_1	topology	ok	0.5055575700802788	0.014381934668800916	0.013888888888888888	1.0778356481481481	144	3854	
+genie3_group_emulated	genie3	group:pop_4_1	topology	ok	0.9693175293868794	0.19036390180676396	0.2013888888888889	15.628616898148149	144	879	
+grnboost2_group_emulated	grnboost2	group:pop_4_1	topology	ok	0.9651839764703513	0.15190808097354505	0.1388888888888889	10.778356481481483	144	879	
+inferelator3_group_native	inferelator3	group:pop_4_1	topology	ok	0.9195760810443296	0.1924191997712739	0.2222222222222222	17.24537037037037	144	796	
+kscreni_group_aggregated	kscreni	group:pop_4_1	topology	ok	0.4907640336828534	0.013663231958286004	0.020833333333333332	1.616753472222222	144	11135	
+scmtni_group_native	scmtni	group:pop_4_1	topology	ok	0.8814867696088801	0.6899521635964087	0.7638888888888888	59.280960648148145	144	118	
+scregulate_group_native	scregulate	group:pop_4_1	topology	ok	0.922095810795838	0.2859272840720455	0.3680555555555556	28.562644675925927	144	420	
+simic_group_native	simic	group:pop_4_1	topology	ok	0.9700270198128507	0.19380093452520286	0.1875	14.55078125	144	864	
+clr_group_emulated	clr	group:pop_4_5	topology	ok	0.508203302987448	0.012432295025715153	0.0	0.0	138	4116	
+genie3_group_emulated	genie3	group:pop_4_5	topology	ok	0.967993363561039	0.18256817767686148	0.16666666666666666	13.496376811594203	138	867	
+grnboost2_group_emulated	grnboost2	group:pop_4_5	topology	ok	0.9652877081437536	0.17629524029053797	0.18115942028985507	14.66997479521109	138	867	
+inferelator3_group_native	inferelator3	group:pop_4_5	topology	ok	0.9541781727601362	0.17030480132017367	0.21014492753623187	17.017170762444863	138	853	
+kscreni_group_aggregated	kscreni	group:pop_4_5	topology	ok	0.5326894516862254	0.014827615667546012	0.014492753623188406	1.1735979836168873	138	11033	
+scmtni_group_native	scmtni	group:pop_4_5	topology	ok	0.8943757033325324	0.6950194096768069	0.7898550724637681	63.96109010712035	138	118	
+scregulate_group_native	scregulate	group:pop_4_5	topology	ok	0.8860276303816018	0.23243562933383496	0.3115942028985507	25.232356647763076	138	420	
+simic_group_native	simic	group:pop_4_5	topology	ok	0.9669438633949311	0.16249350445538915	0.16666666666666666	13.496376811594203	138	864	
+clr_group_emulated	clr	group:pop_5_2	topology	ok	0.4871739271150236	0.012597437493889092	0.007142857142857143	0.5701530612244897	140	3898	
+genie3_group_emulated	genie3	group:pop_5_2	topology	ok	0.9696291022072626	0.18821775957205475	0.17857142857142858	14.253826530612244	140	877	
+grnboost2_group_emulated	grnboost2	group:pop_5_2	topology	ok	0.9691332772347725	0.19362339099002315	0.18571428571428572	14.823979591836734	140	879	
+inferelator3_group_native	inferelator3	group:pop_5_2	topology	ok	0.939549485403586	0.15455026165246777	0.17142857142857143	13.683673469387754	140	854	
+kscreni_group_aggregated	kscreni	group:pop_5_2	topology	ok	0.5292284290245324	0.016342487419501988	0.02857142857142857	2.280612244897959	140	11147	
+scmtni_group_native	scmtni	group:pop_5_2	topology	ok	0.9235704576347984	0.6309728363627961	0.8357142857142857	66.7079081632653	140	142	
+scregulate_group_native	scregulate	group:pop_5_2	topology	ok	0.902014369862127	0.25439194594674724	0.3357142857142857	26.797193877551017	140	420	
+simic_group_native	simic	group:pop_5_2	topology	ok	0.9677914428118325	0.16136403889159007	0.16428571428571428	13.113520408163264	140	864	
+clr_group_emulated	clr	group:pop_5_3	topology	ok	0.5298307333808013	0.012829442064419886	0.007142857142857143	0.5701530612244897	140	3875	
+genie3_group_emulated	genie3	group:pop_5_3	topology	ok	0.9724383455239821	0.20021324067964466	0.20714285714285716	16.534438775510203	140	872	
+grnboost2_group_emulated	grnboost2	group:pop_5_3	topology	ok	0.9702058385656029	0.18241556213277935	0.15714285714285714	12.543367346938775	140	873	
+inferelator3_group_native	inferelator3	group:pop_5_3	topology	ok	0.9604204155608778	0.1481542455998589	0.15714285714285714	12.543367346938775	140	862	
+kscreni_group_aggregated	kscreni	group:pop_5_3	topology	ok	0.5362395624312253	0.014193736524875392	0.007142857142857143	0.5701530612244897	140	11090	
+scmtni_group_native	scmtni	group:pop_5_3	topology	ok	0.911632468120914	0.5096156267547169	0.7	55.87499999999999	140	158	
+scregulate_group_native	scregulate	group:pop_5_3	topology	ok	0.9199598679526183	0.27181284754019097	0.34285714285714286	27.36734693877551	140	420	
+simic_group_native	simic	group:pop_5_3	topology	ok	0.9690711372904395	0.17335300231806264	0.17857142857142858	14.253826530612244	140	864	

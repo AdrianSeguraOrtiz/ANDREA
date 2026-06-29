@@ -1,0 +1,413 @@
+{
+  "run_id": "clr_group_emulated",
+  "status": "executed",
+  "inputs": {
+    "dataset_manifest_path": "input/dataset-manifest.json",
+    "tools_params_path": "input/tools_params.json"
+  },
+  "dataset": {
+    "id": "andrea_group_grn_case_study__scmultisim_group_dynamic__r01",
+    "column_kind": "cells",
+    "expression_profile": "scrna",
+    "genes": 150,
+    "columns": 60,
+    "expression_matrix_path": "input/expression.tsv"
+  },
+  "tools": {
+    "selected": [
+      "scmtni_group_native",
+      "simic_group_native",
+      "scregulate_group_native",
+      "inferelator3_group_native",
+      "kscreni_group_aggregated",
+      "genie3_group_emulated",
+      "grnboost2_group_emulated",
+      "clr_group_emulated"
+    ],
+    "catalog_tool_ids": {
+      "scmtni_group_native": "scmtni",
+      "simic_group_native": "simic",
+      "scregulate_group_native": "scregulate",
+      "inferelator3_group_native": "inferelator3",
+      "kscreni_group_aggregated": "kscreni",
+      "genie3_group_emulated": "genie3",
+      "grnboost2_group_emulated": "grnboost2",
+      "clr_group_emulated": "clr"
+    },
+    "tool_origins": {
+      "scmtni_group_native": "catalog",
+      "simic_group_native": "catalog",
+      "scregulate_group_native": "catalog",
+      "inferelator3_group_native": "catalog",
+      "kscreni_group_aggregated": "catalog",
+      "genie3_group_emulated": "catalog",
+      "grnboost2_group_emulated": "catalog",
+      "clr_group_emulated": "catalog"
+    },
+    "skipped": {},
+    "status_by_tool": {
+      "scmtni_group_native": "completed",
+      "simic_group_native": "completed",
+      "scregulate_group_native": "completed",
+      "inferelator3_group_native": "completed",
+      "kscreni_group_aggregated": "completed",
+      "genie3_group_emulated": "completed",
+      "grnboost2_group_emulated": "completed",
+      "clr_group_emulated": "completed"
+    },
+    "completed": [
+      "clr_group_emulated",
+      "genie3_group_emulated",
+      "grnboost2_group_emulated",
+      "inferelator3_group_native",
+      "kscreni_group_aggregated",
+      "scmtni_group_native",
+      "scregulate_group_native",
+      "simic_group_native"
+    ],
+    "failed": {},
+    "results": {
+      "scmtni_group_native": {
+        "tool_id": "scmtni_group_native",
+        "status": "completed",
+        "exit_code": 0,
+        "duration_seconds": 0.87,
+        "network_path": "tools/scmtni_group_native/io/out/network.csv",
+        "progress_path": "tools/scmtni_group_native/io/out/progress.json",
+        "logs_path": "tools/scmtni_group_native/container.log",
+        "error": null,
+        "warnings": [],
+        "execution": {
+          "mode": "group_native"
+        },
+        "physical_tasks_total": 1,
+        "child_results": {}
+      },
+      "simic_group_native": {
+        "tool_id": "simic_group_native",
+        "status": "completed",
+        "exit_code": 0,
+        "duration_seconds": 16.63,
+        "network_path": "tools/simic_group_native/io/out/network.csv",
+        "progress_path": "tools/simic_group_native/io/out/progress.json",
+        "logs_path": "tools/simic_group_native/container.log",
+        "error": null,
+        "warnings": [],
+        "execution": {
+          "mode": "group_native"
+        },
+        "physical_tasks_total": 1,
+        "child_results": {}
+      },
+      "scregulate_group_native": {
+        "tool_id": "scregulate_group_native",
+        "status": "completed",
+        "exit_code": 0,
+        "duration_seconds": 5.204,
+        "network_path": "tools/scregulate_group_native/io/out/network.csv",
+        "progress_path": "tools/scregulate_group_native/io/out/progress.json",
+        "logs_path": "tools/scregulate_group_native/container.log",
+        "error": null,
+        "warnings": [],
+        "execution": {
+          "mode": "group_native"
+        },
+        "physical_tasks_total": 1,
+        "child_results": {}
+      },
+      "inferelator3_group_native": {
+        "tool_id": "inferelator3_group_native",
+        "status": "completed",
+        "exit_code": 0,
+        "duration_seconds": 54.992,
+        "network_path": "tools/inferelator3_group_native/io/out/network.csv",
+        "progress_path": "tools/inferelator3_group_native/io/out/progress.json",
+        "logs_path": "tools/inferelator3_group_native/container.log",
+        "error": null,
+        "warnings": [],
+        "execution": {
+          "mode": "group_native"
+        },
+        "physical_tasks_total": 1,
+        "child_results": {}
+      },
+      "kscreni_group_aggregated": {
+        "tool_id": "kscreni_group_aggregated",
+        "status": "completed",
+        "exit_code": 0,
+        "duration_seconds": 18.463,
+        "network_path": "tools/kscreni_group_aggregated/io/out/network.csv",
+        "progress_path": "tools/kscreni_group_aggregated/io/out/progress.json",
+        "logs_path": "tools/kscreni_group_aggregated/group_aggregation.log",
+        "error": null,
+        "warnings": [],
+        "execution": {
+          "mode": "group_aggregated"
+        },
+        "physical_tasks_total": 1,
+        "child_results": {
+          "kscreni_group_aggregated__column_native": {
+            "tool_id": "kscreni_group_aggregated__column_native",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 11.769,
+            "network_path": "tools/kscreni_group_aggregated/upstream_column_native/io/out/network.csv",
+            "progress_path": "tools/kscreni_group_aggregated/upstream_column_native/io/out/progress.json",
+            "logs_path": "tools/kscreni_group_aggregated/upstream_column_native/container.log",
+            "error": null,
+            "warnings": [],
+            "output_dir": "tools/kscreni_group_aggregated/upstream_column_native"
+          }
+        },
+        "aggregation": {
+          "rule": "mean_signed_effect_by_group",
+          "column_rows": 631580,
+          "aggregated_group_rows": 87836
+        }
+      },
+      "genie3_group_emulated": {
+        "tool_id": "genie3_group_emulated",
+        "status": "completed",
+        "exit_code": 0,
+        "duration_seconds": 80.23,
+        "network_path": "tools/genie3_group_emulated/io/out/network.csv",
+        "progress_path": "tools/genie3_group_emulated/io/out/progress.json",
+        "logs_path": "tools/genie3_group_emulated/group_execution.log",
+        "error": null,
+        "warnings": [],
+        "execution": {
+          "mode": "group_emulated"
+        },
+        "physical_tasks_total": 4,
+        "child_results": {
+          "genie3_group_emulated__group_01_pop_4_5": {
+            "tool_id": "genie3_group_emulated__group_01_pop_4_5",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 20.033,
+            "network_path": "tools/genie3_group_emulated/subruns/01_pop_4_5/io/out/network.csv",
+            "progress_path": "tools/genie3_group_emulated/subruns/01_pop_4_5/io/out/progress.json",
+            "logs_path": "tools/genie3_group_emulated/subruns/01_pop_4_5/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_4_5",
+            "output_dir": "tools/genie3_group_emulated/subruns/01_pop_4_5"
+          },
+          "genie3_group_emulated__group_02_pop_5_2": {
+            "tool_id": "genie3_group_emulated__group_02_pop_5_2",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 20.278,
+            "network_path": "tools/genie3_group_emulated/subruns/02_pop_5_2/io/out/network.csv",
+            "progress_path": "tools/genie3_group_emulated/subruns/02_pop_5_2/io/out/progress.json",
+            "logs_path": "tools/genie3_group_emulated/subruns/02_pop_5_2/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_5_2",
+            "output_dir": "tools/genie3_group_emulated/subruns/02_pop_5_2"
+          },
+          "genie3_group_emulated__group_03_pop_5_3": {
+            "tool_id": "genie3_group_emulated__group_03_pop_5_3",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 19.888,
+            "network_path": "tools/genie3_group_emulated/subruns/03_pop_5_3/io/out/network.csv",
+            "progress_path": "tools/genie3_group_emulated/subruns/03_pop_5_3/io/out/progress.json",
+            "logs_path": "tools/genie3_group_emulated/subruns/03_pop_5_3/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_5_3",
+            "output_dir": "tools/genie3_group_emulated/subruns/03_pop_5_3"
+          },
+          "genie3_group_emulated__group_04_pop_4_1": {
+            "tool_id": "genie3_group_emulated__group_04_pop_4_1",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 20.031,
+            "network_path": "tools/genie3_group_emulated/subruns/04_pop_4_1/io/out/network.csv",
+            "progress_path": "tools/genie3_group_emulated/subruns/04_pop_4_1/io/out/progress.json",
+            "logs_path": "tools/genie3_group_emulated/subruns/04_pop_4_1/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_4_1",
+            "output_dir": "tools/genie3_group_emulated/subruns/04_pop_4_1"
+          }
+        }
+      },
+      "grnboost2_group_emulated": {
+        "tool_id": "grnboost2_group_emulated",
+        "status": "completed",
+        "exit_code": 0,
+        "duration_seconds": 45.805,
+        "network_path": "tools/grnboost2_group_emulated/io/out/network.csv",
+        "progress_path": "tools/grnboost2_group_emulated/io/out/progress.json",
+        "logs_path": "tools/grnboost2_group_emulated/group_execution.log",
+        "error": null,
+        "warnings": [],
+        "execution": {
+          "mode": "group_emulated"
+        },
+        "physical_tasks_total": 4,
+        "child_results": {
+          "grnboost2_group_emulated__group_01_pop_4_5": {
+            "tool_id": "grnboost2_group_emulated__group_01_pop_4_5",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 12.2,
+            "network_path": "tools/grnboost2_group_emulated/subruns/01_pop_4_5/io/out/network.csv",
+            "progress_path": "tools/grnboost2_group_emulated/subruns/01_pop_4_5/io/out/progress.json",
+            "logs_path": "tools/grnboost2_group_emulated/subruns/01_pop_4_5/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_4_5",
+            "output_dir": "tools/grnboost2_group_emulated/subruns/01_pop_4_5"
+          },
+          "grnboost2_group_emulated__group_02_pop_5_2": {
+            "tool_id": "grnboost2_group_emulated__group_02_pop_5_2",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 11.009,
+            "network_path": "tools/grnboost2_group_emulated/subruns/02_pop_5_2/io/out/network.csv",
+            "progress_path": "tools/grnboost2_group_emulated/subruns/02_pop_5_2/io/out/progress.json",
+            "logs_path": "tools/grnboost2_group_emulated/subruns/02_pop_5_2/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_5_2",
+            "output_dir": "tools/grnboost2_group_emulated/subruns/02_pop_5_2"
+          },
+          "grnboost2_group_emulated__group_03_pop_5_3": {
+            "tool_id": "grnboost2_group_emulated__group_03_pop_5_3",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 11.47,
+            "network_path": "tools/grnboost2_group_emulated/subruns/03_pop_5_3/io/out/network.csv",
+            "progress_path": "tools/grnboost2_group_emulated/subruns/03_pop_5_3/io/out/progress.json",
+            "logs_path": "tools/grnboost2_group_emulated/subruns/03_pop_5_3/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_5_3",
+            "output_dir": "tools/grnboost2_group_emulated/subruns/03_pop_5_3"
+          },
+          "grnboost2_group_emulated__group_04_pop_4_1": {
+            "tool_id": "grnboost2_group_emulated__group_04_pop_4_1",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 11.126,
+            "network_path": "tools/grnboost2_group_emulated/subruns/04_pop_4_1/io/out/network.csv",
+            "progress_path": "tools/grnboost2_group_emulated/subruns/04_pop_4_1/io/out/progress.json",
+            "logs_path": "tools/grnboost2_group_emulated/subruns/04_pop_4_1/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_4_1",
+            "output_dir": "tools/grnboost2_group_emulated/subruns/04_pop_4_1"
+          }
+        }
+      },
+      "clr_group_emulated": {
+        "tool_id": "clr_group_emulated",
+        "status": "completed",
+        "exit_code": 0,
+        "duration_seconds": 9.52,
+        "network_path": "tools/clr_group_emulated/io/out/network.csv",
+        "progress_path": "tools/clr_group_emulated/io/out/progress.json",
+        "logs_path": "tools/clr_group_emulated/group_execution.log",
+        "error": null,
+        "warnings": [],
+        "execution": {
+          "mode": "group_emulated"
+        },
+        "physical_tasks_total": 4,
+        "child_results": {
+          "clr_group_emulated__group_01_pop_4_5": {
+            "tool_id": "clr_group_emulated__group_01_pop_4_5",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 2.5,
+            "network_path": "tools/clr_group_emulated/subruns/01_pop_4_5/io/out/network.csv",
+            "progress_path": "tools/clr_group_emulated/subruns/01_pop_4_5/io/out/progress.json",
+            "logs_path": "tools/clr_group_emulated/subruns/01_pop_4_5/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_4_5",
+            "output_dir": "tools/clr_group_emulated/subruns/01_pop_4_5"
+          },
+          "clr_group_emulated__group_02_pop_5_2": {
+            "tool_id": "clr_group_emulated__group_02_pop_5_2",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 2.268,
+            "network_path": "tools/clr_group_emulated/subruns/02_pop_5_2/io/out/network.csv",
+            "progress_path": "tools/clr_group_emulated/subruns/02_pop_5_2/io/out/progress.json",
+            "logs_path": "tools/clr_group_emulated/subruns/02_pop_5_2/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_5_2",
+            "output_dir": "tools/clr_group_emulated/subruns/02_pop_5_2"
+          },
+          "clr_group_emulated__group_03_pop_5_3": {
+            "tool_id": "clr_group_emulated__group_03_pop_5_3",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 2.531,
+            "network_path": "tools/clr_group_emulated/subruns/03_pop_5_3/io/out/network.csv",
+            "progress_path": "tools/clr_group_emulated/subruns/03_pop_5_3/io/out/progress.json",
+            "logs_path": "tools/clr_group_emulated/subruns/03_pop_5_3/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_5_3",
+            "output_dir": "tools/clr_group_emulated/subruns/03_pop_5_3"
+          },
+          "clr_group_emulated__group_04_pop_4_1": {
+            "tool_id": "clr_group_emulated__group_04_pop_4_1",
+            "status": "completed",
+            "exit_code": 0,
+            "duration_seconds": 2.221,
+            "network_path": "tools/clr_group_emulated/subruns/04_pop_4_1/io/out/network.csv",
+            "progress_path": "tools/clr_group_emulated/subruns/04_pop_4_1/io/out/progress.json",
+            "logs_path": "tools/clr_group_emulated/subruns/04_pop_4_1/container.log",
+            "error": null,
+            "warnings": [],
+            "group_label": "pop_4_1",
+            "output_dir": "tools/clr_group_emulated/subruns/04_pop_4_1"
+          }
+        }
+      }
+    }
+  },
+  "outputs": {
+    "merged_network_raw": "merged_network_raw.csv",
+    "merged_network_raw_gexf": "merged_network_raw.gexf",
+    "merged_network_raw_graphml": "merged_network_raw.graphml",
+    "merged_network_normalized": "merged_network_normalized.csv",
+    "merged_network_normalized_gexf": "merged_network_normalized.gexf",
+    "merged_network_normalized_graphml": "merged_network_normalized.graphml",
+    "merged_network_normalized_cytoscape_script": "merged_network_normalized_cytoscape.py",
+    "rows_per_tool": {
+      "clr_group_emulated": 15743,
+      "genie3_group_emulated": 3555,
+      "grnboost2_group_emulated": 3558,
+      "inferelator3_group_native": 3420,
+      "kscreni_group_aggregated": 87836,
+      "scmtni_group_native": 536,
+      "scregulate_group_native": 1680,
+      "simic_group_native": 3456
+    }
+  },
+  "issues": [],
+  "execution": {
+    "elapsed_seconds": 138.903,
+    "planner_requested": "auto",
+    "planner_used": "cp_sat",
+    "planner_time_limit_seconds": 100.0,
+    "waves_total": 5,
+    "tools_selected": 8,
+    "physical_tasks_total": 17,
+    "tools_completed": 8,
+    "tools_failed": 0
+  },
+  "plan_file": "plan.json",
+  "notes": [
+    "Run directory is frozen at planning time.",
+    "Use run_infer_network_plan(run_dir=...) to execute this plan."
+  ]
+}

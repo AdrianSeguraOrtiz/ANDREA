@@ -1,0 +1,512 @@
+{
+  "schema_version": "1.0",
+  "id": "andrea_group_grn_case_study",
+  "data_axes": {
+    "measurement": "rna_expression",
+    "resolution": "single_cell",
+    "column_kind": "cells",
+    "experimental_design": "differentiation"
+  },
+  "truth_requirements": {
+    "contexts": [
+      "global",
+      "group"
+    ]
+  },
+  "organism": {
+    "taxonomic_group": "synthetic",
+    "ncbi_taxon_id": null
+  },
+  "requested_extras": [
+    "groups",
+    "column_phenotypes",
+    "cluster_identities",
+    "enrichment_background",
+    "lineage_tree",
+    "prior_grn",
+    "prior_grn_by_group",
+    "pseudotime",
+    "tf_list"
+  ],
+  "effective_extras": [
+    "cluster_identities",
+    "column_phenotypes",
+    "enrichment_background",
+    "groups",
+    "lineage_tree",
+    "prior_grn",
+    "prior_grn_by_group",
+    "pseudotime",
+    "tf_list"
+  ],
+  "inputs": {},
+  "runs": [
+    {
+      "run_id": "scmultisim_group_dynamic",
+      "simulator_id": "scmultisim",
+      "simulator_params": {
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "population_mode": "auto",
+        "num_cells": 60,
+        "speed_up": false,
+        "num_genes": 150,
+        "unregulated_gene_ratio": 0.1,
+        "grn_effect": 1.0,
+        "num_cifs": 20,
+        "diff_cif_fraction": 0.9,
+        "cif_center": 1.0,
+        "cif_sigma": 0.1,
+        "use_impulse": false,
+        "discrete_population": {
+          "pop_size": [],
+          "min_pop_size": 70,
+          "min_pop_index": 1
+        },
+        "giv": {
+          "mean": 0.0,
+          "prob": 0.3,
+          "sd": 1.0
+        },
+        "high_expression": {
+          "range": 1,
+          "proportion": 0.0,
+          "mean": 5.0,
+          "sd": 1.0,
+          "max_var": 500.0
+        },
+        "atac": {
+          "effect": 0.5,
+          "region_distrib": [
+            0.1,
+            0.5,
+            0.4
+          ],
+          "p_zero": 0.8,
+          "riv_mean": 0.0,
+          "riv_prob": 0.3,
+          "riv_sd": 1.0
+        },
+        "rna_model": {
+          "vary": "s",
+          "bimod": 0.0,
+          "scale_s": 1.0,
+          "intrinsic_noise": 1.0
+        },
+        "velocity": {
+          "enabled": false,
+          "beta": 0.4,
+          "d": 1.0,
+          "num_cycles": 3,
+          "cycle_len": 1.0
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "involved_genes": [],
+          "num_changing_edges": 2.0,
+          "create_tf_edges": false,
+          "weight_mean": 0.0,
+          "weight_sd": 1.0
+        },
+        "technical_noise": {
+          "enabled": false,
+          "protocol": "nonUMI",
+          "alpha_mean": 0.1,
+          "alpha_sd": 0.02,
+          "depth_mean": 100000.0,
+          "depth_sd": 3000.0,
+          "n_pcr1": 16,
+          "n_pcr2": 10,
+          "atac_obs_prob": 0.3,
+          "atac_sd_frac": 0.5
+        },
+        "batch_effect": {
+          "enabled": false,
+          "num_batches": 2,
+          "effect": 3.0
+        },
+        "mod_cif_giv_preset": "none",
+        "ext_cif_giv_preset": "none",
+        "spatial": {
+          "enabled": false,
+          "grid_size": 13,
+          "max_neighbors": 4,
+          "step_size": 0.5,
+          "layout": "enhanced",
+          "same_type_prob": 0.8,
+          "cell_type_lr_pairs": [
+            1,
+            2
+          ],
+          "ligand_receptor_effects": [
+            5.2,
+            -5.9
+          ],
+          "single_cell_gt": true
+        }
+      },
+      "runtime_resources": {
+        "threads": 4
+      },
+      "replicates": 1,
+      "native_outputs": [],
+      "base_seed": 1729,
+      "replicate_seeds": [
+        1729
+      ],
+      "ram_gb": 8.0,
+      "eta_seconds": 7.826,
+      "eta_source": "cost_profile",
+      "eta_start_seconds": 0.0,
+      "eta_end_seconds": 7.826,
+      "eta_provenance": {
+        "eta_source": "cost_profile",
+        "cost_profile": {
+          "simulator_id": "scmultisim",
+          "profile_id": "single_cell_cells_differentiation_global_group_builtin_dynamic_full_extras",
+          "match": {
+            "profile_id": "single_cell_cells_differentiation_global_group_builtin_dynamic_full_extras",
+            "extra_over": [],
+            "extra_under": [],
+            "effective_delta": [],
+            "input_over": [],
+            "input_under": [],
+            "param_difference_count": 0,
+            "source_mode_difference_count": 0,
+            "cost_relevant_params": [
+              "grn_source",
+              "tree_preset",
+              "num_cifs",
+              "speed_up",
+              "velocity.enabled",
+              "dynamic_grn.enabled",
+              "dynamic_grn.num_steps",
+              "dynamic_grn.cell_per_step",
+              "technical_noise.enabled",
+              "batch_effect.enabled",
+              "spatial.enabled",
+              "spatial.single_cell_gt",
+              "spatial.grid_size",
+              "spatial.max_neighbors",
+              "spatial.step_size"
+            ],
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            }
+          },
+          "dimension_profile": {
+            "cells_param": "num_cells",
+            "genes_param": "num_genes",
+            "group_count": 3,
+            "population_count": 3
+          },
+          "features": {
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "column_phenotypes",
+              "cluster_identities",
+              "enrichment_background",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "n_cells": 60,
+            "n_genes": 150,
+            "n_tfs": null,
+            "n_groups": 3,
+            "population_count": 3,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            }
+          },
+          "nearest_runtime_point": {
+            "genes": 150,
+            "cells": 60,
+            "groups": 3,
+            "population_count": 3,
+            "threads": 4,
+            "ram_gb": 8.0,
+            "status": "ok",
+            "seconds_p50": 7.825579,
+            "seconds_p90": 7.825579,
+            "ok_rate": 1.0
+          },
+          "size_scale": 1.0,
+          "risk_penalty": 1.0,
+          "warnings": []
+        }
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "task_id": "scmultisim_group_dynamic__r01",
+      "run_id": "scmultisim_group_dynamic",
+      "simulator_id": "scmultisim",
+      "replicate_index": 1,
+      "seed": 1729,
+      "dataset_id": "andrea_group_grn_case_study__scmultisim_group_dynamic__r01",
+      "runtime_resources": {
+        "threads": 4
+      },
+      "ram_gb": 8.0,
+      "eta_seconds": 7.826,
+      "eta_source": "cost_profile",
+      "eta_start_seconds": 0.0,
+      "eta_end_seconds": 7.826,
+      "eta_wave": 1,
+      "eta_provenance": {
+        "eta_source": "cost_profile",
+        "cost_profile": {
+          "simulator_id": "scmultisim",
+          "profile_id": "single_cell_cells_differentiation_global_group_builtin_dynamic_full_extras",
+          "match": {
+            "profile_id": "single_cell_cells_differentiation_global_group_builtin_dynamic_full_extras",
+            "extra_over": [],
+            "extra_under": [],
+            "effective_delta": [],
+            "input_over": [],
+            "input_under": [],
+            "param_difference_count": 0,
+            "source_mode_difference_count": 0,
+            "cost_relevant_params": [
+              "grn_source",
+              "tree_preset",
+              "num_cifs",
+              "speed_up",
+              "velocity.enabled",
+              "dynamic_grn.enabled",
+              "dynamic_grn.num_steps",
+              "dynamic_grn.cell_per_step",
+              "technical_noise.enabled",
+              "batch_effect.enabled",
+              "spatial.enabled",
+              "spatial.single_cell_gt",
+              "spatial.grid_size",
+              "spatial.max_neighbors",
+              "spatial.step_size"
+            ],
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            }
+          },
+          "dimension_profile": {
+            "cells_param": "num_cells",
+            "genes_param": "num_genes",
+            "group_count": 3,
+            "population_count": 3
+          },
+          "features": {
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "column_phenotypes",
+              "cluster_identities",
+              "enrichment_background",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "n_cells": 60,
+            "n_genes": 150,
+            "n_tfs": null,
+            "n_groups": 3,
+            "population_count": 3,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            }
+          },
+          "nearest_runtime_point": {
+            "genes": 150,
+            "cells": 60,
+            "groups": 3,
+            "population_count": 3,
+            "threads": 4,
+            "ram_gb": 8.0,
+            "status": "ok",
+            "seconds_p50": 7.825579,
+            "seconds_p90": 7.825579,
+            "ok_rate": 1.0
+          },
+          "size_scale": 1.0,
+          "risk_penalty": 1.0,
+          "warnings": []
+        }
+      }
+    }
+  ],
+  "execution": {
+    "max_parallel_tasks": 1,
+    "max_cores": 8,
+    "max_ram_gb": 32.0,
+    "eta_total_seconds": 7.826,
+    "waves": [
+      {
+        "index": 1,
+        "threads_used": 4,
+        "ram_gb_used": 8.0,
+        "eta_seconds": 7.826,
+        "eta_start_seconds": 0.0,
+        "eta_end_seconds": 7.826,
+        "tasks": [
+          {
+            "task_id": "scmultisim_group_dynamic__r01",
+            "run_id": "scmultisim_group_dynamic",
+            "simulator_id": "scmultisim",
+            "threads": 4,
+            "ram_gb": 8.0,
+            "eta_seconds": 7.826,
+            "eta_source": "cost_profile",
+            "eta_start_seconds": 0.0,
+            "eta_end_seconds": 7.826
+          }
+        ]
+      }
+    ],
+    "warnings": []
+  },
+  "base_seed": 1729
+}

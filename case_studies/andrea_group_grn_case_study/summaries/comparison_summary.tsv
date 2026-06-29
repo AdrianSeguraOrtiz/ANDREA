@@ -1,0 +1,2 @@
+sources	network_instances	edge_score_rows	distance_rows	coordinate_rows	warnings	runtime_profile_seconds	comparison_sqlite	comparison_view
+1	96	203377	672	128	4		comparison_andrea_group_grn_case_study_20260628T235557Z/comparison.sqlite	comparison_andrea_group_grn_case_study_20260628T235557Z/comparison_view.html

@@ -1,0 +1,3 @@
+stage	planned_eta_seconds	waves_total	tasks_total	logical_runs_total	planner_requested	planner_used	threads_peak	ram_peak_gb
+generate-data	7.826	1	1	1				
+infer-network	145.335	5	17	8	auto	cp_sat	8	32.0

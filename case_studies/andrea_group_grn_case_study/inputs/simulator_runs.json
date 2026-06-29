@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "runs": [
+    {
+      "run_id": "scmultisim_group_dynamic",
+      "simulator_id": "scmultisim",
+      "replicates": 1,
+      "base_seed": 1729,
+      "native_outputs": [],
+      "params": {
+        "num_genes": 150,
+        "num_cells": 60,
+        "grn_source": "builtin_100",
+        "tree_preset": "phyla3",
+        "num_cifs": 20,
+        "velocity": {
+          "enabled": false
+        },
+        "dynamic_grn": {
+          "enabled": true,
+          "num_steps": 3,
+          "cell_per_step": 1,
+          "num_changing_edges": 2,
+          "weight_mean": 0,
+          "weight_sd": 1
+        },
+        "technical_noise": {
+          "enabled": false
+        }
+      }
+    }
+  ]
+}
