@@ -268,7 +268,17 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
             modes[0].eta_provenance["cost_profile"]["profile_id"],
             "global_default",
         )
-        self.assertEqual(modes[0].eta_seconds, 20.0)
+        self.assertEqual(modes[0].eta_seconds, 24.0)
+        self.assertEqual(
+            modes[0].eta_provenance["cost_profile"]["estimation_policy"],
+            "cost_profile_v2",
+        )
+        self.assertEqual(
+            modes[0].eta_provenance["cost_profile"]["uncertainty_components"][
+                "sample_count_penalty"
+            ],
+            0.2,
+        )
 
     def test_selects_exact_optional_input_profile_when_manifest_provides_it(
         self,
@@ -344,7 +354,7 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         cost_profile = modes[0].eta_provenance["cost_profile"]
         self.assertEqual(cost_profile["profile_id"], "group_native_groups_2")
         self.assertEqual(cost_profile["profile_execution_mode"], "group_native")
-        self.assertEqual(modes[0].eta_seconds, 3.0)
+        self.assertEqual(modes[0].eta_seconds, 3.6)
 
     def test_group_emulated_profile_records_group_multiplier_provenance(self) -> None:
         cost_payload = {
@@ -387,6 +397,51 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
             cost_profile["multipliers"],
             {"physical_tasks": 5, "group_count": 5},
         )
+        self.assertEqual(cost_profile["raw_size_scale"], 1.0)
+        self.assertEqual(cost_profile["size_scale_floor"], 1.0)
+        self.assertGreater(cost_profile["uncertainty_penalty"], 1.0)
+
+    def test_approximate_profile_does_not_downscale_from_larger_runtime_point(
+        self,
+    ) -> None:
+        larger_point = _runtime_point(seconds=2.0, threads=1)
+        larger_point["genes"] = 20
+        larger_point["columns"] = 10
+        cost_payload = {
+            "profiles": [
+                _profile(
+                    "global_limit_10",
+                    seconds=2.0,
+                    resolved_params={"limit": 10},
+                    cost_relevant_params=["limit"],
+                    runtime_points=[larger_point],
+                )
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="genie3_01",
+                run_id="genie3_01",
+                toolspec=self._toolspec(),
+                cost_profile=cost_payload,
+                execution_mode="global",
+                resolved_params={"limit": 50},
+                extras_present=set(),
+                logical_group_count=0,
+                physical_tasks_total=1,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=2,
+                max_ram_gb=4.0,
+                output_dir="tools/genie3_01",
+            )
+
+        self.assertTrue(any("cost-relevant parameter" in w for w in warnings))
+        cost_profile = modes[0].eta_provenance["cost_profile"]
+        self.assertEqual(cost_profile["raw_size_scale"], 0.5)
+        self.assertEqual(cost_profile["size_scale"], 1.0)
+        self.assertEqual(cost_profile["size_scale_floor"], 1.0)
+        self.assertGreater(cost_profile["uncertainty_penalty"], 1.0)
 
     def test_only_cost_relevant_params_affect_profile_matching(self) -> None:
         cost_payload = {
@@ -430,6 +485,10 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         self.assertEqual(cost_profile["profile_id"], "limit_50")
         self.assertEqual(cost_profile["cost_relevant_params"], ["limit"])
         self.assertEqual(cost_profile["cost_relevant_values"], {"limit": 50})
+        self.assertEqual(
+            cost_profile["planned_cost_relevant_values"],
+            {"limit": 50},
+        )
 
     def test_fallback_records_warning_when_no_execution_mode_profile_matches(
         self,

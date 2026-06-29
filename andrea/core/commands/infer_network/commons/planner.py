@@ -14,6 +14,10 @@ from .threading import (
     thread_count_allowed_by_tool,
 )
 
+ETA_ESTIMATION_POLICY_VERSION = "cost_profile_v2"
+MIN_EXACT_PROFILE_SIZE_SCALE = 0.75
+MIN_APPROX_PROFILE_SIZE_SCALE = 1.0
+
 
 def _load_tool_cost_profile(
     *,
@@ -300,6 +304,135 @@ def _param_difference_count(
     )
 
 
+def _planned_cost_relevant_values(
+    *,
+    planned_params: dict[str, Any],
+    cost_relevant_params: list[str],
+) -> dict[str, Any]:
+    planned_flat = _flatten_param_values(planned_params)
+    return {key: planned_flat.get(key) for key in cost_relevant_params}
+
+
+def _numeric_cost_param_penalty(*, planned: Any, profiled: Any) -> float:
+    if planned == profiled:
+        return 0.0
+    if (
+        isinstance(planned, bool)
+        or isinstance(profiled, bool)
+        or not isinstance(planned, (int, float))
+        or not isinstance(profiled, (int, float))
+    ):
+        return 0.25
+
+    planned_num = float(planned)
+    profiled_num = float(profiled)
+    if planned_num == profiled_num:
+        return 0.0
+
+    # Sentinel-style values such as -1 often mean "use all available items" and
+    # can be much more expensive than the bounded benchmark profile.
+    if (planned_num < 0 <= profiled_num) or (profiled_num < 0 <= planned_num):
+        return 0.85
+
+    min_abs = min(abs(planned_num), abs(profiled_num))
+    max_abs = max(abs(planned_num), abs(profiled_num))
+    if min_abs == 0:
+        return 0.45
+
+    ratio = max_abs / min_abs
+    return min(0.95, 0.20 + (0.14 * math.log2(max(1.0, ratio))))
+
+
+def _cost_param_uncertainty(
+    *,
+    profile_match: dict[str, Any],
+) -> tuple[float, list[dict[str, Any]]]:
+    profile_values = profile_match.get("cost_relevant_values", {})
+    planned_values = profile_match.get("planned_cost_relevant_values", {})
+    cost_relevant_params = profile_match.get("cost_relevant_params", [])
+    if not isinstance(profile_values, dict) or not isinstance(planned_values, dict):
+        return 0.0, []
+    if not isinstance(cost_relevant_params, list):
+        return 0.0, []
+
+    total = 0.0
+    details: list[dict[str, Any]] = []
+    for key in cost_relevant_params:
+        if not isinstance(key, str):
+            continue
+        planned = planned_values.get(key)
+        profiled = profile_values.get(key)
+        if planned == profiled:
+            continue
+        penalty = _numeric_cost_param_penalty(planned=planned, profiled=profiled)
+        total += penalty
+        details.append(
+            {
+                "param": key,
+                "planned": planned,
+                "profiled": profiled,
+                "penalty": round(float(penalty), 6),
+            }
+        )
+    return total, details
+
+
+def _runtime_point_sample_penalty(point: dict[str, Any]) -> float:
+    repeats_total = int(point.get("repeats_total", 0) or 0)
+    if repeats_total <= 0:
+        return 0.35
+    if repeats_total == 1:
+        return 0.20
+    if repeats_total == 2:
+        return 0.10
+    return 0.0
+
+
+def _cost_profile_uncertainty_penalty(
+    *,
+    profile_match: dict[str, Any],
+    nearest: dict[str, Any],
+    size_exact: bool,
+    resource_exact: bool,
+) -> tuple[float, dict[str, Any]]:
+    missing_inputs = profile_match.get("extra_inputs_missing_from_profile", [])
+    missing_input_count = len(missing_inputs) if isinstance(missing_inputs, list) else 0
+    group_distance = int(profile_match.get("group_distance") or 0)
+
+    param_penalty, param_details = _cost_param_uncertainty(
+        profile_match=profile_match
+    )
+    components = {
+        "extra_input_penalty": round(float(0.25 * missing_input_count), 6),
+        "param_penalty": round(float(param_penalty), 6),
+        "param_details": param_details,
+        "group_penalty": round(float(min(1.40, 0.35 * group_distance)), 6),
+        "nearest_size_penalty": 0.10 if not size_exact else 0.0,
+        "nearest_resource_penalty": 0.05 if not resource_exact else 0.0,
+        "sample_count_penalty": round(
+            float(_runtime_point_sample_penalty(nearest)), 6
+        ),
+    }
+    additive = (
+        components["extra_input_penalty"]
+        + components["param_penalty"]
+        + components["group_penalty"]
+        + components["nearest_size_penalty"]
+        + components["nearest_resource_penalty"]
+        + components["sample_count_penalty"]
+    )
+    multiplier = min(5.0, max(1.0, 1.0 + additive))
+    return multiplier, components
+
+
+def _profile_match_is_approximate(profile_match: dict[str, Any]) -> bool:
+    return (
+        bool(profile_match.get("extra_inputs_missing_from_profile"))
+        or int(profile_match.get("param_difference_count") or 0) > 0
+        or int(profile_match.get("group_distance") or 0) > 0
+    )
+
+
 def _cost_profile_match_quality(
     *,
     extra_inputs_missing_from_profile: set[str],
@@ -381,6 +514,10 @@ def _select_cost_profile(
 
         cost_relevant_params = _profile_cost_relevant_params(profile)
         cost_relevant_values = _profile_cost_relevant_values(profile)
+        planned_cost_relevant_values = _planned_cost_relevant_values(
+            planned_params=resolved_params,
+            cost_relevant_params=cost_relevant_params,
+        )
         param_diffs = _param_difference_count(
             planned_params=resolved_params,
             profile_cost_relevant_values=cost_relevant_values,
@@ -402,6 +539,7 @@ def _select_cost_profile(
             "param_difference_count": int(param_diffs),
             "cost_relevant_params": cost_relevant_params,
             "cost_relevant_values": cost_relevant_values,
+            "planned_cost_relevant_values": planned_cost_relevant_values,
             "group_distance": int(group_distance),
             "profile_execution_mode": execution_mode,
             "profile_group_count": profile_group_count,
@@ -695,9 +833,15 @@ def _estimate_tool_mode_options(
         p90 = float(nearest["seconds_p90"])
         pg = max(1, int(nearest.get("genes", dataset.genes)))
         pc = max(1, int(nearest.get("columns", dataset.columns)))
-        size_scale = math.sqrt((dataset.genes / pg) * (dataset.columns / pc))
+        raw_size_scale = math.sqrt((dataset.genes / pg) * (dataset.columns / pc))
+        profile_is_approximate = _profile_match_is_approximate(profile_match)
+        size_scale_floor = (
+            MIN_APPROX_PROFILE_SIZE_SCALE
+            if profile_is_approximate
+            else MIN_EXACT_PROFILE_SIZE_SCALE
+        )
+        size_scale = max(size_scale_floor, raw_size_scale)
         robust_base = max(p90, (0.70 * p90 + 0.30 * p50))
-        eta = max(0.1, robust_base * size_scale * _mode_risk_penalty(nearest))
         profile_id = str(selected_profile.get("profile_id", "")).strip()
         nearest_point = {
             "genes": int(nearest.get("genes", pg)),
@@ -716,6 +860,16 @@ def _estimate_tool_mode_options(
         point_quality = ("exact_size" if size_exact else "nearest_size") + (
             "_exact_resources" if resource_exact else "_nearest_resources"
         )
+        risk_penalty = _mode_risk_penalty(nearest)
+        uncertainty_penalty, uncertainty_components = (
+            _cost_profile_uncertainty_penalty(
+                profile_match=profile_match,
+                nearest=nearest,
+                size_exact=size_exact,
+                resource_exact=resource_exact,
+            )
+        )
+        eta = max(0.1, robust_base * size_scale * risk_penalty * uncertainty_penalty)
         provenance_warnings = [
             *profile_warnings,
             *threading_warnings,
@@ -741,6 +895,7 @@ def _estimate_tool_mode_options(
                     "eta_source": "cost_profile",
                     "cost_features": cost_features,
                     "cost_profile": {
+                        "estimation_policy": ETA_ESTIMATION_POLICY_VERSION,
                         "tool_id": str(toolspec.get("id", tool_id)),
                         "profile_id": profile_id,
                         "match_quality": (
@@ -754,9 +909,19 @@ def _estimate_tool_mode_options(
                         "cost_relevant_values": profile_match.get(
                             "cost_relevant_values", {}
                         ),
+                        "planned_cost_relevant_values": profile_match.get(
+                            "planned_cost_relevant_values", {}
+                        ),
                         "nearest_runtime_point": nearest_point,
+                        "raw_size_scale": round(float(raw_size_scale), 6),
                         "size_scale": round(float(size_scale), 6),
-                        "risk_penalty": round(float(_mode_risk_penalty(nearest)), 6),
+                        "size_scale_floor": round(float(size_scale_floor), 6),
+                        "risk_penalty": round(float(risk_penalty), 6),
+                        "uncertainty_penalty": round(
+                            float(uncertainty_penalty), 6
+                        ),
+                        "uncertainty_components": uncertainty_components,
+                        "robust_base_seconds": round(float(robust_base), 6),
                         "multipliers": {
                             "physical_tasks": int(max(1, physical_tasks_total)),
                             "group_count": (
