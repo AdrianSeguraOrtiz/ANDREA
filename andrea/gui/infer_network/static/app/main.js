@@ -95,14 +95,13 @@ function purgeUnreferencedCustomTools() {
 }
 
 function maybeRemoveCustomToolForDeletedRun(toolId) {
-  const normalizedToolId = String(toolId || "").trim();
-  if (!normalizedToolId.startsWith("custom_")) {
+  if (typeof toolId !== "string" || !toolId.startsWith("custom_")) {
     return;
   }
-  if (selectedRunToolIds().has(normalizedToolId)) {
+  if (selectedRunToolIds().has(toolId)) {
     return;
   }
-  if (removeCustomToolDefinition(normalizedToolId)) {
+  if (removeCustomToolDefinition(toolId)) {
     updateToolEligibilityView(state.preflightReport);
   }
 }
@@ -131,6 +130,7 @@ function showExternalDockerToolGuide() {
           "Run the inference method inside the container and write /io/out/network.csv.",
           "network.csv must include source,target,score,sign,evidence,context.",
           "score must be a positive magnitude. Activation/repression direction must be stored only in sign.",
+          "Declare directed/undirected and none/signed/mixed output semantics in the form; ANDREA freezes them for evaluation.",
           "/io/out/progress.json is optional but recommended for live progress updates.",
         ],
       },
@@ -149,10 +149,24 @@ function showExternalDockerToolGuide() {
 }
 
 function parseExternalExtraInputKeys(value) {
-  return String(value || "")
-    .split(/[\s,;]+/g)
-    .map((item) => item.trim())
-    .filter(Boolean);
+  if (typeof value !== "string") {
+    throw new Error("External extra input selection must be a canonical string.");
+  }
+  if (value === "") {
+    return [];
+  }
+  const items = value.split(", ");
+  const seen = new Set();
+  for (const [idx, item] of items.entries()) {
+    if (!item || item !== item.trim() || !/^[a-z][a-z0-9_]*$/.test(item)) {
+      throw new Error(`External extra input ${idx + 1} is not canonical.`);
+    }
+    if (seen.has(item)) {
+      throw new Error(`Duplicate external extra input: ${item}.`);
+    }
+    seen.add(item);
+  }
+  return items;
 }
 
 function syncExternalToolExtraOptions() {
@@ -601,8 +615,8 @@ function bindEvents() {
   });
   $("custom-tool-add-btn").addEventListener("click", () => {
     try {
-      const { tool, run } = buildSimpleCustomToolFromForm();
-      const toolId = addCustomToolDefinition(tool);
+      const { tool, paramsSchema, run } = buildSimpleCustomToolFromForm();
+      const toolId = addCustomToolDefinition(tool, paramsSchema);
       updateToolEligibilityView(state.preflightReport);
       addRunCard({ ...run, tool_id: toolId });
       refreshRunCardsValidation();

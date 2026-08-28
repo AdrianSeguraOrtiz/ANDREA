@@ -37,6 +37,9 @@ from andrea.core.commands.infer_network.commons.catalog import (
     _load_schema_constraints,
     _resolve_catalog_paths,
 )
+from andrea.core.commands.infer_network.commons.custom_tools import (
+    load_custom_tool_registry,
+)
 from andrea.core.commands.infer_network.commons.dataset import (
     _inspect_expression_tsv,
     _load_input_specs,
@@ -44,6 +47,9 @@ from andrea.core.commands.infer_network.commons.dataset import (
 from andrea.core.commands.infer_network.commons.execution_state import (
     execution_state_path,
     read_execution_state_if_exists,
+)
+from andrea.core.commands.infer_network.commons.tools import (
+    _normalize_tool_request_identity,
 )
 from andrea.gui.common.reproducibility import (
     append_cli_option,
@@ -404,7 +410,11 @@ def _safe_int(value: Any, *, default: int) -> int:
     return int(value)
 
 
-def _normalize_runs(raw_runs: Any) -> list[dict[str, Any]]:
+def _normalize_runs(
+    raw_runs: Any,
+    *,
+    custom_run_ids_by_tool_id: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
     if not isinstance(raw_runs, list) or not raw_runs:
         raise ValueError("runs must be a non-empty array")
 
@@ -414,19 +424,14 @@ def _normalize_runs(raw_runs: Any) -> list[dict[str, Any]]:
         if not isinstance(raw, dict):
             raise ValueError(f"runs[{idx}] must be an object")
 
-        tool_id = str(raw.get("tool_id", "")).strip()
-        if not tool_id:
-            raise ValueError(f"runs[{idx}].tool_id is required")
-
-        run_id_raw = raw.get("run_id")
-        if run_id_raw is None or (
-            isinstance(run_id_raw, str) and not run_id_raw.strip()
-        ):
-            run_id = f"{tool_id}__{idx:02d}"
-        elif isinstance(run_id_raw, str):
-            run_id = run_id_raw.strip()
-        else:
-            raise ValueError(f"runs[{idx}].run_id must be string when provided")
+        tool_id, run_id = _normalize_tool_request_identity(
+            tool_id_raw=raw.get("tool_id"),
+            run_id_raw=raw.get("run_id"),
+            request_index=idx,
+            custom_run_ids_by_tool_id=custom_run_ids_by_tool_id or {},
+            source="runs",
+            strict_custom_identity=True,
+        )
 
         if run_id in seen_ids:
             raise ValueError(f"Duplicate run_id: {run_id}")
@@ -587,8 +592,13 @@ def _write_tools_params_file(
     *,
     request_dir: Path,
     runs_raw: Any,
+    custom_tools_path: Optional[Path] = None,
 ) -> Path:
-    runs = _normalize_runs(runs_raw)
+    custom_run_ids_by_tool_id = _custom_run_ids_by_tool_id(custom_tools_path)
+    runs = _normalize_runs(
+        runs_raw,
+        custom_run_ids_by_tool_id=custom_run_ids_by_tool_id,
+    )
     tools_params = {"runs": runs}
     tools_params_path = request_dir / "tools_params.json"
     tools_params_path.write_text(
@@ -596,6 +606,35 @@ def _write_tools_params_file(
         encoding="utf-8",
     )
     return tools_params_path
+
+
+def _custom_run_ids_by_tool_id(
+    custom_tools_path: Optional[Path],
+) -> dict[str, str]:
+    if custom_tools_path is None:
+        return {}
+    tools_root, schemas_dir = _resolve_catalog_paths()
+    constraints = _load_schema_constraints(schemas_dir)
+    custom_tools, blocked_entries = load_custom_tool_registry(
+        custom_tools_path=custom_tools_path,
+        tools_root=tools_root,
+        constraints=constraints,
+    )
+    if blocked_entries:
+        messages = [
+            str(issue.get("message", "invalid external tool definition"))
+            for entry in blocked_entries
+            for issue in entry.get("issues", [])
+            if isinstance(issue, dict)
+        ]
+        raise ValueError(
+            "custom_tools contains invalid external definition(s): "
+            + "; ".join(messages)
+        )
+    return {
+        tool_id: str(toolspec["_andrea_run_id"])
+        for tool_id, toolspec in custom_tools.items()
+    }
 
 
 def _write_custom_tools_file(
@@ -2573,13 +2612,14 @@ def create_app() -> FastAPI:
             output_dir = Path(job.output_dir)
 
         try:
-            tools_params_path = _write_tools_params_file(
-                request_dir=request_dir,
-                runs_raw=runs_raw,
-            )
             custom_tools_path = _write_custom_tools_file(
                 request_dir=request_dir,
                 raw_custom_tools=custom_tools_raw,
+            )
+            tools_params_path = _write_tools_params_file(
+                request_dir=request_dir,
+                runs_raw=runs_raw,
+                custom_tools_path=custom_tools_path,
             )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=400, detail=str(exc)) from exc

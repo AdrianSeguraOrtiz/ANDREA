@@ -101,12 +101,19 @@ method returns signed coefficients, wrappers must write `abs(coefficient)` to
 `score` and store direction only in `sign` (`+` or `-`). Unsigned edges must use
 `sign=?`.
 
+Each ToolSpec must explicitly declare `outputs.directed`, `outputs.sign` and
+`outputs.evidence`. The `sign` declaration is enforced when results are merged:
+`none` permits only `?`, `signed` permits only `+` or `-`, and `mixed` permits
+both. The orchestrator freezes the direction and sign semantics per selected
+run; later evaluation uses that snapshot rather than re-reading the catalog.
+
 `context` remains a single public field. `global` means one whole-dataset
 network, `group:<id>` means one group-level network over expression-column
 groups, and `column:<id>` means one expression-column-level network. The
 meaning of a column id comes from the dataset manifest `expression.column_kind`:
-for example cells, samples, timepoints or perturbations. Unknown non-empty
-context families remain valid and are preserved in raw tables.
+for example cells, samples, timepoints or perturbations. During an ANDREA run,
+every emitted context must belong to the exact context inventory frozen for its
+execution mode; unknown families or unplanned identifiers are rejected.
 
 Column-native outputs can be dense and large. Wrappers should preserve the
 upstream raw method score magnitudes, omit zero-score edges, and avoid inventing

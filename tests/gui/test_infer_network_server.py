@@ -51,6 +51,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         script = (Path(gui_server.STATIC_DIR) / "app" / "main.js").read_text(
             encoding="utf-8"
         )
+        external_tools_script = (
+            Path(gui_server.STATIC_DIR) / "app" / "catalog" / "external_tools.js"
+        ).read_text(encoding="utf-8")
         jobs_controller = (
             Path(gui_server.STATIC_DIR) / "app" / "jobs" / "controller.js"
         ).read_text(encoding="utf-8")
@@ -91,6 +94,15 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         self.assertIn("custom-tool-extra-options", index)
         self.assertIn("custom-tool-param-rows", index)
         self.assertIn("custom-tool-add-param-row", index)
+        self.assertIn("custom-tool-output-directed", index)
+        self.assertIn("custom-tool-output-sign", index)
+        self.assertIn("Network output semantics", index)
+        self.assertIn(
+            "Directionality must be selected explicitly", external_tools_script
+        )
+        self.assertIn(
+            "Sign semantics must be selected explicitly", external_tools_script
+        )
         self.assertIn("Extra inputs needed by this image", index)
         self.assertIn("External Docker image contract", script)
         self.assertIn("--output-dir /io/out", script)
@@ -624,6 +636,10 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                                         "docker_image": "example/demo:1.0",
                                         "execution_mode": "global",
                                         "extra_inputs": ["tf_list"],
+                                        "outputs": {
+                                            "directed": True,
+                                            "sign": "none",
+                                        },
                                     }
                                 ]
                             }
@@ -644,7 +660,66 @@ class InferNetworkGuiServerTests(unittest.TestCase):
 
         self.assertEqual(seen_custom_tools["tools"][0]["run_id"], "demo_tool_01")
         self.assertEqual(seen_custom_tools["tools"][0]["extra_inputs"], ["tf_list"])
+        self.assertEqual(
+            seen_custom_tools["tools"][0]["outputs"],
+            {"directed": True, "sign": "none"},
+        )
         self.assertTrue(job_payload["job"]["custom_tools_path"])
+
+    def test_tools_params_writer_rejects_changed_external_run_identity(self) -> None:
+        custom_tools = {
+            "tools": [
+                {
+                    "run_id": "demo_tool_01",
+                    "name": "Demo Tool",
+                    "docker_image": "example/demo:1.0",
+                    "execution_mode": "global",
+                    "extra_inputs": ["tf_list"],
+                    "outputs": {"directed": True, "sign": "none"},
+                }
+            ]
+        }
+        valid_run = {
+            "run_id": "demo_tool_01",
+            "tool_id": "custom_demo_tool_01",
+            "params": {},
+            "execution": {"mode": "global"},
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            request_dir = Path(tmp)
+            custom_tools_path = gui_server._write_custom_tools_file(
+                request_dir=request_dir,
+                raw_custom_tools=custom_tools,
+            )
+            self.assertIsNotNone(custom_tools_path)
+            tools_params_path = gui_server._write_tools_params_file(
+                request_dir=request_dir,
+                runs_raw=[valid_run],
+                custom_tools_path=custom_tools_path,
+            )
+            written = json.loads(tools_params_path.read_text(encoding="utf-8"))
+            self.assertEqual(written, {"runs": [valid_run]})
+
+            invalid_runs = [
+                {key: value for key, value in valid_run.items() if key != "run_id"},
+                {**valid_run, "run_id": " demo_tool_01 "},
+                {**valid_run, "run_id": "renamed_tool_01"},
+                {**valid_run, "tool_id": " custom_demo_tool_01 "},
+            ]
+            for run in invalid_runs:
+                with (
+                    self.subTest(run=run),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "external identity must be exactly",
+                    ),
+                ):
+                    gui_server._write_tools_params_file(
+                        request_dir=request_dir,
+                        runs_raw=[run],
+                        custom_tools_path=custom_tools_path,
+                    )
 
     def test_job_payload_includes_running_execution_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

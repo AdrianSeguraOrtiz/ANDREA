@@ -11,6 +11,7 @@ from andrea.core.shared.network_context import (
     normalize_network_context,
     normalize_network_sign,
 )
+from andrea.core.shared.output_capabilities import OUTPUT_SIGN_SEMANTICS
 
 from .shared import NETWORK_REQUIRED_COLUMNS, ToolExecutionResult
 
@@ -117,14 +118,16 @@ def _merge_network_outputs(
     *,
     run_dir: Path,
     execution_results: dict[str, ToolExecutionResult],
+    output_capabilities: dict[str, dict[str, Any]],
     warnings: list[str],
+    allowed_contexts: dict[str, set[str]],
     progress_callback: Optional[Callable[[str, int, str], None]] = None,
 ) -> tuple[
     dict[str, ToolExecutionResult], dict[str, int], Optional[Path], Optional[Path]
 ]:
     updated = dict(execution_results)
     per_tool_rows: dict[str, int] = {}
-    had_completed_network_output = False
+    had_valid_completed_network_output = False
     valid_stats_by_tool: dict[str, dict[str, Any]] = {}
     completed_results = [
         (tool_id, updated[tool_id])
@@ -132,10 +135,23 @@ def _merge_network_outputs(
         if updated[tool_id].status in {"completed", "completed_with_warnings"}
         and updated[tool_id].network_path
     ]
+    if not isinstance(allowed_contexts, dict) or set(allowed_contexts) != set(updated):
+        raise ValueError(
+            "allowed_contexts keys must exactly match execution_results"
+        )
+    for tool_id in sorted(updated):
+        inventory = allowed_contexts[tool_id]
+        if (
+            not isinstance(inventory, set)
+            or not inventory
+            or not all(isinstance(context, str) and context for context in inventory)
+        ):
+            raise ValueError(
+                f"allowed_contexts[{tool_id!r}] must be a non-empty set of contexts"
+            )
     total_completed = max(1, len(completed_results))
 
     for idx, (tool_id, result) in enumerate(completed_results, start=1):
-        had_completed_network_output = True
         merge_percent = min(83, 78 + int(round((idx - 1) / total_completed * 5)))
         _notify_progress(
             progress_callback,
@@ -146,7 +162,17 @@ def _merge_network_outputs(
 
         network_path = Path(result.network_path)
         try:
-            stats = _network_row_stats(network_path, tool_id=tool_id)
+            capability = output_capabilities.get(tool_id)
+            if not isinstance(capability, dict):
+                raise ValueError(
+                    f"[{tool_id}] required frozen output capability is missing"
+                )
+            stats = _network_row_stats(
+                network_path,
+                tool_id=tool_id,
+                sign_semantics=str(capability.get("sign", "")),
+                allowed_contexts=allowed_contexts[tool_id],
+            )
         except Exception as exc:  # noqa: BLE001
             updated[tool_id] = ToolExecutionResult(
                 tool_id=result.tool_id,
@@ -161,9 +187,11 @@ def _merge_network_outputs(
             )
             continue
 
+        had_valid_completed_network_output = True
         if int(stats["rows"]) == 0:
             warnings.append(
-                f"[{tool_id}] network output contains no non-zero edges; empty network kept as a valid result."
+                f"[{tool_id}] network output contains no non-zero edges; "
+                "empty network kept as a valid result."
             )
             per_tool_rows[tool_id] = 0
             continue
@@ -173,7 +201,7 @@ def _merge_network_outputs(
     merged_raw_path: Optional[Path] = None
     merged_norm_path: Optional[Path] = None
 
-    if valid_stats_by_tool or had_completed_network_output:
+    if valid_stats_by_tool or had_valid_completed_network_output:
         merged_raw_path = run_dir / "merged_network_raw.csv"
         _notify_progress(
             progress_callback,
@@ -211,7 +239,7 @@ def _merge_network_outputs(
         )
         per_tool_rows[tool_id] = int(stats["rows"])
 
-    if valid_stats_by_tool or had_completed_network_output:
+    if valid_stats_by_tool or had_valid_completed_network_output:
         merged_norm_path = run_dir / "merged_network_normalized.csv"
         _notify_progress(
             progress_callback,
@@ -228,11 +256,38 @@ def _merge_network_outputs(
     return updated, per_tool_rows, merged_raw_path, merged_norm_path
 
 
-def _network_row_stats(path: Path, tool_id: str) -> dict[str, Any]:
+def _network_row_stats(
+    path: Path,
+    tool_id: str,
+    *,
+    sign_semantics: str,
+    allowed_contexts: set[str],
+) -> dict[str, Any]:
+    if sign_semantics not in OUTPUT_SIGN_SEMANTICS:
+        raise ValueError(
+            f"[{tool_id}] frozen output capability has invalid sign semantics: "
+            f"{sign_semantics!r}"
+        )
     count = 0
     min_score: Optional[float] = None
     max_score: Optional[float] = None
     for row in _iter_network_rows(path, tool_id=tool_id):
+        if row["context"] not in allowed_contexts:
+            raise ValueError(
+                f"[{tool_id}] network.csv context {row['context']!r} contradicts "
+                "the planned execution mode"
+            )
+        sign = str(row["sign"])
+        if sign_semantics == "none" and sign != "?":
+            raise ValueError(
+                f"[{tool_id}] network.csv declares a signed edge ({sign}) but "
+                "the frozen output capability is sign='none'"
+            )
+        if sign_semantics == "signed" and sign == "?":
+            raise ValueError(
+                f"[{tool_id}] network.csv contains an unsigned edge (?) but "
+                "the frozen output capability is sign='signed'"
+            )
         score = float(row["score"])
         count += 1
         min_score = score if min_score is None else min(min_score, score)

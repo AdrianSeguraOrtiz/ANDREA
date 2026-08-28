@@ -43,7 +43,7 @@ def preflight_infer_network(
 ) -> dict[str, Any]:
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
-    custom_tools, custom_aliases, custom_blocked_entries = load_custom_tool_registry(
+    custom_tools, custom_blocked_entries = load_custom_tool_registry(
         custom_tools_path=custom_tools_path,
         tools_root=tools_root,
         constraints=constraints,
@@ -104,11 +104,18 @@ def preflight_infer_network(
             add_run_issue(run_id, severity="warn", code=code, message=message)
 
     if tools_params_path is not None:
-        tools_params = _load_tools_params(tools_params_path)
+        custom_run_ids_by_tool_id = {
+            tool_id: toolspec["_andrea_run_id"]
+            for tool_id, toolspec in custom_tools.items()
+        }
+        tools_params = _load_tools_params(
+            tools_params_path,
+            custom_run_ids_by_tool_id=custom_run_ids_by_tool_id,
+        )
         requested_total = len(tools_params)
         for run_id, run_spec in tools_params.items():
             requested_tool_id = str(run_spec.get("tool_id", "")).strip()
-            catalog_tool_id = custom_aliases.get(requested_tool_id, requested_tool_id)
+            catalog_tool_id = requested_tool_id
             user_params = run_spec.get("params", {})
             user_execution = run_spec.get("execution", {})
             if not catalog_tool_id:
@@ -155,6 +162,39 @@ def preflight_infer_network(
                 )
                 skipped_tools[run_id] = str(exc)
                 continue
+            if tool_origin == "custom":
+                custom_run_id = toolspec.get("_andrea_run_id")
+                if run_id != custom_run_id:
+                    message = (
+                        f"Custom tool {catalog_tool_id!r} is bound to run_id "
+                        f"{custom_run_id!r}; tools_params run_id must exactly match "
+                        "custom_tools.tools[].run_id"
+                    )
+                    add_run_issue(
+                        run_id,
+                        severity="block",
+                        code="invalid_request",
+                        message=message,
+                    )
+                    skipped_tools[run_id] = message
+                    continue
+                required_execution = {
+                    "mode": toolspec.get("_andrea_execution_mode")
+                }
+                if user_execution != required_execution:
+                    message = (
+                        f"Custom tool {catalog_tool_id!r} requires tools_params "
+                        f"execution to be exactly {required_execution!r}; its "
+                        "definition execution_mode is fixed"
+                    )
+                    add_run_issue(
+                        run_id,
+                        severity="block",
+                        code="invalid_execution",
+                        message=message,
+                    )
+                    skipped_tools[run_id] = message
+                    continue
             compatibility_warnings: list[str] = []
             compatible, compat_errors, _conditional_messages = (
                 _check_tool_compatibility(

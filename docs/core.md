@@ -109,6 +109,7 @@ For a single call:
 finished_run_dir = infer_network(
     dataset_manifest_path=dataset_manifest,
     tools_params_path=tools_params,
+    custom_tools_path=custom_tools,
     output_dir=Path("inferred_networks"),
     max_cores=8,
     max_ram_gb=32,
@@ -117,7 +118,9 @@ finished_run_dir = infer_network(
 
 `tools_params.json` controls selected runs, parameters and execution modes.
 `custom_tools.json` is optional and is used for temporary external Docker
-images.
+images. Every external definition must explicitly declare an `outputs` object
+with exactly `directed` and `sign`; no defaults are inferred. These capabilities
+are frozen in the run report for downstream evaluation.
 
 ## Evaluate Inference
 

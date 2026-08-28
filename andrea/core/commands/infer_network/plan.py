@@ -17,6 +17,10 @@ from typing import Any, Optional
 
 from rich import print
 
+from andrea.core.shared.dataset_identity import fingerprint_dataset_content
+from andrea.core.shared.output_capabilities import (
+    validate_selected_tool_identity_maps,
+)
 from andrea.core.shared.paths import report_path
 
 from .commons.artifacts import (
@@ -26,7 +30,11 @@ from .commons.artifacts import (
 )
 from .commons.catalog import _load_schema_constraints, _resolve_catalog_paths
 from .commons.custom_tools import load_custom_tool_registry, serialize_custom_tools
-from .commons.dataset import _load_groups_by_column, _read_expression_axes
+from .commons.dataset import (
+    _load_groups_by_column,
+    _parse_dataset_context,
+    _read_expression_axes,
+)
 from .commons.planner import (
     _estimate_tool_mode_options,
     _load_tool_cost_profile,
@@ -42,6 +50,7 @@ from .commons.shared import (
     _write_json,
 )
 from .commons.tools import (
+    _build_output_capability_snapshot,
     _default_execution_mode,
     _load_toolspec,
     _parse_execution_capabilities,
@@ -162,7 +171,28 @@ def plan_infer_network(
 
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
-    custom_tools, _custom_aliases, _custom_blocked_entries = load_custom_tool_registry(
+    manifest_dataset = _parse_dataset_context(
+        dataset_manifest_path=dataset_manifest_path,
+        constraints=constraints,
+    )
+    preflight_dataset = replace(
+        dataset,
+        extras={key: path for key, path in dataset.extras.items() if path is not None},
+    )
+    normalized_manifest_dataset = replace(
+        manifest_dataset,
+        extras={
+            key: path
+            for key, path in manifest_dataset.extras.items()
+            if path is not None
+        },
+    )
+    if preflight_dataset != normalized_manifest_dataset:
+        raise ValueError(
+            "preflight_report.dataset does not match dataset_manifest_path"
+        )
+    dataset = manifest_dataset
+    custom_tools, _custom_blocked_entries = load_custom_tool_registry(
         custom_tools_path=custom_tools_path,
         tools_root=tools_root,
         constraints=constraints,
@@ -173,16 +203,6 @@ def plan_infer_network(
     if not isinstance(runs_payload, dict):
         raise ValueError("preflight_report.runs is invalid")
     selected_tools = [x for x in runs_payload.get("selected", []) if isinstance(x, str)]
-    selected_tool_catalog_ids = {
-        str(k): str(v)
-        for k, v in runs_payload.get("catalog_tool_ids", {}).items()
-        if isinstance(k, str) and isinstance(v, str)
-    }
-    selected_tool_origins = {
-        str(k): str(v)
-        for k, v in runs_payload.get("tool_origins", {}).items()
-        if isinstance(k, str) and isinstance(v, str)
-    }
     resolved_params_by_tool = {
         str(k): v
         for k, v in runs_payload.get("resolved_params", {}).items()
@@ -222,16 +242,6 @@ def plan_infer_network(
         selected_tools = [
             x for x in runs_payload.get("selected", []) if isinstance(x, str)
         ]
-        selected_tool_catalog_ids = {
-            str(k): str(v)
-            for k, v in runs_payload.get("catalog_tool_ids", {}).items()
-            if isinstance(k, str) and isinstance(v, str)
-        }
-        selected_tool_origins = {
-            str(k): str(v)
-            for k, v in runs_payload.get("tool_origins", {}).items()
-            if isinstance(k, str) and isinstance(v, str)
-        }
         resolved_params_by_tool = {
             str(k): v
             for k, v in runs_payload.get("resolved_params", {}).items()
@@ -258,6 +268,15 @@ def plan_infer_network(
                 "Check tools_params.json and dataset/tool compatibility."
             )
 
+    (
+        selected_tools,
+        selected_tool_catalog_ids,
+        selected_tool_origins,
+    ) = validate_selected_tool_identity_maps(
+        runs_payload,
+        label="preflight_report runs",
+    )
+
     blocking_run_issues = {
         run_id: [
             str(issue.get("message", "")).strip()
@@ -280,6 +299,7 @@ def plan_infer_network(
         )
 
     catalog_toolspec_by_run: dict[str, dict[str, Any]] = {}
+    output_capabilities_by_run: dict[str, dict[str, Any]] = {}
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids.get(run_id, "").strip()
         if not catalog_tool_id:
@@ -291,7 +311,36 @@ def plan_infer_network(
             if catalog_tool_id in custom_tools
             else _load_toolspec(tools_root, catalog_tool_id)
         )
+        expected_origin = "custom" if catalog_tool_id in custom_tools else "catalog"
+        reported_origin = selected_tool_origins.get(run_id)
+        if reported_origin != expected_origin:
+            raise ValueError(
+                f"preflight report tool_origin for {run_id!r} must be "
+                f"{expected_origin!r}"
+            )
+        tool_origin = expected_origin
+        if catalog_tool_id in custom_tools:
+            if toolspec.get("_andrea_run_id") != run_id:
+                raise ValueError(
+                    f"Custom tool {catalog_tool_id!r} is bound to run_id "
+                    f"{toolspec.get('_andrea_run_id')!r}; planning run_id must match"
+                )
+            required_execution = {
+                "mode": toolspec.get("_andrea_execution_mode")
+            }
+            if resolved_execution_by_tool.get(run_id) != required_execution:
+                raise ValueError(
+                    f"Custom tool {catalog_tool_id!r} requires execution "
+                    f"{required_execution!r}"
+                )
+        selected_tool_origins[run_id] = tool_origin
         catalog_toolspec_by_run[run_id] = toolspec
+        output_capabilities_by_run[run_id] = _build_output_capability_snapshot(
+            run_id=run_id,
+            catalog_tool_id=catalog_tool_id,
+            tool_origin=tool_origin,
+            toolspec=toolspec,
+        )
 
     group_order: list[str] = []
     group_to_columns: dict[str, list[str]] = {}
@@ -342,10 +391,7 @@ def plan_infer_network(
     }
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids[run_id]
-        tool_origin = selected_tool_origins.get(
-            run_id,
-            "custom" if catalog_tool_id in custom_tools else "catalog",
-        )
+        tool_origin = selected_tool_origins[run_id]
         toolspec = catalog_toolspec_by_run[run_id]
         execution_capabilities = _parse_execution_capabilities(
             tool_id=run_id,
@@ -557,6 +603,10 @@ def plan_infer_network(
         frozen_expression=frozen_expression,
         frozen_extras=frozen_extras,
     )
+    dataset_fingerprint = fingerprint_dataset_content(
+        expression_path=frozen_expression,
+        extras=frozen_extras,
+    )
 
     plan_generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     plan_waves = []
@@ -641,7 +691,7 @@ def plan_infer_network(
             {
                 "run_id": run_id,
                 "tool_id": logical_spec["tool_id"],
-                "tool_origin": logical_spec.get("tool_origin", "catalog"),
+                "tool_origin": logical_spec["tool_origin"],
                 "execution": logical_spec["execution"],
                 "physical_tasks_total": len(physical_tasks_payload),
                 "eta_start_seconds": logical_eta_start,
@@ -685,7 +735,7 @@ def plan_infer_network(
     _write_json(run_dir / "preflight_report.json", preflight_report)
 
     planned_tool_origins = {
-        str(run["run_id"]): str(run.get("tool_origin", "catalog"))
+        str(run["run_id"]): str(run["tool_origin"])
         for run in logical_runs_payload
         if isinstance(run, dict) and run.get("run_id")
     }
@@ -708,6 +758,7 @@ def plan_infer_network(
         },
         "dataset": {
             "id": dataset.dataset_id,
+            "fingerprint": dataset_fingerprint,
             "column_kind": dataset.column_kind,
             "expression_profile": dataset.expression_profile,
             "genes": dataset.genes,
@@ -718,6 +769,7 @@ def plan_infer_network(
             "selected": selected_tools,
             "catalog_tool_ids": selected_tool_catalog_ids,
             "tool_origins": planned_tool_origins,
+            "output_capabilities": output_capabilities_by_run,
             "skipped": skipped_tools,
             "status_by_tool": {tool_id: "pending" for tool_id in selected_tools},
             "completed": [],

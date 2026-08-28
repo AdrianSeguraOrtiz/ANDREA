@@ -405,7 +405,7 @@
                 <span>Select the single ANDREA execution mode used by this run.</span>
               </div>
               <div class="custom-tool-capability-grid" aria-label="Execution mode for this run">
-                <label><input name="custom-tool-execution-mode" type="radio" value="global" checked /> global</label>
+                <label><input name="custom-tool-execution-mode" type="radio" value="global" /> global</label>
                 <label><input name="custom-tool-execution-mode" type="radio" value="group_native" /> group native</label>
                 <label><input name="custom-tool-execution-mode" type="radio" value="group_emulated" /> group emulated</label>
                 <label><input name="custom-tool-execution-mode" type="radio" value="column_native" /> column native</label>
@@ -493,6 +493,32 @@
                   </div>
                 </div>
               </details>
+            </section>
+            <section class="external-tool-form-section">
+              <div class="external-tool-section-head">
+                <strong>Network output semantics</strong>
+                <span>Declare what the image can infer so later evaluation selects valid metric levels.</span>
+              </div>
+              <div class="external-tool-identity-grid">
+                <label>
+                  Directionality
+                  <select id="custom-tool-output-directed" required>
+                    <option value="" selected>Select directionality…</option>
+                    <option value="true">directed</option>
+                    <option value="false">undirected</option>
+                  </select>
+                </label>
+                <label>
+                  Sign semantics
+                  <select id="custom-tool-output-sign" required>
+                    <option value="" selected>Select sign semantics…</option>
+                    <option value="mixed">mixed signed/unsigned</option>
+                    <option value="signed">signed</option>
+                    <option value="none">unsigned</option>
+                  </select>
+                </label>
+              </div>
+              <span class="field-hint">Choose <code>unsigned</code> when the method only reports importance or confidence magnitudes, as SPATHI does.</span>
             </section>
             <section class="external-tool-form-section">
               <div class="external-tool-section-head">

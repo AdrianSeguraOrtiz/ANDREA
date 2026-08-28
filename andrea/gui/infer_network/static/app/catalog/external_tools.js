@@ -7,11 +7,17 @@ const CAPABILITIES = [
   "column_native",
   "group_aggregated",
 ];
-const DEFAULT_CUSTOM_TOOL_OUTPUTS = {
-  directed: true,
-  sign: "mixed",
-  evidence: "external_tool_output",
-};
+const CUSTOM_TOOL_OUTPUT_KEYS = new Set(["directed", "sign"]);
+const CUSTOM_TOOL_DEFINITION_KEYS = new Set([
+  "run_id",
+  "name",
+  "docker_image",
+  "execution_mode",
+  "extra_inputs",
+  "outputs",
+]);
+const CUSTOM_TOOL_EVIDENCE = "external_tool_output";
+const OUTPUT_SIGN_SEMANTICS = new Set(["none", "signed", "mixed"]);
 
 function capabilitiesForExecutionMode(executionMode) {
   if (executionMode === "group_aggregated") {
@@ -20,22 +26,175 @@ function capabilitiesForExecutionMode(executionMode) {
   return executionMode ? [executionMode] : [];
 }
 
-function slugifyToken(value) {
-  const slug = String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  return slug || "tool";
+export function normalizeCustomToolId(rawId) {
+  if (
+    typeof rawId !== "string" ||
+    !rawId ||
+    rawId !== rawId.trim()
+  ) {
+    throw new Error(
+      "run_id must be a non-empty string without surrounding whitespace."
+    );
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(rawId)) {
+    throw new Error(
+      "run_id must match [A-Za-z0-9][A-Za-z0-9._-]* exactly."
+    );
+  }
+  return `custom_${rawId}`;
 }
 
-export function normalizeCustomToolId(rawId) {
-  const slug = slugifyToken(rawId);
-  return slug.startsWith("custom_") ? slug : `custom_${slug}`;
+export function validateCanonicalRunId(rawId) {
+  normalizeCustomToolId(rawId);
+  return rawId;
+}
+
+export function customToolRunId(tool) {
+  if (!isPlainObject(tool) || tool.tool_origin !== "custom") {
+    throw new Error("Custom tool metadata is required.");
+  }
+  const runId = tool?.spec?.run_id;
+  validateCanonicalRunId(runId);
+  const expectedToolId = normalizeCustomToolId(runId);
+  if (tool.tool_id !== expectedToolId || tool?.spec?.id !== expectedToolId) {
+    throw new Error(
+      "Custom tool identity metadata does not match its canonical run_id."
+    );
+  }
+  return runId;
+}
+
+export function validateCustomToolRunIdentity(tool, rawRunId) {
+  const expectedRunId = customToolRunId(tool);
+  validateCanonicalRunId(rawRunId);
+  if (rawRunId !== expectedRunId) {
+    throw new Error(`Custom tool run_id must be exactly ${expectedRunId}.`);
+  }
+  return rawRunId;
+}
+
+function validateCanonicalCustomToolId(rawToolId) {
+  if (
+    typeof rawToolId !== "string" ||
+    rawToolId !== rawToolId.trim() ||
+    !/^custom_[A-Za-z0-9][A-Za-z0-9._-]*$/.test(rawToolId)
+  ) {
+    throw new Error(
+      "tool_id must be an exact custom_ ID derived from a canonical run_id."
+    );
+  }
+  return rawToolId;
 }
 
 function isPlainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeCustomToolOutputs(rawOutputs) {
+  if (!isPlainObject(rawOutputs)) {
+    throw new Error("outputs is required and must be an object.");
+  }
+  const unexpected = Object.keys(rawOutputs).filter(
+    (key) => !CUSTOM_TOOL_OUTPUT_KEYS.has(key)
+  );
+  if (unexpected.length) {
+    throw new Error(`outputs has unsupported keys: ${unexpected.sort().join(", ")}.`);
+  }
+  if (!Object.hasOwn(rawOutputs, "directed")) {
+    throw new Error("outputs.directed is required.");
+  }
+  if (!Object.hasOwn(rawOutputs, "sign")) {
+    throw new Error("outputs.sign is required.");
+  }
+  const directed = rawOutputs.directed;
+  const sign = rawOutputs.sign;
+  if (typeof directed !== "boolean") {
+    throw new Error("outputs.directed must be true or false.");
+  }
+  if (typeof sign !== "string" || !OUTPUT_SIGN_SEMANTICS.has(sign)) {
+    throw new Error("outputs.sign must be none, signed or mixed.");
+  }
+  return {
+    directed,
+    sign,
+  };
+}
+
+function requireCanonicalString(rawTool, key) {
+  if (!Object.hasOwn(rawTool, key)) {
+    throw new Error(`${key} is required.`);
+  }
+  const value = rawTool[key];
+  if (
+    typeof value !== "string" ||
+    !value ||
+    value !== value.trim()
+  ) {
+    throw new Error(
+      `${key} must be a non-empty string without surrounding whitespace.`
+    );
+  }
+  return value;
+}
+
+function validateCustomToolDefinition(rawTool) {
+  if (!isPlainObject(rawTool)) {
+    throw new Error("Custom tool definition must be an object.");
+  }
+  const unexpected = Object.keys(rawTool).filter(
+    (key) => !CUSTOM_TOOL_DEFINITION_KEYS.has(key)
+  );
+  if (unexpected.length) {
+    throw new Error(
+      `Custom tool definition has unsupported keys: ${unexpected.sort().join(", ")}.`
+    );
+  }
+  for (const key of CUSTOM_TOOL_DEFINITION_KEYS) {
+    if (!Object.hasOwn(rawTool, key)) {
+      throw new Error(`${key} is required.`);
+    }
+  }
+
+  const runId = requireCanonicalString(rawTool, "run_id");
+  normalizeCustomToolId(runId);
+  const name = requireCanonicalString(rawTool, "name");
+  const dockerImage = requireCanonicalString(rawTool, "docker_image");
+  const executionMode = requireCanonicalString(rawTool, "execution_mode");
+  if (!CAPABILITIES.includes(executionMode)) {
+    throw new Error(
+      `execution_mode must be one of: ${CAPABILITIES.join(", ")}.`
+    );
+  }
+
+  if (!Array.isArray(rawTool.extra_inputs)) {
+    throw new Error("extra_inputs must be an array.");
+  }
+  const extraInputs = [];
+  const seenExtras = new Set();
+  for (const [idx, input] of rawTool.extra_inputs.entries()) {
+    if (
+      typeof input !== "string" ||
+      !input ||
+      input !== input.trim() ||
+      !/^[a-z][a-z0-9_]*$/.test(input)
+    ) {
+      throw new Error(`extra_inputs[${idx}] must be a canonical input key.`);
+    }
+    if (seenExtras.has(input)) {
+      throw new Error(`extra_inputs contains duplicate input: ${input}.`);
+    }
+    seenExtras.add(input);
+    extraInputs.push(input);
+  }
+
+  return {
+    run_id: runId,
+    name,
+    docker_image: dockerImage,
+    execution_mode: executionMode,
+    extra_inputs: extraInputs,
+    outputs: normalizeCustomToolOutputs(rawTool.outputs),
+  };
 }
 
 function composeDockerImage(nameValue, tagValue) {
@@ -90,14 +249,39 @@ function parseExtraInputs(value) {
 }
 
 function rawCustomTools() {
-  return Array.isArray(state.customTools) ? state.customTools : [];
+  if (!Array.isArray(state.customTools)) {
+    throw new Error("Internal customTools state must be an array.");
+  }
+  return state.customTools;
 }
 
 function bootstrapTools() {
   if (!Array.isArray(state.bootstrap?.tools)) {
-    return [];
+    throw new Error("Internal bootstrap.tools state must be an array.");
   }
   return state.bootstrap.tools;
+}
+
+function selectedToolIdSet(selectedToolIds) {
+  let values;
+  try {
+    values = Array.from(selectedToolIds);
+  } catch (_error) {
+    throw new Error("selectedToolIds must be iterable.");
+  }
+  if (
+    !values.every(
+      (item) =>
+        typeof item === "string" &&
+        Boolean(item) &&
+        item === item.trim()
+    )
+  ) {
+    throw new Error(
+      "selectedToolIds must contain non-empty strings without surrounding whitespace."
+    );
+  }
+  return new Set(values);
 }
 
 function removeCatalogEntry(report, toolId) {
@@ -141,15 +325,18 @@ function optimisticWarningEntry(toolId, dockerImage) {
   return { tool_id: toolId, status: "warning", tool_origin: "custom", issues };
 }
 
-function toBootstrapTool(rawTool) {
-  const toolId = normalizeCustomToolId(rawTool.run_id);
-  const name = String(rawTool.name || toolId).trim();
-  const executionMode = String(rawTool.execution_mode || "").trim();
-  const capabilities = executionMode ? [executionMode] : [];
-  const extraInputs = normalizeExtraInputList(rawTool.extra_inputs || []);
+function toBootstrapTool(rawTool, paramsSchema) {
+  const normalized = validateCustomToolDefinition(rawTool);
+  if (!isPlainObject(paramsSchema)) {
+    throw new Error("Internal custom tool parameter schema must be an object.");
+  }
+  const toolId = normalizeCustomToolId(normalized.run_id);
+  const executionMode = normalized.execution_mode;
+  const capabilities = capabilitiesForExecutionMode(executionMode);
+  const extraInputs = normalized.extra_inputs;
   return {
     tool_id: toolId,
-    name,
+    name: normalized.name,
     schema_version: "custom-1.0",
     execution_capabilities: capabilities,
     taxonomic_scope: {},
@@ -158,21 +345,24 @@ function toBootstrapTool(rawTool) {
     method_keywords: ["custom", "docker"],
     assumes: "external_docker",
     accepts: [],
-    required_extras: extraInputs.map((item) => item.input),
+    required_extras: [...extraInputs],
     optional_extras: [],
     conditional_required_extras: [],
     publication: [],
     first_author: "User-provided",
     year: null,
     implementation_url: "",
-    docker_image: String(rawTool.docker_image || ""),
-    outputs: { ...DEFAULT_CUSTOM_TOOL_OUTPUTS },
+    docker_image: normalized.docker_image,
+    outputs: {
+      ...normalized.outputs,
+      evidence: CUSTOM_TOOL_EVIDENCE,
+    },
     progress: { kind: "none" },
     artifacts_aux: [],
-    params_schema: rawTool._params_schema || {},
+    params_schema: paramsSchema,
     default_params: {},
     spec: {
-      ...rawTool,
+      ...normalized,
       id: toolId,
       execution_capabilities: capabilities,
       andrea_contract_capabilities: capabilitiesForExecutionMode(executionMode),
@@ -203,40 +393,23 @@ function schemaFromRuntimeParams(params) {
   return out;
 }
 
-export function addCustomToolDefinition(rawTool) {
-  if (!rawTool || typeof rawTool !== "object" || Array.isArray(rawTool)) {
-    throw new Error("Custom tool definition must be an object.");
+export function addCustomToolDefinition(rawTool, paramsSchema = {}) {
+  const normalizedRaw = validateCustomToolDefinition(rawTool);
+  if (!isPlainObject(paramsSchema)) {
+    throw new Error("Internal custom tool parameter schema must be an object.");
   }
-  const runId = String(rawTool.run_id || "").trim();
-  if (!runId) {
-    throw new Error("Run ID is required.");
-  }
-  const toolId = normalizeCustomToolId(runId);
-  const dockerImage = String(rawTool.docker_image || "").trim();
-  const executionMode = String(rawTool.execution_mode || "").trim();
-  if (!dockerImage) {
-    throw new Error("docker_image is required.");
-  }
-  if (!CAPABILITIES.includes(executionMode)) {
-    throw new Error("A valid execution mode is required.");
-  }
+  const toolId = normalizeCustomToolId(normalizedRaw.run_id);
 
-  const normalizedRaw = {
-    run_id: runId,
-    name: String(rawTool.name || toolId).trim(),
-    docker_image: dockerImage,
-    execution_mode: executionMode,
-    extra_inputs: normalizeExtraInputList(rawTool.extra_inputs || []).map((item) => item.input),
-    _params_schema: isPlainObject(rawTool._params_schema) ? rawTool._params_schema : {},
-  };
-
-  state.customTools = rawCustomTools().filter(
+  const existingTools = rawCustomTools().map((tool) =>
+    validateCustomToolDefinition(tool)
+  );
+  state.customTools = existingTools.filter(
     (item) => normalizeCustomToolId(item.run_id) !== toolId
   );
   state.customTools.push(normalizedRaw);
 
   const tools = bootstrapTools().filter((item) => item.tool_id !== toolId);
-  tools.push(toBootstrapTool(normalizedRaw));
+  tools.push(toBootstrapTool(normalizedRaw, paramsSchema));
   state.bootstrap.tools = tools.sort((left, right) =>
     String(left.tool_id).localeCompare(String(right.tool_id))
   );
@@ -246,7 +419,7 @@ export function addCustomToolDefinition(rawTool) {
     const warning = Array.isArray(state.preflightReport.catalog.warning)
       ? state.preflightReport.catalog.warning
       : [];
-    warning.push(optimisticWarningEntry(toolId, dockerImage));
+    warning.push(optimisticWarningEntry(toolId, normalizedRaw.docker_image));
     state.preflightReport.catalog.warning = warning;
   }
   if (Array.isArray(state.eligibleToolIds) && !state.eligibleToolIds.includes(toolId)) {
@@ -256,10 +429,14 @@ export function addCustomToolDefinition(rawTool) {
 }
 
 export function customToolsPayload(selectedToolIds = null) {
-  const selected = selectedToolIds
-    ? new Set(Array.from(selectedToolIds).map((item) => String(item || "").trim()))
-    : null;
-  const tools = rawCustomTools().filter((tool) => {
+  let selected = null;
+  if (selectedToolIds !== null) {
+    selected = selectedToolIdSet(selectedToolIds);
+  }
+  const normalizedTools = rawCustomTools().map((tool) =>
+    validateCustomToolDefinition(tool)
+  );
+  const tools = normalizedTools.filter((tool) => {
     if (!selected) {
       return true;
     }
@@ -269,20 +446,27 @@ export function customToolsPayload(selectedToolIds = null) {
     return null;
   }
   return {
-    tools: tools.map((tool) => ({
-      run_id: tool.run_id,
-      name: tool.name,
-      docker_image: tool.docker_image,
-      execution_mode: tool.execution_mode || "global",
-      extra_inputs: tool.extra_inputs || [],
-    })),
+    tools: tools.map((tool) => {
+      const outputs = normalizeCustomToolOutputs(tool.outputs);
+      return {
+        run_id: tool.run_id,
+        name: tool.name,
+        docker_image: tool.docker_image,
+        execution_mode: tool.execution_mode,
+        extra_inputs: [...tool.extra_inputs],
+        outputs,
+      };
+    }),
   };
 }
 
-export function removeCustomToolDefinition(toolIdOrRunId) {
-  const toolId = normalizeCustomToolId(toolIdOrRunId);
-  const before = rawCustomTools().length;
-  state.customTools = rawCustomTools().filter(
+export function removeCustomToolDefinition(rawToolId) {
+  const toolId = validateCanonicalCustomToolId(rawToolId);
+  const normalizedTools = rawCustomTools().map((tool) =>
+    validateCustomToolDefinition(tool)
+  );
+  const before = normalizedTools.length;
+  state.customTools = normalizedTools.filter(
     (item) => normalizeCustomToolId(item.run_id) !== toolId
   );
   if (Array.isArray(state.bootstrap?.tools)) {
@@ -296,9 +480,12 @@ export function removeCustomToolDefinition(toolIdOrRunId) {
 }
 
 export function pruneCustomToolsToSelectedToolIds(selectedToolIds) {
-  const selected = new Set(Array.from(selectedToolIds || []).map((item) => String(item || "").trim()));
+  const selected = selectedToolIdSet(selectedToolIds);
   let removed = 0;
-  for (const tool of [...rawCustomTools()]) {
+  const normalizedTools = rawCustomTools().map((tool) =>
+    validateCustomToolDefinition(tool)
+  );
+  for (const tool of normalizedTools) {
     const toolId = normalizeCustomToolId(tool.run_id);
     if (selected.has(toolId)) {
       continue;
@@ -395,38 +582,58 @@ function replaceRuntimeParamValueControl(row, type) {
 }
 
 export function buildSimpleCustomToolFromForm() {
-  const executionMode = String(
-    document.querySelector("input[name='custom-tool-execution-mode']:checked")?.value ||
-      "global"
-  ).trim();
   const selectedModeInput = document.querySelector("input[name='custom-tool-execution-mode']:checked");
+  if (!selectedModeInput) {
+    throw new Error("Execution mode must be selected explicitly.");
+  }
   if (selectedModeInput?.disabled) {
     throw new Error("Selected execution mode is not available for the current Step 1 inputs.");
+  }
+  const executionMode = selectedModeInput.value;
+  if (!CAPABILITIES.includes(executionMode)) {
+    throw new Error("Execution mode is invalid.");
   }
   const neededExtras = parseExtraInputs(
     document.getElementById("custom-tool-needed-extras")?.value || ""
   );
-  const runId = String(document.getElementById("custom-tool-run-id")?.value || "").trim();
-  if (!runId) {
-    throw new Error("Run ID is required.");
-  }
+  const runId = validateCanonicalRunId(
+    document.getElementById("custom-tool-run-id")?.value
+  );
+  const name = requireCanonicalString(
+    { name: document.getElementById("custom-tool-name")?.value },
+    "name"
+  );
   const runtimeParams = readRuntimeParamRows();
   const toolId = normalizeCustomToolId(runId);
+  const directedValue =
+    document.getElementById("custom-tool-output-directed")?.value || "";
+  if (!new Set(["true", "false"]).has(directedValue)) {
+    throw new Error("Directionality must be selected explicitly.");
+  }
+  const signValue =
+    document.getElementById("custom-tool-output-sign")?.value || "";
+  if (!OUTPUT_SIGN_SEMANTICS.has(signValue)) {
+    throw new Error("Sign semantics must be selected explicitly.");
+  }
   const tool = {
     run_id: runId,
-    name: document.getElementById("custom-tool-name")?.value || "",
+    name,
     docker_image: customToolDockerImageFromForm(),
     execution_mode: executionMode,
     extra_inputs: neededExtras.map((item) => item.input),
-    _params_schema: schemaFromRuntimeParams(runtimeParams),
+    outputs: {
+      directed: directedValue === "true",
+      sign: signValue,
+    },
   };
   return {
     tool,
+    paramsSchema: schemaFromRuntimeParams(runtimeParams),
     run: {
       run_id: runId,
       tool_id: toolId,
       params: runtimeParams,
-      execution: { mode: executionMode || "global" },
+      execution: { mode: executionMode },
     },
   };
 }

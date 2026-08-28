@@ -23,6 +23,10 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 }
             },
             "params": {},
+            "outputs": {
+                "directed": True,
+                "sign": "mixed",
+            },
             "extra_inputs": {
                 "required": [],
                 "optional": [],
@@ -47,7 +51,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
     ) -> dict:
         return {
             "dataset": {
-                "dataset_id": "toy_cell_ds",
+                "dataset_id": "toy_ds",
                 "column_kind": "cells",
                 "expression_profile": "scrna",
                 "organism": {"taxonomic_group": "animal", "ncbi_taxon_id": 9606},
@@ -59,6 +63,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             "runs": {
                 "selected": ["cellrun"],
                 "catalog_tool_ids": {"cellrun": "fakecell"},
+                "tool_origins": {"cellrun": "catalog"},
                 "resolved_params": {"cellrun": {}},
                 "resolved_execution": {"cellrun": {"mode": "group_aggregated"}},
                 "issues": {"cellrun": []},
@@ -214,6 +219,78 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                     preflight_report=preflight,
                 )
 
+    def test_plan_rejects_preflight_from_a_different_dataset_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            (base / "first").mkdir()
+            first_manifest, tools_params = self._write_dataset_bundle(
+                base / "first",
+                tf_values=["G1"],
+            )
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=first_manifest,
+                tools_params_path=tools_params,
+            )
+
+            (base / "second").mkdir()
+            second_manifest, _unused_tools = self._write_dataset_bundle(
+                base / "second",
+                tf_values=["G2"],
+            )
+            second_payload = json.loads(second_manifest.read_text(encoding="utf-8"))
+            second_payload["dataset"]["spec"]["id"] = "other_ds"
+            second_payload["dataset"]["spec"]["name"] = "other_ds"
+            second_manifest.write_text(
+                json.dumps(second_payload),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "preflight_report.dataset does not match dataset_manifest_path",
+            ):
+                self.mod.plan_infer_network(
+                    dataset_manifest_path=second_manifest,
+                    tools_params_path=tools_params,
+                    output_dir=base / "out",
+                    planner="heuristic",
+                    preflight_report=preflight,
+                )
+
+    def test_plan_requires_exact_preflight_tool_identity_maps(self) -> None:
+        for case in ("missing_origin", "extra_origin", "extra_catalog_id"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
+                base = Path(tmp)
+                manifest_path, tools_params_path = self._write_dataset_bundle(
+                    base,
+                    tf_values=["G1", "G2"],
+                )
+                preflight = self.mod.preflight_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                )
+                if case == "missing_origin":
+                    del preflight["runs"]["tool_origins"]["aracne__01"]
+                    field = "tool_origins"
+                elif case == "extra_origin":
+                    preflight["runs"]["tool_origins"]["ghost"] = "custom"
+                    field = "tool_origins"
+                else:
+                    preflight["runs"]["catalog_tool_ids"]["ghost"] = "genie3"
+                    field = "catalog_tool_ids"
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    rf"preflight_report runs\.{field} must be an object with exactly",
+                ):
+                    self.mod.plan_infer_network(
+                        dataset_manifest_path=manifest_path,
+                        tools_params_path=tools_params_path,
+                        output_dir=base / "out",
+                        planner="heuristic",
+                        preflight_report=preflight,
+                    )
+
     def test_preflight_and_plan_generate_frozen_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -313,6 +390,8 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                         "name": "Demo Tool",
                         "docker_image": "example/demo-tool:1.0",
                         "execution_mode": "global",
+                        "extra_inputs": [],
+                        "outputs": {"directed": True, "sign": "mixed"},
                     }
                 ],
             )
@@ -349,6 +428,15 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         self.assertEqual(
             report_payload["tools"]["tool_origins"]["demo_tool_01"],
             "custom",
+        )
+        self.assertEqual(
+            report_payload["tools"]["output_capabilities"]["demo_tool_01"],
+            {
+                "tool_origin": "custom",
+                "catalog_tool_id": "custom_demo_tool_01",
+                "directed": True,
+                "sign": "mixed",
+            },
         )
         logical_run = plan_payload["runs"][0]
         self.assertEqual(logical_run["tool_id"], "custom_demo_tool_01")
@@ -394,6 +482,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                         "docker_image": "registry.example.org/user/tool:1.0.0",
                         "execution_mode": "global",
                         "extra_inputs": ["tf_list"],
+                        "outputs": {"directed": True, "sign": "signed"},
                     }
                 ],
             )

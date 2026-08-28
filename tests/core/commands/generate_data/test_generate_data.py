@@ -33,6 +33,7 @@ from andrea.core.commands.generate_data.shared import (
     ResolvedScenarioRequest,
     ResolvedSimulatorRun,
 )
+from andrea.core.commands.infer_network.plan import plan_infer_network
 from andrea.core.commands.infer_network.preflight import preflight_infer_network
 
 
@@ -2583,6 +2584,70 @@ class GenerateDataDyngenTests(unittest.TestCase):
             self.assertEqual(
                 simulator_run["runtime_resources"],
                 {"threads": 1},
+            )
+
+            dataset_dir = (
+                benchmark_root
+                / "datasets"
+                / "dyngen_repro__dyngen_small__r01"
+            )
+            ground_truth_manifest = json.loads(
+                (dataset_dir / "ground-truth-manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                [
+                    {
+                        "run_id": "identity_check",
+                        "tool_id": "custom_identity_check",
+                        "execution": {"mode": "global"},
+                        "params": {},
+                    }
+                ],
+            )
+            custom_tools_path = base / "custom_tools.json"
+            custom_tools_path.write_text(
+                json.dumps(
+                    {
+                        "tools": [
+                            {
+                                "run_id": "identity_check",
+                                "name": "Identity check",
+                                "docker_image": "example/identity-check:1.0",
+                                "execution_mode": "global",
+                                "extra_inputs": ["tf_list"],
+                                "outputs": {"directed": True, "sign": "none"},
+                            }
+                        ]
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            dataset_manifest_path = dataset_dir / "dataset-manifest.json"
+            inference_preflight = preflight_infer_network(
+                dataset_manifest_path=dataset_manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+            )
+            inference_run_dir = plan_infer_network(
+                dataset_manifest_path=dataset_manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+                output_dir=base / "inference",
+                planner="heuristic",
+                preflight_report=inference_preflight,
+            )
+            inference_report = json.loads(
+                (inference_run_dir / "run_report.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                inference_report["dataset"]["fingerprint"],
+                ground_truth_manifest["dataset_fingerprint"],
             )
 
     def test_run_generate_data_preserves_failed_simulator_stage(self) -> None:

@@ -645,6 +645,8 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                         "name": "Demo Tool",
                         "docker_image": "example/demo-tool:1.0",
                         "execution_mode": "global",
+                        "extra_inputs": [],
+                        "outputs": {"directed": True, "sign": "mixed"},
                     }
                 ],
             )
@@ -698,17 +700,16 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                         "name": "Broken",
                         "docker_image": "",
                         "execution_mode": "global",
-                    },
-                    {
-                        "name": "Missing Run ID",
-                        "docker_image": "example/missing-run-id:1.0",
-                        "execution_mode": "global",
+                        "extra_inputs": [],
+                        "outputs": {"directed": True, "sign": "mixed"},
                     },
                     {
                         "run_id": "bad_mode",
                         "name": "Bad Mode",
                         "docker_image": "example/bad-mode:1.0",
                         "execution_mode": "unsupported_mode",
+                        "extra_inputs": [],
+                        "outputs": {"directed": True, "sign": "mixed"},
                     },
                 ],
             )
@@ -723,14 +724,8 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
         self.assertTrue(
             any(
                 item["tool_id"] == "custom_missing_image"
-                and "docker_image is required" in item["issues"][0]["message"]
-                for item in blocked
-            )
-        )
-        self.assertTrue(
-            any(
-                item["tool_id"] == "custom_tool_2"
-                and "run_id is required" in item["issues"][0]["message"]
+                and "docker_image must be a non-empty string"
+                in item["issues"][0]["message"]
                 for item in blocked
             )
         )
@@ -739,6 +734,81 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 item["tool_id"] == "custom_bad_mode"
                 and "unsupported execution_mode" in item["issues"][0]["message"]
                 for item in blocked
+            )
+        )
+
+    def test_preflight_rejects_custom_tool_without_run_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path, _tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1", "G2"],
+            )
+            custom_tools_path = self._write_custom_tools(
+                base,
+                tools=[
+                    {
+                        "name": "Missing Run ID",
+                        "docker_image": "example/missing-run-id:1.0",
+                        "execution_mode": "global",
+                        "extra_inputs": [],
+                        "outputs": {"directed": True, "sign": "mixed"},
+                    }
+                ],
+            )
+
+            with self.assertRaisesRegex(ValueError, "run_id is required"):
+                self.mod.preflight_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=None,
+                    custom_tools_path=custom_tools_path,
+                )
+
+    def test_preflight_rejects_custom_tool_run_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path, _tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1", "G2"],
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "alias_run",
+                        "tool_id": "custom_demo_tool_01",
+                        "execution": {"mode": "global"},
+                        "params": {},
+                    }
+                ],
+            )
+            custom_tools_path = self._write_custom_tools(
+                base,
+                tools=[
+                    {
+                        "run_id": "demo_tool_01",
+                        "name": "Demo Tool",
+                        "docker_image": "example/demo-tool:1.0",
+                        "execution_mode": "global",
+                        "extra_inputs": [],
+                        "outputs": {"directed": True, "sign": "mixed"},
+                    }
+                ],
+            )
+
+            report = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                custom_tools_path=custom_tools_path,
+            )
+
+        self.assertEqual(report["runs"]["selected"], [])
+        self.assertIn("alias_run", report["runs"]["skipped"])
+        self.assertTrue(
+            any(
+                issue.get("code") == "invalid_request"
+                and "must exactly match" in issue.get("message", "")
+                for issue in report["runs"]["issues"]["alias_run"]
             )
         )
 

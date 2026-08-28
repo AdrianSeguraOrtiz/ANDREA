@@ -114,10 +114,17 @@ andrea infer-network execute \
 ```
 
 `--custom-tools` is optional and is only needed for temporary external Docker
-tools. Main outputs include `plan.json`, `preflight_report.json`,
-`run_report.json`, per-run workspaces, merged raw and normalized networks,
-runtime state, logs and graph exports when available. The analysis bundle can
-feed `evaluate-inference` and `compare-networks`.
+tools. Every external definition must declare an `outputs` object containing
+exactly `directed` (boolean) and `sign` (`none`, `signed` or `mixed`). Missing or
+unknown output semantics block preflight. Its matching `tools_params.json` run
+must use the same `run_id` and the derived tool ID, obtained by prefixing
+the complete definition ID with literal `custom_`. Existing prefixes are not
+collapsed, and custom definitions cannot be reused under aliases. Main outputs
+include
+`plan.json`, `preflight_report.json`, `run_report.json`, per-run workspaces,
+merged raw and normalized networks, runtime state, logs and graph exports when
+available. The analysis bundle can feed `evaluate-inference` and
+`compare-networks`.
 
 ## `evaluate-inference`
 

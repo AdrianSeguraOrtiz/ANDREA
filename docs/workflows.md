@@ -47,6 +47,11 @@ Typical outputs:
 - `run_report.json`, `plan.json`, logs and runtime state;
 - analysis/report/graphs/full bundles.
 
+The run report freezes direction and sign capabilities per logical run,
+including temporary external Docker tools, so downstream evaluation does not
+depend on the currently installed catalog. External definitions must declare
+both capabilities explicitly; missing declarations are rejected.
+
 The analysis bundle can feed `evaluate-inference` and `compare-networks`.
 
 ## `evaluate-inference`

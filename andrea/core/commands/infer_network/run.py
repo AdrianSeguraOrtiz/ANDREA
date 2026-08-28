@@ -17,7 +17,15 @@ from typing import Any
 
 from rich import print
 
+from andrea.core.shared.dataset_identity import (
+    fingerprint_dataset_content,
+    validate_dataset_fingerprint,
+)
 from andrea.core.shared.issues import issue_messages, make_issue
+from andrea.core.shared.output_capabilities import (
+    validate_frozen_output_capabilities,
+    validate_selected_tool_identity_maps,
+)
 from andrea.core.shared.paths import report_path as _report_path
 
 from .commons.artifacts import _load_plan_waves, _verify_input_fingerprints
@@ -54,6 +62,7 @@ from .commons.shared import (
 from .commons.threading import resolve_tool_threading, thread_count_allowed_by_tool
 from .commons.tools import (
     EXECUTION_CAPABILITIES,
+    _build_output_capability_snapshot,
     _collect_compatibility_rule_issues,
     _collect_conditional_input_issues,
     _load_toolspec,
@@ -110,6 +119,7 @@ def _load_logical_runs_from_plan(
             raise ValueError(f"plan.json.runs[{idx}] must be an object")
         run_id = str(raw_run.get("run_id", "")).strip()
         tool_id = str(raw_run.get("tool_id", "")).strip()
+        tool_origin = raw_run.get("tool_origin")
         execution = raw_run.get("execution", {})
         execution_mode = (
             str(execution.get("mode", "")).strip()
@@ -120,6 +130,7 @@ def _load_logical_runs_from_plan(
         if (
             not run_id
             or not tool_id
+            or tool_origin not in {"catalog", "custom"}
             or execution_mode not in EXECUTION_CAPABILITIES
             or not isinstance(execution, dict)
             or not isinstance(physical_tasks, list)
@@ -129,10 +140,125 @@ def _load_logical_runs_from_plan(
         logical_runs[run_id] = {
             "run_id": run_id,
             "tool_id": tool_id,
+            "tool_origin": tool_origin,
             "execution": execution,
             "physical_tasks": physical_tasks,
         }
     return logical_runs
+
+
+def _read_group_labels_from_column_phenotypes(path: Path) -> list[str]:
+    labels: list[str] = []
+    seen: set[str] = set()
+    with path.open("r", encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        if "phenotype" not in (reader.fieldnames or []):
+            raise ValueError(
+                f"column_phenotypes.tsv is missing required phenotype column: {path}"
+            )
+        for line_idx, row in enumerate(reader, start=2):
+            label = str(row.get("phenotype", "")).strip()
+            if not label:
+                raise ValueError(
+                    "column_phenotypes.tsv contains an empty phenotype at line "
+                    f"{line_idx}: {path}"
+                )
+            if label not in seen:
+                seen.add(label)
+                labels.append(label)
+    if not labels:
+        raise ValueError(f"column_phenotypes.tsv contains no phenotypes: {path}")
+    return labels
+
+
+def _planned_contexts_by_run(
+    *,
+    logical_runs: dict[str, dict[str, Any]],
+    dataset: Any,
+    expression_columns: list[str],
+    declared_extra_input_keys_by_run: dict[str, set[str]],
+    group_to_columns: dict[str, list[str]],
+) -> dict[str, set[str]]:
+    """Resolve the exact contexts each logical execution mode may emit."""
+    contexts_by_run: dict[str, set[str]] = {}
+    standard_group_labels: list[str] | None = None
+
+    for run_id, logical_spec in logical_runs.items():
+        mode = str(logical_spec["execution"].get("mode", "")).strip()
+        if mode == "global":
+            contexts = {"global"}
+        elif mode == "column_native":
+            contexts = {f"column:{column_id}" for column_id in expression_columns}
+        elif mode == "group_emulated":
+            contexts = {
+                f"group:{str(physical.get('group_label', '')).strip()}"
+                for physical in logical_spec["physical_tasks"]
+                if str(physical.get("group_label", "")).strip()
+            }
+        elif mode == "group_aggregated":
+            contexts = {f"group:{group_label}" for group_label in group_to_columns}
+        elif mode == "group_native":
+            declared_inputs = declared_extra_input_keys_by_run.get(run_id, set())
+            groups_path = dataset.extras.get("groups")
+            phenotypes_path = dataset.extras.get("column_phenotypes")
+            if "groups" in declared_inputs and groups_path is not None:
+                if standard_group_labels is None:
+                    standard_group_labels, _mapping = _load_groups_by_column(
+                        groups_path=groups_path,
+                        expression_columns=expression_columns,
+                    )
+                group_labels = standard_group_labels
+            elif "column_phenotypes" in declared_inputs and phenotypes_path is not None:
+                group_labels = _read_group_labels_from_column_phenotypes(
+                    phenotypes_path
+                )
+            else:
+                raise ValueError(
+                    f"[{run_id}] group_native cannot freeze output contexts: "
+                    "the tool must declare groups or column_phenotypes and the "
+                    "dataset must provide that input"
+                )
+            contexts = {f"group:{group_label}" for group_label in group_labels}
+        else:  # guarded by _load_logical_runs_from_plan
+            raise ValueError(f"[{run_id}] unsupported execution mode: {mode!r}")
+
+        if not contexts:
+            raise ValueError(
+                f"[{run_id}] execution mode {mode!r} resolved no output contexts"
+            )
+        contexts_by_run[run_id] = contexts
+    return contexts_by_run
+
+
+def _completed_contexts_for_run(
+    *,
+    run_id: str,
+    logical_spec: dict[str, Any],
+    logical_payload: dict[str, Any],
+    planned_contexts: set[str],
+) -> list[str]:
+    """Return contexts completed successfully, excluding failed emulated children."""
+    mode = str(logical_spec["execution"].get("mode", "")).strip()
+    if mode != "group_emulated":
+        return sorted(planned_contexts)
+
+    child_results = logical_payload.get("child_results")
+    if not isinstance(child_results, dict):
+        raise ValueError(f"[{run_id}] grouped result is missing child_results")
+    completed_contexts: list[str] = []
+    for physical in logical_spec["physical_tasks"]:
+        task_id = str(physical.get("task_id", "")).strip()
+        group_label = str(physical.get("group_label", "")).strip()
+        child = child_results.get(task_id)
+        if not isinstance(child, dict):
+            continue
+        if child.get("status") in {"completed", "completed_with_warnings"}:
+            completed_contexts.append(f"group:{group_label}")
+    if not completed_contexts:
+        raise ValueError(
+            f"[{run_id}] completed group_emulated run has no successful child context"
+        )
+    return completed_contexts
 
 
 def _sync_warning_messages_to_state(
@@ -361,14 +487,32 @@ def _finalize_group_aggregated_logical_run(
                 Path(child_result.network_path),
                 tool_id=child_task_id,
             )
+            allowed_column_contexts = {
+                f"column:{column_id}"
+                for columns in group_to_columns.values()
+                for column_id in columns
+            }
             column_rows = [
                 row
                 for row in rows
                 if _column_context_id(str(row["context"])) is not None
             ]
-            if not column_rows:
+            if rows and len(column_rows) != len(rows):
                 raise ValueError(
-                    "group_aggregated requires upstream network rows with column:<id> contexts"
+                    "group_aggregated requires every upstream network row to use a "
+                    "column:<id> context"
+                )
+            unexpected_contexts = sorted(
+                {
+                    str(row["context"])
+                    for row in column_rows
+                    if str(row["context"]) not in allowed_column_contexts
+                }
+            )
+            if unexpected_contexts:
+                raise ValueError(
+                    "group_aggregated upstream network contains contexts outside "
+                    f"the expression columns: {unexpected_contexts}"
                 )
             aggregated_rows = _aggregate_column_rows_by_group(
                 rows=column_rows,
@@ -377,7 +521,7 @@ def _finalize_group_aggregated_logical_run(
             if not aggregated_rows:
                 _append_warning_once(
                     warnings,
-                    f"[{run_id}] group_aggregated produced no non-zero aggregated group edges."
+                    f"[{run_id}] group_aggregated produced no non-zero aggregated group edges.",
                 )
             column_row_count = len(column_rows)
             aggregated_row_count = len(aggregated_rows)
@@ -413,9 +557,7 @@ def _finalize_group_aggregated_logical_run(
         "percent": 100,
         "status": status,
         "phase": (
-            "done"
-            if status in {"completed", "completed_with_warnings"}
-            else "failed"
+            "done" if status in {"completed", "completed_with_warnings"} else "failed"
         ),
         "message": (
             f"Aggregated {column_row_count} column-context row(s) into "
@@ -480,6 +622,7 @@ def _finalize_grouped_logical_run(
     child_payload: dict[str, Any] = {}
     child_failures: list[tuple[str, ToolExecutionResult]] = []
     child_rows: list[dict[str, Any]] = []
+    successful_groups: list[str] = []
     durations: list[float] = []
     result_warnings: list[str] = []
 
@@ -537,17 +680,18 @@ def _finalize_grouped_logical_run(
             for row in rows:
                 row["context"] = f"group:{group_label}"
             child_rows.extend(rows)
+            successful_groups.append(group_label)
             continue
         child_failures.append((group_label, result))
 
     network_path: str | None = None
     parent_network = out_dir / "network.csv"
-    if child_rows:
+    if successful_groups:
         _write_network_rows(path=parent_network, rows=child_rows, include_tool_id=False)
         network_path = str(parent_network.resolve())
 
     failed_groups = [label for label, _result in child_failures]
-    if child_failures and child_rows:
+    if child_failures and successful_groups:
         failure_summary = f"{len(child_failures)}/{len(logical_spec['physical_tasks'])} grouped executions failed"
         if failed_groups:
             failure_summary += f" ({', '.join(failed_groups)})"
@@ -564,11 +708,8 @@ def _finalize_grouped_logical_run(
     else:
         status = "completed"
         error = None
-        if child_rows:
-            network_path = str(parent_network.resolve())
-        else:
-            _write_network_rows(path=parent_network, rows=[], include_tool_id=False)
-            network_path = str(parent_network.resolve())
+        _write_network_rows(path=parent_network, rows=child_rows, include_tool_id=False)
+        network_path = str(parent_network.resolve())
 
     if status == "completed" and result_warnings:
         status = "completed_with_warnings"
@@ -580,12 +721,10 @@ def _finalize_grouped_logical_run(
         "percent": 100,
         "status": status,
         "phase": (
-            "done"
-            if status in {"completed", "completed_with_warnings"}
-            else "failed"
+            "done" if status in {"completed", "completed_with_warnings"} else "failed"
         ),
         "message": (
-            f"{len(logical_spec['physical_tasks']) - len(child_failures)}/{len(logical_spec['physical_tasks'])} grouped executions completed"
+            f"{len(successful_groups)}/{len(logical_spec['physical_tasks'])} grouped executions completed"
         ),
         "warnings": result_warnings,
     }
@@ -594,7 +733,7 @@ def _finalize_grouped_logical_run(
     log_lines = [
         f"run_id={run_id}",
         f"status={status}",
-        f"successful_groups={len(logical_spec['physical_tasks']) - len(child_failures)}",
+        f"successful_groups={len(successful_groups)}",
         f"failed_groups={len(child_failures)}",
     ]
     for group_label, result in child_failures:
@@ -651,6 +790,11 @@ def run_infer_network_plan(
     preflight_report = _load_json_object(preflight_path, "preflight_report")
     run_report = _load_json_object(run_report_path, "run_report")
 
+    output_capabilities_by_run = validate_frozen_output_capabilities(
+        run_report.get("tools"),
+        label="run_report tools",
+    )
+
     _selected_modes, waves, _total_eta = _load_plan_waves(plan_payload)
     logical_runs = _load_logical_runs_from_plan(plan_payload)
     state_writer = ExecutionStateWriter.initialize(
@@ -681,17 +825,14 @@ def run_infer_network_plan(
     runs_payload = preflight_report.get("runs", {})
     if not isinstance(runs_payload, dict):
         raise ValueError("Invalid preflight_report.runs")
-    selected_tools = [x for x in runs_payload.get("selected", []) if isinstance(x, str)]
-    selected_tool_catalog_ids = {
-        str(k): str(v)
-        for k, v in runs_payload.get("catalog_tool_ids", {}).items()
-        if isinstance(k, str) and isinstance(v, str)
-    }
-    selected_tool_origins = {
-        str(k): str(v)
-        for k, v in runs_payload.get("tool_origins", {}).items()
-        if isinstance(k, str) and isinstance(v, str)
-    }
+    (
+        selected_tools,
+        selected_tool_catalog_ids,
+        selected_tool_origins,
+    ) = validate_selected_tool_identity_maps(
+        runs_payload,
+        label="preflight_report runs",
+    )
     resolved_execution_by_tool = {
         str(k): v
         for k, v in runs_payload.get("resolved_execution", {}).items()
@@ -706,22 +847,41 @@ def run_infer_network_plan(
     tools_root, schemas_dir = _resolve_catalog_paths()
     constraints = _load_schema_constraints(schemas_dir)
     frozen_custom_tools = run_dir / "input" / "custom_tools.json"
-    custom_tools, _custom_aliases, _custom_blocked_entries = load_custom_tool_registry(
+    custom_tools, _custom_blocked_entries = load_custom_tool_registry(
         custom_tools_path=frozen_custom_tools if frozen_custom_tools.exists() else None,
         tools_root=tools_root,
         constraints=constraints,
     )
-    for run_id in selected_tools:
-        if run_id not in selected_tool_origins:
-            catalog_tool_id = selected_tool_catalog_ids.get(run_id, "")
-            selected_tool_origins[run_id] = (
-                "custom" if catalog_tool_id in custom_tools else "catalog"
-            )
+    if set(output_capabilities_by_run) != set(selected_tools):
+        raise ValueError(
+            "run_report tools.output_capabilities must match preflight selected runs"
+        )
+    if set(logical_runs) != set(selected_tools):
+        raise ValueError("plan.json runs must match preflight selected runs exactly")
     frozen_manifest = run_dir / "input" / "dataset-manifest.json"
     dataset = _parse_dataset_context(
         dataset_manifest_path=frozen_manifest,
         constraints=constraints,
     )
+    report_dataset = run_report.get("dataset")
+    if not isinstance(report_dataset, dict):
+        raise ValueError("run_report dataset must be an object")
+    if report_dataset.get("id") != dataset.dataset_id:
+        raise ValueError(
+            "run_report dataset.id does not match the frozen dataset manifest"
+        )
+    reported_dataset_fingerprint = validate_dataset_fingerprint(
+        report_dataset.get("fingerprint"),
+        label="run_report dataset.fingerprint",
+    )
+    observed_dataset_fingerprint = fingerprint_dataset_content(
+        expression_path=dataset.expression_matrix_path,
+        extras=dataset.extras,
+    )
+    if reported_dataset_fingerprint != observed_dataset_fingerprint:
+        raise ValueError(
+            "run_report dataset.fingerprint does not match the frozen dataset inputs"
+        )
 
     resolved_params_by_tool: dict[str, dict[str, Any]] = {}
     for run_id in selected_tools:
@@ -739,6 +899,7 @@ def run_infer_network_plan(
     compatibility_blocks: dict[str, list[str]] = {}
     compatibility_warnings: list[str] = []
     runtime_extra_input_keys_by_run: dict[str, set[str] | None] = {}
+    declared_extra_input_keys_by_run: dict[str, set[str]] = {}
     planned_threads_by_task = {
         task.tool_id: task.threads for wave in waves for task in wave.tasks
     }
@@ -753,19 +914,58 @@ def run_infer_network_plan(
             if catalog_tool_id in custom_tools
             else _load_toolspec(tools_root, catalog_tool_id)
         )
+        expected_origin = "custom" if catalog_tool_id in custom_tools else "catalog"
+        if selected_tool_origins.get(run_id) != expected_origin:
+            raise ValueError(
+                f"preflight report tool_origin for {run_id!r} must be "
+                f"{expected_origin!r}"
+            )
+        logical_spec = logical_runs[run_id]
+        if logical_spec["tool_id"] != catalog_tool_id:
+            raise ValueError(
+                f"plan.json tool_id for {run_id!r} must be {catalog_tool_id!r}"
+            )
+        if logical_spec["tool_origin"] != expected_origin:
+            raise ValueError(
+                f"plan.json tool_origin for {run_id!r} must be "
+                f"{expected_origin!r}"
+            )
+        if expected_origin == "custom":
+            if toolspec.get("_andrea_run_id") != run_id:
+                raise ValueError(
+                    f"Custom tool {catalog_tool_id!r} is not bound to run_id "
+                    f"{run_id!r}"
+                )
+            required_execution = {"mode": toolspec.get("_andrea_execution_mode")}
+            if resolved_execution_by_tool.get(run_id) != required_execution:
+                raise ValueError(
+                    f"Custom tool {catalog_tool_id!r} requires execution "
+                    f"{required_execution!r}"
+                )
+        expected_capability = _build_output_capability_snapshot(
+            run_id=run_id,
+            catalog_tool_id=catalog_tool_id,
+            tool_origin=expected_origin,
+            toolspec=toolspec,
+        )
+        if output_capabilities_by_run[run_id] != expected_capability:
+            raise ValueError(
+                f"run_report output capability for {run_id!r} does not match "
+                "the frozen tool definition"
+            )
         runtime_extra_input_keys_by_run[run_id] = (
             _declared_extra_input_keys(toolspec)
             if is_custom_toolspec(toolspec)
             else None
         )
+        declared_extra_input_keys_by_run[run_id] = _declared_extra_input_keys(toolspec)
         _parse_execution_capabilities(tool_id=run_id, toolspec=toolspec)
         threading, threading_warnings = resolve_tool_threading(
             tool_id=run_id,
             toolspec=toolspec,
         )
         compatibility_warnings.extend(threading_warnings)
-        logical_run = logical_runs.get(run_id, {})
-        for physical in logical_run.get("physical_tasks", []):
+        for physical in logical_spec["physical_tasks"]:
             if not isinstance(physical, dict):
                 continue
             task_id = str(physical.get("task_id", "")).strip()
@@ -904,6 +1104,15 @@ def run_infer_network_plan(
             groups_path=groups_path,
             expression_columns=expression_columns,
         )
+
+    _genes, expression_columns = _read_expression_axes(shared_expression)
+    allowed_contexts_by_run = _planned_contexts_by_run(
+        logical_runs=logical_runs,
+        dataset=dataset,
+        expression_columns=expression_columns,
+        declared_extra_input_keys_by_run=declared_extra_input_keys_by_run,
+        group_to_columns=group_to_columns,
+    )
 
     runtime_io_by_tool = {}
     for logical_run_id in selected_tools:
@@ -1110,13 +1319,18 @@ def run_infer_network_plan(
             message=message,
         )
 
-    execution_results, per_tool_rows, merged_raw_path, merged_norm_path = (
-        _merge_network_outputs(
-            run_dir=run_dir,
-            execution_results=logical_results,
-            warnings=warnings,
-            progress_callback=update_postprocessing_progress,
-        )
+    (
+        execution_results,
+        per_tool_rows,
+        merged_raw_path,
+        merged_norm_path,
+    ) = _merge_network_outputs(
+        run_dir=run_dir,
+        execution_results=logical_results,
+        output_capabilities=output_capabilities_by_run,
+        warnings=warnings,
+        allowed_contexts=allowed_contexts_by_run,
+        progress_callback=update_postprocessing_progress,
     )
     for result in execution_results.values():
         state_writer.mark_logical_result(result)
@@ -1204,6 +1418,15 @@ def run_infer_network_plan(
         for tool_id, result in execution_results.items()
         if result.status not in {"completed", "completed_with_warnings"}
     }
+    completed_contexts = {
+        run_id: _completed_contexts_for_run(
+            run_id=run_id,
+            logical_spec=logical_runs[run_id],
+            logical_payload=logical_results_payload[run_id],
+            planned_contexts=allowed_contexts_by_run[run_id],
+        )
+        for run_id in completed_tools
+    }
     for logical_run_id, result in execution_results.items():
         status_by_tool[logical_run_id] = result.status
         if logical_run_id in logical_results_payload:
@@ -1219,9 +1442,11 @@ def run_infer_network_plan(
         "selected": selected_tools,
         "catalog_tool_ids": selected_tool_catalog_ids,
         "tool_origins": selected_tool_origins,
+        "output_capabilities": output_capabilities_by_run,
         "skipped": skipped_tools,
         "status_by_tool": status_by_tool,
         "completed": completed_tools,
+        "completed_contexts": completed_contexts,
         "failed": failed_tools,
         "results": logical_results_payload,
     }

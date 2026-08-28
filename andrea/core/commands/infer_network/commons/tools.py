@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import copy
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from andrea.core.shared.issues import make_issue
+from andrea.core.shared.output_capabilities import OUTPUT_SIGN_SEMANTICS
 from andrea.core.shared.param_validation import ParamValidationError
 from andrea.core.shared.param_validation import (
     validate_param_value as _validate_param_value,
@@ -37,6 +38,37 @@ EXECUTION_CAPABILITY_ORDER = (
 
 def _execution_capability_choices() -> str:
     return ", ".join(EXECUTION_CAPABILITY_ORDER)
+
+
+def _build_output_capability_snapshot(
+    *,
+    run_id: str,
+    catalog_tool_id: str,
+    tool_origin: str,
+    toolspec: dict[str, Any],
+) -> dict[str, Any]:
+    """Freeze the output semantics needed by downstream evaluators."""
+    if tool_origin not in {"catalog", "custom"}:
+        raise ValueError(f"[{run_id}] invalid tool_origin: {tool_origin!r}")
+    if not isinstance(catalog_tool_id, str) or not catalog_tool_id.strip():
+        raise ValueError(f"[{run_id}] catalog_tool_id is required")
+
+    outputs = toolspec.get("outputs")
+    if not isinstance(outputs, dict):
+        raise ValueError(f"[{run_id}] toolspec.outputs must be an object")
+    directed = outputs.get("directed")
+    if not isinstance(directed, bool):
+        raise ValueError(f"[{run_id}] toolspec.outputs.directed must be a boolean")
+    sign = outputs.get("sign")
+    if sign not in OUTPUT_SIGN_SEMANTICS:
+        allowed = ", ".join(sorted(OUTPUT_SIGN_SEMANTICS))
+        raise ValueError(f"[{run_id}] toolspec.outputs.sign must be one of: {allowed}")
+    return {
+        "tool_origin": tool_origin,
+        "catalog_tool_id": catalog_tool_id,
+        "directed": directed,
+        "sign": sign,
+    }
 
 
 def _validate_execution_capability_contract(
@@ -177,7 +209,77 @@ def _parse_extra_inputs_spec(
     return required_extras, optional_extras, conditional_required, errors
 
 
-def _load_tools_params(tools_params_path: Path) -> dict[str, dict[str, Any]]:
+def _normalize_tool_request_identity(
+    *,
+    tool_id_raw: Any,
+    run_id_raw: Any,
+    request_index: int,
+    custom_run_ids_by_tool_id: Mapping[str, str],
+    source: str,
+    strict_custom_identity: bool = False,
+) -> tuple[str, str]:
+    if not isinstance(tool_id_raw, str) or not tool_id_raw.strip():
+        raise ValueError(
+            f"{source}[{request_index}].tool_id must be a non-empty string"
+        )
+    if run_id_raw is not None and not isinstance(run_id_raw, str):
+        raise ValueError(
+            f"{source}[{request_index}].run_id must be string when provided"
+        )
+
+    tool_id_candidate = tool_id_raw.strip()
+    run_id_candidate = run_id_raw.strip() if isinstance(run_id_raw, str) else None
+    custom_tool_id_from_run = next(
+        (
+            tool_id
+            for tool_id, custom_run_id in custom_run_ids_by_tool_id.items()
+            if custom_run_id == run_id_candidate
+        ),
+        None,
+    )
+    expected_custom_run_id = custom_run_ids_by_tool_id.get(tool_id_candidate)
+    if expected_custom_run_id is not None or custom_tool_id_from_run is not None:
+        expected_tool_id = (
+            tool_id_candidate
+            if expected_custom_run_id is not None
+            else custom_tool_id_from_run
+        )
+        if expected_tool_id is None:  # pragma: no cover - guarded above
+            raise AssertionError("custom tool identity resolution failed")
+        expected_run_id = custom_run_ids_by_tool_id[expected_tool_id]
+        custom_identity_is_canonical = (
+            tool_id_raw == tool_id_candidate
+            and isinstance(run_id_raw, str)
+            and bool(run_id_raw)
+            and run_id_raw == run_id_candidate
+        )
+        custom_identity_matches = (
+            tool_id_raw == expected_tool_id and run_id_raw == expected_run_id
+        )
+        if not custom_identity_is_canonical or (
+            strict_custom_identity and not custom_identity_matches
+        ):
+            raise ValueError(
+                f"{source}[{request_index}] external identity must be exactly "
+                f"run_id={expected_run_id!r}, tool_id={expected_tool_id!r}"
+            )
+        return tool_id_raw, run_id_raw
+
+    tool_id = tool_id_candidate
+    if run_id_raw is None or (
+        isinstance(run_id_raw, str) and not run_id_raw.strip()
+    ):
+        run_id = f"{tool_id}__{request_index:02d}"
+    else:
+        run_id = run_id_raw.strip()
+    return tool_id, run_id
+
+
+def _load_tools_params(
+    tools_params_path: Path,
+    *,
+    custom_run_ids_by_tool_id: Mapping[str, str] | None = None,
+) -> dict[str, dict[str, Any]]:
     raw = _load_json_object(tools_params_path, "tools-params")
     if not raw:
         raise ValueError("tools-params JSON must include at least one tool request")
@@ -201,12 +303,13 @@ def _load_tools_params(tools_params_path: Path) -> dict[str, dict[str, Any]]:
         if not isinstance(item, dict):
             raise ValueError(f"tools-params.runs[{idx}] must be an object")
 
-        tool_id_raw = item.get("tool_id")
-        if not isinstance(tool_id_raw, str) or not tool_id_raw.strip():
-            raise ValueError(
-                f"tools-params.runs[{idx}].tool_id must be a non-empty string"
-            )
-        tool_id = tool_id_raw.strip()
+        tool_id, run_id = _normalize_tool_request_identity(
+            tool_id_raw=item.get("tool_id"),
+            run_id_raw=item.get("run_id"),
+            request_index=idx,
+            custom_run_ids_by_tool_id=custom_run_ids_by_tool_id or {},
+            source="tools-params.runs",
+        )
 
         params = item.get("params", {})
         if not isinstance(params, dict):
@@ -218,18 +321,6 @@ def _load_tools_params(tools_params_path: Path) -> dict[str, dict[str, Any]]:
         if not isinstance(execution, dict):
             raise ValueError(
                 f"tools-params.runs[{idx}].execution must be an object when provided"
-            )
-
-        run_id_raw = item.get("run_id")
-        if run_id_raw is None or (
-            isinstance(run_id_raw, str) and not run_id_raw.strip()
-        ):
-            run_id = f"{tool_id}__{idx:02d}"
-        elif isinstance(run_id_raw, str):
-            run_id = run_id_raw.strip()
-        else:
-            raise ValueError(
-                f"tools-params.runs[{idx}].run_id must be string when provided"
             )
 
         if run_id in parsed:

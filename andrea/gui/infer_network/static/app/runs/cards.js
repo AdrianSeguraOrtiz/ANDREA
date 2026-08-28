@@ -2,6 +2,10 @@ import { $ } from "../core/dom.js";
 import { state } from "../core/state.js";
 import { conditionalRuleMatches, deepEqualJson, readParamsFromHost, renderParamsHost, resolvedDefaultParams, setParamFieldError } from "/static-common/app/params/schema_form.js?v=20260617d";
 import { executionModeAvailability, executionModeLabel } from "./execution_modes.js";
+import {
+  customToolRunId,
+  validateCustomToolRunIdentity,
+} from "../catalog/external_tools.js";
 
 let getToolByIdFn = null;
 let listAvailableToolsFn = null;
@@ -39,6 +43,28 @@ function toolExecutionCapabilities(tool) {
   return Array.isArray(tool?.execution_capabilities)
     ? tool.execution_capabilities.map((item) => String(item || "").trim()).filter(Boolean)
     : [];
+}
+
+function fixedCustomExecutionMode(tool) {
+  if (tool?.tool_origin !== "custom") {
+    return null;
+  }
+  const executionMode = tool?.spec?.execution_mode;
+  if (
+    typeof executionMode !== "string" ||
+    !executionMode ||
+    executionMode !== executionMode.trim()
+  ) {
+    throw new Error("Custom tool execution_mode metadata is invalid.");
+  }
+  return executionMode;
+}
+
+function fixedCustomRunId(tool) {
+  if (tool?.tool_origin !== "custom") {
+    return null;
+  }
+  return customToolRunId(tool);
 }
 
 function currentDatasetOrganism() {
@@ -230,11 +256,20 @@ function validateRunCard(card) {
   const tool = getToolByIdFn?.(toolId);
   const validationEl = card.querySelector(".run-validation");
   const messages = [];
-  const runId = String(card.querySelector(".run-id")?.value || "").trim();
+  const rawRunId = card.querySelector(".run-id")?.value;
+  const runId = tool?.tool_origin === "custom"
+    ? rawRunId
+    : String(rawRunId || "").trim();
 
   card.querySelectorAll(":scope .param-field").forEach((field) => setParamFieldError(field, ""));
 
-  if (!runId) {
+  if (tool?.tool_origin === "custom") {
+    try {
+      validateCustomToolRunIdentity(tool, runId);
+    } catch (error) {
+      messages.push(String(error?.message || "Run ID is invalid."));
+    }
+  } else if (!runId) {
     messages.push("Run ID is required.");
   }
 
@@ -304,6 +339,12 @@ function validateRunCard(card) {
 
     const executionMode = String(card.querySelector(".execution-group-mode")?.value || "").trim();
     const execution = { mode: executionMode };
+    const fixedExecutionMode = fixedCustomExecutionMode(tool);
+    if (fixedExecutionMode !== null && executionMode !== fixedExecutionMode) {
+      messages.push(
+        `Custom tool execution mode is fixed to: ${fixedExecutionMode}`
+      );
+    }
     const modeAvailability = executionModeAvailability({
       mode: executionMode,
       providedExtras,
@@ -383,12 +424,32 @@ export function addRunCard(initial = {}) {
   toolInput.value = tool.tool_id;
   toolNameEl.textContent = tool.name;
   const capabilities = toolExecutionCapabilities(tool);
-  const initialExecutionMode = String(initial?.execution?.mode || "").trim();
+  const fixedRunId = fixedCustomRunId(tool);
+  const fixedExecutionMode = fixedCustomExecutionMode(tool);
+  const hasInitialExecutionMode = Boolean(
+    initial?.execution && Object.hasOwn(initial.execution, "mode")
+  );
+  const rawInitialExecutionMode = initial?.execution?.mode;
+  const initialExecutionMode = fixedExecutionMode === null
+    ? String(rawInitialExecutionMode || "").trim()
+    : (hasInitialExecutionMode ? rawInitialExecutionMode : "");
+  if (
+    fixedExecutionMode !== null &&
+    hasInitialExecutionMode &&
+    initialExecutionMode !== fixedExecutionMode
+  ) {
+    throw new Error(
+      `Custom tool execution mode must be exactly ${fixedExecutionMode}.`
+    );
+  }
   const selectedExecutionMode =
-    initialExecutionMode || defaultGroupModeForToolFn?.(tool) || "global";
+    fixedExecutionMode || initialExecutionMode || defaultGroupModeForToolFn?.(tool) || "global";
 
   executionModeInput.innerHTML = "";
-  const modeOptions = (capabilities.length ? capabilities : ["global"]).map((mode) => ({
+  const availableModes = fixedExecutionMode !== null
+    ? [fixedExecutionMode]
+    : (capabilities.length ? capabilities : ["global"]);
+  const modeOptions = availableModes.map((mode) => ({
     value: mode,
     label: executionModeLabel(mode),
   }));
@@ -418,7 +479,19 @@ export function addRunCard(initial = {}) {
       ? "This tool has a single execution mode."
       : "Choose global, native grouped, ANDREA-emulated grouped, native per-column, or ANDREA group aggregation from native per-column output.";
 
-  runIdInput.value = initial.run_id || buildRunId(tool.tool_id);
+  const hasInitialRunId = Object.hasOwn(initial, "run_id");
+  if (
+    fixedRunId !== null &&
+    hasInitialRunId &&
+    initial.run_id !== fixedRunId
+  ) {
+    throw new Error(`Custom tool run_id must be exactly ${fixedRunId}.`);
+  }
+  runIdInput.value = fixedRunId || initial.run_id || buildRunId(tool.tool_id);
+  runIdInput.readOnly = fixedRunId !== null;
+  runIdInput.title = fixedRunId !== null
+    ? "External run IDs are fixed by their custom tool definition."
+    : "Choose a unique logical run ID.";
   renderRunParamsForm(node, tool, initial.params || null);
 
   runIdInput.addEventListener("input", () => {
@@ -475,10 +548,19 @@ export function collectRuns() {
   const seen = new Set();
   const runs = [];
   cards.forEach((card, idx) => {
-    const runId = card.querySelector(".run-id").value.trim();
+    const rawRunId = card.querySelector(".run-id").value;
     const toolId = card.querySelector(".tool-id").value;
+    const tool = getToolByIdFn?.(toolId);
+    if (!tool) {
+      throw new Error(`Unknown tool_id '${toolId}'`);
+    }
+    const runId = tool.tool_origin === "custom"
+      ? rawRunId
+      : rawRunId.trim();
 
-    if (!runId) {
+    if (tool.tool_origin === "custom") {
+      validateCustomToolRunIdentity(tool, runId);
+    } else if (!runId) {
       throw new Error(`Run ${idx + 1}: run_id is required.`);
     }
     if (seen.has(runId)) {
@@ -493,12 +575,20 @@ export function collectRuns() {
       throw new Error(`Run ${idx + 1} params: ${String(err?.message || "invalid value")}`);
     }
 
+    const executionMode = card.querySelector(".execution-group-mode").value;
+    const fixedExecutionMode = fixedCustomExecutionMode(tool);
+    if (fixedExecutionMode !== null && executionMode !== fixedExecutionMode) {
+      throw new Error(
+        `Custom tool execution mode must be exactly ${fixedExecutionMode}.`
+      );
+    }
+
     runs.push({
       run_id: runId,
       tool_id: toolId,
       params,
       execution: {
-        mode: card.querySelector(".execution-group-mode").value,
+        mode: executionMode,
       },
     });
   });
