@@ -388,7 +388,7 @@
           "$ref": "#/$defs/string_array"
         },
         "effective_extras": {
-          "$ref": "#/$defs/string_array"
+          "$ref": "#/$defs/effective_extras_array"
         },
         "required_inputs_satisfied": {
           "$ref": "#/$defs/string_array"
@@ -749,7 +749,7 @@
           "$ref": "#/$defs/string_array"
         },
         "effective_extras": {
-          "$ref": "#/$defs/string_array"
+          "$ref": "#/$defs/effective_extras_array"
         },
         "genes": {
           "type": "integer",
@@ -779,6 +779,18 @@
           "type": "boolean"
         }
       }
+    },
+    "effective_extras_array": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/string_array"
+        },
+        {
+          "contains": {
+            "const": "tf_list"
+          }
+        }
+      ]
     },
     "string_array": {
       "type": "array",

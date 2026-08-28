@@ -102,9 +102,9 @@ def _runtime_point() -> dict[str, object]:
             "experimental_design": "trajectory",
             "truth_context_families": ["global"],
             "truth_context_count": 1,
-            "extras": [],
+            "extras": ["tf_list"],
             "requested_extras": [],
-            "effective_extras": [],
+            "effective_extras": ["tf_list"],
             "genes": 10,
             "cells": 8,
             "groups": 0,
@@ -144,7 +144,7 @@ def _valid_cost_payload() -> dict[str, object]:
                     },
                     "input_profile": {
                         "requested_extras": [],
-                        "effective_extras": [],
+                        "effective_extras": ["tf_list"],
                         "required_inputs_satisfied": [],
                         "optional_inputs_provided": [],
                         "conditional_inputs_satisfied": [],
@@ -172,6 +172,12 @@ def _valid_cost_payload() -> dict[str, object]:
 
 
 class SimulatorBenchmarkCostsTests(unittest.TestCase):
+    def test_merge_existing_requires_explicit_profile(self) -> None:
+        args = benchmark_costs.parse_args(["--merge-existing"])
+
+        with self.assertRaisesRegex(RuntimeError, "requires at least one"):
+            benchmark_costs.validate_runtime_args(args)
+
     def test_simulatorcost_schema_accepts_profile_payload(self) -> None:
         schema = json.loads(SIMULATOR_COST_SCHEMA.read_text(encoding="utf-8"))
         validator = Draft202012Validator(schema)
@@ -179,6 +185,24 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         errors = list(validator.iter_errors(_valid_cost_payload()))
 
         self.assertEqual(errors, [])
+
+    def test_simulatorcost_schema_requires_tf_list_in_cost_profiles(self) -> None:
+        schema = json.loads(SIMULATOR_COST_SCHEMA.read_text(encoding="utf-8"))
+        validator = Draft202012Validator(schema)
+
+        for target in ("benchmark_config", "feature_vector"):
+            with self.subTest(target=target):
+                payload = copy.deepcopy(_valid_cost_payload())
+                if target == "benchmark_config":
+                    payload["profiles"][0]["benchmark_config"]["input_profile"][
+                        "effective_extras"
+                    ] = []
+                else:
+                    payload["profiles"][0]["runtime_points"][0]["feature_vector"][
+                        "effective_extras"
+                    ] = []
+
+                self.assertNotEqual(list(validator.iter_errors(payload)), [])
 
     def test_simulatorcost_schema_rejects_missing_feature_vector(self) -> None:
         payload = copy.deepcopy(_valid_cost_payload())
@@ -586,6 +610,60 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             cleanup_cmd = run_cmd.call_args_list[1].args[0]
             self.assertEqual(cleanup_cmd[:3], ["docker", "rm", "-f"])
 
+    def test_run_container_requires_tf_list_artifact(self) -> None:
+        profile = benchmark_costs.SimulatorBenchmarkProfile(
+            simulator_id="boolode",
+            profile_id="profile",
+            profile="single_cell_cells_trajectory_global",
+            data_axes=copy.deepcopy(TRAJECTORY_AXES),
+            truth_requirements=copy.deepcopy(GLOBAL_TRUTH),
+            sizes=None,
+            requested_extras=(),
+            effective_extras=("tf_list",),
+            params={},
+            params_profile={},
+            runtime_resources_profile={},
+            dimension_profile={},
+            input_profile={},
+            input_paths={},
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            workdir = Path(tmp)
+            out_dir = workdir / "out"
+
+            def successful_container(*_args, **_kwargs):
+                (out_dir / "truth").mkdir(parents=True, exist_ok=True)
+                (out_dir / "simulator-output-manifest.json").write_text(
+                    "{}\n", encoding="utf-8"
+                )
+                (out_dir / "expression.tsv").write_text("gene\tc1\n", encoding="utf-8")
+                (out_dir / "truth" / "networks.csv").write_text(
+                    "source,target,weight\n", encoding="utf-8"
+                )
+                return subprocess.CompletedProcess(
+                    args=["docker", "run"], returncode=0, stdout="", stderr=""
+                )
+
+            with patch.object(
+                benchmark_costs, "run_cmd", side_effect=successful_container
+            ):
+                status, _elapsed, _bytes, _memory, error = (
+                    benchmark_costs.run_container_once(
+                        image_tag="image",
+                        workdir=workdir,
+                        simulator_id="boolode",
+                        profile=profile,
+                        params={},
+                        threads=1,
+                        ram_gb=1,
+                        seed=1,
+                        timeout_s=1,
+                    )
+                )
+
+            self.assertEqual(status, "error")
+            self.assertIn("extras/tf_list.txt", error)
+
     def test_run_writes_selected_simulator_cost_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
@@ -658,8 +736,167 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             self.assertEqual(point["feature_vector"]["column_kind"], "cells")
             self.assertEqual(point["feature_vector"]["experimental_design"], "trajectory")
             self.assertEqual(point["feature_vector"]["truth_context_families"], ["global"])
-            self.assertEqual(point["feature_vector"]["extras"], [])
+            self.assertEqual(point["feature_vector"]["extras"], ["tf_list"])
             self.assertFalse(point["feature_vector"]["column_truth_requested"])
+
+    def test_merge_existing_cost_profiles_replaces_only_measured_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cost_path = Path(tmp) / "cost.json"
+            benchmark_costs.save_json(
+                cost_path,
+                {
+                    "schema_version": "1.0",
+                    "profiles": [
+                        {"profile_id": "kept", "marker": "old-kept"},
+                        {"profile_id": "replaced", "marker": "old-replaced"},
+                    ],
+                },
+            )
+            measured = {
+                "schema_version": "1.0",
+                "profiles": [
+                    {"profile_id": "replaced", "marker": "new-replaced"},
+                    {"profile_id": "added", "marker": "new-added"},
+                ],
+            }
+
+            merged = benchmark_costs.merge_existing_cost_profiles(
+                cost_path=cost_path,
+                measured_payload=measured,
+            )
+
+            self.assertEqual(
+                [profile["profile_id"] for profile in merged["profiles"]],
+                ["kept", "replaced", "added"],
+            )
+            self.assertEqual(merged["profiles"][0]["marker"], "old-kept")
+            self.assertEqual(merged["profiles"][1]["marker"], "new-replaced")
+
+    def test_unsuccessful_profile_preserves_existing_cost_and_exits_nonzero(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            catalog_root = tmp_root / "catalog_simulators"
+            wrappers_root = tmp_root / "wrappers"
+            workdir = tmp_root / "benchmark_work"
+            simulator_dir = catalog_root / "dyngen"
+            simulator_dir.mkdir(parents=True)
+            (wrappers_root / "dyngen").mkdir(parents=True)
+            shutil.copy2(
+                CATALOG_SIMULATORS_ROOT / "dyngen" / "simulatorspec.json",
+                simulator_dir / "simulatorspec.json",
+            )
+            cost_path = simulator_dir / "cost.json"
+            benchmark_costs.save_json(cost_path, _valid_cost_payload())
+            original_cost = cost_path.read_bytes()
+
+            with (
+                patch.object(
+                    benchmark_costs,
+                    "run_container_once",
+                    side_effect=[
+                        ("ok", 1.0, 100, None, ""),
+                        ("error", 1.0, None, None, "simulated failure"),
+                        ("ok", 1.0, 100, None, ""),
+                    ],
+                ),
+                patch.object(
+                    benchmark_costs,
+                    "allocate_simulator_workdir",
+                    return_value=(workdir, None),
+                ),
+            ):
+                exit_code = benchmark_costs.run(
+                    [
+                        "--catalog-simulators-root",
+                        str(catalog_root),
+                        "--wrappers-root",
+                        str(wrappers_root),
+                        "--param-overrides-dir",
+                        str(PARAM_OVERRIDES_DIR),
+                        "--cost-profiles-dir",
+                        str(COST_PROFILES_DIR),
+                        "--simulator",
+                        "dyngen",
+                        "--profile",
+                        "single_cell_cells_trajectory_global_linear_default",
+                        "--size",
+                        "10x10",
+                        "--size",
+                        "20x20",
+                        "--size",
+                        "30x30",
+                        "--threads",
+                        "1",
+                        "--ram-gb",
+                        "1",
+                        "--skip-build",
+                        "--merge-existing",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 1)
+            self.assertEqual(cost_path.read_bytes(), original_cost)
+
+    def test_partial_success_without_merge_does_not_replace_cost(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            catalog_root = tmp_root / "catalog_simulators"
+            wrappers_root = tmp_root / "wrappers"
+            workdir = tmp_root / "benchmark_work"
+            simulator_dir = catalog_root / "dyngen"
+            simulator_dir.mkdir(parents=True)
+            (wrappers_root / "dyngen").mkdir(parents=True)
+            shutil.copy2(
+                CATALOG_SIMULATORS_ROOT / "dyngen" / "simulatorspec.json",
+                simulator_dir / "simulatorspec.json",
+            )
+            cost_path = simulator_dir / "cost.json"
+            benchmark_costs.save_json(cost_path, _valid_cost_payload())
+            original_cost = cost_path.read_bytes()
+
+            with (
+                patch.object(
+                    benchmark_costs,
+                    "run_container_once",
+                    side_effect=[
+                        ("error", 1.0, None, None, "simulated failure"),
+                        ("ok", 1.0, 100, None, ""),
+                    ],
+                ),
+                patch.object(
+                    benchmark_costs,
+                    "allocate_simulator_workdir",
+                    return_value=(workdir, None),
+                ),
+            ):
+                exit_code = benchmark_costs.run(
+                    [
+                        "--catalog-simulators-root",
+                        str(catalog_root),
+                        "--wrappers-root",
+                        str(wrappers_root),
+                        "--param-overrides-dir",
+                        str(PARAM_OVERRIDES_DIR),
+                        "--cost-profiles-dir",
+                        str(COST_PROFILES_DIR),
+                        "--simulator",
+                        "dyngen",
+                        "--profile",
+                        "single_cell_cells_trajectory_global_linear_default",
+                        "--profile",
+                        "single_cell_cells_time_series_global_linear_default",
+                        "--size",
+                        "10x10",
+                        "--threads",
+                        "1",
+                        "--ram-gb",
+                        "1",
+                        "--skip-build",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 1)
+            self.assertEqual(cost_path.read_bytes(), original_cost)
 
     def test_profile_sizes_override_default_sizes_unless_cli_size_is_explicit(self) -> None:
         profile = benchmark_costs.SimulatorBenchmarkProfile(
@@ -721,6 +958,20 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         )
 
         self.assertEqual(errors, [])
+
+    def test_validator_rejects_profile_without_tf_list(self) -> None:
+        payload = _valid_cost_payload()
+        payload["profiles"][0]["benchmark_config"]["input_profile"][
+            "effective_extras"
+        ] = []
+
+        errors = validate_simulator_costs.semantic_errors_for_cost(
+            simulator_id="dyngen",
+            instance=payload,
+            catalog_simulators_root=CATALOG_SIMULATORS_ROOT,
+        )
+
+        self.assertTrue(any("must include required tf_list" in item for item in errors))
 
     def test_validator_rejects_feature_vector_axis_mismatch(self) -> None:
         payload = _valid_cost_payload()

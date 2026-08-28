@@ -2,405 +2,6 @@
   "schema_version": "1.0",
   "profiles": [
     {
-      "profile_id": "single_cell_cells_steady_state_global_custom_default",
-      "benchmark_config": {
-        "simulator_id": "sergio",
-        "data_axes": {
-          "measurement": "rna_expression",
-          "resolution": "single_cell",
-          "column_kind": "cells",
-          "experimental_design": "steady_state"
-        },
-        "truth_requirements": {
-          "contexts": [
-            "global"
-          ]
-        },
-        "sizes": [
-          {
-            "genes": 3,
-            "cells": 4
-          }
-        ],
-        "threads_tested": [
-          1
-        ],
-        "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
-        ],
-        "repeats": 1,
-        "timeout_seconds": 1800,
-        "dimension_profile": {
-          "cells_param": {
-            "param": "number_sc",
-            "multiplier_param": "number_bins"
-          },
-          "genes_param": "number_genes",
-          "group_count": 0,
-          "population_count": 0
-        },
-        "input_profile": {
-          "requested_extras": [],
-          "effective_extras": [],
-          "required_inputs_satisfied": [],
-          "optional_inputs_provided": [],
-          "conditional_inputs_satisfied": [
-            "sergio_master_regulators",
-            "sergio_target_interactions"
-          ],
-          "input_source_modes": {
-            "input_preset": "custom_files"
-          },
-          "notes": []
-        },
-        "params_profile": {
-          "source": "simulatorspec_defaults_plus_override",
-          "override_file": "sergio.json:single_cell_cells_steady_state_global_custom_default:inline",
-          "resolved_base_params": {
-            "input_preset": "custom_files",
-            "simulation_mode": "steady_state",
-            "number_genes": 100,
-            "number_bins": 2,
-            "number_sc": 100,
-            "noise_params": 0.1,
-            "noise_type": "dpd",
-            "decays": 0.8,
-            "sampling_state": 1,
-            "tol": 0.001,
-            "window_length": 3,
-            "dt": 0.01,
-            "optimize_sampling": false,
-            "shared_coop_state": 2.0,
-            "noise_params_splice": 0.1,
-            "noise_type_splice": "dpd",
-            "splice_ratio": 1.5,
-            "dt_splice": 0.01,
-            "differentiation_expression": "total",
-            "technical_noise": {
-              "outlier_enabled": false,
-              "outlier_prob": 0.01,
-              "outlier_mean": 0.8,
-              "outlier_scale": 1.0,
-              "library_size_enabled": false,
-              "library_size_mean": 4.6,
-              "library_size_scale": 0.4,
-              "dropout_enabled": false,
-              "dropout_shape": 6.5,
-              "dropout_percentile": 82.0,
-              "convert_to_umi": false
-            }
-          },
-          "cost_relevant_params": [
-            "input_preset",
-            "simulation_mode",
-            "number_bins",
-            "noise_params",
-            "noise_params_splice",
-            "decays",
-            "sampling_state",
-            "window_length",
-            "dt",
-            "dt_splice",
-            "shared_coop_state",
-            "splice_ratio",
-            "differentiation_expression",
-            "technical_noise.outlier_enabled",
-            "technical_noise.dropout_enabled",
-            "technical_noise.convert_to_umi"
-          ],
-          "cost_relevant_values": {
-            "input_preset": "custom_files",
-            "simulation_mode": "steady_state",
-            "number_bins": 2,
-            "noise_params": 0.1,
-            "noise_params_splice": 0.1,
-            "decays": 0.8,
-            "sampling_state": 1,
-            "window_length": 3,
-            "dt": 0.01,
-            "dt_splice": 0.01,
-            "shared_coop_state": 2.0,
-            "splice_ratio": 1.5,
-            "differentiation_expression": "total",
-            "technical_noise.outlier_enabled": false,
-            "technical_noise.dropout_enabled": false,
-            "technical_noise.convert_to_umi": false
-          }
-        },
-        "runtime_resources_profile": {
-          "threading_supported": false,
-          "default_threads": 1,
-          "max_threads": 1,
-          "upstream_mapping": "SERGIO a6190b74425112834c8fa9b4b6157d9cb3d1ab88 exposes no public thread, worker or core-count control; ANDREA must assign threads=1 and the wrapper must not expose threading as a simulator parameter."
-        }
-      },
-      "runtime_points": [
-        {
-          "genes": 3,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 8.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.856728,
-          "seconds_p90": 1.856728,
-          "output_bytes_p50": 5416,
-          "output_bytes_p90": 5416,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "sergio",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "steady_state"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_default",
-            "profile_id": "single_cell_cells_steady_state_global_custom_default",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "steady_state",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 3,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 2,
-            "threads": 1,
-            "ram_gb": 8.0,
-            "cost_relevant_values": {
-              "input_preset": "custom_files",
-              "simulation_mode": "steady_state",
-              "number_bins": 2,
-              "noise_params": 0.1,
-              "noise_params_splice": 0.1,
-              "decays": 0.8,
-              "sampling_state": 1,
-              "window_length": 3,
-              "dt": 0.01,
-              "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
-              "splice_ratio": 1.5,
-              "differentiation_expression": "total",
-              "technical_noise.outlier_enabled": false,
-              "technical_noise.dropout_enabled": false,
-              "technical_noise.convert_to_umi": false
-            },
-            "input_source_modes": {
-              "input_preset": "custom_files"
-            }
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 16.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.248667,
-          "seconds_p90": 1.248667,
-          "output_bytes_p50": 5416,
-          "output_bytes_p90": 5416,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "sergio",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "steady_state"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_default",
-            "profile_id": "single_cell_cells_steady_state_global_custom_default",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "steady_state",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 3,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 2,
-            "threads": 1,
-            "ram_gb": 16.0,
-            "cost_relevant_values": {
-              "input_preset": "custom_files",
-              "simulation_mode": "steady_state",
-              "number_bins": 2,
-              "noise_params": 0.1,
-              "noise_params_splice": 0.1,
-              "decays": 0.8,
-              "sampling_state": 1,
-              "window_length": 3,
-              "dt": 0.01,
-              "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
-              "splice_ratio": 1.5,
-              "differentiation_expression": "total",
-              "technical_noise.outlier_enabled": false,
-              "technical_noise.dropout_enabled": false,
-              "technical_noise.convert_to_umi": false
-            },
-            "input_source_modes": {
-              "input_preset": "custom_files"
-            }
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 32.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.194605,
-          "seconds_p90": 1.194605,
-          "output_bytes_p50": 5416,
-          "output_bytes_p90": 5416,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "sergio",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "steady_state"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_default",
-            "profile_id": "single_cell_cells_steady_state_global_custom_default",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "steady_state",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 3,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 2,
-            "threads": 1,
-            "ram_gb": 32.0,
-            "cost_relevant_values": {
-              "input_preset": "custom_files",
-              "simulation_mode": "steady_state",
-              "number_bins": 2,
-              "noise_params": 0.1,
-              "noise_params_splice": 0.1,
-              "decays": 0.8,
-              "sampling_state": 1,
-              "window_length": 3,
-              "dt": 0.01,
-              "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
-              "splice_ratio": 1.5,
-              "differentiation_expression": "total",
-              "technical_noise.outlier_enabled": false,
-              "technical_noise.dropout_enabled": false,
-              "technical_noise.convert_to_umi": false
-            },
-            "input_source_modes": {
-              "input_preset": "custom_files"
-            }
-          }
-        }
-      ]
-    },
-    {
       "profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
       "benchmark_config": {
         "simulator_id": "sergio",
@@ -426,9 +27,9 @@
           1
         ],
         "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
+          8,
+          16,
+          32
         ],
         "repeats": 1,
         "timeout_seconds": 1800,
@@ -488,7 +89,7 @@
             "window_length": 3,
             "dt": 0.01,
             "optimize_sampling": false,
-            "shared_coop_state": 2.0,
+            "shared_coop_state": 2,
             "noise_params_splice": 0.1,
             "noise_type_splice": "dpd",
             "splice_ratio": 1.5,
@@ -498,13 +99,13 @@
               "outlier_enabled": false,
               "outlier_prob": 0.01,
               "outlier_mean": 0.8,
-              "outlier_scale": 1.0,
+              "outlier_scale": 1,
               "library_size_enabled": false,
               "library_size_mean": 4.6,
               "library_size_scale": 0.4,
               "dropout_enabled": false,
               "dropout_shape": 6.5,
-              "dropout_percentile": 82.0,
+              "dropout_percentile": 82,
               "convert_to_umi": false
             }
           },
@@ -537,7 +138,7 @@
             "window_length": 3,
             "dt": 0.01,
             "dt_splice": 0.01,
-            "shared_coop_state": 2.0,
+            "shared_coop_state": 2,
             "splice_ratio": 1.5,
             "differentiation_expression": "total",
             "technical_noise.outlier_enabled": false,
@@ -559,12 +160,12 @@
           "groups": 2,
           "population_count": 2,
           "threads": 1,
-          "ram_gb": 8.0,
+          "ram_gb": 8,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -591,7 +192,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
-            "profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "steady_state",
@@ -600,15 +200,6 @@
               "group"
             ],
             "truth_context_count": 2,
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "prior_grn",
-              "prior_grn_by_group",
-              "tf_list"
-            ],
             "requested_extras": [
               "cluster_identities",
               "column_phenotypes",
@@ -631,8 +222,6 @@
             "cells": 4,
             "groups": 2,
             "population_count": 2,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -642,7 +231,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 8.0,
+            "ram_gb": 8,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "steady_state",
@@ -654,7 +243,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -663,7 +252,19 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "prior_grn",
+              "prior_grn_by_group",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         },
         {
@@ -672,12 +273,12 @@
           "groups": 2,
           "population_count": 2,
           "threads": 1,
-          "ram_gb": 16.0,
+          "ram_gb": 16,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -704,7 +305,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
-            "profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "steady_state",
@@ -713,15 +313,6 @@
               "group"
             ],
             "truth_context_count": 2,
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "prior_grn",
-              "prior_grn_by_group",
-              "tf_list"
-            ],
             "requested_extras": [
               "cluster_identities",
               "column_phenotypes",
@@ -744,8 +335,6 @@
             "cells": 4,
             "groups": 2,
             "population_count": 2,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -755,7 +344,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 16.0,
+            "ram_gb": 16,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "steady_state",
@@ -767,7 +356,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -776,7 +365,19 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "prior_grn",
+              "prior_grn_by_group",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         },
         {
@@ -785,12 +386,12 @@
           "groups": 2,
           "population_count": 2,
           "threads": 1,
-          "ram_gb": 32.0,
+          "ram_gb": 32,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -817,7 +418,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
-            "profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "steady_state",
@@ -826,15 +426,6 @@
               "group"
             ],
             "truth_context_count": 2,
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "prior_grn",
-              "prior_grn_by_group",
-              "tf_list"
-            ],
             "requested_extras": [
               "cluster_identities",
               "column_phenotypes",
@@ -857,8 +448,6 @@
             "cells": 4,
             "groups": 2,
             "population_count": 2,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -868,7 +457,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 32.0,
+            "ram_gb": 32,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "steady_state",
@@ -880,7 +469,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -889,407 +478,19 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "profile_id": "single_cell_cells_differentiation_global_custom_default",
-      "benchmark_config": {
-        "simulator_id": "sergio",
-        "data_axes": {
-          "measurement": "rna_expression",
-          "resolution": "single_cell",
-          "column_kind": "cells",
-          "experimental_design": "differentiation"
-        },
-        "truth_requirements": {
-          "contexts": [
-            "global"
-          ]
-        },
-        "sizes": [
-          {
-            "genes": 3,
-            "cells": 4
-          }
-        ],
-        "threads_tested": [
-          1
-        ],
-        "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
-        ],
-        "repeats": 1,
-        "timeout_seconds": 1800,
-        "dimension_profile": {
-          "cells_param": {
-            "param": "number_sc",
-            "multiplier_param": "number_bins"
-          },
-          "genes_param": "number_genes",
-          "group_count": 0,
-          "population_count": 0
-        },
-        "input_profile": {
-          "requested_extras": [],
-          "effective_extras": [],
-          "required_inputs_satisfied": [],
-          "optional_inputs_provided": [],
-          "conditional_inputs_satisfied": [
-            "sergio_bifurcation_matrix",
-            "sergio_master_regulators",
-            "sergio_target_interactions"
-          ],
-          "input_source_modes": {
-            "input_preset": "custom_files"
-          },
-          "notes": []
-        },
-        "params_profile": {
-          "source": "simulatorspec_defaults_plus_override",
-          "override_file": "sergio.json:single_cell_cells_differentiation_global_custom_default:inline",
-          "resolved_base_params": {
-            "input_preset": "custom_files",
-            "simulation_mode": "differentiation",
-            "number_genes": 100,
-            "number_bins": 2,
-            "number_sc": 100,
-            "noise_params": 0.1,
-            "noise_type": "dpd",
-            "decays": 0.8,
-            "sampling_state": 1,
-            "tol": 0.001,
-            "window_length": 3,
-            "dt": 0.01,
-            "optimize_sampling": false,
-            "shared_coop_state": 2.0,
-            "noise_params_splice": 0.05,
-            "noise_type_splice": "dpd",
-            "splice_ratio": 1.5,
-            "dt_splice": 0.01,
-            "differentiation_expression": "total",
-            "technical_noise": {
-              "outlier_enabled": false,
-              "outlier_prob": 0.01,
-              "outlier_mean": 0.8,
-              "outlier_scale": 1.0,
-              "library_size_enabled": false,
-              "library_size_mean": 4.6,
-              "library_size_scale": 0.4,
-              "dropout_enabled": false,
-              "dropout_shape": 6.5,
-              "dropout_percentile": 82.0,
-              "convert_to_umi": false
-            }
-          },
-          "cost_relevant_params": [
-            "input_preset",
-            "simulation_mode",
-            "number_bins",
-            "noise_params",
-            "noise_params_splice",
-            "decays",
-            "sampling_state",
-            "window_length",
-            "dt",
-            "dt_splice",
-            "shared_coop_state",
-            "splice_ratio",
-            "differentiation_expression",
-            "technical_noise.outlier_enabled",
-            "technical_noise.dropout_enabled",
-            "technical_noise.convert_to_umi"
-          ],
-          "cost_relevant_values": {
-            "input_preset": "custom_files",
-            "simulation_mode": "differentiation",
-            "number_bins": 2,
-            "noise_params": 0.1,
-            "noise_params_splice": 0.05,
-            "decays": 0.8,
-            "sampling_state": 1,
-            "window_length": 3,
-            "dt": 0.01,
-            "dt_splice": 0.01,
-            "shared_coop_state": 2.0,
-            "splice_ratio": 1.5,
-            "differentiation_expression": "total",
-            "technical_noise.outlier_enabled": false,
-            "technical_noise.dropout_enabled": false,
-            "technical_noise.convert_to_umi": false
-          }
-        },
-        "runtime_resources_profile": {
-          "threading_supported": false,
-          "default_threads": 1,
-          "max_threads": 1,
-          "upstream_mapping": "SERGIO a6190b74425112834c8fa9b4b6157d9cb3d1ab88 exposes no public thread, worker or core-count control; ANDREA must assign threads=1 and the wrapper must not expose threading as a simulator parameter."
-        }
-      },
-      "runtime_points": [
-        {
-          "genes": 3,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 8.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.513305,
-          "seconds_p90": 1.513305,
-          "output_bytes_p50": 6559,
-          "output_bytes_p90": 6559,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "sergio",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "differentiation"
             },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_default",
-            "profile_id": "single_cell_cells_differentiation_global_custom_default",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "differentiation",
-            "truth_context_families": [
-              "global"
+            "profile_id": "single_cell_cells_steady_state_global_group_custom_full_extras",
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "prior_grn",
+              "prior_grn_by_group",
+              "tf_list"
             ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 3,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
             "n_genes": 3,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 3,
-            "threads": 1,
-            "ram_gb": 8.0,
-            "cost_relevant_values": {
-              "input_preset": "custom_files",
-              "simulation_mode": "differentiation",
-              "number_bins": 2,
-              "noise_params": 0.1,
-              "noise_params_splice": 0.05,
-              "decays": 0.8,
-              "sampling_state": 1,
-              "window_length": 3,
-              "dt": 0.01,
-              "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
-              "splice_ratio": 1.5,
-              "differentiation_expression": "total",
-              "technical_noise.outlier_enabled": false,
-              "technical_noise.dropout_enabled": false,
-              "technical_noise.convert_to_umi": false
-            },
-            "input_source_modes": {
-              "input_preset": "custom_files"
-            }
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 16.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.51344,
-          "seconds_p90": 1.51344,
-          "output_bytes_p50": 6559,
-          "output_bytes_p90": 6559,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "sergio",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "differentiation"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_default",
-            "profile_id": "single_cell_cells_differentiation_global_custom_default",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "differentiation",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 3,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 3,
-            "threads": 1,
-            "ram_gb": 16.0,
-            "cost_relevant_values": {
-              "input_preset": "custom_files",
-              "simulation_mode": "differentiation",
-              "number_bins": 2,
-              "noise_params": 0.1,
-              "noise_params_splice": 0.05,
-              "decays": 0.8,
-              "sampling_state": 1,
-              "window_length": 3,
-              "dt": 0.01,
-              "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
-              "splice_ratio": 1.5,
-              "differentiation_expression": "total",
-              "technical_noise.outlier_enabled": false,
-              "technical_noise.dropout_enabled": false,
-              "technical_noise.convert_to_umi": false
-            },
-            "input_source_modes": {
-              "input_preset": "custom_files"
-            }
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 32.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.474152,
-          "seconds_p90": 1.474152,
-          "output_bytes_p50": 6559,
-          "output_bytes_p90": 6559,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "sergio",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "differentiation"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_default",
-            "profile_id": "single_cell_cells_differentiation_global_custom_default",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "differentiation",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 3,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 3,
-            "threads": 1,
-            "ram_gb": 32.0,
-            "cost_relevant_values": {
-              "input_preset": "custom_files",
-              "simulation_mode": "differentiation",
-              "number_bins": 2,
-              "noise_params": 0.1,
-              "noise_params_splice": 0.05,
-              "decays": 0.8,
-              "sampling_state": 1,
-              "window_length": 3,
-              "dt": 0.01,
-              "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
-              "splice_ratio": 1.5,
-              "differentiation_expression": "total",
-              "technical_noise.outlier_enabled": false,
-              "technical_noise.dropout_enabled": false,
-              "technical_noise.convert_to_umi": false
-            },
-            "input_source_modes": {
-              "input_preset": "custom_files"
-            }
+            "n_cells": 4
           }
         }
       ]
@@ -1320,9 +521,9 @@
           1
         ],
         "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
+          8,
+          16,
+          32
         ],
         "repeats": 1,
         "timeout_seconds": 1800,
@@ -1385,7 +586,7 @@
             "window_length": 3,
             "dt": 0.01,
             "optimize_sampling": false,
-            "shared_coop_state": 2.0,
+            "shared_coop_state": 2,
             "noise_params_splice": 0.05,
             "noise_type_splice": "dpd",
             "splice_ratio": 1.5,
@@ -1395,13 +596,13 @@
               "outlier_enabled": false,
               "outlier_prob": 0.01,
               "outlier_mean": 0.8,
-              "outlier_scale": 1.0,
+              "outlier_scale": 1,
               "library_size_enabled": false,
               "library_size_mean": 4.6,
               "library_size_scale": 0.4,
               "dropout_enabled": false,
               "dropout_shape": 6.5,
-              "dropout_percentile": 82.0,
+              "dropout_percentile": 82,
               "convert_to_umi": false
             }
           },
@@ -1434,7 +635,7 @@
             "window_length": 3,
             "dt": 0.01,
             "dt_splice": 0.01,
-            "shared_coop_state": 2.0,
+            "shared_coop_state": 2,
             "splice_ratio": 1.5,
             "differentiation_expression": "total",
             "technical_noise.outlier_enabled": false,
@@ -1456,12 +657,12 @@
           "groups": 2,
           "population_count": 2,
           "threads": 1,
-          "ram_gb": 8.0,
+          "ram_gb": 8,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1488,7 +689,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
-            "profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "differentiation",
@@ -1497,16 +697,6 @@
               "group"
             ],
             "truth_context_count": 2,
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "lineage_tree",
-              "prior_grn",
-              "prior_grn_by_group",
-              "tf_list"
-            ],
             "requested_extras": [
               "cluster_identities",
               "column_phenotypes",
@@ -1531,8 +721,6 @@
             "cells": 4,
             "groups": 2,
             "population_count": 2,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1542,7 +730,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 3,
             "threads": 1,
-            "ram_gb": 8.0,
+            "ram_gb": 8,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "differentiation",
@@ -1554,7 +742,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -1563,7 +751,20 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         },
         {
@@ -1572,12 +773,12 @@
           "groups": 2,
           "population_count": 2,
           "threads": 1,
-          "ram_gb": 16.0,
+          "ram_gb": 16,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1604,7 +805,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
-            "profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "differentiation",
@@ -1613,16 +813,6 @@
               "group"
             ],
             "truth_context_count": 2,
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "lineage_tree",
-              "prior_grn",
-              "prior_grn_by_group",
-              "tf_list"
-            ],
             "requested_extras": [
               "cluster_identities",
               "column_phenotypes",
@@ -1647,8 +837,6 @@
             "cells": 4,
             "groups": 2,
             "population_count": 2,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1658,7 +846,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 3,
             "threads": 1,
-            "ram_gb": 16.0,
+            "ram_gb": 16,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "differentiation",
@@ -1670,7 +858,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -1679,7 +867,20 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         },
         {
@@ -1688,12 +889,12 @@
           "groups": 2,
           "population_count": 2,
           "threads": 1,
-          "ram_gb": 32.0,
+          "ram_gb": 32,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1720,7 +921,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
-            "profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "differentiation",
@@ -1729,16 +929,6 @@
               "group"
             ],
             "truth_context_count": 2,
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "lineage_tree",
-              "prior_grn",
-              "prior_grn_by_group",
-              "tf_list"
-            ],
             "requested_extras": [
               "cluster_identities",
               "column_phenotypes",
@@ -1763,8 +953,6 @@
             "cells": 4,
             "groups": 2,
             "population_count": 2,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1774,7 +962,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 3,
             "threads": 1,
-            "ram_gb": 32.0,
+            "ram_gb": 32,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "differentiation",
@@ -1786,7 +974,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -1795,7 +983,20 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_differentiation_global_group_custom_full_extras",
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         }
       ]
@@ -1825,9 +1026,9 @@
           1
         ],
         "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
+          8,
+          16,
+          32
         ],
         "repeats": 1,
         "timeout_seconds": 1800,
@@ -1879,7 +1080,7 @@
             "window_length": 3,
             "dt": 0.01,
             "optimize_sampling": false,
-            "shared_coop_state": 2.0,
+            "shared_coop_state": 2,
             "noise_params_splice": 0.1,
             "noise_type_splice": "dpd",
             "splice_ratio": 1.5,
@@ -1889,13 +1090,13 @@
               "outlier_enabled": false,
               "outlier_prob": 0.01,
               "outlier_mean": 0.8,
-              "outlier_scale": 1.0,
+              "outlier_scale": 1,
               "library_size_enabled": false,
               "library_size_mean": 4.6,
               "library_size_scale": 0.4,
               "dropout_enabled": false,
               "dropout_shape": 6.5,
-              "dropout_percentile": 82.0,
+              "dropout_percentile": 82,
               "convert_to_umi": false
             }
           },
@@ -1928,7 +1129,7 @@
             "window_length": 3,
             "dt": 0.01,
             "dt_splice": 0.01,
-            "shared_coop_state": 2.0,
+            "shared_coop_state": 2,
             "splice_ratio": 1.5,
             "differentiation_expression": "total",
             "technical_noise.outlier_enabled": false,
@@ -1950,12 +1151,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 8.0,
+          "ram_gb": 8,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1981,7 +1182,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
-            "profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "steady_state",
@@ -1989,11 +1189,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -2008,8 +1203,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -2019,7 +1212,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 8.0,
+            "ram_gb": 8,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "steady_state",
@@ -2031,7 +1224,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -2040,7 +1233,15 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         },
         {
@@ -2049,12 +1250,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 16.0,
+          "ram_gb": 16,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -2080,7 +1281,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
-            "profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "steady_state",
@@ -2088,11 +1288,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -2107,8 +1302,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -2118,7 +1311,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 16.0,
+            "ram_gb": 16,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "steady_state",
@@ -2130,7 +1323,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -2139,7 +1332,15 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         },
         {
@@ -2148,12 +1349,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 32.0,
+          "ram_gb": 32,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -2179,7 +1380,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
-            "profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "steady_state",
@@ -2187,11 +1387,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -2206,8 +1401,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -2217,7 +1410,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 32.0,
+            "ram_gb": 32,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "steady_state",
@@ -2229,7 +1422,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -2238,7 +1431,15 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_steady_state_global_custom_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         }
       ]
@@ -2268,9 +1469,9 @@
           1
         ],
         "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
+          8,
+          16,
+          32
         ],
         "repeats": 1,
         "timeout_seconds": 1800,
@@ -2323,7 +1524,7 @@
             "window_length": 3,
             "dt": 0.01,
             "optimize_sampling": false,
-            "shared_coop_state": 2.0,
+            "shared_coop_state": 2,
             "noise_params_splice": 0.05,
             "noise_type_splice": "dpd",
             "splice_ratio": 1.5,
@@ -2333,13 +1534,13 @@
               "outlier_enabled": false,
               "outlier_prob": 0.01,
               "outlier_mean": 0.8,
-              "outlier_scale": 1.0,
+              "outlier_scale": 1,
               "library_size_enabled": false,
               "library_size_mean": 4.6,
               "library_size_scale": 0.4,
               "dropout_enabled": false,
               "dropout_shape": 6.5,
-              "dropout_percentile": 82.0,
+              "dropout_percentile": 82,
               "convert_to_umi": false
             }
           },
@@ -2372,7 +1573,7 @@
             "window_length": 3,
             "dt": 0.01,
             "dt_splice": 0.01,
-            "shared_coop_state": 2.0,
+            "shared_coop_state": 2,
             "splice_ratio": 1.5,
             "differentiation_expression": "total",
             "technical_noise.outlier_enabled": false,
@@ -2394,12 +1595,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 8.0,
+          "ram_gb": 8,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -2425,7 +1626,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
-            "profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "differentiation",
@@ -2433,11 +1633,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -2452,8 +1647,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -2463,7 +1656,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 3,
             "threads": 1,
-            "ram_gb": 8.0,
+            "ram_gb": 8,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "differentiation",
@@ -2475,7 +1668,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -2484,7 +1677,15 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         },
         {
@@ -2493,12 +1694,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 16.0,
+          "ram_gb": 16,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -2524,7 +1725,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
-            "profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "differentiation",
@@ -2532,11 +1732,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -2551,8 +1746,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -2562,7 +1755,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 3,
             "threads": 1,
-            "ram_gb": 16.0,
+            "ram_gb": 16,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "differentiation",
@@ -2574,7 +1767,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -2583,7 +1776,15 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
-            }
+            },
+            "profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         },
         {
@@ -2592,12 +1793,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 32.0,
+          "ram_gb": 32,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -2623,7 +1824,6 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
-            "profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "differentiation",
@@ -2631,11 +1831,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -2650,8 +1845,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 3,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -2661,7 +1854,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 3,
             "threads": 1,
-            "ram_gb": 32.0,
+            "ram_gb": 32,
             "cost_relevant_values": {
               "input_preset": "custom_files",
               "simulation_mode": "differentiation",
@@ -2673,7 +1866,7 @@
               "window_length": 3,
               "dt": 0.01,
               "dt_splice": 0.01,
-              "shared_coop_state": 2.0,
+              "shared_coop_state": 2,
               "splice_ratio": 1.5,
               "differentiation_expression": "total",
               "technical_noise.outlier_enabled": false,
@@ -2682,7 +1875,842 @@
             },
             "input_source_modes": {
               "input_preset": "custom_files"
+            },
+            "profile_id": "single_cell_cells_differentiation_global_custom_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "single_cell_cells_steady_state_global_custom_default",
+      "benchmark_config": {
+        "simulator_id": "sergio",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "single_cell",
+          "column_kind": "cells",
+          "experimental_design": "steady_state"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 3,
+            "cells": 4
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8,
+          16,
+          32
+        ],
+        "repeats": 1,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": {
+            "param": "number_sc",
+            "multiplier_param": "number_bins"
+          },
+          "genes_param": "number_genes",
+          "group_count": 0,
+          "population_count": 0
+        },
+        "input_profile": {
+          "requested_extras": [],
+          "effective_extras": [
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [
+            "sergio_master_regulators",
+            "sergio_target_interactions"
+          ],
+          "input_source_modes": {
+            "input_preset": "custom_files"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "sergio.json:single_cell_cells_steady_state_global_custom_default:inline",
+          "resolved_base_params": {
+            "input_preset": "custom_files",
+            "simulation_mode": "steady_state",
+            "number_genes": 100,
+            "number_bins": 2,
+            "number_sc": 100,
+            "noise_params": 0.1,
+            "noise_type": "dpd",
+            "decays": 0.8,
+            "sampling_state": 1,
+            "tol": 0.001,
+            "window_length": 3,
+            "dt": 0.01,
+            "optimize_sampling": false,
+            "shared_coop_state": 2,
+            "noise_params_splice": 0.1,
+            "noise_type_splice": "dpd",
+            "splice_ratio": 1.5,
+            "dt_splice": 0.01,
+            "differentiation_expression": "total",
+            "technical_noise": {
+              "outlier_enabled": false,
+              "outlier_prob": 0.01,
+              "outlier_mean": 0.8,
+              "outlier_scale": 1,
+              "library_size_enabled": false,
+              "library_size_mean": 4.6,
+              "library_size_scale": 0.4,
+              "dropout_enabled": false,
+              "dropout_shape": 6.5,
+              "dropout_percentile": 82,
+              "convert_to_umi": false
             }
+          },
+          "cost_relevant_params": [
+            "decays",
+            "differentiation_expression",
+            "dt",
+            "dt_splice",
+            "input_preset",
+            "noise_params",
+            "noise_params_splice",
+            "number_bins",
+            "sampling_state",
+            "shared_coop_state",
+            "simulation_mode",
+            "splice_ratio",
+            "technical_noise.convert_to_umi",
+            "technical_noise.dropout_enabled",
+            "technical_noise.outlier_enabled",
+            "window_length"
+          ],
+          "cost_relevant_values": {
+            "decays": 0.8,
+            "differentiation_expression": "total",
+            "dt": 0.01,
+            "dt_splice": 0.01,
+            "input_preset": "custom_files",
+            "noise_params": 0.1,
+            "noise_params_splice": 0.1,
+            "number_bins": 2,
+            "sampling_state": 1,
+            "shared_coop_state": 2,
+            "simulation_mode": "steady_state",
+            "splice_ratio": 1.5,
+            "technical_noise.convert_to_umi": false,
+            "technical_noise.dropout_enabled": false,
+            "technical_noise.outlier_enabled": false,
+            "window_length": 3
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": false,
+          "default_threads": 1,
+          "max_threads": 1,
+          "upstream_mapping": "SERGIO a6190b74425112834c8fa9b4b6157d9cb3d1ab88 exposes no public thread, worker or core-count control; ANDREA must assign threads=1 and the wrapper must not expose threading as a simulator parameter."
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 3,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.33787,
+          "seconds_p90": 1.33787,
+          "output_bytes_p50": 5463,
+          "output_bytes_p90": 5463,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "sergio",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "steady_state"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "steady_state",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 3,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 2,
+            "threads": 1,
+            "ram_gb": 8,
+            "cost_relevant_values": {
+              "decays": 0.8,
+              "differentiation_expression": "total",
+              "dt": 0.01,
+              "dt_splice": 0.01,
+              "input_preset": "custom_files",
+              "noise_params": 0.1,
+              "noise_params_splice": 0.1,
+              "number_bins": 2,
+              "sampling_state": 1,
+              "shared_coop_state": 2,
+              "simulation_mode": "steady_state",
+              "splice_ratio": 1.5,
+              "technical_noise.convert_to_umi": false,
+              "technical_noise.dropout_enabled": false,
+              "technical_noise.outlier_enabled": false,
+              "window_length": 3
+            },
+            "input_source_modes": {
+              "input_preset": "custom_files"
+            },
+            "profile_id": "single_cell_cells_steady_state_global_custom_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
+          }
+        },
+        {
+          "genes": 3,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.178869,
+          "seconds_p90": 1.178869,
+          "output_bytes_p50": 5463,
+          "output_bytes_p90": 5463,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "sergio",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "steady_state"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "steady_state",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 3,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 2,
+            "threads": 1,
+            "ram_gb": 16,
+            "cost_relevant_values": {
+              "decays": 0.8,
+              "differentiation_expression": "total",
+              "dt": 0.01,
+              "dt_splice": 0.01,
+              "input_preset": "custom_files",
+              "noise_params": 0.1,
+              "noise_params_splice": 0.1,
+              "number_bins": 2,
+              "sampling_state": 1,
+              "shared_coop_state": 2,
+              "simulation_mode": "steady_state",
+              "splice_ratio": 1.5,
+              "technical_noise.convert_to_umi": false,
+              "technical_noise.dropout_enabled": false,
+              "technical_noise.outlier_enabled": false,
+              "window_length": 3
+            },
+            "input_source_modes": {
+              "input_preset": "custom_files"
+            },
+            "profile_id": "single_cell_cells_steady_state_global_custom_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
+          }
+        },
+        {
+          "genes": 3,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.211799,
+          "seconds_p90": 1.211799,
+          "output_bytes_p50": 5463,
+          "output_bytes_p90": 5463,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "sergio",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "steady_state"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_steady_state_global_custom_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "steady_state",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 3,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 2,
+            "threads": 1,
+            "ram_gb": 32,
+            "cost_relevant_values": {
+              "decays": 0.8,
+              "differentiation_expression": "total",
+              "dt": 0.01,
+              "dt_splice": 0.01,
+              "input_preset": "custom_files",
+              "noise_params": 0.1,
+              "noise_params_splice": 0.1,
+              "number_bins": 2,
+              "sampling_state": 1,
+              "shared_coop_state": 2,
+              "simulation_mode": "steady_state",
+              "splice_ratio": 1.5,
+              "technical_noise.convert_to_umi": false,
+              "technical_noise.dropout_enabled": false,
+              "technical_noise.outlier_enabled": false,
+              "window_length": 3
+            },
+            "input_source_modes": {
+              "input_preset": "custom_files"
+            },
+            "profile_id": "single_cell_cells_steady_state_global_custom_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "single_cell_cells_differentiation_global_custom_default",
+      "benchmark_config": {
+        "simulator_id": "sergio",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "single_cell",
+          "column_kind": "cells",
+          "experimental_design": "differentiation"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 3,
+            "cells": 4
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8,
+          16,
+          32
+        ],
+        "repeats": 1,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": {
+            "param": "number_sc",
+            "multiplier_param": "number_bins"
+          },
+          "genes_param": "number_genes",
+          "group_count": 0,
+          "population_count": 0
+        },
+        "input_profile": {
+          "requested_extras": [],
+          "effective_extras": [
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [
+            "sergio_bifurcation_matrix",
+            "sergio_master_regulators",
+            "sergio_target_interactions"
+          ],
+          "input_source_modes": {
+            "input_preset": "custom_files"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "sergio.json:single_cell_cells_differentiation_global_custom_default:inline",
+          "resolved_base_params": {
+            "input_preset": "custom_files",
+            "simulation_mode": "differentiation",
+            "number_genes": 100,
+            "number_bins": 2,
+            "number_sc": 100,
+            "noise_params": 0.1,
+            "noise_type": "dpd",
+            "decays": 0.8,
+            "sampling_state": 1,
+            "tol": 0.001,
+            "window_length": 3,
+            "dt": 0.01,
+            "optimize_sampling": false,
+            "shared_coop_state": 2,
+            "noise_params_splice": 0.05,
+            "noise_type_splice": "dpd",
+            "splice_ratio": 1.5,
+            "dt_splice": 0.01,
+            "differentiation_expression": "total",
+            "technical_noise": {
+              "outlier_enabled": false,
+              "outlier_prob": 0.01,
+              "outlier_mean": 0.8,
+              "outlier_scale": 1,
+              "library_size_enabled": false,
+              "library_size_mean": 4.6,
+              "library_size_scale": 0.4,
+              "dropout_enabled": false,
+              "dropout_shape": 6.5,
+              "dropout_percentile": 82,
+              "convert_to_umi": false
+            }
+          },
+          "cost_relevant_params": [
+            "decays",
+            "differentiation_expression",
+            "dt",
+            "dt_splice",
+            "input_preset",
+            "noise_params",
+            "noise_params_splice",
+            "number_bins",
+            "sampling_state",
+            "shared_coop_state",
+            "simulation_mode",
+            "splice_ratio",
+            "technical_noise.convert_to_umi",
+            "technical_noise.dropout_enabled",
+            "technical_noise.outlier_enabled",
+            "window_length"
+          ],
+          "cost_relevant_values": {
+            "decays": 0.8,
+            "differentiation_expression": "total",
+            "dt": 0.01,
+            "dt_splice": 0.01,
+            "input_preset": "custom_files",
+            "noise_params": 0.1,
+            "noise_params_splice": 0.05,
+            "number_bins": 2,
+            "sampling_state": 1,
+            "shared_coop_state": 2,
+            "simulation_mode": "differentiation",
+            "splice_ratio": 1.5,
+            "technical_noise.convert_to_umi": false,
+            "technical_noise.dropout_enabled": false,
+            "technical_noise.outlier_enabled": false,
+            "window_length": 3
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": false,
+          "default_threads": 1,
+          "max_threads": 1,
+          "upstream_mapping": "SERGIO a6190b74425112834c8fa9b4b6157d9cb3d1ab88 exposes no public thread, worker or core-count control; ANDREA must assign threads=1 and the wrapper must not expose threading as a simulator parameter."
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 3,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.478766,
+          "seconds_p90": 1.478766,
+          "output_bytes_p50": 6606,
+          "output_bytes_p90": 6606,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "sergio",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 3,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 3,
+            "threads": 1,
+            "ram_gb": 8,
+            "cost_relevant_values": {
+              "decays": 0.8,
+              "differentiation_expression": "total",
+              "dt": 0.01,
+              "dt_splice": 0.01,
+              "input_preset": "custom_files",
+              "noise_params": 0.1,
+              "noise_params_splice": 0.05,
+              "number_bins": 2,
+              "sampling_state": 1,
+              "shared_coop_state": 2,
+              "simulation_mode": "differentiation",
+              "splice_ratio": 1.5,
+              "technical_noise.convert_to_umi": false,
+              "technical_noise.dropout_enabled": false,
+              "technical_noise.outlier_enabled": false,
+              "window_length": 3
+            },
+            "input_source_modes": {
+              "input_preset": "custom_files"
+            },
+            "profile_id": "single_cell_cells_differentiation_global_custom_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
+          }
+        },
+        {
+          "genes": 3,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.482733,
+          "seconds_p90": 1.482733,
+          "output_bytes_p50": 6606,
+          "output_bytes_p90": 6606,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "sergio",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 3,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 3,
+            "threads": 1,
+            "ram_gb": 16,
+            "cost_relevant_values": {
+              "decays": 0.8,
+              "differentiation_expression": "total",
+              "dt": 0.01,
+              "dt_splice": 0.01,
+              "input_preset": "custom_files",
+              "noise_params": 0.1,
+              "noise_params_splice": 0.05,
+              "number_bins": 2,
+              "sampling_state": 1,
+              "shared_coop_state": 2,
+              "simulation_mode": "differentiation",
+              "splice_ratio": 1.5,
+              "technical_noise.convert_to_umi": false,
+              "technical_noise.dropout_enabled": false,
+              "technical_noise.outlier_enabled": false,
+              "window_length": 3
+            },
+            "input_source_modes": {
+              "input_preset": "custom_files"
+            },
+            "profile_id": "single_cell_cells_differentiation_global_custom_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
+          }
+        },
+        {
+          "genes": 3,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.493335,
+          "seconds_p90": 1.493335,
+          "output_bytes_p50": 6606,
+          "output_bytes_p90": 6606,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "sergio",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_differentiation_global_custom_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 3,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 3,
+            "threads": 1,
+            "ram_gb": 32,
+            "cost_relevant_values": {
+              "decays": 0.8,
+              "differentiation_expression": "total",
+              "dt": 0.01,
+              "dt_splice": 0.01,
+              "input_preset": "custom_files",
+              "noise_params": 0.1,
+              "noise_params_splice": 0.05,
+              "number_bins": 2,
+              "sampling_state": 1,
+              "shared_coop_state": 2,
+              "simulation_mode": "differentiation",
+              "splice_ratio": 1.5,
+              "technical_noise.convert_to_umi": false,
+              "technical_noise.dropout_enabled": false,
+              "technical_noise.outlier_enabled": false,
+              "window_length": 3
+            },
+            "input_source_modes": {
+              "input_preset": "custom_files"
+            },
+            "profile_id": "single_cell_cells_differentiation_global_custom_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 3,
+            "n_cells": 4
           }
         }
       ]

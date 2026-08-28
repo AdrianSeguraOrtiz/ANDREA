@@ -17,6 +17,12 @@ Before running a full benchmark, inspect the resolved matrix with:
 make benchmark-simulator-costs ARGS="--plan-only"
 ```
 
+To refresh selected profiles without replacing other measurements, repeat
+`--profile` for the profiles to run and pass `--merge-existing`. This mode
+requires at least one explicit profile. An incomplete matrix is not persisted,
+any existing entry for that profile is preserved, and the command exits
+non-zero.
+
 By default the benchmarker requests sizes `50x20`, `100x40`, `200x80`, threads
 `1,2,4,8`, RAM limits `8,16,32,64` GB, one repeat and a per-run timeout of
 1800 seconds. Thread values are filtered against each simulator's
@@ -81,6 +87,10 @@ semantic fields intended for planner models:
 - `experimental_design`: copied from `data_axes.experimental_design`.
 - `truth_context_families`: copied from `truth_requirements.contexts`.
 - `extras`, `requested_extras` and `effective_extras`.
+
+Every benchmarked profile must include `tf_list` in `effective_extras`, and the
+container must produce `extras/tf_list.txt`. Measurements made without that
+candidate-regulator artifact must be rerun; they must not be relabelled.
 
 `validate_simulator_costs.py` checks that those fields stay synchronized with
 the benchmark config and measured runtime point.

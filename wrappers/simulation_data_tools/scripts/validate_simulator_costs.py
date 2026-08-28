@@ -265,6 +265,10 @@ def semantic_input_errors(
 ) -> list[str]:
     errors: list[str] = []
     effective = set(input_profile.get("effective_extras", []))
+    if "tf_list" not in effective:
+        errors.append(
+            f"{prefix}.input_profile.effective_extras must include required tf_list"
+        )
     supported = set(capability.get("native_extras", []))
     supported.update(capability.get("derivable_extras", []))
     unsupported = sorted(effective.difference(supported))

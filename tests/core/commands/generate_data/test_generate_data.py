@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from jsonschema import Draft202012Validator
 
+from andrea.core.commands.generate_data import cost_planner
 from andrea.core.commands.generate_data.pipeline import (
     _copy_dataset_from_stage,
     _validate_selected_native_outputs,
@@ -1705,6 +1706,73 @@ class GenerateDataDyngenTests(unittest.TestCase):
         )
         self.assertIn("eta_total_seconds", resolved.execution)
         self.assertGreaterEqual(resolved.execution["eta_total_seconds"], 0)
+
+    def test_cost_loader_accepts_profiles_measured_with_tf_list(self) -> None:
+        payload = {
+            "profiles": [
+                {
+                    "profile_id": "measured_with_tf_list",
+                    "benchmark_config": {
+                        "input_profile": {"effective_extras": ["tf_list"]}
+                    },
+                    "runtime_points": [
+                        {"feature_vector": {"effective_extras": ["tf_list"]}}
+                    ],
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog_root = Path(tmp)
+            simulator_dir = catalog_root / "simulators" / "dyngen"
+            simulator_dir.mkdir(parents=True)
+            (simulator_dir / "cost.json").write_text(
+                json.dumps(payload), encoding="utf-8"
+            )
+            with patch.object(cost_planner, "CATALOG_ROOT", catalog_root):
+                loaded, warnings = cost_planner._load_simulator_cost_payload("dyngen")
+
+        self.assertEqual(loaded, payload)
+        self.assertEqual(warnings, [])
+
+    def test_cost_loader_rejects_profiles_or_points_without_tf_list(self) -> None:
+        for config_extras, point_extras in (([], ["tf_list"]), (["tf_list"], [])):
+            with self.subTest(
+                config_extras=config_extras,
+                point_extras=point_extras,
+            ), tempfile.TemporaryDirectory() as tmp:
+                payload = {
+                    "profiles": [
+                        {
+                            "profile_id": "measured_without_tf_list",
+                            "benchmark_config": {
+                                "input_profile": {
+                                    "effective_extras": config_extras
+                                }
+                            },
+                            "runtime_points": [
+                                {
+                                    "feature_vector": {
+                                        "effective_extras": point_extras
+                                    }
+                                }
+                            ],
+                        }
+                    ]
+                }
+                catalog_root = Path(tmp)
+                simulator_dir = catalog_root / "simulators" / "dyngen"
+                simulator_dir.mkdir(parents=True)
+                (simulator_dir / "cost.json").write_text(
+                    json.dumps(payload), encoding="utf-8"
+                )
+                with patch.object(cost_planner, "CATALOG_ROOT", catalog_root):
+                    loaded, warnings = cost_planner._load_simulator_cost_payload(
+                        "dyngen"
+                    )
+
+                self.assertIsNone(loaded)
+                self.assertEqual(len(warnings), 1)
+                self.assertIn("must contain tf_list", warnings[0])
 
     def test_plan_uses_simulator_cost_profile_when_available(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

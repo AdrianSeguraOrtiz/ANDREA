@@ -63,11 +63,57 @@ def _load_simulator_cost_payload(simulator_id: str) -> tuple[dict[str, Any] | No
             f"[{simulator_id}] no cost.json found; using conservative fallback ETA."
         ]
     try:
-        return _load_json_object(cost_path, f"simulator-cost[{simulator_id}]"), []
+        payload = _load_json_object(cost_path, f"simulator-cost[{simulator_id}]")
+        _validate_cost_payload_tf_list(payload)
+        return payload, []
     except ValueError as exc:
         return None, [
             f"[{simulator_id}] invalid cost.json ignored ({exc}); using conservative fallback ETA."
         ]
+
+
+def _validate_cost_payload_tf_list(payload: dict[str, Any]) -> None:
+    """Reject benchmark profiles and points measured without the required TF list."""
+    profiles = payload.get("profiles")
+    if not isinstance(profiles, list):
+        return
+    for profile_index, profile in enumerate(profiles, start=1):
+        if not isinstance(profile, dict):
+            continue
+        profile_id = profile.get("profile_id")
+        profile_label = (
+            profile_id
+            if isinstance(profile_id, str) and profile_id
+            else f"profiles[{profile_index}]"
+        )
+        input_profile = _profile_config(profile).get("input_profile")
+        effective_extras = (
+            input_profile.get("effective_extras")
+            if isinstance(input_profile, dict)
+            else None
+        )
+        if not isinstance(effective_extras, list) or "tf_list" not in effective_extras:
+            raise ValueError(
+                f"{profile_label}.benchmark_config.input_profile.effective_extras "
+                "must contain tf_list"
+            )
+        runtime_points = profile.get("runtime_points")
+        if not isinstance(runtime_points, list):
+            continue
+        for point_index, point in enumerate(runtime_points, start=1):
+            feature_vector = (
+                point.get("feature_vector") if isinstance(point, dict) else None
+            )
+            point_extras = (
+                feature_vector.get("effective_extras")
+                if isinstance(feature_vector, dict)
+                else None
+            )
+            if not isinstance(point_extras, list) or "tf_list" not in point_extras:
+                raise ValueError(
+                    f"{profile_label}.runtime_points[{point_index}].feature_vector."
+                    "effective_extras must contain tf_list"
+                )
 
 
 def _value_at_path(payload: Any, path: str) -> Any:

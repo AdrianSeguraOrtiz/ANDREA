@@ -201,6 +201,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Do not write cost.json; run benchmarks without persisting cost profiles.",
     )
     parser.add_argument(
+        "--merge-existing",
+        action="store_true",
+        help=(
+            "Merge newly measured --profile entries into the existing cost.json "
+            "instead of replacing the whole file. Requires at least one --profile."
+        ),
+    )
+    parser.add_argument(
         "--keep-workdir",
         action="store_true",
         help="Keep temporary benchmark directories for debugging.",
@@ -278,6 +286,8 @@ def validate_runtime_args(args: argparse.Namespace) -> None:
         raise RuntimeError("--max-cpu must be >= 1.")
     if args.max_ram_gb < 1:
         raise RuntimeError("--max-ram-gb must be >= 1.")
+    if args.merge_existing and not profile_filter_keys(args.profile):
+        raise RuntimeError("--merge-existing requires at least one --profile.")
 
 
 def resolve_benchmark_dimensions(
@@ -1375,13 +1385,19 @@ def run_container_once(
     manifest_path = out_dir / "simulator-output-manifest.json"
     expression_path = out_dir / "expression.tsv"
     truth_path = out_dir / "truth" / "networks.csv"
-    if not manifest_path.exists() or not expression_path.exists() or not truth_path.exists():
+    tf_list_path = out_dir / "extras" / "tf_list.txt"
+    required_outputs = [manifest_path, expression_path, truth_path, tf_list_path]
+    missing_outputs = [
+        str(path.relative_to(out_dir)) for path in required_outputs if not path.exists()
+    ]
+    if missing_outputs:
         return (
             "error",
             elapsed,
             output_tree_size_bytes(out_dir),
             None,
-            "Container finished but normalized output files are missing.",
+            "Container finished but required normalized output files are missing: "
+            + ", ".join(missing_outputs),
         )
     return ("ok", elapsed, output_tree_size_bytes(out_dir), None, "")
 
@@ -1805,6 +1821,27 @@ def write_simulator_cost_profile(*, cost_path: Path, payload: dict[str, Any]) ->
     save_json(cost_path, payload)
 
 
+def merge_existing_cost_profiles(
+    *,
+    cost_path: Path,
+    measured_payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Replace measured profile IDs while preserving all other profiles."""
+    if not cost_path.exists():
+        return measured_payload
+
+    existing = load_json(cost_path)
+    measured_by_id = {
+        profile["profile_id"]: profile for profile in measured_payload["profiles"]
+    }
+    merged_profiles = [
+        measured_by_id.pop(profile["profile_id"], profile)
+        for profile in existing["profiles"]
+    ]
+    merged_profiles.extend(measured_by_id.values())
+    return make_cost_payload(profile_entries=merged_profiles)
+
+
 def summarize_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
     successful = [run for run in runs if run["status"] == "ok"]
     failed = [run for run in runs if run["status"] != "ok"]
@@ -1946,6 +1983,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     global_success = 0
     global_fail = 0
     fail_fast_triggered = False
+    had_error = False
 
     for target in targets:
         simulator_id = target.simulator_id
@@ -1954,6 +1992,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         wrapper_dir = args.wrappers_root / simulator_id
         if not wrapper_dir.is_dir():
             print(f"[{simulator_id}] ERROR: missing wrapper dir: {wrapper_dir}", file=sys.stderr)
+            had_error = True
             if args.fail_fast:
                 break
             continue
@@ -1964,6 +2003,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         simulator_ok = 0
         simulator_failed = 0
         wrote_cost = False
+        simulator_has_unpersistable_profile = False
         try:
             if not args.skip_build:
                 build_image(
@@ -2009,7 +2049,17 @@ def run(argv: Sequence[str] | None = None) -> int:
                     profile=profile,
                     all_runs=profile_runs,
                 )
-                if runtime_points:
+                expected_profile_runs = (
+                    len(profile_sizes)
+                    * len(simulator_threads)
+                    * len(ram_gb)
+                    * args.repeats
+                )
+                profile_completed = (
+                    len(profile_runs) == expected_profile_runs
+                    and all(run["status"] == "ok" for run in profile_runs)
+                )
+                if runtime_points and profile_completed:
                     cost_entries.append(
                         make_cost_profile_entry(
                             profile_id=profile.profile_id,
@@ -2024,6 +2074,15 @@ def run(argv: Sequence[str] | None = None) -> int:
                             runtime_points=runtime_points,
                         )
                     )
+                elif not profile_completed:
+                    had_error = True
+                    simulator_has_unpersistable_profile = True
+                    print(
+                        f"[{simulator_id}/{profile.profile_id}] warning: "
+                        "incomplete or unsuccessful matrix "
+                        f"({len(profile_runs)}/{expected_profile_runs}); "
+                        "preserving any existing cost profile."
+                    )
                 print(
                     f"[{simulator_id}/{profile.profile_id}] summary: "
                     f"total={summary['total_runs']} ok={summary['successful_runs']} "
@@ -2031,12 +2090,32 @@ def run(argv: Sequence[str] | None = None) -> int:
                 )
                 if fail_fast_triggered:
                     break
-            if cost_entries and not args.no_write_cost:
+            can_write_cost = bool(cost_entries) and (
+                args.merge_existing or not simulator_has_unpersistable_profile
+            )
+            if can_write_cost and not args.no_write_cost:
+                cost_path = target.catalog_simulator_dir / "cost.json"
+                cost_payload = make_cost_payload(profile_entries=cost_entries)
+                if args.merge_existing:
+                    cost_payload = merge_existing_cost_profiles(
+                        cost_path=cost_path,
+                        measured_payload=cost_payload,
+                    )
                 write_simulator_cost_profile(
-                    cost_path=target.catalog_simulator_dir / "cost.json",
-                    payload=make_cost_payload(profile_entries=cost_entries),
+                    cost_path=cost_path,
+                    payload=cost_payload,
                 )
                 wrote_cost = True
+            elif (
+                cost_entries
+                and simulator_has_unpersistable_profile
+                and not args.merge_existing
+                and not args.no_write_cost
+            ):
+                print(
+                    f"[{simulator_id}] warning: not writing cost.json because at "
+                    "least one selected profile was incomplete or unsuccessful."
+                )
             elif not cost_entries:
                 print(f"[{simulator_id}] warning: no profile runs were observed.")
             print(
@@ -2045,6 +2124,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 f"wrote_cost={wrote_cost}"
             )
         except Exception as exc:  # noqa: BLE001
+            had_error = True
             print(f"[{simulator_id}] ERROR: {exc}", file=sys.stderr)
             if args.fail_fast:
                 break
@@ -2058,7 +2138,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     print(
         f"Benchmark finished. successful_runs={global_success} failed_runs={global_fail}"
     )
-    return 0
+    return 1 if had_error or global_fail else 0
 
 
 def deep_merge(base: Any, override: Any) -> Any:

@@ -2,422 +2,6 @@
   "schema_version": "1.0",
   "profiles": [
     {
-      "profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
-      "benchmark_config": {
-        "simulator_id": "syntren",
-        "data_axes": {
-          "measurement": "rna_expression",
-          "resolution": "bulk",
-          "column_kind": "samples",
-          "experimental_design": "observational"
-        },
-        "truth_requirements": {
-          "contexts": [
-            "global"
-          ]
-        },
-        "sizes": [
-          {
-            "genes": 30,
-            "cells": 4
-          }
-        ],
-        "threads_tested": [
-          1
-        ],
-        "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
-        ],
-        "repeats": 1,
-        "timeout_seconds": 1800,
-        "dimension_profile": {
-          "cells_param": {
-            "param": "sampling.num_experiments",
-            "multiplier_param": "sampling.samples_per_experiment"
-          },
-          "genes_param": "subnetwork.num_nodes",
-          "group_count": 0,
-          "population_count": 0
-        },
-        "input_profile": {
-          "requested_extras": [],
-          "effective_extras": [],
-          "required_inputs_satisfied": [],
-          "optional_inputs_provided": [],
-          "conditional_inputs_satisfied": [],
-          "input_source_modes": {
-            "external_inputs.fixed_source": "builtin_concentration_series",
-            "source_network.preset": "ecoli_full"
-          },
-          "notes": []
-        },
-        "params_profile": {
-          "source": "simulatorspec_defaults_plus_override",
-          "override_file": "syntren.json:bulk_samples_observational_global_builtin_subnetwork_default:inline",
-          "resolved_base_params": {
-            "source_network": {
-              "preset": "ecoli_full"
-            },
-            "subnetwork": {
-              "enabled": true,
-              "method": "neighbor_addition",
-              "num_nodes": 30,
-              "num_background_nodes": 5
-            },
-            "interactions": {
-              "use_edge_types_from_sif": true,
-              "percent_activators": 0.5,
-              "interaction_category": "DEFAULT",
-              "higher_order_probability": 0.0
-            },
-            "external_inputs": {
-              "mode": "randomized",
-              "fixed_source": "builtin_concentration_series",
-              "num_externals": 5,
-              "num_correlated_externals": 0,
-              "correlation_noise": 0.0
-            },
-            "sampling": {
-              "burn_in": 10,
-              "num_experiments": 4,
-              "samples_per_experiment": 1
-            },
-            "noise": {
-              "biological": 0.01,
-              "input": 0.01,
-              "experimental": 0.01
-            },
-            "expression_variant": "unnormalized"
-          },
-          "cost_relevant_params": [
-            "source_network.preset",
-            "subnetwork.enabled",
-            "subnetwork.method",
-            "subnetwork.num_nodes",
-            "subnetwork.num_background_nodes",
-            "interactions.use_edge_types_from_sif",
-            "interactions.percent_activators",
-            "interactions.interaction_category",
-            "external_inputs.mode",
-            "external_inputs.fixed_source",
-            "external_inputs.num_externals",
-            "external_inputs.num_correlated_externals",
-            "sampling.burn_in",
-            "sampling.num_experiments",
-            "sampling.samples_per_experiment",
-            "noise.biological",
-            "noise.input",
-            "noise.experimental",
-            "expression_variant"
-          ],
-          "cost_relevant_values": {
-            "source_network.preset": "ecoli_full",
-            "subnetwork.enabled": true,
-            "subnetwork.method": "neighbor_addition",
-            "subnetwork.num_nodes": 30,
-            "subnetwork.num_background_nodes": 5,
-            "interactions.use_edge_types_from_sif": true,
-            "interactions.percent_activators": 0.5,
-            "interactions.interaction_category": "DEFAULT",
-            "external_inputs.mode": "randomized",
-            "external_inputs.fixed_source": "builtin_concentration_series",
-            "external_inputs.num_externals": 5,
-            "external_inputs.num_correlated_externals": 0,
-            "sampling.burn_in": 10,
-            "sampling.num_experiments": 4,
-            "sampling.samples_per_experiment": 1,
-            "noise.biological": 0.01,
-            "noise.input": 0.01,
-            "noise.experimental": 0.01,
-            "expression_variant": "unnormalized"
-          }
-        },
-        "runtime_resources_profile": {
-          "threading_supported": false,
-          "default_threads": 1,
-          "max_threads": 1,
-          "upstream_mapping": "SynTReN 1.2 is executed through the public Java CLI/API. The reviewed ini settings, CLI documentation and release notes expose no thread, worker, OpenMP, BLAS or process-count control, so ANDREA must run the wrapper with runtime_resources.threads=1."
-        }
-      },
-      "runtime_points": [
-        {
-          "genes": 30,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 8.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.900479,
-          "seconds_p90": 1.900479,
-          "output_bytes_p50": 299304,
-          "output_bytes_p90": 299304,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "syntren",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "bulk",
-              "column_kind": "samples",
-              "experimental_design": "observational"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
-            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
-            "expression_profile": "bulk",
-            "column_kind": "samples",
-            "experimental_design": "observational",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 30,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
-            "n_genes": 30,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 0,
-            "threads": 1,
-            "ram_gb": 8.0,
-            "cost_relevant_values": {
-              "source_network.preset": "ecoli_full",
-              "subnetwork.enabled": true,
-              "subnetwork.method": "neighbor_addition",
-              "subnetwork.num_nodes": 30,
-              "subnetwork.num_background_nodes": 5,
-              "interactions.use_edge_types_from_sif": true,
-              "interactions.percent_activators": 0.5,
-              "interactions.interaction_category": "DEFAULT",
-              "external_inputs.mode": "randomized",
-              "external_inputs.fixed_source": "builtin_concentration_series",
-              "external_inputs.num_externals": 5,
-              "external_inputs.num_correlated_externals": 0,
-              "sampling.burn_in": 10,
-              "sampling.num_experiments": 4,
-              "sampling.samples_per_experiment": 1,
-              "noise.biological": 0.01,
-              "noise.input": 0.01,
-              "noise.experimental": 0.01,
-              "expression_variant": "unnormalized"
-            },
-            "input_source_modes": {
-              "external_inputs.fixed_source": "builtin_concentration_series",
-              "source_network.preset": "ecoli_full"
-            }
-          }
-        },
-        {
-          "genes": 30,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 16.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.503923,
-          "seconds_p90": 1.503923,
-          "output_bytes_p50": 299317,
-          "output_bytes_p90": 299317,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "syntren",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "bulk",
-              "column_kind": "samples",
-              "experimental_design": "observational"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
-            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
-            "expression_profile": "bulk",
-            "column_kind": "samples",
-            "experimental_design": "observational",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 30,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
-            "n_genes": 30,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 0,
-            "threads": 1,
-            "ram_gb": 16.0,
-            "cost_relevant_values": {
-              "source_network.preset": "ecoli_full",
-              "subnetwork.enabled": true,
-              "subnetwork.method": "neighbor_addition",
-              "subnetwork.num_nodes": 30,
-              "subnetwork.num_background_nodes": 5,
-              "interactions.use_edge_types_from_sif": true,
-              "interactions.percent_activators": 0.5,
-              "interactions.interaction_category": "DEFAULT",
-              "external_inputs.mode": "randomized",
-              "external_inputs.fixed_source": "builtin_concentration_series",
-              "external_inputs.num_externals": 5,
-              "external_inputs.num_correlated_externals": 0,
-              "sampling.burn_in": 10,
-              "sampling.num_experiments": 4,
-              "sampling.samples_per_experiment": 1,
-              "noise.biological": 0.01,
-              "noise.input": 0.01,
-              "noise.experimental": 0.01,
-              "expression_variant": "unnormalized"
-            },
-            "input_source_modes": {
-              "external_inputs.fixed_source": "builtin_concentration_series",
-              "source_network.preset": "ecoli_full"
-            }
-          }
-        },
-        {
-          "genes": 30,
-          "cells": 4,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 32.0,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1.0,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.580781,
-          "seconds_p90": 1.580781,
-          "output_bytes_p50": 299307,
-          "output_bytes_p90": 299307,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "syntren",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "bulk",
-              "column_kind": "samples",
-              "experimental_design": "observational"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
-            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
-            "expression_profile": "bulk",
-            "column_kind": "samples",
-            "experimental_design": "observational",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "extras": [],
-            "requested_extras": [],
-            "effective_extras": [],
-            "genes": 30,
-            "cells": 4,
-            "groups": 0,
-            "population_count": 0,
-            "n_genes": 30,
-            "n_cells": 4,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 0,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 0,
-            "conditional_inputs_count": 0,
-            "threads": 1,
-            "ram_gb": 32.0,
-            "cost_relevant_values": {
-              "source_network.preset": "ecoli_full",
-              "subnetwork.enabled": true,
-              "subnetwork.method": "neighbor_addition",
-              "subnetwork.num_nodes": 30,
-              "subnetwork.num_background_nodes": 5,
-              "interactions.use_edge_types_from_sif": true,
-              "interactions.percent_activators": 0.5,
-              "interactions.interaction_category": "DEFAULT",
-              "external_inputs.mode": "randomized",
-              "external_inputs.fixed_source": "builtin_concentration_series",
-              "external_inputs.num_externals": 5,
-              "external_inputs.num_correlated_externals": 0,
-              "sampling.burn_in": 10,
-              "sampling.num_experiments": 4,
-              "sampling.samples_per_experiment": 1,
-              "noise.biological": 0.01,
-              "noise.input": 0.01,
-              "noise.experimental": 0.01,
-              "expression_variant": "unnormalized"
-            },
-            "input_source_modes": {
-              "external_inputs.fixed_source": "builtin_concentration_series",
-              "source_network.preset": "ecoli_full"
-            }
-          }
-        }
-      ]
-    },
-    {
       "profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
       "benchmark_config": {
         "simulator_id": "syntren",
@@ -442,9 +26,9 @@
           1
         ],
         "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
+          8,
+          16,
+          32
         ],
         "repeats": 1,
         "timeout_seconds": 1800,
@@ -494,14 +78,14 @@
               "use_edge_types_from_sif": true,
               "percent_activators": 0.5,
               "interaction_category": "DEFAULT",
-              "higher_order_probability": 0.0
+              "higher_order_probability": 0
             },
             "external_inputs": {
               "mode": "randomized",
               "fixed_source": "builtin_concentration_series",
               "num_externals": 5,
               "num_correlated_externals": 0,
-              "correlation_noise": 0.0
+              "correlation_noise": 0
             },
             "sampling": {
               "burn_in": 10,
@@ -572,12 +156,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 8.0,
+          "ram_gb": 8,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -603,7 +187,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
-            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
             "expression_profile": "bulk",
             "column_kind": "samples",
             "experimental_design": "observational",
@@ -611,11 +194,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -630,8 +208,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 30,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -641,7 +217,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 0,
             "threads": 1,
-            "ram_gb": 8.0,
+            "ram_gb": 8,
             "cost_relevant_values": {
               "source_network.preset": "ecoli_full",
               "subnetwork.enabled": true,
@@ -666,7 +242,15 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "builtin_concentration_series",
               "source_network.preset": "ecoli_full"
-            }
+            },
+            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 30,
+            "n_cells": 4
           }
         },
         {
@@ -675,12 +259,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 16.0,
+          "ram_gb": 16,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -706,7 +290,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
-            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
             "expression_profile": "bulk",
             "column_kind": "samples",
             "experimental_design": "observational",
@@ -714,11 +297,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -733,8 +311,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 30,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -744,7 +320,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 0,
             "threads": 1,
-            "ram_gb": 16.0,
+            "ram_gb": 16,
             "cost_relevant_values": {
               "source_network.preset": "ecoli_full",
               "subnetwork.enabled": true,
@@ -769,7 +345,15 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "builtin_concentration_series",
               "source_network.preset": "ecoli_full"
-            }
+            },
+            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 30,
+            "n_cells": 4
           }
         },
         {
@@ -778,12 +362,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 32.0,
+          "ram_gb": 32,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -809,7 +393,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
-            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
             "expression_profile": "bulk",
             "column_kind": "samples",
             "experimental_design": "observational",
@@ -817,11 +400,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -836,8 +414,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 30,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -847,7 +423,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 0,
             "threads": 1,
-            "ram_gb": 32.0,
+            "ram_gb": 32,
             "cost_relevant_values": {
               "source_network.preset": "ecoli_full",
               "subnetwork.enabled": true,
@@ -872,7 +448,15 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "builtin_concentration_series",
               "source_network.preset": "ecoli_full"
-            }
+            },
+            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 30,
+            "n_cells": 4
           }
         }
       ]
@@ -902,9 +486,9 @@
           1
         ],
         "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
+          8,
+          16,
+          32
         ],
         "repeats": 1,
         "timeout_seconds": 1800,
@@ -959,7 +543,7 @@
               "use_edge_types_from_sif": true,
               "percent_activators": 0.2,
               "interaction_category": "SIGMOIDAL",
-              "higher_order_probability": 0.0
+              "higher_order_probability": 0
             },
             "external_inputs": {
               "mode": "from_file",
@@ -1037,12 +621,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 8.0,
+          "ram_gb": 8,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1068,7 +652,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
-            "profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
             "expression_profile": "bulk",
             "column_kind": "perturbations",
             "experimental_design": "perturbational",
@@ -1076,13 +659,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "interventions",
-              "perturbation_design",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "interventions",
@@ -1101,8 +677,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 423,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1112,7 +686,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 0,
             "threads": 1,
-            "ram_gb": 8.0,
+            "ram_gb": 8,
             "cost_relevant_values": {
               "source_network.preset": "ecoli_full",
               "subnetwork.enabled": false,
@@ -1137,7 +711,17 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "builtin_concentration_series",
               "source_network.preset": "ecoli_full"
-            }
+            },
+            "profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 423,
+            "n_cells": 4
           }
         },
         {
@@ -1146,12 +730,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 16.0,
+          "ram_gb": 16,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1177,7 +761,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
-            "profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
             "expression_profile": "bulk",
             "column_kind": "perturbations",
             "experimental_design": "perturbational",
@@ -1185,13 +768,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "interventions",
-              "perturbation_design",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "interventions",
@@ -1210,8 +786,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 423,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1221,7 +795,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 0,
             "threads": 1,
-            "ram_gb": 16.0,
+            "ram_gb": 16,
             "cost_relevant_values": {
               "source_network.preset": "ecoli_full",
               "subnetwork.enabled": false,
@@ -1246,7 +820,17 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "builtin_concentration_series",
               "source_network.preset": "ecoli_full"
-            }
+            },
+            "profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 423,
+            "n_cells": 4
           }
         },
         {
@@ -1255,12 +839,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 32.0,
+          "ram_gb": 32,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1286,7 +870,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
-            "profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
             "expression_profile": "bulk",
             "column_kind": "perturbations",
             "experimental_design": "perturbational",
@@ -1294,13 +877,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "interventions",
-              "perturbation_design",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "interventions",
@@ -1319,8 +895,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 423,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1330,7 +904,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 0,
             "threads": 1,
-            "ram_gb": 32.0,
+            "ram_gb": 32,
             "cost_relevant_values": {
               "source_network.preset": "ecoli_full",
               "subnetwork.enabled": false,
@@ -1355,7 +929,17 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "builtin_concentration_series",
               "source_network.preset": "ecoli_full"
-            }
+            },
+            "profile_id": "bulk_perturbations_perturbational_global_builtin_fixed_externals_full_extras",
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 423,
+            "n_cells": 4
           }
         }
       ]
@@ -1385,9 +969,9 @@
           1
         ],
         "ram_gb_tested": [
-          8.0,
-          16.0,
-          32.0
+          8,
+          16,
+          32
         ],
         "repeats": 1,
         "timeout_seconds": 1800,
@@ -1445,7 +1029,7 @@
               "use_edge_types_from_sif": true,
               "percent_activators": 0.2,
               "interaction_category": "SIGMOIDAL",
-              "higher_order_probability": 0.0
+              "higher_order_probability": 0
             },
             "external_inputs": {
               "mode": "from_file",
@@ -1523,12 +1107,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 8.0,
+          "ram_gb": 8,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1554,7 +1138,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
-            "profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
             "expression_profile": "bulk",
             "column_kind": "perturbations",
             "experimental_design": "perturbational",
@@ -1562,13 +1145,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "interventions",
-              "perturbation_design",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "interventions",
@@ -1587,8 +1163,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 5,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1598,7 +1172,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 8.0,
+            "ram_gb": 8,
             "cost_relevant_values": {
               "source_network.preset": "custom_sif",
               "subnetwork.enabled": false,
@@ -1623,7 +1197,17 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "custom_table",
               "source_network.preset": "custom_sif"
-            }
+            },
+            "profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 5,
+            "n_cells": 4
           }
         },
         {
@@ -1632,12 +1216,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 16.0,
+          "ram_gb": 16,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1663,7 +1247,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
-            "profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
             "expression_profile": "bulk",
             "column_kind": "perturbations",
             "experimental_design": "perturbational",
@@ -1671,13 +1254,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "interventions",
-              "perturbation_design",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "interventions",
@@ -1696,8 +1272,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 5,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1707,7 +1281,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 16.0,
+            "ram_gb": 16,
             "cost_relevant_values": {
               "source_network.preset": "custom_sif",
               "subnetwork.enabled": false,
@@ -1732,7 +1306,17 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "custom_table",
               "source_network.preset": "custom_sif"
-            }
+            },
+            "profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 5,
+            "n_cells": 4
           }
         },
         {
@@ -1741,12 +1325,12 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 32.0,
+          "ram_gb": 32,
           "status": "ok",
           "repeats_total": 1,
           "repeats_ok": 1,
           "repeats_failed": 0,
-          "ok_rate": 1.0,
+          "ok_rate": 1,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
@@ -1772,7 +1356,6 @@
               ]
             },
             "benchmark_profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
-            "profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
             "expression_profile": "bulk",
             "column_kind": "perturbations",
             "experimental_design": "perturbational",
@@ -1780,13 +1363,6 @@
               "global"
             ],
             "truth_context_count": 1,
-            "extras": [
-              "enrichment_background",
-              "interventions",
-              "perturbation_design",
-              "prior_grn",
-              "tf_list"
-            ],
             "requested_extras": [
               "enrichment_background",
               "interventions",
@@ -1805,8 +1381,6 @@
             "cells": 4,
             "groups": 0,
             "population_count": 0,
-            "n_genes": 5,
-            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -1816,7 +1390,7 @@
             "optional_inputs_count": 0,
             "conditional_inputs_count": 2,
             "threads": 1,
-            "ram_gb": 32.0,
+            "ram_gb": 32,
             "cost_relevant_values": {
               "source_network.preset": "custom_sif",
               "subnetwork.enabled": false,
@@ -1841,7 +1415,447 @@
             "input_source_modes": {
               "external_inputs.fixed_source": "custom_table",
               "source_network.preset": "custom_sif"
-            }
+            },
+            "profile_id": "bulk_perturbations_perturbational_global_custom_inputs_full_extras",
+            "extras": [
+              "enrichment_background",
+              "interventions",
+              "perturbation_design",
+              "prior_grn",
+              "tf_list"
+            ],
+            "n_genes": 5,
+            "n_cells": 4
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
+      "benchmark_config": {
+        "simulator_id": "syntren",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "bulk",
+          "column_kind": "samples",
+          "experimental_design": "observational"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 30,
+            "cells": 4
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8,
+          16,
+          32
+        ],
+        "repeats": 1,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": {
+            "param": "sampling.num_experiments",
+            "multiplier_param": "sampling.samples_per_experiment"
+          },
+          "genes_param": "subnetwork.num_nodes",
+          "group_count": 0,
+          "population_count": 0
+        },
+        "input_profile": {
+          "requested_extras": [],
+          "effective_extras": [
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "external_inputs.fixed_source": "builtin_concentration_series",
+            "source_network.preset": "ecoli_full"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "syntren.json:bulk_samples_observational_global_builtin_subnetwork_default:inline",
+          "resolved_base_params": {
+            "source_network": {
+              "preset": "ecoli_full"
+            },
+            "subnetwork": {
+              "enabled": true,
+              "method": "neighbor_addition",
+              "num_nodes": 30,
+              "num_background_nodes": 5
+            },
+            "interactions": {
+              "use_edge_types_from_sif": true,
+              "percent_activators": 0.5,
+              "interaction_category": "DEFAULT",
+              "higher_order_probability": 0
+            },
+            "external_inputs": {
+              "mode": "randomized",
+              "fixed_source": "builtin_concentration_series",
+              "num_externals": 5,
+              "num_correlated_externals": 0,
+              "correlation_noise": 0
+            },
+            "sampling": {
+              "burn_in": 10,
+              "num_experiments": 4,
+              "samples_per_experiment": 1
+            },
+            "noise": {
+              "biological": 0.01,
+              "input": 0.01,
+              "experimental": 0.01
+            },
+            "expression_variant": "unnormalized"
+          },
+          "cost_relevant_params": [
+            "expression_variant",
+            "external_inputs.fixed_source",
+            "external_inputs.mode",
+            "external_inputs.num_correlated_externals",
+            "external_inputs.num_externals",
+            "interactions.interaction_category",
+            "interactions.percent_activators",
+            "interactions.use_edge_types_from_sif",
+            "noise.biological",
+            "noise.experimental",
+            "noise.input",
+            "sampling.burn_in",
+            "sampling.num_experiments",
+            "sampling.samples_per_experiment",
+            "source_network.preset",
+            "subnetwork.enabled",
+            "subnetwork.method",
+            "subnetwork.num_background_nodes",
+            "subnetwork.num_nodes"
+          ],
+          "cost_relevant_values": {
+            "expression_variant": "unnormalized",
+            "external_inputs.fixed_source": "builtin_concentration_series",
+            "external_inputs.mode": "randomized",
+            "external_inputs.num_correlated_externals": 0,
+            "external_inputs.num_externals": 5,
+            "interactions.interaction_category": "DEFAULT",
+            "interactions.percent_activators": 0.5,
+            "interactions.use_edge_types_from_sif": true,
+            "noise.biological": 0.01,
+            "noise.experimental": 0.01,
+            "noise.input": 0.01,
+            "sampling.burn_in": 10,
+            "sampling.num_experiments": 4,
+            "sampling.samples_per_experiment": 1,
+            "source_network.preset": "ecoli_full",
+            "subnetwork.enabled": true,
+            "subnetwork.method": "neighbor_addition",
+            "subnetwork.num_background_nodes": 5,
+            "subnetwork.num_nodes": 30
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": false,
+          "default_threads": 1,
+          "max_threads": 1,
+          "upstream_mapping": "SynTReN 1.2 is executed through the public Java CLI/API. The reviewed ini settings, CLI documentation and release notes expose no thread, worker, OpenMP, BLAS or process-count control, so ANDREA must run the wrapper with runtime_resources.threads=1."
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 30,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.867337,
+          "seconds_p90": 1.867337,
+          "output_bytes_p50": 299384,
+          "output_bytes_p90": 299384,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "syntren",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "samples",
+              "experimental_design": "observational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
+            "expression_profile": "bulk",
+            "column_kind": "samples",
+            "experimental_design": "observational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 30,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8,
+            "cost_relevant_values": {
+              "expression_variant": "unnormalized",
+              "external_inputs.fixed_source": "builtin_concentration_series",
+              "external_inputs.mode": "randomized",
+              "external_inputs.num_correlated_externals": 0,
+              "external_inputs.num_externals": 5,
+              "interactions.interaction_category": "DEFAULT",
+              "interactions.percent_activators": 0.5,
+              "interactions.use_edge_types_from_sif": true,
+              "noise.biological": 0.01,
+              "noise.experimental": 0.01,
+              "noise.input": 0.01,
+              "sampling.burn_in": 10,
+              "sampling.num_experiments": 4,
+              "sampling.samples_per_experiment": 1,
+              "source_network.preset": "ecoli_full",
+              "subnetwork.enabled": true,
+              "subnetwork.method": "neighbor_addition",
+              "subnetwork.num_background_nodes": 5,
+              "subnetwork.num_nodes": 30
+            },
+            "input_source_modes": {
+              "external_inputs.fixed_source": "builtin_concentration_series",
+              "source_network.preset": "ecoli_full"
+            },
+            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 30,
+            "n_cells": 4
+          }
+        },
+        {
+          "genes": 30,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 16,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.587382,
+          "seconds_p90": 1.587382,
+          "output_bytes_p50": 299392,
+          "output_bytes_p90": 299392,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "syntren",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "samples",
+              "experimental_design": "observational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
+            "expression_profile": "bulk",
+            "column_kind": "samples",
+            "experimental_design": "observational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 30,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 16,
+            "cost_relevant_values": {
+              "expression_variant": "unnormalized",
+              "external_inputs.fixed_source": "builtin_concentration_series",
+              "external_inputs.mode": "randomized",
+              "external_inputs.num_correlated_externals": 0,
+              "external_inputs.num_externals": 5,
+              "interactions.interaction_category": "DEFAULT",
+              "interactions.percent_activators": 0.5,
+              "interactions.use_edge_types_from_sif": true,
+              "noise.biological": 0.01,
+              "noise.experimental": 0.01,
+              "noise.input": 0.01,
+              "sampling.burn_in": 10,
+              "sampling.num_experiments": 4,
+              "sampling.samples_per_experiment": 1,
+              "source_network.preset": "ecoli_full",
+              "subnetwork.enabled": true,
+              "subnetwork.method": "neighbor_addition",
+              "subnetwork.num_background_nodes": 5,
+              "subnetwork.num_nodes": 30
+            },
+            "input_source_modes": {
+              "external_inputs.fixed_source": "builtin_concentration_series",
+              "source_network.preset": "ecoli_full"
+            },
+            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 30,
+            "n_cells": 4
+          }
+        },
+        {
+          "genes": 30,
+          "cells": 4,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 32,
+          "status": "ok",
+          "repeats_total": 1,
+          "repeats_ok": 1,
+          "repeats_failed": 0,
+          "ok_rate": 1,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.557403,
+          "seconds_p90": 1.557403,
+          "output_bytes_p50": 299385,
+          "output_bytes_p90": 299385,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "syntren",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "bulk",
+              "column_kind": "samples",
+              "experimental_design": "observational"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
+            "expression_profile": "bulk",
+            "column_kind": "samples",
+            "experimental_design": "observational",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 30,
+            "cells": 4,
+            "groups": 0,
+            "population_count": 0,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 32,
+            "cost_relevant_values": {
+              "expression_variant": "unnormalized",
+              "external_inputs.fixed_source": "builtin_concentration_series",
+              "external_inputs.mode": "randomized",
+              "external_inputs.num_correlated_externals": 0,
+              "external_inputs.num_externals": 5,
+              "interactions.interaction_category": "DEFAULT",
+              "interactions.percent_activators": 0.5,
+              "interactions.use_edge_types_from_sif": true,
+              "noise.biological": 0.01,
+              "noise.experimental": 0.01,
+              "noise.input": 0.01,
+              "sampling.burn_in": 10,
+              "sampling.num_experiments": 4,
+              "sampling.samples_per_experiment": 1,
+              "source_network.preset": "ecoli_full",
+              "subnetwork.enabled": true,
+              "subnetwork.method": "neighbor_addition",
+              "subnetwork.num_background_nodes": 5,
+              "subnetwork.num_nodes": 30
+            },
+            "input_source_modes": {
+              "external_inputs.fixed_source": "builtin_concentration_series",
+              "source_network.preset": "ecoli_full"
+            },
+            "profile_id": "bulk_samples_observational_global_builtin_subnetwork_default",
+            "extras": [
+              "tf_list"
+            ],
+            "n_genes": 30,
+            "n_cells": 4
           }
         }
       ]
