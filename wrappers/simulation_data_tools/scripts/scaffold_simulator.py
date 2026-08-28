@@ -132,10 +132,15 @@ def wrapper_template(wrapper: str) -> str:
 
 The wrapper must read --request and --output-dir, then write:
 - expression.tsv
+- extras/tf_list.txt
 - truth/networks.csv
 - truth/gene_universe.txt
 - simulator-output-manifest.json
 - progress.json
+
+Every accepted request must include tf_list in effective_extras. The wrapper
+must reject the request before starting the simulator when that invariant is
+not satisfied.
 """
 
 from __future__ import annotations
@@ -204,7 +209,7 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
                     "contexts": ["global"],
                 },
                 "parameter_bindings": [],
-                "native_extras": [],
+                "native_extras": ["tf_list"],
                 "derivable_extras": [],
                 "truth_outputs": [
                     {
@@ -257,7 +262,7 @@ def smoketest_payload(simulator_id: str) -> dict[str, object]:
                 "contexts": ["global"],
             },
             "seed": 1,
-            "effective_extras": [],
+            "effective_extras": ["tf_list"],
             "inputs": {},
             "params": {},
             "runtime_resources": {"threads": 1},
@@ -265,6 +270,7 @@ def smoketest_payload(simulator_id: str) -> dict[str, object]:
         "expect_progress": True,
         "required_files": [
             "expression.tsv",
+            "extras/tf_list.txt",
             "truth/networks.csv",
             "truth/gene_universe.txt",
             "simulator-output-manifest.json",
@@ -292,6 +298,8 @@ TODO: document installation, wrapper behavior and smoke tests.
   `column_kind=cells` makes it cell-level truth.
 - `simulator-output-manifest.json` must report `truth.gene_universe` and
   `truth.networks`.
+- Every accepted request must contain `tf_list` in `effective_extras`, and the
+  wrapper must always write and declare `extras/tf_list.txt`.
 - Simulators may preserve native outputs under provenance, but public consumers
   must not depend on those native files.
 - The wrapper must map `runtime_resources.threads` to the upstream public
@@ -337,6 +345,8 @@ TODO: record paper/repo review and wrapper decisions.
 - supported semantic capabilities and intentionally unsupported
   `data_axes` / `truth_requirements` combinations
 - native and derivable extras
+- mandatory `tf_list` support in every capability and unconditional generation
+  of `extras/tf_list.txt`
 - simulator-side input specs and `extra_inputs` usage/conditional rules
 - parameter mapping and unsupported function-valued hooks
 - `runtime_resources.threading` contract and request `runtime_resources.threads`

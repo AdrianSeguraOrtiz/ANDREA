@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,8 @@ from andrea.core.commands.compare_networks import bundles as compare_bundles
 from andrea.core.commands.evaluate_inference import bundles as evaluate_bundles
 from andrea.core.commands.generate_data import bundles as generate_bundles
 from andrea.core.commands.infer_network import bundles as infer_bundles
+
+DATASET_FINGERPRINT = {"algorithm": "sha256", "value": "0" * 64}
 
 
 def touch(path: Path, text: str = "x\n") -> None:
@@ -32,9 +35,35 @@ def test_generate_data_analysis_is_minimal_truth_bundle(tmp_path: Path) -> None:
     other_dataset = root / "datasets" / "dataset_02"
     touch(root / "benchmark-manifest.json", "{}\n")
     touch(root / "preflight-report.json", "{}\n")
-    touch(dataset / "ground-truth-manifest.json", "{}\n")
+    truth_manifest = {
+        "schema_version": "1.0",
+        "dataset_id": "dataset_01",
+        "dataset_fingerprint": DATASET_FINGERPRINT,
+        "simulator_id": "dyngen",
+        "data_axes": {
+            "measurement": "rna_expression",
+            "resolution": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "trajectory",
+        },
+        "truth_requirements": {"contexts": ["global"]},
+        "outputs": {
+            "gene_universe": "truth/gene_universe.txt",
+            "networks": "truth/networks.csv",
+        },
+        "candidate_space": {
+            "sources": "extras/tf_list.txt",
+            "targets": "truth/gene_universe.txt",
+            "allow_self_edges": False,
+        },
+    }
+    touch(
+        dataset / "ground-truth-manifest.json",
+        json.dumps(truth_manifest) + "\n",
+    )
     touch(dataset / "truth" / "networks.csv", "source,target\n")
     touch(dataset / "truth" / "gene_universe.txt", "g1\n")
+    touch(dataset / "extras" / "tf_list.txt", "g1\n")
     touch(other_dataset / "ground-truth-manifest.json", "{}\n")
     touch(other_dataset / "truth" / "networks.csv", "source,target\n")
     touch(other_dataset / "truth" / "gene_universe.txt", "g2\n")
@@ -75,6 +104,7 @@ def test_generate_data_analysis_is_minimal_truth_bundle(tmp_path: Path) -> None:
         "ground-truth-manifest.json",
         "truth/networks.csv",
         "truth/gene_universe.txt",
+        "extras/tf_list.txt",
     }
     assert "expression.tsv" not in paths(analysis)
     assert "extras/groups.tsv" not in paths(analysis)
@@ -95,7 +125,34 @@ def test_generate_data_analysis_is_minimal_truth_bundle(tmp_path: Path) -> None:
 def test_generate_data_analysis_reports_missing_truth_files(tmp_path: Path) -> None:
     root = tmp_path / "benchmark"
     dataset = root / "datasets" / "dataset_01"
-    touch(dataset / "ground-truth-manifest.json", "{}\n")
+    touch(
+        dataset / "ground-truth-manifest.json",
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "dataset_id": "dataset_01",
+                "dataset_fingerprint": DATASET_FINGERPRINT,
+                "simulator_id": "dyngen",
+                "data_axes": {
+                    "measurement": "rna_expression",
+                    "resolution": "single_cell",
+                    "column_kind": "cells",
+                    "experimental_design": "trajectory",
+                },
+                "truth_requirements": {"contexts": ["global"]},
+                "outputs": {
+                    "gene_universe": "truth/gene_universe.txt",
+                    "networks": "truth/networks.csv",
+                },
+                "candidate_space": {
+                    "sources": "extras/tf_list.txt",
+                    "targets": "truth/gene_universe.txt",
+                    "allow_self_edges": False,
+                },
+            }
+        )
+        + "\n",
+    )
 
     analysis = generate_bundles.resolve_bundle(
         bundle_id="analysis", benchmark_root=root, dataset_id="dataset_01"
@@ -105,6 +162,7 @@ def test_generate_data_analysis_reports_missing_truth_files(tmp_path: Path) -> N
     assert paths(analysis) == {"ground-truth-manifest.json"}
     assert "truth/networks.csv" in analysis.missing_required
     assert "truth/gene_universe.txt" in analysis.missing_required
+    assert "extras/tf_list.txt" in analysis.missing_required
 
 
 def test_infer_network_bundles_split_analysis_report_and_graphs(

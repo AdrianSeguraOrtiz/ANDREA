@@ -40,6 +40,9 @@
     },
     "effective_extras": {
       "type": "array",
+      "contains": {
+        "const": "tf_list"
+      },
       "items": {
         "type": "string"
       }
@@ -426,7 +429,8 @@
           "simulator_id",
           "expression_matrix",
           "gene_universe",
-          "networks"
+          "networks",
+          "tf_list"
         ],
         "properties": {
           "dataset_id": {

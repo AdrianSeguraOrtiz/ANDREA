@@ -569,7 +569,8 @@ The input request has this shape:
 ```
 
 Rules:
-- `effective_extras` includes truth-required extras plus user-requested extras.
+- `effective_extras` always includes `tf_list`, plus truth-required and
+  user-requested extras.
 - `mounted_inputs` maps simulator input ids to read-only paths under `/work/inputs/`.
 - `params` contains values already schema-validated by `generate-data`.
 - `runtime_resources.threads` contains the planner-assigned thread count. The
@@ -1107,7 +1108,8 @@ differentiation capabilities covering:
 - `global` truth
 - `global + group` truth plus `groups`
 - `global + group + column` truth
-- optional `tf_list`, `lineage_tree`, RNA velocity and other declared extras
+- required `tf_list`, plus optional `lineage_tree`, RNA velocity and other
+  declared extras
 
 Run:
 

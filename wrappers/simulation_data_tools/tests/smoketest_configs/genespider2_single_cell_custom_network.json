@@ -7,7 +7,8 @@
       "perturbation_design",
       "interventions",
       "replicates",
-      "prior_grn_by_group"
+      "prior_grn_by_group",
+      "tf_list"
     ],
     "inputs": {
       "regulatory_network": "../fixtures/regulatory_network.tsv"
@@ -45,6 +46,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "extras/groups.tsv",
     "extras/perturbation_design.tsv",
     "extras/interventions.tsv",

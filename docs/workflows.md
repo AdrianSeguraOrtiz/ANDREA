@@ -27,6 +27,10 @@ Typical outputs:
 - raw/native simulator outputs for traceability;
 - analysis/report/full bundles for handoff and storage.
 
+Every generated dataset includes `tf_list`; the ground-truth manifest records
+it as the required candidate regulator universe and the analysis bundle
+includes the referenced file.
+
 The generated analysis bundle can feed `evaluate-inference`.
 
 ## `infer-network`

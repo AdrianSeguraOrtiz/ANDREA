@@ -177,6 +177,9 @@ normalise_params <- function(req) {
 }
 
 validate_semantic_request <- function(req, params, effective_extras) {
+  if (!("tf_list" %in% effective_extras)) {
+    stop("effective_extras must include required extra tf_list.", call. = FALSE)
+  }
   axes <- req$data_axes
   if (!identical(as.character(axes$measurement), "rna_expression")) {
     stop("dyngen wrapper only supports data_axes.measurement=rna_expression.", call. = FALSE)
@@ -1168,7 +1171,7 @@ write_manifest <- function(request, params, dataset, output_dir, native_outputs 
       interventions = if (file.exists(file.path(output_dir, "extras", "interventions.tsv"))) "extras/interventions.tsv" else NULL,
       pseudotime = if (file.exists(file.path(output_dir, "extras", "pseudotime.tsv"))) "extras/pseudotime.tsv" else NULL,
       prior_grn = if (file.exists(file.path(output_dir, "extras", "prior_grn.tsv"))) "extras/prior_grn.tsv" else NULL,
-      tf_list = if (file.exists(file.path(output_dir, "extras", "tf_list.txt"))) "extras/tf_list.txt" else NULL,
+      tf_list = "extras/tf_list.txt",
       prior_grn_by_group = if (file.exists(file.path(output_dir, "extras", "prior_grn_by_group.tsv"))) "extras/prior_grn_by_group.tsv" else NULL
     ),
     native_outputs = if (length(native_outputs) > 0) native_outputs else structure(list(), names = character()),
@@ -1223,7 +1226,6 @@ tryCatch(
     need_prior_grn <- "prior_grn" %in% effective_extras
     need_prior_grn_by_group <- "prior_grn_by_group" %in% effective_extras
     need_lineage <- "lineage_tree" %in% effective_extras
-    need_tf_list <- "tf_list" %in% effective_extras
     need_timepoints <- "timepoints" %in% effective_extras
     need_perturbation_design <- "perturbation_design" %in% effective_extras
     need_interventions <- "interventions" %in% effective_extras
@@ -1285,9 +1287,7 @@ tryCatch(
       )
     }
 
-    if (need_tf_list) {
-      write_tf_list(model$feature_info, file.path(output_dir, "extras", "tf_list.txt"))
-    }
+    write_tf_list(model$feature_info, file.path(output_dir, "extras", "tf_list.txt"))
     if (need_enrichment_background) {
       write_enrichment_background(dataset$counts, file.path(output_dir, "extras", "enrichment_background.txt"))
     }

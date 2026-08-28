@@ -28,6 +28,7 @@ from andrea.core.commands.generate_data.selection import (
     evaluate_simulator_for_scenario,
     preflight_generate_data_scenario,
 )
+from andrea.core.commands.generate_data.semantic import required_extras_for_request
 from andrea.core.commands.generate_data.shared import (
     ResolvedScenarioRequest,
     ResolvedSimulatorRun,
@@ -221,10 +222,11 @@ class GenerateDataDyngenTests(unittest.TestCase):
             simulator_params=simulator_params,
         )
         resolved_truth_requirements = truth_requirements or _truth_for_level(truth_level)
-        required_extras = (
-            {"groups"}
-            if "group" in set(resolved_truth_requirements.get("contexts", []))
-            else set()
+        required_extras = set(
+            required_extras_for_request(
+                resolved_data_axes,
+                resolved_truth_requirements,
+            )
         )
         task_payloads = []
         waves = []
@@ -663,7 +665,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     max_parallel_tasks=1,
                 )
             plan = json.loads(planned_path.read_text(encoding="utf-8"))
-            self.assertEqual(plan["effective_extras"], ["groups", "timepoints"])
+            self.assertEqual(
+                plan["effective_extras"], ["groups", "tf_list", "timepoints"]
+            )
             params = plan["runs"][0]["simulator_params"]
             self.assertEqual(params["experiment_params"]["kind"], "synchronised")
             self.assertEqual(params["simulation_params"]["num_knockdown_simulations"], 0)
@@ -700,7 +704,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     max_parallel_tasks=1,
                 )
             plan = json.loads(planned_path.read_text(encoding="utf-8"))
-            self.assertEqual(plan["effective_extras"], ["interventions", "perturbation_design"])
+            self.assertEqual(
+                plan["effective_extras"],
+                ["interventions", "perturbation_design", "tf_list"],
+            )
             params = plan["runs"][0]["simulator_params"]
             self.assertEqual(params["experiment_params"]["kind"], "snapshot")
             self.assertEqual(params["simulation_params"]["num_knockdown_simulations"], 4)
@@ -1379,7 +1386,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(resolved.truth_requirements, GROUP_TRUTH)
         self.assertEqual(len(resolved.simulator_runs), 1)
         self.assertEqual(resolved.simulator_runs[0].simulator_id, "dyngen")
-        self.assertEqual(resolved.effective_extras, ["groups", "lineage_tree"])
+        self.assertEqual(
+            resolved.effective_extras, ["groups", "lineage_tree", "tf_list"]
+        )
 
     def test_validate_plan_accepts_dyngen_native_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1499,7 +1508,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "truth_requirements": _copy_json(GLOBAL_TRUTH),
                 "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                 "requested_extras": [],
-                "effective_extras": [],
+                "effective_extras": ["tf_list"],
                 "inputs": {},
                 "base_seed": 100,
                 "runs": [
@@ -1747,7 +1756,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                             },
                             "input_profile": {
                                 "requested_extras": [],
-                                "effective_extras": [],
+                                "effective_extras": ["tf_list"],
                                 "required_inputs_satisfied": [],
                                 "optional_inputs_provided": [],
                                 "conditional_inputs_satisfied": [],
@@ -1821,9 +1830,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(features["column_kind"], "cells")
         self.assertEqual(features["experimental_design"], "trajectory")
         self.assertEqual(features["truth_context_families"], ["global"])
-        self.assertEqual(features["extras"], [])
         self.assertEqual(features["requested_extras"], [])
-        self.assertEqual(features["effective_extras"], [])
+        self.assertEqual(features["effective_extras"], ["tf_list"])
+        self.assertEqual(features["extras"], ["tf_list"])
         self.assertEqual(features["n_cells"], 20)
         self.assertEqual(features["n_genes"], 10)
         self.assertFalse(features["column_truth_requested"])
@@ -2041,6 +2050,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "cell\tcluster\nC1\tA\nC2\tA\n",
                 encoding="utf-8",
             )
+            (stage_dir / "extras" / "tf_list.txt").write_text(
+                "G1\n", encoding="utf-8"
+            )
             (stage_dir / "truth" / "gene_universe.txt").write_text(
                 "G1\nG2\n",
                 encoding="utf-8",
@@ -2064,7 +2076,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     "column_kind": "cells",
                     "expression_profile": "scrna",
                 },
-                "extras": {"groups": "extras/groups.tsv"},
+                "extras": {
+                    "groups": "extras/groups.tsv",
+                    "tf_list": "extras/tf_list.txt",
+                },
                 "truth": {
                     "gene_universe": "truth/gene_universe.txt",
                     "networks": "truth/networks.csv",
@@ -2084,6 +2099,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             stage_dir = Path(tmp)
             (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "extras").mkdir(parents=True, exist_ok=True)
+            (stage_dir / "extras" / "tf_list.txt").write_text(
+                "G1\n", encoding="utf-8"
+            )
             (stage_dir / "expression.tsv").write_text(
                 "gene\tC1\tC2\nG1\t1\t0\nG2\t2\t3\n",
                 encoding="utf-8",
@@ -2109,6 +2128,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     "column_kind": "cells",
                     "expression_profile": "scrna",
                 },
+                "extras": {"tf_list": "extras/tf_list.txt"},
                 "truth": {
                     "gene_universe": "truth/gene_universe.txt",
                     "networks": "truth/networks.csv",
@@ -2157,6 +2177,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "B\tA\t0.2\t0.1\n",
                 encoding="utf-8",
             )
+            (stage_dir / "extras" / "tf_list.txt").write_text(
+                "G1\n", encoding="utf-8"
+            )
             (stage_dir / "truth" / "gene_universe.txt").write_text(
                 "G1\nG2\n",
                 encoding="utf-8",
@@ -2182,6 +2205,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "extras": {
                     "groups": "extras/groups.tsv",
                     "lineage_tree": "extras/lineage_tree.tsv",
+                    "tf_list": "extras/tf_list.txt",
                 },
                 "truth": {
                     "gene_universe": "truth/gene_universe.txt",
@@ -2218,6 +2242,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "B\tA\t0.2\t0.1\n",
                 encoding="utf-8",
             )
+            (stage_dir / "extras" / "tf_list.txt").write_text(
+                "G1\n", encoding="utf-8"
+            )
             (stage_dir / "truth" / "gene_universe.txt").write_text(
                 "G1\nG2\n",
                 encoding="utf-8",
@@ -2243,6 +2270,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "extras": {
                     "groups": "extras/groups.tsv",
                     "lineage_tree": "extras/lineage_tree.tsv",
+                    "tf_list": "extras/tf_list.txt",
                 },
                 "truth": {
                     "gene_universe": "truth/gene_universe.txt",
@@ -2406,6 +2434,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 stage_dir = kwargs["stage_dir"]
                 stage_dir.mkdir(parents=True, exist_ok=True)
                 (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
+                (stage_dir / "extras").mkdir(parents=True, exist_ok=True)
                 (stage_dir / "native").mkdir(parents=True, exist_ok=True)
                 (stage_dir / "provenance" / "raw").mkdir(parents=True, exist_ok=True)
                 (stage_dir / "expression.tsv").write_text(
@@ -2424,6 +2453,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     "G1\nG2\n",
                     encoding="utf-8",
                 )
+                (stage_dir / "extras" / "tf_list.txt").write_text(
+                    "G1\n", encoding="utf-8"
+                )
                 manifest_path = stage_dir / "simulator-output-manifest.json"
                 manifest_path.write_text(
                     json.dumps(
@@ -2439,7 +2471,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                                 "columns": 1,
                                 "column_kind": "cells",
                             },
-                            "extras": {},
+                            "extras": {"tf_list": "extras/tf_list.txt"},
                             "native_outputs": {
                                 "rna_velocity": "native/rna_velocity.tsv",
                             },
@@ -2465,7 +2497,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     "truth_requirements": _copy_json(GLOBAL_TRUTH),
                     "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                     "requested_extras": [],
-                    "effective_extras": [],
+                    "effective_extras": ["tf_list"],
                     "inputs": {},
                     "base_seed": 100,
                 },

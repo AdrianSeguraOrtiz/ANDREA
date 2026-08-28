@@ -105,10 +105,10 @@ Wrapper writes directly under `/work/out/`:
 - `expression.tsv`: SynTReN genes by conditions matrix normalized to ANDREA TSV.
 - `truth/networks.csv`: global topological truth with `sign=?`.
 - `truth/gene_universe.txt`: exact expression genes.
+- Required extra: `extras/tf_list.txt`.
 - Optional extras:
   - `extras/enrichment_background.txt`
   - `extras/prior_grn.tsv`
-  - `extras/tf_list.txt`
   - `extras/perturbation_design.tsv` for perturbational runs
   - `extras/interventions.tsv` for perturbational runs
 - `native/`: requested native-facing files: raw datasets, generated SIF/XML, resolved externals table and resolved ini.

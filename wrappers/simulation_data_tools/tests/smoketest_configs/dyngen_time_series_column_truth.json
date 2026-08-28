@@ -4,7 +4,8 @@
     "seed": 41,
     "effective_extras": [
       "groups",
-      "timepoints"
+      "timepoints",
+      "tf_list"
     ],
     "inputs": {},
     "params": {
@@ -38,6 +39,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "extras/groups.tsv",
     "extras/timepoints.tsv",
     "truth/networks.csv",

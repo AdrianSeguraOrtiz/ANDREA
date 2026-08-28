@@ -897,10 +897,9 @@ def write_requested_extras(
     if "prior_grn" in requested:
         write_prior_grn(output_dir / "extras" / "prior_grn.tsv", edges)
         extras["prior_grn"] = "extras/prior_grn.tsv"
-    if "tf_list" in requested:
-        regulators = sorted({edge.source for edge in edges})
-        write_gene_list(output_dir / "extras" / "tf_list.txt", regulators)
-        extras["tf_list"] = "extras/tf_list.txt"
+    regulators = sorted({edge.source for edge in edges})
+    write_gene_list(output_dir / "extras" / "tf_list.txt", regulators)
+    extras["tf_list"] = "extras/tf_list.txt"
     if {"perturbation_design", "interventions"}.intersection(requested):
         if perturbations is None:
             raise ValueError("Perturbation extras were requested for a non-perturbational run.")
@@ -1006,6 +1005,11 @@ def write_session_info(raw_dir: Path, threads: int) -> None:
 
 
 def enforce_request_contract(request: dict[str, Any], params: dict[str, Any]) -> None:
+    effective_extras = {
+        str(item) for item in request.get("effective_extras", [])
+    }
+    if "tf_list" not in effective_extras:
+        raise ValueError("effective_extras must include required extra tf_list.")
     axes = request.get("data_axes", {})
     truth = request.get("truth_requirements", {})
     if axes.get("measurement") != "rna_expression" or axes.get("resolution") != "single_cell" or axes.get("column_kind") != "cells":

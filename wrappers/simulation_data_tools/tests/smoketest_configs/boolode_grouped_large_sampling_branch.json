@@ -4,7 +4,8 @@
     "seed": 303,
     "effective_extras": [
       "groups",
-      "prior_grn_by_group"
+      "prior_grn_by_group",
+      "tf_list"
     ],
     "inputs": {},
     "params": {
@@ -39,6 +40,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "extras/groups.tsv",
     "extras/prior_grn_by_group.tsv",
     "truth/networks.csv",

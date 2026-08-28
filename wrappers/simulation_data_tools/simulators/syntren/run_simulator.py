@@ -739,6 +739,13 @@ def run(request_path: Path, output_dir: Path) -> None:
         request = json.loads(request_path.read_text(encoding="utf-8"))
         if request.get("simulator_id") != "syntren":
             raise ValueError("Request simulator_id must be syntren.")
+        extras_requested = {
+            str(item) for item in request.get("effective_extras", [])
+        }
+        if "tf_list" not in extras_requested:
+            raise ValueError(
+                "effective_extras must include required extra tf_list."
+            )
         runtime = request.get("runtime_resources", {})
         threads = int(runtime.get("threads", 1))
         if threads != 1:
@@ -782,7 +789,6 @@ def run(request_path: Path, output_dir: Path) -> None:
         write_gene_universe(output_dir / "truth" / "gene_universe.txt", table.genes)
         write_truth_networks(output_dir / "truth" / "networks.csv", edges)
 
-        extras_requested = {str(item) for item in request.get("effective_extras", [])}
         extras_paths: dict[str, str | None] = {}
         if "enrichment_background" in extras_requested:
             write_enrichment_background(output_dir / "extras" / "enrichment_background.txt", table.genes)
@@ -790,9 +796,8 @@ def run(request_path: Path, output_dir: Path) -> None:
         if "prior_grn" in extras_requested:
             write_prior_grn(output_dir / "extras" / "prior_grn.tsv", edges)
             extras_paths["prior_grn"] = "extras/prior_grn.tsv"
-        if "tf_list" in extras_requested:
-            write_tf_list(output_dir / "extras" / "tf_list.txt", edges)
-            extras_paths["tf_list"] = "extras/tf_list.txt"
+        write_tf_list(output_dir / "extras" / "tf_list.txt", edges)
+        extras_paths["tf_list"] = "extras/tf_list.txt"
         if request["data_axes"]["experimental_design"] == "perturbational":
             missing = sorted({"perturbation_design", "interventions"}.difference(extras_requested))
             if missing:

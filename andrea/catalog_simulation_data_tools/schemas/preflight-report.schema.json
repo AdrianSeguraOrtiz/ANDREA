@@ -48,6 +48,9 @@
         },
         "effective_extras": {
           "type": "array",
+          "contains": {
+            "const": "tf_list"
+          },
           "items": {
             "type": "string"
           }
@@ -374,6 +377,9 @@
         },
         "effective_extras": {
           "type": "array",
+          "contains": {
+            "const": "tf_list"
+          },
           "items": {
             "type": "string"
           }

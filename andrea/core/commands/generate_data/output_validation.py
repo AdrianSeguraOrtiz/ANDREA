@@ -323,6 +323,11 @@ def _validate_extras(
         raw_extras = {}
     if not isinstance(raw_extras, dict):
         raise ValueError(f"simulator-output-manifest[{dataset_id}].extras must be an object")
+    if raw_extras.get("tf_list") != "extras/tf_list.txt":
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}].extras.tf_list must be "
+            "'extras/tf_list.txt'"
+        )
 
     extras: dict[str, Path] = {}
     for key, rel_path in sorted(raw_extras.items()):
@@ -378,6 +383,19 @@ def _validate_extras(
                 input_id=key,
             )
             summary[key] = result.summary
+            if key == "tf_list":
+                seen: set[str] = set()
+                duplicates: set[str] = set()
+                for value in result.line_values:
+                    if value in seen:
+                        duplicates.add(value)
+                    seen.add(value)
+                if duplicates:
+                    raise ValueError(
+                        f"extra tf_list for dataset {dataset_id} contains duplicate "
+                        "candidate regulator identifiers: "
+                        + ", ".join(sorted(duplicates)[:8])
+                    )
             if key == "enrichment_background" and not result.line_values:
                 raise ValueError(f"extra enrichment_background is empty for dataset {dataset_id}")
         else:

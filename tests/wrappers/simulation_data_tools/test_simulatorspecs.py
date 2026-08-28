@@ -26,6 +26,8 @@ VALIDATOR_SCRIPT = (
     / "scripts"
     / "validate_simulatorspecs.py"
 )
+SCAFFOLD_SCRIPT = VALIDATOR_SCRIPT.parent / "scaffold_simulator.py"
+WRAPPERS_DIR = REPO_ROOT / "wrappers" / "simulation_data_tools" / "simulators"
 DRAFT_SIMULATORS_TO_SKIP = {"genespider2"}
 
 
@@ -39,6 +41,36 @@ def _load_validator_module():
     )
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot import validator script: {VALIDATOR_SCRIPT}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_scaffold_module():
+    scripts_dir = str(SCAFFOLD_SCRIPT.parent)
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    spec = importlib.util.spec_from_file_location(
+        "scaffold_simulator_for_tests",
+        SCAFFOLD_SCRIPT,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot import scaffold script: {SCAFFOLD_SCRIPT}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_wrapper_module(simulator_id: str):
+    wrapper_path = WRAPPERS_DIR / simulator_id / "run_simulator.py"
+    spec = importlib.util.spec_from_file_location(
+        f"{simulator_id}_wrapper_for_tests",
+        wrapper_path,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot import simulator wrapper: {wrapper_path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -127,7 +159,7 @@ def _valid_semantic_spec() -> dict:
                 "truth_requirements": {
                     "contexts": ["global", "group", "column"],
                 },
-                "native_extras": [],
+                "native_extras": ["tf_list"],
                 "derivable_extras": [],
                 "truth_outputs": [
                     {"context": "global", "status": "native"},
@@ -535,6 +567,41 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
         )
 
         self.assertEqual(errors, [])
+
+    def test_capability_semantics_require_tf_list(self) -> None:
+        validator = _load_validator_module()
+        spec = _valid_semantic_spec()
+        spec["capabilities"][0]["native_extras"] = []
+
+        errors = validator.semantic_errors(
+            simulator_id="dyngen",
+            spec=spec,
+            wrappers_root=REPO_ROOT / "wrappers" / "simulation_data_tools" / "simulators",
+            known_input_ids=set(),
+        )
+
+        self.assertIn(
+            "capabilities[0]: every capability must support the required tf_list extra",
+            errors,
+        )
+
+    def test_scaffold_declares_required_tf_list_contract(self) -> None:
+        scaffold = _load_scaffold_module()
+        capability = scaffold.spec_payload("toy")["capabilities"][0]
+        smoketest = scaffold.smoketest_payload("toy")
+
+        self.assertIn("tf_list", capability["native_extras"])
+        self.assertIn("tf_list", smoketest["request"]["effective_extras"])
+        self.assertIn("extras/tf_list.txt", smoketest["required_files"])
+
+    def test_all_wrapper_entrypoints_reject_requests_without_tf_list(self) -> None:
+        marker = "effective_extras must include required extra tf_list."
+        wrapper_paths = sorted(WRAPPERS_DIR.glob("*/run_simulator.*"))
+
+        self.assertEqual(len(wrapper_paths), 8)
+        for wrapper_path in wrapper_paths:
+            source = wrapper_path.read_text(encoding="utf-8")
+            self.assertIn(marker, source, msg=wrapper_path.parent.name)
 
     def test_truth_context_semantics_reject_missing_truth_contexts(self) -> None:
         validator = _load_validator_module()

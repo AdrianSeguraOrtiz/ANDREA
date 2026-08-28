@@ -3,7 +3,8 @@
   "request": {
     "seed": 201,
     "effective_extras": [
-      "spatial_coordinates"
+      "spatial_coordinates",
+      "tf_list"
     ],
     "inputs": {},
     "params": {
@@ -45,6 +46,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "extras/spatial_coordinates.tsv",
     "truth/networks.csv",
     "truth/gene_universe.txt",

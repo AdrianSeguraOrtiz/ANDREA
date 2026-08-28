@@ -4,7 +4,8 @@
     "seed": 205,
     "effective_extras": [
       "spatial_coordinates",
-      "cell_cell_interactions"
+      "cell_cell_interactions",
+      "tf_list"
     ],
     "inputs": {},
     "params": {
@@ -46,6 +47,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "extras/groups.tsv",
     "extras/spatial_coordinates.tsv",
     "extras/cell_cell_interactions.tsv",

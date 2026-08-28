@@ -643,6 +643,10 @@ def semantic_errors(
         )
         native = set(capability.get("native_extras", []))
         derivable = set(capability.get("derivable_extras", []))
+        if "tf_list" not in native.union(derivable):
+            errors.append(
+                f"{location}: every capability must support the required tf_list extra"
+            )
         overlap = sorted(native.intersection(derivable))
         if overlap:
             errors.append(

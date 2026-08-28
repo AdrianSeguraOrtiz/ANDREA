@@ -105,6 +105,12 @@ def semantic_errors(
 
     spec = load_simulatorspec(catalog_simulators_root, simulator_id)
     request = config.get("request", {})
+    effective_extras = set(request.get("effective_extras", []))
+    if "tf_list" not in effective_extras:
+        errors.append("request.effective_extras must include required extra tf_list")
+    required_files = set(config.get("required_files", []))
+    if "extras/tf_list.txt" not in required_files:
+        errors.append("required_files must include extras/tf_list.txt")
     data_axes = request.get("data_axes")
     truth_requirements = request.get("truth_requirements")
     capability = _find_capability(
@@ -121,8 +127,7 @@ def semantic_errors(
         supported_extras = set(capability.get("native_extras", [])).union(
             capability.get("derivable_extras", [])
         )
-        extras = set(request.get("effective_extras", []))
-        unsupported = sorted(extras.difference(supported_extras))
+        unsupported = sorted(effective_extras.difference(supported_extras))
         if unsupported:
             errors.append(
                 "request.effective_extras not supported for requested capability: "

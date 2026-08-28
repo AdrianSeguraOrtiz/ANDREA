@@ -53,6 +53,15 @@ def _has_docker_runtime() -> bool:
 
 
 class SimulatorSmoketestScripts(unittest.TestCase):
+    def test_all_smoketests_require_tf_list_output(self) -> None:
+        config_paths = sorted(SMOKETEST_CONFIGS_ROOT.glob("*.json"))
+        self.assertTrue(config_paths)
+        for config_path in config_paths:
+            payload = json.loads(config_path.read_text(encoding="utf-8"))
+            with self.subTest(config=config_path.name):
+                self.assertIn("tf_list", payload["request"]["effective_extras"])
+                self.assertIn("extras/tf_list.txt", payload["required_files"])
+
     def test_column_truth_smoketests_require_cumulative_truth_contexts(self) -> None:
         config_paths = sorted(SMOKETEST_CONFIGS_ROOT.glob("*column_truth*.json"))
         self.assertTrue(config_paths)

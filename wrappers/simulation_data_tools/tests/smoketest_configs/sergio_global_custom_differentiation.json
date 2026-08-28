@@ -2,7 +2,9 @@
   "simulator_id": "sergio",
   "request": {
     "seed": 205,
-    "effective_extras": [],
+    "effective_extras": [
+      "tf_list"
+    ],
     "inputs": {
       "sergio_target_interactions": "../fixtures/sergio/target_interactions.csv",
       "sergio_master_regulators": "../fixtures/sergio/master_regulators.csv",
@@ -43,6 +45,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "truth/networks.csv",
     "truth/gene_universe.txt",
     "simulator-output-manifest.json",

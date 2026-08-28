@@ -190,6 +190,9 @@
         },
         "effective_extras": {
           "type": "array",
+          "contains": {
+            "const": "tf_list"
+          },
           "items": {
             "type": "string",
             "minLength": 1
@@ -236,6 +239,9 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
+      "contains": {
+        "const": "extras/tf_list.txt"
+      },
       "items": {
         "type": "string",
         "minLength": 1

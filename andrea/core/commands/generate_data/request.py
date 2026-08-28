@@ -893,6 +893,12 @@ def _validate_common_plan_fields(
             required_extras_for_request(data_axes, truth_requirements)
         )
     )
+    serialized_effective_extras = payload.get("effective_extras")
+    if serialized_effective_extras != effective_extras:
+        raise ValueError(
+            f"{label}.effective_extras must match the canonical contract; "
+            f"expected {effective_extras}, got {serialized_effective_extras}"
+        )
 
     organism = payload.get("organism")
     if not isinstance(organism, dict):

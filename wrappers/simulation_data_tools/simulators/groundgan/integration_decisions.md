@@ -160,13 +160,15 @@ Common outputs:
 
 Observational extras/native outputs:
 
-- Derivable extras: `enrichment_background`, `prior_grn`, `tf_list`.
+- Required derivable extra: `tf_list`.
+- Optional derivable extras: `enrichment_background`, `prior_grn`.
 - Native outputs: `simulated_h5ad`, `causal_graph_pickle`.
 
 Perturbational extras/native outputs:
 
 - Required/derivable extras: `perturbation_design`, `interventions`.
-- Optional derivable extras: `enrichment_background`, `prior_grn`, `tf_list`.
+- Required derivable extra for every run: `tf_list`.
+- Optional derivable extras: `enrichment_background`, `prior_grn`.
 - Native outputs: `before_perturbation_h5ad`, `after_perturbation_h5ad`,
   `causal_graph_pickle`.
 

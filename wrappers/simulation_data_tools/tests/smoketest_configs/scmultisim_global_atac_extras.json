@@ -4,7 +4,8 @@
     "seed": 204,
     "effective_extras": [
       "chromatin_accessibility",
-      "chromatin_regions"
+      "chromatin_regions",
+      "tf_list"
     ],
     "inputs": {},
     "params": {
@@ -41,6 +42,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "extras/chromatin_accessibility.tsv",
     "extras/chromatin_regions.tsv",
     "truth/networks.csv",

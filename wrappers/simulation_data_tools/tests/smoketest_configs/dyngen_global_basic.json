@@ -2,7 +2,9 @@
   "simulator_id": "dyngen",
   "request": {
     "seed": 7,
-    "effective_extras": [],
+    "effective_extras": [
+      "tf_list"
+    ],
     "inputs": {},
     "params": {
       "backbone_template": "linear",
@@ -31,6 +33,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "truth/networks.csv",
     "truth/gene_universe.txt",
     "simulator-output-manifest.json",

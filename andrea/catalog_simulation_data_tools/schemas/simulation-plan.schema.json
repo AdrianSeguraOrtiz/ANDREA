@@ -123,6 +123,9 @@
     "effective_extras": {
       "type": "array",
       "uniqueItems": true,
+      "contains": {
+        "const": "tf_list"
+      },
       "items": {
         "type": "string",
         "enum": [

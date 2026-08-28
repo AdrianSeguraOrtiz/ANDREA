@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+from jsonschema import Draft202012Validator
 
 from andrea.core.shared.bundles import (
     BundleResolution,
+    BundleSource,
     BundleSpec,
     all_files,
     append_exact,
     bundle_spec_by_id,
+    exact_file,
     supported_bundle_ids,
     unique_sources,
+)
+from andrea.core.shared.paths import validate_safe_relative_posix_path
+
+GROUND_TRUTH_MANIFEST_SCHEMA = (
+    Path(__file__).resolve().parents[3]
+    / "catalog_simulation_data_tools"
+    / "schemas"
+    / "ground-truth-manifest.schema.json"
 )
 
 BUNDLE_SPECS: tuple[BundleSpec, ...] = (
@@ -32,6 +45,7 @@ BUNDLE_SPECS: tuple[BundleSpec, ...] = (
         contents_summary=(
             "Selected dataset ground-truth-manifest.json.",
             "Selected dataset truth/networks.csv and truth/gene_universe.txt.",
+            "Required candidate source and target universes referenced by the manifest.",
         ),
     ),
     BundleSpec(
@@ -75,6 +89,16 @@ def _dataset_dirs(root: Path) -> list[Path]:
     return [path for path in sorted(datasets_dir.iterdir()) if path.is_dir()]
 
 
+def _ground_truth_schema_errors(manifest: dict[str, object]) -> list[str]:
+    schema = json.loads(GROUND_TRUTH_MANIFEST_SCHEMA.read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
+    errors = sorted(
+        validator.iter_errors(manifest),
+        key=lambda error: tuple(str(part) for part in error.path),
+    )
+    return [error.message for error in errors]
+
+
 def analysis_dataset_ids(*, benchmark_root: Path) -> tuple[str, ...]:
     return tuple(path.name for path in _dataset_dirs(benchmark_root.resolve()))
 
@@ -95,19 +119,58 @@ def _resolve_analysis(
     sources = []
     missing_required: list[str] = []
     skipped_optional: list[str] = []
-    for rel in (
-        "ground-truth-manifest.json",
-        "truth/networks.csv",
-        "truth/gene_universe.txt",
-    ):
-        append_exact(
-            root=dataset_root,
-            relative_path=rel,
-            sources=sources,
-            missing_required=missing_required,
-            skipped_optional=skipped_optional,
-            required=True,
-        )
+    append_exact(
+        root=dataset_root,
+        relative_path="ground-truth-manifest.json",
+        sources=sources,
+        missing_required=missing_required,
+        skipped_optional=skipped_optional,
+        required=True,
+    )
+    manifest_path = dataset_root / "ground-truth-manifest.json"
+    if exact_file(dataset_root, "ground-truth-manifest.json") is not None:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            manifest = None
+        if not isinstance(manifest, dict):
+            missing_required.append("ground-truth-manifest.json:valid_json_object")
+        else:
+            if _ground_truth_schema_errors(manifest):
+                missing_required.append("ground-truth-manifest.json:schema")
+            outputs = manifest.get("outputs")
+            candidate_space = manifest.get("candidate_space")
+            references = {
+                "outputs.networks": outputs.get("networks")
+                if isinstance(outputs, dict)
+                else None,
+                "outputs.gene_universe": outputs.get("gene_universe")
+                if isinstance(outputs, dict)
+                else None,
+                "candidate_space.sources": candidate_space.get("sources")
+                if isinstance(candidate_space, dict)
+                else None,
+                "candidate_space.targets": candidate_space.get("targets")
+                if isinstance(candidate_space, dict)
+                else None,
+            }
+            for label, value in references.items():
+                try:
+                    rel = validate_safe_relative_posix_path(
+                        value,
+                        label=label,
+                    )
+                except ValueError:
+                    missing_required.append(label)
+                    continue
+                append_exact(
+                    root=dataset_root,
+                    relative_path=rel,
+                    sources=sources,
+                    missing_required=missing_required,
+                    skipped_optional=skipped_optional,
+                    required=True,
+                )
     return BundleResolution(
         spec=spec,
         root=dataset_root,

@@ -313,6 +313,9 @@ def request_contexts(request: dict[str, Any]) -> set[str]:
 def validate_request(request: dict[str, Any], params: dict[str, Any]) -> str:
     if request.get("simulator_id") not in {None, "genenetweaver"}:
         raise ValueError("simulator_id must be genenetweaver.")
+    extras = {str(item) for item in request.get("effective_extras", [])}
+    if "tf_list" not in extras:
+        raise ValueError("effective_extras must include required extra tf_list.")
     resources = request.get("runtime_resources", {})
     threads = as_int(resources.get("threads", 1), "runtime_resources.threads", minimum=1)
     if threads != 1:
@@ -1113,9 +1116,8 @@ def main(argv: list[str] | None = None) -> int:
         if "prior_grn" in extras:
             write_prior_grn(output_dir / "extras" / "prior_grn.tsv", edges)
             extras_paths["prior_grn"] = "extras/prior_grn.tsv"
-        if "tf_list" in extras:
-            write_text_list(output_dir / "extras" / "tf_list.txt", sorted({edge.source for edge in edges}))
-            extras_paths["tf_list"] = "extras/tf_list.txt"
+        write_text_list(output_dir / "extras" / "tf_list.txt", sorted({edge.source for edge in edges}))
+        extras_paths["tf_list"] = "extras/tf_list.txt"
 
         requested_native = {str(item) for item in request.get("native_outputs", [])}
         native_outputs = copy_native_outputs(gnw_output, prefix, native_dir, requested_native)

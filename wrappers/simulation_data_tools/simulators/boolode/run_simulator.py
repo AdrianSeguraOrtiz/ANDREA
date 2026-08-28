@@ -837,6 +837,10 @@ def main(argv: list[str] | None = None) -> int:
 
         params = normalize_params(dict(request.get("params", {})))
         extras = {str(item) for item in request.get("effective_extras", [])}
+        if "tf_list" not in extras:
+            raise ValueError(
+                "effective_extras must include required extra tf_list."
+            )
         requested_native_outputs = {str(item) for item in request.get("native_outputs", [])}
         validate_semantic_request(request, extras, params)
         write_json(raw_dir / "resolved_params.json", params)
@@ -938,9 +942,8 @@ def main(argv: list[str] | None = None) -> int:
         if "prior_grn" in extras:
             write_prior_grn(output_dir / "extras" / "prior_grn.tsv", global_edges)
             extras_paths["prior_grn"] = "extras/prior_grn.tsv"
-        if "tf_list" in extras:
-            write_tf_list(output_dir / "extras" / "tf_list.txt", global_edges)
-            extras_paths["tf_list"] = "extras/tf_list.txt"
+        write_tf_list(output_dir / "extras" / "tf_list.txt", global_edges)
+        extras_paths["tf_list"] = "extras/tf_list.txt"
         if "prior_grn_by_group" in extras:
             if observed_groups is None:
                 raise ValueError("prior_grn_by_group requires grouped BoolODE output.")

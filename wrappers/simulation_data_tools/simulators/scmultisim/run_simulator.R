@@ -151,6 +151,9 @@ normalise_runtime_resources <- function(req) {
 }
 
 validate_semantic_request <- function(request, params, effective_extras) {
+  if (!("tf_list" %in% effective_extras)) {
+    stop("effective_extras must include required extra tf_list.", call. = FALSE)
+  }
   axes <- request$data_axes
   if (!identical(as.character(axes$measurement %||% ""), "rna_expression")) {
     stop("scMultiSim wrapper only supports data_axes.measurement=rna_expression.", call. = FALSE)
@@ -1482,7 +1485,7 @@ write_manifest <- function(request, results, expr, output_dir, native_outputs = 
       pseudotime = if (file.exists(file.path(output_dir, "extras", "pseudotime.tsv"))) "extras/pseudotime.tsv" else NULL,
       prior_grn = if (file.exists(file.path(output_dir, "extras", "prior_grn.tsv"))) "extras/prior_grn.tsv" else NULL,
       spatial_coordinates = if (file.exists(file.path(output_dir, "extras", "spatial_coordinates.tsv"))) "extras/spatial_coordinates.tsv" else NULL,
-      tf_list = if (file.exists(file.path(output_dir, "extras", "tf_list.txt"))) "extras/tf_list.txt" else NULL,
+      tf_list = "extras/tf_list.txt",
       prior_grn_by_group = if (file.exists(file.path(output_dir, "extras", "prior_grn_by_group.tsv"))) "extras/prior_grn_by_group.tsv" else NULL
     ),
     native_outputs = if (length(native_outputs) > 0) native_outputs else structure(list(), names = character()),
@@ -1629,9 +1632,7 @@ tryCatch(
     if ("prior_grn" %in% effective_extras) {
       write_prior_grn(results, file.path(output_dir, "extras", "prior_grn.tsv"))
     }
-    if ("tf_list" %in% effective_extras) {
-      write_tf_list(results, file.path(output_dir, "extras", "tf_list.txt"))
-    }
+    write_tf_list(results, file.path(output_dir, "extras", "tf_list.txt"))
     if ("spatial_coordinates" %in% effective_extras) {
       write_spatial_coordinates(results, expr, file.path(output_dir, "extras", "spatial_coordinates.tsv"))
     }

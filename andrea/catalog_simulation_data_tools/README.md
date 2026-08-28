@@ -39,8 +39,10 @@ Each `simulatorspec.json` declares:
   semantic capability, requested extra, native output or parameter value
   activates the rule.
 
-Generated benchmark extras such as `groups`, `tf_list` or `pseudotime` are
-outputs requested from simulators. They are not simulator-side input specs.
+Generated benchmark extras such as `groups` or `pseudotime` are outputs
+requested from simulators. `tf_list` is a required output of every generated
+dataset, regardless of the user-requested extras. None of these are
+simulator-side input specs.
 
 ## Semantic Dataset Model
 
@@ -95,6 +97,37 @@ and any limitations.
 
 The compact machine-readable summary and the audit trail must agree: every
 claimed context family needs evidence and a wrapper rule.
+
+## Candidate Edge Universe
+
+Every simulator capability must provide `tf_list` as a native or derivable
+extra. `generate-data` therefore requires `extras.tf_list` in every simulator
+output and writes this required top-level contract to
+`ground-truth-manifest.json`:
+
+```json
+{
+  "candidate_space": {
+    "sources": "extras/tf_list.txt",
+    "targets": "truth/gene_universe.txt",
+    "allow_self_edges": false
+  }
+}
+```
+
+The source and target files must be non-empty subsets of the gene universe.
+The full simulator truth may contain additional regulators (for example,
+housekeeping regulators that the simulator does not expose in `tf_list`). This
+contract travels in the analysis bundle and lets `evaluate-inference` intersect
+truth and predictions with the same regulator universe that inference
+received, while reporting excluded truth/prediction rows per level.
+
+The manifest also freezes `dataset_fingerprint`, a SHA-256 identity derived
+from the normalized expression matrix and every present standardized extra.
+`infer-network` independently recomputes the same identity from its frozen
+inputs, and `evaluate-inference` requires both the dataset ID and fingerprint
+to match. Reusing an ID for different expression, groups or `tf_list` content
+therefore cannot silently pair unrelated inference and truth packages.
 
 ## Validation
 

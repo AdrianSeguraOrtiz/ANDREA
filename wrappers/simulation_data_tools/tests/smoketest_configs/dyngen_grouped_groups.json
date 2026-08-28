@@ -3,7 +3,8 @@
   "request": {
     "seed": 13,
     "effective_extras": [
-      "groups"
+      "groups",
+      "tf_list"
     ],
     "inputs": {},
     "params": {
@@ -34,6 +35,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "extras/groups.tsv",
     "truth/networks.csv",
     "truth/gene_universe.txt",

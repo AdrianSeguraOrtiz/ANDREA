@@ -69,6 +69,9 @@
     "extras": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "tf_list"
+      ],
       "properties": {
         "groups": {
           "type": [
@@ -141,11 +144,8 @@
           "pattern": ".*\\.tsv$"
         },
         "tf_list": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "pattern": ".*\\.txt$"
+          "type": "string",
+          "const": "extras/tf_list.txt"
         },
         "prior_grn_by_group": {
           "type": [

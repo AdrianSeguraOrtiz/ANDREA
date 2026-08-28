@@ -293,6 +293,8 @@ def validate_request(request: dict[str, Any], params: dict[str, Any], extras: se
     for field in ("data_axes", "truth_requirements", "seed", "effective_extras", "params", "runtime_resources"):
         if field not in request:
             raise ValueError(f"simulator-run-request.json is missing required field {field!r}.")
+    if "tf_list" not in extras:
+        raise ValueError("effective_extras must include required extra tf_list.")
     mode = resolve_mode(request)
     if "group" in request_contexts(request) and params["single_cell"]["n_clusts"] < 2:
         raise ValueError("Single-cell group truth requires single_cell.n_clusts >= 2.")
@@ -959,9 +961,8 @@ def main(argv: list[str] | None = None) -> int:
         if "prior_grn" in extras:
             write_prior_grn(output_dir / "extras" / "prior_grn.tsv", edges)
             extras_paths["prior_grn"] = "extras/prior_grn.tsv"
-        if "tf_list" in extras:
-            write_text_list(output_dir / "extras" / "tf_list.txt", sorted({edge.source for edge in edges}))
-            extras_paths["tf_list"] = "extras/tf_list.txt"
+        write_text_list(output_dir / "extras" / "tf_list.txt", sorted({edge.source for edge in edges}))
+        extras_paths["tf_list"] = "extras/tf_list.txt"
         if group_ids is not None and "column_phenotypes" in extras:
             assignments = {row[0]: row[1] for row in csv.reader((output_dir / "extras" / "groups.tsv").open("r", encoding="utf-8"), delimiter="\t") if row and row[0] != "column"}
             write_column_phenotypes(output_dir / "extras" / "column_phenotypes.tsv", assignments, group_ids)

@@ -4,7 +4,8 @@
     "seed": 603,
     "effective_extras": [
       "perturbation_design",
-      "interventions"
+      "interventions",
+      "tf_list"
     ],
     "native_outputs": [
       "gnw_goldstandard_signed",
@@ -45,6 +46,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
+    "extras/tf_list.txt",
     "extras/perturbation_design.tsv",
     "extras/interventions.tsv",
     "truth/networks.csv",

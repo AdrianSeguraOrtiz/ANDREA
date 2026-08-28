@@ -238,7 +238,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                         "truth_requirements": payload["truth_requirements"],
                         "organism": payload["organism"],
                         "requested_extras": payload["requested_extras"],
-                        "effective_extras": ["groups", "lineage_tree"],
+                        "effective_extras": ["groups", "lineage_tree", "tf_list"],
                         "inputs": {},
                         "base_seed": payload.get("base_seed", 100),
                     },
@@ -257,7 +257,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                                 "truth_requirements"
                             ],
                             "requested_extras": ["lineage_tree"],
-                            "effective_extras": ["groups", "lineage_tree"],
+                            "effective_extras": ["groups", "lineage_tree", "tf_list"],
                             "inputs_used": [],
                             "native_extras_used": [],
                             "derived_extras_used": ["groups", "lineage_tree"],
@@ -288,7 +288,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     "truth_requirements": GROUP_TRUTH,
                     "organism": {"taxonomic_group": "synthetic", "ncbi_taxon_id": None},
                     "requested_extras": ["lineage_tree"],
-                    "effective_extras": ["groups", "lineage_tree"],
+                    "effective_extras": ["groups", "lineage_tree", "tf_list"],
                     "inputs": {},
                     "runs": [
                         {
@@ -414,7 +414,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                                     "ncbi_taxon_id": None,
                                 },
                                 "requested_extras": ["lineage_tree"],
-                                "effective_extras": ["groups", "lineage_tree"],
+                                "effective_extras": ["groups", "lineage_tree", "tf_list"],
                                 "inputs": {},
                                 "base_seed": 100,
                             },
@@ -444,7 +444,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                                 "ncbi_taxon_id": None,
                             },
                             "requested_extras": ["lineage_tree"],
-                            "effective_extras": ["groups", "lineage_tree"],
+                            "effective_extras": ["groups", "lineage_tree", "tf_list"],
                             "inputs": {},
                             "runs": [
                                 {
@@ -497,9 +497,22 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     json.dumps(
                         {
                             "schema_version": "1.0",
+                            "dataset_id": "gui_generate_test__dyngen_a__r01",
+                            "dataset_fingerprint": {
+                                "algorithm": "sha256",
+                                "value": "0" * 64,
+                            },
+                            "simulator_id": "dyngen",
+                            "data_axes": TRAJECTORY_AXES,
+                            "truth_requirements": GROUP_TRUTH,
                             "outputs": {
                                 "gene_universe": "truth/gene_universe.txt",
                                 "networks": "truth/networks.csv",
+                            },
+                            "candidate_space": {
+                                "sources": "extras/tf_list.txt",
+                                "targets": "truth/gene_universe.txt",
+                                "allow_self_edges": False,
                             },
                         },
                         ensure_ascii=True,
@@ -512,6 +525,9 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 )
                 (dataset_dir / "extras" / "groups.tsv").write_text(
                     "cell\tcluster\nC1\tA\n", encoding="utf-8"
+                )
+                (dataset_dir / "extras" / "tf_list.txt").write_text(
+                    "G1\n", encoding="utf-8"
                 )
                 (dataset_dir / "truth" / "networks.csv").write_text(
                     "source,target,score,sign,evidence,context\nG1,G2,1,+,simulated_truth,global\n",
@@ -716,6 +732,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                     self.assertEqual(
                         sorted(zf.namelist()),
                         [
+                            "extras/tf_list.txt",
                             "ground-truth-manifest.json",
                             "truth/gene_universe.txt",
                             "truth/networks.csv",
@@ -751,6 +768,7 @@ class GenerateDataV2GuiServerTests(unittest.TestCase):
                 self.assertEqual(
                     [item["path"] for item in analysis_bundle["files"]],
                     [
+                        "extras/tf_list.txt",
                         "ground-truth-manifest.json",
                         "truth/gene_universe.txt",
                         "truth/networks.csv",

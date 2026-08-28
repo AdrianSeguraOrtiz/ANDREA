@@ -8,10 +8,12 @@
   "required": [
     "schema_version",
     "dataset_id",
+    "dataset_fingerprint",
     "simulator_id",
     "data_axes",
     "truth_requirements",
-    "outputs"
+    "outputs",
+    "candidate_space"
   ],
   "properties": {
     "schema_version": {
@@ -21,6 +23,9 @@
     "dataset_id": {
       "type": "string",
       "minLength": 1
+    },
+    "dataset_fingerprint": {
+      "$ref": "#/$defs/dataset_fingerprint"
     },
     "simulator_id": {
       "type": "string",
@@ -35,12 +40,35 @@
       ],
       "properties": {
         "gene_universe": {
-          "type": "string",
-          "pattern": ".*\\.txt$"
+          "$ref": "#/$defs/safe_relative_txt_path"
         },
         "networks": {
-          "type": "string",
-          "pattern": ".*\\.csv$"
+          "$ref": "#/$defs/safe_relative_csv_path"
+        }
+      }
+    },
+    "candidate_space": {
+      "description": "Required directed evaluation universe. Truth and predictions are intersected with this space per metric level; excluded rows are reported. Paths are relative to this manifest.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sources",
+        "targets",
+        "allow_self_edges"
+      ],
+      "properties": {
+        "sources": {
+          "description": "Line-delimited unique candidate regulator identifiers, normally extras/tf_list.txt; every identifier must belong to outputs.gene_universe.",
+          "$ref": "#/$defs/safe_relative_txt_path"
+        },
+        "targets": {
+          "description": "Line-delimited unique candidate target identifiers, normally outputs.gene_universe; every identifier must belong to outputs.gene_universe.",
+          "$ref": "#/$defs/safe_relative_txt_path"
+        },
+        "allow_self_edges": {
+          "description": "Whether source-target pairs with the same identifier belong to the candidate universe.",
+          "type": "boolean",
+          "const": false
         }
       }
     },
@@ -56,6 +84,36 @@
     }
   },
   "$defs": {
+    "dataset_fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "value"
+      ],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "const": "sha256"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "safe_relative_txt_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!\\s)(?!.*\\s$)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:^|/)\\.(?:/|$))(?!.*//)[^\\\\\\x00-\\x1F]+\\.txt$",
+      "description": "Canonical POSIX path relative to the manifest: no absolute or drive-prefixed path, backslash, control character, surrounding whitespace, empty segment, '.' segment or '..' segment."
+    },
+    "safe_relative_csv_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!\\s)(?!.*\\s$)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:^|/)\\.(?:/|$))(?!.*//)[^\\\\\\x00-\\x1F]+\\.csv$",
+      "description": "Canonical POSIX path relative to the manifest: no absolute or drive-prefixed path, backslash, control character, surrounding whitespace, empty segment, '.' segment or '..' segment."
+    },
     "data_axes": {
       "type": "object",
       "additionalProperties": false,

@@ -50,10 +50,10 @@ def _valid_preflight_report() -> dict:
         "requested_data_axes": data_axes,
         "requested_truth_requirements": truth_requirements,
         "requested_extras": [],
-        "effective_extras": [],
+        "effective_extras": ["tf_list"],
         "inputs_used": [],
         "native_extras_used": [],
-        "derived_extras_used": [],
+        "derived_extras_used": ["tf_list"],
         "truth_outputs": [
             {"context": "global", "status": "native"},
             {"context": "column", "status": "derivable"},
@@ -87,7 +87,7 @@ def _valid_preflight_report() -> dict:
                 "ncbi_taxon_id": None,
             },
             "requested_extras": [],
-            "effective_extras": [],
+            "effective_extras": ["tf_list"],
             "inputs": {},
             "base_seed": 1,
         },
@@ -95,6 +95,31 @@ def _valid_preflight_report() -> dict:
         "eligible": [base_entry],
         "warning": [],
         "blocked": [blocked_entry],
+    }
+
+
+def _valid_ground_truth_manifest() -> dict:
+    return {
+        "schema_version": "1.0",
+        "dataset_id": "dataset_a",
+        "dataset_fingerprint": {"algorithm": "sha256", "value": "a" * 64},
+        "simulator_id": "toy",
+        "data_axes": {
+            "measurement": "rna_expression",
+            "resolution": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "trajectory",
+        },
+        "truth_requirements": {"contexts": ["global", "group"]},
+        "outputs": {
+            "gene_universe": "truth/gene_universe.txt",
+            "networks": "truth/networks.csv",
+        },
+        "candidate_space": {
+            "sources": "extras/tf_list.txt",
+            "targets": "truth/gene_universe.txt",
+            "allow_self_edges": False,
+        },
     }
 
 
@@ -156,6 +181,124 @@ class GenerateDataSchemaContractTests(unittest.TestCase):
         messages = "; ".join(error.message for error in validator.iter_errors(report))
 
         self.assertIn("is not of type 'array'", messages)
+
+    def test_ground_truth_manifest_requires_candidate_space(self) -> None:
+        validator = Draft202012Validator(
+            _load_schema("ground-truth-manifest.schema.json")
+        )
+        valid = _valid_ground_truth_manifest()
+        missing = copy.deepcopy(valid)
+        del missing["candidate_space"]
+
+        self.assertEqual(list(validator.iter_errors(valid)), [])
+        messages = "; ".join(error.message for error in validator.iter_errors(missing))
+        self.assertIn("'candidate_space' is a required property", messages)
+
+    def test_ground_truth_manifest_requires_canonical_dataset_fingerprint(self) -> None:
+        validator = Draft202012Validator(
+            _load_schema("ground-truth-manifest.schema.json")
+        )
+        for fingerprint in (
+            None,
+            {"algorithm": "sha1", "value": "a" * 64},
+            {"algorithm": "sha256", "value": "A" * 64},
+        ):
+            with self.subTest(fingerprint=fingerprint):
+                manifest = _valid_ground_truth_manifest()
+                if fingerprint is None:
+                    del manifest["dataset_fingerprint"]
+                else:
+                    manifest["dataset_fingerprint"] = fingerprint
+                self.assertTrue(list(validator.iter_errors(manifest)))
+
+    def test_ground_truth_manifest_rejects_incomplete_candidate_space(self) -> None:
+        validator = Draft202012Validator(
+            _load_schema("ground-truth-manifest.schema.json")
+        )
+        manifest = _valid_ground_truth_manifest()
+        manifest["candidate_space"] = {
+            "sources": "extras/tf_list.txt",
+            "targets": "truth/gene_universe.txt",
+            "allow_self_edges": True,
+        }
+        del manifest["candidate_space"]["targets"]
+
+        messages = "; ".join(error.message for error in validator.iter_errors(manifest))
+
+        self.assertIn("False was expected", messages)
+        self.assertIn("'targets' is a required property", messages)
+
+    def test_ground_truth_manifest_rejects_unsafe_candidate_paths(self) -> None:
+        validator = Draft202012Validator(
+            _load_schema("ground-truth-manifest.schema.json")
+        )
+        unsafe_paths = (
+            "/tmp/tf_list.txt",
+            "C:/tmp/tf_list.txt",
+            "C:tf_list.txt",
+            "../tf_list.txt",
+            "extras/../tf_list.txt",
+            "./tf_list.txt",
+            "extras//tf_list.txt",
+            "extras\\tf_list.txt",
+            " extras/tf_list.txt",
+            "extras/tf_list.txt ",
+            "extras/\ttf_list.txt",
+        )
+
+        for unsafe_path in unsafe_paths:
+            with self.subTest(path=unsafe_path):
+                manifest = _valid_ground_truth_manifest()
+                manifest["candidate_space"]["sources"] = unsafe_path
+                self.assertTrue(list(validator.iter_errors(manifest)))
+
+    def test_ground_truth_manifest_rejects_unsafe_output_paths(self) -> None:
+        validator = Draft202012Validator(
+            _load_schema("ground-truth-manifest.schema.json")
+        )
+        unsafe_paths = (
+            ("gene_universe", "/tmp/gene_universe.txt"),
+            ("gene_universe", "truth/../gene_universe.txt"),
+            ("gene_universe", "truth\\gene_universe.txt"),
+            ("networks", "C:/tmp/networks.csv"),
+            ("networks", "C:networks.csv"),
+            ("networks", "../networks.csv"),
+            ("networks", "truth//networks.csv"),
+            ("networks", " truth/networks.csv"),
+            ("networks", "truth/networks.csv "),
+        )
+
+        for output_id, unsafe_path in unsafe_paths:
+            with self.subTest(output=output_id, path=unsafe_path):
+                manifest = _valid_ground_truth_manifest()
+                manifest["outputs"][output_id] = unsafe_path
+                self.assertTrue(list(validator.iter_errors(manifest)))
+
+    def test_generated_artifact_schemas_require_tf_list(self) -> None:
+        simulator_output = _load_schema("simulator-output-manifest.schema.json")
+        self.assertIn("tf_list", simulator_output["properties"]["extras"]["required"])
+        self.assertEqual(
+            simulator_output["properties"]["extras"]["properties"]["tf_list"]["type"],
+            "string",
+        )
+        self.assertEqual(
+            simulator_output["properties"]["extras"]["properties"]["tf_list"]["const"],
+            "extras/tf_list.txt",
+        )
+        for schema_name in (
+            "simulation-plan.schema.json",
+            "benchmark-manifest.schema.json",
+        ):
+            schema = _load_schema(schema_name)
+            self.assertEqual(
+                schema["properties"]["effective_extras"]["contains"],
+                {"const": "tf_list"},
+                msg=schema_name,
+            )
+
+        benchmark = _load_schema("benchmark-manifest.schema.json")
+        artifact = benchmark["properties"]["artifacts"]["items"]
+        self.assertIn("tf_list", artifact["required"])
 
 
 if __name__ == "__main__":

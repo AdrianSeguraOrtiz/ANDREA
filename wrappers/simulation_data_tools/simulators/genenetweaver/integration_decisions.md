@@ -144,7 +144,8 @@ Wrapper must write directly under `/work/out/`:
 - `extras/perturbation_design.tsv`: one row per expression column for perturbational/time-series capabilities.
 - `extras/interventions.tsv`: distinct interventions derived from perturbation design.
 - `extras/timepoints.tsv`: time-series capability only; one row per expression column.
-- Optional extras: `enrichment_background.txt`, `prior_grn.tsv`, `tf_list.txt`.
+- Required extra: `tf_list.txt`.
+- Optional extras: `enrichment_background.txt`, `prior_grn.tsv`.
 - `native/`: requested native outputs, including GNW gold-standard files, raw expression tables, perturbation sidecars, XML/SBML model and normalization constant.
 - `provenance/raw/`: raw GNW output tree, resolved `settings.txt`, config snapshot, CLI log, Java/GNW session info and input copies.
 - `simulator-output-manifest.json`.

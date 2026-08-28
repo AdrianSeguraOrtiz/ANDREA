@@ -59,7 +59,10 @@ class GenerateDataSemanticModelTests(unittest.TestCase):
         )
 
         self.assertEqual(truth.contexts, ("global", "group"))
-        self.assertEqual(required_extras_for_request(axes, truth), frozenset({"groups"}))
+        self.assertEqual(
+            required_extras_for_request(axes, truth),
+            frozenset({"groups", "tf_list"}),
+        )
         self.assertEqual(required_truth_context_prefixes(truth), ("global", "group:"))
         self.assertEqual(primary_truth_context(truth), "group")
 
@@ -136,15 +139,15 @@ class GenerateDataSemanticModelTests(unittest.TestCase):
 
         self.assertEqual(
             required_extras_for_request(time_series_axes, grouped_truth),
-            frozenset({"groups", "timepoints"}),
+            frozenset({"groups", "tf_list", "timepoints"}),
         )
         self.assertEqual(
             required_extras_for_request(perturbational_axes, parse_truth_requirements({"contexts": ["global"]})),
-            frozenset({"perturbation_design", "interventions"}),
+            frozenset({"perturbation_design", "interventions", "tf_list"}),
         )
         self.assertEqual(
             required_extras_for_request(spatial_axes, parse_truth_requirements({"contexts": ["global"]})),
-            frozenset({"spatial_coordinates"}),
+            frozenset({"spatial_coordinates", "tf_list"}),
         )
 
     def test_parse_semantic_scenario_and_stable_key(self) -> None:

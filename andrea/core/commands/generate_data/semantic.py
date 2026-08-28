@@ -200,7 +200,10 @@ def required_extras_for_request(
         if isinstance(requirements, TruthRequirements)
         else parse_truth_requirements(requirements)
     )
-    extras = set(_required_extras_for_truth(truth))
+    # Every generated benchmark must expose the regulator universe used by
+    # inference and evaluation. All catalogued simulator capabilities provide
+    # tf_list natively or derivably.
+    extras = {"tf_list", *_required_extras_for_truth(truth)}
     if axes.experimental_design == "time_series":
         extras.add("timepoints")
     if axes.experimental_design == "perturbational":
