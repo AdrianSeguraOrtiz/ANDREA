@@ -142,6 +142,20 @@ Main outputs include `evaluation_report.json`, `metrics.csv`, `pairings.csv`
 and an optional HTML view. The analysis bundle can be passed to
 `compare-networks` as an evaluation overlay.
 
+Evaluation exclusively uses the output capabilities frozen in
+`run_report.json`, so temporary external Docker tools are supported without
+catalog registration.
+The ground-truth manifest must declare `candidate_space`; its source and target
+lists define the negative universe and metric denominators. Generated
+manifests use the mandatory `extras/tf_list.txt` as candidate sources. Truth
+and predictions outside that evaluable domain are excluded with explicit
+diagnostics. The inference report and truth manifest must also carry the same
+SHA-256 dataset fingerprint, computed from expression and standardized extras;
+matching IDs alone are insufficient. Every ground-truth output and
+candidate-list reference must be a
+canonical relative POSIX path contained by the manifest directory; absolute
+paths, traversal and symlink escapes are rejected.
+
 ## `compare-networks`
 
 `compare-networks` compares one or more inferred-network sources. The request

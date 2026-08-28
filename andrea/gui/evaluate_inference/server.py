@@ -10,6 +10,7 @@ import traceback
 import uuid
 import webbrowser
 from dataclasses import dataclass, field
+from importlib import resources
 from pathlib import Path
 from typing import Any, Optional
 
@@ -19,7 +20,12 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from andrea.core.commands.evaluate_inference import bundles as evaluation_bundles
-from andrea.core.commands.evaluate_inference import evaluate_inference
+from andrea.core.commands.evaluate_inference import (
+    evaluate_inference,
+    validate_inference_analysis_inputs,
+)
+from andrea.core.shared.json_io import validate_json_instance
+from andrea.core.shared.output_capabilities import validate_frozen_output_capabilities
 from andrea.gui.common.reproducibility import (
     build_single_step_reproducibility_payload,
     python_path_expr,
@@ -34,7 +40,6 @@ from andrea.gui.common.server_files import (
     output_dir_from_form,
     read_json_if_exists,
     require_root_file,
-    resolve_report_path,
     save_upload,
 )
 from andrea.gui.common.server_jobs import (
@@ -56,6 +61,8 @@ EVALUATION_VIEW_ASSETS_DIR = (
     / "view_assets"
 )
 GUI_TMP_ROOT = Path(tempfile.gettempdir()) / "andrea_gui" / "evaluate_inference"
+GROUND_TRUTH_SCHEMA_PACKAGE = "andrea.catalog_simulation_data_tools"
+GROUND_TRUTH_SCHEMA_RESOURCE = "schemas/ground-truth-manifest.schema.json"
 
 
 @dataclass
@@ -87,6 +94,46 @@ class GuiState:
 
 
 STATE = GuiState()
+
+
+def _validate_strict_candidate_space(
+    manifest: dict[str, Any], *, label: str
+) -> dict[str, Any]:
+    candidate_space = manifest.get("candidate_space")
+    expected_keys = {"sources", "targets", "allow_self_edges"}
+    if not isinstance(candidate_space, dict) or set(candidate_space) != expected_keys:
+        raise ValueError(
+            f"Invalid {label}: candidate_space must contain exactly sources, "
+            "targets and allow_self_edges"
+        )
+    for key in ("sources", "targets"):
+        reference = candidate_space[key]
+        if (
+            not isinstance(reference, str)
+            or not reference
+            or reference != reference.strip()
+        ):
+            raise ValueError(
+                f"Invalid {label}: candidate_space.{key} must be a non-empty "
+                "path without surrounding whitespace"
+            )
+    if candidate_space["allow_self_edges"] is not False:
+        raise ValueError(
+            f"Invalid {label}: candidate_space.allow_self_edges must be false"
+        )
+    return candidate_space
+
+
+def _validate_ground_truth_manifest_schema(
+    manifest: dict[str, Any], *, label: str
+) -> None:
+    schema = json.loads(
+        resources.files(GROUND_TRUTH_SCHEMA_PACKAGE)
+        .joinpath(GROUND_TRUTH_SCHEMA_RESOURCE)
+        .read_text(encoding="utf-8")
+    )
+    validate_json_instance(instance=manifest, schema=schema, label=label)
+
 
 EVALUATION_STAGE_PROGRESS = {
     "loading_run_report": 52,
@@ -135,6 +182,7 @@ def _job_response(job_id: str) -> dict[str, Any]:
         "reproducibility": _build_reproducibility_payload(job),
     }
 
+
 def _prepare_strict_inference_bundle(root: Path) -> Path:
     run_report_path = require_root_file(
         root=root,
@@ -149,15 +197,23 @@ def _prepare_strict_inference_bundle(root: Path) -> Path:
     run_report = load_strict_json_object(
         run_report_path, label="infer-network analysis run_report.json"
     )
-    outputs = run_report.setdefault("outputs", {})
-    if not isinstance(outputs, dict):
-        outputs = {}
-        run_report["outputs"] = outputs
-    outputs["merged_network_raw"] = "merged_network_raw.csv"
-    run_report_path.write_text(
-        json.dumps(run_report, indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
+    validate_frozen_output_capabilities(
+        run_report.get("tools"),
+        label="infer-network analysis run_report.json tools",
     )
+    outputs = run_report.get("outputs")
+    if not isinstance(outputs, dict):
+        raise ValueError(
+            "Invalid infer-network analysis run_report.json: outputs must be an object"
+        )
+    raw_reference = outputs.get("merged_network_raw")
+    if raw_reference != "merged_network_raw.csv":
+        raise ValueError(
+            "Invalid infer-network analysis run_report.json: "
+            "outputs.merged_network_raw must be exactly "
+            "'merged_network_raw.csv'"
+        )
+    validate_inference_analysis_inputs(run_report_path=run_report_path)
     return run_report_path
 
 
@@ -180,15 +236,36 @@ def _prepare_strict_truth_bundle(root: Path) -> Path:
     manifest = load_strict_json_object(
         truth_manifest_path, label="generate-data analysis ground-truth-manifest.json"
     )
-    outputs = manifest.setdefault("outputs", {})
+    outputs = manifest.get("outputs")
     if not isinstance(outputs, dict):
-        outputs = {}
-        manifest["outputs"] = outputs
-    outputs["networks"] = "truth/networks.csv"
-    outputs["gene_universe"] = "truth/gene_universe.txt"
-    truth_manifest_path.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
+        raise ValueError(
+            "Invalid generate-data analysis ground-truth-manifest.json: "
+            "outputs must be an object"
+        )
+    expected_references = {
+        "networks": "truth/networks.csv",
+        "gene_universe": "truth/gene_universe.txt",
+    }
+    for key, expected_reference in expected_references.items():
+        if outputs.get(key) != expected_reference:
+            raise ValueError(
+                "Invalid generate-data analysis ground-truth-manifest.json: "
+                f"outputs.{key} must be exactly '{expected_reference}'"
+            )
+    candidate_space = _validate_strict_candidate_space(
+        manifest, label="generate-data analysis ground-truth-manifest.json"
+    )
+    for key in ("sources", "targets"):
+        reference = candidate_space[key]
+        require_root_file(
+            root=root,
+            rel_path=reference,
+            bundle_label="generate-data analysis",
+            source_label=f"candidate_space.{key}",
+        )
+    _validate_ground_truth_manifest_schema(
+        manifest,
+        label="Generate-data analysis ground-truth-manifest.json",
     )
     return truth_manifest_path
 
@@ -197,6 +274,7 @@ def _validate_strict_uploads(request_dir: Path) -> tuple[Path, Path]:
     run_report_path = _prepare_strict_inference_bundle(request_dir / "inference")
     truth_manifest_path = _prepare_strict_truth_bundle(request_dir / "truth")
     return run_report_path, truth_manifest_path
+
 
 def _start_evaluation_job(
     *,
@@ -393,21 +471,34 @@ def _freeze_evaluation_inputs(
 
 
 def _freeze_run_report(*, run_report_path: Path, destination_dir: Path) -> Path:
-    run_report = read_json_if_exists(run_report_path) or {}
-    outputs = run_report.setdefault("outputs", {})
+    run_report = load_strict_json_object(
+        run_report_path,
+        label="infer-network analysis run_report.json to freeze",
+    )
+    validate_inference_analysis_inputs(run_report_path=run_report_path)
+    validate_frozen_output_capabilities(
+        run_report.get("tools"),
+        label="run_report.json tools to freeze",
+    )
+    outputs = run_report.get("outputs")
     if not isinstance(outputs, dict):
-        outputs = {}
-        run_report["outputs"] = outputs
-    raw_path = resolve_report_path(run_report_path, outputs.get("merged_network_raw"))
-    if raw_path is None or not raw_path.exists():
         raise ValueError(
-            "Cannot freeze evaluation input: run_report outputs.merged_network_raw "
-            f"is missing or unresolved ({run_report_path})"
+            "Cannot freeze evaluation input: run_report outputs must be an object"
         )
+    if outputs.get("merged_network_raw") != "merged_network_raw.csv":
+        raise ValueError(
+            "Cannot freeze evaluation input: run_report "
+            "outputs.merged_network_raw must be exactly "
+            f"'merged_network_raw.csv' ({run_report_path})"
+        )
+    raw_path = require_root_file(
+        root=run_report_path.parent,
+        rel_path="merged_network_raw.csv",
+        bundle_label="infer-network analysis",
+    )
     destination_dir.mkdir(parents=True, exist_ok=True)
     frozen_network = destination_dir / "merged_network_raw.csv"
     shutil.copy2(raw_path, frozen_network)
-    outputs["merged_network_raw"] = frozen_network.name
     frozen_report = destination_dir / "run_report.json"
     frozen_report.write_text(
         json.dumps(run_report, indent=2, ensure_ascii=True) + "\n",
@@ -417,32 +508,64 @@ def _freeze_run_report(*, run_report_path: Path, destination_dir: Path) -> Path:
 
 
 def _freeze_truth_manifest(*, truth_manifest_path: Path, destination_dir: Path) -> Path:
-    manifest = read_json_if_exists(truth_manifest_path) or {}
-    outputs = manifest.setdefault("outputs", {})
-    if not isinstance(outputs, dict):
-        outputs = {}
-        manifest["outputs"] = outputs
-    gene_universe_path = resolve_report_path(
-        truth_manifest_path, outputs.get("gene_universe")
+    manifest = load_strict_json_object(
+        truth_manifest_path,
+        label="generate-data analysis ground-truth-manifest.json to freeze",
     )
-    if gene_universe_path is None or not gene_universe_path.exists():
+    _validate_ground_truth_manifest_schema(
+        manifest,
+        label="Ground-truth manifest to freeze",
+    )
+    outputs = manifest.get("outputs")
+    if not isinstance(outputs, dict):
         raise ValueError(
-            "Cannot freeze evaluation input: ground_truth_manifest outputs.gene_universe "
-            f"is missing or unresolved ({truth_manifest_path})"
+            "Cannot freeze evaluation input: ground_truth_manifest outputs must be an object"
         )
-    networks_path = resolve_report_path(truth_manifest_path, outputs.get("networks"))
-    if networks_path is None or not networks_path.exists():
+    expected_outputs = {
+        "gene_universe": "truth/gene_universe.txt",
+        "networks": "truth/networks.csv",
+    }
+    if outputs != expected_outputs:
         raise ValueError(
-            "Cannot freeze evaluation input: ground_truth_manifest outputs.networks "
-            f"is missing or unresolved ({truth_manifest_path})"
+            "Cannot freeze evaluation input: ground_truth_manifest outputs must "
+            "contain exactly the canonical gene_universe and networks references"
         )
+    gene_universe_path = require_root_file(
+        root=truth_manifest_path.parent,
+        rel_path="truth/gene_universe.txt",
+        bundle_label="generate-data analysis",
+    )
+    networks_path = require_root_file(
+        root=truth_manifest_path.parent,
+        rel_path="truth/networks.csv",
+        bundle_label="generate-data analysis",
+    )
     frozen_gene_universe = destination_dir / "truth" / "gene_universe.txt"
     frozen_gene_universe.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(gene_universe_path, frozen_gene_universe)
-    outputs["gene_universe"] = "truth/gene_universe.txt"
     frozen_networks = destination_dir / "truth" / "networks.csv"
     shutil.copy2(networks_path, frozen_networks)
-    outputs["networks"] = "truth/networks.csv"
+    candidate_space = _validate_strict_candidate_space(
+        manifest, label="ground_truth_manifest to freeze"
+    )
+    frozen_references = {
+        "sources": "candidate_space/sources.txt",
+        "targets": "candidate_space/targets.txt",
+    }
+    for key, frozen_reference in frozen_references.items():
+        source_path = require_root_file(
+            root=truth_manifest_path.parent,
+            rel_path=candidate_space[key],
+            bundle_label="generate-data analysis",
+            source_label=f"candidate_space.{key}",
+        )
+        if source_path == gene_universe_path:
+            candidate_space[key] = "truth/gene_universe.txt"
+            continue
+        frozen_path = destination_dir / frozen_reference
+        frozen_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, frozen_path)
+        candidate_space[key] = frozen_reference
     destination_dir.mkdir(parents=True, exist_ok=True)
     frozen_manifest = destination_dir / "ground-truth-manifest.json"
     frozen_manifest.write_text(

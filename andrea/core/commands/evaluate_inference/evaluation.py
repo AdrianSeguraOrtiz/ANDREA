@@ -7,22 +7,35 @@ import html
 import json
 import math
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import resources
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
-from andrea.core.shared.json_io import load_json_object as _load_json_object
+from andrea.core.shared.dataset_identity import validate_dataset_fingerprint
 from andrea.core.shared.issues import issue_messages
+from andrea.core.shared.json_io import (
+    load_json_object as _load_json_object,
+    validate_json_instance,
+)
 from andrea.core.shared.network_context import (
     network_context_counts_by_family,
+    network_context_family,
     network_context_sort_key,
     normalize_network_context,
     normalize_network_sign,
 )
-from andrea.core.shared.paths import report_path
+from andrea.core.shared.output_capabilities import (
+    validate_final_inference_report,
+    validate_frozen_output_capabilities,
+)
+from andrea.core.shared.paths import (
+    report_path,
+    resolve_safe_manifest_path,
+    validate_safe_relative_posix_path,
+)
 from andrea.core.shared.runtime_profile import ProgressCallback, RuntimeProfile
 
 MERGED_NETWORK_REQUIRED_COLUMNS = [
@@ -45,10 +58,9 @@ TRUTH_NETWORK_REQUIRED_COLUMNS = [
 EVALUATION_LEVELS = ["topology", "directed", "signed"]
 METRIC_COLUMNS = ["auroc", "aupr", "f1_at_truth_count", "epr_at_truth_count"]
 VALID_SIGNS = {"+", "-"}
-CATALOG_TOOLS_ROOT = (
-    Path(__file__).resolve().parents[3] / "catalog_inference_tools" / "tools"
-)
 VIEW_ASSETS_PACKAGE = "andrea.core.commands.evaluate_inference.view_assets"
+GROUND_TRUTH_SCHEMA_PACKAGE = "andrea.catalog_simulation_data_tools"
+GROUND_TRUTH_SCHEMA_RESOURCE = "schemas/ground-truth-manifest.schema.json"
 
 
 @dataclass(frozen=True)
@@ -66,24 +78,61 @@ class TruthNetwork:
     context: str
     path: Path
     rows: list[NetworkRow]
-    candidate_genes: set[str]
+    candidate_space: CandidateSpace
     directed: bool
     signed: bool
+
+
+@dataclass(frozen=True)
+class CandidateSpace:
+    gene_universe: set[str]
+    sources: set[str]
+    targets: set[str]
+    allow_self_edges: bool
+    mode: str
+    sources_reference: str
+    targets_reference: str
 
 
 @dataclass(frozen=True)
 class TruthLevelCache:
     truth_scores: dict[tuple[str, ...], float]
     truth_keys: set[tuple[str, ...]]
-    candidate_genes: set[str]
+    excluded_truth_scores: dict[tuple[str, ...], float]
+    included_rows: list[NetworkRow]
+    excluded_rows: list[NetworkRow]
+    candidate_space: CandidateSpace
     n_candidates: int
 
 
 @dataclass(frozen=True)
 class ToolCapabilities:
     catalog_tool_id: str
+    tool_origin: str
     directed: bool
     signed: bool
+    sign: str
+
+
+@dataclass(frozen=True)
+class CandidateFilter:
+    included_rows: list[NetworkRow]
+    excluded_rows: list[NetworkRow]
+
+
+def validate_inference_analysis_inputs(*, run_report_path: Path) -> None:
+    """Validate an infer-network analysis handoff without producing outputs."""
+    resolved_report_path = run_report_path.resolve()
+    run_report = _load_json_object(resolved_report_path, "Run report")
+    merged_network_path = _resolve_merged_network_path_from_run_report(
+        run_report_path=resolved_report_path,
+        run_report=run_report,
+    )
+    inferred_rows = _load_inferred_rows(merged_network_path)
+    _resolve_tool_capabilities(
+        inferred_rows=inferred_rows,
+        run_report=run_report,
+    )
 
 
 def evaluate_inference(
@@ -135,6 +184,10 @@ def evaluate_inference(
             inferred_rows=inferred_rows,
             run_report=run_report,
         )
+        _validate_dataset_identity(
+            run_report=run_report,
+            truth_manifest=manifest,
+        )
         evaluation_dir = _create_evaluation_dir(
             output_root=output_root,
             run_report_path=run_report_path,
@@ -151,6 +204,10 @@ def evaluate_inference(
         detail="Scoring inferred networks against matching truth contexts.",
     ):
         grouped_predictions = _group_inferred_rows(inferred_rows)
+        _add_completed_contexts(
+            grouped_predictions=grouped_predictions,
+            run_report=run_report,
+        )
         truth_level_cache: dict[tuple[str, str], TruthLevelCache] = {}
 
         for (tool_id, context), prediction_rows in sorted(grouped_predictions.items()):
@@ -161,9 +218,27 @@ def evaluate_inference(
                     {
                         "tool_id": tool_id,
                         "catalog_tool_id": tool_capabilities[tool_id].catalog_tool_id,
+                        "tool_origin": tool_capabilities[tool_id].tool_origin,
                         "context": context,
                         "status": "skipped",
                         "reason": reason,
+                        "n_prediction_rows": len(prediction_rows),
+                        **{
+                            f"n_prediction_rows_outside_candidate_space_{level}": None
+                            for level in EVALUATION_LEVELS
+                        },
+                        **{
+                            f"outside_candidate_space_examples_{level}": None
+                            for level in EVALUATION_LEVELS
+                        },
+                        **{
+                            f"n_truth_rows_outside_candidate_space_{level}": None
+                            for level in EVALUATION_LEVELS
+                        },
+                        **{
+                            f"truth_outside_candidate_space_examples_{level}": None
+                            for level in EVALUATION_LEVELS
+                        },
                     }
                 )
                 for level in EVALUATION_LEVELS:
@@ -180,29 +255,72 @@ def evaluate_inference(
                     )
                 continue
 
+            prediction_filters = {
+                level: _filter_rows_by_candidate_space(
+                    rows=prediction_rows,
+                    truth=truth,
+                    level=level,
+                )
+                for level in EVALUATION_LEVELS
+            }
+            truth_caches = {
+                level: _truth_level_cache(
+                    truth=truth,
+                    level=level,
+                    cache=truth_level_cache,
+                )
+                for level in EVALUATION_LEVELS
+            }
             pairings.append(
                 {
                     "tool_id": tool_id,
                     "catalog_tool_id": tool_capabilities[tool_id].catalog_tool_id,
+                    "tool_origin": tool_capabilities[tool_id].tool_origin,
                     "context": context,
                     "truth_context": truth.context,
                     "status": "evaluated",
                     "reason": None,
+                    "n_prediction_rows": len(prediction_rows),
+                    **{
+                        f"n_prediction_rows_outside_candidate_space_{level}": len(
+                            prediction_filters[level].excluded_rows
+                        )
+                        for level in EVALUATION_LEVELS
+                    },
+                    **{
+                        f"outside_candidate_space_examples_{level}": (
+                            _format_edge_examples(
+                                prediction_filters[level].excluded_rows
+                            )
+                        )
+                        for level in EVALUATION_LEVELS
+                    },
+                    **{
+                        f"n_truth_rows_outside_candidate_space_{level}": len(
+                            truth_caches[level].excluded_rows
+                        )
+                        for level in EVALUATION_LEVELS
+                    },
+                    **{
+                        f"truth_outside_candidate_space_examples_{level}": (
+                            _format_edge_examples(truth_caches[level].excluded_rows)
+                        )
+                        for level in EVALUATION_LEVELS
+                    },
                 }
             )
             for level in EVALUATION_LEVELS:
+                prediction_filter = prediction_filters[level]
                 metrics.append(
                     _evaluate_pairing(
                         tool_id=tool_id,
                         capabilities=tool_capabilities[tool_id],
-                        prediction_rows=prediction_rows,
+                        prediction_rows=prediction_filter.included_rows,
+                        excluded_prediction_rows=prediction_filter.excluded_rows,
+                        prediction_context=context,
                         truth=truth,
                         level=level,
-                        truth_cache=_truth_level_cache(
-                            truth=truth,
-                            level=level,
-                            cache=truth_level_cache,
-                        ),
+                        truth_cache=truth_caches[level],
                     )
                 )
 
@@ -229,25 +347,33 @@ def evaluate_inference(
         "schema_version": "1.0",
         "created_at": created_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "inputs": {
-            "inference_run_id": run_report.get("run_id"),
-            "inference_dataset_id": (
-                run_report.get("dataset", {}).get("id")
-                if isinstance(run_report.get("dataset"), dict)
-                else None
-            ),
+            "inference_run_id": run_report["run_id"],
+            "inference_dataset_id": run_report["dataset"]["id"],
+            "inference_dataset_fingerprint": run_report["dataset"]["fingerprint"],
             "ground_truth_dataset_id": manifest.get("dataset_id"),
+            "ground_truth_dataset_fingerprint": manifest["dataset_fingerprint"],
             "ground_truth_simulator_id": manifest.get("simulator_id"),
             "merged_network": "merged_network_raw",
         },
         "inference_run": {
-            "run_id": run_report.get("run_id"),
-            "status": run_report.get("status"),
-            "dataset": run_report.get("dataset"),
-            "execution": run_report.get("execution"),
-            "warnings": issue_messages(run_report.get("issues", []), severity="warn"),
+            "run_id": run_report["run_id"],
+            "status": run_report["status"],
+            "dataset": run_report["dataset"],
+            "execution": run_report["execution"],
+            "warnings": issue_messages(run_report["issues"], severity="warn"),
+            "output_capabilities": {
+                tool_id: {
+                    "tool_origin": capabilities.tool_origin,
+                    "catalog_tool_id": capabilities.catalog_tool_id,
+                    "directed": capabilities.directed,
+                    "sign": capabilities.sign,
+                }
+                for tool_id, capabilities in sorted(tool_capabilities.items())
+            },
         },
         "ground_truth": {
             "dataset_id": manifest.get("dataset_id"),
+            "dataset_fingerprint": manifest["dataset_fingerprint"],
             "simulator_id": manifest.get("simulator_id"),
             "data_axes": manifest.get("data_axes"),
             "truth_requirements": manifest.get("truth_requirements"),
@@ -256,9 +382,13 @@ def evaluate_inference(
                 truth_networks.keys()
             ),
             "gene_universe_size": (
-                len(next(iter(truth_networks.values())).candidate_genes)
+                len(next(iter(truth_networks.values())).candidate_space.gene_universe)
                 if truth_networks
                 else 0
+            ),
+            "candidate_space": _candidate_space_report(
+                truth_networks,
+                cache=truth_level_cache,
             ),
         },
         "context_matching": context_matching,
@@ -357,6 +487,90 @@ def _context_counts_by_family(contexts: Iterable[str]) -> dict[str, int]:
     return network_context_counts_by_family(contexts)
 
 
+def _candidate_space_report(
+    truth_networks: dict[str, TruthNetwork],
+    *,
+    cache: dict[tuple[str, str], TruthLevelCache],
+) -> dict[str, Any]:
+    if not truth_networks:
+        return {
+            "mode": "unknown",
+            "sources": None,
+            "targets": None,
+            "allow_self_edges": False,
+            "n_sources": 0,
+            "n_targets": 0,
+            "n_source_target_overlap": 0,
+            "truth_rows_total": 0,
+            "n_truth_rows_outside_candidate_space_by_level": {
+                level: 0 for level in EVALUATION_LEVELS
+            },
+            "n_truth_edges_outside_candidate_space_by_level": {
+                level: 0 for level in EVALUATION_LEVELS
+            },
+            "truth_filtering_by_context": [],
+            "n_candidates_by_level": {level: 0 for level in EVALUATION_LEVELS},
+        }
+    candidate_space = next(iter(truth_networks.values())).candidate_space
+    truth_filtering_by_context: list[dict[str, Any]] = []
+    totals_by_level = {level: 0 for level in EVALUATION_LEVELS}
+    edge_totals_by_level = {level: 0 for level in EVALUATION_LEVELS}
+    for context, truth in sorted(
+        truth_networks.items(), key=lambda item: network_context_sort_key(item[0])
+    ):
+        caches = {
+            level: _truth_level_cache(truth=truth, level=level, cache=cache)
+            for level in EVALUATION_LEVELS
+        }
+        outside_by_level = {
+            level: len(caches[level].excluded_rows) for level in EVALUATION_LEVELS
+        }
+        outside_edges_by_level = {
+            level: len(caches[level].excluded_truth_scores)
+            for level in EVALUATION_LEVELS
+        }
+        for level in EVALUATION_LEVELS:
+            totals_by_level[level] += outside_by_level[level]
+            edge_totals_by_level[level] += outside_edges_by_level[level]
+        if any(outside_by_level.values()):
+            truth_filtering_by_context.append(
+                {
+                    "context": context,
+                    "n_truth_rows": len(truth.rows),
+                    "n_truth_rows_outside_candidate_space_by_level": (outside_by_level),
+                    "n_truth_edges_outside_candidate_space_by_level": (
+                        outside_edges_by_level
+                    ),
+                    "outside_candidate_space_examples_by_level": {
+                        level: _format_edge_examples(caches[level].excluded_rows)
+                        for level in EVALUATION_LEVELS
+                    },
+                }
+            )
+    return {
+        "mode": candidate_space.mode,
+        "sources": candidate_space.sources_reference,
+        "targets": candidate_space.targets_reference,
+        "allow_self_edges": candidate_space.allow_self_edges,
+        "n_sources": len(candidate_space.sources),
+        "n_targets": len(candidate_space.targets),
+        "n_source_target_overlap": len(
+            candidate_space.sources & candidate_space.targets
+        ),
+        "truth_rows_total": sum(len(truth.rows) for truth in truth_networks.values()),
+        "n_truth_rows_outside_candidate_space_by_level": totals_by_level,
+        "n_truth_edges_outside_candidate_space_by_level": edge_totals_by_level,
+        "truth_filtering_by_context": truth_filtering_by_context,
+        "n_candidates_by_level": {
+            level: _candidate_count(
+                candidate_space=candidate_space,
+                level=level,
+            )
+            for level in EVALUATION_LEVELS
+        },
+    }
+
+
 def _resolve_merged_network_path_from_run_report(
     *,
     run_report_path: Path,
@@ -366,14 +580,11 @@ def _resolve_merged_network_path_from_run_report(
     if not isinstance(outputs, dict):
         raise ValueError("Run report must contain an object at outputs")
     raw_path = outputs.get("merged_network_raw")
-    if not isinstance(raw_path, str) or not raw_path.strip():
-        raise ValueError(
-            "Run report outputs.merged_network_raw is required for evaluation"
-        )
-    path = Path(raw_path)
-    if path.is_absolute():
-        return path
-    return run_report_path.parent / path
+    return resolve_safe_manifest_path(
+        base_dir=run_report_path.parent,
+        value=raw_path,
+        label="Run report outputs.merged_network_raw",
+    )
 
 
 def _create_evaluation_dir(
@@ -385,9 +596,7 @@ def _create_evaluation_dir(
     created_at: datetime,
 ) -> Path:
     output_root.mkdir(parents=True, exist_ok=True)
-    inference_id = _slugify(
-        run_report_path.parent.name or str(run_report.get("run_id") or "inference")
-    )
+    inference_id = _slugify(run_report_path.parent.name or run_report["run_id"])
     truth_id = _slugify(str(truth_manifest.get("dataset_id") or "truth"))
     timestamp = created_at.strftime("%Y%m%dT%H%M%SZ")
     dirname = f"evaluation_{inference_id}__{truth_id}_{timestamp}"
@@ -419,17 +628,18 @@ def _load_inferred_rows(path: Path) -> list[NetworkRow]:
                 f"Inferred network CSV is missing required columns {missing}: {path}"
             )
         for line_number, row in enumerate(reader, start=2):
+            raw_score = row["score"]
             try:
-                score = float(row["score"])
-            except Exception as exc:  # noqa: BLE001
+                score = float(raw_score)
+            except (TypeError, ValueError) as exc:
                 raise ValueError(
                     f"Inferred network CSV has invalid score at line {line_number}: "
                     f"{row.get('score')!r}"
                 ) from exc
             if not math.isfinite(score):
                 raise ValueError(
-                    f"Inferred network CSV has non-finite score at line {line_number}: "
-                    f"{row.get('score')!r}"
+                    f"Inferred network CSV has invalid score at line {line_number}: "
+                    f"{row.get('score')!r}; score must be finite"
                 )
             if score <= 0.0:
                 raise ValueError(
@@ -470,8 +680,6 @@ def _load_inferred_rows(path: Path) -> list[NetworkRow]:
                     tool_id=tool_id,
                 )
             )
-    if not rows:
-        raise ValueError(f"Inferred network CSV contains no rows: {path}")
     return rows
 
 
@@ -484,51 +692,206 @@ def _load_truth_networks(
         raise ValueError("Ground-truth manifest must contain an object at outputs")
 
     base_dir = manifest_path.parent
-    gene_universe_raw = outputs.get("gene_universe")
-    if not isinstance(gene_universe_raw, str) or not gene_universe_raw.strip():
-        raise ValueError("Ground-truth manifest outputs.gene_universe is required")
-    networks_raw = outputs.get("networks")
-    if not isinstance(networks_raw, str) or not networks_raw.strip():
-        raise ValueError("Ground-truth manifest outputs.networks is required")
-    candidate_genes = _load_gene_universe(
-        _resolve_manifest_path(base_dir, gene_universe_raw)
+    gene_universe_reference = _validate_truth_manifest_reference(
+        outputs.get("gene_universe"),
+        label="Ground-truth manifest outputs.gene_universe",
+        suffix=".txt",
+    )
+    networks_reference = _validate_truth_manifest_reference(
+        outputs.get("networks"),
+        label="Ground-truth manifest outputs.networks",
+        suffix=".csv",
+    )
+    gene_universe = _load_gene_universe(
+        resolve_safe_manifest_path(
+            base_dir=base_dir,
+            value=gene_universe_reference,
+            label="Ground-truth manifest outputs.gene_universe",
+        )
+    )
+    candidate_space = _load_candidate_space(
+        manifest=manifest,
+        base_dir=base_dir,
+        gene_universe=gene_universe,
+    )
+    schema = json.loads(
+        resources.files(GROUND_TRUTH_SCHEMA_PACKAGE)
+        .joinpath(GROUND_TRUTH_SCHEMA_RESOURCE)
+        .read_text(encoding="utf-8")
+    )
+    validate_json_instance(
+        instance=manifest,
+        schema=schema,
+        label="Ground-truth manifest",
     )
     networks = _load_truth_network_table(
-        path=_resolve_manifest_path(base_dir, networks_raw),
-        candidate_genes=candidate_genes,
+        path=resolve_safe_manifest_path(
+            base_dir=base_dir,
+            value=networks_reference,
+            label="Ground-truth manifest outputs.networks",
+        ),
+        candidate_space=candidate_space,
     )
 
     if not networks:
         raise ValueError(
             f"Ground-truth manifest references no truth networks: {manifest_path}"
         )
+    _validate_required_truth_contexts(manifest=manifest, networks=networks)
     return networks, manifest
 
 
+def _validate_required_truth_contexts(
+    *, manifest: dict[str, Any], networks: dict[str, TruthNetwork]
+) -> None:
+    contexts = set(networks)
+    required_families = manifest["truth_requirements"]["contexts"]
+    missing: list[str] = []
+    for family in required_families:
+        if family == "global":
+            present = "global" in contexts
+        else:
+            prefix = f"{family}:"
+            present = any(context.startswith(prefix) for context in contexts)
+        if not present:
+            missing.append(family)
+    if missing:
+        raise ValueError(
+            "Ground-truth network CSV does not satisfy "
+            "truth_requirements.contexts; missing: " + ", ".join(missing)
+        )
+
+
+def _validate_truth_manifest_reference(
+    value: Any,
+    *,
+    label: str,
+    suffix: str,
+) -> str:
+    reference = validate_safe_relative_posix_path(value, label=label)
+    if not reference.endswith(suffix):
+        raise ValueError(f"{label} must use the {suffix!r} extension")
+    return reference
+
+
 def _load_gene_universe(path: Path) -> set[str]:
+    return _load_gene_set(
+        path,
+        label="Ground-truth gene universe",
+        reject_duplicates=True,
+    )
+
+
+def _load_gene_set(
+    path: Path,
+    *,
+    label: str,
+    reject_duplicates: bool = False,
+) -> set[str]:
     if not path.exists() or not path.is_file():
-        raise ValueError(f"Ground-truth gene universe file not found: {path}")
+        raise ValueError(f"{label} file not found: {path}")
     genes: list[str] = []
     seen: set[str] = set()
     for line_number, line in enumerate(
         path.read_text(encoding="utf-8").splitlines(), start=1
     ):
-        gene = line.strip()
-        if not gene:
-            continue
+        if not line or line != line.strip():
+            raise ValueError(
+                f"{label} file contains an empty or non-canonical identifier "
+                f"at line {line_number}: {path}"
+            )
+        gene = line
         if gene in seen:
+            if reject_duplicates:
+                raise ValueError(
+                    f"{label} file contains duplicate gene {gene!r} "
+                    f"at line {line_number}: {path}"
+                )
             continue
         seen.add(gene)
         genes.append(gene)
     if not genes:
-        raise ValueError(f"Ground-truth gene universe file contains no genes: {path}")
+        raise ValueError(f"{label} file contains no genes: {path}")
     return set(genes)
+
+
+def _load_candidate_space(
+    *,
+    manifest: dict[str, Any],
+    base_dir: Path,
+    gene_universe: set[str],
+) -> CandidateSpace:
+    raw_candidate_space = manifest.get("candidate_space")
+    if raw_candidate_space is None:
+        raise ValueError(
+            "Ground-truth manifest candidate_space is required; evaluation "
+            "cannot infer the regulator universe"
+        )
+    if not isinstance(raw_candidate_space, dict):
+        raise ValueError("Ground-truth manifest candidate_space must be an object")
+
+    supported_keys = {"sources", "targets", "allow_self_edges"}
+    unexpected_keys = sorted(set(raw_candidate_space) - supported_keys)
+    if unexpected_keys:
+        raise ValueError(
+            "Ground-truth manifest candidate_space contains unsupported keys: "
+            + ", ".join(unexpected_keys)
+        )
+
+    references: dict[str, str] = {}
+    for key in ("sources", "targets"):
+        references[key] = _validate_truth_manifest_reference(
+            raw_candidate_space.get(key),
+            label=f"Ground-truth manifest candidate_space.{key}",
+            suffix=".txt",
+        )
+    allow_self_edges = raw_candidate_space.get("allow_self_edges")
+    if allow_self_edges is not False:
+        raise ValueError(
+            "Ground-truth manifest candidate_space.allow_self_edges must be false"
+        )
+
+    sources = _load_gene_set(
+        resolve_safe_manifest_path(
+            base_dir=base_dir,
+            value=references["sources"],
+            label="Ground-truth manifest candidate_space.sources",
+        ),
+        label="Ground-truth candidate source universe",
+        reject_duplicates=True,
+    )
+    targets = _load_gene_set(
+        resolve_safe_manifest_path(
+            base_dir=base_dir,
+            value=references["targets"],
+            label="Ground-truth manifest candidate_space.targets",
+        ),
+        label="Ground-truth candidate target universe",
+        reject_duplicates=True,
+    )
+    for name, values in (("sources", sources), ("targets", targets)):
+        outside = sorted(values - gene_universe)
+        if outside:
+            raise ValueError(
+                f"Ground-truth manifest candidate_space.{name} contains genes outside "
+                f"outputs.gene_universe; examples: {', '.join(outside[:8])}"
+            )
+
+    return CandidateSpace(
+        gene_universe=set(gene_universe),
+        sources=sources,
+        targets=targets,
+        allow_self_edges=allow_self_edges,
+        mode="explicit",
+        sources_reference=references["sources"],
+        targets_reference=references["targets"],
+    )
 
 
 def _load_truth_network_table(
     *,
     path: Path,
-    candidate_genes: set[str],
+    candidate_space: CandidateSpace,
 ) -> dict[str, TruthNetwork]:
     if not path.exists() or not path.is_file():
         raise ValueError(f"Ground-truth network CSV not found: {path}")
@@ -546,15 +909,15 @@ def _load_truth_network_table(
             raw_score = row["score"]
             try:
                 score = float(raw_score)
-            except Exception as exc:  # noqa: BLE001
+            except (TypeError, ValueError) as exc:
                 raise ValueError(
                     f"Ground-truth network CSV has invalid score at line {line_number}: "
                     f"{raw_score!r}"
                 ) from exc
             if not math.isfinite(score):
                 raise ValueError(
-                    f"Ground-truth network CSV has non-finite score at line {line_number}: "
-                    f"{raw_score!r}"
+                    f"Ground-truth network CSV has invalid score at line {line_number}: "
+                    f"{raw_score!r}; score must be finite"
                 )
             if score <= 0.0:
                 raise ValueError(
@@ -572,11 +935,10 @@ def _load_truth_network_table(
                 raise ValueError(
                     f"Ground-truth network CSV has empty source or target at line {line_number}: {path}"
                 )
-            if source == target:
-                raise ValueError(
-                    f"Ground-truth network CSV has a self-loop at line {line_number}: {source!r}"
-                )
-            if source not in candidate_genes or target not in candidate_genes:
+            if (
+                source not in candidate_space.gene_universe
+                or target not in candidate_space.gene_universe
+            ):
                 raise ValueError(
                     f"Ground-truth network CSV line {line_number} references genes outside outputs.gene_universe: "
                     f"{source!r}, {target!r}"
@@ -605,19 +967,12 @@ def _load_truth_network_table(
             context=context,
             path=path,
             rows=rows,
-            candidate_genes=set(candidate_genes),
+            candidate_space=candidate_space,
             directed=True,
             signed=any(row.sign in VALID_SIGNS for row in rows),
         )
         for context, rows in rows_by_context.items()
     }
-
-
-def _resolve_manifest_path(base_dir: Path, value: str) -> Path:
-    path = Path(value)
-    if path.is_absolute():
-        return path
-    return base_dir / path
 
 
 def _group_inferred_rows(
@@ -631,61 +986,215 @@ def _group_inferred_rows(
     return dict(grouped)
 
 
+def _validate_dataset_identity(
+    *,
+    run_report: dict[str, Any],
+    truth_manifest: dict[str, Any],
+) -> None:
+    inference_dataset_id = run_report["dataset"]["id"]
+    truth_dataset_id = truth_manifest["dataset_id"]
+    if inference_dataset_id != truth_dataset_id:
+        raise ValueError(
+            "Inference and ground truth dataset IDs must match exactly: "
+            f"run_report.dataset.id={inference_dataset_id!r}, "
+            f"ground_truth_manifest.dataset_id={truth_dataset_id!r}"
+        )
+    inference_fingerprint = validate_dataset_fingerprint(
+        run_report["dataset"].get("fingerprint"),
+        label="Run report dataset.fingerprint",
+    )
+    truth_fingerprint = validate_dataset_fingerprint(
+        truth_manifest.get("dataset_fingerprint"),
+        label="Ground-truth manifest dataset_fingerprint",
+    )
+    if inference_fingerprint != truth_fingerprint:
+        raise ValueError(
+            "Inference and ground truth dataset fingerprints must match exactly: "
+            f"run_report.dataset.fingerprint={inference_fingerprint!r}, "
+            f"ground_truth_manifest.dataset_fingerprint={truth_fingerprint!r}"
+        )
+
+
+def _validated_completed_contexts(
+    *,
+    run_report: dict[str, Any],
+    observed_contexts: dict[str, set[str]],
+) -> dict[str, list[str]]:
+    tools = run_report["tools"]
+    completed = tools["completed"]
+    raw_inventory = tools.get("completed_contexts")
+    if not isinstance(raw_inventory, dict) or set(raw_inventory) != set(completed):
+        raise ValueError(
+            "Run report tools.completed_contexts must be an object with exactly "
+            "the tools.completed keys"
+        )
+    results = tools.get("results")
+    if not isinstance(results, dict):
+        raise ValueError("Run report tools.results must be an object")
+
+    validated: dict[str, list[str]] = {}
+    for run_id in completed:
+        result = results.get(run_id)
+        execution = result.get("execution") if isinstance(result, dict) else None
+        mode = execution.get("mode") if isinstance(execution, dict) else None
+        if mode not in {
+            "global",
+            "group_native",
+            "group_emulated",
+            "column_native",
+            "group_aggregated",
+        }:
+            raise ValueError(
+                f"Run report tools.results[{run_id!r}].execution.mode is required "
+                "for every completed run"
+            )
+
+        raw_contexts = raw_inventory[run_id]
+        if (
+            not isinstance(raw_contexts, list)
+            or not raw_contexts
+            or not all(isinstance(context, str) for context in raw_contexts)
+        ):
+            raise ValueError(
+                f"Run report tools.completed_contexts[{run_id!r}] must be a "
+                "non-empty array of unique canonical contexts"
+            )
+        contexts = [
+            normalize_network_context(
+                context,
+                source=f"Run report tools.completed_contexts[{run_id!r}]",
+            )
+            for context in raw_contexts
+        ]
+        if contexts != raw_contexts or len(set(contexts)) != len(contexts):
+            raise ValueError(
+                f"Run report tools.completed_contexts[{run_id!r}] must be a "
+                "non-empty array of unique canonical contexts"
+            )
+
+        for context in contexts:
+            family = network_context_family(context)
+            compatible = (
+                (mode == "global" and context == "global")
+                or (
+                    mode in {"group_native", "group_emulated", "group_aggregated"}
+                    and family == "group"
+                    and context != "group:"
+                )
+                or (
+                    mode == "column_native"
+                    and family == "column"
+                    and context != "column:"
+                )
+            )
+            if not compatible:
+                raise ValueError(
+                    f"Run report tools.completed_contexts[{run_id!r}] context "
+                    f"{context!r} contradicts execution mode {mode!r}"
+                )
+
+        unexpected_observed = observed_contexts.get(run_id, set()) - set(contexts)
+        if unexpected_observed:
+            raise ValueError(
+                f"Inferred run {run_id!r} contains contexts not declared in "
+                "Run report tools.completed_contexts: "
+                f"{sorted(unexpected_observed, key=network_context_sort_key)}"
+            )
+        validated[run_id] = contexts
+    return validated
+
+
+def _add_completed_contexts(
+    *,
+    grouped_predictions: dict[tuple[str, str], list[NetworkRow]],
+    run_report: dict[str, Any],
+) -> None:
+    observed_contexts: dict[str, set[str]] = defaultdict(set)
+    for run_id, context in grouped_predictions:
+        observed_contexts[run_id].add(context)
+    inventory = _validated_completed_contexts(
+        run_report=run_report,
+        observed_contexts=dict(observed_contexts),
+    )
+    for run_id, contexts in inventory.items():
+        for context in contexts:
+            grouped_predictions.setdefault((run_id, context), [])
+
+
 def _resolve_tool_capabilities(
     *,
     inferred_rows: list[NetworkRow],
     run_report: dict[str, Any],
 ) -> dict[str, ToolCapabilities]:
-    catalog_ids = _catalog_ids_from_run_report(run_report)
-    tool_ids = sorted({str(row.tool_id) for row in inferred_rows if row.tool_id})
-    missing_catalog_ids = [
-        tool_id for tool_id in tool_ids if tool_id not in catalog_ids
-    ]
-    if missing_catalog_ids:
-        raise ValueError(
-            "Run report tools.catalog_tool_ids is missing entries for inferred tools: "
-            + ", ".join(missing_catalog_ids)
-        )
-
-    capabilities: dict[str, ToolCapabilities] = {}
-    for tool_id in tool_ids:
-        catalog_tool_id = catalog_ids[tool_id]
-        spec_outputs = _load_tool_outputs(catalog_tool_id)
-        if spec_outputs is None:
-            raise ValueError(
-                f"ToolSpec outputs could not be resolved for catalog tool {catalog_tool_id!r}"
-            )
-        capabilities[tool_id] = ToolCapabilities(
-            catalog_tool_id=catalog_tool_id,
-            directed=bool(spec_outputs.get("directed")),
-            signed=str(spec_outputs.get("sign", "none")).strip().lower() != "none",
-        )
-    return capabilities
-
-
-def _catalog_ids_from_run_report(run_report: dict[str, Any]) -> dict[str, str]:
-    tools = run_report.get("tools", {})
-    if not isinstance(tools, dict):
-        return {}
-    catalog_ids = tools.get("catalog_tool_ids", {})
-    if not isinstance(catalog_ids, dict):
-        return {}
-    return {
-        str(run_id): str(catalog_id)
-        for run_id, catalog_id in catalog_ids.items()
-        if str(run_id).strip() and str(catalog_id).strip()
+    raw_capabilities = validate_frozen_output_capabilities(
+        run_report.get("tools"),
+        label="Run report tools",
+    )
+    validate_final_inference_report(
+        run_report,
+        observed_rows_per_tool=Counter(
+            row.tool_id for row in inferred_rows if row.tool_id is not None
+        ),
+        selected=list(raw_capabilities),
+    )
+    observed_contexts: dict[str, set[str]] = defaultdict(set)
+    for row in inferred_rows:
+        if row.tool_id is not None:
+            observed_contexts[row.tool_id].add(row.context)
+    _validated_completed_contexts(
+        run_report=run_report,
+        observed_contexts=dict(observed_contexts),
+    )
+    frozen_capabilities = {
+        run_id: _parse_frozen_output_capabilities(run_id=run_id, value=value)
+        for run_id, value in raw_capabilities.items()
     }
+    completed = run_report["tools"]["completed"]
+    resolved = {tool_id: frozen_capabilities[tool_id] for tool_id in completed}
+    _validate_inferred_sign_semantics(
+        inferred_rows=inferred_rows,
+        capabilities=resolved,
+    )
+    return resolved
 
 
-def _load_tool_outputs(catalog_tool_id: str) -> Optional[dict[str, Any]]:
-    spec_path = CATALOG_TOOLS_ROOT / catalog_tool_id / "toolspec.json"
-    if not spec_path.exists():
-        return None
-    spec = _load_json_object(spec_path, f"ToolSpec {catalog_tool_id}")
-    outputs = spec.get("outputs")
-    if not isinstance(outputs, dict):
-        return None
-    return outputs
+def _validate_inferred_sign_semantics(
+    *,
+    inferred_rows: list[NetworkRow],
+    capabilities: dict[str, ToolCapabilities],
+) -> None:
+    for row in inferred_rows:
+        if row.tool_id is None:
+            raise ValueError("Inferred network row is missing tool_id")
+        capability = capabilities[row.tool_id]
+        if capability.sign == "none" and row.sign != "?":
+            raise ValueError(
+                f"Inferred run {row.tool_id!r} declares sign='none' but emitted "
+                f"signed edge {row.source!r} -> {row.target!r} with sign {row.sign!r}"
+            )
+        if capability.sign == "signed" and row.sign not in VALID_SIGNS:
+            raise ValueError(
+                f"Inferred run {row.tool_id!r} declares sign='signed' but emitted "
+                f"unsigned edge {row.source!r} -> {row.target!r}"
+            )
+
+
+def _parse_frozen_output_capabilities(
+    *,
+    run_id: str,
+    value: Any,
+) -> ToolCapabilities:
+    directed = value["directed"]
+    sign = value["sign"]
+    tool_origin = value["tool_origin"]
+    catalog_tool_id = value["catalog_tool_id"]
+    return ToolCapabilities(
+        catalog_tool_id=catalog_tool_id,
+        tool_origin=tool_origin,
+        directed=directed,
+        signed=sign != "none",
+        sign=sign,
+    )
 
 
 def _evaluate_pairing(
@@ -693,6 +1202,8 @@ def _evaluate_pairing(
     tool_id: str,
     capabilities: ToolCapabilities,
     prediction_rows: list[NetworkRow],
+    excluded_prediction_rows: list[NetworkRow],
+    prediction_context: str,
     truth: TruthNetwork,
     level: str,
     truth_cache: Optional[TruthLevelCache] = None,
@@ -713,13 +1224,15 @@ def _evaluate_pairing(
         return _empty_metric_row(
             tool_id=tool_id,
             capabilities=capabilities,
-            context=prediction_rows[0].context,
+            context=prediction_context,
             truth_context=truth.context,
             level=level,
             status="not_applicable",
             reason=not_applicable_reason,
             truth=truth,
             truth_cache=truth_count_cache,
+            prediction_rows=prediction_rows,
+            excluded_prediction_rows=excluded_prediction_rows,
         )
 
     if truth_cache is None:
@@ -727,26 +1240,21 @@ def _evaluate_pairing(
     prediction_scores = _aggregate_rows(prediction_rows, level=level)
     truth_keys = truth_cache.truth_keys
     predicted_keys = set(prediction_scores)
-    truth_outside = [
-        key
-        for key in truth_keys
-        if not _is_candidate_key(key, candidate_genes=truth_cache.candidate_genes, level=level)
-    ]
-    if truth_outside:
-        raise ValueError(
-            "Ground-truth edges include genes outside outputs.gene_universe for "
-            f"context {truth.context!r}, level {level!r}"
-        )
     predicted_outside = [
         key
         for key in predicted_keys
-        if not _is_candidate_key(key, candidate_genes=truth_cache.candidate_genes, level=level)
+        if not _is_candidate_key(
+            key,
+            candidate_space=truth_cache.candidate_space,
+            level=level,
+        )
     ]
     if predicted_outside:
         example = next(iter(sorted(predicted_outside)))
         raise ValueError(
-            "Inferred network contains edges outside the ground-truth gene universe "
-            f"for context {prediction_rows[0].context!r}, level {level!r}; example edge: {example}"
+            "Internal error: filtered inferred network contains edges outside "
+            f"candidate_space for context {prediction_context!r}, level {level!r}; "
+            f"example edge: {example}"
         )
 
     top_k_stats = _top_truth_count_stats(
@@ -774,7 +1282,8 @@ def _evaluate_pairing(
     return {
         "tool_id": tool_id,
         "catalog_tool_id": capabilities.catalog_tool_id,
-        "context": prediction_rows[0].context,
+        "tool_origin": capabilities.tool_origin,
+        "context": prediction_context,
         "truth_context": truth.context,
         "level": level,
         "status": status,
@@ -784,9 +1293,22 @@ def _evaluate_pairing(
         "f1_at_truth_count": top_k_stats["f1_at_truth_count"],
         "epr_at_truth_count": top_k_stats["epr_at_truth_count"],
         "n_candidates": truth_cache.n_candidates,
-        "n_candidate_genes": len(truth.candidate_genes),
+        "n_candidate_genes": len(truth.candidate_space.gene_universe),
+        "n_candidate_sources": len(truth.candidate_space.sources),
+        "n_candidate_targets": len(truth.candidate_space.targets),
+        "n_truth_rows": len(truth_cache.included_rows) + len(truth_cache.excluded_rows),
+        "n_truth_rows_outside_candidate_space": len(truth_cache.excluded_rows),
         "n_truth_edges": len(truth_keys),
+        "n_truth_edges_outside_candidate_space": len(truth_cache.excluded_truth_scores),
+        "truth_outside_candidate_space_examples": _format_edge_examples(
+            truth_cache.excluded_rows
+        ),
         "n_predicted_edges": len(predicted_keys),
+        "n_predicted_edges_outside_candidate_space": len(
+            _aggregate_rows(excluded_prediction_rows, level=level)
+        ),
+        "n_prediction_rows": len(prediction_rows) + len(excluded_prediction_rows),
+        "n_prediction_rows_outside_candidate_space": len(excluded_prediction_rows),
         "tp_at_truth_count": top_k_stats["tp_at_truth_count"],
         "fp_at_truth_count": top_k_stats["fp_at_truth_count"],
         "fn_at_truth_count": top_k_stats["fn_at_truth_count"],
@@ -812,13 +1334,28 @@ def _truth_level_cache(
 
 
 def _build_truth_level_cache(*, truth: TruthNetwork, level: str) -> TruthLevelCache:
-    truth_scores = _aggregate_rows(truth.rows, level=level)
+    truth_filter = _filter_rows_by_candidate_space(
+        rows=truth.rows,
+        truth=truth,
+        level=level,
+    )
+    truth_scores = _aggregate_rows(truth_filter.included_rows, level=level)
+    excluded_truth_scores = _aggregate_rows(
+        truth_filter.excluded_rows,
+        level=level,
+    )
     truth_keys = set(truth_scores)
-    n_candidates = _candidate_count(nodes=truth.candidate_genes, level=level)
+    n_candidates = _candidate_count(
+        candidate_space=truth.candidate_space,
+        level=level,
+    )
     return TruthLevelCache(
         truth_scores=truth_scores,
         truth_keys=truth_keys,
-        candidate_genes=set(truth.candidate_genes),
+        excluded_truth_scores=excluded_truth_scores,
+        included_rows=truth_filter.included_rows,
+        excluded_rows=truth_filter.excluded_rows,
+        candidate_space=truth.candidate_space,
         n_candidates=n_candidates,
     )
 
@@ -871,10 +1408,15 @@ def _empty_metric_row(
     reason: str,
     truth: Optional[TruthNetwork] = None,
     truth_cache: Optional[TruthLevelCache] = None,
+    prediction_rows: Optional[list[NetworkRow]] = None,
+    excluded_prediction_rows: Optional[list[NetworkRow]] = None,
 ) -> dict[str, Any]:
+    included_rows = prediction_rows or []
+    excluded_rows = excluded_prediction_rows or []
     return {
         "tool_id": tool_id,
         "catalog_tool_id": capabilities.catalog_tool_id,
+        "tool_origin": capabilities.tool_origin,
         "context": context,
         "truth_context": truth_context,
         "level": level,
@@ -885,9 +1427,30 @@ def _empty_metric_row(
         "f1_at_truth_count": None,
         "epr_at_truth_count": None,
         "n_candidates": truth_cache.n_candidates if truth_cache else 0,
-        "n_candidate_genes": len(truth.candidate_genes) if truth else 0,
+        "n_candidate_genes": (len(truth.candidate_space.gene_universe) if truth else 0),
+        "n_candidate_sources": (len(truth.candidate_space.sources) if truth else 0),
+        "n_candidate_targets": (len(truth.candidate_space.targets) if truth else 0),
+        "n_truth_rows": (
+            len(truth_cache.included_rows) + len(truth_cache.excluded_rows)
+            if truth_cache
+            else 0
+        ),
+        "n_truth_rows_outside_candidate_space": (
+            len(truth_cache.excluded_rows) if truth_cache else 0
+        ),
         "n_truth_edges": len(truth_cache.truth_keys) if truth_cache else 0,
-        "n_predicted_edges": 0,
+        "n_truth_edges_outside_candidate_space": (
+            len(truth_cache.excluded_truth_scores) if truth_cache else 0
+        ),
+        "truth_outside_candidate_space_examples": (
+            _format_edge_examples(truth_cache.excluded_rows) if truth_cache else None
+        ),
+        "n_predicted_edges": len(_aggregate_rows(included_rows, level=level)),
+        "n_predicted_edges_outside_candidate_space": len(
+            _aggregate_rows(excluded_rows, level=level)
+        ),
+        "n_prediction_rows": len(included_rows) + len(excluded_rows),
+        "n_prediction_rows_outside_candidate_space": len(excluded_rows),
         "tp_at_truth_count": 0,
         "fp_at_truth_count": 0,
         "fn_at_truth_count": 0,
@@ -926,76 +1489,119 @@ def _edge_key(source: str, target: str, sign: str, *, level: str) -> tuple[str, 
     raise ValueError(f"Unknown evaluation level: {level}")
 
 
-def _candidate_keys(
-    *,
-    nodes: set[str],
-    level: str,
-) -> set[tuple[str, ...]]:
-    candidates: set[tuple[str, ...]] = set()
-    sorted_nodes = sorted(nodes)
+def _candidate_count(*, candidate_space: CandidateSpace, level: str) -> int:
+    n_sources = len(candidate_space.sources)
+    n_targets = len(candidate_space.targets)
+    overlap = len(candidate_space.sources & candidate_space.targets)
+    directed_count = n_sources * n_targets
+    if not candidate_space.allow_self_edges:
+        directed_count -= overlap
     if level == "topology":
-        for idx, source in enumerate(sorted_nodes):
-            for target in sorted_nodes[idx + 1 :]:
-                candidates.add((source, target))
-        return candidates
+        # Each pair entirely inside the source/target overlap is present in both
+        # directions before topology collapses directionality.
+        return directed_count - (overlap * (overlap - 1) // 2)
     if level == "directed":
-        for source in sorted_nodes:
-            for target in sorted_nodes:
-                if source == target:
-                    continue
-                candidates.add((source, target))
-        return candidates
+        return directed_count
     if level == "signed":
-        for source in sorted_nodes:
-            for target in sorted_nodes:
-                if source == target:
-                    continue
-                for sign in sorted(VALID_SIGNS):
-                    candidates.add((source, target, sign))
-        return candidates
-    raise ValueError(f"Unknown evaluation level: {level}")
-
-
-def _candidate_count(*, nodes: set[str], level: str) -> int:
-    n = len(nodes)
-    if level == "topology":
-        return n * (n - 1) // 2
-    if level == "directed":
-        return n * (n - 1)
-    if level == "signed":
-        return n * (n - 1) * len(VALID_SIGNS)
+        return directed_count * len(VALID_SIGNS)
     raise ValueError(f"Unknown evaluation level: {level}")
 
 
 def _is_candidate_key(
     key: tuple[str, ...],
     *,
-    candidate_genes: set[str],
+    candidate_space: CandidateSpace,
     level: str,
 ) -> bool:
     if level == "topology":
-        return (
-            len(key) == 2
-            and key[0] in candidate_genes
-            and key[1] in candidate_genes
-            and key[0] != key[1]
+        return len(key) == 2 and (
+            _is_candidate_edge(
+                source=key[0],
+                target=key[1],
+                candidate_space=candidate_space,
+            )
+            or _is_candidate_edge(
+                source=key[1],
+                target=key[0],
+                candidate_space=candidate_space,
+            )
         )
     if level == "directed":
-        return (
-            len(key) == 2
-            and key[0] in candidate_genes
-            and key[1] in candidate_genes
-            and key[0] != key[1]
+        return len(key) == 2 and _is_candidate_edge(
+            source=key[0],
+            target=key[1],
+            candidate_space=candidate_space,
         )
     if level == "signed":
         return (
             len(key) == 3
-            and key[0] in candidate_genes
-            and key[1] in candidate_genes
-            and key[0] != key[1]
+            and _is_candidate_edge(
+                source=key[0],
+                target=key[1],
+                candidate_space=candidate_space,
+            )
             and key[2] in VALID_SIGNS
         )
     raise ValueError(f"Unknown evaluation level: {level}")
+
+
+def _is_candidate_edge(
+    *,
+    source: str,
+    target: str,
+    candidate_space: CandidateSpace,
+) -> bool:
+    return (
+        source in candidate_space.sources
+        and target in candidate_space.targets
+        and (candidate_space.allow_self_edges or source != target)
+    )
+
+
+def _filter_rows_by_candidate_space(
+    *,
+    rows: list[NetworkRow],
+    truth: TruthNetwork,
+    level: str,
+) -> CandidateFilter:
+    included: list[NetworkRow] = []
+    excluded: list[NetworkRow] = []
+    for row in rows:
+        unknown_genes = sorted(
+            {row.source, row.target} - truth.candidate_space.gene_universe
+        )
+        if unknown_genes:
+            raise ValueError(
+                "Inferred network contains genes outside outputs.gene_universe "
+                f"for context {row.context!r}; edge {row.source!r} -> {row.target!r}; "
+                f"unknown genes: {', '.join(unknown_genes)}"
+            )
+        if level == "topology":
+            key = _edge_key(row.source, row.target, row.sign, level=level)
+            is_candidate = _is_candidate_key(
+                key,
+                candidate_space=truth.candidate_space,
+                level=level,
+            )
+        else:
+            is_candidate = _is_candidate_edge(
+                source=row.source,
+                target=row.target,
+                candidate_space=truth.candidate_space,
+            )
+        if is_candidate:
+            included.append(row)
+        else:
+            excluded.append(row)
+    return CandidateFilter(
+        included_rows=included,
+        excluded_rows=excluded,
+    )
+
+
+def _format_edge_examples(rows: list[NetworkRow], *, limit: int = 8) -> Optional[str]:
+    examples = sorted({f"{row.source}->{row.target}" for row in rows})[:limit]
+    return "; ".join(examples) if examples else None
 
 
 def _score_groups(
@@ -1205,9 +1811,7 @@ def _evaluation_view_html(report: dict[str, Any]) -> str:
 
 def _read_view_asset(name: str) -> str:
     return (
-        resources.files(VIEW_ASSETS_PACKAGE)
-        .joinpath(name)
-        .read_text(encoding="utf-8")
+        resources.files(VIEW_ASSETS_PACKAGE).joinpath(name).read_text(encoding="utf-8")
     )
 
 

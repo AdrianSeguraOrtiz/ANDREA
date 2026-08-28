@@ -18,7 +18,10 @@
   const tableColumns = [
     "tool_id", "catalog_tool_id", "context", "level", "status",
     "auroc", "aupr", "f1_at_truth_count", "epr_at_truth_count",
-    "n_truth_edges", "n_predicted_edges", "n_candidate_genes", "n_candidates", "reason"
+    "n_truth_edges", "n_predicted_edges", "n_candidate_genes",
+    "n_candidate_sources", "n_candidate_targets", "n_candidates",
+    "n_truth_rows_outside_candidate_space",
+    "n_prediction_rows_outside_candidate_space", "reason"
   ];
 
   function escapeHtml(value) {

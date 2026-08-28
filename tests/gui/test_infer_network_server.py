@@ -822,7 +822,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         self.assertTrue(payload["output_readiness"]["finalizing_artifacts"])
         self.assertTrue(payload["output_readiness"]["run_report_file_ready"])
         self.assertFalse(full_bundle["available"])
-        self.assertTrue(analysis_bundle["available"])
+        self.assertFalse(analysis_bundle["available"])
         self.assertFalse(report_bundle["available"])
         self.assertTrue(graphs_bundle["available"])
         self.assertIn(
@@ -833,7 +833,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             "run_report.json final report is not complete",
             report_bundle["missing_required"],
         )
-        self.assertEqual(analysis_download.status_code, 200)
+        self.assertEqual(analysis_download.status_code, 400)
         self.assertEqual(explorer_files.status_code, 200, msg=explorer_files.text)
         explorer_payload = explorer_files.json()
         self.assertEqual(explorer_payload["bundle_id"], "available_outputs")

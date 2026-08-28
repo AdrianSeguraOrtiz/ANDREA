@@ -58,6 +58,16 @@ The analysis bundle can feed `evaluate-inference` and `compare-networks`.
 
 `evaluate-inference` compares inferred networks against reference truth.
 
+Candidate sources and targets declared by the truth manifest determine the
+evaluated edge universe. Known-gene predictions outside that universe are
+excluded and reported per evaluation level. Truth can be broader than the
+inference candidate space; unreachable truth edges are likewise excluded and
+reported per level rather than counted as false negatives. The declaration is
+mandatory; evaluation does not invent an all-gene fallback universe.
+Inference and truth must match both the dataset ID and the SHA-256 fingerprint
+of the normalized expression and extras, preventing accidental comparisons of
+different packages that happen to reuse an ID.
+
 Typical outputs:
 
 - `metrics.csv`;

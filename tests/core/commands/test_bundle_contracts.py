@@ -22,6 +22,44 @@ def paths(resolution) -> set[str]:
     return {source.virtual_path for source in resolution.sources}
 
 
+def write_inference_analysis(root: Path) -> None:
+    network_header = "source,target,score,sign,evidence,context,tool_id\n"
+    touch(root / "merged_network_raw.csv", network_header)
+    touch(root / "merged_network_normalized.csv", network_header)
+    report = {
+        "run_id": "inference_01",
+        "status": "executed",
+        "dataset": {
+            "id": "dataset_01",
+            "fingerprint": DATASET_FINGERPRINT,
+        },
+        "tools": {
+            "selected": ["tool_01"],
+            "catalog_tool_ids": {"tool_01": "genie3"},
+            "tool_origins": {"tool_01": "catalog"},
+            "output_capabilities": {
+                "tool_01": {
+                    "tool_origin": "catalog",
+                    "catalog_tool_id": "genie3",
+                    "directed": True,
+                    "sign": "none",
+                }
+            },
+            "completed": ["tool_01"],
+            "completed_contexts": {"tool_01": ["global"]},
+            "results": {"tool_01": {"execution": {"mode": "global"}}},
+        },
+        "outputs": {
+            "merged_network_raw": "merged_network_raw.csv",
+            "merged_network_normalized": "merged_network_normalized.csv",
+            "rows_per_tool": {"tool_01": 0},
+        },
+        "execution": {},
+        "issues": [],
+    }
+    touch(root / "run_report.json", json.dumps(report) + "\n")
+
+
 def test_no_command_exposes_legacy_light_bundle() -> None:
     assert "light" not in generate_bundles.supported_bundles()
     assert "light" not in infer_bundles.supported_bundles()
@@ -170,9 +208,6 @@ def test_infer_network_bundles_split_analysis_report_and_graphs(
 ) -> None:
     root = tmp_path / "run"
     for rel in (
-        "run_report.json",
-        "merged_network_raw.csv",
-        "merged_network_normalized.csv",
         "plan.json",
         "preflight_report.json",
         "runtime/execution_state.json",
@@ -187,6 +222,7 @@ def test_infer_network_bundles_split_analysis_report_and_graphs(
         "merged_network_normalized_cytoscape.py",
     ):
         touch(root / rel)
+    write_inference_analysis(root)
 
     assert infer_bundles.supported_bundles() == (
         "full",
@@ -250,12 +286,7 @@ def test_infer_network_full_waits_for_graph_exports_but_report_does_not(
     tmp_path: Path,
 ) -> None:
     root = tmp_path / "run"
-    for rel in (
-        "run_report.json",
-        "merged_network_raw.csv",
-        "merged_network_normalized.csv",
-    ):
-        touch(root / rel)
+    write_inference_analysis(root)
 
     full = infer_bundles.resolve_bundle(bundle_id="full", run_dir=root)
     report = infer_bundles.resolve_bundle(bundle_id="report", run_dir=root)

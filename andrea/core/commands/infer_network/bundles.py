@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+from andrea.core.commands.evaluate_inference import validate_inference_analysis_inputs
 from andrea.core.shared.bundles import (
     BundleResolution,
     BundleSource,
@@ -12,9 +14,11 @@ from andrea.core.shared.bundles import (
     append_exact,
     append_glob,
     bundle_spec_by_id,
+    exact_file,
     supported_bundle_ids,
     unique_sources,
 )
+from andrea.core.shared.output_capabilities import validate_frozen_output_capabilities
 
 BUNDLE_SPECS: tuple[BundleSpec, ...] = (
     BundleSpec(
@@ -130,6 +134,37 @@ def _resolve_analysis(*, spec: BundleSpec, root: Path) -> BundleResolution:
             skipped_optional=skipped_optional,
             required=True,
         )
+    run_report_path = root / "run_report.json"
+    if exact_file(root, "run_report.json") is not None:
+        try:
+            run_report = json.loads(run_report_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            run_report = None
+        try:
+            validate_frozen_output_capabilities(
+                run_report.get("tools") if isinstance(run_report, dict) else None,
+                label="run_report.json tools",
+            )
+        except ValueError:
+            missing_required.append("run_report.json:strict_output_capabilities")
+        if exact_file(root, "merged_network_raw.csv") is not None:
+            try:
+                validate_inference_analysis_inputs(
+                    run_report_path=run_report_path,
+                )
+            except (OSError, ValueError):
+                missing_required.append("run_report.json:strict_evaluation_contract")
+        elif not isinstance(run_report, dict):
+            missing_required.append("run_report.json:strict_evaluation_contract")
+        expected_outputs = {
+            "merged_network_raw": "merged_network_raw.csv",
+            "merged_network_normalized": "merged_network_normalized.csv",
+        }
+        outputs = run_report.get("outputs") if isinstance(run_report, dict) else None
+        if not isinstance(outputs, dict) or any(
+            outputs.get(key) != value for key, value in expected_outputs.items()
+        ):
+            missing_required.append("run_report.json:canonical_outputs")
     return BundleResolution(
         spec=spec,
         root=root,

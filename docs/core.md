@@ -136,7 +136,9 @@ print(report["outputs"]["evaluation_report"])
 ```
 
 The returned dictionary is the same report payload written to
-`evaluation_report.json`.
+`evaluation_report.json`. The ground-truth manifest must contain
+`candidate_space`, whose source and target files define the evaluated edge
+universe.
 
 ## Compare Networks
 

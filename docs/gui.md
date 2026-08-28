@@ -184,7 +184,8 @@ The GUI expects strict handoff bundles:
 - an `infer-network` analysis ZIP with the inference run report and merged
   network;
 - a `generate-data`/truth analysis ZIP with the ground-truth manifest and truth
-  files.
+  files, plus any source/target universe referenced by its candidate-space
+  contract.
 
 The upload request returns a job quickly; extraction, strict validation and
 evaluation run in the background. Invalid ZIPs or invalid bundle structure mark
@@ -205,6 +206,11 @@ Metrics include AUROC, AUPR, EPR and F1 where applicable. The user can switch
 the selected metric, and visual overlays update accordingly. Heatmaps and maps
 summarize performance by tool and context while preserving explicit
 not-applicable cases when a level or truth count is unavailable.
+
+External Docker runs are evaluable because their output capabilities travel in
+the inference report. The truth manifest's mandatory `candidate_space`
+references `tf_list` as its source universe, so metric denominators use
+TF-to-gene candidates instead of every gene-to-gene pair.
 
 ### Outputs
 
