@@ -59,6 +59,8 @@ def _unexpected_custom_tool_keys(raw_tool: dict[str, Any]) -> list[str]:
 
 
 def _capabilities_for_execution_mode(execution_mode: str) -> list[str]:
+    if execution_mode == "group_emulated":
+        return ["global", "group_emulated"]
     if execution_mode == "group_aggregated":
         return ["column_native", "group_aggregated"]
     return [execution_mode]
@@ -68,14 +70,34 @@ def _normalize_extra_usage_items(raw_items: list[str]) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
     for item in raw_items:
         usage = "External Docker tool declares this standardized input as needed for execution."
-        out.append({"input": item, "usage": usage})
+        out.append({"input": item, "usage": usage, "delivery": "runtime"})
     return out
 
 
-def _normalize_extra_inputs(raw_extra_inputs: list[str]) -> dict[str, Any]:
+def _normalize_extra_inputs(
+    raw_extra_inputs: list[str], *, execution_mode: str
+) -> dict[str, Any]:
+    required = _normalize_extra_usage_items(raw_extra_inputs)
+    conditional_required: list[dict[str, Any]] = []
+    if execution_mode in {"group_emulated", "group_aggregated"}:
+        conditional_required.append(
+            {
+                "input": "groups",
+                "execution": "mode",
+                "op": "eq",
+                "value": execution_mode,
+                "usage": (
+                    "ANDREA uses groups.tsv to partition or aggregate this external "
+                    "tool run; the child container does not receive the file."
+                ),
+                "message": f"groups is required for execution.mode={execution_mode}.",
+                "delivery": "orchestration_only",
+            }
+        )
     return {
-        "required": _normalize_extra_usage_items(raw_extra_inputs),
+        "required": required,
         "optional": [],
+        "conditional_required": conditional_required,
     }
 
 
@@ -234,6 +256,25 @@ def normalize_custom_tools_payload(
                     "extra_inputs contains unsupported standardized inputs: "
                     + ", ".join(unsupported_extras)
                 )
+            if (
+                isinstance(execution_mode, str)
+                and execution_mode in {"group_emulated", "group_aggregated"}
+                and "groups" in extra_inputs
+            ):
+                errors.append(
+                    "extra_inputs must not contain groups when execution_mode is "
+                    "group_emulated or group_aggregated; ANDREA manages groups.tsv "
+                    "as an orchestration-only input"
+                )
+            if isinstance(execution_mode, str) and execution_mode == "group_native":
+                context_inputs = set(extra_inputs).intersection(
+                    {"groups", "column_phenotypes"}
+                )
+                if len(context_inputs) != 1:
+                    errors.append(
+                        "group_native requires exactly one runtime context input: "
+                        "groups or column_phenotypes"
+                    )
 
         outputs, output_errors = normalize_custom_tool_outputs(raw_tool.get("outputs"))
         errors.extend(output_errors)
@@ -272,7 +313,10 @@ def normalize_custom_tools_payload(
             "compatibility_rules": [],
             "accepts": sorted(constraints.column_kinds),
             "assumes": "generic",
-            "extra_inputs": _normalize_extra_inputs(extra_inputs),
+            "extra_inputs": _normalize_extra_inputs(
+                extra_inputs,
+                execution_mode=execution_mode,
+            ),
             "artifacts_aux": [],
             # Internal ToolSpec-shaped metadata only. The external image is
             # responsible for writing sign/evidence columns in network.csv.
@@ -392,23 +436,35 @@ def _serialize_custom_tool(tool_id: str, source: Any) -> dict[str, Any]:
     raw_extra_inputs = source.get("extra_inputs")
     if (
         not isinstance(raw_extra_inputs, dict)
-        or set(raw_extra_inputs) != {"required", "optional"}
+        or set(raw_extra_inputs) != {
+            "required",
+            "optional",
+            "conditional_required",
+        }
         or raw_extra_inputs.get("optional") != []
         or not isinstance(raw_extra_inputs.get("required"), list)
+        or not isinstance(raw_extra_inputs.get("conditional_required"), list)
     ):
         raise _serialization_error(
             tool_id,
-            "extra_inputs must contain exactly required and empty optional arrays",
+            "extra_inputs must contain canonical required, optional and "
+            "conditional_required arrays",
         )
     extra_inputs: list[str] = []
     for idx, item in enumerate(raw_extra_inputs["required"]):
-        if not isinstance(item, dict) or set(item) != {"input", "usage"}:
+        if not isinstance(item, dict) or set(item) != {
+            "input",
+            "usage",
+            "delivery",
+        }:
             raise _serialization_error(
                 tool_id,
-                f"extra_inputs.required[{idx}] must contain exactly input and usage",
+                f"extra_inputs.required[{idx}] must contain exactly input, usage "
+                "and delivery",
             )
         input_key = item["input"]
         usage = item["usage"]
+        delivery = item["delivery"]
         if (
             not isinstance(input_key, str)
             or not input_key
@@ -423,9 +479,22 @@ def _serialize_custom_tool(tool_id: str, source: Any) -> dict[str, Any]:
                 tool_id,
                 f"extra_inputs.required[{idx}].usage is required",
             )
+        if delivery != "runtime":
+            raise _serialization_error(
+                tool_id,
+                f"extra_inputs.required[{idx}].delivery must be runtime",
+            )
         extra_inputs.append(input_key)
     if len(set(extra_inputs)) != len(extra_inputs):
         raise _serialization_error(tool_id, "extra_inputs contains duplicates")
+    if raw_extra_inputs != _normalize_extra_inputs(
+        extra_inputs,
+        execution_mode=execution_mode,
+    ):
+        raise _serialization_error(
+            tool_id,
+            "extra_inputs must match the canonical selected execution mode contract",
+        )
 
     source_outputs = source.get("outputs")
     if (

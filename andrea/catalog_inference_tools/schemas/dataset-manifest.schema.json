@@ -263,7 +263,7 @@
           ],
           "minLength": 1,
           "pattern": ".*\\.tsv$",
-          "description": "Optional expression-column groups TSV path. Detailed content validation is defined in input_specs/groups.json."
+          "description": "Optional expression-column groups TSV path containing one flat analysis-context axis. Detailed content validation is defined in input_specs/groups.json."
         },
         "column_descriptors": {
           "type": [

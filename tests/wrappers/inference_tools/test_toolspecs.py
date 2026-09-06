@@ -61,9 +61,6 @@ class ToolSpecCatalogTest(unittest.TestCase):
             "compatibility_rules": [],
         }
 
-    @unittest.skip(
-        "ToolSpecs are intentionally invalid until runtime_resources.threading is backfilled tool by tool."
-    )
     def test_all_tool_specs_validate_with_wrapper_script(self) -> None:
         completed = subprocess.run(
             [
@@ -89,35 +86,6 @@ class ToolSpecCatalogTest(unittest.TestCase):
 
         self.assertTrue(
             any("runtime_resources.threading is required" in error for error in errors),
-            errors,
-        )
-
-    def test_legacy_execution_scope_is_rejected(self) -> None:
-        module = _load_validate_toolspecs_module()
-        instance = self._minimal_toolspec(execution_capabilities=["global"])
-        instance["execution_scope"] = "global"
-
-        errors = module.semantic_errors_for_toolspec(
-            tool_id="cell_tool",
-            instance=instance,
-        )
-
-        self.assertTrue(
-            any("execution_scope is legacy" in error for error in errors),
-            errors,
-        )
-
-    def test_legacy_cell_native_capability_is_rejected(self) -> None:
-        module = _load_validate_toolspecs_module()
-        instance = self._minimal_toolspec(execution_capabilities=["cell_native"])
-
-        errors = module.semantic_errors_for_toolspec(
-            tool_id="cell_tool",
-            instance=instance,
-        )
-
-        self.assertTrue(
-            any("'cell_native' is legacy" in error for error in errors),
             errors,
         )
 
@@ -168,6 +136,7 @@ class ToolSpecCatalogTest(unittest.TestCase):
                     "value": "group_aggregated",
                     "usage": "Used to aggregate native per-column networks by group.",
                     "message": "groups is required when execution.mode=group_aggregated.",
+                    "delivery": "orchestration_only",
                 }
             ],
         )
@@ -210,6 +179,7 @@ class ToolSpecCatalogTest(unittest.TestCase):
                     "value": "group_aggregated",
                     "usage": "Used to aggregate native per-column networks by group.",
                     "message": "groups is required when execution.mode=group_aggregated.",
+                    "delivery": "orchestration_only",
                 }
             ],
         )
@@ -220,3 +190,139 @@ class ToolSpecCatalogTest(unittest.TestCase):
         )
 
         self.assertEqual(errors, [])
+
+    def test_group_emulated_groups_must_be_orchestration_only(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(
+            execution_capabilities=["global", "group_emulated"],
+            conditional_required=[
+                {
+                    "input": "groups",
+                    "execution": "mode",
+                    "op": "eq",
+                    "value": "group_emulated",
+                    "usage": "Used by ANDREA to partition expression columns.",
+                    "message": "groups is required for group emulation.",
+                    "delivery": "runtime",
+                }
+            ],
+        )
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any(
+                "execution.mode=group_emulated must use delivery=orchestration_only"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_orchestration_delivery_is_reserved_for_managed_groups(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["global"])
+        instance["extra_inputs"]["optional"] = [
+            {
+                "input": "tf_list",
+                "usage": "Restricts candidate regulators.",
+                "delivery": "orchestration_only",
+            }
+        ]
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("only for a conditional groups rule" in error for error in errors),
+            errors,
+        )
+
+    def test_group_emulated_requires_global_capability(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(
+            execution_capabilities=["group_emulated"],
+            conditional_required=[
+                {
+                    "input": "groups",
+                    "execution": "mode",
+                    "op": "eq",
+                    "value": "group_emulated",
+                    "usage": "Used by ANDREA to partition expression columns.",
+                    "message": "groups is required for group emulation.",
+                    "delivery": "orchestration_only",
+                }
+            ],
+        )
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("must also declare 'global'" in error for error in errors),
+            errors,
+        )
+
+    def test_group_native_groups_must_be_runtime_delivered(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["group_native"])
+        instance["extra_inputs"]["required"] = [
+            {
+                "input": "groups",
+                "usage": "Consumed by the native grouped method.",
+                "delivery": "orchestration_only",
+            }
+        ]
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("group_native must use delivery=runtime" in error for error in errors),
+            errors,
+        )
+
+    def test_group_native_requires_runtime_context_input(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["group_native"])
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("exactly one runtime-delivered context source" in error for error in errors),
+            errors,
+        )
+
+    def test_group_native_rejects_ambiguous_runtime_context_sources(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["group_native"])
+        instance["extra_inputs"]["required"] = [
+            {
+                "input": context_input,
+                "usage": "Defines native output contexts.",
+                "delivery": "runtime",
+            }
+            for context_input in ("groups", "column_phenotypes")
+        ]
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any("exactly one runtime-delivered context source" in error for error in errors),
+            errors,
+        )

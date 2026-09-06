@@ -33,7 +33,8 @@ from .commons.custom_tools import load_custom_tool_registry, serialize_custom_to
 from .commons.dataset import (
     _load_groups_by_column,
     _parse_dataset_context,
-    _read_expression_axes,
+    _read_column_phenotype_labels,
+    _read_expression_columns,
 )
 from .commons.planner import (
     _estimate_tool_mode_options,
@@ -50,14 +51,15 @@ from .commons.shared import (
     _write_json,
 )
 from .commons.tools import (
+    RUNTIME_INPUT_CONTRACT_SCHEMA_VERSION,
     _build_output_capability_snapshot,
-    _default_execution_mode,
+    _build_runtime_input_snapshot,
     _load_toolspec,
     _parse_execution_capabilities,
 )
 from .preflight import preflight_infer_network
 
-PLAN_SCHEMA_VERSION = "1.3"
+PLAN_SCHEMA_VERSION = "1.4"
 _COLUMN_NATIVE_DENSE_EDGE_WARNING_THRESHOLD = 10_000_000
 
 
@@ -93,19 +95,6 @@ def _with_group_aggregation_eta(
         "group_count": int(group_count),
         "estimated_dense_column_edges": _estimated_dense_column_edges(dataset=dataset),
     }
-    cost_features = dict(eta_provenance.get("cost_features") or {})
-    if cost_features:
-        cost_features["upstream_cost_execution_mode"] = cost_features.get(
-            "execution_mode", "column_native"
-        )
-        cost_features["execution_mode"] = "group_aggregated"
-        cost_features["n_groups"] = int(group_count)
-        cost_features["expected_contexts"] = max(1, int(group_count))
-        cost_features["aggregation_step"] = "column_to_group"
-        cost_features["output_density_class"] = "dense"
-        eta_provenance["cost_features"] = cost_features
-        if isinstance(eta_provenance.get("cost_profile"), dict):
-            eta_provenance["cost_profile"]["cost_features"] = dict(cost_features)
     return replace(
         item,
         eta_seconds=round(float(item.eta_seconds) + aggregation_eta, 3),
@@ -300,6 +289,7 @@ def plan_infer_network(
 
     catalog_toolspec_by_run: dict[str, dict[str, Any]] = {}
     output_capabilities_by_run: dict[str, dict[str, Any]] = {}
+    execution_mode_by_run: dict[str, str] = {}
     for run_id in selected_tools:
         catalog_tool_id = selected_tool_catalog_ids.get(run_id, "").strip()
         if not catalog_tool_id:
@@ -335,6 +325,29 @@ def plan_infer_network(
                 )
         selected_tool_origins[run_id] = tool_origin
         catalog_toolspec_by_run[run_id] = toolspec
+        execution_capabilities = _parse_execution_capabilities(
+            tool_id=run_id,
+            toolspec=toolspec,
+        )
+        resolved_execution = resolved_execution_by_tool.get(run_id)
+        execution_mode = (
+            resolved_execution.get("mode")
+            if isinstance(resolved_execution, dict)
+            else None
+        )
+        if (
+            not isinstance(resolved_execution, dict)
+            or set(resolved_execution) != {"mode"}
+            or not isinstance(execution_mode, str)
+            or not execution_mode
+            or execution_mode != execution_mode.strip()
+            or execution_mode not in execution_capabilities
+        ):
+            raise ValueError(
+                f"preflight report resolved_execution for run {run_id!r} must "
+                "be the canonical object {'mode': <supported execution mode>}"
+            )
+        execution_mode_by_run[run_id] = execution_mode
         output_capabilities_by_run[run_id] = _build_output_capability_snapshot(
             run_id=run_id,
             catalog_tool_id=catalog_tool_id,
@@ -344,18 +357,6 @@ def plan_infer_network(
 
     group_order: list[str] = []
     group_to_columns: dict[str, list[str]] = {}
-    execution_mode_by_run: dict[str, str] = {}
-    for run_id in selected_tools:
-        resolved_execution = resolved_execution_by_tool.get(run_id, {})
-        execution_mode = str(resolved_execution.get("mode", "")).strip()
-        if not execution_mode:
-            capabilities = _parse_execution_capabilities(
-                tool_id=run_id,
-                toolspec=catalog_toolspec_by_run[run_id],
-            )
-            execution_mode = _default_execution_mode(capabilities)
-        if execution_mode:
-            execution_mode_by_run[run_id] = execution_mode
 
     needs_group_partition = any(
         execution_mode_by_run.get(run_id) == "group_emulated"
@@ -376,9 +377,7 @@ def plan_infer_network(
             "Planning requires groups.tsv because at least one run uses execution.mode=group_emulated or execution.mode=group_aggregated."
         )
     if groups_path is not None and (needs_group_partition or needs_group_count):
-        _expression_genes, expression_columns = _read_expression_axes(
-            dataset.expression_matrix_path
-        )
+        expression_columns = _read_expression_columns(dataset.expression_matrix_path)
         group_order, group_to_columns = _load_groups_by_column(
             groups_path=groups_path,
             expression_columns=expression_columns,
@@ -386,6 +385,8 @@ def plan_infer_network(
 
     mode_options_by_tool: dict[str, list[Any]] = {}
     logical_run_specs: dict[str, dict[str, Any]] = {}
+    runtime_input_contract_by_run: dict[str, dict[str, Any]] = {}
+    phenotype_labels: list[str] | None = None
     extras_present = {
         input_key for input_key, path in dataset.extras.items() if path is not None
     }
@@ -393,14 +394,37 @@ def plan_infer_network(
         catalog_tool_id = selected_tool_catalog_ids[run_id]
         tool_origin = selected_tool_origins[run_id]
         toolspec = catalog_toolspec_by_run[run_id]
-        execution_capabilities = _parse_execution_capabilities(
-            tool_id=run_id,
+        resolved_execution = resolved_execution_by_tool[run_id]
+        execution_mode = execution_mode_by_run[run_id]
+        logical_execution = dict(resolved_execution)
+        runtime_input_snapshot = _build_runtime_input_snapshot(
+            run_id=run_id,
+            catalog_tool_id=catalog_tool_id,
+            tool_origin=tool_origin,
             toolspec=toolspec,
+            resolved_params=resolved_params_by_tool.get(run_id, {}),
+            resolved_execution=logical_execution,
+            available_extra_inputs=extras_present,
         )
-        resolved_execution = resolved_execution_by_tool.get(run_id, {})
-        execution_mode = str(resolved_execution.get("mode", "")).strip()
-        if not execution_mode:
-            execution_mode = _default_execution_mode(execution_capabilities)
+        runtime_input_contract_by_run[run_id] = runtime_input_snapshot
+        native_group_count: int | None = None
+        if execution_mode == "group_native":
+            active_inputs = set(runtime_input_snapshot["active_extra_inputs"])
+            if "groups" in active_inputs:
+                native_group_count = len(group_order)
+            elif "column_phenotypes" in active_inputs:
+                phenotypes_path = dataset.extras.get("column_phenotypes")
+                if phenotypes_path is None:
+                    raise ValueError(
+                        f"[{run_id}] group_native requires column_phenotypes.tsv"
+                    )
+                if phenotype_labels is None:
+                    phenotype_labels = _read_column_phenotype_labels(phenotypes_path)
+                native_group_count = len(phenotype_labels)
+            else:
+                raise ValueError(
+                    f"[{run_id}] group_native has no active context source"
+                )
 
         if tool_origin == "custom":
             cost_profile = None
@@ -443,11 +467,10 @@ def plan_infer_network(
                     run_id=run_id,
                     toolspec=toolspec,
                     cost_profile=cost_profile,
-                    execution_mode=execution_mode,
+                    execution_mode="global",
                     resolved_params=resolved_params_by_tool.get(run_id, {}),
                     extras_present=extras_present,
-                    logical_group_count=len(group_order),
-                    physical_tasks_total=len(group_order),
+                    logical_group_count=None,
                     dataset=group_dataset,
                     max_cores=max_cores,
                     max_ram_gb=effective_ram,
@@ -491,12 +514,8 @@ def plan_infer_network(
                 resolved_params=resolved_params_by_tool.get(run_id, {}),
                 extras_present=extras_present,
                 logical_group_count=(
-                    len(group_order)
-                    if execution_mode == "group_native"
-                    and group_order
-                    else (0 if execution_mode == "global" else None)
+                    native_group_count if execution_mode == "group_native" else 0
                 ),
-                physical_tasks_total=1,
                 dataset=dataset,
                 max_cores=max_cores,
                 max_ram_gb=effective_ram,
@@ -536,7 +555,7 @@ def plan_infer_network(
             "run_id": run_id,
             "tool_id": catalog_tool_id,
             "tool_origin": tool_origin,
-            "execution": {**resolved_execution, "mode": execution_mode},
+            "execution": logical_execution,
             "physical_tasks": physical_tasks,
         }
 
@@ -595,11 +614,20 @@ def plan_infer_network(
             constraints=constraints,
         )
     )
+    frozen_runtime_input_contract = run_dir / "input" / "runtime-input-contract.json"
+    _write_json(
+        frozen_runtime_input_contract,
+        {
+            "schema_version": RUNTIME_INPUT_CONTRACT_SCHEMA_VERSION,
+            "runs": runtime_input_contract_by_run,
+        },
+    )
     input_fingerprints = _build_input_fingerprints(
         run_dir=run_dir,
         frozen_manifest=frozen_manifest,
         frozen_tools_params=frozen_tools_params,
         frozen_custom_tools=frozen_custom_tools,
+        frozen_runtime_input_contract=frozen_runtime_input_contract,
         frozen_expression=frozen_expression,
         frozen_extras=frozen_extras,
     )
@@ -745,6 +773,10 @@ def plan_infer_network(
         "inputs": {
             "dataset_manifest_path": report_path(frozen_manifest, base_dir=run_dir),
             "tools_params_path": report_path(frozen_tools_params, base_dir=run_dir),
+            "runtime_input_contract_path": report_path(
+                frozen_runtime_input_contract,
+                base_dir=run_dir,
+            ),
             **(
                 {
                     "custom_tools_path": report_path(

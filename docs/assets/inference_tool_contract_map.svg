@@ -79,10 +79,10 @@
 <path d="M 658.00,308.00 C 741.16,308.00 772.84,617.00 856.00,617.00" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="1.5 4"/>
 <path d="M 659.00,308.00 C 750.80,308.00 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
 <path d="M 659.00,308.00 C 750.80,308.00 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,610.00 C 369.85,610.00 397.15,352.20 481.00,352.20" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,206.00 C 369.85,206.00 397.15,352.20 481.00,352.20" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
+<path d="M 286.00,206.00 C 369.85,206.00 397.15,352.20 481.00,352.20" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 286.00,340.67 C 369.85,340.67 397.15,352.20 481.00,352.20" fill="none" stroke="#64748b" stroke-width="1.55" opacity="0.340" stroke-linecap="round" stroke-dasharray="1.5 4"/>
 <path d="M 658.00,352.20 C 741.16,352.20 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
+<path d="M 659.00,352.20 C 750.80,352.20 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
 <path d="M 659.00,352.20 C 750.80,352.20 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 286.00,206.00 C 369.85,206.00 397.15,367.60 481.00,367.60" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 286.00,475.33 C 369.85,475.33 397.15,367.60 481.00,367.60" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
@@ -234,7 +234,7 @@
 <text x="142.00" y="602.50" font-family="Helvetica" font-size="10.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">tool-specific inputs</text>
 <text x="142.00" y="619.50" font-family="Helvetica" font-size="8.80" font-weight="400" text-anchor="start" fill="#5c6678" opacity="1.000">tool-specific files</text>
 <rect x="246.00" y="590.00" width="22.00" height="13.50" rx="6.00" ry="6.00" fill="#fffdf8" stroke="#aeb7c4" stroke-width="0.80" opacity="1.000"/>
-<text x="257.00" y="599.70" font-family="Helvetica" font-size="8.10" font-weight="700" text-anchor="middle" fill="#5c6678" opacity="1.000">11</text>
+<text x="257.00" y="599.70" font-family="Helvetica" font-size="8.10" font-weight="700" text-anchor="middle" fill="#5c6678" opacity="1.000">10</text>
 <circle cx="280.00" cy="610.00" r="4.80" fill="#fffdf8" stroke="#8994a5" stroke-width="1.00" opacity="1.000"/>
 <circle cx="280.00" cy="610.00" r="2.20" fill="#8994a5" stroke="none" stroke-width="1.00" opacity="1.000"/>
 <rect x="863.00" y="543.00" width="124.00" height="18.00" rx="9.00" ry="9.00" fill="#fbfaf7" stroke="#aeb7c4" stroke-width="0.90" opacity="1.000"/>
@@ -261,9 +261,9 @@
 <text x="977.00" y="685.00" font-family="Helvetica" font-size="8.50" font-weight="700" text-anchor="end" fill="#5c6678" opacity="1.000">7</text>
 <rect x="869.00" y="166.00" width="112.00" height="36.00" rx="9.00" ry="9.00" fill="#fffdf8" stroke="#cfc6b8" stroke-width="1.00" opacity="1.000"/>
 <text x="883.00" y="182.00" font-family="Helvetica" font-size="11.60" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">global</text>
-<text x="967.00" y="182.00" font-family="Helvetica" font-size="9.80" font-weight="700" text-anchor="end" fill="#5c6678" opacity="1.000">16</text>
+<text x="967.00" y="182.00" font-family="Helvetica" font-size="9.80" font-weight="700" text-anchor="end" fill="#5c6678" opacity="1.000">17</text>
 <line x1="885.00" y1="195.00" x2="897.00" y2="195.00" stroke="#5d6878" stroke-width="2.00" opacity="1.000"/>
-<text x="901.00" y="198.00" font-family="Helvetica" font-size="8.40" font-weight="700" text-anchor="start" fill="#5c6678" opacity="1.000">16</text>
+<text x="901.00" y="198.00" font-family="Helvetica" font-size="8.40" font-weight="700" text-anchor="start" fill="#5c6678" opacity="1.000">17</text>
 <line x1="925.00" y1="203.00" x2="925.00" y2="210.00" stroke="#d8d0c4" stroke-width="0.70" opacity="0.850"/>
 <circle cx="925.00" cy="229.00" r="18.00" fill="#f0f0eb" stroke="#aeb7c4" stroke-width="0.80" opacity="1.000"/>
 <line x1="914.44" y1="234.28" x2="921.48" y2="221.96" stroke="#9aa4b2" stroke-width="0.66" opacity="0.900"/>
@@ -470,7 +470,7 @@
 <text x="637.00" y="310.50" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">11</text>
 <rect x="487.00" y="345.45" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#e5e9db" stroke="#4c8a4f" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="352.20" r="2.80" fill="#4c8a4f" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="355.10" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">inferCSN</text>
+<text x="505.00" y="355.10" font-family="Helvetica" font-size="6.55" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">inferCSN CRAN core</text>
 <rect x="573.00" y="346.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
 <text x="580.00" y="354.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
 <rect x="592.00" y="346.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
@@ -478,10 +478,10 @@
 <rect x="611.00" y="346.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
 <text x="618.00" y="354.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="346.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="354.70" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">14</text>
+<text x="637.00" y="354.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">8</text>
 <rect x="487.00" y="360.85" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#e5e9db" stroke="#4c8a4f" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="367.60" r="2.80" fill="#4c8a4f" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="370.50" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">Inferelator 3.0</text>
+<text x="505.00" y="370.50" font-family="Helvetica" font-size="7.86" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">Inferelator 3.0</text>
 <rect x="573.00" y="362.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
 <text x="580.00" y="370.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
 <rect x="592.00" y="362.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#f4e8d2" stroke="#c47a00" stroke-width="0.75" opacity="1.000"/>

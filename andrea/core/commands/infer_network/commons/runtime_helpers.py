@@ -140,6 +140,8 @@ def _docker_run_detached(
     network_disabled: bool = False,
 ) -> str:
     cmd = ["docker", "run", "-d"]
+    resolved_io_dir = io_dir.resolve()
+    resolved_out_dir = (io_dir / "out").resolve()
 
     if hasattr(os, "getuid") and hasattr(os, "getgid"):
         cmd.extend(["--user", f"{os.getuid()}:{os.getgid()}"])
@@ -153,7 +155,9 @@ def _docker_run_detached(
             "--memory",
             f"{max(0.5, float(ram_gb)):.3g}g",
             "-v",
-            f"{io_dir}:/io",
+            f"{resolved_io_dir}:/io:ro",
+            "-v",
+            f"{resolved_out_dir}:/io/out:rw",
             image,
             "--input",
             "/io/expression.tsv",
@@ -243,9 +247,11 @@ def _read_progress_warnings(path: Path) -> tuple[str, ...]:
     return tuple(warnings)
 
 
-def _link_or_copy_file(src: Path, dst: Path) -> None:
+def _materialize_runtime_input(src: Path, dst: Path) -> None:
+    """Materialize immutable runtime input efficiently, copying across filesystems."""
+
     dst.parent.mkdir(parents=True, exist_ok=True)
-    if dst.exists():
+    if dst.is_symlink() or dst.exists():
         dst.unlink()
     try:
         os.link(src, dst)
@@ -263,7 +269,7 @@ def _prepare_shared_inputs(
     shared_dir.mkdir(parents=True, exist_ok=True)
 
     shared_expression = shared_dir / "expression.tsv"
-    shutil.copy2(dataset.expression_matrix_path, shared_expression)
+    _materialize_runtime_input(dataset.expression_matrix_path, shared_expression)
 
     extras_dir = shared_dir / "extra"
     extras_dir.mkdir(parents=True, exist_ok=True)
@@ -274,7 +280,7 @@ def _prepare_shared_inputs(
             continue
         filename = constraints.extra_input_filenames.get(key, key)
         dest = extras_dir / filename
-        _link_or_copy_file(source, dest)
+        _materialize_runtime_input(source, dest)
         shared_extras[key] = dest
 
     return shared_expression, shared_extras
@@ -290,32 +296,50 @@ def _prepare_tool_runtime_io(
     resolved_execution: dict[str, Any],
     shared_expression: Path,
     shared_extras: dict[str, Path],
-    extra_input_keys: set[str] | None = None,
+    extra_input_keys: set[str],
     expression_source: Optional[Path] = None,
 ) -> ToolRuntimeIO:
-    tool_dir = run_dir / output_dir
+    relative_output_dir = Path(output_dir)
+    if (
+        relative_output_dir.is_absolute()
+        or not relative_output_dir.parts
+        or any(part in {"", ".", ".."} for part in relative_output_dir.parts)
+    ):
+        raise ValueError(
+            f"Tool output_dir must be a non-empty safe path relative to run_dir: {output_dir!r}"
+        )
+    resolved_run_dir = run_dir.resolve()
+    tool_dir = (resolved_run_dir / relative_output_dir).resolve()
+    try:
+        tool_dir.relative_to(resolved_run_dir)
+    except ValueError as exc:
+        raise ValueError(
+            f"Tool output_dir escapes run_dir: {output_dir!r}"
+        ) from exc
     io_dir = tool_dir / "io"
     extra_dir = io_dir / "extra"
     out_dir = io_dir / "out"
-    io_dir.mkdir(parents=True, exist_ok=True)
+    if io_dir.is_symlink() or io_dir.is_file():
+        io_dir.unlink()
+    elif io_dir.exists():
+        shutil.rmtree(io_dir)
+    io_dir.mkdir(parents=True, exist_ok=False)
     extra_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     expression_dst = io_dir / "expression.tsv"
-    _link_or_copy_file(expression_source or shared_expression, expression_dst)
+    _materialize_runtime_input(expression_source or shared_expression, expression_dst)
 
     params_file = io_dir / "params.json"
     _write_json(params_file, resolved_params)
     _write_json(io_dir / "execution.json", resolved_execution)
 
     extra_items = (
-        shared_extras.items()
-        if extra_input_keys is None
-        else ((key, path) for key, path in shared_extras.items() if key in extra_input_keys)
+        (key, path) for key, path in shared_extras.items() if key in extra_input_keys
     )
     for _key, extra_path in extra_items:
         dest = extra_dir / extra_path.name
-        _link_or_copy_file(extra_path, dest)
+        _materialize_runtime_input(extra_path, dest)
 
     return ToolRuntimeIO(
         tool_id=tool_id,

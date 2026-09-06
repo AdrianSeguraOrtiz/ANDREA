@@ -49,7 +49,7 @@ compatibility rules.
 | DigNet | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1101/gr.279551.124 |
 | GENIE3 | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1371/journal.pone.0012776 |
 | GRNBoost2 | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1093/bioinformatics/bty916 |
-| inferCSN | `group_emulated` | directed=True, sign=signed, evidence=association | https://doi.org/10.1038/s41540-025-00564-4 |
+| inferCSN CRAN core | `global`, `group_emulated` | directed=True, sign=signed, evidence=association | https://doi.org/10.1038/s41540-025-00564-4 |
 | Inferelator 3.0 | `global`, `group_native`, `group_emulated` | directed=True, sign=mixed, evidence=association | https://doi.org/10.1093/bioinformatics/btac117, https://doi.org/10.1093/bioinformatics/btt099, https://doi.org/10.1186/gb-2006-7-5-r36 |
 | kScReNI | `column_native`, `group_aggregated` | directed=True, sign=none, evidence=association | https://doi.org/10.1093/gpbjnl/qzaf060 |
 | LIONESS | `column_native`, `group_aggregated` | directed=False, sign=signed, evidence=association | https://doi.org/10.1016/j.isci.2019.03.021 |

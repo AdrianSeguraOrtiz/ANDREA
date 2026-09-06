@@ -71,7 +71,8 @@
         "op": "eq",
         "value": "group_aggregated",
         "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates kScReNI column-native network rows by group.",
-        "usage": "ANDREA uses groups.tsv after the native kScReNI per-column run to aggregate column:<column_id> rows into group:<group_id> rows; kScReNI itself does not consume groups.tsv."
+        "usage": "ANDREA uses groups.tsv after the native kScReNI per-column run to aggregate column:<column_id> rows into group:<group_id> rows; kScReNI itself does not consume groups.tsv.",
+        "delivery": "orchestration_only"
       }
     ]
   },

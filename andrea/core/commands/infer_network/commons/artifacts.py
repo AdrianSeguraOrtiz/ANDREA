@@ -160,6 +160,7 @@ def _build_input_fingerprints(
     frozen_manifest: Path,
     frozen_tools_params: Path,
     frozen_custom_tools: Path | None = None,
+    frozen_runtime_input_contract: Path,
     frozen_expression: Path,
     frozen_extras: dict[str, Path],
 ) -> dict[str, dict[str, Any]]:
@@ -174,6 +175,7 @@ def _build_input_fingerprints(
     add(frozen_tools_params)
     if frozen_custom_tools is not None:
         add(frozen_custom_tools)
+    add(frozen_runtime_input_contract)
     add(frozen_expression)
     for key in sorted(frozen_extras):
         add(frozen_extras[key])

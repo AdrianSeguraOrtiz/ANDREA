@@ -223,6 +223,27 @@ def _read_expression_axes(path: Path) -> tuple[list[str], list[str]]:
     return genes, columns
 
 
+def _read_expression_columns(path: Path) -> list[str]:
+    """Read only the expression header when gene rows are already validated."""
+
+    with path.open("r", encoding="utf-8", newline="") as fh:
+        header = next(csv.reader(fh, delimiter="\t"), None)
+    if header is None or len(header) < 2:
+        raise ValueError(
+            f"Expression matrix must have header with at least 2 columns: {path}"
+        )
+    columns = [str(value).strip() for value in header[1:]]
+    if any(not column for column in columns):
+        raise ValueError(
+            f"Expression matrix contains an empty column identifier: {path}"
+        )
+    if len(set(columns)) != len(columns):
+        raise ValueError(
+            f"Expression matrix contains duplicate column identifiers: {path}"
+        )
+    return columns
+
+
 def _load_groups_by_column(
     *,
     groups_path: Path,
@@ -286,6 +307,32 @@ def _load_groups_by_column(
         group_to_columns[group].append(column)
 
     return group_order, group_to_columns
+
+
+def _read_column_phenotype_labels(path: Path) -> list[str]:
+    """Return phenotype labels in first-observed order."""
+
+    labels: list[str] = []
+    seen: set[str] = set()
+    with path.open("r", encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        if "phenotype" not in (reader.fieldnames or []):
+            raise ValueError(
+                f"column_phenotypes.tsv is missing required phenotype column: {path}"
+            )
+        for line_idx, row in enumerate(reader, start=2):
+            label = str(row.get("phenotype", "")).strip()
+            if not label:
+                raise ValueError(
+                    "column_phenotypes.tsv contains an empty phenotype at line "
+                    f"{line_idx}: {path}"
+                )
+            if label not in seen:
+                seen.add(label)
+                labels.append(label)
+    if not labels:
+        raise ValueError(f"column_phenotypes.tsv contains no phenotypes: {path}")
+    return labels
 
 
 def _read_tsv_column_values(path: Path, spec: dict[str, Any], column: str) -> set[str]:

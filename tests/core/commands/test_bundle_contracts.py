@@ -210,6 +210,7 @@ def test_infer_network_bundles_split_analysis_report_and_graphs(
     for rel in (
         "plan.json",
         "preflight_report.json",
+        "input/runtime-input-contract.json",
         "runtime/execution_state.json",
         "tools/tool_01/resolved_params.json",
         "tools/tool_01/resolved_execution.json",
@@ -253,6 +254,7 @@ def test_infer_network_bundles_split_analysis_report_and_graphs(
     assert report.available
     assert "tools/tool_01/resolved_params.json" in paths(report)
     assert "tools/tool_01/resolved_execution.json" in paths(report)
+    assert "input/runtime-input-contract.json" in paths(report)
     assert "tools/tool_01/io/expression.tsv" not in paths(report)
     assert "tools/tool_01/work/native-output.tsv" not in paths(report)
     assert "merged_network_raw.csv" not in paths(report)

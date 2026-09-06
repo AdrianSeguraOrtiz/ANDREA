@@ -134,7 +134,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group and runs SCING independently for each group.",
-        "usage": "ANDREA uses groups.tsv to create one SCING child run per group; each child receives that group's expression matrix and SCING itself does not consume groups.tsv."
+        "usage": "ANDREA uses groups.tsv to create one SCING child run per group; each child receives that group's expression matrix and SCING itself does not consume groups.tsv.",
+        "delivery": "orchestration_only"
       }
     ]
   },

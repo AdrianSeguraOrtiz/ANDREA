@@ -71,7 +71,8 @@
         "op": "eq",
         "value": "provided_prior",
         "message": "prior_grn is required when pseudo_grn_mode=provided_prior because MetaSEM uses the provided network as its upstream net_path label/prior file.",
-        "usage": "Wrapper converts normalized prior_grn.tsv to MetaSEM's net_path CSV with Gene1 and Gene2 columns. In this mode MetaSEM uses the network to identify candidate TFs and target genes, construct the TF mask, initialize label-derived pseudo targets, and compute epoch metrics."
+        "usage": "Wrapper converts normalized prior_grn.tsv to MetaSEM's net_path CSV with Gene1 and Gene2 columns. In this mode MetaSEM uses the network to identify candidate TFs and target genes, construct the TF mask, initialize label-derived pseudo targets, and compute epoch metrics.",
+        "delivery": "runtime"
       },
       {
         "input": "groups",
@@ -79,7 +80,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running MetaSEM.",
-        "usage": "ANDREA uses groups.tsv to create one single-group MetaSEM child run per group; each child follows the global GRN-inference path and MetaSEM itself does not consume groups.tsv."
+        "usage": "ANDREA uses groups.tsv to create one single-group MetaSEM child run per group; each child follows the global GRN-inference path and MetaSEM itself does not consume groups.tsv.",
+        "delivery": "orchestration_only"
       }
     ]
   },

@@ -88,7 +88,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running Planet independently per group.",
-        "usage": "ANDREA uses groups.tsv to create one Planet child run per group; each child receives that group's expression matrix and Planet itself does not consume groups.tsv."
+        "usage": "ANDREA uses groups.tsv to create one Planet child run per group; each child receives that group's expression matrix and Planet itself does not consume groups.tsv.",
+        "delivery": "orchestration_only"
       }
     ]
   },

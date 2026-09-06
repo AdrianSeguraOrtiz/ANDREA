@@ -66,13 +66,13 @@ def _profile(
                 "physical_task_policy": {
                     "global": "single",
                     "group_native": "native_grouped",
-                    "group_emulated": "andrea_group_emulated",
                 }.get(mode, "single"),
                 "group_count": group_count,
             },
             "input_profile": {
                 "column_kind": "samples",
                 "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
                 "extras_provided": extras,
                 "required_inputs_satisfied": required or [],
                 "optional_inputs_provided": optional or [],
@@ -124,7 +124,13 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
             },
             "extra_inputs": {
                 "required": [],
-                "optional": [{"input": "tf_list", "usage": "restrict TFs"}],
+                "optional": [
+                    {
+                        "input": "tf_list",
+                        "usage": "restrict TFs",
+                        "delivery": "runtime",
+                    }
+                ],
                 "conditional_required": [
                     {
                         "input": "groups",
@@ -132,6 +138,8 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                         "op": "eq",
                         "value": "group_emulated",
                         "usage": "split by groups",
+                        "message": "groups is required for group-emulated execution",
+                        "delivery": "orchestration_only",
                     }
                 ],
             },
@@ -148,7 +156,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=0,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=8,
                 max_ram_gb=4.0,
@@ -182,7 +189,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=0,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=8,
                 max_ram_gb=4.0,
@@ -220,7 +226,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=0,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=8,
                 max_ram_gb=4.0,
@@ -256,7 +261,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=0,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=2,
                 max_ram_gb=4.0,
@@ -307,7 +311,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present={"tf_list"},
                 logical_group_count=0,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={"tf_list": tf_path}),
                 max_cores=2,
                 max_ram_gb=4.0,
@@ -343,7 +346,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=2,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=2,
                 max_ram_gb=4.0,
@@ -356,15 +358,11 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         self.assertEqual(cost_profile["profile_execution_mode"], "group_native")
         self.assertEqual(modes[0].eta_seconds, 3.6)
 
-    def test_group_emulated_profile_records_group_multiplier_provenance(self) -> None:
+    def test_group_emulated_child_reuses_global_cost_profile(self) -> None:
         cost_payload = {
             "profiles": [
                 _profile(
-                    "group_emulated_groups_2",
-                    mode="group_emulated",
-                    extras=["groups"],
-                    conditional=["groups"],
-                    group_count=2,
+                    "global_default",
                     seconds=3.0,
                 )
             ]
@@ -378,11 +376,10 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 run_id="genie3_01",
                 toolspec=self._toolspec(),
                 cost_profile=cost_payload,
-                execution_mode="group_emulated",
+                execution_mode="global",
                 resolved_params={"limit": 50},
                 extras_present={"groups"},
-                logical_group_count=5,
-                physical_tasks_total=5,
+                logical_group_count=None,
                 dataset=self._dataset(Path(tmp), extras={"groups": groups_path}),
                 max_cores=2,
                 max_ram_gb=4.0,
@@ -390,15 +387,11 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 group_label="s1",
             )
 
-        self.assertTrue(any("group count differs" in warning for warning in warnings))
+        self.assertEqual(warnings, [])
         cost_profile = modes[0].eta_provenance["cost_profile"]
-        self.assertEqual(cost_profile["profile_id"], "group_emulated_groups_2")
-        self.assertEqual(
-            cost_profile["multipliers"],
-            {"physical_tasks": 5, "group_count": 5},
-        )
+        self.assertEqual(cost_profile["profile_id"], "global_default")
         self.assertEqual(cost_profile["raw_size_scale"], 1.0)
-        self.assertEqual(cost_profile["size_scale_floor"], 1.0)
+        self.assertEqual(cost_profile["size_scale_floor"], 0.75)
         self.assertGreater(cost_profile["uncertainty_penalty"], 1.0)
 
     def test_approximate_profile_does_not_downscale_from_larger_runtime_point(
@@ -429,7 +422,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=0,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=2,
                 max_ram_gb=4.0,
@@ -471,7 +463,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50, "seed": 999},
                 extras_present=set(),
                 logical_group_count=0,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=2,
                 max_ram_gb=4.0,
@@ -505,7 +496,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=2,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=2,
                 max_ram_gb=4.0,
@@ -541,7 +531,6 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=0,
-                physical_tasks_total=1,
                 dataset=self._dataset(Path(tmp), extras={}),
                 max_cores=2,
                 max_ram_gb=4.0,

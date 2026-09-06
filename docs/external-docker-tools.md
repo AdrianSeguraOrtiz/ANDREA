@@ -17,8 +17,8 @@ The image must accept ANDREA's standard `/io` layout:
 /io/out/
 ```
 
-ANDREA runs the image with a thread count and mounted inputs. The image is
-responsible for:
+ANDREA runs the image with a thread count and the inputs declared for runtime
+delivery. The image is responsible for:
 
 1. reading `expression.tsv`, `params.json`, `execution.json` and selected extras;
 2. running the upstream method;
@@ -30,10 +30,14 @@ responsible for:
 then validates, annotates, normalizes and merges the output with other selected
 tools. A header-only file is a valid zero-edge result.
 
-Contexts must agree with `execution_mode`: `global` emits only `global`,
-`group_native`, `group_emulated` and `group_aggregated` emit `group:<id>`, and
-`column_native` emits `column:<id>`. Contexts outside the planned set mark the
-run as failed during merge.
+Contexts must agree with the physical child execution. `global` emits only
+`global`; `group_native` emits `group:<id>`; and `column_native` emits
+`column:<id>`. For `group_emulated`, ANDREA launches a child on each
+group-filtered matrix, expects that child to emit `global`, then assigns the
+logical `group:<id>` context itself. For `group_aggregated`, the child executes
+the `column_native` contract and ANDREA derives the logical group networks from
+its `column:<id>` rows. Contexts outside the planned set mark the run as failed
+during merge.
 
 ## GUI Form
 
@@ -45,7 +49,7 @@ the minimum information required to execute one temporary run:
 - Docker image name and tag;
 - execution mode;
 - whether the returned network is directed and whether it carries signs;
-- selected Step 1 extras needed by the image;
+- selected Step 1 extras read by the image at runtime;
 - flat key-value image parameters.
 
 The run is added to the same selected-run list as catalog tools. Runtime
@@ -119,6 +123,33 @@ The declared sign contract is checked against the generated `network.csv`:
 
 A contradiction marks that tool execution as failed instead of silently
 evaluating it under different semantics.
+
+### Runtime inputs versus orchestration inputs
+
+`extra_inputs` names only standardized files that the external image reads from
+`/io/extra`. A `group_native` definition must declare exactly one source for
+its output group identities: `"groups"` or `"column_phenotypes"`. The SPATHI
+example above uses `"groups"`.
+
+For `group_emulated` and `group_aggregated`, do not include `"groups"` in
+`extra_inputs`. Selecting either mode already makes `groups.tsv` a required
+dataset input, but ANDREA alone reads it to split expression columns or
+aggregate column-level networks. It is deliberately not mounted in the child
+container. The GUI shows `groups` as managed by ANDREA and disables its runtime
+checkbox in these two modes; hand-written JSON that declares it is rejected.
+
+For example, an emulated tool that reads only a TF list uses:
+
+```json
+{
+  "run_id": "emulated_01",
+  "name": "Emulated method",
+  "docker_image": "example/emulated:1.0",
+  "execution_mode": "group_emulated",
+  "extra_inputs": ["tf_list"],
+  "outputs": {"directed": true, "sign": "none"}
+}
+```
 
 ## Downstream Evaluation
 

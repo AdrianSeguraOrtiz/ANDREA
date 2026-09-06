@@ -174,11 +174,20 @@ def _extra_input_set(*, raw_items: Any, field_name: str, errors: list[str]) -> s
             continue
         input_name = item.get("input")
         usage = item.get("usage")
+        delivery = item.get("delivery")
         if not isinstance(input_name, str) or not input_name.strip():
             errors.append(f"extra_inputs.{field_name}[{idx}].input is required.")
             continue
         if not isinstance(usage, str) or not usage.strip():
             errors.append(f"extra_inputs.{field_name}[{idx}].usage is required.")
+        if delivery not in {"runtime", "orchestration_only"}:
+            errors.append(
+                f"extra_inputs.{field_name}[{idx}].delivery must be runtime or orchestration_only."
+            )
+        elif delivery == "orchestration_only":
+            errors.append(
+                f"extra_inputs.{field_name}[{idx}].delivery may be orchestration_only only for a conditional groups rule."
+            )
         if input_name in out:
             errors.append(
                 f"extra_inputs.{field_name} contains duplicate input '{input_name}'."
@@ -245,9 +254,6 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     if not isinstance(instance, dict):
         return ["ToolSpec root must be a JSON object."]
 
-    if "execution_scope" in instance:
-        errors.append("execution_scope is legacy; use execution_capabilities instead.")
-
     raw_id = instance.get("id")
     if not isinstance(raw_id, str) or raw_id.strip() != tool_id:
         errors.append(
@@ -264,11 +270,6 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     execution_modes = {
         x for x in execution_capabilities if isinstance(x, str) and x.strip()
     }
-    if "cell_native" in execution_modes:
-        errors.append(
-            "execution_capabilities value 'cell_native' is legacy; use 'column_native' instead."
-        )
-
     taxonomic_scope = instance.get("taxonomic_scope")
     if not isinstance(taxonomic_scope, dict):
         errors.append("taxonomic_scope is required and must be an object.")
@@ -320,9 +321,27 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
             if not isinstance(rule, dict):
                 continue
             usage = rule.get("usage")
+            delivery = rule.get("delivery")
             if not isinstance(usage, str) or not usage.strip():
                 errors.append(
                     "extra_inputs.conditional_required[{idx}].usage is required.".format(
+                        idx=idx
+                    )
+                )
+            if delivery not in {"runtime", "orchestration_only"}:
+                errors.append(
+                    "extra_inputs.conditional_required[{idx}].delivery must be runtime or orchestration_only.".format(
+                        idx=idx
+                    )
+                )
+            elif delivery == "orchestration_only" and not (
+                rule.get("input") == "groups"
+                and rule.get("execution") == "mode"
+                and rule.get("op") == "eq"
+                and rule.get("value") in {"group_emulated", "group_aggregated"}
+            ):
+                errors.append(
+                    "extra_inputs.conditional_required[{idx}].delivery=orchestration_only is reserved for groups when execution.mode is group_emulated or group_aggregated.".format(
                         idx=idx
                     )
                 )
@@ -355,6 +374,50 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                             idx=idx, modes=sorted(execution_modes)
                         )
                     )
+                if rule.get("input") == "groups":
+                    expected_delivery = (
+                        "runtime"
+                        if value == "group_native"
+                        else "orchestration_only"
+                        if value in {"group_emulated", "group_aggregated"}
+                        else None
+                    )
+                    if expected_delivery and delivery != expected_delivery:
+                        errors.append(
+                            "extra_inputs.conditional_required[{idx}] groups for "
+                            "execution.mode={mode} must use delivery={delivery}.".format(
+                                idx=idx,
+                                mode=value,
+                                delivery=expected_delivery,
+                            )
+                        )
+
+    for field_name, entries in (("required", required), ("optional", optional)):
+        if not isinstance(entries, list):
+            continue
+        for idx, entry in enumerate(entries, start=1):
+            if not isinstance(entry, dict) or entry.get("input") != "groups":
+                continue
+            delivery = entry.get("delivery")
+            relevant_modes = execution_modes.intersection(
+                {"group_native", "group_emulated", "group_aggregated"}
+            )
+            if relevant_modes == {"group_native"} and delivery != "runtime":
+                errors.append(
+                    f"extra_inputs.{field_name}[{idx}] groups for group_native must use delivery=runtime."
+                )
+            elif (
+                relevant_modes
+                and "group_native" not in relevant_modes
+                and delivery != "orchestration_only"
+            ):
+                errors.append(
+                    f"extra_inputs.{field_name}[{idx}] orchestration-managed groups must use delivery=orchestration_only."
+                )
+            elif "group_native" in relevant_modes and len(relevant_modes) > 1:
+                errors.append(
+                    f"extra_inputs.{field_name}[{idx}] groups spans native and orchestrated modes; declare mode-specific conditional rules."
+                )
 
     compatibility_rules = instance.get("compatibility_rules", [])
     if not isinstance(compatibility_rules, list):
@@ -436,7 +499,11 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                         )
 
     if "group_emulated" in execution_modes:
-        has_group_emulated_requirement = "groups" in required_set
+        if "global" not in execution_modes:
+            errors.append(
+                "tools with execution_capabilities including 'group_emulated' must also declare 'global'."
+            )
+        has_group_emulated_requirement = False
         if isinstance(conditional, list):
             for rule in conditional:
                 if not isinstance(rule, dict):
@@ -451,7 +518,34 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                     break
         if not has_group_emulated_requirement:
             errors.append(
-                "tools with execution_capabilities including 'group_emulated' must either require groups directly or declare extra_inputs.conditional_required for groups when execution.mode == 'group_emulated'."
+                "tools with execution_capabilities including 'group_emulated' must declare extra_inputs.conditional_required for groups when execution.mode == 'group_emulated'."
+            )
+
+    if "group_native" in execution_modes:
+        native_context_inputs = {"groups", "column_phenotypes"}
+        runtime_context_sources = {
+            str(entry.get("input"))
+            for entry in required
+            if isinstance(entry, dict)
+            and entry.get("input") in native_context_inputs
+            and entry.get("delivery") == "runtime"
+        }
+        if isinstance(conditional, list):
+            runtime_context_sources.update(
+                str(rule.get("input"))
+                for rule in conditional
+                if isinstance(rule, dict)
+                and rule.get("input") in native_context_inputs
+                and rule.get("execution") == "mode"
+                and rule.get("op") == "eq"
+                and rule.get("value") == "group_native"
+                and rule.get("delivery") == "runtime"
+            )
+        if len(runtime_context_sources) != 1:
+            errors.append(
+                "tools with execution_capabilities including 'group_native' must "
+                "require exactly one runtime-delivered context source: groups or "
+                "column_phenotypes."
             )
 
     if "group_aggregated" in execution_modes:

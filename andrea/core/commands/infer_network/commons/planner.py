@@ -13,6 +13,7 @@ from .threading import (
     resolve_tool_threading,
     thread_count_allowed_by_tool,
 )
+from .tools import _resolve_runtime_extra_input_keys
 
 ETA_ESTIMATION_POLICY_VERSION = "cost_profile_v2"
 MIN_EXACT_PROFILE_SIZE_SCALE = 0.75
@@ -89,102 +90,6 @@ def _flatten_param_values(value: Any, prefix: str = "") -> dict[str, Any]:
     return out
 
 
-def _extra_input_entries(toolspec: dict[str, Any], field: str) -> set[str]:
-    extra_inputs = toolspec.get("extra_inputs", {})
-    if not isinstance(extra_inputs, dict):
-        return set()
-    raw_entries = extra_inputs.get(field, [])
-    if not isinstance(raw_entries, list):
-        return set()
-    out: set[str] = set()
-    for entry in raw_entries:
-        if not isinstance(entry, dict):
-            continue
-        input_key = str(entry.get("input", "")).strip()
-        if input_key:
-            out.add(input_key)
-    return out
-
-
-def _compare_rule_values(*, actual: Any, op: str, expected: Any) -> bool:
-    if op == "eq":
-        return actual == expected
-    if op == "ne":
-        return actual != expected
-    if op == "in":
-        return isinstance(expected, list) and actual in expected
-    if op == "not_in":
-        return isinstance(expected, list) and actual not in expected
-    if (
-        isinstance(actual, bool)
-        or isinstance(expected, bool)
-        or not isinstance(actual, (int, float))
-        or not isinstance(expected, (int, float))
-    ):
-        return False
-    actual_num = float(actual)
-    expected_num = float(expected)
-    if op == "gt":
-        return actual_num > expected_num
-    if op == "gte":
-        return actual_num >= expected_num
-    if op == "lt":
-        return actual_num < expected_num
-    if op == "lte":
-        return actual_num <= expected_num
-    return False
-
-
-def _active_conditional_inputs(
-    *,
-    toolspec: dict[str, Any],
-    execution_mode: str,
-    resolved_params: dict[str, Any],
-) -> set[str]:
-    extra_inputs = toolspec.get("extra_inputs", {})
-    if not isinstance(extra_inputs, dict):
-        return set()
-    raw_rules = extra_inputs.get("conditional_required", [])
-    if not isinstance(raw_rules, list):
-        return set()
-    out: set[str] = set()
-    for rule in raw_rules:
-        if not isinstance(rule, dict):
-            continue
-        input_key = str(rule.get("input", "")).strip()
-        if not input_key:
-            continue
-        param_name = str(rule.get("param", "")).strip()
-        execution_name = str(rule.get("execution", "")).strip()
-        op = str(rule.get("op", "")).strip()
-        if param_name:
-            actual = resolved_params.get(param_name)
-        elif execution_name == "mode":
-            actual = execution_mode
-        else:
-            continue
-        if _compare_rule_values(actual=actual, op=op, expected=rule.get("value")):
-            out.add(input_key)
-    return out
-
-
-def _relevant_extra_inputs(
-    *,
-    toolspec: dict[str, Any],
-    execution_mode: str,
-    resolved_params: dict[str, Any],
-) -> set[str]:
-    return (
-        _extra_input_entries(toolspec, "required")
-        | _extra_input_entries(toolspec, "optional")
-        | _active_conditional_inputs(
-            toolspec=toolspec,
-            execution_mode=execution_mode,
-            resolved_params=resolved_params,
-        )
-    )
-
-
 def _profile_config(profile: dict[str, Any]) -> dict[str, Any]:
     benchmark_config = profile.get("benchmark_config", {})
     return benchmark_config if isinstance(benchmark_config, dict) else {}
@@ -247,13 +152,11 @@ def _inference_cost_features(
     n_groups = int(logical_group_count or 0)
     if execution_mode == "column_native":
         expected_contexts = max(1, n_columns)
-    elif execution_mode in {"group_native", "group_emulated", "group_aggregated"}:
+    elif execution_mode == "group_native":
         expected_contexts = max(1, n_groups)
     else:
         expected_contexts = 1
-    aggregation_step = (
-        "column_to_group" if execution_mode == "group_aggregated" else "none"
-    )
+    aggregation_step = "none"
     return {
         "execution_mode": execution_mode,
         "column_kind": dataset.column_kind,
@@ -267,7 +170,7 @@ def _inference_cost_features(
         "has_tf_list": "tf_list" in extras_present,
         "output_density_class": (
             "dense"
-            if execution_mode in {"column_native", "group_aggregated"}
+            if execution_mode == "column_native"
             else "sparse"
         ),
         "aggregation_step": aggregation_step,
@@ -468,10 +371,11 @@ def _select_cost_profile(
             ],
         )
 
-    relevant_inputs = _relevant_extra_inputs(
+    relevant_inputs = _resolve_runtime_extra_input_keys(
+        tool_id=tool_id,
         toolspec=toolspec,
-        execution_mode=execution_mode,
         resolved_params=resolved_params,
+        resolved_execution={"mode": execution_mode},
     )
     relevant_extras_present = extras_present.intersection(relevant_inputs)
     candidates: list[
@@ -698,13 +602,17 @@ def _estimate_tool_mode_options(
     resolved_params: dict[str, Any],
     extras_present: set[str],
     logical_group_count: Optional[int],
-    physical_tasks_total: int,
     dataset: DatasetContext,
     max_cores: int,
     max_ram_gb: float,
     output_dir: str,
     group_label: Optional[str] = None,
 ) -> tuple[list[ToolPlanItem], list[str]]:
+    if execution_mode not in {"global", "group_native", "column_native"}:
+        raise ValueError(
+            "Cost estimation requires a physical execution mode: global, "
+            "group_native, or column_native"
+        )
     warnings: list[str] = []
     modes: list[ToolPlanItem] = []
     image = str(toolspec.get("docker_image", "")).strip()
@@ -922,14 +830,6 @@ def _estimate_tool_mode_options(
                         ),
                         "uncertainty_components": uncertainty_components,
                         "robust_base_seconds": round(float(robust_base), 6),
-                        "multipliers": {
-                            "physical_tasks": int(max(1, physical_tasks_total)),
-                            "group_count": (
-                                int(logical_group_count)
-                                if logical_group_count is not None
-                                else None
-                            ),
-                        },
                         "cost_features": cost_features,
                         "warnings": provenance_warnings,
                     },

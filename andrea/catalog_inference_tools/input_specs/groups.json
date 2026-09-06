@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "key": "groups",
   "file_kind": "tsv",
-  "description": "Groups TSV: first column maps expression column identifiers to a cluster/group label.",
+  "description": "Groups TSV: first column maps expression column identifiers to one flat analysis-context label. ANDREA does not encode separate biological hierarchy levels such as cell type and cell state; split the higher-level analysis unit before inference and use this label for the within-unit groups.",
   "example": "column\tcluster\nS1\tA\nS2\tB",
   "delimiter": "\t",
   "header": true,

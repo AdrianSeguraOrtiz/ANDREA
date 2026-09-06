@@ -12,21 +12,113 @@ from andrea.core.commands.infer_network.commons.execution_state import (
     read_execution_state,
 )
 from andrea.core.commands.infer_network.commons.shared import (
+    DatasetContext,
     PlanWave,
+    SchemaConstraints,
     ToolExecutionResult,
     ToolPlanItem,
 )
+from andrea.core.commands.infer_network.commons.tools import (
+    _resolve_active_extra_input_keys,
+    _resolve_runtime_extra_input_keys,
+)
 from andrea.core.commands.infer_network.run import (
+    _clear_previous_execution_artifacts,
     _completed_contexts_for_run,
     _finalize_group_aggregated_logical_run,
     _finalize_grouped_logical_run,
     _load_logical_runs_from_plan,
+    _validate_physical_task_plan,
 )
 
 from ._helpers import InferNetworkCoreTestCase
 
 
 class InferNetworkRunTests(InferNetworkCoreTestCase):
+    def test_physical_tasks_and_waves_must_form_a_bijection(self) -> None:
+        logical_runs = {
+            "grouped": {
+                "run_id": "grouped",
+                "tool_id": "tool",
+                "tool_origin": "catalog",
+                "execution": {"mode": "group_emulated"},
+                "physical_tasks": [
+                    {
+                        "task_id": "grouped__group_01_a",
+                        "group_label": "A",
+                        "columns": 2,
+                        "output_dir": "tools/grouped/subruns/01_a",
+                    }
+                ],
+            }
+        }
+        task = ToolPlanItem(
+            tool_id="unexpected",
+            run_id="grouped",
+            image="image",
+            threads=1,
+            ram_gb=1,
+            eta_seconds=1,
+            eta_source="fallback",
+            output_dir="tools/grouped/subruns/01_a",
+            group_label="A",
+        )
+        with self.assertRaisesRegex(ValueError, "exact bijection"):
+            _validate_physical_task_plan(
+                logical_runs=logical_runs,
+                waves=[
+                    PlanWave(
+                        index=1,
+                        threads_used=1,
+                        ram_gb_used=1,
+                        eta_seconds=1,
+                        tasks=[task],
+                    )
+                ],
+            )
+
+    def test_rerun_cleanup_removes_logical_and_merged_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            stale_paths = [
+                run_dir / "tools" / "grouped" / "io" / "out" / "network.csv",
+                run_dir
+                / "tools"
+                / "grouped"
+                / "subruns"
+                / "01_a"
+                / "io"
+                / "out"
+                / "network.csv",
+                run_dir / "tools" / "aggregated" / "io" / "out" / "network.csv",
+                run_dir
+                / "tools"
+                / "aggregated"
+                / "upstream_column_native"
+                / "io"
+                / "out"
+                / "network.csv",
+                run_dir / "merged_network_raw.csv",
+                run_dir / "merged_network_normalized.gexf",
+            ]
+            for path in stale_paths:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("stale\n", encoding="utf-8")
+
+            _clear_previous_execution_artifacts(
+                run_dir=run_dir,
+                logical_runs={
+                    "grouped": {
+                        "execution": {"mode": "group_emulated"},
+                    },
+                    "aggregated": {
+                        "execution": {"mode": "group_aggregated"},
+                    },
+                },
+            )
+
+            self.assertTrue(all(not path.exists() for path in stale_paths))
+
     def _cell_aggregated_toolspec(self) -> dict:
         return {
             "id": "fakecell",
@@ -63,7 +155,17 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         "value": "group_aggregated",
                         "usage": "Used by ANDREA to aggregate column-native network rows by group.",
                         "message": "groups is required when execution.mode=group_aggregated.",
-                    }
+                        "delivery": "orchestration_only",
+                    },
+                    {
+                        "input": "tf_list",
+                        "execution": "mode",
+                        "op": "eq",
+                        "value": "column_native",
+                        "usage": "Read by the physical column-native wrapper.",
+                        "message": "tf_list is required for column-native execution.",
+                        "delivery": "runtime",
+                    },
                 ],
             },
         }
@@ -82,6 +184,8 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             "cell\tcluster\nC1\tA\nC2\tA\nC3\tB\n",
             encoding="utf-8",
         )
+        tf_list_path = base / "tf_list.txt"
+        tf_list_path.write_text("G1\n", encoding="utf-8")
         manifest_path = self._write_manifest(
             base,
             expression_matrix="expression.tsv",
@@ -89,7 +193,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             columns=3,
             column_kind="cells",
             expression_profile="scrna",
-            extras={"groups": "groups.tsv"},
+            extras={"groups": "groups.tsv", "tf_list": "tf_list.txt"},
         )
         tools_params_path = self._write_tools_params(
             base,
@@ -188,8 +292,57 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
         self.assertIn("--network", custom_cmd)
         self.assertIn("none", custom_cmd)
         self.assertNotIn("--network", catalog_cmd)
+        read_only_io_mount = f"{io_dir.resolve()}:/io:ro"
+        writable_out_mount = f"{(io_dir / 'out').resolve()}:/io/out:rw"
+        self.assertIn(read_only_io_mount, custom_cmd)
+        self.assertIn(writable_out_mount, custom_cmd)
+        self.assertLess(
+            custom_cmd.index(read_only_io_mount),
+            custom_cmd.index(writable_out_mount),
+        )
 
-    def test_runtime_io_can_filter_extra_inputs_for_custom_tools(self) -> None:
+    def test_shared_inputs_reuse_frozen_dataset_inodes(self) -> None:
+        from andrea.core.commands.infer_network.commons import runtime_helpers
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            frozen_dir = base / "frozen"
+            frozen_dir.mkdir()
+            expression = frozen_dir / "expression.tsv"
+            expression.write_text("gene\tS1\nG1\t1\n", encoding="utf-8")
+            tf_list = frozen_dir / "tf_list.txt"
+            tf_list.write_text("G1\n", encoding="utf-8")
+            dataset = DatasetContext(
+                dataset_id="dataset",
+                column_kind="samples",
+                expression_profile="bulk",
+                taxonomic_group="animal",
+                ncbi_taxon_id=None,
+                genes=1,
+                columns=1,
+                expression_matrix_path=expression,
+                extras={"tf_list": tf_list},
+            )
+            constraints = SchemaConstraints(
+                column_kinds={"samples"},
+                expression_profiles={"bulk"},
+                taxonomic_groups={"animal"},
+                assumptions={"generic"},
+                extra_input_keys={"tf_list"},
+                extra_input_filenames={"tf_list": "tf_list.txt"},
+            )
+
+            shared_expression, shared_extras = runtime_helpers._prepare_shared_inputs(
+                run_dir=base / "run",
+                dataset=dataset,
+                constraints=constraints,
+            )
+            shared_tf_list = shared_extras["tf_list"]
+
+            self.assertTrue(shared_expression.samefile(expression))
+            self.assertTrue(shared_tf_list.samefile(tf_list))
+
+    def test_runtime_io_physically_excludes_undeclared_extra_inputs(self) -> None:
         from andrea.core.commands.infer_network.commons import runtime_helpers
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -201,19 +354,8 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             groups = base / "groups.tsv"
             groups.write_text("cell\tcluster\nS1\tA\n", encoding="utf-8")
 
-            filtered = runtime_helpers._prepare_tool_runtime_io(
+            runtime = runtime_helpers._prepare_tool_runtime_io(
                 run_dir=base / "filtered",
-                tool_id="custom_tool",
-                run_id="custom_tool",
-                output_dir="tools/custom_tool",
-                resolved_params={},
-                resolved_execution={"mode": "global"},
-                shared_expression=shared_expression,
-                shared_extras={"tf_list": tf_list, "groups": groups},
-                extra_input_keys={"tf_list"},
-            )
-            unfiltered = runtime_helpers._prepare_tool_runtime_io(
-                run_dir=base / "unfiltered",
                 tool_id="catalog_tool",
                 run_id="catalog_tool",
                 output_dir="tools/catalog_tool",
@@ -221,13 +363,384 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 resolved_execution={"mode": "global"},
                 shared_expression=shared_expression,
                 shared_extras={"tf_list": tf_list, "groups": groups},
-                extra_input_keys=None,
+                extra_input_keys={"tf_list"},
             )
 
-            self.assertTrue((filtered.io_dir / "extra" / "tf_list.txt").exists())
-            self.assertFalse((filtered.io_dir / "extra" / "groups.tsv").exists())
-            self.assertTrue((unfiltered.io_dir / "extra" / "tf_list.txt").exists())
-            self.assertTrue((unfiltered.io_dir / "extra" / "groups.tsv").exists())
+            self.assertTrue((runtime.io_dir / "extra" / "tf_list.txt").exists())
+            self.assertFalse((runtime.io_dir / "extra" / "groups.tsv").exists())
+            self.assertTrue(
+                (runtime.io_dir / "expression.tsv").samefile(shared_expression)
+            )
+            self.assertTrue(
+                (runtime.io_dir / "extra" / "tf_list.txt").samefile(tf_list)
+            )
+
+    def test_runtime_io_rebuild_removes_stale_inputs_and_outputs(self) -> None:
+        from andrea.core.commands.infer_network.commons import runtime_helpers
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            shared_expression = base / "expression.tsv"
+            shared_expression.write_text("gene\tS1\nG1\t1\n", encoding="utf-8")
+            tf_list = base / "tf_list.txt"
+            tf_list.write_text("G1\n", encoding="utf-8")
+            groups = base / "groups.tsv"
+            groups.write_text("cell\tcluster\nS1\tA\n", encoding="utf-8")
+            kwargs = {
+                "run_dir": base / "run",
+                "tool_id": "catalog_tool",
+                "run_id": "catalog_tool",
+                "output_dir": "tools/catalog_tool",
+                "resolved_params": {},
+                "resolved_execution": {"mode": "global"},
+                "shared_expression": shared_expression,
+                "shared_extras": {"tf_list": tf_list, "groups": groups},
+            }
+
+            first = runtime_helpers._prepare_tool_runtime_io(
+                **kwargs,
+                extra_input_keys={"groups"},
+            )
+            (first.out_dir / "network.csv").write_text(
+                "source,target,score,sign,evidence,context\n",
+                encoding="utf-8",
+            )
+            (first.io_dir / "stale.txt").write_text("stale\n", encoding="utf-8")
+            self.assertTrue((first.io_dir / "extra" / "groups.tsv").exists())
+
+            rebuilt = runtime_helpers._prepare_tool_runtime_io(
+                **kwargs,
+                extra_input_keys={"tf_list"},
+            )
+
+            self.assertFalse((rebuilt.io_dir / "extra" / "groups.tsv").exists())
+            self.assertTrue((rebuilt.io_dir / "extra" / "tf_list.txt").exists())
+            self.assertFalse((rebuilt.out_dir / "network.csv").exists())
+            self.assertFalse((rebuilt.io_dir / "stale.txt").exists())
+
+    def test_runtime_io_rejects_output_paths_outside_run_directory(self) -> None:
+        from andrea.core.commands.infer_network.commons import runtime_helpers
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            run_dir = base / "run"
+            shared_expression = base / "expression.tsv"
+            shared_expression.write_text("gene\tS1\nG1\t1\n", encoding="utf-8")
+            protected_io = base / "outside" / "io"
+            protected_io.mkdir(parents=True)
+            marker = protected_io / "keep.txt"
+            marker.write_text("keep\n", encoding="utf-8")
+
+            common = {
+                "run_dir": run_dir,
+                "tool_id": "catalog_tool",
+                "run_id": "catalog_tool",
+                "resolved_params": {},
+                "resolved_execution": {"mode": "global"},
+                "shared_expression": shared_expression,
+                "shared_extras": {},
+                "extra_input_keys": set(),
+            }
+            for output_dir in ("../outside", str(base / "outside")):
+                with self.subTest(output_dir=output_dir), self.assertRaisesRegex(
+                    ValueError,
+                    "relative to run_dir|escapes run_dir",
+                ):
+                    runtime_helpers._prepare_tool_runtime_io(
+                        **common,
+                        output_dir=output_dir,
+                    )
+
+            (run_dir / "tools").mkdir(parents=True)
+            (run_dir / "tools" / "linked").symlink_to(base / "outside")
+            with self.assertRaisesRegex(ValueError, "escapes run_dir"):
+                runtime_helpers._prepare_tool_runtime_io(
+                    **common,
+                    output_dir="tools/linked",
+                )
+
+            self.assertEqual(marker.read_text(encoding="utf-8"), "keep\n")
+
+    def test_catalog_runtime_keys_include_only_active_toolspec_inputs(self) -> None:
+        toolspec = {
+            "params": {"filter_mode": {"type": "enum"}},
+            "extra_inputs": {
+                "required": [],
+                "optional": [
+                    {
+                        "input": "tf_list",
+                        "usage": "regulators",
+                        "delivery": "runtime",
+                    }
+                ],
+                "conditional_required": [
+                    {
+                        "input": "groups",
+                        "execution": "mode",
+                        "op": "eq",
+                        "value": "group_emulated",
+                        "usage": "group partitioning",
+                        "message": "groups required",
+                        "delivery": "orchestration_only",
+                    },
+                    {
+                        "input": "prior_grn",
+                        "param": "filter_mode",
+                        "op": "eq",
+                        "value": "strict",
+                        "usage": "network filtering",
+                        "message": "prior required",
+                        "delivery": "runtime",
+                    }
+                ],
+            },
+        }
+
+        default_keys = _resolve_runtime_extra_input_keys(
+            tool_id="test_tool",
+            toolspec=toolspec,
+            resolved_params={"filter_mode": "none"},
+            resolved_execution={"mode": "global"},
+        )
+        strict_keys = _resolve_runtime_extra_input_keys(
+            tool_id="test_tool",
+            toolspec=toolspec,
+            resolved_params={"filter_mode": "strict"},
+            resolved_execution={"mode": "global"},
+        )
+        active_grouped_keys = _resolve_active_extra_input_keys(
+            tool_id="test_tool",
+            toolspec=toolspec,
+            resolved_params={"filter_mode": "strict"},
+            resolved_execution={"mode": "group_emulated"},
+        )
+
+        self.assertEqual(default_keys, {"tf_list"})
+        self.assertEqual(strict_keys, {"tf_list", "prior_grn"})
+        self.assertEqual(
+            active_grouped_keys,
+            {"groups", "tf_list", "prior_grn"},
+        )
+
+    def test_group_emulated_catalog_runtime_keeps_algorithm_inputs_and_excludes_orchestration_inputs(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2\tC3\tC4",
+                    "G1\t1\t2\t3\t4",
+                    "G2\t4\t3\t2\t1",
+                ],
+            )
+            (base / "groups.tsv").write_text(
+                "cell\tcluster\nC1\tA\nC2\tA\nC3\tB\nC4\tB\n",
+                encoding="utf-8",
+            )
+            (base / "tf_list.txt").write_text("G1\n", encoding="utf-8")
+            (base / "pseudotime.tsv").write_text(
+                "column\tpseudotime\nC1\t0.0\nC2\t0.3\nC3\t0.7\nC4\t1.0\n",
+                encoding="utf-8",
+            )
+            manifest_path = self._write_manifest(
+                base,
+                genes=2,
+                columns=4,
+                column_kind="cells",
+                expression_profile="scrna",
+                extras={
+                    "groups": "groups.tsv",
+                    "tf_list": "tf_list.txt",
+                    "pseudotime": "pseudotime.tsv",
+                },
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "aracne_grouped",
+                        "tool_id": "aracne3",
+                        "execution": {"mode": "group_emulated"},
+                        "params": {"seed": 42},
+                    }
+                ],
+            )
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+            run_dir = self.mod.plan_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                output_dir=base / "out",
+                planner="heuristic",
+                preflight_report=preflight,
+            )
+
+            def fake_run_wave(
+                *,
+                wave,
+                runtime_io_by_tool,
+                pulled_images,
+                poll_interval_s,
+                warnings,
+                state_writer=None,
+            ):
+                results = {}
+                for task in wave.tasks:
+                    tool_io = runtime_io_by_tool[task.tool_id]
+                    self.assertEqual(
+                        json.loads(
+                            (tool_io.io_dir / "execution.json").read_text(
+                                encoding="utf-8"
+                            )
+                        ),
+                        {"mode": "global"},
+                    )
+                    extra_dir = tool_io.io_dir / "extra"
+                    self.assertFalse((extra_dir / "groups.tsv").exists())
+                    self.assertTrue((extra_dir / "tf_list.txt").exists())
+                    self.assertFalse((extra_dir / "pseudotime.tsv").exists())
+                    header = (
+                        (tool_io.io_dir / "expression.tsv")
+                        .read_text(encoding="utf-8")
+                        .splitlines()[0]
+                    )
+                    self.assertEqual(len(header.split("\t")), 3)
+                    network_path = tool_io.out_dir / "network.csv"
+                    network_path.write_text(
+                        "source,target,score,sign,evidence,context\n",
+                        encoding="utf-8",
+                    )
+                    results[task.tool_id] = ToolExecutionResult(
+                        tool_id=task.tool_id,
+                        status="completed",
+                        exit_code=0,
+                        duration_seconds=0.1,
+                        network_path=str(network_path),
+                        progress_path=None,
+                        logs_path=None,
+                        error=None,
+                    )
+                return results
+
+            with (
+                patch("andrea.core.commands.infer_network.run._ensure_docker_cli"),
+                patch(
+                    "andrea.core.commands.infer_network.run._run_wave",
+                    side_effect=fake_run_wave,
+                ),
+            ):
+                self.mod.run_infer_network_plan(
+                    run_dir=run_dir,
+                    progress_poll_seconds=0.1,
+                )
+
+    def test_infercsn_groups_are_used_for_partitioning_but_not_mounted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2\tC3\tC4",
+                    "G1\t1\t2\t3\t4",
+                    "G2\t4\t3\t2\t1",
+                ],
+            )
+            (base / "groups.tsv").write_text(
+                "cell\tcluster\nC1\tA\nC2\tA\nC3\tB\nC4\tB\n",
+                encoding="utf-8",
+            )
+            (base / "tf_list.txt").write_text("G1\n", encoding="utf-8")
+            manifest_path = self._write_manifest(
+                base,
+                genes=2,
+                columns=4,
+                column_kind="cells",
+                expression_profile="scrna",
+                extras={"groups": "groups.tsv", "tf_list": "tf_list.txt"},
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "infercsn_grouped",
+                        "tool_id": "infercsn",
+                        "execution": {"mode": "group_emulated"},
+                        "params": {"sift_method": "none", "seed": 42},
+                    }
+                ],
+            )
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+            run_dir = self.mod.plan_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                output_dir=base / "out",
+                planner="heuristic",
+                preflight_report=preflight,
+            )
+            contract = json.loads(
+                (run_dir / "input" / "runtime-input-contract.json").read_text(
+                    encoding="utf-8"
+                )
+            )["runs"]["infercsn_grouped"]
+            self.assertIn("groups", contract["active_extra_inputs"])
+            self.assertNotIn("groups", contract["mounted_extra_inputs"])
+
+            def fake_run_wave(
+                *,
+                wave,
+                runtime_io_by_tool,
+                pulled_images,
+                poll_interval_s,
+                warnings,
+                state_writer=None,
+            ):
+                results = {}
+                for task in wave.tasks:
+                    tool_io = runtime_io_by_tool[task.tool_id]
+                    extra_dir = tool_io.io_dir / "extra"
+                    self.assertFalse((extra_dir / "groups.tsv").exists())
+                    self.assertTrue((extra_dir / "tf_list.txt").exists())
+                    header = (
+                        (tool_io.io_dir / "expression.tsv")
+                        .read_text(encoding="utf-8")
+                        .splitlines()[0]
+                    )
+                    self.assertEqual(len(header.split("\t")), 3)
+                    network_path = tool_io.out_dir / "network.csv"
+                    network_path.write_text(
+                        "source,target,score,sign,evidence,context\n",
+                        encoding="utf-8",
+                    )
+                    results[task.tool_id] = ToolExecutionResult(
+                        tool_id=task.tool_id,
+                        status="completed",
+                        exit_code=0,
+                        duration_seconds=0.1,
+                        network_path=str(network_path),
+                        progress_path=None,
+                        logs_path=None,
+                        error=None,
+                    )
+                return results
+
+            with (
+                patch("andrea.core.commands.infer_network.run._ensure_docker_cli"),
+                patch(
+                    "andrea.core.commands.infer_network.run._run_wave",
+                    side_effect=fake_run_wave,
+                ),
+            ):
+                self.mod.run_infer_network_plan(
+                    run_dir=run_dir,
+                    progress_poll_seconds=0.1,
+                )
 
     def test_run_wave_promotes_wrapper_progress_warnings(self) -> None:
         from andrea.core.commands.infer_network.commons import runtime_helpers
@@ -245,6 +758,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 resolved_execution={"mode": "global"},
                 shared_expression=shared_expression,
                 shared_extras={},
+                extra_input_keys=set(),
             )
             wave = PlanWave(
                 index=1,
@@ -376,6 +890,8 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         (tool_io.io_dir / "execution.json").read_text(encoding="utf-8")
                     )
                     self.assertEqual(execution["mode"], "column_native")
+                    self.assertFalse((tool_io.io_dir / "extra" / "groups.tsv").exists())
+                    self.assertTrue((tool_io.io_dir / "extra" / "tf_list.txt").exists())
                     network_path = tool_io.out_dir / "network.csv"
                     network_path.write_text(
                         "\n".join(
@@ -602,6 +1118,52 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             parent_content,
             "source,target,score,sign,evidence,context\n",
         )
+
+    def test_group_emulated_rejects_non_global_child_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            child_network = run_dir / "group_a" / "network.csv"
+            child_network.parent.mkdir(parents=True)
+            child_network.write_text(
+                "source,target,score,sign,evidence,context\n"
+                "TF1,G1,0.5,?,association,column:C1\n",
+                encoding="utf-8",
+            )
+            logical_spec = {
+                "execution": {"mode": "group_emulated"},
+                "physical_tasks": [
+                    {
+                        "task_id": "grouped__a",
+                        "group_label": "A",
+                        "output_dir": "group_a",
+                    }
+                ],
+            }
+
+            result, payload = _finalize_grouped_logical_run(
+                run_dir=run_dir,
+                run_id="grouped",
+                logical_spec=logical_spec,
+                child_results={
+                    "grouped__a": ToolExecutionResult(
+                        tool_id="grouped__a",
+                        status="completed",
+                        exit_code=0,
+                        duration_seconds=0.1,
+                        network_path=str(child_network),
+                        progress_path=None,
+                        logs_path=None,
+                        error=None,
+                    )
+                },
+                warnings=[],
+            )
+
+        self.assertEqual(result.status, "failed")
+        self.assertIsNone(result.network_path)
+        child = payload["child_results"]["grouped__a"]
+        self.assertEqual(child["status"], "failed")
+        self.assertIn("physical global context", child["error"])
 
     def test_run_rejects_plan_threads_above_toolspec_limit(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1118,6 +1680,54 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             ) as ensure_docker:
                 with self.assertRaisesRegex(
                     ValueError, "Input file changed since planning"
+                ):
+                    self.mod.run_infer_network_plan(run_dir=run_dir)
+            ensure_docker.assert_not_called()
+
+    def test_run_plan_rejects_runtime_input_contract_fingerprint_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._prepare_planned_run(Path(tmp))
+            contract_path = run_dir / "input" / "runtime-input-contract.json"
+            contract = json.loads(contract_path.read_text(encoding="utf-8"))
+            contract["runs"]["aracne__01"]["mounted_extra_inputs"] = []
+            contract_path.write_text(
+                json.dumps(contract, indent=2, ensure_ascii=True) + "\n",
+                encoding="utf-8",
+            )
+
+            with patch(
+                "andrea.core.commands.infer_network.run._ensure_docker_cli"
+            ) as ensure_docker:
+                with self.assertRaisesRegex(
+                    ValueError, "Input file changed since planning"
+                ):
+                    self.mod.run_infer_network_plan(run_dir=run_dir)
+            ensure_docker.assert_not_called()
+
+    def test_run_plan_rejects_runtime_input_contract_toolspec_drift(self) -> None:
+        from andrea.core.commands.infer_network.commons.catalog import (
+            _resolve_catalog_paths,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._prepare_planned_run(Path(tmp))
+            tools_root, _schemas_dir = _resolve_catalog_paths()
+            changed_toolspec = json.loads(
+                (tools_root / "aracne3" / "toolspec.json").read_text(encoding="utf-8")
+            )
+            changed_toolspec["extra_inputs"]["required"][0]["input"] = "prior_grn"
+
+            with (
+                patch(
+                    "andrea.core.commands.infer_network.run._load_toolspec",
+                    return_value=changed_toolspec,
+                ),
+                patch(
+                    "andrea.core.commands.infer_network.run._ensure_docker_cli"
+                ) as ensure_docker,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError, "Frozen runtime input contract does not match"
                 ):
                     self.mod.run_infer_network_plan(run_dir=run_dir)
             ensure_docker.assert_not_called()

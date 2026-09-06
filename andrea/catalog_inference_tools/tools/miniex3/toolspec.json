@@ -38,33 +38,40 @@
     "required": [
       {
         "input": "groups",
-        "usage": "Wrapper converts groups.tsv to MINI-EX cellsToClusters input, mapping expression cell barcodes to cluster IDs used for cluster-specific regulon filtering and output contexts."
+        "usage": "Wrapper converts groups.tsv to MINI-EX cellsToClusters input, mapping expression cell barcodes to cluster IDs used for cluster-specific regulon filtering and output contexts.",
+        "delivery": "runtime"
       },
       {
         "input": "cluster_markers",
-        "usage": "Wrapper preserves Seurat-style cluster_markers.tsv as MINI-EX allMarkers input; MINI-EX uses marker genes and adjusted p-values for cluster enrichment filtering and ranking."
+        "usage": "Wrapper preserves Seurat-style cluster_markers.tsv as MINI-EX allMarkers input; MINI-EX uses marker genes and adjusted p-values for cluster enrichment filtering and ranking.",
+        "delivery": "runtime"
       },
       {
         "input": "cluster_identities",
-        "usage": "Wrapper converts cluster_identities.tsv to MINI-EX clustersToIdentities input, mapping cluster IDs to biological labels; optional normalized order values are validated but omitted from the upstream file because MINI-EX v3.2 downstream scripts read this input as two columns."
+        "usage": "Wrapper converts cluster_identities.tsv to MINI-EX clustersToIdentities input, mapping cluster IDs to biological labels; optional normalized order values are validated but omitted from the upstream file because MINI-EX v3.2 downstream scripts read this input as two columns.",
+        "delivery": "runtime"
       },
       {
         "input": "tf_list",
-        "usage": "Wrapper converts tf_list.txt to MINI-EX's TF list used by the GRNBoost2 step to restrict candidate regulators before MINI-EX ranking and filtering."
+        "usage": "Wrapper converts tf_list.txt to MINI-EX's TF list used by the GRNBoost2 step to restrict candidate regulators before MINI-EX ranking and filtering.",
+        "delivery": "runtime"
       }
     ],
     "optional": [
       {
         "input": "terms_of_interest",
-        "usage": "Optional GO or keyword list passed to MINI-EX termsOfInterest; when present, MINI-EX can use term-guided ranking of enriched regulators."
+        "usage": "Optional GO or keyword list passed to MINI-EX termsOfInterest; when present, MINI-EX can use term-guided ranking of enriched regulators.",
+        "delivery": "runtime"
       },
       {
         "input": "enrichment_background",
-        "usage": "Optional gene universe passed to MINI-EX enrichmentBackground; when absent, the wrapper leaves it null so upstream defaults to expressed genes."
+        "usage": "Optional gene universe passed to MINI-EX enrichmentBackground; when absent, the wrapper leaves it null so upstream defaults to expressed genes.",
+        "delivery": "runtime"
       },
       {
         "input": "grnboost_network",
-        "usage": "Optional precomputed GRNBoost2 network converted to MINI-EX grnboostOut format; when provided, the workflow skips de novo GRNBoost2 inference."
+        "usage": "Optional precomputed GRNBoost2 network converted to MINI-EX grnboostOut format; when provided, the workflow skips de novo GRNBoost2 inference.",
+        "delivery": "runtime"
       }
     ],
     "conditional_required": []

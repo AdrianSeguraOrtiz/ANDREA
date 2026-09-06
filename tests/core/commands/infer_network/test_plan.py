@@ -9,6 +9,34 @@ from ._helpers import InferNetworkCoreTestCase
 
 
 class InferNetworkPlanTests(InferNetworkCoreTestCase):
+    def _phenotype_native_toolspec(self) -> dict:
+        return {
+            "id": "phenotype_native",
+            "docker_image": "fake/phenotype-native:latest",
+            "execution_capabilities": ["group_native"],
+            "runtime_resources": {
+                "threading": {
+                    "supported": False,
+                    "default_threads": 1,
+                    "max_threads": 1,
+                    "upstream_mapping": "No upstream parallel runtime control.",
+                }
+            },
+            "params": {},
+            "outputs": {"directed": True, "sign": "none"},
+            "extra_inputs": {
+                "required": [
+                    {
+                        "input": "column_phenotypes",
+                        "usage": "Defines native phenotype contexts.",
+                        "delivery": "runtime",
+                    }
+                ],
+                "optional": [],
+                "conditional_required": [],
+            },
+        }
+
     def _cell_aggregated_toolspec(self) -> dict:
         return {
             "id": "fakecell",
@@ -38,7 +66,17 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                         "value": "group_aggregated",
                         "usage": "Used by ANDREA to aggregate column-native network rows by group.",
                         "message": "groups is required when execution.mode=group_aggregated.",
-                    }
+                        "delivery": "orchestration_only",
+                    },
+                    {
+                        "input": "tf_list",
+                        "execution": "mode",
+                        "op": "eq",
+                        "value": "column_native",
+                        "usage": "Read by the physical column-native wrapper.",
+                        "message": "tf_list is required for column-native execution.",
+                        "delivery": "runtime",
+                    },
                 ],
             },
         }
@@ -48,7 +86,11 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         *,
         expression_path: Path,
         groups_path: Path,
+        tf_list_path: Path | None = None,
     ) -> dict:
+        extras = {"groups": str(groups_path)}
+        if tf_list_path is not None:
+            extras["tf_list"] = str(tf_list_path)
         return {
             "dataset": {
                 "dataset_id": "toy_ds",
@@ -58,7 +100,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 "genes": 2,
                 "columns": 3,
                 "expression_matrix_path": str(expression_path),
-                "extras": {"groups": str(groups_path)},
+                "extras": extras,
             },
             "runs": {
                 "selected": ["cellrun"],
@@ -88,6 +130,8 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 "cell\tcluster\nC1\tA\nC2\tA\nC3\tB\n",
                 encoding="utf-8",
             )
+            tf_list_path = base / "tf_list.txt"
+            tf_list_path.write_text("G1\n", encoding="utf-8")
             manifest_path = self._write_manifest(
                 base,
                 expression_matrix="expression.tsv",
@@ -95,7 +139,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 columns=3,
                 column_kind="cells",
                 expression_profile="scrna",
-                extras={"groups": "groups.tsv"},
+                extras={"groups": "groups.tsv", "tf_list": "tf_list.txt"},
             )
             tools_params_path = self._write_tools_params(
                 base,
@@ -111,6 +155,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             preflight = self._cell_aggregated_preflight(
                 expression_path=expression_path,
                 groups_path=groups_path,
+                tf_list_path=tf_list_path,
             )
 
             with patch(
@@ -128,9 +173,19 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             plan_payload = json.loads(
                 (run_dir / "plan.json").read_text(encoding="utf-8")
             )
+            runtime_contract = json.loads(
+                (run_dir / "input" / "runtime-input-contract.json").read_text(
+                    encoding="utf-8"
+                )
+            )["runs"]["cellrun"]
 
         logical_run = plan_payload["runs"][0]
         self.assertEqual(logical_run["execution"]["mode"], "group_aggregated")
+        self.assertEqual(
+            runtime_contract["active_extra_inputs"],
+            ["groups", "tf_list"],
+        )
+        self.assertEqual(runtime_contract["mounted_extra_inputs"], ["tf_list"])
         physical = logical_run["physical_tasks"][0]
         self.assertEqual(physical["task_id"], "cellrun__column_native")
         self.assertEqual(physical["postprocess"], "group_aggregated_mean_signed_effect")
@@ -144,18 +199,105 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         )
         self.assertEqual(
             wave_task["eta_provenance"]["cost_features"]["execution_mode"],
-            "group_aggregated",
+            "column_native",
         )
         self.assertEqual(
             wave_task["eta_provenance"]["cost_features"]["aggregation_step"],
-            "column_to_group",
+            "none",
         )
-        self.assertEqual(
-            wave_task["eta_provenance"]["cost_features"][
-                "upstream_cost_execution_mode"
-            ],
-            "column_native",
-        )
+
+    def test_group_native_cost_uses_column_phenotype_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            expression_path = self._write_expression_matrix(
+                base,
+                lines=[
+                    "gene\tC1\tC2\tC3",
+                    "G1\t1\t2\t3",
+                    "G2\t4\t5\t6",
+                ],
+            )
+            phenotypes_path = base / "column_phenotypes.tsv"
+            phenotypes_path.write_text(
+                "column\tphenotype\torder\n"
+                "C1\tA\t0\n"
+                "C2\tA\t0\n"
+                "C3\tB\t1\n",
+                encoding="utf-8",
+            )
+            manifest_path = self._write_manifest(
+                base,
+                expression_matrix="expression.tsv",
+                genes=2,
+                columns=3,
+                column_kind="cells",
+                expression_profile="scrna",
+                extras={"column_phenotypes": "column_phenotypes.tsv"},
+            )
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {
+                        "run_id": "native_run",
+                        "tool_id": "phenotype_native",
+                        "execution": {"mode": "group_native"},
+                        "params": {},
+                    }
+                ],
+            )
+            preflight = {
+                "dataset": {
+                    "dataset_id": "toy_ds",
+                    "column_kind": "cells",
+                    "expression_profile": "scrna",
+                    "organism": {
+                        "taxonomic_group": "animal",
+                        "ncbi_taxon_id": 9606,
+                    },
+                    "genes": 2,
+                    "columns": 3,
+                    "expression_matrix_path": str(expression_path),
+                    "extras": {
+                        "column_phenotypes": str(phenotypes_path),
+                    },
+                },
+                "runs": {
+                    "selected": ["native_run"],
+                    "catalog_tool_ids": {
+                        "native_run": "phenotype_native",
+                    },
+                    "tool_origins": {"native_run": "catalog"},
+                    "resolved_params": {"native_run": {}},
+                    "resolved_execution": {
+                        "native_run": {"mode": "group_native"},
+                    },
+                    "issues": {"native_run": []},
+                    "skipped": {},
+                },
+            }
+
+            with patch(
+                "andrea.core.commands.infer_network.plan._load_toolspec",
+                return_value=self._phenotype_native_toolspec(),
+            ):
+                run_dir = self.mod.plan_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                    output_dir=base / "out",
+                    planner="heuristic",
+                    preflight_report=preflight,
+                )
+
+            plan_payload = json.loads(
+                (run_dir / "plan.json").read_text(encoding="utf-8")
+            )
+
+        cost_features = plan_payload["waves"][0]["tasks"][0]["eta_provenance"][
+            "cost_features"
+        ]
+        self.assertEqual(cost_features["execution_mode"], "group_native")
+        self.assertEqual(cost_features["n_groups"], 2)
+        self.assertEqual(cost_features["expected_contexts"], 2)
 
     def test_group_aggregated_plan_rejects_toolspec_without_column_native(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -257,6 +399,31 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                     preflight_report=preflight,
                 )
 
+    def test_plan_rejects_missing_resolved_execution_in_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path, tools_params_path = self._write_dataset_bundle(
+                base,
+                tf_values=["G1"],
+            )
+            preflight = self.mod.preflight_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+            )
+            del preflight["runs"]["resolved_execution"]["aracne__01"]
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "preflight report resolved_execution.*must be the canonical object",
+            ):
+                self.mod.plan_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                    output_dir=base / "out",
+                    planner="heuristic",
+                    preflight_report=preflight,
+                )
+
     def test_plan_requires_exact_preflight_tool_identity_maps(self) -> None:
         for case in ("missing_origin", "extra_origin", "extra_catalog_id"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
@@ -324,6 +491,9 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             self.assertTrue((run_dir / "run_report.json").exists())
             self.assertTrue((run_dir / "input" / "dataset-manifest.json").exists())
             self.assertTrue((run_dir / "input" / "tools_params.json").exists())
+            self.assertTrue(
+                (run_dir / "input" / "runtime-input-contract.json").exists()
+            )
             self.assertTrue((run_dir / "input" / "expression.tsv").exists())
             self.assertTrue((run_dir / "input" / "extra" / "tf_list.txt").exists())
             self.assertTrue(
@@ -335,6 +505,20 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             )
             self.assertIn("input_fingerprints", plan_payload)
             self.assertTrue(plan_payload["input_fingerprints"])
+            self.assertIn(
+                "input/runtime-input-contract.json",
+                plan_payload["input_fingerprints"],
+            )
+            runtime_input_contract = json.loads(
+                (run_dir / "input" / "runtime-input-contract.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(runtime_input_contract["schema_version"], "1.0")
+            self.assertEqual(
+                runtime_input_contract["runs"]["aracne__01"]["mounted_extra_inputs"],
+                ["tf_list"],
+            )
             first_wave_task = plan_payload["waves"][0]["tasks"][0]
             self.assertEqual(first_wave_task["eta_source"], "cost_profile")
             self.assertIn("eta_provenance", first_wave_task)
@@ -357,6 +541,10 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             self.assertEqual(
                 report_payload["inputs"]["tools_params_path"],
                 "input/tools_params.json",
+            )
+            self.assertEqual(
+                report_payload["inputs"]["runtime_input_contract_path"],
+                "input/runtime-input-contract.json",
             )
             self.assertNotIn("tools_root", report_payload["inputs"])
             self.assertNotIn("schemas_dir", report_payload["inputs"])
@@ -594,7 +782,10 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             )
 
         self.assertFalse(
-            any("optional extra not provided" in item for item in plan_payload["warnings"])
+            any(
+                "optional extra not provided" in item
+                for item in plan_payload["warnings"]
+            )
         )
         self.assertFalse(
             any(

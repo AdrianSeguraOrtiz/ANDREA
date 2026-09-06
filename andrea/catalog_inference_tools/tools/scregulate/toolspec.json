@@ -184,7 +184,8 @@
         "op": "eq",
         "value": "provided_prior",
         "message": "prior_grn is required when prior_source=provided_prior because scRegulate train_model() requires a TF-target prior network as its net argument.",
-        "usage": "The wrapper maps normalized prior_grn.tsv source, target and score columns to scRegulate's source, target and weight net DataFrame, preserving public gene identifiers and using signed scores as prior weights."
+        "usage": "The wrapper maps normalized prior_grn.tsv source, target and score columns to scRegulate's source, target and weight net DataFrame, preserving public gene identifiers and using signed scores as prior weights.",
+        "delivery": "runtime"
       },
       {
         "input": "groups",
@@ -192,7 +193,8 @@
         "op": "eq",
         "value": "group_native",
         "message": "groups is required when execution.mode=group_native because scRegulate fine_tune_clusters() consumes cluster annotations to produce cluster-specific GRNs.",
-        "usage": "The wrapper stores groups.tsv labels in AnnData.obs and passes that column as cluster_key to fine_tune_clusters(); exported network.csv contexts use the original public group ids as group:<id>."
+        "usage": "The wrapper stores groups.tsv labels in AnnData.obs and passes that column as cluster_key to fine_tune_clusters(); exported network.csv contexts use the original public group ids as group:<id>.",
+        "delivery": "runtime"
       },
       {
         "input": "groups",
@@ -200,7 +202,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the global scRegulate path independently per group.",
-        "usage": "ANDREA uses groups.tsv to create one scRegulate child run per group. Each child follows the global train_model()+fine_tune_clusters(cluster_key=None) path; the wrapper accepts a full parent groups.tsv or a subset matching the current expression matrix, subsets it to the current expression columns, and uses it only to assign public group:<id> contexts."
+        "usage": "ANDREA uses groups.tsv to create one scRegulate child run per group and assigns the corresponding public group:<id> context when merging results. Each child receives only its group-specific expression matrix and follows the global train_model()+fine_tune_clusters(cluster_key=None) path.",
+        "delivery": "orchestration_only"
       }
     ]
   },

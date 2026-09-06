@@ -11,8 +11,16 @@ from andrea.core.commands.infer_network.commons.custom_tools import (
     normalize_custom_tools_payload,
     serialize_custom_tools,
 )
-from andrea.core.commands.infer_network.commons.shared import SchemaConstraints
-from andrea.core.commands.infer_network.commons.tools import _load_tools_params
+from andrea.core.commands.infer_network.commons.shared import (
+    DatasetContext,
+    SchemaConstraints,
+)
+from andrea.core.commands.infer_network.commons.tools import (
+    _load_tools_params,
+    _parse_extra_inputs_spec,
+    _parse_execution_capabilities,
+    _scan_catalog_compatibility,
+)
 
 
 class CustomToolsContractTests(unittest.TestCase):
@@ -23,8 +31,9 @@ class CustomToolsContractTests(unittest.TestCase):
             expression_profiles={"counts", "mixed"},
             taxonomic_groups={"animal"},
             assumptions={"generic"},
-            extra_input_keys={"groups", "tf_list"},
+            extra_input_keys={"column_phenotypes", "groups", "tf_list"},
             extra_input_filenames={
+                "column_phenotypes": "column_phenotypes.tsv",
                 "groups": "groups.tsv",
                 "tf_list": "tf_list.txt",
             },
@@ -61,6 +70,101 @@ class CustomToolsContractTests(unittest.TestCase):
             serialize_custom_tools(specs),
             {"tools": [self._valid_tool()]},
         )
+
+    def test_core_rejects_unmanaged_orchestration_input(self) -> None:
+        _required, _optional, _conditional, errors = _parse_extra_inputs_spec(
+            tool_id="invalid",
+            toolspec={
+                "extra_inputs": {
+                    "required": [],
+                    "optional": [
+                        {
+                            "input": "tf_list",
+                            "usage": "Restricts candidate regulators.",
+                            "delivery": "orchestration_only",
+                        }
+                    ],
+                    "conditional_required": [],
+                }
+            },
+        )
+
+        self.assertTrue(
+            any("only for a conditional groups rule" in error for error in errors),
+            errors,
+        )
+
+    def test_core_reports_non_string_delivery_declaratively(self) -> None:
+        _required, _optional, _conditional, errors = _parse_extra_inputs_spec(
+            tool_id="invalid",
+            toolspec={
+                "extra_inputs": {
+                    "required": [
+                        {
+                            "input": "tf_list",
+                            "usage": "Restricts candidate regulators.",
+                            "delivery": ["runtime"],
+                        }
+                    ],
+                    "optional": [],
+                    "conditional_required": [],
+                }
+            },
+        )
+
+        self.assertIn(
+            "toolspec.extra_inputs.required[1].delivery must be 'runtime' or "
+            "'orchestration_only'",
+            errors,
+        )
+
+    def test_core_requires_group_native_context_source(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError, "exactly one runtime-delivered context source"
+        ):
+            _parse_execution_capabilities(
+                tool_id="invalid",
+                toolspec={
+                    "execution_capabilities": ["group_native"],
+                    "extra_inputs": {
+                        "required": [],
+                        "optional": [],
+                        "conditional_required": [],
+                    },
+                },
+            )
+
+    def test_core_rejects_ambiguous_group_native_context_sources(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError, "exactly one runtime-delivered context source"
+        ):
+            _parse_execution_capabilities(
+                tool_id="invalid",
+                toolspec={
+                    "execution_capabilities": ["group_native"],
+                    "extra_inputs": {
+                        "required": [
+                            {
+                                "input": context_input,
+                                "usage": "Defines native output contexts.",
+                                "delivery": "runtime",
+                            }
+                            for context_input in ("groups", "column_phenotypes")
+                        ],
+                        "optional": [],
+                        "conditional_required": [],
+                    },
+                },
+            )
+
+    def test_core_requires_global_companion_for_group_emulation(self) -> None:
+        with self.assertRaisesRegex(ValueError, "required companion mode 'global'"):
+            _parse_execution_capabilities(
+                tool_id="invalid",
+                toolspec={
+                    "execution_capabilities": ["group_emulated"],
+                },
+            )
 
     def test_all_public_fields_are_required(self) -> None:
         for key in (
@@ -247,6 +351,146 @@ class CustomToolsContractTests(unittest.TestCase):
                 specs, blocked = self._normalize(tool)
                 self.assertEqual(specs, {})
                 self.assertIn(expected, blocked[0]["issues"][0]["message"])
+
+    def test_group_orchestration_is_internal_and_does_not_change_public_payload(
+        self,
+    ) -> None:
+        for execution_mode, expected_capabilities in (
+            ("group_emulated", ["global", "group_emulated"]),
+            ("group_aggregated", ["column_native", "group_aggregated"]),
+        ):
+            tool = self._valid_tool()
+            tool["execution_mode"] = execution_mode
+
+            with self.subTest(execution_mode=execution_mode):
+                specs, blocked = self._normalize(tool)
+
+                self.assertEqual(blocked, [])
+                spec = specs["custom_demo_01"]
+                self.assertEqual(
+                    spec["execution_capabilities"],
+                    expected_capabilities,
+                )
+                self.assertEqual(
+                    spec["extra_inputs"]["required"],
+                    [
+                        {
+                            "input": "tf_list",
+                            "usage": (
+                                "External Docker tool declares this standardized "
+                                "input as needed for execution."
+                            ),
+                            "delivery": "runtime",
+                        },
+                    ],
+                )
+                self.assertEqual(
+                    spec["extra_inputs"]["conditional_required"],
+                    [
+                        {
+                            "input": "groups",
+                            "execution": "mode",
+                            "op": "eq",
+                            "value": execution_mode,
+                            "usage": (
+                                "ANDREA uses groups.tsv to partition or aggregate "
+                                "this external tool run; the child container does "
+                                "not receive the file."
+                            ),
+                            "message": (
+                                "groups is required for execution.mode="
+                                f"{execution_mode}."
+                            ),
+                            "delivery": "orchestration_only",
+                        }
+                    ],
+                )
+                self.assertEqual(
+                    serialize_custom_tools(specs),
+                    {"tools": [tool]},
+                )
+
+    def test_group_native_requires_one_runtime_context_input(self) -> None:
+        for extra_inputs, should_pass in (
+            (["tf_list"], False),
+            (["tf_list", "groups"], True),
+            (["tf_list", "column_phenotypes"], True),
+            (["tf_list", "groups", "column_phenotypes"], False),
+        ):
+            tool = self._valid_tool()
+            tool["execution_mode"] = "group_native"
+            tool["extra_inputs"] = extra_inputs
+
+            with self.subTest(extra_inputs=extra_inputs):
+                specs, blocked = self._normalize(tool)
+                if should_pass:
+                    self.assertEqual(blocked, [])
+                    self.assertIn("custom_demo_01", specs)
+                else:
+                    self.assertEqual(specs, {})
+                    self.assertIn(
+                        "group_native requires exactly one runtime context input",
+                        blocked[0]["issues"][0]["message"],
+                    )
+
+    def test_group_orchestration_modes_reject_groups_as_a_runtime_extra(
+        self,
+    ) -> None:
+        for execution_mode in ("group_emulated", "group_aggregated"):
+            tool = self._valid_tool()
+            tool["execution_mode"] = execution_mode
+            tool["extra_inputs"] = ["tf_list", "groups"]
+
+            with self.subTest(execution_mode=execution_mode):
+                specs, blocked = self._normalize(tool)
+
+                self.assertEqual(specs, {})
+                self.assertEqual(len(blocked), 1)
+                self.assertIn(
+                    "ANDREA manages groups.tsv as an orchestration-only input",
+                    blocked[0]["issues"][0]["message"],
+                    )
+
+    def test_catalog_scan_uses_fixed_custom_group_execution_mode(self) -> None:
+        tool = self._valid_tool()
+        tool["execution_mode"] = "group_emulated"
+        specs, blocked = self._normalize(tool)
+        self.assertEqual(blocked, [])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            report = _scan_catalog_compatibility(
+                tools_root=Path(tmp),
+                dataset=DatasetContext(
+                    dataset_id="dataset",
+                    column_kind="cells",
+                    expression_profile="counts",
+                    taxonomic_group="animal",
+                    ncbi_taxon_id=None,
+                    genes=2,
+                    columns=2,
+                    expression_matrix_path=Path(tmp) / "expression.tsv",
+                    extras={
+                        "column_phenotypes": None,
+                        "groups": None,
+                        "tf_list": Path(tmp) / "tf_list.txt",
+                    },
+                ),
+                constraints=self._constraints(),
+                custom_tools=specs,
+            )
+
+        self.assertEqual(report["eligible"], [])
+        self.assertEqual(report["blocked"], [])
+        entry = report["warning"][0]
+        self.assertEqual(entry["tool_id"], "custom_demo_01")
+        self.assertTrue(
+            any(
+                issue["code"] == "conditional_required"
+                and "groups is required" in issue["message"]
+                for issue in entry["issues"]
+            ),
+            entry,
+        )
 
     def test_output_normalization_rejects_case_and_whitespace_variants(self) -> None:
         for sign in ("SIGNED", " signed "):

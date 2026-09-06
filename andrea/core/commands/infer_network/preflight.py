@@ -22,7 +22,7 @@ from .commons.dataset import (
     _parse_dataset_context,
     _validate_dataset_inputs_by_specs,
 )
-from .commons.shared import INPUT_SPECS_DIR, PREFLIGHT_SCHEMA_VERSION
+from .commons.shared import PREFLIGHT_SCHEMA_VERSION
 from .commons.tools import (
     _check_tool_compatibility,
     _collect_compatibility_rule_issues,
@@ -196,14 +196,12 @@ def preflight_infer_network(
                     skipped_tools[run_id] = message
                     continue
             compatibility_warnings: list[str] = []
-            compatible, compat_errors, _conditional_messages = (
-                _check_tool_compatibility(
-                    tool_id=run_id,
-                    toolspec=toolspec,
-                    dataset=dataset,
-                    constraints=constraints,
-                    warnings=compatibility_warnings,
-                )
+            compatible, compat_errors = _check_tool_compatibility(
+                tool_id=run_id,
+                toolspec=toolspec,
+                dataset=dataset,
+                constraints=constraints,
+                warnings=compatibility_warnings,
             )
             compatibility_warnings.extend(
                 custom_tool_warnings(catalog_tool_id, toolspec)

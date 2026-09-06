@@ -34,6 +34,7 @@ EXECUTION_CAPABILITY_ORDER = (
     "column_native",
     "group_aggregated",
 )
+RUNTIME_INPUT_CONTRACT_SCHEMA_VERSION = "1.0"
 
 
 def _execution_capability_choices() -> str:
@@ -74,6 +75,11 @@ def _build_output_capability_snapshot(
 def _validate_execution_capability_contract(
     *, tool_id: str, capabilities: list[str]
 ) -> None:
+    if "group_emulated" in capabilities and "global" not in capabilities:
+        raise ValueError(
+            f"[{tool_id}] toolspec.execution_capabilities includes 'group_emulated' "
+            "but does not include required companion mode 'global'"
+        )
     if "group_aggregated" in capabilities and "column_native" not in capabilities:
         raise ValueError(
             f"[{tool_id}] toolspec.execution_capabilities includes 'group_aggregated' "
@@ -86,22 +92,39 @@ def _parse_extra_inputs_spec(
     tool_id: str,
     toolspec: dict[str, Any],
     known_params: set[str] | None = None,
-) -> tuple[list[str], list[str], list[dict[str, Any]], list[str]]:
+) -> tuple[
+    list[dict[str, str]],
+    list[dict[str, str]],
+    list[dict[str, Any]],
+    list[str],
+]:
     extra_inputs = toolspec.get("extra_inputs", {})
     if not isinstance(extra_inputs, dict):
         return [], [], [], ["invalid toolspec.extra_inputs"]
 
     errors: list[str] = []
-    required_extras: list[str] = []
-    optional_extras: list[str] = []
+    required_extras: list[dict[str, str]] = []
+    optional_extras: list[dict[str, str]] = []
     conditional_required: list[dict[str, Any]] = []
 
     req = extra_inputs.get("required", [])
     opt = extra_inputs.get("optional", [])
     cond = extra_inputs.get("conditional_required", [])
 
-    def parse_usage_entries(raw: Any, field: str) -> list[str]:
-        parsed: list[str] = []
+    def parse_delivery(raw: Any, *, path: str) -> str | None:
+        if raw is None:
+            errors.append(f"{path}.delivery is required")
+            return None
+        if not isinstance(raw, str) or raw not in {
+            "runtime",
+            "orchestration_only",
+        }:
+            errors.append(f"{path}.delivery must be 'runtime' or 'orchestration_only'")
+            return None
+        return raw
+
+    def parse_usage_entries(raw: Any, field: str) -> list[dict[str, str]]:
+        parsed: list[dict[str, str]] = []
         if not isinstance(raw, list):
             errors.append(f"toolspec.extra_inputs.{field} must be an array")
             return parsed
@@ -109,16 +132,29 @@ def _parse_extra_inputs_spec(
         for idx, item in enumerate(raw, start=1):
             if not isinstance(item, dict):
                 errors.append(
-                    f"toolspec.extra_inputs.{field}[{idx}] must be an object with input and usage"
+                    f"toolspec.extra_inputs.{field}[{idx}] must be an object "
+                    "with input, usage, and delivery"
                 )
                 continue
             input_key = str(item.get("input", "")).strip()
             usage = str(item.get("usage", "")).strip()
+            delivery = parse_delivery(
+                item.get("delivery"),
+                path=f"toolspec.extra_inputs.{field}[{idx}]",
+            )
             if not input_key:
                 errors.append(f"toolspec.extra_inputs.{field}[{idx}].input is required")
                 continue
             if not usage:
                 errors.append(f"toolspec.extra_inputs.{field}[{idx}].usage is required")
+                continue
+            if delivery is None:
+                continue
+            if delivery == "orchestration_only":
+                errors.append(
+                    f"toolspec.extra_inputs.{field}[{idx}].delivery may be "
+                    "orchestration_only only for a conditional groups rule"
+                )
                 continue
             if input_key in seen:
                 errors.append(
@@ -126,13 +162,15 @@ def _parse_extra_inputs_spec(
                 )
                 continue
             seen.add(input_key)
-            parsed.append(input_key)
+            parsed.append({"input": input_key, "delivery": delivery})
         return parsed
 
     required_extras = parse_usage_entries(req, "required")
     optional_extras = parse_usage_entries(opt, "optional")
 
-    overlap = sorted(set(required_extras).intersection(optional_extras))
+    required_keys = {entry["input"] for entry in required_extras}
+    optional_keys = {entry["input"] for entry in optional_extras}
+    overlap = sorted(required_keys.intersection(optional_keys))
     if overlap:
         errors.append(f"toolspec.extra_inputs.required/optional overlap: {overlap}")
 
@@ -156,6 +194,10 @@ def _parse_extra_inputs_spec(
         usage = str(raw_rule.get("usage", "")).strip()
         message = str(raw_rule.get("message", "")).strip()
         value = raw_rule.get("value")
+        delivery = parse_delivery(
+            raw_rule.get("delivery"),
+            path=f"toolspec.extra_inputs.conditional_required[{idx}]",
+        )
 
         if not input_key:
             errors.append(
@@ -187,6 +229,20 @@ def _parse_extra_inputs_spec(
                 f"toolspec.extra_inputs.conditional_required[{idx}].message is required"
             )
             continue
+        if delivery is None:
+            continue
+        if delivery == "orchestration_only" and not (
+            input_key == "groups"
+            and execution_name == "mode"
+            and op == "eq"
+            and value in {"group_emulated", "group_aggregated"}
+        ):
+            errors.append(
+                "toolspec.extra_inputs.conditional_required"
+                f"[{idx}].delivery=orchestration_only is reserved for groups "
+                "when execution.mode is group_emulated or group_aggregated"
+            )
+            continue
         if param_name and known_params is not None and param_name not in known_params:
             errors.append(
                 f"toolspec.extra_inputs.conditional_required[{idx}] references unknown parameter '{param_name}'"
@@ -199,6 +255,7 @@ def _parse_extra_inputs_spec(
             "value": value,
             "usage": usage,
             "message": message,
+            "delivery": delivery,
         }
         if param_name:
             parsed_rule["param"] = param_name
@@ -367,6 +424,41 @@ def _parse_execution_capabilities(
         tool_id=tool_id,
         capabilities=capabilities,
     )
+    if "group_native" in capabilities:
+        extra_inputs = toolspec.get("extra_inputs")
+        required = (
+            extra_inputs.get("required", [])
+            if isinstance(extra_inputs, dict)
+            else []
+        )
+        conditional = (
+            extra_inputs.get("conditional_required", [])
+            if isinstance(extra_inputs, dict)
+            else []
+        )
+        context_inputs = {"groups", "column_phenotypes"}
+        context_sources = {
+            str(entry.get("input"))
+            for entry in required
+            if isinstance(entry, dict)
+            and entry.get("input") in context_inputs
+            and entry.get("delivery") == "runtime"
+        }
+        context_sources.update(
+            str(rule.get("input"))
+            for rule in conditional
+            if isinstance(rule, dict)
+            and rule.get("input") in context_inputs
+            and rule.get("execution") == "mode"
+            and rule.get("op") == "eq"
+            and rule.get("value") == "group_native"
+            and rule.get("delivery") == "runtime"
+        )
+        if len(context_sources) != 1:
+            raise ValueError(
+                f"[{tool_id}] group_native requires exactly one runtime-delivered "
+                "context source: groups or column_phenotypes"
+            )
     return capabilities
 
 
@@ -432,9 +524,8 @@ def _check_tool_compatibility(
     constraints: SchemaConstraints,
     warnings: list[str],
     warning_prefix: str | None = None,
-) -> tuple[bool, list[str], list[str]]:
+) -> tuple[bool, list[str]]:
     errors: list[str] = []
-    conditional_messages: list[str] = []
 
     try:
         _parse_execution_capabilities(tool_id=tool_id, toolspec=toolspec)
@@ -498,16 +589,20 @@ def _check_tool_compatibility(
     known_params = (
         set(toolspec_params.keys()) if isinstance(toolspec_params, dict) else None
     )
-    required_extras, optional_extras, conditional_required, extra_errors = (
-        _parse_extra_inputs_spec(
-            tool_id=tool_id,
-            toolspec=toolspec,
-            known_params=known_params,
-        )
+    (
+        required_extras,
+        optional_extras,
+        conditional_required,
+        extra_errors,
+    ) = _parse_extra_inputs_spec(
+        tool_id=tool_id,
+        toolspec=toolspec,
+        known_params=known_params,
     )
     errors.extend(extra_errors)
 
-    for extra_key in required_extras:
+    for entry in required_extras:
+        extra_key = entry["input"]
         if dataset.extras.get(extra_key) is None:
             errors.append(f"required extra input missing in manifest: {extra_key}")
 
@@ -516,7 +611,8 @@ def _check_tool_compatibility(
         for rule in conditional_required
         if str(rule.get("input", "")).strip()
     }
-    for extra_key in optional_extras:
+    for entry in optional_extras:
+        extra_key = entry["input"]
         if extra_key in conditional_inputs:
             continue
         if dataset.extras.get(extra_key) is None:
@@ -525,16 +621,10 @@ def _check_tool_compatibility(
                 f"[{warning_prefix}] {message}" if warning_prefix else message
             )
 
-    for rule in conditional_required:
-        input_key = str(rule.get("input", "")).strip()
-        message = str(rule.get("message", "")).strip()
-        if input_key and dataset.extras.get(input_key) is None and message:
-            conditional_messages.append(message)
-
     if errors:
-        return False, errors, []
+        return False, errors
 
-    return True, [], conditional_messages
+    return True, []
 
 
 def _resolve_tool_params(
@@ -620,6 +710,118 @@ def _conditional_rule_matches(
     return _compare_values(actual=actual, op=op, expected=expected)
 
 
+def _resolve_runtime_extra_input_keys(
+    *,
+    tool_id: str,
+    toolspec: dict[str, Any],
+    resolved_params: dict[str, Any],
+    resolved_execution: dict[str, Any],
+) -> set[str]:
+    """Return the exact standardized extras that may be mounted in the tool runtime."""
+    return _resolve_active_extra_input_keys(
+        tool_id=tool_id,
+        toolspec=toolspec,
+        resolved_params=resolved_params,
+        resolved_execution=resolved_execution,
+        delivery="runtime",
+    )
+
+
+def _runtime_execution_for_logical_run(
+    logical_execution: dict[str, Any],
+) -> dict[str, Any]:
+    """Return the execution contract seen by the physical child container."""
+    runtime_execution = dict(logical_execution)
+    logical_mode = str(runtime_execution.get("mode", "")).strip()
+    if logical_mode == "group_emulated":
+        runtime_execution["mode"] = "global"
+    elif logical_mode == "group_aggregated":
+        runtime_execution["mode"] = "column_native"
+    return runtime_execution
+
+
+def _resolve_active_extra_input_keys(
+    *,
+    tool_id: str,
+    toolspec: dict[str, Any],
+    resolved_params: dict[str, Any],
+    resolved_execution: dict[str, Any],
+    delivery: str | None = None,
+) -> set[str]:
+    """Resolve active extra inputs from the canonical ToolSpec contract.
+
+    ``delivery=None`` returns every active input needed by inference or by
+    ANDREA's orchestration. Passing ``delivery='runtime'`` returns only inputs
+    that the child container is allowed to receive.
+    """
+    if delivery not in {None, "runtime", "orchestration_only"}:
+        raise ValueError(f"invalid extra-input delivery filter: {delivery!r}")
+    toolspec_params = toolspec.get("params", {})
+    known_params = (
+        set(toolspec_params.keys()) if isinstance(toolspec_params, dict) else None
+    )
+    required, optional, conditional_required, errors = _parse_extra_inputs_spec(
+        tool_id=tool_id,
+        toolspec=toolspec,
+        known_params=known_params,
+    )
+    if errors:
+        details = "; ".join(errors)
+        raise ValueError(f"[{tool_id}] invalid toolspec extra-input rules: {details}")
+
+    entries: list[dict[str, Any]] = [*required, *optional]
+    entries.extend(
+        rule
+        for rule in conditional_required
+        if _conditional_rule_matches(
+            resolved_params=resolved_params,
+            resolved_execution=resolved_execution,
+            rule=rule,
+        )
+    )
+    return {
+        str(entry["input"])
+        for entry in entries
+        if delivery is None or entry.get("delivery") == delivery
+    }
+
+
+def _build_runtime_input_snapshot(
+    *,
+    run_id: str,
+    catalog_tool_id: str,
+    tool_origin: str,
+    toolspec: dict[str, Any],
+    resolved_params: dict[str, Any],
+    resolved_execution: dict[str, Any],
+    available_extra_inputs: set[str],
+) -> dict[str, Any]:
+    """Freeze logical active inputs and the physical child-container firewall."""
+    if tool_origin not in {"catalog", "custom"}:
+        raise ValueError(f"[{run_id}] invalid tool_origin: {tool_origin!r}")
+    logical_active = _resolve_active_extra_input_keys(
+        tool_id=run_id,
+        toolspec=toolspec,
+        resolved_params=resolved_params,
+        resolved_execution=resolved_execution,
+    )
+    runtime_active = _resolve_runtime_extra_input_keys(
+        tool_id=run_id,
+        toolspec=toolspec,
+        resolved_params=resolved_params,
+        resolved_execution=_runtime_execution_for_logical_run(resolved_execution),
+    )
+    logical_active.update(runtime_active)
+    logical_active.intersection_update(available_extra_inputs)
+    runtime_active.intersection_update(available_extra_inputs)
+    return {
+        "tool_id": catalog_tool_id,
+        "tool_origin": tool_origin,
+        "active_extra_inputs": sorted(logical_active),
+        "mounted_extra_inputs": sorted(runtime_active),
+    }
+
+
 def _collect_conditional_input_issues(
     *,
     tool_id: str,
@@ -641,6 +843,7 @@ def _collect_conditional_input_issues(
         return [f"invalid toolspec extra-input rules: {msg}" for msg in extra_errors]
 
     issues: list[str] = []
+    runtime_execution = _runtime_execution_for_logical_run(resolved_execution)
     for rule in conditional_required:
         input_key = str(rule.get("input", "")).strip()
         message = str(rule.get("message", "")).strip()
@@ -648,7 +851,11 @@ def _collect_conditional_input_issues(
             continue
         if _conditional_rule_matches(
             resolved_params=resolved_params,
-            resolved_execution=resolved_execution,
+            resolved_execution=(
+                runtime_execution
+                if rule.get("delivery") == "runtime"
+                else resolved_execution
+            ),
             rule=rule,
         ):
             issues.append(message)
@@ -664,9 +871,10 @@ def _build_tool_compatibility_entry(
     tool_origin: str,
     warning_code: str,
     post_compatibility_warnings: list[str] | None = None,
+    requested_execution: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     local_warnings: list[str] = []
-    compatible, block_messages, _conditional_messages = _check_tool_compatibility(
+    compatible, block_messages = _check_tool_compatibility(
         tool_id=tool_id,
         toolspec=toolspec,
         dataset=dataset,
@@ -693,7 +901,7 @@ def _build_tool_compatibility_entry(
                 _resolve_run_execution(
                     run_id=tool_id,
                     toolspec=toolspec,
-                    user_execution={},
+                    user_execution=requested_execution or {},
                     warnings=local_warnings,
                 )
             )
@@ -827,6 +1035,9 @@ def _scan_catalog_compatibility(
                 constraints=constraints,
                 warning_code="custom_tool_warning",
                 post_compatibility_warnings=post_compatibility_warnings,
+                requested_execution={
+                    "mode": toolspec.get("_andrea_execution_mode")
+                },
             )
         )
 

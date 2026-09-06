@@ -114,7 +114,8 @@
       "additionalProperties": false,
       "required": [
         "input",
-        "usage"
+        "usage",
+        "delivery"
       ],
       "properties": {
         "input": {
@@ -123,6 +124,14 @@
         "usage": {
           "type": "string",
           "minLength": 1
+        },
+        "delivery": {
+          "type": "string",
+          "enum": [
+            "runtime",
+            "orchestration_only"
+          ],
+          "description": "runtime mounts the input under /io/extra for the child container. orchestration_only is reserved for conditional groups rules implemented by ANDREA for group_emulated and group_aggregated execution."
         }
       }
     },
@@ -557,7 +566,7 @@
         "required",
         "optional"
       ],
-      "description": "Additional input artefacts (besides expression matrix) that the tool may consume. The orchestrator mounts them under /io/extra/.",
+      "description": "Additional input artefacts (besides expression matrix) used by the tool run. Entries are mounted under /io/extra unless their delivery is orchestration_only.",
       "properties": {
         "required": {
           "type": "array",
@@ -586,7 +595,8 @@
               "op",
               "value",
               "usage",
-              "message"
+              "message",
+              "delivery"
             ],
             "oneOf": [
               {
@@ -664,6 +674,14 @@
               "usage": {
                 "type": "string",
                 "minLength": 1
+              },
+              "delivery": {
+                "type": "string",
+                "enum": [
+                  "runtime",
+                  "orchestration_only"
+                ],
+                "description": "runtime mounts the active input under /io/extra for the child container. orchestration_only is reserved for groups when ANDREA implements group_emulated or group_aggregated execution."
               }
             }
           },

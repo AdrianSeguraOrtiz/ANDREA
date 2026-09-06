@@ -56,7 +56,8 @@
     "required": [
       {
         "input": "tf_list",
-        "usage": "Required by the selected public entrypoint pyscenic grn as tfs_fname: a TXT file containing one transcription-factor identifier per line. The identifiers must match expression gene ids after any wrapper-internal aliasing."
+        "usage": "Required by the selected public entrypoint pyscenic grn as tfs_fname: a TXT file containing one transcription-factor identifier per line. The identifiers must match expression gene ids after any wrapper-internal aliasing.",
+        "delivery": "runtime"
       }
     ],
     "optional": [],
@@ -67,7 +68,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running pySCENIC GRN independently per group.",
-        "usage": "ANDREA uses groups.tsv to create one pySCENIC GRN child run per group; each child receives that group's expression matrix and tf_list, and pySCENIC itself does not consume groups.tsv."
+        "usage": "ANDREA uses groups.tsv to create one pySCENIC GRN child run per group; each child receives that group's expression matrix and tf_list, and pySCENIC itself does not consume groups.tsv.",
+        "delivery": "orchestration_only"
       }
     ]
   },

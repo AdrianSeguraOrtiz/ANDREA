@@ -62,7 +62,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions expression columns by group before running PIDC independently per group.",
-        "usage": "ANDREA uses groups.tsv to create one PIDC child run per group; each child runs the same NetworkInference.jl PIDC entrypoint on that group's expression matrix."
+        "usage": "ANDREA uses groups.tsv to create one PIDC child run per group; each child runs the same NetworkInference.jl PIDC entrypoint on that group's expression matrix.",
+        "delivery": "orchestration_only"
       }
     ]
   },

@@ -47,7 +47,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool.",
-        "usage": "ANDREA uses groups.tsv to create one CLR child run per group; each child runs minet::build.mim plus minet::clr on that group's expression matrix."
+        "usage": "ANDREA uses groups.tsv to create one CLR child run per group; each child runs minet::build.mim plus minet::clr on that group's expression matrix.",
+        "delivery": "orchestration_only"
       }
     ]
   },

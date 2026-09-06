@@ -83,7 +83,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions expression columns by group before running scSGL independently per group.",
-        "usage": "The wrapper uses groups.tsv to partition expression columns and call the same learn_signed_graph entrypoint once per group, emitting group:<id> contexts. scSGL itself does not consume groups.tsv."
+        "usage": "ANDREA uses groups.tsv to create one scSGL child run per group and assigns the corresponding public group:<id> context when merging results. Each child calls learn_signed_graph() on its group-specific expression matrix; scSGL itself does not consume groups.tsv.",
+        "delivery": "orchestration_only"
       }
     ]
   },

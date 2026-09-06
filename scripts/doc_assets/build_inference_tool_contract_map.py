@@ -661,7 +661,6 @@ def draw_groups_icon(canvas: Canvas, x: float, y: float) -> None:
 
 
 def draw_tf_list_icon(canvas: Canvas, x: float, y: float) -> None:
-    color = "#5d6878"
     canvas.rect(x - 16, y - 16, 26, 32, fill="#fbfaf7", stroke="#aeb7c4", stroke_width=0.9, rx=3)
     for i, yy in enumerate((y - 7, y, y + 7)):
         canvas.line(x - 10, yy, x + 4, yy, stroke="#aeb7c4", stroke_width=0.9)
@@ -682,7 +681,6 @@ def draw_prior_grn_icon(canvas: Canvas, x: float, y: float) -> None:
 
 
 def draw_tool_specific_icon(canvas: Canvas, x: float, y: float) -> None:
-    color = "#5d6878"
     for i, (dx, dy) in enumerate(((-11, -9), (-5, -3), (1, 3))):
         canvas.rect(x + dx, y + dy, 22, 18, fill="#fbfaf7", stroke="#aeb7c4", stroke_width=0.8, rx=3)
         canvas.line(x + dx + 5, y + dy + 7, x + dx + 16, y + dy + 7, stroke="#aeb7c4", stroke_width=0.7)
@@ -899,7 +897,11 @@ def draw_tools(canvas: Canvas, tools: list[Tool], tool_y: dict[str, float]) -> N
         fill = blend(tool.family_color, alpha=0.12)
         canvas.rect(TOOL_LEFT, y - TOOL_H / 2, TOOL_W, TOOL_H, fill=fill, stroke=tool.family_color, rx=8)
         canvas.circle(TOOL_LEFT + 9, y, 2.8, fill=tool.family_color, stroke="none")
-        canvas.text(TOOL_LEFT + 18, y + 2.9, tool.label, size=8.8, fill=INK, bold=True)
+        label_x = TOOL_LEFT + 18
+        label_width = text_width(tool.label, 8.8, bold=True)
+        available_width = TOOL_RIGHT - 82 - label_x
+        label_size = min(8.8, 8.8 * available_width / label_width) if label_width else 8.8
+        canvas.text(label_x, y + 2.9, tool.label, size=label_size, fill=INK, bold=True)
         draw_tool_badges(canvas, tool, y)
 
 

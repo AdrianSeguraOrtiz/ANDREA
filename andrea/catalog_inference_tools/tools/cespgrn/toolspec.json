@@ -121,7 +121,8 @@
         "op": "eq",
         "value": "group_aggregated",
         "message": "groups is required when execution.mode=group_aggregated because ANDREA aggregates CeSpGRN column-native network rows by group.",
-        "usage": "ANDREA uses groups.tsv after the native CeSpGRN per-column run to aggregate column:<column_id> rows into group:<group_id> rows; CeSpGRN itself does not consume groups.tsv."
+        "usage": "ANDREA uses groups.tsv after the native CeSpGRN per-column run to aggregate column:<column_id> rows into group:<group_id> rows; CeSpGRN itself does not consume groups.tsv.",
+        "delivery": "orchestration_only"
       },
       {
         "input": "spatial_coordinates",
@@ -129,7 +130,8 @@
         "op": "eq",
         "value": "spatial",
         "message": "spatial_coordinates is required when kernel_source=spatial because CeSpGRN builds the Gaussian kernel from cell locations instead of expression PCA coordinates.",
-        "usage": "The wrapper should pass the numeric spatial coordinate matrix to kernel.calc_kernel_neigh() when kernel_source=spatial, preserving expression cell identifiers by row alignment."
+        "usage": "The wrapper should pass the numeric spatial coordinate matrix to kernel.calc_kernel_neigh() when kernel_source=spatial, preserving expression cell identifiers by row alignment.",
+        "delivery": "runtime"
       },
       {
         "input": "tf_list",
@@ -137,7 +139,8 @@
         "op": "eq",
         "value": "tf_list",
         "message": "tf_list is required when prior_mode=tf_list because CeSpGRN builds a TF-target mask from known transcription factors.",
-        "usage": "The wrapper should convert tf_list.txt to CeSpGRN TF gene indices, pass them to G_admm_minibatch(), and use prior_beta to penalize target-target entries outside the TF prior."
+        "usage": "The wrapper should convert tf_list.txt to CeSpGRN TF gene indices, pass them to G_admm_minibatch(), and use prior_beta to penalize target-target entries outside the TF prior.",
+        "delivery": "runtime"
       }
     ]
   },

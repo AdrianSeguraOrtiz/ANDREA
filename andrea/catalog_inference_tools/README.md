@@ -60,9 +60,14 @@ Each tool container is executed with:
 ```
 
 When a plan is executed by the ANDREA orchestrator, `/io/execution.json` is also
-mounted next to `params.json` and contains the selected `execution.mode`
-(`global`, `group_native`, `group_emulated`, `column_native`, or
-`group_aggregated`). Existing wrappers may ignore it.
+mounted next to `params.json` and contains the physical wrapper mode. Containers
+must validate it and execute exactly one of `global`, `group_native`, or
+`column_native`. A logical `group_emulated` request becomes one physical
+`global` child per group; a logical `group_aggregated` request becomes one
+physical `column_native` child followed by ANDREA's aggregation task.
+
+A `group_native` ToolSpec must declare exactly one runtime-delivered source of
+group identities: `groups` or `column_phenotypes`.
 
 Execution capabilities:
 - `global`: one network for the whole expression matrix.
@@ -75,6 +80,33 @@ Execution capabilities:
 - `group_aggregated`: ANDREA aggregates native `column:<column_id>` outputs into
   `group:<group_id>` outputs using the fixed signed-effect mean rule and
   `groups.tsv`.
+
+`groups.tsv` is deliberately a single flat mapping from expression column to
+context label. ANDREA does not infer a biological hierarchy or assign separate
+meanings such as cell type and cell state to that label. When a study contains
+both axes, the higher-level analysis unit must be separated before inference
+and the within-unit states supplied as groups. This keeps every tool on the
+same explicit estimand and prevents wrappers from receiving an undeclared
+second taxonomy axis.
+
+Every required, optional, or conditionally required ToolSpec extra input must
+declare its delivery explicitly. `"delivery": "runtime"` mounts an active input
+under `/io/extra` for the child container. `"delivery":
+"orchestration_only"` keeps the input exclusively in ANDREA for planning,
+physical-input construction, or post-run aggregation. In this contract,
+`orchestration_only` is reserved for conditional `groups` rules in the two
+ANDREA-managed modes; every other algorithm input is runtime-delivered.
+
+The delivery of `groups.tsv` follows the execution contract. A `group_native`
+tool receives it at runtime because the child performs the grouped inference.
+For `group_emulated`, ANDREA reads it to partition expression and each child
+receives only its group-specific matrix. For `group_aggregated`, ANDREA reads it
+after the column-native run to aggregate outputs. Consequently, the latter two
+modes declare groups as `orchestration_only`. Other algorithm inputs, such as
+TF lists, priors, pseudotime, or spatial coordinates, declare `runtime`. The
+exact active and mounted input sets are frozen in
+`input/runtime-input-contract.json` during planning and verified again before
+execution.
 
 `group_aggregated` is a derived orchestration mode, not an upstream grouped
 run. The container is still executed once through the tool's `column_native`

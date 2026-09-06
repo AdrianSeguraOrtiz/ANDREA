@@ -41,7 +41,8 @@
     "required": [
       {
         "input": "tf_list",
-        "usage": "Wrapper passes tf_list.txt to ARACNe3 with the -r regulator option, so ARACNe3 computes MI/DPI edges only from those candidate regulators to expression targets."
+        "usage": "Wrapper passes tf_list.txt to ARACNe3 with the -r regulator option, so ARACNe3 computes MI/DPI edges only from those candidate regulators to expression targets.",
+        "delivery": "runtime"
       }
     ],
     "optional": [],
@@ -52,7 +53,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool.",
-        "usage": "ANDREA uses groups.tsv to create one ARACNe3 child run per group and then labels merged edges with the corresponding group context."
+        "usage": "ANDREA uses groups.tsv to create one ARACNe3 child run per group and then labels merged edges with the corresponding group context.",
+        "delivery": "orchestration_only"
       }
     ]
   },

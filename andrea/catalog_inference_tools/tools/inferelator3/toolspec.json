@@ -42,11 +42,13 @@
     "required": [
       {
         "input": "tf_list",
-        "usage": "Wrapper writes tf_list.txt as Inferelator's tf_names_file and uses the same regulator set to validate and shape the prior GRN matrix columns."
+        "usage": "Wrapper writes tf_list.txt as Inferelator's tf_names_file and uses the same regulator set to validate and shape the prior GRN matrix columns.",
+        "delivery": "runtime"
       },
       {
         "input": "prior_grn",
-        "usage": "Wrapper converts normalized long prior_grn.tsv into Inferelator's genes-by-TFs priors file consumed by the workflow before regression."
+        "usage": "Wrapper converts normalized long prior_grn.tsv into Inferelator's genes-by-TFs priors file consumed by the workflow before regression.",
+        "delivery": "runtime"
       }
     ],
     "optional": [],
@@ -57,7 +59,8 @@
         "op": "eq",
         "value": "group_native",
         "message": "groups is required when execution.mode=group_native so Inferelator can create native multitask group tasks from metadata.",
-        "usage": "Wrapper converts groups.tsv into Inferelator metadata with cluster task labels so the single-cell multitask workflow creates native tasks from the full expression matrix."
+        "usage": "Wrapper converts groups.tsv into Inferelator metadata with cluster task labels so the single-cell multitask workflow creates native tasks from the full expression matrix.",
+        "delivery": "runtime"
       },
       {
         "input": "groups",
@@ -65,7 +68,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the tool.",
-        "usage": "ANDREA uses groups.tsv to create one single-group Inferelator child run per group; each child follows the global BBSR workflow."
+        "usage": "ANDREA uses groups.tsv to create one single-group Inferelator child run per group; each child follows the global BBSR workflow.",
+        "delivery": "orchestration_only"
       }
     ]
   },

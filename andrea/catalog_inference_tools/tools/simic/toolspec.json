@@ -37,11 +37,13 @@
     "required": [
       {
         "input": "column_phenotypes",
-        "usage": "Wrapper converts ordered column_phenotypes.tsv into SimiC phenotype assignments, preserving the order column so state-specific models use the intended phenotype adjacency; each phenotype must provide enough cells for SimiC's 20% train/test split to retain at least two train and two test cells."
+        "usage": "Wrapper converts ordered column_phenotypes.tsv into SimiC phenotype assignments, preserving the order column so state-specific models use the intended phenotype adjacency; each phenotype must provide enough cells for SimiC's 20% train/test split to retain at least two train and two test cells.",
+        "delivery": "runtime"
       },
       {
         "input": "tf_list",
-        "usage": "Wrapper validates tf_list.txt against expression genes and serializes it to the pickle list consumed by SimiC's simicLASSO_op driver-gene argument."
+        "usage": "Wrapper validates tf_list.txt against expression genes and serializes it to the pickle list consumed by SimiC's simicLASSO_op driver-gene argument.",
+        "delivery": "runtime"
       }
     ],
     "optional": [],

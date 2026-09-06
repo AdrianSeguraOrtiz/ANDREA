@@ -36,11 +36,13 @@
     "required": [
       {
         "input": "groups",
-        "usage": "Wrapper uses groups.tsv to map expression samples/cells to scMTNI clusters, create per-cluster expression inputs, and define native multitask output contexts."
+        "usage": "Wrapper uses groups.tsv to map expression samples/cells to scMTNI clusters, create per-cluster expression inputs, and define native multitask output contexts.",
+        "delivery": "runtime"
       },
       {
         "input": "tf_list",
-        "usage": "Wrapper maps tf_list entries to expression genes and orthogroup IDs, then writes the upstream TF set used by scMTNI for per-cluster regulator-target models."
+        "usage": "Wrapper maps tf_list entries to expression genes and orthogroup IDs, then writes the upstream TF set used by scMTNI for per-cluster regulator-target models.",
+        "delivery": "runtime"
       }
     ],
     "optional": [],
@@ -51,7 +53,8 @@
         "op": "eq",
         "value": false,
         "message": "lineage_tree is required when indep=false.",
-        "usage": "Required when indep=false because scMTNI needs the lineage tree/dynamics file to share information across related clusters."
+        "usage": "Required when indep=false because scMTNI needs the lineage tree/dynamics file to share information across related clusters.",
+        "delivery": "runtime"
       },
       {
         "input": "prior_grn_by_group",
@@ -59,7 +62,8 @@
         "op": "gt",
         "value": 0,
         "message": "prior_grn_by_group is required when q > 0.",
-        "usage": "Required when q>0 because scMTNI's prior-weighted objective consumes group-specific regulator-target prior files."
+        "usage": "Required when q>0 because scMTNI's prior-weighted objective consumes group-specific regulator-target prior files.",
+        "delivery": "runtime"
       }
     ]
   },

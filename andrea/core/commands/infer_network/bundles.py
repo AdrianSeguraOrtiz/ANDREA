@@ -45,7 +45,7 @@ BUNDLE_SPECS: tuple[BundleSpec, ...] = (
         label="Report Bundle",
         purpose="Compact run status, plan and resolved configuration summary.",
         contents_summary=(
-            "run_report.json, plan.json, preflight_report.json and runtime state.",
+            "Run report, plan, preflight report, runtime-input contract and state.",
             "Resolved per-tool parameter and execution files.",
         ),
     ),
@@ -189,6 +189,7 @@ def _resolve_report(*, spec: BundleSpec, root: Path) -> BundleResolution:
     for rel in (
         "plan.json",
         "preflight_report.json",
+        "input/runtime-input-contract.json",
         "runtime/execution_state.json",
     ):
         append_exact(

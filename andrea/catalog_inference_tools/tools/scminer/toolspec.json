@@ -199,7 +199,8 @@
         "op": "eq",
         "value": "group_emulated",
         "message": "groups is required when execution.mode=group_emulated because ANDREA partitions the dataset by group before running the selected scMINER/SJARACNe network path.",
-        "usage": "ANDREA uses groups.tsv to create one scMINER child run per group. The wrapper accepts a groups.tsv covering the full dataset or just the current expression matrix, subsets it to the expression columns being executed, and uses it only to assign public group:<id> contexts; scMINER/SJARACNe itself does not consume groups.tsv in the selected wrapper contract."
+        "usage": "ANDREA uses groups.tsv to create one scMINER child run per group and assigns the corresponding public group:<id> context when merging results. Each child receives only its group-specific expression matrix; scMINER/SJARACNe does not consume groups.tsv in the selected wrapper contract.",
+        "delivery": "orchestration_only"
       },
       {
         "input": "tf_list",
@@ -207,7 +208,8 @@
         "op": "eq",
         "value": "custom_tf_list",
         "message": "tf_list is required when driver_source=custom_tf_list because the wrapper passes those genes as scMINER customDriver_TF and SJARACNe candidate hubs.",
-        "usage": "The wrapper validates tf_list.txt against expression gene ids, passes matching entries as the candidate TF driver list, and runs the TF-only SJARACNe path with those public gene identifiers."
+        "usage": "The wrapper validates tf_list.txt against expression gene ids, passes matching entries as the candidate TF driver list, and runs the TF-only SJARACNe path with those public gene identifiers.",
+        "delivery": "runtime"
       }
     ]
   },
