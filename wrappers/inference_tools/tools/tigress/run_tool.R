@@ -75,6 +75,22 @@ load_params <- function(params_path) {
   params
 }
 
+load_execution_mode <- function(params_path) {
+  execution_path <- file.path(dirname(params_path), "execution.json")
+  if (!file.exists(execution_path)) {
+    stop("execution.json is required.", call. = FALSE)
+  }
+  execution <- fromJSON(execution_path, simplifyVector = TRUE)
+  if (!is.list(execution)) {
+    stop("execution.json must be a JSON object.", call. = FALSE)
+  }
+  mode <- execution$mode
+  if (!is_scalar_string(mode) || !identical(mode, "global")) {
+    stop("TIGRESS supports only physical execution.mode=global.", call. = FALSE)
+  }
+  mode
+}
+
 resolve_params <- function(raw_params) {
   required <- c(
     "alpha", "nstepsLARS", "nsplit", "normalizeexp", "scoring",
@@ -290,6 +306,7 @@ main <- function() {
   write_progress(progress_path, "running", 0L, "init", "Initializing")
 
   tryCatch({
+    load_execution_mode(params_path)
     raw_params <- load_params(params_path)
     params <- resolve_params(raw_params)
 

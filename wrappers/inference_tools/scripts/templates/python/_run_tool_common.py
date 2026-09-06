@@ -17,6 +17,28 @@ def load_params(params_path: Path) -> dict[str, Any]:
     return data
 
 
+def load_execution_mode(
+    params_path: Path,
+    *,
+    supported_modes: set[str],
+) -> str:
+    """Load and validate the execution mode seen by a physical wrapper task."""
+    execution_path = params_path.parent / "execution.json"
+    if not execution_path.is_file():
+        raise FileNotFoundError("execution.json is required.")
+    with execution_path.open("r", encoding="utf-8") as fh:
+        execution = json.load(fh)
+    if not isinstance(execution, dict):
+        raise ValueError("execution.json must be a JSON object.")
+    mode = execution.get("mode")
+    if not isinstance(mode, str) or not mode:
+        raise ValueError("execution.mode must be a non-empty string.")
+    if mode not in supported_modes:
+        supported = ", ".join(sorted(supported_modes))
+        raise ValueError(f"physical execution.mode must be one of: {supported}.")
+    return mode
+
+
 def require_param_keys(raw_params: dict[str, Any], required_keys: set[str]) -> None:
     missing = sorted(required_keys.difference(raw_params.keys()))
     if missing:

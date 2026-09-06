@@ -53,7 +53,7 @@ partial-correlation network.
 | Upstream public entrypoint / workflow | Inputs | Output | ANDREA mapping | Exposed | Rationale |
 | --- | --- | --- | --- | --- | --- |
 | README/demo pipeline: normalize counts, PCA, `kernel.calc_kernel_neigh`, `g_admm.est_cov`, `G_admm_minibatch(...).train(...)` | cells x genes expression matrix | tensor `(cells, genes, genes)` of signed partial correlations | `column_native` | Yes | This is the narrowest public path that produces native one-network-per-cell outputs from expression only. |
-| Same column-native path plus ANDREA `groups.tsv` | expression matrix plus groups after wrapper output | derived group networks | `group_aggregated` | Yes | CeSpGRN itself does not consume groups; ANDREA can aggregate `column:<id>` rows with the fixed signed-effect mean rule. |
+| Same column-native path plus ANDREA-side aggregation keyed by `groups.tsv` | expression matrix; groups consumed after wrapper output | derived group networks | `group_aggregated` | Yes | CeSpGRN itself does not consume groups; ANDREA can aggregate `column:<id>` rows with the fixed signed-effect mean rule. |
 | Spatial workflow in paper and `test/scripts_drosophila_embryo/test_drosophila_embryo.py` | expression matrix plus cell spatial coordinates | cell-specific signed partial-correlation tensor | parameter choice `kernel_source=spatial` within `column_native` / `group_aggregated` | Yes | It uses the same CeSpGRN estimator and only changes the cell-cell kernel coordinates, so it is a parameter/input choice, not a new execution mode. |
 | TF-prior workflow from paper and `G_admm_minibatch(TF=...)` | expression matrix plus TF list | cell-specific signed partial-correlation tensor with target-target mask penalty when beta > 0 | parameter choice `prior_mode=tf_list` | Yes | Existing `tf_list` semantics match the paper's TF information prior. |
 | ATAC/cell-specific prior workflows in paper and `G_admm_mask(mask=...)` test scripts | paired scRNA/scATAC plus region-target and region-TF mappings or precomputed cell-specific masks | cell-specific signed partial-correlation tensor | parameter/input choice if represented | No | A standalone accessibility matrix is insufficient; the workflow requires cell-specific prior masks or genomic region-to-gene and motif/TF mapping inputs not currently normalized in the inference catalog. |
@@ -73,9 +73,10 @@ partial-correlation network.
     still produce per-cell rows and ANDREA's `group_emulated` finalizer would
     rewrite them to duplicate group contexts rather than applying the intended
     signed aggregation rule.
-- `group_aggregated` is ANDREA-managed. The physical wrapper output remains
-  `column:<column_id>` rows, and ANDREA core writes only derived `group:<id>` rows
-  to the logical `group_aggregated` `network.csv`.
+- `group_aggregated` is ANDREA-managed. ANDREA translates the logical request
+  to physical `execution.mode=column_native`; the wrapper emits
+  `column:<column_id>` rows, and core writes only derived `group:<id>` rows to
+  the logical `group_aggregated` `network.csv`.
 
 ## Input Contract
 
@@ -84,8 +85,9 @@ Always required:
   will transpose to the upstream cells x genes matrix.
 
 Conditional required:
-- `groups` when `execution.mode=group_aggregated`; consumed by ANDREA after
-  the physical column-native run.
+- `groups` when `execution.mode=group_aggregated`, with
+  `delivery=orchestration_only`; consumed by ANDREA after the physical
+  column-native run.
 - `spatial_coordinates` when `kernel_source=spatial`; new input spec added at
   `andrea/catalog_inference_tools/input_specs/spatial_coordinates.json`. It maps
   expression cell ids to numeric `x`, `y` and optional `z` coordinates, matching
@@ -277,21 +279,30 @@ Fixed implementation choices, not exposed:
 ## Smoketest Outcome
 
 - Smoketest config: `wrappers/inference_tools/tests/smoketest_configs/cespgrn.json`.
-- Fixtures: shared `expression.tsv`, `groups.tsv`, and new
-  `spatial_coordinates.tsv`.
+- Physical-wrapper fixtures: shared `expression.tsv` and
+  `spatial_coordinates.tsv`. `groups.tsv` is deliberately absent because it is
+  consumed only by ANDREA's logical aggregation boundary.
 - Variants:
   - `column_native`: expression kernel, one ADMM iteration, explicit
     `batch_size=30`.
-  - `group_aggregated_spatial`: validates `groups.tsv`, uses
-    `kernel_source=spatial`, and still emits physical `column:<id>` rows for
-    ANDREA core aggregation.
+  - `column_native_spatial`: uses `kernel_source=spatial` and still emits
+    physical `column:<id>` rows. Logical group aggregation is covered in
+    ANDREA core tests rather than duplicated in the wrapper smoke.
 - Build command passed:
   `.venv/bin/python wrappers/inference_tools/scripts/build_tool_images.py --tool cespgrn --image-tag cespgrn=cespgrn-smoketest:local`.
 - Smoketest command passed:
   `.venv/bin/python wrappers/inference_tools/scripts/run_smoketests.py --tool cespgrn --image-tag cespgrn=cespgrn-smoketest:local --timeout 240`.
 - Outcome: `passed=1 failed=0`; `column_native` wrote 831 rows and
-  `group_aggregated_spatial` wrote 820 physical column-native rows. All declared
+  `column_native_spatial` wrote 820 physical column-native rows. All declared
   auxiliary artifacts were present in both variants.
+
+## Empty-network Semantics
+
+- A finite, correctly shaped upstream partial-correlation tensor may contain no
+  non-zero values. The wrapper then writes the canonical `network.csv` header,
+  reports zero completed edges and succeeds.
+- Missing, incorrectly shaped or non-finite upstream tensors remain execution
+  failures and are not converted into empty networks.
 
 ## Known Limitations / Open Questions
 

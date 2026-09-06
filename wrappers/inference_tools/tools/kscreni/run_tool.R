@@ -13,8 +13,6 @@ suppressPackageStartupMessages({
   suppressWarnings(library(ScReNI))
 })
 
-SUPPORTED_MODES <- c("column_native", "group_aggregated")
-
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
 }
@@ -114,19 +112,19 @@ resolve_params <- function(raw_params) {
 load_execution_mode <- function(params_path) {
   execution_path <- file.path(dirname(params_path), "execution.json")
   if (!file.exists(execution_path)) {
-    return("column_native")
+    stop("execution.json is required.", call. = FALSE)
   }
   execution <- fromJSON(execution_path, simplifyVector = TRUE)
   if (!is.list(execution)) {
     stop("execution.json must be a JSON object.", call. = FALSE)
   }
-  mode <- execution$mode %||% "column_native"
-  if (!is.character(mode) || length(mode) != 1L || is.na(mode)) {
-    stop("execution.mode must be a string.", call. = FALSE)
+  mode <- execution$mode
+  if (!is.character(mode) || length(mode) != 1L || is.na(mode) || !nzchar(mode)) {
+    stop("execution.mode must be a non-empty string.", call. = FALSE)
   }
-  if (!(mode %in% SUPPORTED_MODES)) {
+  if (!identical(mode, "column_native")) {
     stop(
-      "kScReNI supports only execution.mode=column_native or execution.mode=group_aggregated.",
+      "kScReNI supports only physical execution.mode=column_native.",
       call. = FALSE
     )
   }
@@ -217,47 +215,6 @@ validate_expression_for_params <- function(expr, params) {
       ),
       call. = FALSE
     )
-  }
-}
-
-validate_groups <- function(extra_dir, cell_ids) {
-  groups_path <- file.path(extra_dir, "groups.tsv")
-  if (!file.exists(groups_path)) {
-    stop("groups.tsv is required for kScReNI execution.mode=group_aggregated.", call. = FALSE)
-  }
-  header <- read_header(groups_path)
-  if (length(header) < 2L || !("cluster" %in% header[-1L])) {
-    stop("groups.tsv must contain a first expression-column id column and a cluster column.", call. = FALSE)
-  }
-
-  df <- read.delim(
-    groups_path,
-    sep = "\t",
-    header = TRUE,
-    check.names = FALSE,
-    stringsAsFactors = FALSE
-  )
-  group_cell_ids <- as.character(df[[1L]])
-  if (any(!nzchar(group_cell_ids))) {
-    stop("groups.tsv contains an empty expression-column identifier.", call. = FALSE)
-  }
-  if (anyDuplicated(group_cell_ids)) {
-    duplicated <- sort(unique(group_cell_ids[duplicated(group_cell_ids)]))
-    stop(sprintf("groups.tsv contains duplicated expression-column identifiers: %s", paste(duplicated, collapse = ", ")), call. = FALSE)
-  }
-
-  missing <- setdiff(cell_ids, group_cell_ids)
-  extra <- setdiff(group_cell_ids, cell_ids)
-  if (length(missing) > 0L || length(extra) > 0L) {
-    details <- character()
-    if (length(missing) > 0L) details <- c(details, paste0("missing expression columns: ", paste(missing, collapse = ", ")))
-    if (length(extra) > 0L) details <- c(details, paste0("unknown expression columns: ", paste(extra, collapse = ", ")))
-    stop(paste0("groups.tsv must match expression columns exactly (", paste(details, collapse = "; "), ")."), call. = FALSE)
-  }
-
-  cluster_values <- as.character(df[match(cell_ids, group_cell_ids), "cluster"])
-  if (any(!nzchar(cluster_values))) {
-    stop("groups.tsv contains empty cluster values.", call. = FALSE)
   }
 }
 
@@ -455,9 +412,6 @@ main <- function() {
     write_progress(progress_path, "running", 5L, "load_input", "Loading expression and extra inputs")
     expr <- read_expression_tsv(input_path)
     validate_expression_for_params(expr, params)
-    if (mode == "group_aggregated") {
-      validate_groups(extra_dir, colnames(expr))
-    }
 
     append_log(
       log_path,

@@ -14,7 +14,7 @@ suppressPackageStartupMessages({
 })
 
 NETWORK_COLUMNS <- c("source", "target", "score", "sign", "evidence", "context")
-SUPPORTED_MODES <- c("global", "group_emulated")
+SUPPORTED_MODES <- c("global")
 
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
@@ -103,10 +103,10 @@ resolve_params <- function(raw_params) {
 load_execution_mode <- function(params_path) {
   execution_path <- file.path(dirname(params_path), "execution.json")
   if (!file.exists(execution_path)) {
-    return("global")
+    stop("execution.json is required.", call. = FALSE)
   }
   execution <- load_json_object(execution_path, "execution.json")
-  mode <- execution$mode %||% "global"
+  mode <- execution$mode
   if (!is_scalar_string(mode)) {
     stop("execution.mode must be a string.", call. = FALSE)
   }
@@ -166,49 +166,6 @@ read_expression_tsv <- function(expr_path) {
   rownames(mat) <- genes
   colnames(mat) <- expression_columns
   mat
-}
-
-read_groups <- function(extra_dir, expression_columns) {
-  groups_path <- file.path(extra_dir, "groups.tsv")
-  if (!file.exists(groups_path)) {
-    stop("groups.tsv is required when execution.mode=group_emulated.", call. = FALSE)
-  }
-  groups_df <- read.delim(
-    groups_path,
-    sep = "\t",
-    header = TRUE,
-    check.names = FALSE,
-    stringsAsFactors = FALSE
-  )
-  if (ncol(groups_df) < 2L) {
-    stop("groups.tsv must contain an expression-column id column and a cluster column.", call. = FALSE)
-  }
-  if (!("cluster" %in% names(groups_df))) {
-    stop("groups.tsv is missing required column: cluster.", call. = FALSE)
-  }
-
-  column_ids <- trimws(as.character(groups_df[[1L]]))
-  clusters <- trimws(as.character(groups_df[["cluster"]]))
-  if (any(!nzchar(column_ids))) {
-    stop("groups.tsv contains an empty expression-column identifier.", call. = FALSE)
-  }
-  if (any(!nzchar(clusters))) {
-    stop("groups.tsv contains an empty cluster value.", call. = FALSE)
-  }
-  if (anyDuplicated(column_ids)) {
-    duplicated <- sort(unique(column_ids[duplicated(column_ids)]))
-    stop(sprintf("groups.tsv contains duplicated expression-column ids: %s", paste(duplicated, collapse = ", ")),
-         call. = FALSE)
-  }
-
-  group_map <- stats::setNames(clusters, column_ids)
-  missing <- setdiff(expression_columns, names(group_map))
-  if (length(missing) > 0L) {
-    stop(sprintf("groups.tsv is missing expression columns: %s", paste(head(missing, 8L), collapse = ", ")),
-         call. = FALSE)
-  }
-
-  group_map[expression_columns]
 }
 
 write_matrix_tsv <- function(matrix_value, path) {
@@ -275,7 +232,16 @@ build_network <- function(estimate_matrix) {
   }
 
   if (!length(rows)) {
-    stop("ppcor produced no finite non-zero partial-correlation edges.", call. = FALSE)
+    return(data.frame(
+      source = character(),
+      target = character(),
+      score = numeric(),
+      sign = character(),
+      evidence = character(),
+      context = character(),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )[, NETWORK_COLUMNS, drop = FALSE])
   }
 
   out <- do.call(rbind, rows)
@@ -284,7 +250,7 @@ build_network <- function(estimate_matrix) {
   out[, NETWORK_COLUMNS, drop = FALSE]
 }
 
-write_config <- function(path, params, expression_data, execution_mode, group_map, threads) {
+write_config <- function(path, params, expression_data, execution_mode, threads) {
   config <- list(
     tool = "ppcor",
     upstream_package = "ppcor",
@@ -296,7 +262,6 @@ write_config <- function(path, params, expression_data, execution_mode, group_ma
     requested_threads = threads,
     upstream_threads = 1L,
     params = params,
-    group_count = if (is.null(group_map)) NULL else length(unique(unname(group_map))),
     score_rule = "score=abs(ppcor::pcor(...)$estimate); sign stores coefficient direction"
   )
   writeLines(toJSON(config, auto_unbox = TRUE, null = "null", pretty = TRUE), path, useBytes = TRUE)
@@ -340,11 +305,6 @@ main <- function() {
 
     write_progress(progress_path, "running", 10L, "load_input", "Loading expression matrix")
     expression_data <- read_expression_tsv(input_path)
-    group_map <- NULL
-    if (execution_mode == "group_emulated") {
-      group_map <- read_groups(extra_dir, colnames(expression_data))
-    }
-
     observations_by_genes <- t(expression_data)
     append_log(log_path, sprintf(
       "running ppcor::pcor method=%s genes=%d columns=%d execution_mode=%s",
@@ -366,7 +326,6 @@ main <- function() {
       params,
       expression_data,
       execution_mode,
-      group_map,
       threads
     )
 

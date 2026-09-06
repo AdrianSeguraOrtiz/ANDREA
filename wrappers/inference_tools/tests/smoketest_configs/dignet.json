@@ -14,15 +14,6 @@
   "variants": [
     {
       "name": "global"
-    },
-    {
-      "name": "group_emulated_contract",
-      "extra_files": [
-        "groups.tsv"
-      ],
-      "execution": {
-        "mode": "group_emulated"
-      }
     }
   ]
 }

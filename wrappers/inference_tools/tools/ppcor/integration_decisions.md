@@ -113,7 +113,7 @@ association output.
     - ppcor has no native group argument, so group-emulated execution is owned
       by ANDREA orchestration.
   - Decision: declare `groups` as `conditional_required` only for
-    `group_emulated`.
+    `group_emulated`, with `delivery=orchestration_only`.
 
 - No optional upstream inputs are declared for the selected `pcor()` contract.
 - No new input specs are required.
@@ -179,6 +179,8 @@ association output.
 - Filtering:
   - Do not write rows with `score <= 0` or non-finite coefficients.
   - No ANDREA-specific score normalization is applied in the wrapper.
+  - A valid estimate matrix with no exportable coefficients produces a
+    canonical header-only `network.csv`; it is not an inference failure.
 - Identifier preservation:
   - R matrix column names preserve exact expression gene ids for the selected
     `pcor()` runtime path. No upstream aliases are needed for the implemented
@@ -391,9 +393,8 @@ association output.
 
 - Use the shared expression fixture if it has enough expression columns for a
   non-singular or generalized-inverse-safe smoke run.
-- Cover both declared execution capabilities:
-  - `global`
-  - `group_emulated` with `groups.tsv`
+- Cover the physical `global` wrapper contract. Logical group emulation is
+  covered at the ANDREA orchestration boundary.
 - Checks:
   - `network.csv` has one row per unordered pair, no self-loops.
   - `score` is positive `abs(estimate)`.
@@ -416,10 +417,10 @@ association output.
 - Expression serialization: wrapper reads ANDREA `expression.tsv` as genes by
   expression columns and transposes it to observations by genes before calling
   `ppcor::pcor()`.
-- Execution modes: wrapper accepts `global` and `group_emulated`. For
-  `group_emulated`, it validates that all current expression columns appear in
-  `groups.tsv` and allows `groups.tsv` to be a superset, because ANDREA core
-  owns group-emulated partitioning.
+- Execution modes: the wrapper requires `execution.json` and accepts only
+  physical `global`. For logical `group_emulated`, ANDREA supplies the selected
+  expression subset and translates the child execution to `global`; the wrapper
+  emits `context=global`.
 - Raw artifacts: wrapper writes `raw/estimate.tsv`, `raw/p.value.tsv`,
   `raw/statistic.tsv` and `raw/ppcor_config.json`.
 - Upstream singular covariance behavior: wrapper calls `ppcor::pcor()`
@@ -445,11 +446,6 @@ association output.
 - Image build installed and verified CRAN `ppcor` version `1.1`.
 - Variant `global_pearson`: produced 28 positive signed unordered edges and
   all five declared auxiliary artifacts.
-- Variant `group_emulated_contract`: validated `groups.tsv`, recorded two
-  groups in `raw/ppcor_config.json`, produced 28 positive signed unordered
-  edges and all five declared auxiliary artifacts. Direct wrapper output
-  retains `context=global`; ANDREA core is responsible for physical
-  group-emulated partitioning and `group:<id>` public contexts.
 
 ## Known Limitations / Open Questions
 

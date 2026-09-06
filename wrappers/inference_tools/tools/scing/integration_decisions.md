@@ -30,7 +30,10 @@ The wrapper contract mirrors the upstream public `BuildNetwork.ipynb` workflow:
 2. Build repeated subsampled networks with `build.grnBuilder(...).pipeline()`.
 3. Merge/prune with `merge.NetworkMerger(...).pipeline()`.
 
-The wrapper produces a single directed GRN per input expression matrix. ANDREA `group_emulated` partitions the input by group and runs the same public global workflow per group; when the wrapper is invoked directly with `execution.mode=group_emulated`, it validates `groups.tsv` but still emits raw `context=global`, matching the existing group-emulated wrapper contract where the ANDREA runner assigns `group:<id>` in the logical parent result.
+The wrapper produces a single directed GRN per physical expression matrix and
+accepts only physical `execution.mode=global`. For logical `group_emulated`,
+ANDREA validates `groups.tsv`, partitions the input, invokes every child as
+`global`, and assigns `group:<id>` in the logical parent result.
 
 ## Public Execution Modes / Entrypoints
 
@@ -164,10 +167,12 @@ The wrapper produces a single directed GRN per input expression matrix. ANDREA `
 
 ### `extra_inputs`
 
-- Chosen value: no required or optional extras; `groups` conditional for `group_emulated`.
+- Chosen value: no required or optional extras; `groups` conditional for `group_emulated` with `delivery=orchestration_only`.
 - Evidence: selected public workflow consumes only AnnData expression; groups are an ANDREA partitioning mechanism, not a SCING input.
 - Rationale: no TF list, prior network or spatial coordinate input is used by the selected GRN path. The paper explicitly notes SCING does not currently utilize spatial information during spatial transcriptomics GRN construction.
-- Implemented behavior: direct wrapper invocation validates `groups.tsv` when `execution.mode=group_emulated`; SCING itself receives only the expression matrix.
+- Implemented behavior: the wrapper requires `execution.json` and accepts only
+  physical `global`; SCING receives only the expression subset selected by
+  ANDREA.
 - Uncertainty: none for selected contract.
 
 ### `outputs`
@@ -226,6 +231,18 @@ The wrapper produces a single directed GRN per input expression matrix. ANDREA `
   - `evidence`: `association`
   - `context`: raw wrapper output is `global`; the ANDREA runner rewrites child-run rows to `group:<group_id>` for logical `group_emulated` outputs.
 - Wrapper drops self-loops, rows with `score <= 0`, non-finite scores, and rows whose source/target are not original expression gene ids. No ANDREA-specific score normalization occurs in the wrapper.
+- A structurally valid final merged table with no exportable rows produces a
+  canonical header-only `network.csv`; missing or malformed tables fail.
+- A structurally valid, header-only `grnBuilder.edges` table is preserved as
+  its per-subsample raw CSV.GZ artifact and omitted from consensus merging. If
+  every subsample is empty, the wrapper writes a header-only
+  `raw/final.network.merged.csv` itself and exports the canonical empty
+  network. A missing, non-tabular, or structurally malformed `edges` artifact
+  still fails. When only some subsamples are empty, the threshold passed to the
+  upstream merger is scaled by `configured_subsamples / non_empty_subsamples`;
+  this keeps the configured total number of subsamples in the consensus
+  appearance denominator despite omitting tables the upstream merger cannot
+  consume.
 
 ## Runtime Resource Mapping
 
@@ -258,7 +275,7 @@ Implemented behavior:
 Implemented smoketest config: `wrappers/inference_tools/tests/smoketest_configs/scing.json`.
 
 - `global` mode with reduced parameters, e.g. small `n_supercells`, `n_subsample_networks`, `gene_neighbors`, `gene_pcs`, and `network_hvgs`.
-- `group_emulated` mode with `groups.tsv`, checking the direct wrapper contract. The logical ANDREA runner is responsible for assigning group contexts after per-group child runs.
+- A physical `global` run without `groups.tsv`, checking that the wrapper emits `context=global`. ANDREA uses that same physical contract for every child of a logical `group_emulated` run, after selecting the group subset and before assigning its public context.
 - Positive `score` values, directed rows, no self-loops, original gene ids preserved.
 - `progress.json` exists and `scing.log` plus raw merged/intermediate artifacts are present.
 
@@ -266,7 +283,8 @@ Outcome on 2026-06-24:
 
 - Command: `python wrappers/inference_tools/scripts/run_smoketests.py --tool scing --threads 2 --timeout 1800 --show-output --show-output-lines 80`
 - Result: passed.
-- Variants passed: `global`, `group_emulated_contract`.
+- The current physical smoke covers `global`; logical group emulation is covered
+  by ANDREA core tests.
 - Build image used by smoketest: `scing-smoketest:local`.
 
 Phase 3 validation on 2026-06-24:

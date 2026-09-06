@@ -50,6 +50,10 @@ Excluded public modes:
 - `column_native`: not exposed. Although the paper uses "cell-specific" language, the public CSV interface returns one adjacency matrix for the expression matrix/subnetwork it receives, not one network per expression column.
 - `group_aggregated`: not exposed because there is no column-native Planet output for ANDREA to aggregate.
 
+The wrapper requires `execution.json` and accepts only physical
+`execution.mode=global`; `group_emulated` exists solely at the logical ANDREA
+orchestration layer.
+
 ## Input Contract
 
 Required normalized input:
@@ -58,7 +62,9 @@ Required normalized input:
 
 Conditional normalized input:
 
-- `groups.tsv`: required only when `execution.mode=group_emulated`; ANDREA consumes it for orchestration, not Planet.
+- `groups.tsv`: required with `delivery="orchestration_only"` only when
+  `execution.mode=group_emulated`; ANDREA consumes it for orchestration, not
+  Planet.
 
 No new input spec is needed. The upstream TF and pathway resources are bundled in the pinned repo and are method resources, not user-supplied normalized inputs for the selected contract.
 
@@ -161,11 +167,15 @@ Data-dependent upstream defaults and rules:
 ## Smoketest Outcome
 
 - Config: `wrappers/inference_tools/tests/smoketest_configs/planet.json`.
-- Fixtures: `wrappers/inference_tools/tests/fixtures/planet/expression.tsv` and `groups.tsv`.
+- Physical-wrapper fixture:
+  `wrappers/inference_tools/tests/fixtures/planet/expression.tsv`.
+  The group-emulated contract variant deliberately omits `groups.tsv`; ANDREA
+  alone receives that file when materializing logical child runs.
 - Build command: `make build-tool-images ARGS="--tool planet"` passed.
 - Static validation: `python -m py_compile wrappers/inference_tools/tools/planet/run_tool.py`, `make validate-toolspecs ARGS="--tool planet"`, `make validate-input-specs ARGS="--spec expression_matrix --spec groups"`, and `make validate-smoketest-configs ARGS="--tool planet"` passed.
 - Smoketest command: `make run-tool-smoketests ARGS="--tool planet --threads 2 --timeout 2400 --show-output-lines 80"` passed after the `gene_set=all_expression_genes` preflight rule update.
-- Variants covered: `global` produced 74 positive non-self-loop rows; `group_emulated_contract` produced 80 positive non-self-loop rows; both validated the four declared auxiliary artifacts.
+- The current physical smoke covers only `global`; logical group-emulated
+  partitioning and relabeling are covered by ANDREA core tests.
 - GUI regression check: rerunning preflight on `inferred_networks/gui_dataset_20260623T180159Z` now skips `planet__01` and `planet__02` before container launch when `gene_set=all_expression_genes` and the dataset has 120 genes.
 
 ## Known Limitations / Open Questions
@@ -174,6 +184,9 @@ Data-dependent upstream defaults and rules:
 - The pre-trained checkpoint is inspected at runtime inside the wrapper because the host environment may not have `torch`.
 - The public source appears to contain a human KEGG handling bug in the CSV test path; the wrapper avoids patching algorithm internals by converting all accepted `gene_set` choices to the documented user gene-list CSV path.
 - `gene_set=all_expression_genes` will fail for synthetic or non-human IDs, for more than 99 retained genes with the bundled checkpoint, or when there is no overlap with bundled human RegNetwork/TF resources.
+- A valid numeric Planet adjacency with no positive non-self rows produces a
+  header-only `network.csv`. Non-numeric or non-finite adjacency values remain
+  failures rather than being hidden as an empty inference.
 
 ## Post-GUI Run Follow-up
 

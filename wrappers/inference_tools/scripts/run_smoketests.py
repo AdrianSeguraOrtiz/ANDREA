@@ -82,6 +82,7 @@ ALLOWED_CONFIG_CHECK_KEYS = {
     "require_unique_unordered_pairs",
     "forbid_self_loops",
 }
+PHYSICAL_EXECUTION_MODES = {"global", "group_native", "column_native"}
 
 
 @dataclass(frozen=True)
@@ -108,18 +109,6 @@ class SmokeIOPaths:
     io_dir: Path
     out_dir: Path
     progress_file: Path
-
-
-DEFAULT_CONFIG = SmokeConfig(
-    name="default",
-    extra_files=[],
-    execution={},
-    param_overrides={},
-    require_progress=True,
-    require_group_context=False,
-    require_unique_unordered_pairs=False,
-    forbid_self_loops=False,
-)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -486,15 +475,10 @@ def _parse_smoke_config_payload(
         raise ValueError(
             f"Invalid config in {config_path}: unknown execution keys {unknown_execution}."
         )
-    if "mode" in execution and execution["mode"] not in {
-        "global",
-        "group_native",
-        "group_emulated",
-        "column_native",
-        "group_aggregated",
-    }:
+    if execution.get("mode") not in PHYSICAL_EXECUTION_MODES:
         raise ValueError(
-            f"Invalid config in {config_path}: execution.mode is unsupported."
+            f"Invalid config in {config_path}: physical execution.mode must be "
+            "global, group_native, or column_native."
         )
 
     param_overrides = raw.get("param_overrides", {})
@@ -529,7 +513,10 @@ def _parse_smoke_config_payload(
 def load_configs(*, tool_id: str, configs_dir: Path) -> list[SmokeConfig]:
     config_path = configs_dir / f"{tool_id}.json"
     if not config_path.exists():
-        return [DEFAULT_CONFIG]
+        raise FileNotFoundError(
+            f"Smoketest config is required for physical wrapper {tool_id!r}: "
+            f"{config_path}"
+        )
 
     with config_path.open("r", encoding="utf-8") as fh:
         raw = json.load(fh)
@@ -579,6 +566,7 @@ def load_configs(*, tool_id: str, configs_dir: Path) -> list[SmokeConfig]:
 
 
 def load_aux_artifacts(catalog_tool_dir: Path) -> list[AuxArtifactSpec]:
+    toolspec_path = catalog_tool_dir / "toolspec.json"
     raw = load_toolspec(catalog_tool_dir)
 
     entries = raw.get("artifacts_aux", [])
@@ -691,6 +679,8 @@ def build_image(
 
 
 def start_container(image_tag: str, io_dir: Path, threads: int) -> str:
+    resolved_io_dir = io_dir.resolve()
+    resolved_out_dir = (io_dir / "out").resolve()
     cmd = [
         "docker",
         "run",
@@ -698,7 +688,9 @@ def start_container(image_tag: str, io_dir: Path, threads: int) -> str:
         "--user",
         f"{os.getuid()}:{os.getgid()}",
         "-v",
-        f"{io_dir}:/io",
+        f"{resolved_io_dir}:/io:ro",
+        "-v",
+        f"{resolved_out_dir}:/io/out:rw",
         image_tag,
         "--input",
         "/io/expression.tsv",

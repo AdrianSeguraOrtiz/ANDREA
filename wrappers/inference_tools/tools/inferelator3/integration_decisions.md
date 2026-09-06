@@ -40,14 +40,20 @@ The ToolSpec now declares:
 
 - `execution_capabilities`: `["global", "group_native", "group_emulated"]`
 - `execution.mode=global`: one upstream single-task run on the full expression matrix.
-- `execution.mode=group_emulated`: ANDREA partitions expression by `groups.tsv`; each physical child run uses the same global wrapper path, and the orchestrator rewrites child output context to `group:<label>`.
+- `execution.mode=group_emulated`: ANDREA partitions expression by
+  `groups.tsv`; each physical child requires `execution.json` with
+  `execution.mode=global` and uses the same global wrapper path
+  without receiving group metadata, and the orchestrator rewrites child output
+  context to `group:<label>`.
 - `execution.mode=group_native`: one upstream multitask Inferelator run. The wrapper passes full expression plus `groups.tsv` as metadata and exports per-task upstream networks as `context=group:<label>`.
 
 Execution requests use only `execution.mode`; the removed `execution.group_mode` alias is intentionally unsupported.
 
 ## Upstream Entrypoints
 
-- Global and emulated grouped execution mirror `inferelator_workflow(regression="bbsr", workflow="tfa")`, configured with public setters and executed with `worker.run()`.
+- Physical global execution mirrors `inferelator_workflow(regression="bbsr",
+  workflow="tfa")`, configured with public setters and executed with
+  `worker.run()`. Logical group emulation reuses this physical mode.
 - Native grouped execution mirrors `inferelator_workflow(regression=<amusr|bbsr-by-task|elasticnet-by-task>, workflow="multitask")`.
 - Native grouped tasks are created through the public `create_task(...)` API with `tasks_from_metadata=True` and `meta_data_task_column="cluster"`.
 
@@ -70,8 +76,13 @@ Rationale: workflow choice is an execution capability, while the concrete multit
 
 Conditional input behavior:
 
-- ToolSpec rule: `groups` is conditionally required when `execution.mode == "group_native"` so Inferelator can create native multitask tasks from metadata.
-- ToolSpec rule: `groups` is conditionally required when `execution.mode == "group_emulated"` because ANDREA partitions the dataset by group before running the global wrapper path.
+- ToolSpec rule: `groups` is conditionally required with `delivery="runtime"`
+  when `execution.mode == "group_native"` so Inferelator can create native
+  multitask tasks from metadata.
+- ToolSpec rule: `groups` is conditionally required with
+  `delivery="orchestration_only"` when
+  `execution.mode == "group_emulated"` because ANDREA partitions the dataset
+  before running the global wrapper path.
 - GUI/core/CLI requirement checks consume the ToolSpec `conditional_required` rules; `plan.py` and `run.py` retain defensive checks before materializing group partitions.
 
 Not exposed:
@@ -207,6 +218,10 @@ Uncertainty:
 - The generated public inputs were valid: `expression.tsv`, `tf_list.txt` and `prior_grn.tsv` shared numeric gene identifiers and had non-empty intersections before the upstream call.
 - The failure arose because upstream Inferelator retyped numeric-looking gene labels during prior/TF filtering. The wrapper now aliases all public gene IDs to safe internal identifiers before invoking Inferelator and maps exported edges back to the original public IDs.
 - Genuine invalid inputs remain failures. If, after aliasing, expression, TF list and prior still have no valid regulator/target intersection, the wrapper should fail clearly rather than report a successful empty network.
+- Once Inferelator has produced a structurally valid raw network table, having
+  no non-zero rows is a valid inference result. The wrapper writes a
+  header-only `network.csv`; missing raw files, missing columns and non-finite
+  scores still fail.
 
 ## Verification
 
@@ -224,7 +239,9 @@ Validated successfully:
 - `PYENV_VERSION=3.10.7 python -m pytest tests/core/commands/infer_network/test_preflight.py tests/core/commands/infer_network/test_plan.py tests/core/commands/infer_network/test_run.py -q`
 - `PYENV_VERSION=3.10.7 python -m pytest tests/gui/test_infer_network_server.py -q`
 - Manual preflight/plan check with `execution.mode=group_native`; generated one logical run with one physical task and `execution_mode=group_native`.
-- Manual preflight/plan check with `execution.mode=group_emulated`; generated one logical run with two physical tasks for two groups and `execution_mode=group_emulated`.
+- Manual preflight/plan check with logical `execution.mode=group_emulated`;
+  generated two physical tasks for two groups. Each child now requires
+  `execution.json` with `execution.mode=global`.
 
 Smoketest outcome:
 

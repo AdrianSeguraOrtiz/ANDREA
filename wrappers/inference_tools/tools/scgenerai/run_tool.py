@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import json
 import math
 import os
 import traceback
@@ -15,9 +14,9 @@ from typing import Any
 import pandas as pd
 
 from _run_tool_common import (
+    load_execution_mode as load_physical_execution_mode,
     load_params,
     optional_extra_file,
-    require_extra_file,
     require_param_keys,
     validate_runtime_inputs,
     warn_unknown_params,
@@ -26,7 +25,6 @@ from _run_tool_common import (
 
 
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"column_native", "group_aggregated"}
 
 
 @dataclass(frozen=True)
@@ -113,22 +111,10 @@ def resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def load_execution_mode(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "column_native"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        execution = json.load(fh)
-    if not isinstance(execution, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "column_native")
-    if not isinstance(mode, str):
-        raise ValueError("execution.mode must be a string.")
-    if mode not in SUPPORTED_MODES:
-        raise ValueError(
-            "scGeneRAI supports only execution.mode=column_native or "
-            "execution.mode=group_aggregated."
-        )
-    return mode
+    return load_physical_execution_mode(
+        params_path,
+        supported_modes={"column_native"},
+    )
 
 
 def _read_header(path: Path) -> list[str]:
@@ -240,28 +226,6 @@ def load_column_descriptors(extra_dir: Path, cell_ids: list[str]) -> pd.DataFram
         if (aligned[col] == "").any():
             raise ValueError(f"column_descriptors.tsv column {col!r} contains empty values.")
     return aligned
-
-
-def validate_groups(extra_dir: Path, cell_ids: list[str]) -> None:
-    path = require_extra_file(extra_dir, "groups.tsv", "groups")
-    header = _read_header(path)
-    if len(header) < 2 or "cluster" not in header[1:]:
-        raise ValueError("groups.tsv must contain a first expression-column id column and a cluster column.")
-
-    raw = pd.read_csv(path, sep="\t", header=0, dtype=str, keep_default_na=False)
-    id_col = raw.columns[0]
-    group_cell_ids = raw[id_col].astype(str).tolist()
-    if any(not value for value in group_cell_ids):
-        raise ValueError("groups.tsv contains an empty expression-column identifier.")
-    duplicated = sorted({value for value in group_cell_ids if group_cell_ids.count(value) > 1})
-    if duplicated:
-        raise ValueError("groups.tsv contains duplicated expression-column identifiers: " + ", ".join(duplicated))
-    missing = [cell_id for cell_id in cell_ids if cell_id not in group_cell_ids]
-    if missing:
-        raise ValueError("groups.tsv is missing expression columns: " + ", ".join(missing))
-    clusters = raw.set_index(id_col).loc[cell_ids, "cluster"].astype(str)
-    if (clusters == "").any():
-        raise ValueError("groups.tsv contains empty cluster values.")
 
 
 def write_alias_map(raw_dir: Path, cell_ids: list[str]) -> None:
@@ -433,8 +397,6 @@ def main() -> None:
         )
         expression = read_expression_tsv(args.input)
         descriptors = load_column_descriptors(args.extra, expression.cell_ids)
-        if mode == "group_aggregated":
-            validate_groups(args.extra, expression.cell_ids)
         write_alias_map(raw_dir, expression.cell_ids)
 
         append_log(
@@ -483,9 +445,11 @@ def main() -> None:
             message="Converting raw scGeneRAI results",
         )
         network = convert_raw_results(raw_dir, expression.cell_ids)
-        if network.empty:
-            raise RuntimeError("scGeneRAI produced no positive LRPau edges.")
-        network.to_csv(args.output_dir / "network.csv", index=False)
+        network.to_csv(
+            args.output_dir / "network.csv",
+            index=False,
+            columns=NETWORK_COLUMNS,
+        )
 
         write_progress(
             progress_path,

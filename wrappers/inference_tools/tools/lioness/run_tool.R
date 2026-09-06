@@ -75,6 +75,28 @@ load_params <- function(params_path) {
   params
 }
 
+load_execution_mode <- function(params_path) {
+  execution_path <- file.path(dirname(params_path), "execution.json")
+  if (!file.exists(execution_path)) {
+    stop("execution.json is required.", call. = FALSE)
+  }
+  execution <- fromJSON(execution_path, simplifyVector = TRUE)
+  if (!is.list(execution)) {
+    stop("execution.json must be a JSON object.", call. = FALSE)
+  }
+  mode <- execution$mode
+  if (!is.character(mode) || length(mode) != 1L || is.na(mode) || !nzchar(mode)) {
+    stop("execution.mode must be a non-empty string.", call. = FALSE)
+  }
+  if (!identical(mode, "column_native")) {
+    stop(
+      "LIONESS supports only physical execution.mode=column_native.",
+      call. = FALSE
+    )
+  }
+  mode
+}
+
 resolve_params <- function(raw_params) {
   unexpected <- names(raw_params)
   if (length(unexpected) > 0L) {
@@ -318,6 +340,8 @@ main <- function() {
   tryCatch({
     raw_params <- load_params(params_path)
     resolve_params(raw_params)
+    mode <- load_execution_mode(params_path)
+    append_log(log_path, sprintf("Physical execution mode: %s.", mode))
     append_log(log_path, "Using fixed lionessR::netFun Pearson aggregate network function.")
 
     write_progress(progress_path, "running", 10L, "load_input", "Loading expression matrix")

@@ -37,3 +37,12 @@ Status: threading-contract migration complete.
   `scoring`, `allsteps`, `limit` and `seed`.
 - Resource parameters intentionally not exposed: `usemulticore`, cores, workers,
   backend choice and BLAS thread counts.
+
+## Grouped Execution Boundary
+
+- `global` runs the wrapper on the full expression matrix.
+- `group_emulated` requires `groups` with
+  `delivery="orchestration_only"`. ANDREA partitions the expression matrix and
+  invokes one physical TIGRESS child per group with `execution.mode=global`;
+  the wrapper requires `execution.json`, does not receive `groups.tsv`, and
+  emits `context=global` for ANDREA to relabel.

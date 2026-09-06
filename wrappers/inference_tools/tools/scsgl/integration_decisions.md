@@ -36,7 +36,11 @@
 
 - Declared and implemented:
   - `global`: run `learn_signed_graph` once on the full expression matrix.
-  - `group_emulated`: require `groups.tsv`, partition expression columns by public group id, run the same entrypoint once per group and emit `group:<id>` contexts.
+  - `group_emulated`: ANDREA requires `groups.tsv` as orchestration-only
+    metadata, partitions expression columns, and invokes one physical wrapper
+    run per group with `execution.mode=global`. The wrapper requires
+    `execution.json`, receives no group labels, and emits
+    `context=global`; ANDREA relabels the child output as `group:<id>`.
 - Not exposed:
   - `group_native`: upstream has no public grouped API that consumes group labels and emits native group networks.
   - `column_native`: upstream has no per-cell/per-column GRN mode.
@@ -46,9 +50,12 @@
 
 - Reused normalized inputs:
   - `expression_matrix`
-  - `groups`, only when `execution.mode == group_emulated`
+  - `groups`, only when `execution.mode == group_emulated`, with
+    `delivery=orchestration_only`
 - No new input spec was needed.
-- Public expression gene ids and group ids are preserved exactly in public outputs. No alias map is required because public gene ids are passed to upstream as `gene_names`.
+- Public expression gene ids are preserved exactly by the wrapper. Public group
+  ids are assigned by ANDREA's group-emulated finalizer. No alias map is
+  required because public gene ids are passed to upstream as `gene_names`.
 
 ## Parameters
 
@@ -91,6 +98,8 @@
   - `evidence`: `association`
   - `context`: `global` or `group:<public_group_id>`
 - No ANDREA score normalization is applied in the wrapper.
+- A structurally valid upstream edge table with no exportable rows produces a
+  canonical header-only `network.csv`; malformed tables still fail.
 
 ## Auxiliary Artifacts
 
@@ -113,7 +122,9 @@
 - Final smoketest passed on 2026-06-24:
   - `python wrappers/inference_tools/scripts/run_smoketests.py --tool scsgl --image-tag scsgl=scsgl-smoketest:local --skip-image-build --timeout 300`
   - `global`: validated `network.csv` with 15 rows and 5 auxiliary artifacts.
-  - `group_emulated_contract`: validated `network.csv` with 30 rows and 5 auxiliary artifacts.
+  - The current physical smoke covers `global`. The wrapper requires
+    `execution.json` and rejects logical orchestration modes; group contexts are
+    covered by ANDREA core tests.
 
 ## Known Limitations
 

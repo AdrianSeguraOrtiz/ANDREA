@@ -8,17 +8,5 @@
   },
   "checks": {
     "forbid_self_loops": true
-  },
-  "variants": [
-    {
-      "name": "column_native"
-    },
-    {
-      "name": "group_aggregated",
-      "extra_files": ["column_descriptors.tsv", "groups.tsv"],
-      "execution": {
-        "mode": "group_aggregated"
-      }
-    }
-  ]
+  }
 }

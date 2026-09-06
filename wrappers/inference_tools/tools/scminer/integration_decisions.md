@@ -84,7 +84,9 @@ scMINER is a single-cell mutual-information framework that includes MI-based clu
   - `generateSJARACNeInput()` creates one folder/input set per group but does not itself run and return native group networks.
   - SJARACNe CLI runs one expression matrix plus one driver list into one network.
 - Rationale: one whole-matrix network is valid (`global`). Grouped execution should be ANDREA `group_emulated`, because ANDREA can partition expression by `groups.tsv` and run the same one-network public path per group while preserving public group ids. We intentionally do not claim `group_native` because the upstream group helper writes filesystem folders and scripts, with group-name filename restrictions, rather than returning a single native grouped network object.
-- Uncertainty: low. Upstream can generate multiple group input folders in one call, but wrapper-level `group_emulated` is safer for public ID preservation.
+- Uncertainty: low. Upstream can generate multiple group input folders in one
+  call, but ANDREA-managed group emulation with physical `global` children is
+  safer for public ID preservation.
 
 ### `runtime_resources`
 
@@ -124,7 +126,8 @@ scMINER is a single-cell mutual-information framework that includes MI-based clu
 
 - Required: none.
 - Conditional required:
-  - `groups` when `execution.mode=group_emulated`.
+  - `groups` when `execution.mode=group_emulated`, with
+    `delivery=orchestration_only`.
   - `tf_list` when `driver_source=custom_tf_list`.
 - Optional: none.
 - Evidence:
@@ -133,7 +136,10 @@ scMINER is a single-cell mutual-information framework that includes MI-based clu
   - Built-in scMINER driver lists remove the need for `tf_list` in default modes.
 - Rationale: `tf_list` semantically matches custom TF drivers exactly; no new input spec is needed for Phase 1. Custom SIG lists are intentionally excluded rather than creating a broad new input before a concrete need.
 - Uncertainty: low.
-- Implementation note: for `group_emulated` runs the wrapper accepts a `groups.tsv` that covers either the current expression matrix or the full parent dataset. ANDREA GUI child runs may pass a group-filtered expression matrix with the full `groups.tsv`; the wrapper therefore requires all current expression columns to be present and ignores extra group rows from other child runs.
+- Implementation note: for `group_emulated` runs, ANDREA validates `groups.tsv`
+  and supplies one group-filtered expression matrix per child. The wrapper does
+  not receive group metadata and always emits the physical network with
+  `context=global`; ANDREA assigns the public group context while merging.
 
 ### `outputs`
 
@@ -204,14 +210,16 @@ scMINER is a single-cell mutual-information framework that includes MI-based clu
 ### Input requirement matrix
 
 - Always required: normalized expression matrix from ANDREA.
-- Required by execution mode: `groups` for `group_emulated`.
+- Required by execution mode: `groups` for `group_emulated`, consumed only by
+  ANDREA orchestration.
 - Required by parameter: `tf_list` for `driver_source=custom_tf_list`.
 - Optional: none in Phase 1 contract.
 - Not exposed: custom SIG driver lists, MICA output labels, LSF config, SuperCell objects, scMINER Portal export inputs.
 
 ## Normalized Input Mapping
 
-- Reused `groups`: exact semantic match for ANDREA group emulation.
+- Reused `groups`: exact semantic match for ANDREA group emulation; it is not
+  delivered to the wrapper.
 - Reused `tf_list`: exact semantic match for `customDriver_TF`, one TF identifier per line, subset-checked against expression genes.
 - New input specs required: none for Phase 1.
 
@@ -224,6 +232,8 @@ scMINER is a single-cell mutual-information framework that includes MI-based clu
 - `sign`: `+` when `spearman > 0`, `-` when `spearman < 0`, `?` when `spearman == 0` or unavailable.
 - Duplicate TF/SIG edges in `built_in_tf_sig`: wrapper should retain the row with highest raw `MI` for the same context/source/target and preserve both raw source files as auxiliary artifacts.
 - Public IDs: if upstream-safe aliases are required, wrapper must write `raw/gene_alias_map.tsv` and convert every public output back to ANDREA ids.
+- Valid SJARACNe edge tables with no exportable positive MI rows produce a
+  canonical header-only `network.csv`; absent or malformed edge tables fail.
 
 ## Runtime Resource Mapping
 
@@ -248,20 +258,25 @@ scMINER is a single-cell mutual-information framework that includes MI-based clu
   2. writes an upstream-safe `raw/gene_alias_map.tsv`;
   3. creates SJARACNe `.exp.txt` files with `isoformId=<alias>` and `geneSymbol=<public_gene_id>`;
   4. resolves candidate hubs from scMINER built-in driver lists or normalized `tf_list`;
-  5. runs `sjaracne local --serial` for each requested driver class/context;
+  5. runs `sjaracne local --serial` for each requested driver class;
   6. parses `consensus_network_ncol_.txt`;
   7. exports raw positive `MI` scores and Spearman signs to `network.csv`;
   8. writes `progress.json`, logs, resolved config and raw upstream inputs/outputs.
-- Group emulation uses public `group:<id>` contexts in `network.csv`; filesystem directory names are internal slugs only.
+- Physical wrapper output always uses `context=global`. For group emulation,
+  ANDREA assigns `group:<id>` while merging the independently inferred child
+  networks.
+- The wrapper requires `execution.json` and accepts only physical
+  `execution.mode=global`.
 
 ## Validation And Smoketest
 
 - Implemented smoketest config: `wrappers/inference_tools/tests/smoketest_configs/scminer.json`.
-- Covered variants:
-  - `global_custom_tf`: `driver_source=custom_tf_list`, `tf_list.txt`, `n_bootstraps=1`, `consensus_pvalue=1`, `downSample_N=null`.
-  - `group_emulated_custom_tf`: same params plus `groups.tsv` and `execution.mode=group_emulated`.
-- Verified: positive raw `score` values, signed `sign`, no self-loops, public gene ids in `network.csv`, public `group:<id>` contexts for group emulation, and all declared auxiliary artifacts.
-- GUI regression fixed after testing `inferred_networks/gui_dataset_20260624T010121Z`: `group_emulated` child runs failed because the wrapper required `groups.tsv` to match the already group-filtered expression columns exactly. The wrapper now accepts full parent `groups.tsv` files and subsets them to the current expression columns, while still failing if a current expression column has no group assignment.
+- Covered variant: `global_custom_tf` with
+  `driver_source=custom_tf_list`, `tf_list.txt`, `n_bootstraps=1`,
+  `consensus_pvalue=1`, and `downSample_N=null`.
+- Verified: positive raw `score` values, signed `sign`, no self-loops, public
+  gene ids in `network.csv`, raw `context=global`, and all declared auxiliary
+  artifacts. Group contexts are verified at the ANDREA orchestration boundary.
 - Commands run:
   - `make validate-toolspecs ARGS="--tool scminer"`: passed.
   - `make validate-input-specs ARGS="--spec groups --spec tf_list"`: passed.
@@ -270,8 +285,7 @@ scMINER is a single-cell mutual-information framework that includes MI-based clu
   - `python wrappers/inference_tools/scripts/build_tool_images.py --tool scminer --image-tag scminer=scminer-smoketest:local`: passed.
   - `python wrappers/inference_tools/scripts/run_smoketests.py --tool scminer --image-tag scminer=scminer-smoketest:local --timeout 1200`: passed.
   - `Rscript -e "parse(file='wrappers/inference_tools/tools/scminer/run_tool.R')"`: passed.
-  - Manual replay of both failed GUI child-run inputs from `inferred_networks/gui_dataset_20260624T010121Z/tools/scminer__02/subruns/{01_a,02_b}/io` against `scminer-smoketest:local`: passed, producing `group:A` and `group:B` outputs.
-  - `python wrappers/inference_tools/scripts/run_smoketests.py --tool scminer --skip-image-build --image-tag scminer=scminer-smoketest:local --timeout 1200`: passed after the GUI regression fix.
+  - `python wrappers/inference_tools/scripts/run_smoketests.py --tool scminer --skip-image-build --image-tag scminer=scminer-smoketest:local --timeout 1200`: passed.
 
 ## Known Limitations / Open Questions
 

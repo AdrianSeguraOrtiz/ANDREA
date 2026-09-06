@@ -1,4 +1,7 @@
 {
+  "execution": {
+    "mode": "global"
+  },
   "extra_files": [
     "prior_grn.tsv"
   ],
@@ -36,16 +39,6 @@
       "checks": {
         "forbid_self_loops": true,
         "require_group_context": true
-      }
-    },
-    {
-      "name": "group_emulated_contract",
-      "extra_files": [
-        "prior_grn.tsv",
-        "groups.tsv"
-      ],
-      "execution": {
-        "mode": "group_emulated"
       }
     },
     {

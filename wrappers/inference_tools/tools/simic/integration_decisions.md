@@ -437,7 +437,10 @@ Upstream Dockerfile decision:
 - The `simic__01` failure observed in `inferred_networks/gui_dataset_20260519T003127Z` is classified as an unsupported dataset shape exposed through an upstream method limitation.
 - The input files were syntactically valid, but the dataset contained several small phenotype groups. Upstream SimiC's fixed random 20% train/test split is not stratified, and the adjusted-R2 diagnostic asserts that each evaluated phenotype has more than one sample.
 - The wrapper now preserves the upstream 20% split rule while making the split phenotype-aware. It fails early with a clear input-shape error when a phenotype cannot provide at least two train and two test cells.
-- SimiC upstream failures are not broadly converted into successful empty networks. Empty output is not the intended behavior for this failure class.
+- Dataset-shape and malformed-artifact failures are not converted into empty
+  networks. A structurally valid SimiC weight artifact whose finite
+  coefficients are all zero or self-loops is instead a valid zero-edge result
+  and produces a header-only `network.csv`.
 
 ## Validation
 

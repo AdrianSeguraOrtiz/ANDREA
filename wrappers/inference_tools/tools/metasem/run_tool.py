@@ -29,8 +29,8 @@ for _thread_env in (
 
 import numpy as np
 import pandas as pd
-
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
     require_extra_file,
     require_param_keys,
@@ -39,13 +39,12 @@ from _run_tool_common import (
     write_progress,
 )
 
-
 METASEM_HOME = Path(os.environ.get("METASEM_HOME", "/opt/MetaSEM"))
 METASEM_REF = os.environ.get(
     "METASEM_REF", "482987b360ca57172f0276fd64e27b2681223b00"
 )
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"global", "group_emulated"}
+SUPPORTED_MODES = {"global"}
 
 
 @dataclass(frozen=True)
@@ -126,19 +125,7 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def _load_execution_mode(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "global"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        execution = json.load(fh)
-    if not isinstance(execution, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "global")
-    if not isinstance(mode, str):
-        raise ValueError("execution.mode must be a string.")
-    if mode not in SUPPORTED_MODES:
-        raise ValueError("MetaSEM supports only execution.mode=global or group_emulated.")
-    return mode
+    return load_execution_mode(params_path, supported_modes=SUPPORTED_MODES)
 
 
 def _find_duplicates(values: list[str]) -> list[str]:
@@ -384,12 +371,11 @@ def _convert_network(raw_edges_path: Path, network_path: Path) -> int:
     if missing:
         raise ValueError(f"MetaSEM raw edge output is missing columns: {missing}")
     raw["EdgeWeight"] = pd.to_numeric(raw["EdgeWeight"], errors="coerce")
-    raw = raw[np.isfinite(raw["EdgeWeight"].to_numpy(dtype=float))]
+    if not np.isfinite(raw["EdgeWeight"].to_numpy(dtype=float)).all():
+        raise ValueError("MetaSEM raw edge output contains a non-finite or non-numeric weight.")
     raw = raw[raw["TF"].astype(str) != raw["Target"].astype(str)]
     raw["score"] = raw["EdgeWeight"].abs()
     raw = raw[raw["score"] > 0]
-    if raw.empty:
-        raise RuntimeError("MetaSEM produced no positive-magnitude edges.")
     out = pd.DataFrame(
         {
             "source": raw["TF"].astype(str),

@@ -17,6 +17,7 @@ from typing import Any
 import pandas as pd
 
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
     require_extra_file,
     require_param_keys,
@@ -27,7 +28,7 @@ from _run_tool_common import (
 
 
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"global", "group_emulated"}
+SUPPORTED_MODES = {"global"}
 
 
 @dataclass(frozen=True)
@@ -41,11 +42,6 @@ class ExpressionInput:
     values: pd.DataFrame
     gene_ids: list[str]
     column_ids: list[str]
-
-
-@dataclass(frozen=True)
-class GroupInfo:
-    groups: dict[str, str]
 
 
 def _configure_thread_environment() -> None:
@@ -84,19 +80,7 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def _load_execution_mode(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "global"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        execution = json.load(fh)
-    if not isinstance(execution, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "global")
-    if not isinstance(mode, str):
-        raise ValueError("execution.mode must be a string.")
-    if mode not in SUPPORTED_MODES:
-        raise ValueError("pySCENIC supports only execution.mode=global or group_emulated.")
-    return mode
+    return load_execution_mode(params_path, supported_modes=SUPPORTED_MODES)
 
 
 def _find_duplicates(values: list[str]) -> list[str]:
@@ -169,43 +153,6 @@ def _read_tf_list(extra_dir: Path, expression: ExpressionInput) -> list[str]:
     return tf_names
 
 
-def _load_groups(extra_dir: Path, expression: ExpressionInput) -> GroupInfo:
-    path = require_extra_file(extra_dir, "groups.tsv", "groups")
-    raw = pd.read_csv(path, sep="\t", header=0, dtype=str, keep_default_na=False)
-    if raw.shape[1] < 2:
-        raise ValueError("groups.tsv must contain an expression-column id column and a cluster column.")
-    if "cluster" not in raw.columns:
-        raise ValueError("groups.tsv is missing required column: cluster.")
-
-    column_col = raw.columns[0]
-    column_ids = raw[column_col].astype(str).tolist()
-    clusters = raw["cluster"].astype(str).tolist()
-    if any(not value for value in column_ids):
-        raise ValueError("groups.tsv contains an empty expression-column identifier.")
-    if any(not value for value in clusters):
-        raise ValueError("groups.tsv contains an empty cluster value.")
-    duplicated = _find_duplicates(column_ids)
-    if duplicated:
-        raise ValueError(
-            "groups.tsv contains duplicated expression-column identifiers: "
-            + ", ".join(duplicated)
-        )
-
-    groups_by_column = dict(zip(column_ids, clusters, strict=True))
-    missing = sorted(set(expression.column_ids).difference(groups_by_column))
-    if missing:
-        raise ValueError(
-            "groups.tsv is missing expression columns: " + ", ".join(missing[:8])
-        )
-
-    return GroupInfo(
-        groups={
-            column_id: groups_by_column[column_id]
-            for column_id in expression.column_ids
-        }
-    )
-
-
 def _write_gene_alias_map(path: Path, expression: ExpressionInput) -> None:
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
@@ -238,7 +185,6 @@ def _write_config(
     params: ResolvedParams,
     expression: ExpressionInput,
     execution_mode: str,
-    group_info: GroupInfo | None,
     threads: int,
     command: list[str],
 ) -> None:
@@ -261,9 +207,6 @@ def _write_config(
                 else "passed to pyscenic grn --seed"
             ),
         },
-        "group_count": (
-            len(set(group_info.groups.values())) if group_info is not None else None
-        ),
         "command": command,
     }
     with path.open("w", encoding="utf-8") as fh:
@@ -341,8 +284,6 @@ def _convert_adjacencies(raw_path: Path, network_path: Path) -> int:
     keep = score.notna() & score.map(math.isfinite) & (score > 0)
     keep &= raw["TF"].astype(str) != raw["target"].astype(str)
     filtered = raw.loc[keep].copy()
-    if filtered.empty:
-        raise RuntimeError("pySCENIC produced no positive non-self edges.")
 
     filtered["score"] = pd.to_numeric(filtered["importance"], errors="raise")
     out = pd.DataFrame(
@@ -413,12 +354,6 @@ def main() -> None:
         )
         expression = _read_expression_tsv(args.input)
         tf_names = _read_tf_list(args.extra, expression)
-        group_info = (
-            _load_groups(args.extra, expression)
-            if execution_mode == "group_emulated"
-            else None
-        )
-
         write_progress(
             progress_path,
             status="running",
@@ -441,7 +376,6 @@ def main() -> None:
             params=params,
             expression=expression,
             execution_mode=execution_mode,
-            group_info=group_info,
             threads=args.threads,
             command=command,
         )
@@ -452,8 +386,6 @@ def main() -> None:
             log_fh.write(f"execution_mode={execution_mode}\n")
             log_fh.write(f"genes={len(expression.gene_ids)} columns={len(expression.column_ids)}\n")
             log_fh.write(f"tf_count={len(tf_names)} threads={args.threads}\n")
-            if group_info is not None:
-                log_fh.write(f"group_count={len(set(group_info.groups.values()))}\n")
             log_fh.write("\n")
 
         write_progress(

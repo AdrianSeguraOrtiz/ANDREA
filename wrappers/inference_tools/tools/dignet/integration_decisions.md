@@ -51,7 +51,10 @@ Excluded public modes:
 - `column_native`: not exposed; the public CSV interface does not return one network per cell.
 - `group_aggregated`: not exposed; DigNet does not produce column-native output for ANDREA to aggregate.
 
-For wrapper-level `execution.mode=group_emulated`, the wrapper still runs one DigNet invocation over the expression matrix it receives. It does not validate or consume `groups.tsv`; the ANDREA orchestrator validates groups, partitions the dataset, invokes one child run per group, and rewrites contexts to `group:<group_id>`.
+The wrapper requires `execution.json` and accepts only physical
+`execution.mode=global`. For logical `group_emulated`, ANDREA validates groups,
+partitions the dataset, invokes every child as `global`, and rewrites its
+context to `group:<group_id>`.
 
 ## Input Contract
 
@@ -156,9 +159,8 @@ Run on 2026-06-17:
 Smoketest variants:
 
 - `global`: passed; produced a non-empty positive network and validated 4 auxiliary artifacts.
-- `group_emulated_contract`: passed; supplied `groups.tsv` for the ANDREA execution contract, produced a non-empty positive network and validated 4 auxiliary artifacts.
 
-DigNet diffusion generation is stochastic, so exact edge counts can vary between smoketest runs. The contract requires non-empty `network.csv`, positive scores, valid signs, no self-loops, and declared auxiliary artifacts.
+DigNet diffusion generation is stochastic, so exact edge counts can vary between smoketest runs. Exported rows require positive scores, valid signs and no self-loops; a valid numeric adjacency with no retained rows produces a header-only `network.csv`. Non-numeric or non-finite adjacency values remain failures.
 
 ## Known Limitations
 

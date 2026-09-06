@@ -18,14 +18,10 @@
       "name": "column_native"
     },
     {
-      "name": "group_aggregated_spatial",
+      "name": "column_native_spatial",
       "extra_files": [
-        "groups.tsv",
         "spatial_coordinates.tsv"
       ],
-      "execution": {
-        "mode": "group_aggregated"
-      },
       "param_overrides": {
         "kernel_source": "spatial"
       }

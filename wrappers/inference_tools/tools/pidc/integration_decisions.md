@@ -191,7 +191,7 @@ Normalized input reuse:
 - Evidence:
   - Upstream PIDC requires only the expression file.
   - Playbook requires `groups` to be declared for group-emulated orchestration when grouped execution is exposed.
-- Rationale: `groups.tsv` is not consumed by PIDC itself; ANDREA uses it to split the matrix into independent PIDC child runs.
+- Rationale: `groups.tsv` has `delivery=orchestration_only`: ANDREA validates it and uses it to split the matrix into independent PIDC child runs, while the PIDC container receives only the resulting expression subset.
 - Uncertainty: none.
 
 ### Parameters and defaults
@@ -313,7 +313,9 @@ Implemented runtime detail:
 - Wrapper rejects `--threads > 8` to match ToolSpec `runtime_resources.threading.max_threads`.
 - Wrapper maps `--threads=N` to `N` total Julia processes by adding `N-1` workers before PIDC inference.
 - Wrapper exports raw positive PIDC weights only, one row per unordered pair, no self-loops, `sign="?"`, `evidence="association"`, `context="global"`.
-- For `group_emulated`, wrapper verifies `groups.tsv` is mounted, but ANDREA core owns partitioning/context rewriting.
+- The wrapper requires `execution.json` and accepts only physical
+  `execution.mode=global`. For logical `group_emulated`, ANDREA core owns group
+  validation, partitioning, translation to `global`, and context rewriting.
 
 ## Smoketest Outcome
 
@@ -323,10 +325,9 @@ Final command:
 make run-tool-smoketests ARGS="--tool pidc --threads 2 --timeout 2400 --show-output-lines 80"
 ```
 
-Outcome: passed. The command rebuilt `pidc-smoketest:local` and validated three variants:
+Outcome: passed. The command rebuilt `pidc-smoketest:local` and validated two variants:
 - `global_uniform_width`: passed; wrote 10 positive unordered non-self rows and 4 auxiliary artifacts.
 - `global_uniform_count`: passed; wrote 10 positive unordered non-self rows and 4 auxiliary artifacts.
-- `group_emulated_contract`: passed; supplied `groups.tsv`, ran with `execution.mode=group_emulated`, wrote 10 positive unordered non-self rows and 4 auxiliary artifacts.
 
 Smoketest note:
 - The tiny smoke fixture uses `uniform_width`/`uniform_count` overrides. Direct trials with `bayesian_blocks` on small synthetic fixtures produced all-zero PIDC weights, which is valid to filter but unsuitable for a non-empty wrapper smoketest. The wrapper and ToolSpec still preserve upstream `bayesian_blocks` as the default.
@@ -346,4 +347,7 @@ Additional Phase 2 static validation passed and remains applicable:
 - PIDC is computationally expensive: paper/source describe O(n^3) behavior in the number of genes and a fully connected output. Small fixtures are necessary for smoketests.
 - The method was designed and evaluated for single-cell expression and benefits from many cells/measurements, but the package API is generic. ToolSpec therefore uses `assumes="generic"` with `cells` among accepted column kinds.
 - There is no schema-level minimum for number of columns per group; weak group-emulated runs with too few measurements may fail or produce poor estimates at runtime.
-- `bayesian_blocks` remains the upstream default but can produce all-zero edges on very small/simple fixtures; the wrapper filters zero scores and raises an error if no positive edge remains.
+- `bayesian_blocks` remains the upstream default and can produce all-zero edges
+  on very small/simple fixtures. The wrapper filters those zero scores and
+  emits a valid header-only `network.csv`; unknown aliases and non-finite
+  weights remain failures.

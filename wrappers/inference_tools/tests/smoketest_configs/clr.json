@@ -1,4 +1,5 @@
 {
+  "execution": {"mode": "global"},
   "extra_files": [],
   "require_progress": true,
   "checks": {

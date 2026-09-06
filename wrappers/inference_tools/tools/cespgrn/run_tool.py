@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
-import json
 import math
 import os
 import traceback
@@ -15,7 +14,9 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-
+from _run_tool_common import (
+    load_execution_mode as load_physical_execution_mode,
+)
 from _run_tool_common import (
     load_params,
     require_extra_file,
@@ -25,9 +26,7 @@ from _run_tool_common import (
     write_progress,
 )
 
-
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"column_native", "group_aggregated"}
 
 
 @dataclass(frozen=True)
@@ -144,22 +143,10 @@ def resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def load_execution_mode(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "column_native"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        execution = json.load(fh)
-    if not isinstance(execution, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "column_native")
-    if not isinstance(mode, str):
-        raise ValueError("execution.mode must be a string.")
-    if mode not in SUPPORTED_MODES:
-        raise ValueError(
-            "CeSpGRN supports only execution.mode=column_native or "
-            "execution.mode=group_aggregated."
-        )
-    return mode
+    return load_physical_execution_mode(
+        params_path,
+        supported_modes={"column_native"},
+    )
 
 
 def _read_header(path: Path) -> list[str]:
@@ -233,34 +220,6 @@ def preprocess_expression(counts: np.ndarray, mode: str) -> np.ndarray:
         raise ValueError("Median library size is not positive and finite.")
     normalized = counts / library_sizes[:, None] * median_library_size
     return np.log1p(normalized)
-
-
-def validate_groups(extra_dir: Path, cell_ids: list[str]) -> None:
-    path = require_extra_file(extra_dir, "groups.tsv", "groups")
-    header = _read_header(path)
-    if len(header) < 2 or "cluster" not in header[1:]:
-        raise ValueError("groups.tsv must contain a first expression-column id column and a cluster column.")
-
-    raw = pd.read_csv(path, sep="\t", header=0, dtype=str, keep_default_na=False)
-    id_col = raw.columns[0]
-    group_cell_ids = raw[id_col].astype(str).tolist()
-    if any(not value for value in group_cell_ids):
-        raise ValueError("groups.tsv contains an empty expression-column identifier.")
-    duplicated = _duplicates(group_cell_ids)
-    if duplicated:
-        raise ValueError("groups.tsv contains duplicated expression-column identifiers: " + ", ".join(duplicated))
-    missing = [cell_id for cell_id in cell_ids if cell_id not in group_cell_ids]
-    extra = [cell_id for cell_id in group_cell_ids if cell_id not in cell_ids]
-    if missing or extra:
-        details = []
-        if missing:
-            details.append("missing expression columns: " + ", ".join(missing))
-        if extra:
-            details.append("unknown expression columns: " + ", ".join(extra))
-        raise ValueError("groups.tsv must match expression columns exactly (" + "; ".join(details) + ").")
-    clusters = raw.set_index(id_col).loc[cell_ids, "cluster"].astype(str)
-    if (clusters == "").any():
-        raise ValueError("groups.tsv contains empty cluster values.")
 
 
 def load_tf_indices(extra_dir: Path, gene_ids: list[str]) -> list[int]:
@@ -502,6 +461,10 @@ def write_network_csv(
                 source = gene_ids[source_idx]
                 for target_idx in range(source_idx + 1, len(gene_ids)):
                     value = float(matrix[source_idx, target_idx])
+                    if not math.isfinite(value):
+                        raise ValueError(
+                            "CeSpGRN partial correlations contain a non-finite value."
+                        )
                     score = abs(value)
                     if score <= 0.0:
                         continue
@@ -563,8 +526,6 @@ def main() -> None:
         )
         expression = read_expression_tsv(args.input)
         validate_upstream_shape(expression, params)
-        if mode == "group_aggregated":
-            validate_groups(args.extra, expression.cell_ids)
         tf_indices = (
             load_tf_indices(args.extra, expression.gene_ids)
             if params.prior_mode == "tf_list"
@@ -637,8 +598,6 @@ def main() -> None:
             gene_ids=expression.gene_ids,
             cell_ids=expression.cell_ids,
         )
-        if row_count <= 0:
-            raise RuntimeError("CeSpGRN produced no non-zero partial-correlation edges.")
 
         write_progress(
             progress_path,
@@ -649,7 +608,7 @@ def main() -> None:
             completed=row_count,
             total=row_count,
         )
-        append_log(log_path, f"Wrote {row_count} positive network rows.")
+        append_log(log_path, f"Wrote {row_count} non-zero network rows.")
     except Exception as exc:
         append_log(log_path, "ERROR: " + str(exc))
         append_log(log_path, traceback.format_exc())

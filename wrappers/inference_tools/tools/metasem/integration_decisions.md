@@ -63,7 +63,9 @@ Selected upstream public entrypoint: the documented `GRN_inference/default` path
 
 ## Optional and Conditional Inputs
 
-- `groups`: conditionally required only when `execution.mode == "group_emulated"`. MetaSEM itself does not read group metadata; ANDREA needs it to create per-group physical runs.
+- `groups`: conditionally required with `delivery="orchestration_only"` only
+  when `execution.mode == "group_emulated"`. MetaSEM itself does not read group
+  metadata; ANDREA needs it to create per-group physical runs.
 - `prior_grn`: conditionally required only when `pseudo_grn_mode == "provided_prior"`. In that mode the wrapper converts normalized `source,target,score` rows to MetaSEM `Gene1,Gene2` rows and sets `opt.is_label=True`.
 - `tf_list`: not used as a separate extra input. Candidate TFs are inferred from `prior_grn.source` / upstream `Gene1`.
 - No new normalized input spec is required. Existing `prior_grn` matches the optional provided-prior source-target-score semantics closely enough; the wrapper will convert it to upstream `Gene1,Gene2` CSV and ignore `score` except for validating nonzero prior edges.
@@ -196,7 +198,6 @@ Outcome: passed.
 
 - `global_unlabeled_pseudo`: passed; wrote 56 positive directed non-self rows and 3 auxiliary artifacts.
 - `global_provided_prior`: passed; wrote 21 positive directed non-self rows and 3 auxiliary artifacts.
-- `group_emulated_contract`: passed; supplied `groups.tsv` for ANDREA orchestration contract and wrote 56 positive directed non-self rows and 3 auxiliary artifacts. The physical wrapper output context remains `global`; ANDREA finalization owns `group:<id>` rewriting for actual group-emulated runs.
 
 Phase 3 validation:
 
@@ -206,9 +207,17 @@ Phase 3 validation:
 - `make validate-smoketest-configs ARGS="--tool metasem"`
 - `make run-tool-smoketests ARGS="--tool metasem --threads 2 --timeout 1800 --show-output-lines 80"`
 
+## Empty-network Semantics
+
+- A structurally valid MetaSEM edge table with no finite, non-zero non-self
+  edges is a valid zero-edge result and produces a header-only `network.csv`.
+- Missing columns and non-numeric or non-finite weights remain failures.
+
 ## Known Limitations / Open Questions
 
 - The selected public script ignores user-provided input paths in `GRN_inference/default`; wrapper invokes the implementation class directly.
 - The wrapper intentionally patches the pinned upstream source at build time. These patches are constrained to runtime portability and making documented/default parameters effective.
 - The `is_label` CLI flag is not safely typed upstream. The wrapper does not pass it through the CLI; it builds the option object directly from `pseudo_grn_mode`.
-- `group_emulated` is an ANDREA orchestration mode, not a MetaSEM-native mode. The physical wrapper run emits `context=global`.
+- `group_emulated` is an ANDREA orchestration mode, not a MetaSEM-native or
+  physical mode. ANDREA invokes every child with `execution.mode=global`; the
+  wrapper requires `execution.json` and emits `context=global`.

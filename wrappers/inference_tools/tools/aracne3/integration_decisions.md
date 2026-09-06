@@ -24,3 +24,11 @@
   is the current ANDREA planning cap because it is the largest value covered by
   the checked-in cost profile.
 
+## Grouped Execution Boundary
+
+- `global` runs the wrapper on the full expression matrix.
+- `group_emulated` requires `groups` with
+  `delivery="orchestration_only"`. ANDREA partitions the expression matrix and
+  invokes one physical ARACNe3 child per group with `execution.mode=global`;
+  the wrapper requires `execution.json`, does not receive `groups.tsv`, and
+  emits `context=global` for ANDREA to relabel.

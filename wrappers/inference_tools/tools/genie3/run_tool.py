@@ -18,6 +18,7 @@ from _arboreto_common import (
     validate_inferred_columns,
 )
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
     require_param_keys,
     validate_runtime_inputs,
@@ -86,6 +87,7 @@ def main() -> None:
     )
 
     try:
+        load_execution_mode(args.params, supported_modes={"global"})
         raw_params = load_params(args.params)
         regressor_type, regressor_kwargs, limit, seed = _resolve_params(raw_params)
 

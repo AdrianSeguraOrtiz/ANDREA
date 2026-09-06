@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-RUN R -q -e "install.packages(c('jsonlite','remotes','RTransferEntropy'), repos='https://cloud.r-project.org')" \
+RUN R -q -e "install.packages(c('jsonlite','remotes'), repos='https://cloud.r-project.org')" \
   && R -q -e "remotes::install_version('inferCSN', version='${INFERCSN_VERSION}', repos='https://cloud.r-project.org', dependencies=c('Depends','Imports','LinkingTo'), upgrade='never')" \
   && R -q -e "stopifnot(as.character(utils::packageVersion('inferCSN')) == '${INFERCSN_VERSION}')"
 

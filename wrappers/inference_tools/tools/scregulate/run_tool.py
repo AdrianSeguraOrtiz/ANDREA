@@ -36,6 +36,7 @@ from scregulate import train_model
 from scregulate.fine_tuning import fine_tune_clusters
 
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
     require_extra_file,
     require_param_keys,
@@ -46,7 +47,7 @@ from _run_tool_common import (
 
 
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"global", "group_native", "group_emulated"}
+SUPPORTED_MODES = {"global", "group_native"}
 SCREGULATE_PRIORS_DIR = Path(os.environ.get("SCREGULATE_PRIORS_DIR", "/opt/scregulate_priors"))
 
 
@@ -216,21 +217,7 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def _load_execution_mode(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "global"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        execution = json.load(fh)
-    if not isinstance(execution, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "global")
-    if not isinstance(mode, str):
-        raise ValueError("execution.mode must be a string.")
-    if mode not in SUPPORTED_MODES:
-        raise ValueError(
-            "scRegulate supports only execution.mode=global, group_native or group_emulated."
-        )
-    return mode
+    return load_execution_mode(params_path, supported_modes=SUPPORTED_MODES)
 
 
 def _find_duplicates(values: list[str]) -> list[str]:
@@ -595,20 +582,19 @@ def _run_scregulate(
     tf_names = list(processed_adata.uns["GRN_posterior"]["TF_names"])
 
     if execution_mode == "global":
-        context_by_key = {next(iter(raw_matrices.keys())): "global"}
-    elif execution_mode == "group_native":
-        context_by_key = {cluster: f"group:{cluster}" for cluster in raw_matrices}
+        if len(raw_matrices) != 1:
+            raise RuntimeError(
+                "scRegulate returned multiple cluster matrices without a native group input."
+            )
+        context_by_key = {next(iter(raw_matrices)): "global"}
     else:
-        context = "global"
-        if group_info is not None and len(group_info.unique_groups) == 1:
-            context = f"group:{group_info.unique_groups[0]}"
-        context_by_key = {next(iter(raw_matrices.keys())): context}
+        context_by_key = {cluster: f"group:{cluster}" for cluster in raw_matrices}
 
     by_context: dict[str, np.ndarray] = {}
     for cluster, matrix in raw_matrices.items():
         context = context_by_key.get(cluster)
         if context is None:
-            context = f"group:{cluster}"
+            raise RuntimeError(f"scRegulate returned an unexpected cluster key: {cluster!r}.")
         by_context[str(context)] = np.asarray(matrix, dtype=float)
 
     model_state = {
@@ -655,9 +641,10 @@ def _matrix_to_frame(
                     }
                 )
 
-    if not rows:
-        raise RuntimeError("scRegulate produced no nonzero non-self raw GRN weights.")
-    out = pd.DataFrame(rows)
+    out = pd.DataFrame(
+        rows,
+        columns=["context", "source", "target", "weight", "score", "sign"],
+    )
     out = out.sort_values(
         ["context", "score", "source", "target"],
         ascending=[True, False, True, True],
@@ -731,7 +718,7 @@ def main() -> None:
         expression = _read_expression_tsv(args.input)
         group_info = (
             _load_groups(args.extra, expression)
-            if execution_mode in {"group_native", "group_emulated"}
+            if execution_mode == "group_native"
             else None
         )
         raw_prior = _load_prior(params, args.extra, expression)

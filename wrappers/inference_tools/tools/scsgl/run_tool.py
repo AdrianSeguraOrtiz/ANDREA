@@ -30,8 +30,8 @@ import numpy as np
 import pandas as pd
 
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
-    require_extra_file,
     require_param_keys,
     validate_runtime_inputs,
     warn_unknown_params,
@@ -41,9 +41,10 @@ from _run_tool_common import (
 
 SCSGL_REF = os.environ.get("SCSGL_REF", "7fb2a011f6e1061daf4c976225027e76f4e0e4ea")
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"global", "group_emulated"}
+SUPPORTED_MODES = {"global"}
 SUPPORTED_KERNELS = {"dotprod", "correlation", "proprho", "zikendall"}
 MAX_UPPER_BOUND_STEPS = int(os.environ.get("SCSGL_MAX_UPPER_BOUND_STEPS", "12"))
+PHYSICAL_CONTEXT = "global"
 
 
 @dataclass(frozen=True)
@@ -58,17 +59,6 @@ class ExpressionInput:
     values: pd.DataFrame
     gene_ids: list[str]
     column_ids: list[str]
-
-
-@dataclass(frozen=True)
-class GroupInfo:
-    groups: dict[str, str]
-
-
-@dataclass(frozen=True)
-class ContextRun:
-    context: str
-    values: pd.DataFrame
 
 
 @dataclass(frozen=True)
@@ -110,19 +100,7 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def _load_execution_mode(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "global"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        execution = json.load(fh)
-    if not isinstance(execution, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "global")
-    if not isinstance(mode, str):
-        raise ValueError("execution.mode must be a string.")
-    if mode not in SUPPORTED_MODES:
-        raise ValueError("scSGL supports only execution.mode=global or group_emulated.")
-    return mode
+    return load_execution_mode(params_path, supported_modes=SUPPORTED_MODES)
 
 
 def _find_duplicates(values: list[str]) -> list[str]:
@@ -175,66 +153,6 @@ def _read_expression_tsv(path: Path) -> ExpressionInput:
     if expression.shape[1] < 2:
         raise ValueError("scSGL requires at least two expression columns.")
     return ExpressionInput(values=expression, gene_ids=gene_ids, column_ids=column_ids)
-
-
-def _load_groups(extra_dir: Path, expression: ExpressionInput) -> GroupInfo:
-    path = require_extra_file(extra_dir, "groups.tsv", "groups")
-    raw = pd.read_csv(path, sep="\t", header=0, dtype=str, keep_default_na=False)
-    if raw.shape[1] < 2:
-        raise ValueError("groups.tsv must contain an expression-column id column and a cluster column.")
-    if "cluster" not in raw.columns:
-        raise ValueError("groups.tsv is missing required column: cluster.")
-
-    column_col = raw.columns[0]
-    column_ids = raw[column_col].astype(str).tolist()
-    clusters = raw["cluster"].astype(str).tolist()
-    if any(not value for value in column_ids):
-        raise ValueError("groups.tsv contains an empty expression-column identifier.")
-    if any(not value for value in clusters):
-        raise ValueError("groups.tsv contains an empty cluster value.")
-    duplicated = _find_duplicates(column_ids)
-    if duplicated:
-        raise ValueError(
-            "groups.tsv contains duplicated expression-column identifiers: "
-            + ", ".join(duplicated)
-        )
-
-    groups_by_column = dict(zip(column_ids, clusters))
-    missing = sorted(set(expression.column_ids).difference(groups_by_column))
-    if missing:
-        raise ValueError(
-            "groups.tsv is missing expression columns: " + ", ".join(missing[:8])
-        )
-    return GroupInfo(
-        groups={column_id: groups_by_column[column_id] for column_id in expression.column_ids}
-    )
-
-
-def _context_runs(expression: ExpressionInput, group_info: GroupInfo | None) -> list[ContextRun]:
-    if group_info is None:
-        return [ContextRun(context="global", values=expression.values)]
-
-    runs: list[ContextRun] = []
-    groups = sorted(set(group_info.groups.values()))
-    for group_id in groups:
-        columns = [
-            column_id
-            for column_id in expression.column_ids
-            if group_info.groups[column_id] == group_id
-        ]
-        if len(columns) < 2:
-            raise ValueError(
-                f"group {group_id!r} has fewer than two expression columns; scSGL cannot run."
-            )
-        runs.append(
-            ContextRun(
-                context=f"group:{group_id}",
-                values=expression.values.loc[:, columns],
-            )
-        )
-    if not runs:
-        raise ValueError("groups.tsv did not define any non-empty groups.")
-    return runs
 
 
 def _configure_threads(threads: int) -> None:
@@ -347,12 +265,12 @@ def _actual_density_by_sign(raw_edges: pd.DataFrame, retained_gene_count: int) -
     }
 
 
-def _retention_rows(run: ContextRun) -> tuple[pd.DataFrame, int]:
-    retained = np.count_nonzero(run.values.to_numpy(dtype=float), axis=1) != 0
+def _retention_rows(values: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    retained = np.count_nonzero(values.to_numpy(dtype=float), axis=1) != 0
     rows = pd.DataFrame(
         {
-            "context": run.context,
-            "gene": run.values.index.astype(str),
+            "context": PHYSICAL_CONTEXT,
+            "gene": values.index.astype(str),
             "status": np.where(retained, "retained", "dropped_all_zero"),
         }
     )
@@ -360,17 +278,17 @@ def _retention_rows(run: ContextRun) -> tuple[pd.DataFrame, int]:
     return rows, retained_count
 
 
-def _validate_context_matrix(run: ContextRun, params: ResolvedParams) -> None:
-    if run.values.shape[1] < 2:
-        raise ValueError(f"{run.context} has fewer than two expression columns.")
+def _validate_expression_matrix(values: pd.DataFrame, params: ResolvedParams) -> None:
+    if values.shape[1] < 2:
+        raise ValueError("scSGL requires at least two expression columns.")
 
-    retention, retained_count = _retention_rows(run)
+    retention, retained_count = _retention_rows(values)
     if retained_count < 2:
         raise ValueError(
-            f"{run.context} has fewer than two nonzero genes after scSGL's all-zero filter."
+            "scSGL requires at least two nonzero genes after its all-zero filter."
         )
 
-    retained_values = run.values.loc[
+    retained_values = values.loc[
         retention.loc[retention["status"] == "retained", "gene"].tolist(), :
     ].to_numpy(dtype=float)
     if params.association_kernel in {"proprho", "zikendall"} and np.any(retained_values < 0):
@@ -378,33 +296,31 @@ def _validate_context_matrix(run: ContextRun, params: ResolvedParams) -> None:
             f"{params.association_kernel} requires non-negative expression values."
         )
     if not np.any(np.std(retained_values, axis=1) > 0):
-        raise ValueError(
-            f"{run.context} has no retained gene with expression variation across columns."
-        )
+        raise ValueError("scSGL has no retained gene with expression variation across columns.")
 
 
-def _run_scsgl_context(run: ContextRun, params: ResolvedParams) -> ContextResult:
+def _run_scsgl(values: pd.DataFrame, params: ResolvedParams) -> ContextResult:
     from pysrc import graphlearning
 
-    _validate_context_matrix(run, params)
+    _validate_expression_matrix(values, params)
     density_rows: list[dict[str, Any]] = []
     _install_bounded_density_search(
         graphlearning,
-        context=run.context,
+        context=PHYSICAL_CONTEXT,
         density_rows=density_rows,
     )
     try:
         result = graphlearning.learn_signed_graph(
-            run.values.to_numpy(dtype=float),
+            values.to_numpy(dtype=float),
             pos_density=params.pos_density,
             neg_density=params.neg_density,
             assoc=params.association_kernel,
-            gene_names=np.array(run.values.index.astype(str)),
+            gene_names=np.array(values.index.astype(str)),
             return_run_time=False,
             verbose=False,
         )
     except Exception as exc:
-        raise RuntimeError(f"{run.context}: {exc}") from exc
+        raise RuntimeError(f"scSGL inference failed: {exc}") from exc
     if not isinstance(result, pd.DataFrame):
         raise RuntimeError("scSGL returned an unexpected non-DataFrame result.")
     required = {"Gene1", "Gene2", "EdgeWeight"}
@@ -412,8 +328,8 @@ def _run_scsgl_context(run: ContextRun, params: ResolvedParams) -> ContextResult
     if missing:
         raise RuntimeError(f"scSGL output is missing columns: {missing}")
     out = result.loc[:, ["Gene1", "Gene2", "EdgeWeight"]].copy()
-    out.insert(0, "context", run.context)
-    retained_count = _retention_rows(run)[1]
+    out.insert(0, "context", PHYSICAL_CONTEXT)
+    retained_count = _retention_rows(values)[1]
     actual_density = _actual_density_by_sign(out, retained_gene_count=retained_count)
     warnings: list[str] = []
     for row in density_rows:
@@ -421,7 +337,7 @@ def _run_scsgl_context(run: ContextRun, params: ResolvedParams) -> ContextResult
         row["actual_density"] = float(actual_density.get(sign, 0.0))
         if not bool(row["bracketed"]):
             warning = (
-                f"{run.context}: requested {sign} density "
+                f"requested {sign} density "
                 f"{float(row['requested_density']):.6g} could not be bracketed after "
                 f"{int(row['steps'])} scSGL search step(s); network.csv uses the "
                 f"best-effort graph with actual {sign} density "
@@ -473,9 +389,6 @@ def _convert_edges(
                 "context": context,
             }
 
-    if not records:
-        raise RuntimeError("scSGL produced no positive-magnitude non-self edges.")
-
     out = pd.DataFrame(records.values(), columns=NETWORK_COLUMNS)
     out = out.sort_values(
         ["context", "score", "source", "target"],
@@ -491,8 +404,6 @@ def _write_config(
     params: ResolvedParams,
     expression: ExpressionInput,
     execution_mode: str,
-    group_info: GroupInfo | None,
-    contexts: list[ContextRun],
     threads: int,
 ) -> None:
     payload = {
@@ -503,22 +414,11 @@ def _write_config(
         "execution_mode": execution_mode,
         "gene_count": len(expression.gene_ids),
         "expression_column_count": len(expression.column_ids),
-        "context_count": len(contexts),
-        "contexts": [
-            {
-                "context": run.context,
-                "columns": list(run.values.columns.astype(str)),
-                "column_count": int(run.values.shape[1]),
-            }
-            for run in contexts
-        ],
+        "physical_context": PHYSICAL_CONTEXT,
         "requested_threads": threads,
         "upstream_threads": 1,
         "max_upper_bound_steps": MAX_UPPER_BOUND_STEPS,
         "params": asdict(params),
-        "group_count": (
-            len(set(group_info.groups.values())) if group_info is not None else None
-        ),
         "runtime_versions": {
             "numpy": _version_or_unknown("numpy"),
             "pandas": _version_or_unknown("pandas"),
@@ -598,26 +498,14 @@ def main() -> None:
             message="Loading expression matrix",
         )
         expression = _read_expression_tsv(args.input)
-        group_info = (
-            _load_groups(args.extra, expression)
-            if execution_mode == "group_emulated"
-            else None
-        )
-        contexts = _context_runs(expression, group_info)
         _write_config(
             config_path,
             params=params,
             expression=expression,
             execution_mode=execution_mode,
-            group_info=group_info,
-            contexts=contexts,
             threads=args.threads,
         )
 
-        retention_tables: list[pd.DataFrame] = []
-        raw_tables: list[pd.DataFrame] = []
-        density_rows: list[dict[str, Any]] = []
-        wrapper_warnings: list[str] = []
         with log_path.open("w", encoding="utf-8") as log_fh:
             log_fh.write("scSGL wrapper starting\n")
             log_fh.write(f"upstream_ref={SCSGL_REF}\n")
@@ -629,37 +517,31 @@ def main() -> None:
             log_fh.flush()
 
             with contextlib.redirect_stdout(log_fh), contextlib.redirect_stderr(log_fh):
-                for index, run in enumerate(contexts, start=1):
-                    write_progress(
-                        progress_path,
-                        status="running",
-                        percent=20 + int(((index - 1) / max(1, len(contexts))) * 60),
-                        phase="run_scsgl",
-                        message=f"Running scSGL for {run.context}",
-                        completed=index - 1,
-                        total=len(contexts),
-                    )
-                    retention, retained_count = _retention_rows(run)
-                    retention_tables.append(retention)
-                    log_fh.write(
-                        f"context={run.context} columns={run.values.shape[1]} "
-                        f"retained_genes={retained_count}\n"
-                    )
-                    log_fh.flush()
-                    context_result = _run_scsgl_context(run, params)
-                    raw_tables.append(context_result.raw_edges)
-                    density_rows.extend(context_result.density_rows)
-                    wrapper_warnings.extend(context_result.warnings)
-                    for warning in context_result.warnings:
-                        log_fh.write(f"warning={warning}\n")
-                    log_fh.flush()
+                write_progress(
+                    progress_path,
+                    status="running",
+                    percent=20,
+                    phase="run_scsgl",
+                    message="Running scSGL",
+                    completed=0,
+                    total=1,
+                )
+                retained, retained_count = _retention_rows(expression.values)
+                log_fh.write(
+                    f"context={PHYSICAL_CONTEXT} columns={expression.values.shape[1]} "
+                    f"retained_genes={retained_count}\n"
+                )
+                log_fh.flush()
+                result = _run_scsgl(expression.values, params)
+                for warning in result.warnings:
+                    log_fh.write(f"warning={warning}\n")
+                log_fh.flush()
 
-        retained = pd.concat(retention_tables, ignore_index=True)
         retained.to_csv(retained_genes_path, sep="\t", index=False)
-        raw_edges = pd.concat(raw_tables, ignore_index=True)
+        raw_edges = result.raw_edges
         raw_edges.to_csv(raw_edges_path, sep="\t", index=False)
         density_table = pd.DataFrame(
-            density_rows,
+            result.density_rows,
             columns=[
                 "context",
                 "sign",
@@ -673,9 +555,6 @@ def main() -> None:
             ],
         )
         density_table.to_csv(density_search_path, sep="\t", index=False)
-        if raw_edges.empty:
-            raise RuntimeError("scSGL produced an empty raw edge table.")
-
         write_progress(
             progress_path,
             status="running",
@@ -691,17 +570,17 @@ def main() -> None:
         )
         write_progress(
             progress_path,
-            status="completed_with_warnings" if wrapper_warnings else "completed",
+            status="completed_with_warnings" if result.warnings else "completed",
             percent=100,
             phase="done",
             message=(
                 "scSGL inference finished with warning(s)"
-                if wrapper_warnings
+                if result.warnings
                 else "scSGL inference finished"
             ),
             completed=edge_count,
             total=edge_count,
-            warnings=wrapper_warnings,
+            warnings=result.warnings,
         )
     except Exception as exc:
         with log_path.open("a", encoding="utf-8") as log_fh:

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from _run_tool_common import load_params as _load_params
+from _run_tool_common import load_execution_mode as _load_execution_mode
 from _run_tool_common import require_param_keys
 from _run_tool_common import tail_text as _tail_text
 from _run_tool_common import validate_runtime_inputs, warn_unknown_params
@@ -349,6 +350,7 @@ def main() -> None:
     )
 
     try:
+        _load_execution_mode(args.params, supported_modes={"global"})
         raw_params = _load_params(args.params)
         params = _resolve_params(raw_params)
 

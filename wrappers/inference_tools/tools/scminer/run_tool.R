@@ -14,7 +14,7 @@ suppressPackageStartupMessages({
 })
 
 NETWORK_COLUMNS <- c("source", "target", "score", "sign", "evidence", "context")
-SUPPORTED_MODES <- c("global", "group_emulated")
+SUPPORTED_MODES <- c("global")
 SUPPORTED_DRIVER_SOURCES <- c("built_in_tf_sig", "built_in_tf", "built_in_sig", "custom_tf_list")
 SUPPORTED_SPECIES <- c("hg", "mm")
 SJARACNE_BOOTSTRAP_PVALUE <- "0.0000001"
@@ -170,10 +170,10 @@ resolve_params <- function(raw_params) {
 load_execution_mode <- function(params_path) {
   execution_path <- file.path(dirname(params_path), "execution.json")
   if (!file.exists(execution_path)) {
-    return("global")
+    stop("execution.json is required.", call. = FALSE)
   }
   execution <- load_json_object(execution_path, "execution.json")
-  mode <- execution$mode %||% "global"
+  mode <- execution$mode
   if (!is_scalar_string(mode) || !(mode %in% SUPPORTED_MODES)) {
     stop(
       sprintf("scMINER supports only execution.mode values: %s.", paste(SUPPORTED_MODES, collapse = ", ")),
@@ -229,59 +229,6 @@ read_expression_tsv <- function(expr_path) {
   rownames(mat) <- gene_ids
   colnames(mat) <- expression_columns
   mat
-}
-
-read_groups <- function(extra_dir, expression_columns) {
-  groups_path <- file.path(extra_dir, "groups.tsv")
-  if (!file.exists(groups_path)) {
-    stop("groups.tsv is required when execution.mode=group_emulated.", call. = FALSE)
-  }
-  groups_df <- read.delim(
-    groups_path,
-    sep = "\t",
-    header = TRUE,
-    check.names = FALSE,
-    stringsAsFactors = FALSE
-  )
-  if (ncol(groups_df) < 2L || !("cluster" %in% names(groups_df))) {
-    stop("groups.tsv must contain an expression-column id column and a cluster column.", call. = FALSE)
-  }
-
-  column_ids <- as.character(groups_df[[1L]])
-  clusters <- as.character(groups_df[["cluster"]])
-  if (any(!nzchar(column_ids))) {
-    stop("groups.tsv contains an empty expression-column identifier.", call. = FALSE)
-  }
-  if (any(!nzchar(clusters))) {
-    stop("groups.tsv contains an empty cluster value.", call. = FALSE)
-  }
-  if (anyDuplicated(column_ids)) {
-    duplicated <- sort(unique(column_ids[duplicated(column_ids)]))
-    stop(sprintf("groups.tsv contains duplicated expression-column ids: %s", paste(duplicated, collapse = ", ")),
-         call. = FALSE)
-  }
-
-  group_map <- stats::setNames(clusters, column_ids)
-  missing <- setdiff(expression_columns, names(group_map))
-  if (length(missing) > 0L) {
-    stop(paste0("groups.tsv is missing expression columns: ", paste(head(missing, 8L), collapse = ", ")),
-         call. = FALSE)
-  }
-
-  group_map[expression_columns]
-}
-
-safe_slug <- function(value, used) {
-  slug <- gsub("[^A-Za-z0-9_.-]+", "_", value)
-  slug <- gsub("^_+|_+$", "", slug)
-  if (!nzchar(slug)) slug <- "context"
-  candidate <- slug
-  idx <- 2L
-  while (candidate %in% used) {
-    candidate <- paste0(slug, "_", idx)
-    idx <- idx + 1L
-  }
-  candidate
 }
 
 make_gene_aliases <- function(gene_ids) {
@@ -371,12 +318,12 @@ resolve_driver_sets <- function(params, expr_gene_ids, extra_dir) {
   out
 }
 
-prepare_context_expression <- function(expr, params) {
+prepare_expression <- function(expr, params) {
   if (ncol(expr) < 2L) {
-    stop("scMINER/SJARACNe requires at least two expression columns in each run context.", call. = FALSE)
+    stop("scMINER/SJARACNe requires at least two expression columns.", call. = FALSE)
   }
   if (nrow(expr) < 2L) {
-    stop("scMINER/SJARACNe requires at least two genes in each run context.", call. = FALSE)
+    stop("scMINER/SJARACNe requires at least two genes.", call. = FALSE)
   }
 
   if (!is.null(params$downSample_N) && ncol(expr) > params$downSample_N) {
@@ -428,7 +375,7 @@ map_alias <- function(value, alias_lookup, symbol_value = NA_character_) {
   NA_character_
 }
 
-parse_sjaracne_network <- function(network_path, context, alias_df) {
+parse_sjaracne_network <- function(network_path, alias_df) {
   raw <- read.delim(network_path, sep = "\t", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
   required <- c("source", "target", "MI", "spearman")
   missing <- setdiff(required, names(raw))
@@ -464,7 +411,7 @@ parse_sjaracne_network <- function(network_path, context, alias_df) {
       score = score,
       sign = sign_value,
       evidence = "association",
-      context = context,
+      context = "global",
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -497,16 +444,13 @@ deduplicate_edges <- function(network_df) {
   network_df[, NETWORK_COLUMNS, drop = FALSE]
 }
 
-run_context <- function(context_label, expr, params, extra_dir, alias_df, input_dir, output_root, log_path, used_slugs) {
-  expr_prepared <- prepare_context_expression(expr, params)
+run_inference <- function(expr, params, extra_dir, alias_df, input_dir, output_root, log_path) {
+  expr_prepared <- prepare_expression(expr, params)
   driver_sets <- resolve_driver_sets(params, rownames(expr_prepared), extra_dir)
-
-  context_slug <- safe_slug(context_label, used_slugs)
-  used_slugs <- c(used_slugs, context_slug)
 
   edges <- list()
   for (driver_type in names(driver_sets)) {
-    run_slug <- safe_slug(paste(context_slug, driver_type, sep = "_"), character())
+    run_slug <- paste("global", driver_type, sep = "_")
     exp_path <- file.path(input_dir, paste0(run_slug, ".exp.txt"))
     driver_path <- file.path(input_dir, paste0(run_slug, ".drivers.txt"))
     sjaracne_output_dir <- file.path(output_root, run_slug)
@@ -517,8 +461,7 @@ run_context <- function(context_label, expr, params, extra_dir, alias_df, input_
     append_log(
       log_path,
       sprintf(
-        "context=%s driver_type=%s genes=%d columns=%d drivers=%d",
-        context_label,
+        "driver_type=%s genes=%d columns=%d drivers=%d",
         driver_type,
         nrow(expr_prepared),
         ncol(expr_prepared),
@@ -527,10 +470,10 @@ run_context <- function(context_label, expr, params, extra_dir, alias_df, input_
     )
 
     network_path <- run_sjaracne(exp_path, driver_path, sjaracne_output_dir, params, log_path)
-    edges[[length(edges) + 1L]] <- parse_sjaracne_network(network_path, context_label, alias_df)
+    edges[[length(edges) + 1L]] <- parse_sjaracne_network(network_path, alias_df)
   }
 
-  list(edges = edges, used_slugs = used_slugs)
+  edges
 }
 
 get_sjaracne_version <- function() {
@@ -545,7 +488,7 @@ get_sjaracne_version <- function() {
   trimws(sub("^Version:", "", version_line[[1L]]))
 }
 
-write_config <- function(path, params, expression_data, execution_mode, group_map, threads, exported_edges) {
+write_config <- function(path, params, expression_data, execution_mode, threads, exported_edges) {
   config <- list(
     tool = "scminer",
     upstream_packages = list(
@@ -560,7 +503,6 @@ write_config <- function(path, params, expression_data, execution_mode, group_ma
     execution_mode = execution_mode,
     gene_count = nrow(expression_data),
     expression_column_count = ncol(expression_data),
-    group_count = if (is.null(group_map)) NULL else length(unique(unname(group_map))),
     requested_threads = threads,
     upstream_threads = 1L,
     params = params,
@@ -618,68 +560,25 @@ main <- function() {
 
     write_progress(progress_path, "running", 10L, "load_input", "Loading expression matrix")
     expression_data <- read_expression_tsv(input_path)
-    group_map <- NULL
-    if (execution_mode == "group_emulated") {
-      group_map <- read_groups(extra_dir, colnames(expression_data))
-    }
-
     alias_df <- make_gene_aliases(rownames(expression_data))
     write_alias_map(alias_df, file.path(raw_dir, "gene_alias_map.tsv"))
 
     write_progress(progress_path, "running", 30L, "inference", "Running SJARACNe")
-    all_edges <- list()
-    used_slugs <- character()
-
-    if (execution_mode == "global") {
-      result <- run_context(
-        "global",
-        expression_data,
-        params,
-        extra_dir,
-        alias_df,
-        input_dir,
-        sjaracne_output_root,
-        log_path,
-        used_slugs
-      )
-      all_edges <- c(all_edges, result$edges)
-    } else {
-      groups <- unique(unname(group_map))
-      total <- length(groups)
-      for (idx in seq_along(groups)) {
-        group_id <- groups[[idx]]
-        write_progress(
-          progress_path,
-          "running",
-          30L + floor(50L * (idx - 1L) / max(total, 1L)),
-          "inference",
-          sprintf("Running SJARACNe for group %s", group_id)
-        )
-        cols <- names(group_map)[unname(group_map) == group_id]
-        result <- run_context(
-          paste0("group:", group_id),
-          expression_data[, cols, drop = FALSE],
-          params,
-          extra_dir,
-          alias_df,
-          input_dir,
-          sjaracne_output_root,
-          log_path,
-          used_slugs
-        )
-        all_edges <- c(all_edges, result$edges)
-        used_slugs <- result$used_slugs
-      }
-    }
+    all_edges <- run_inference(
+      expression_data,
+      params,
+      extra_dir,
+      alias_df,
+      input_dir,
+      sjaracne_output_root,
+      log_path
+    )
 
     write_progress(progress_path, "running", 85L, "write_output", "Converting SJARACNe output")
     if (!length(all_edges)) {
       stop("scMINER/SJARACNe produced no edge tables.", call. = FALSE)
     }
     network_df <- deduplicate_edges(do.call(rbind, all_edges))
-    if (nrow(network_df) == 0L) {
-      stop("scMINER/SJARACNe produced no positive MI edges.", call. = FALSE)
-    }
 
     write.csv(network_df, network_path, row.names = FALSE)
     write_config(
@@ -687,7 +586,6 @@ main <- function() {
       params,
       expression_data,
       execution_mode,
-      group_map,
       threads,
       nrow(network_df)
     )

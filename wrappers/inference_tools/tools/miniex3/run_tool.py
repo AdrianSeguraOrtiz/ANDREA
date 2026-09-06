@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import math
 import os
 import shutil
@@ -16,6 +15,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
     optional_extra_file,
     require_extra_file,
@@ -108,17 +108,10 @@ def _as_int(value: Any, name: str, *, minimum: int, maximum: Optional[int] = Non
 
 
 def _load_execution_mode(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "group_native"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        data = json.load(fh)
-    if not isinstance(data, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = data.get("mode", "group_native")
-    if mode != "group_native":
-        raise ValueError("MINI-EX v3 supports only execution.mode=group_native.")
-    return "group_native"
+    return load_execution_mode(
+        params_path,
+        supported_modes={"group_native"},
+    )
 
 
 def _read_expression(input_path: Path) -> tuple[str, list[str], list[str]]:
@@ -744,7 +737,9 @@ def _convert_network(raw_dir: Path, network_path: Path, cluster_id_to_original: 
             with edge_table.open("r", encoding="utf-8", newline="") as in_fh:
                 reader = csv.DictReader(in_fh, delimiter="\t")
                 if reader.fieldnames is None:
-                    continue
+                    raise ValueError(
+                        f"MINI-EX edge table is empty or has no header: {edge_table}"
+                    )
                 missing = {"TF", "TG", "cluster", "weight"}.difference(reader.fieldnames)
                 if missing:
                     raise ValueError(
@@ -777,8 +772,6 @@ def _convert_network(raw_dir: Path, network_path: Path, cluster_id_to_original: 
                         }
                     )
                     rows_written += 1
-    if rows_written == 0:
-        raise ValueError("MINI-EX produced no non-zero non-self-loop edges.")
     return rows_written
 
 

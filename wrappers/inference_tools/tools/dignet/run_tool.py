@@ -27,15 +27,14 @@ for _thread_env in (
     os.environ.setdefault(_thread_env, "1")
 
 import pandas as pd
-
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
     require_param_keys,
     validate_runtime_inputs,
     warn_unknown_params,
     write_progress,
 )
-
 
 DIGNET_HOME = Path(os.environ.get("DIGNET_HOME", "/opt/DigNet"))
 DIGNET_REF = os.environ.get(
@@ -52,7 +51,7 @@ REGNETWORK_PATH = DIGNET_HOME / "pathway" / "Regnetwork" / "2022.human.source"
 TF_PATH = DIGNET_HOME / "GRN" / "TF.txt"
 
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
-SUPPORTED_MODES = {"global", "group_emulated"}
+SUPPORTED_MODES = {"global"}
 
 
 @dataclass(frozen=True)
@@ -131,19 +130,7 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def _load_execution_mode(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "global"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        execution = json.load(fh)
-    if not isinstance(execution, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = execution.get("mode", "global")
-    if not isinstance(mode, str):
-        raise ValueError("execution.mode must be a string.")
-    if mode not in SUPPORTED_MODES:
-        raise ValueError("DigNet supports only execution.mode=global or group_emulated.")
-    return mode
+    return load_execution_mode(params_path, supported_modes=SUPPORTED_MODES)
 
 
 def _read_header(path: Path) -> list[str]:
@@ -491,9 +478,15 @@ def _network_from_adjacency(adj: pd.DataFrame) -> pd.DataFrame:
             value = adj.loc[source, target]
             try:
                 score = float(value)
-            except Exception:  # noqa: BLE001
-                continue
-            if not math.isfinite(score) or score <= 0.0:
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"DigNet adjacency contains a non-numeric value for {source}->{target}: {value!r}."
+                ) from exc
+            if not math.isfinite(score):
+                raise ValueError(
+                    f"DigNet adjacency contains a non-finite value for {source}->{target}."
+                )
+            if score <= 0.0:
                 continue
             rows.append(
                 {
@@ -608,9 +601,11 @@ def main() -> None:
             message="Writing network.csv",
         )
         network = _network_from_adjacency(adj_final)
-        if network.empty:
-            raise RuntimeError("DigNet produced no positive non-self-loop edges.")
-        network.to_csv(args.output_dir / "network.csv", index=False)
+        network.to_csv(
+            args.output_dir / "network.csv",
+            index=False,
+            columns=NETWORK_COLUMNS,
+        )
 
         write_progress(
             progress_path,

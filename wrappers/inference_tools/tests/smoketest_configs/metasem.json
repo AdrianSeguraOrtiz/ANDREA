@@ -1,4 +1,7 @@
 {
+  "execution": {
+    "mode": "global"
+  },
   "checks": {
     "forbid_self_loops": true
   },
@@ -17,15 +20,6 @@
       ],
       "param_overrides": {
         "pseudo_grn_mode": "provided_prior"
-      }
-    },
-    {
-      "name": "group_emulated_contract",
-      "extra_files": [
-        "groups.tsv"
-      ],
-      "execution": {
-        "mode": "group_emulated"
       }
     }
   ]

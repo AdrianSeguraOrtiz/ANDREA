@@ -4,6 +4,27 @@
   "title": "SmoketestConfig",
   "type": "object",
   "additionalProperties": false,
+  "anyOf": [
+    {
+      "required": [
+        "execution"
+      ]
+    },
+    {
+      "required": [
+        "variants"
+      ],
+      "properties": {
+        "variants": {
+          "items": {
+            "required": [
+              "execution"
+            ]
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "name": {
       "description": "Optional name for this smoketest variant.",
@@ -20,22 +41,22 @@
       "default": []
     },
     "execution": {
-      "description": "Optional execution.json payload to mount in /io for this smoketest.",
+      "description": "Physical execution.json payload mounted in /io. It may be inherited by variants from the root config.",
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
       "properties": {
         "mode": {
           "type": "string",
           "enum": [
             "global",
             "group_native",
-            "group_emulated",
-            "column_native",
-            "group_aggregated"
+            "column_native"
           ]
         }
-      },
-      "default": {}
+      }
     },
     "param_overrides": {
       "description": "Optional parameter overrides merged onto ToolSpec defaults and shared dev overrides for this smoketest variant.",
@@ -91,15 +112,16 @@
           "execution": {
             "type": "object",
             "additionalProperties": false,
+            "required": [
+              "mode"
+            ],
             "properties": {
               "mode": {
                 "type": "string",
                 "enum": [
                   "global",
                   "group_native",
-                  "group_emulated",
-                  "column_native",
-                  "group_aggregated"
+                  "column_native"
                 ]
               }
             }

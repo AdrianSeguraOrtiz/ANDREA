@@ -8,14 +8,12 @@ Sys.setenv(
   VECLIB_MAXIMUM_THREADS = "1"
 )
 
-suppressPackageStartupMessages({
-  suppressWarnings(library(jsonlite))
-  suppressWarnings(library(inferCSN))
-})
-
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
 }
+
+R_INTEGER_MIN <- -.Machine$integer.max
+R_INTEGER_MAX <- .Machine$integer.max
 
 parse_args <- function() {
   args <- commandArgs(trailingOnly = TRUE)
@@ -53,7 +51,7 @@ write_progress <- function(progress_path, status, percent, phase, message,
   if (!is.null(error)) payload$error <- as.character(error)
 
   tmp_path <- paste0(progress_path, ".tmp")
-  writeLines(toJSON(payload, auto_unbox = TRUE, null = "null"), tmp_path, useBytes = TRUE)
+  writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"), tmp_path, useBytes = TRUE)
   if (!file.rename(tmp_path, progress_path)) {
     stop("Failed to write progress.json atomically.", call. = FALSE)
   }
@@ -68,15 +66,30 @@ is_scalar_logical <- function(x) is.logical(x) && length(x) == 1L && !is.na(x)
 is_scalar_number <- function(x) is.numeric(x) && length(x) == 1L && !is.na(x)
 is_scalar_string <- function(x) is.character(x) && length(x) == 1L && !is.na(x)
 
-as_int_checked <- function(name, value, min_value = NULL) {
-  if (!is_scalar_number(value) || abs(value - round(value)) > 1e-9) {
+as_int_checked <- function(name, value, min_value = R_INTEGER_MIN,
+                           max_value = R_INTEGER_MAX) {
+  if (!is_scalar_number(value) || !is.finite(value) || value != trunc(value)) {
     stop(sprintf("%s must be an integer.", name), call. = FALSE)
   }
-  out <- as.integer(round(value))
-  if (!is.null(min_value) && out < min_value) {
-    stop(sprintf("%s must be >= %d.", name, as.integer(min_value)), call. = FALSE)
+  value <- as.numeric(value)
+  if (!is.null(min_value) && value < as.numeric(min_value)) {
+    stop(sprintf("%s must be >= %s.", name,
+                 format(min_value, scientific = FALSE, trim = TRUE)), call. = FALSE)
   }
-  out
+  if (!is.null(max_value) && value > as.numeric(max_value)) {
+    stop(sprintf("%s must be <= %s.", name,
+                 format(max_value, scientific = FALSE, trim = TRUE)), call. = FALSE)
+  }
+  as.integer(value)
+}
+
+parse_int_argument <- function(name, value, min_value = R_INTEGER_MIN,
+                               max_value = R_INTEGER_MAX) {
+  if (!is_scalar_string(value) || !grepl("^[+-]?[0-9]+$", value)) {
+    stop(sprintf("%s must be an integer.", name), call. = FALSE)
+  }
+  parsed <- suppressWarnings(as.numeric(value))
+  as_int_checked(name, parsed, min_value = min_value, max_value = max_value)
 }
 
 as_float_checked <- function(name, value, min_value = NULL, max_value = NULL,
@@ -103,7 +116,7 @@ as_float_checked <- function(name, value, min_value = NULL, max_value = NULL,
 }
 
 load_params <- function(params_path) {
-  params <- fromJSON(params_path, simplifyVector = TRUE)
+  params <- jsonlite::fromJSON(params_path, simplifyVector = TRUE)
   if (!is.list(params)) {
     stop("params.json must be a JSON object.", call. = FALSE)
   }
@@ -119,13 +132,7 @@ resolve_params <- function(raw_params) {
     "subsampling_method",
     "subsampling_ratio",
     "r_squared_threshold",
-    "sift_method",
-    "entropy_method",
-    "effective_entropy",
-    "shuffles",
-    "entropy_nboot",
-    "lag_value",
-    "entropy_p_value"
+    "sift_method"
   )
   missing <- setdiff(expected, names(raw_params))
   if (length(missing) > 0L) {
@@ -157,24 +164,17 @@ resolve_params <- function(raw_params) {
   }
 
   sift_method <- raw_params$sift_method
-  if (!is_scalar_string(sift_method) || !(sift_method %in% c("none", "max", "entropy"))) {
-    stop("sift_method must be one of: none, max, entropy.", call. = FALSE)
-  }
-
-  entropy_method <- raw_params$entropy_method
-  if (!is_scalar_string(entropy_method) || !(entropy_method %in% c("Shannon", "Renyi"))) {
-    stop("entropy_method must be one of: Shannon, Renyi.", call. = FALSE)
-  }
-
-  effective_entropy <- raw_params$effective_entropy
-  if (!is_scalar_logical(effective_entropy)) {
-    stop("effective_entropy must be a boolean.", call. = FALSE)
+  if (!is_scalar_string(sift_method) || !(sift_method %in% c("none", "max"))) {
+    stop("sift_method must be one of: none, max.", call. = FALSE)
   }
 
   list(
     penalty = penalty,
     cross_validation = cross_validation,
-    seed = as_int_checked("seed", raw_params$seed),
+    seed = as_int_checked(
+      "seed", raw_params$seed,
+      min_value = R_INTEGER_MIN, max_value = R_INTEGER_MAX
+    ),
     n_folds = as_int_checked("n_folds", raw_params$n_folds, min_value = 2L),
     subsampling_method = subsampling_method,
     subsampling_ratio = as_float_checked(
@@ -185,31 +185,22 @@ resolve_params <- function(raw_params) {
       "r_squared_threshold", raw_params$r_squared_threshold,
       min_value = 0, max_value = 1
     ),
-    sift_method = sift_method,
-    entropy_method = entropy_method,
-    effective_entropy = effective_entropy,
-    shuffles = as_int_checked("shuffles", raw_params$shuffles, min_value = 0L),
-    entropy_nboot = as_int_checked("entropy_nboot", raw_params$entropy_nboot, min_value = 0L),
-    lag_value = as_int_checked("lag_value", raw_params$lag_value, min_value = 1L),
-    entropy_p_value = as_float_checked(
-      "entropy_p_value", raw_params$entropy_p_value,
-      min_value = 0, max_value = 1
-    )
+    sift_method = sift_method
   )
 }
 
 load_execution_mode <- function(params_path) {
   execution_path <- file.path(dirname(params_path), "execution.json")
   if (!file.exists(execution_path)) {
-    return("group_emulated")
+    stop("execution.json is required.", call. = FALSE)
   }
-  execution <- fromJSON(execution_path, simplifyVector = TRUE)
+  execution <- jsonlite::fromJSON(execution_path, simplifyVector = TRUE)
   if (!is.list(execution)) {
     stop("execution.json must be a JSON object.", call. = FALSE)
   }
-  mode <- execution$mode %||% "group_emulated"
-  if (!is_scalar_string(mode) || mode != "group_emulated") {
-    stop("inferCSN supports only execution.mode=group_emulated.", call. = FALSE)
+  mode <- execution$mode
+  if (!is_scalar_string(mode) || !(mode %in% c("global"))) {
+    stop("inferCSN supports only physical execution.mode=global.", call. = FALSE)
   }
   mode
 }
@@ -317,60 +308,6 @@ empty_network <- function() {
   )
 }
 
-require_groups_for_emulated_run <- function(extra_dir) {
-  groups_path <- file.path(extra_dir, "groups.tsv")
-  if (!file.exists(groups_path)) {
-    stop("groups.tsv is required for inferCSN execution.mode=group_emulated.", call. = FALSE)
-  }
-}
-
-load_pseudotime <- function(extra_dir, cells) {
-  path <- file.path(extra_dir, "pseudotime.tsv")
-  if (!file.exists(path)) {
-    stop("pseudotime.tsv is required when sift_method=entropy.", call. = FALSE)
-  }
-  df <- read.delim(path, sep = "\t", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
-  if (ncol(df) < 2L) {
-    stop("pseudotime.tsv must have at least 2 columns: cell + pseudotime.", call. = FALSE)
-  }
-  first_col <- names(df)[1L]
-  if (!("pseudotime" %in% names(df))) {
-    stop("pseudotime.tsv is missing required column: pseudotime.", call. = FALSE)
-  }
-
-  cell_ids <- trimws(as.character(df[[first_col]]))
-  if (any(!nzchar(cell_ids))) {
-    stop("pseudotime.tsv contains an empty cell identifier.", call. = FALSE)
-  }
-  if (anyDuplicated(cell_ids)) {
-    duplicated <- sort(unique(cell_ids[duplicated(cell_ids)]))
-    stop(sprintf("pseudotime.tsv contains duplicated cells: %s", paste(duplicated, collapse = ", ")),
-         call. = FALSE)
-  }
-
-  values <- suppressWarnings(as.numeric(df[["pseudotime"]]))
-  if (anyNA(values) || any(!is.finite(values))) {
-    stop("pseudotime.tsv contains non-finite or non-numeric pseudotime values.", call. = FALSE)
-  }
-
-  # CRAN inferCSN 1.2.0 subsets meta_data without drop = FALSE inside network_sift().
-  # Keep a second inert column so one-column pseudotime metadata remains a data frame.
-  metadata <- data.frame(
-    pseudotime = values,
-    andrea_order = seq_along(values),
-    stringsAsFactors = FALSE
-  )
-  rownames(metadata) <- cell_ids
-
-  missing <- setdiff(cells, rownames(metadata))
-  if (length(missing) > 0L) {
-    stop(sprintf("pseudotime.tsv is missing cells present in expression.tsv: %s",
-                 paste(sort(missing), collapse = ", ")), call. = FALSE)
-  }
-
-  metadata[cells, , drop = FALSE]
-}
-
 write_upstream_table <- function(table, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   table <- as.data.frame(table, stringsAsFactors = FALSE)
@@ -396,14 +333,9 @@ run_infercsn <- function(expr, regulators, params, threads) {
   do.call(inferCSN::inferCSN, infer_args)
 }
 
-apply_network_sift <- function(network_table, expr, params, extra_dir, threads) {
+apply_network_sift <- function(network_table, params, threads) {
   if (params$sift_method == "none") {
     return(network_table)
-  }
-
-  if (params$sift_method == "entropy") {
-    metadata <- load_pseudotime(extra_dir, rownames(expr))
-    return(network_sift_entropy_fixed(network_table, expr, metadata, params, threads))
   }
 
   sift_args <- list(
@@ -414,104 +346,6 @@ apply_network_sift <- function(network_table, expr, params, extra_dir, threads) 
   )
 
   do.call(inferCSN::network_sift, sift_args)
-}
-
-network_sift_entropy_fixed <- function(network_table, expr, metadata, params, threads) {
-  samples <- intersect(rownames(metadata), rownames(expr))
-  if (length(samples) == 0L) {
-    stop("pseudotime.tsv and expression.tsv do not share any cells.", call. = FALSE)
-  }
-
-  metadata <- metadata[samples, , drop = FALSE]
-  metadata <- metadata[order(metadata[, "pseudotime"], decreasing = FALSE), , drop = FALSE]
-
-  network_df <- as.data.frame(network_table, stringsAsFactors = FALSE)
-  genes <- unique(c(as.character(network_df$regulator), as.character(network_df$target)))
-  missing_genes <- setdiff(genes, colnames(expr))
-  if (length(missing_genes) > 0L) {
-    stop(sprintf("Inferred network contains genes missing from expression.tsv: %s",
-                 paste(sort(missing_genes), collapse = ", ")), call. = FALSE)
-  }
-
-  expr_ordered <- expr[rownames(metadata), genes, drop = FALSE]
-  unique_pairs <- utils::combn(colnames(expr_ordered), 2L, simplify = FALSE)
-
-  shuffles <- params$shuffles
-  if (!params$effective_entropy) {
-    shuffles <- 0L
-  } else if (shuffles <= 10L) {
-    shuffles <- 10L
-  }
-
-  run_pair <- function(pair) {
-    result <- suppressWarnings(
-      RTransferEntropy::transfer_entropy(
-        expr_ordered[, pair[[1]]],
-        expr_ordered[, pair[[2]]],
-        lx = params$lag_value,
-        ly = params$lag_value,
-        entropy = params$entropy_method,
-        shuffles = shuffles,
-        nboot = params$entropy_nboot,
-        quiet = TRUE
-      )
-    )
-    result <- stats::coef(result)
-    if (params$effective_entropy) {
-      entropy_forward <- result[1, 2]
-      entropy_reverse <- result[2, 2]
-    } else {
-      entropy_forward <- result[1, 1]
-      entropy_reverse <- result[2, 1]
-    }
-    data.frame(
-      regulator = pair[[1]],
-      target = pair[[2]],
-      entropy = as.numeric(entropy_forward),
-      entropy_contrary = as.numeric(entropy_reverse),
-      P_value = as.numeric(result[1, 4]),
-      P_value_contrary = as.numeric(result[2, 4]),
-      stringsAsFactors = FALSE
-    )
-  }
-
-  entropy_rows <- if (threads > 1L && length(unique_pairs) > 1L) {
-    parallel::mclapply(unique_pairs, run_pair, mc.cores = threads)
-  } else {
-    lapply(unique_pairs, run_pair)
-  }
-  transfer_entropy_table <- do.call(rbind, entropy_rows)
-
-  if (params$entropy_nboot > 1L) {
-    transfer_entropy_table <- transfer_entropy_table[
-      transfer_entropy_table$P_value <= params$entropy_p_value &
-        transfer_entropy_table$P_value_contrary <= params$entropy_p_value,
-      ,
-      drop = FALSE
-    ]
-  }
-  if (!nrow(transfer_entropy_table)) {
-    return(network_df[FALSE, c("regulator", "target", "weight"), drop = FALSE])
-  }
-
-  entropy_forward <- data.frame(
-    regulator = transfer_entropy_table$regulator,
-    target = transfer_entropy_table$target,
-    weight = transfer_entropy_table$entropy,
-    stringsAsFactors = FALSE
-  )
-  entropy_reverse <- data.frame(
-    regulator = transfer_entropy_table$target,
-    target = transfer_entropy_table$regulator,
-    weight = transfer_entropy_table$entropy_contrary,
-    stringsAsFactors = FALSE
-  )
-  entropy_directions <- rbind(entropy_forward, entropy_reverse)
-  entropy_directions <- inferCSN::weight_sift(entropy_directions)
-
-  kept_directions <- unique(entropy_directions[, c("regulator", "target"), drop = FALSE])
-  filtered <- merge(network_df, kept_directions, by = c("regulator", "target"))
-  filtered[, c("regulator", "target", "weight"), drop = FALSE]
 }
 
 network_to_andrea <- function(network_table) {
@@ -561,10 +395,7 @@ main <- function() {
   output_dir <- args$`output-dir` %||% stop("Missing required argument: --output-dir", call. = FALSE)
   threads_raw <- args$threads %||% stop("Missing required argument: --threads", call. = FALSE)
 
-  threads <- suppressWarnings(as.integer(threads_raw))
-  if (is.na(threads) || threads <= 0L) {
-    stop("--threads must be a positive integer.", call. = FALSE)
-  }
+  threads <- parse_int_argument("--threads", threads_raw, min_value = 1L)
 
   if (!file.exists(input_path)) stop(sprintf("Input file not found: %s", input_path), call. = FALSE)
   if (!file.exists(params_path)) stop(sprintf("Params file not found: %s", params_path), call. = FALSE)
@@ -582,7 +413,6 @@ main <- function() {
   tryCatch({
     params <- resolve_params(load_params(params_path))
     mode <- load_execution_mode(params_path)
-    require_groups_for_emulated_run(extra_dir)
     append_log(log_path, sprintf("Execution mode: %s", mode))
     append_log(log_path, sprintf("sift_method: %s", params$sift_method))
 
@@ -601,6 +431,20 @@ main <- function() {
     append_log(log_path, sprintf("Regulators: %s", if (is.null(regulators)) "all genes" else length(regulators)))
     if (ncol(expr) < 2L || (!is.null(regulators) && length(regulators) < 2L)) {
       write_progress(progress_path, "running", 92L, "write_output", "Writing empty network.csv")
+      empty_upstream <- data.frame(
+        regulator = character(),
+        target = character(),
+        weight = numeric(),
+        stringsAsFactors = FALSE
+      )
+      write_upstream_table(
+        empty_upstream,
+        file.path(raw_dir, "infercsn_inferred_network.tsv")
+      )
+      write_upstream_table(
+        empty_upstream,
+        file.path(raw_dir, "infercsn_network.tsv")
+      )
       network_df <- empty_network()
       write.csv(network_df, file.path(output_dir, "network.csv"), row.names = FALSE)
       append_log(log_path, "Wrote empty network.csv because fewer than 2 variable genes or regulators remain")
@@ -622,9 +466,15 @@ main <- function() {
     append_log(log_path, sprintf("inferCSN returned %d raw rows", nrow(as.data.frame(inferred))))
 
     if (params$sift_method != "none") {
-      write_progress(progress_path, "running", 75L, "sift", "Running inferCSN network_sift")
+      write_progress(
+        progress_path,
+        "running",
+        75L,
+        "sift",
+        "Running configured inferCSN post-inference filter"
+      )
     }
-    final_network <- apply_network_sift(inferred, expr, params, extra_dir, threads)
+    final_network <- apply_network_sift(inferred, params, threads)
     write_upstream_table(final_network, file.path(raw_dir, "infercsn_network.tsv"))
     append_log(log_path, sprintf("Final upstream table has %d rows", nrow(as.data.frame(final_network))))
 
@@ -656,4 +506,6 @@ main <- function() {
   })
 }
 
-main()
+if (sys.nframe() == 0L) {
+  main()
+}

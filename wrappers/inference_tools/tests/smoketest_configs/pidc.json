@@ -1,4 +1,7 @@
 {
+  "execution": {
+    "mode": "global"
+  },
   "require_progress": true,
   "checks": {
     "require_unique_unordered_pairs": true,
@@ -16,19 +19,6 @@
       "name": "global_uniform_count",
       "param_overrides": {
         "discretizer": "uniform_count",
-        "number_of_bins": 4
-      }
-    },
-    {
-      "name": "group_emulated_contract",
-      "extra_files": [
-        "groups.tsv"
-      ],
-      "execution": {
-        "mode": "group_emulated"
-      },
-      "param_overrides": {
-        "discretizer": "uniform_width",
         "number_of_bins": 4
       }
     }

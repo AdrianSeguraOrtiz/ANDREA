@@ -6,7 +6,10 @@
 - Wrapper implementation: `wrappers/inference_tools/tools/kscreni/run_tool.R`.
 - Dockerfile: `wrappers/inference_tools/tools/kscreni/Dockerfile`.
 - Smoketest config: `wrappers/inference_tools/tests/smoketest_configs/kscreni.json`.
-- Smoketest fixtures: `wrappers/inference_tools/tests/fixtures/kscreni/expression.tsv`, `wrappers/inference_tools/tests/fixtures/kscreni/groups.tsv`.
+- Physical-wrapper smoketest fixture:
+  `wrappers/inference_tools/tests/fixtures/kscreni/expression.tsv`.
+  The wrapper is tested only in `column_native`; ANDREA consumes `groups.tsv`
+  only at the logical aggregation boundary.
 - Selected upstream entrypoint: `ScReNI::Infer_kScReNI_scNetworks()`.
 - Implemented entrypoint behavior: the wrapper mirrors the selected kScReNI public function but inlines that function body to pass a data-dependent safe `npcs` to `Seurat::RunPCA()`.
 - Selected ANDREA capabilities: `column_native` and `group_aggregated`.
@@ -16,7 +19,9 @@
   - `make validate-input-specs` passed for all 16 inference input specs, including relevant `expression_matrix` and `groups`.
   - `make validate-smoketest-configs ARGS="--tool kscreni"` passed.
 - Final Phase 3 smoke command: `make run-tool-smoketests ARGS="--tool kscreni --threads 2 --timeout 2400 --show-output-lines 20"`.
-- Final Phase 3 smoke result: passed for `column_native` and `group_aggregated`; each variant wrote 3081 positive non-self rows and validated 2 auxiliary artifacts.
+- Current physical smoke contract: one `column_native` run. The former direct
+  `group_aggregated` variant was identical and unreachable from ANDREA, which
+  always translates that logical mode to a `column_native` child.
 
 ## Sources Reviewed
 
@@ -55,7 +60,10 @@ ScReNI is a single-cell regulatory network inference method for scRNA-seq plus s
 
 - Always required: normalized expression matrix, genes x cells, with non-negative numeric values. Evidence: the kScReNI entrypoint accepts `exprMatrix`, constructs a Seurat object from `counts = exprMatrix`, and names outputs with `colnames(exprMatrix)` (`R/Infer_kScReNI_scNetworks.R:17-30`, `R/Infer_kScReNI_scNetworks.R:46`). The wrapper validates non-negative counts because the upstream call passes the matrix as Seurat counts and runs `NormalizeData()`.
 - Conditional required:
-  - `groups` only when `execution.mode=group_aggregated`. ANDREA uses it after wrapper completion to aggregate column-native edges. The upstream function does not consume group metadata.
+  - `groups` only when `execution.mode=group_aggregated`, with
+    `delivery=orchestration_only`. ANDREA uses it after wrapper completion to
+    aggregate column-native edges. The upstream function does not consume group
+    metadata.
 - Optional inputs: none for the selected kScReNI contract.
 - Not reused for the selected contract:
   - `chromatin_accessibility_matrix` is not enough for wScReNI. The public wScReNI path also needs gene-peak labels, motif/PWM/genome/GTF resources, and nearest-neighbor indices (`R/Infer_gene_peak_relationships.R:21-52`, `docs/ScReNI_tutorial.Rmd:171-205`). No new input spec is proposed because wScReNI is intentionally excluded from this phase.
@@ -151,8 +159,10 @@ Fixed implementation choices not exposed:
 ## Implemented Wrapper Behavior
 
 - Runtime contract: generated `run_tool.sh` calls `Rscript /app/run_tool.R` with `--input`, `--params`, `--extra`, `--output-dir`, and `--threads`.
-- Execution modes: accepts `column_native` and `group_aggregated`; defaults to `column_native` when `execution.json` is absent.
-- Group handling: when `execution.mode=group_aggregated`, the wrapper requires and validates `groups.tsv` against expression columns, but still emits `column:<column_id>` contexts. ANDREA core owns the logical group aggregation.
+- Physical execution mode: the wrapper accepts only `column_native` and uses it
+  when `execution.json` is absent. The ToolSpec additionally exposes logical
+  `group_aggregated`; ANDREA validates `groups.tsv`, translates the only child
+  to `column_native`, and owns the group aggregation.
 - Parameter handling: requires resolved `nfeatures` and `knn`; rejects invalid integer values and rejects `knn + 1 > number_of_cells`.
 - ToolSpec preflight now blocks `knn >= number_of_expression_columns`; the
   wrapper keeps the same runtime check as a second barrier.
@@ -165,11 +175,16 @@ Fixed implementation choices not exposed:
 
 ## Smoketest Outcome
 
-- Fixture: `wrappers/inference_tools/tests/fixtures/kscreni/expression.tsv` has 15 cells and 15 variable non-negative genes so Seurat's default neighbor dimensions are available; `groups.tsv` maps the same 15 cells to two groups.
-- Config: `nfeatures=15`, `knn=2`; variants cover `column_native` and `group_aggregated`.
+- Fixture: `wrappers/inference_tools/tests/fixtures/kscreni/expression.tsv` has
+  15 cells and 15 variable non-negative genes so Seurat's default neighbor
+  dimensions are available. The physical wrapper never receives `groups.tsv`.
+- Config: `nfeatures=15`, `knn=2`; the physical smoke covers `column_native`.
 - Final command: `make run-tool-smoketests ARGS="--tool kscreni --threads 2 --timeout 2400 --show-output-lines 20"`.
 - Result: passed.
-- Output checks: each variant produced `network.csv` with 3081 positive non-self rows, final `progress.json` status `completed`, and required auxiliary artifacts `kscreni.log` plus `raw/kscreni_networks.rds`.
+- Output checks: the recorded column-native output produced `network.csv` with
+  3081 positive non-self rows, final `progress.json` status `completed`, and
+  required auxiliary artifacts `kscreni.log` plus
+  `raw/kscreni_networks.rds`.
 - Notes: Seurat emits expected small-fixture warnings from `FindVariableFeatures()`/feature counts; these do not affect smoke validation.
 
 ## GUI Regression 2026-06-17

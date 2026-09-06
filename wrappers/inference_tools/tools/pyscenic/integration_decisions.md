@@ -140,7 +140,8 @@ input catalog.
     - Existing `groups.json` maps expression column ids to a group label.
     - pySCENIC has no group input; ANDREA can emulate grouped inference by
       partitioning the expression columns before invoking a global command.
-  - Decision: declare `groups` as `conditional_required` for `group_emulated`.
+  - Decision: declare `groups` as `conditional_required` for `group_emulated`,
+    with `delivery=orchestration_only`.
 
 - No optional inputs are declared for the selected `grn` contract.
 - No new input specs are required in Phase 1.
@@ -196,6 +197,8 @@ input catalog.
 - Filtering:
   - The wrapper must not write `score <= 0` rows.
   - No ANDREA-specific score normalization is applied in the wrapper.
+  - A structurally valid adjacency table with no exportable rows produces a
+    canonical header-only `network.csv`; missing or malformed tables fail.
 - Identifier preservation:
   - pySCENIC/arboreto can read gene names from matrix headers, but the wrapper
     should write `raw/gene_alias_map.tsv` if it has to protect problematic
@@ -446,14 +449,11 @@ input catalog.
 - Identifier preservation: wrapper uses public gene ids directly and writes
   `raw/gene_alias_map.tsv` as an identity map. If later upstream-safe aliases
   become necessary, this artifact is the round-trip location.
-- Execution modes: wrapper validates `execution.mode=global` and
-  `execution.mode=group_emulated`. For `group_emulated`, it requires and
-  validates that every expression column in the current run is present in
-  `groups.tsv`. The wrapper allows `groups.tsv` to contain additional global
-  rows because ANDREA core can pass a full grouping file to each group-emulated
-  subrun after it has already subset the expression matrix. The wrapper does
-  not partition internally; ANDREA core owns group-emulated orchestration and
-  group context rewriting.
+- Execution modes: the wrapper requires `execution.json` and validates only
+  physical `execution.mode=global`. For logical group emulation it runs the same
+  pySCENIC command over the expression subset supplied by ANDREA and emits
+  `context=global`. It does not receive or validate `groups.tsv`; ANDREA core
+  owns group validation, partitioning, and context rewriting.
 
 ## Smoketest Outcome
 
@@ -469,31 +469,13 @@ input catalog.
   - Result: passed.
   - Variant `global_grnboost2`: produced 21 positive directed edges and all
     four declared auxiliary artifacts.
-  - Variant `group_emulated_contract`: validated `groups.tsv`, recorded two
-    groups in `raw/pyscenic_config.json`, produced 21 positive directed edges
-    and all four declared auxiliary artifacts. Direct wrapper output retains
-    `context=global`; ANDREA core is responsible for actual group-emulated
-    partitioning and `group:<id>` public contexts.
 - GENIE3 is not run in the smoke test to keep runtime small; schema validation
   covers the enum value and the wrapper passes it through to
   `pyscenic grn --method`.
 - Phase 3 verification:
   - `python wrappers/inference_tools/scripts/run_smoketests.py --tool pyscenic --timeout 300`
-  - Result: passed on both `global_grnboost2` and
-    `group_emulated_contract`; each variant produced 21 positive directed
-    edges and validated 4 auxiliary artifacts.
-- GUI follow-up fix:
-  - A GUI `group_emulated` run at
-    `inferred_networks/gui_dataset_20260623T014257Z` failed because each
-    subrun received a subset expression matrix while `groups.tsv` still
-    contained global rows for other expression columns.
-  - The wrapper now accepts a superset `groups.tsv` and filters the in-memory
-    group map to the current expression columns.
-  - The pyscenic-specific smoketest fixture uses a 20-column expression matrix
-    with a 30-row `groups.tsv` to cover this GUI subrun shape.
-  - Follow-up verification passed with the rebuilt `pyscenic-smoketest:local`
-    image: both `global_grnboost2` and `group_emulated_contract` produced 21
-    positive directed edges and validated 4 auxiliary artifacts.
+  - The current physical smoke covers `global_grnboost2`; logical group
+    emulation is covered by ANDREA core tests.
 
 ## Known Limitations / Open Questions
 

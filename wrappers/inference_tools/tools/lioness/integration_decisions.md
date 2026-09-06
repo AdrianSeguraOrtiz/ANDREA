@@ -91,7 +91,8 @@ Optional extra inputs:
 - None.
 
 Conditional required inputs:
-- `groups` when `execution.mode=group_aggregated`.
+- `groups` when `execution.mode=group_aggregated`, with
+  `delivery=orchestration_only`.
 
 Evidence:
 - `lionessR::lioness()` requires only `x` and optional function `f`.
@@ -295,10 +296,11 @@ Outcome:
 - R wrapper syntax parse passed.
 - Build pipeline selected `runtime=r` and no template bundles for `lioness`.
 - Docker build completed using Bioconductor 3.23 and `lionessR 1.26.0`.
-- Smoketest passed for both variants:
-  - `column_native`
-  - `group_aggregated` with `groups.tsv`
-- Each smoketest variant wrote `network.csv` with 840 positive-score column-context rows and validated all 3 declared auxiliary artifacts.
+- The current physical smoke runs `column_native` once. The former direct
+  `group_aggregated` variant was identical and unreachable from ANDREA, which
+  translates that logical mode to `column_native` before invoking LIONESS.
+- The recorded column-native run wrote `network.csv` with 840 positive-score
+  column-context rows and validated all 3 declared auxiliary artifacts.
 
 ## Phase 3 Validation
 
@@ -312,5 +314,7 @@ Outcome:
 - `toolspec.json` is valid.
 - All inference input specs are valid.
 - `lioness` smoketest config is valid.
-- Final smoketest rebuilt `lioness-smoketest:local` and passed both `column_native` and `group_aggregated` variants.
+- Final recorded smoketest rebuilt `lioness-smoketest:local` and passed the
+  column-native wrapper contract. Logical aggregation is covered by ANDREA core
+  tests.
 - No remaining wrapper, ToolSpec, normalized-input, or smoketest inconsistencies were found.

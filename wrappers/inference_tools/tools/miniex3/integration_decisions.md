@@ -320,6 +320,9 @@ Schema changes made:
   - Reads `raw/regulons/*_edgeTable.tsv`.
   - Writes `network.csv` rows as `source=TF`, `target=TG`, `score=weight`, `sign=?`, `evidence=association`, `context=group:<original group>`.
   - Filters self-loops and zero weights.
+  - A present, structurally valid set of edge tables with no retained rows
+    produces a header-only `network.csv`; absent tables, missing headers,
+    missing columns and invalid weights remain failures.
   - Preserves raw upstream artifacts under `raw/`.
 - Smoketest fixture behavior:
   - Uses shared `expression.tsv`, `groups.tsv`, `tf_list.txt`, `cluster_markers.tsv`, `cluster_identities.tsv`, `grnboost_network.tsv` and `enrichment_background.txt`.

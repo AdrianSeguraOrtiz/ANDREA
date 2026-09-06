@@ -68,7 +68,7 @@ interleaving, so the PDF remains the primary paper evidence.
 | --- | --- | --- | --- | --- |
 | `scGeneRAI.scGeneRAI().fit(data, nepochs, model_depth, ...)` | Trained in-memory model | Required setup for selected run | Yes, internally | README documents fit before prediction; code implements it in `scGeneRAI.py:155-195`. |
 | `model.predict_networks(data, descriptors=None, LRPau=True, remove_descriptors=True, ...)` | One CSV per cell/sample under `PATH/results/` | `column_native` | Yes | README documents this prediction API; code loops over samples and writes per-sample files in `scGeneRAI.py:198-222` and `scGeneRAI.py:358-390`. |
-| Same `predict_networks`, with ANDREA `groups.tsv` supplied | Native per-cell CSVs; groups used after wrapper output | `group_aggregated` | Yes | Upstream does not consume group labels, but ANDREA can aggregate native `column:<id>` rows. |
+| Same `predict_networks`, followed by ANDREA-side aggregation keyed by `groups.tsv` | Native per-cell CSVs; groups used after wrapper output | `group_aggregated` | Yes | Upstream does not consume group labels, but ANDREA can aggregate native `column:<id>` rows. |
 | `predict_networks(..., LRPau=False)` | Directed raw LRPr rows with signed `LRP` and diagnostics | Parameter choice with different output semantics | No | ToolSpec fixes undirected unsigned LRPau. Exposing LRPr would require a different directed/signed contract. |
 | `predict_networks(..., remove_descriptors=False)` | Descriptor features can appear as network nodes | Incompatible with gene-gene public output | No | Paper methods ignore descriptor scores when reducing to gene scores; wrapper keeps gene-gene rows only. |
 | Notebook `average_network = ... groupby(...).mean()` | One mean table over per-cell outputs | Downstream postprocessing | No | This is not a native global inference mode; the paper uses averaged scGeneRAI output only for comparison with average-network methods. |
@@ -92,8 +92,9 @@ interleaving, so the PDF remains the primary paper evidence.
   optional categorical descriptors such as batch or cell type. The wrapper
   requires exact alignment to expression columns when provided.
 - Conditional extra input: `groups`, required only for
-  `execution.mode=group_aggregated`. The wrapper validates coverage, but
-  scGeneRAI itself does not consume this file.
+  `execution.mode=group_aggregated`, with `delivery=orchestration_only`.
+  ANDREA validates coverage and consumes it during aggregation; the wrapper and
+  scGeneRAI do not receive this file.
 - No new normalized input spec was needed.
 
 ## Parameters
@@ -136,14 +137,17 @@ Dynamic or implementation defaults preserved by calling upstream code:
 - `network.csv` rows use `sign="?"`, `evidence="association"`, and
   `context="column:<original_expression_column_id>"`.
 - `score <= 0` rows and self-loops are omitted.
+- Structurally valid per-cell result tables with no exportable positive rows
+  produce a canonical header-only `network.csv`; missing or malformed result
+  tables fail.
 - Undirected output is one row per unordered source-target pair per cell.
 - Public gene and cell IDs are preserved exactly. The wrapper uses internal
   numeric sample names for upstream filenames and writes
   `raw/cell_alias_map.tsv` to map back to original ANDREA cell IDs.
-- For `group_aggregated`, the physical wrapper run still emits native column
-  rows; ANDREA core retains those rows as `network.column_native.csv` and writes
-  only aggregated `group:<id>` rows to the logical `group_aggregated`
-  `network.csv`.
+- For logical `group_aggregated`, ANDREA invokes the wrapper with physical
+  `execution.mode=column_native`, retains those rows as
+  `network.column_native.csv`, and writes only aggregated `group:<id>` rows to
+  the logical `network.csv`.
 
 ## ToolSpec Evidence Ledger
 
@@ -181,7 +185,8 @@ Dynamic or implementation defaults preserved by calling upstream code:
   `wrappers/inference_tools/tests/smoketest_configs/scgenerai.json`
 - Smoketest fixtures:
   `wrappers/inference_tools/tests/fixtures/scgenerai/expression.tsv`,
-  `column_descriptors.tsv`, and `groups.tsv`
+  and `column_descriptors.tsv`. The wrapper smoke is strictly column-native;
+  ANDREA's group-aggregation path is covered at the core boundary.
 
 The Dockerfile installs from pinned GitHub source and explicitly installs
 `numpy==1.26.4`, `pandas==2.2.2`, `tqdm==4.66.4`, and CPU `torch==2.3.1`.
@@ -200,9 +205,10 @@ Commands run on 2026-06-16:
 - `python wrappers/inference_tools/scripts/run_smoketests.py --tool scgenerai --threads 1 --timeout 900 --show-output-lines 20`
   - Result: passed.
   - Image built: `scgenerai-smoketest:local`.
-  - Variants covered: `column_native` and `group_aggregated`.
-  - Each variant produced `network.csv` with 36 positive rows and validated 14
-    auxiliary artifacts.
+  - The current physical smoke covers `column_native` once; the former direct
+    `group_aggregated` duplicate was unreachable from production orchestration.
+  - The recorded column-native output produced `network.csv` with 36 positive
+    rows and validated 14 auxiliary artifacts.
 - Regression check for raw dyngen counts:
   - Dataset:
     `benchmarks/gui_generate_benchmark_20260612T165118Z/datasets/gui_generate_benchmark__dyngen__01__r01`

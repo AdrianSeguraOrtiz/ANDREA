@@ -1,3 +1,4 @@
 {
+  "execution": {"mode": "global"},
   "extra_files": ["tf_list.txt"]
 }

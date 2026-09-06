@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
-import json
 import math
 import os
 import pickle
@@ -16,6 +15,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
     require_extra_file,
     require_param_keys,
@@ -201,17 +201,10 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def _load_execution(params_path: Path) -> str:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return "group_native"
-    with execution_path.open("r", encoding="utf-8") as fh:
-        raw = json.load(fh)
-    if not isinstance(raw, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = str(raw.get("mode", "group_native")).strip() or "group_native"
-    if mode != "group_native":
-        raise ValueError("SimiC supports only execution.mode=group_native.")
-    return mode
+    return load_execution_mode(
+        params_path,
+        supported_modes={"group_native"},
+    )
 
 
 def _read_expression_tsv(expr_path: Path) -> pd.DataFrame:
@@ -634,9 +627,6 @@ def _convert_weights_to_network(
                         "context": f"group:{phenotype}",
                     }
                 )
-
-    if not rows:
-        raise ValueError("SimiC produced no non-zero network coefficients.")
 
     rows.sort(key=lambda row: float(row["score"]), reverse=True)
 

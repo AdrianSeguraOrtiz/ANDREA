@@ -17,15 +17,26 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from _run_tool_common import load_execution_mode as _load_execution_mode
 from _run_tool_common import load_params as _load_params
 from _run_tool_common import optional_extra_file as _optional_extra_file
 from _run_tool_common import require_extra_file as _require_extra_file
-from _run_tool_common import require_param_keys
+from _run_tool_common import (
+    require_param_keys,
+    validate_runtime_inputs,
+    warn_unknown_params,
+)
 from _run_tool_common import tail_text as _tail_text
-from _run_tool_common import validate_runtime_inputs, warn_unknown_params
 from _run_tool_common import write_progress as _write_progress
 
 SCMTNI_BIN = Path("/app/bin/scMTNI")
+
+
+def _load_execution(params_path: Path) -> str:
+    return _load_execution_mode(
+        params_path,
+        supported_modes={"group_native"},
+    )
 
 
 @dataclass(frozen=True)
@@ -996,6 +1007,7 @@ def main() -> None:
     )
 
     try:
+        _load_execution(args.params)
         raw_params = _load_params(args.params)
         params = _resolve_params(raw_params)
 

@@ -1,4 +1,7 @@
 {
+  "execution": {
+    "mode": "global"
+  },
   "extra_files": [
     "tf_list.txt"
   ],
@@ -11,16 +14,6 @@
   "variants": [
     {
       "name": "global_grnboost2"
-    },
-    {
-      "name": "group_emulated_contract",
-      "extra_files": [
-        "tf_list.txt",
-        "groups.tsv"
-      ],
-      "execution": {
-        "mode": "group_emulated"
-      }
     }
   ]
 }

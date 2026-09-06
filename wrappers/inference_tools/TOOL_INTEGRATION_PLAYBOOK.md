@@ -501,7 +501,7 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
     - `column_native`: the upstream public interface natively returns one network per expression column from one logical run
     - `group_aggregated`: ANDREA aggregates native per-column outputs into group-level outputs using `groups.tsv`
   - rule:
-    - use `execution_capabilities` instead of the removed `execution_scope`
+    - describe execution exclusively with `execution_capabilities`
     - use `global` only when it is methodologically valid to infer one network from the whole expression matrix, not merely because the upstream code can technically accept any matrix
     - if the method is designed for one condition, cell type, cell state, trajectory segment, or subgroup at a time, expose `group_emulated` when ANDREA should partition the full dataset and run the method independently per group
     - use `group_native` only when the upstream public interface itself consumes group/task metadata and returns group/task networks from one run
@@ -513,9 +513,12 @@ Before finalizing params, inputs and outputs, explicitly decide which upstream p
     - keep algorithm choices as normal params when they are variants inside one execution capability
     - examples of parameter choices, not execution capabilities, include regression model families, penalties, score filters, feature-selection strategy, and post-processing mode when they do not change how ANDREA partitions or routes the dataset
     - record whether grouped output context is produced by the wrapper (`group_native`), by orchestrated subruns (`group_emulated`), or by ANDREA aggregation of per-column output (`group_aggregated`)
-    - if `group_emulated` is exposed alongside other execution modes and `groups` is only used for that mode, declare `groups` only in `extra_inputs.conditional_required`; do not also mark it optional unless providing it outside the required condition changes the upstream inference
-    - if `group_emulated` is the only exposed execution mode, declaring `groups` in `extra_inputs.required` is acceptable and usually clearer
-    - if `group_aggregated` is exposed, declare `groups` in `extra_inputs.conditional_required` with `execution: "mode"` and `value: "group_aggregated"`
+    - `group_emulated` always requires its physical companion capability `global`; declare `groups` only in `extra_inputs.conditional_required` for `execution.mode=group_emulated` with `delivery: "orchestration_only"`
+    - if `group_aggregated` is exposed, declare `groups` in `extra_inputs.conditional_required` with `execution: "mode"`, `value: "group_aggregated"`, and `delivery: "orchestration_only"`
+    - never mount orchestration-only `groups.tsv` in a wrapper: logical
+      `group_emulated` children execute physically as `global` on an already
+      partitioned expression matrix, while logical `group_aggregated` children
+      execute physically as `column_native` before ANDREA performs aggregation
     - do not require `groups` just because `column_native` is exposed
     - warn in `integration_decisions.md` when `column_native` output can be dense or very large, and make the smoketest verify a small representative subset rather than assuming all possible column-edge rows are manageable
     - document excluded upstream modes/entrypoints explicitly; the reason may be unsupported normalized inputs, incompatible output semantics, deprecated API, unavailable runtime dependency, or a deliberate scope decision
@@ -585,8 +588,18 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - files beyond expression matrix
     - whether they are always required, mode-dependent, or optional
   - rule:
-    - encode `extra_inputs.required` and `extra_inputs.optional` as objects with `input` and `usage`; strings are invalid
-    - include `usage` on every `conditional_required` rule so the GUI can explain why the file is needed for that tool and condition
+    - encode `extra_inputs.required` and `extra_inputs.optional` as objects with
+      `input`, `usage`, and `delivery`; strings and implicit delivery are invalid
+    - include `usage` and `delivery` on every `conditional_required` rule so the
+      GUI can explain why the file is needed and the runner can enforce whether
+      it crosses the container boundary
+    - use `delivery: "runtime"` only when the selected upstream wrapper reads
+      the file; use `delivery: "orchestration_only"` when ANDREA core requires
+      the input for planning, partitioning, aggregation, or finalization but the
+      physical wrapper must not see it
+    - for `groups`, use runtime delivery only in a native grouped mode whose
+      upstream interface consumes group metadata; `group_emulated` and
+      `group_aggregated` rules must always use orchestration-only delivery
     - create an input requirement matrix in `integration_decisions.md` before finalizing the ToolSpec:
       - always required inputs
       - inputs required only for an `execution.mode`
@@ -601,6 +614,11 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - do not rely on GUI-only or orchestrator-only hardcoding as the source of a required input rule; express the rule in the ToolSpec whenever the catalog can represent it
     - if the semantic content does not match an existing normalized input, propose a new `input_spec`
     - document why each reused normalized input matches semantically, not just structurally
+    - physical-wrapper smoketests must copy only active runtime-delivered files;
+      do not list orchestration-only `groups.tsv` in `extra_files`. Verify raw
+      `context=global` for emulated children and raw `context=column:<id>` for
+      aggregated runs; cover the final logical group contexts in ANDREA core
+      orchestration tests
 
 ### Output semantics
 

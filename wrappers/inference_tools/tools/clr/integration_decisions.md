@@ -213,12 +213,16 @@ For each field below:
 - chosen value:
   - `required`: `[]`
   - `optional`: `["groups"]`
-  - `conditional_required`: `groups` when `execution.mode == "group_emulated"`
+  - `conditional_required`: `groups` with
+    `delivery="orchestration_only"` when
+    `execution.mode == "group_emulated"`
 - evidence:
   - `wrappers/inference_tools/tools/clr/repo/man/clr.Rd:6-18`
   - `wrappers/inference_tools/tools/clr/repo/man/build.mim.Rd:5-23`
   - `wrappers/inference_tools/tools/clr/repo/man/minet.Rd:6-25`
-  - `andrea/core/commands/infer_network/plan.py` and `run.py` partition expression by `groups.tsv` before running global wrappers in `group_emulated` mode
+  - `andrea/core/commands/infer_network/plan.py` and `run.py` partition
+    expression by `groups.tsv` and invoke each physical child with
+    `execution.mode=global`
 - rationale:
   - upstream CLR/minet consumes only the dataset plus scalar parameters
   - `groups` is not consumed by CLR/minet; it is only required by ANDREA when `group_emulated` execution is selected
@@ -226,6 +230,9 @@ For each field below:
   - the original CLR paper uses known transcription factors for evaluation/biological interpretation, but that restriction is not part of the `minet` CLR API
 - uncertainty:
   - low
+
+The wrapper requires `execution.json` and accepts only physical `global`.
+`group_emulated` remains a logical ANDREA orchestration capability.
 
 ### `outputs`
 

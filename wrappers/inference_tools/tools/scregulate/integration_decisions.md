@@ -52,11 +52,15 @@ scRegulate is a single-cell GRN and TF-activity inference method. It embeds a TF
 | `compatibility_rules` | min columns and builtin-prior organism rules | `train_model()` splits cells into train/validation; `collectri_prior(species)` accepts only `human` or `mouse` | Dataset with one column cannot split safely. Builtin CollecTRI modes are blocked for declared incompatible taxa and warned for unknown taxon. |
 | `accepts` | `cells` | README says single cell/nucleus RNA data; paper is scRNA-seq-specific | Expression columns are cells. |
 | `assumes` | `scrna_specific` | Paper title/abstract and methods; README introduction | Method is explicitly for single-cell transcriptomics. |
-| `extra_inputs` | `prior_grn` conditional on `prior_source=provided_prior`; `groups` conditional on `execution.mode=group_native` or `group_emulated` | `train_model(rna_data, net, ...)` requires a net DataFrame; `fine_tune_clusters(..., cluster_key=...)` consumes clusters; ANDREA group emulation needs `groups.tsv` to partition expression | Builtin CollecTRI modes need no user prior. Group labels drive native grouped fine-tuning or ANDREA's per-group emulated runs. |
+| `extra_inputs` | `prior_grn` conditional on `prior_source=provided_prior`; `groups` conditional on `execution.mode=group_native` or `group_emulated` | `train_model(rna_data, net, ...)` requires a net DataFrame; `fine_tune_clusters(..., cluster_key=...)` consumes clusters; ANDREA group emulation needs `groups.tsv` to partition expression | `groups` is delivered at runtime only for `group_native`; in `group_emulated` it is orchestration-only. Builtin CollecTRI modes need no user prior. |
 | `outputs` | directed, signed, association | Paper defines TF-target matrix `W`, sign as activator/repressor and magnitude as strength; source uses TF columns/genes | Wrapper should export TF -> target edges, `score=abs(raw_weight)`, `sign` from raw weight. |
 | `progress` | iterations | Source has explicit epoch loops in `train_model()` and `fine_tune_clusters()` | Implemented wrapper reports coarse lifecycle phases in `progress.json` and preserves upstream epoch diagnostics in `scregulate.log`. |
 | `params` | prior selection plus core training/fine-tuning hyperparameters | Function signatures in `train.py` and `fine_tuning.py`; tutorial examples | Exposes runtime/scientific knobs needed for practical runs; keeps architecture arrays fixed to source defaults for Phase 1 simplicity. |
 | `artifacts_aux` | log, config, prior network, raw weights, model state | Upstream returns model, processed AnnData and GRN objects; debugging requires resolved prior and raw weights | Implemented wrapper preserves raw method state before ANDREA conversion. |
+
+The wrapper requires `execution.json` and accepts physical `global` and
+`group_native` only. Logical `group_emulated` children are translated to
+`global` before container launch.
 
 ## Upstream Interface Audit
 
@@ -78,8 +82,9 @@ scRegulate is a single-cell GRN and TF-activity inference method. It embeds a TF
 - Required by parameter:
   - `prior_grn` when `prior_source=provided_prior`.
 - Required by execution mode:
-  - `groups` when `execution.mode=group_native`.
-  - `groups` when `execution.mode=group_emulated`.
+  - `groups` with `delivery=runtime` when `execution.mode=group_native`.
+  - `groups` with `delivery=orchestration_only` when
+    `execution.mode=group_emulated`.
 - Optional inputs: none in Phase 1.
 - Upstream inputs intentionally not exposed:
   - `.h5ad` direct input, because ANDREA normalized expression is the wrapper contract.
@@ -120,14 +125,17 @@ Defaults and conflicts:
   - Export one context per public group as `group:<group_id>`.
 - Group emulated mode:
   - ANDREA partitions expression by public `groups.tsv` labels and invokes the wrapper once per group, using the global scRegulate path in each child run.
-  - The wrapper should accept either the full parent `groups.tsv` or the subset matching the current child expression matrix, subset labels to current expression columns, and export the current public group as `group:<group_id>`.
-  - scRegulate does not consume group labels in this profile; labels are used only for context assignment and id preservation.
+  - The wrapper does not receive group labels in this profile. Each child emits
+    `context=global`; ANDREA assigns the planned public `group:<group_id>` while
+    merging the child results.
 - Direction:
   - `source` is TF name, `target` is target gene name.
 - Score/sign:
   - Use raw signed weights, not the min-max scaled DataFrames returned for plotting.
   - Write `score=abs(weight)`.
   - Write `sign="+"` for positive weight, `sign="-"` for negative weight, and omit zero-weight rows.
+  - Valid posterior matrices with no exportable nonzero weights produce a
+    canonical header-only `network.csv`.
 - Evidence:
   - `association`, because the method estimates regulatory association/strength from expression and priors rather than direct perturbational causality.
 - Public ids:
@@ -171,18 +179,23 @@ Defaults and conflicts:
 - Validate prior shape, finite nonzero weights, provided-prior gene ids, and source target counts before calling upstream; upstream `adapt_prior_and_data()` still enforces overlap and `min_targets`/`min_TFs`.
 - Preserve group ids exactly in `group:<id>` contexts.
 - `group_native`: pass groups as `AnnData.obs["andrea_group"]` and call `fine_tune_clusters(cluster_key="andrea_group")`.
-- `group_emulated`: wrapper accepts full parent group maps, subsets them to current expression columns, runs the global path, and writes `group:<id>` only when the current physical child contains one group. ANDREA's logical grouped finalizer overwrites child contexts with the planned public group label.
+- `group_emulated`: ANDREA withholds the group map from the child, supplies the
+  already partitioned expression matrix with physical `execution.mode=global`,
+  and replaces the child's raw
+  `context=global` with the planned public group label.
 - Preserve raw positive score magnitudes only; do not apply ANDREA normalization.
 - Export auxiliary artifacts declared in ToolSpec: `scregulate.log`, `raw/scregulate_config.json`, `raw/prior_network.tsv`, `raw/grn_raw_weights.tsv`, `raw/model_state.pt`.
 
 ## Smoketest Outcome
 
 - Config: `wrappers/inference_tools/tests/smoketest_configs/scregulate.json`.
-- Fixture inputs: tool-specific `scregulate/expression.tsv`, tool-specific `scregulate/prior_grn.tsv`, shared `groups.tsv`.
+- Fixture inputs: tool-specific `scregulate/expression.tsv`, tool-specific
+  `scregulate/prior_grn.tsv`, and shared `groups.tsv` only for the
+  `group_native` variant. The wrapper requires `execution.json` and accepts
+  physical `global` and `group_native` only.
 - Variants covered:
   - `global_provided_prior`;
   - `group_native_provided_prior`;
-  - `group_emulated_contract`;
   - `provided_prior_weighted_min_targets_filter`.
 - Verified by harness:
   - positive `score`;
@@ -190,7 +203,8 @@ Defaults and conflicts:
   - public gene ids;
   - `group:<id>` contexts for `group_native`;
   - `scregulate.log`, `raw/scregulate_config.json`, `raw/prior_network.tsv`, `raw/grn_raw_weights.tsv`, `raw/model_state.pt`.
-- Result: passed; `network.csv` rows were 39 for global, 39 for group native, 39 for group emulated contract, and 20 for the weighted-prior `min_targets` regression.
+- Result: passed; `network.csv` rows were 39 for global, 39 for group native,
+  and 20 for the weighted-prior `min_targets` regression.
 - GUI regression checked on `inferred_networks/gui_dataset_20260624T020103Z` input with reduced epoch budgets: the wrapper no longer fails with the upstream ULM `KeyError` or `NaN` posterior, filters TFs `2`, `80` and `91` below `min_targets=20`, and writes 249 network rows.
 
 ## Known Limitations / Open Questions

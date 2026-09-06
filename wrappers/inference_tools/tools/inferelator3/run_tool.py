@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
-import json
 import math
 import os
 import shutil
@@ -24,15 +23,14 @@ os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "1")
 import joblib
 import numpy as np
 import pandas as pd
-
 from _run_tool_common import (
+    load_execution_mode,
     load_params,
     require_param_keys,
     validate_runtime_inputs,
     warn_unknown_params,
     write_progress,
 )
-
 
 EXPECTED_PARAMS = {
     "regression",
@@ -178,17 +176,12 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
 
 
 def _load_execution(params_path: Path) -> ResolvedExecution:
-    execution_path = params_path.parent / "execution.json"
-    if not execution_path.exists():
-        return ResolvedExecution(mode="global")
-    with execution_path.open("r", encoding="utf-8") as fh:
-        raw = json.load(fh)
-    if not isinstance(raw, dict):
-        raise ValueError("execution.json must be a JSON object.")
-    mode = str(raw.get("mode", "global")).strip() or "global"
-    if mode not in {"global", "group_native", "group_emulated"}:
-        raise ValueError("execution.mode must be one of: global, group_native, group_emulated.")
-    return ResolvedExecution(mode=mode)
+    return ResolvedExecution(
+        mode=load_execution_mode(
+            params_path,
+            supported_modes={"global", "group_native"},
+        )
+    )
 
 
 def _read_expression_tsv(expr_path: Path) -> pd.DataFrame:
@@ -480,7 +473,7 @@ def _resolve_upstream_regression(params: ResolvedParams, execution: ResolvedExec
     if params.regression in {"auto", "bbsr"}:
         return "bbsr"
     raise ValueError(
-        "global and group_emulated execution currently support regression=auto or regression=bbsr."
+        "global execution supports regression=auto or regression=bbsr."
     )
 
 
@@ -712,8 +705,6 @@ def _convert_network(
             gene_alias_reverse_map=gene_alias_reverse_map,
         )
 
-    if not rows:
-        raise ValueError("Inferelator produced no non-zero network edges.")
     rows.sort(key=lambda item: item["score"], reverse=True)
 
     with network_csv_path.open("w", encoding="utf-8", newline="") as fh:

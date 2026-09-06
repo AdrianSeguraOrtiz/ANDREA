@@ -1,4 +1,7 @@
 {
+  "execution": {
+    "mode": "global"
+  },
   "param_overrides": {
     "n_supercells": 5,
     "supercell_hvgs": 8,
@@ -18,15 +21,6 @@
   "variants": [
     {
       "name": "global"
-    },
-    {
-      "name": "group_emulated_contract",
-      "extra_files": [
-        "groups.tsv"
-      ],
-      "execution": {
-        "mode": "group_emulated"
-      }
     }
   ]
 }

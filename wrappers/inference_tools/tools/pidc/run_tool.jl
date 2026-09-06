@@ -10,7 +10,7 @@ const NETWORKINFERENCE_REF = get(
     "NETWORKINFERENCE_REF",
     "e5a3de323127f002e57bbd91c834f7739939ba0e",
 )
-const SUPPORTED_MODES = Set(["global", "group_emulated"])
+const SUPPORTED_MODES = Set(["global"])
 
 struct RuntimeArgs
     input::String
@@ -208,22 +208,19 @@ function resolve_params(path::String)::ResolvedParams
     return ResolvedParams(discretizer, estimator, number_of_bins, base)
 end
 
-function load_execution_mode(params_path::String, extra_dir::String)::String
+function load_execution_mode(params_path::String)::String
     execution_path = joinpath(dirname(params_path), "execution.json")
     if !isfile(execution_path)
-        return "global"
+        error("execution.json is required.")
     end
     raw = load_json_object(execution_path, "execution.json")
-    mode_value = get(raw, "mode", "global")
+    mode_value = get(raw, "mode", nothing)
     if !(mode_value isa AbstractString)
         error("execution.mode must be a string.")
     end
     mode = String(mode_value)
     if !(mode in SUPPORTED_MODES)
-        error("PIDC supports only execution.mode=global or group_emulated.")
-    end
-    if mode == "group_emulated" && !isfile(joinpath(extra_dir, "groups.tsv"))
-        error("groups.tsv is required in --extra when execution.mode=group_emulated.")
+        error("PIDC supports only physical execution.mode=global.")
     end
     return mode
 end
@@ -422,9 +419,6 @@ function convert_edges(network, raw_edges_path::String, network_path::String, ge
         end
     end
 
-    if isempty(rows)
-        error("PIDC produced no positive-magnitude non-self edges.")
-    end
     sort!(rows; by = row -> (-row[3], row[1], row[2]))
 
     open(network_path, "w") do io
@@ -498,7 +492,7 @@ function run(args::RuntimeArgs)
     )
 
     params = resolve_params(args.params)
-    execution_mode = load_execution_mode(args.params, args.extra)
+    execution_mode = load_execution_mode(args.params)
 
     write_progress(
         progress_path;
