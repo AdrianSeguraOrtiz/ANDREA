@@ -456,7 +456,7 @@
                       <div class="mode-guide-flow">
                         <div>
                           <strong>Image receives</strong>
-                          <p>One Docker run per group, each with expression columns filtered to that group.</p>
+                          <p>One Docker run per group, each with expression columns filtered to that group. <code>groups.tsv</code> remains private to ANDREA.</p>
                         </div>
                         <div>
                           <strong>Image returns</strong>
@@ -482,7 +482,7 @@
                       <div class="mode-guide-flow">
                         <div>
                           <strong>Image receives</strong>
-                          <p>One column-native Docker run on the full expression matrix. ANDREA requires <code>groups.tsv</code>.</p>
+                          <p>One column-native Docker run on the full expression matrix. ANDREA requires and consumes <code>groups.tsv</code>; the image does not receive it.</p>
                         </div>
                         <div>
                           <strong>Image returns</strong>
@@ -527,7 +527,7 @@
               </div>
               <input id="custom-tool-needed-extras" type="hidden" value="" />
               <div id="custom-tool-extra-options" class="custom-tool-extra-options"></div>
-              <span class="field-hint">Choose standardized extra input names from the files provided in Step 1. At execution, <code>/io/extra</code> contains only the intersection between Step 1 extras and this list.</span>
+              <span class="field-hint">Choose only the standardized inputs read by the image. At execution, <code>/io/extra</code> contains only the intersection between Step 1 extras and this list. <code>group_native</code> requires exactly one context source: <code>groups</code> or <code>column_phenotypes</code>. In <code>group_emulated</code> and <code>group_aggregated</code>, ANDREA manages <code>groups.tsv</code> and does not mount it in the child container.</span>
             </section>
             <section class="external-tool-form-section">
               <div class="external-tool-section-head">

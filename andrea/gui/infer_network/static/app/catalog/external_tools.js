@@ -18,8 +18,19 @@ const CUSTOM_TOOL_DEFINITION_KEYS = new Set([
 ]);
 const CUSTOM_TOOL_EVIDENCE = "external_tool_output";
 const OUTPUT_SIGN_SEMANTICS = new Set(["none", "signed", "mixed"]);
+const ANDREA_MANAGED_GROUP_MODES = new Set([
+  "group_emulated",
+  "group_aggregated",
+]);
+
+export function customToolGroupsAreManagedByAndrea(executionMode) {
+  return ANDREA_MANAGED_GROUP_MODES.has(executionMode);
+}
 
 function capabilitiesForExecutionMode(executionMode) {
+  if (executionMode === "group_emulated") {
+    return ["global", "group_emulated"];
+  }
   if (executionMode === "group_aggregated") {
     return ["column_native", "group_aggregated"];
   }
@@ -185,6 +196,26 @@ function validateCustomToolDefinition(rawTool) {
     }
     seenExtras.add(input);
     extraInputs.push(input);
+  }
+  if (
+    customToolGroupsAreManagedByAndrea(executionMode) &&
+    seenExtras.has("groups")
+  ) {
+    throw new Error(
+      `extra_inputs must not contain groups for ${executionMode}; ` +
+      "ANDREA manages groups.tsv as an orchestration-only input."
+    );
+  }
+  if (executionMode === "group_native") {
+    const contextInputs = ["groups", "column_phenotypes"].filter((input) =>
+      seenExtras.has(input)
+    );
+    if (contextInputs.length !== 1) {
+      throw new Error(
+        "group_native requires exactly one runtime context input: " +
+        "groups or column_phenotypes."
+      );
+    }
   }
 
   return {
@@ -626,8 +657,9 @@ export function buildSimpleCustomToolFromForm() {
       sign: signValue,
     },
   };
+  const normalizedTool = validateCustomToolDefinition(tool);
   return {
-    tool,
+    tool: normalizedTool,
     paramsSchema: schemaFromRuntimeParams(runtimeParams),
     run: {
       run_id: runId,

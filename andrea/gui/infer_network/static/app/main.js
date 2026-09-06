@@ -13,6 +13,7 @@ import {
   addCustomToolDefinition,
   buildSimpleCustomToolFromForm,
   customToolDockerImageFromForm,
+  customToolGroupsAreManagedByAndrea,
   customToolsPayload,
   pruneCustomToolsToSelectedToolIds,
   removeCustomToolDefinition,
@@ -113,8 +114,8 @@ function showExternalDockerToolGuide() {
     sections: [
       {
         title: "How ANDREA runs the image",
-        text: "Your image entrypoint must accept these flags. ANDREA mounts a writable run folder at /io, disables networking for custom tools and applies Docker CPU/RAM limits.",
-        json: "docker run --network none \\\n  --cpus <threads> --memory <ram>g \\\n  -v <run>/io:/io IMAGE:TAG \\\n  --input /io/expression.tsv \\\n  --params /io/params.json \\\n  --extra /io/extra \\\n  --output-dir /io/out \\\n  --threads <threads>",
+        text: "Your image entrypoint must accept these flags. ANDREA mounts /io read-only, overlays only /io/out as writable, disables networking for custom tools and applies Docker CPU/RAM limits.",
+        json: "docker run --network none \\\n  --cpus <threads> --memory <ram>g \\\n  -v <run>/io:/io:ro \\\n  -v <run>/io/out:/io/out:rw IMAGE:TAG \\\n  --input /io/expression.tsv \\\n  --params /io/params.json \\\n  --extra /io/extra \\\n  --output-dir /io/out \\\n  --threads <threads>",
       },
       {
         title: "What the image receives",
@@ -176,6 +177,14 @@ function syncExternalToolExtraOptions() {
     String(left).localeCompare(String(right))
   );
   const selected = new Set(parseExternalExtraInputKeys(input.value));
+  const executionMode = document.querySelector(
+    "input[name='custom-tool-execution-mode']:checked"
+  )?.value;
+  const groupsManagedByAndrea = customToolGroupsAreManagedByAndrea(executionMode);
+  if (groupsManagedByAndrea) {
+    selected.delete("groups");
+  }
+  input.value = Array.from(selected).sort().join(", ");
   host.innerHTML = "";
   if (!provided.length) {
     const empty = document.createElement("span");
@@ -185,13 +194,22 @@ function syncExternalToolExtraOptions() {
     return;
   }
   for (const key of provided) {
+    const managedByAndrea = groupsManagedByAndrea && key === "groups";
     const label = document.createElement("label");
-    label.className = `custom-tool-extra-choice${selected.has(key) ? " selected" : ""}`;
+    label.className = [
+      "custom-tool-extra-choice",
+      selected.has(key) ? "selected" : "",
+      managedByAndrea ? "managed-by-andrea" : "",
+    ].filter(Boolean).join(" ");
+    if (managedByAndrea) {
+      label.title = "ANDREA uses groups.tsv for orchestration and does not mount it in the child container.";
+    }
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = selected.has(key);
+    checkbox.checked = !managedByAndrea && selected.has(key);
+    checkbox.disabled = managedByAndrea;
     const text = document.createElement("span");
-    text.textContent = key;
+    text.textContent = managedByAndrea ? `${key} (managed by ANDREA)` : key;
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) {
         selected.add(key);
@@ -566,8 +584,8 @@ function bindEvents() {
   $("open-tool-request-modal-btn").addEventListener("click", () => openModal("tool-request-modal"));
   $("open-tool-issue-modal-btn").addEventListener("click", () => openModal("tool-issue-modal"));
   $("open-external-tool-modal-btn").addEventListener("click", () => {
-    syncExternalToolExtraOptions();
     syncExternalToolExecutionModes();
+    syncExternalToolExtraOptions();
     resetCustomToolParamRows();
     setCustomToolImageCheckState(null, "Not checked");
     openModal("external-tool-modal");
@@ -610,6 +628,11 @@ function bindEvents() {
   $("custom-tool-needed-extras").addEventListener("input", () => {
     syncExternalToolExtraOptions();
   });
+  for (const radio of document.querySelectorAll("input[name='custom-tool-execution-mode']")) {
+    radio.addEventListener("change", () => {
+      syncExternalToolExtraOptions();
+    });
+  }
   $("custom-tool-add-param-row").addEventListener("click", () => {
     addCustomToolParamRow();
   });

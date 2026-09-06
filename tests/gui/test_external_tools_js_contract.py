@@ -26,6 +26,15 @@ RUN_CARDS_PATH = (
     / "runs"
     / "cards.js"
 )
+MAIN_PATH = (
+    REPO_ROOT
+    / "andrea"
+    / "gui"
+    / "infer_network"
+    / "static"
+    / "app"
+    / "main.js"
+)
 
 NODE_CONTRACT_TEST = r"""
 const fs = require("fs");
@@ -132,6 +141,65 @@ function assertThrows(callback, expected) {
     "must be exactly demo_01"
   );
 
+  assert(
+    api.customToolGroupsAreManagedByAndrea("group_emulated") === true,
+    "group_emulated groups are managed by ANDREA"
+  );
+  assert(
+    api.customToolGroupsAreManagedByAndrea("group_aggregated") === true,
+    "group_aggregated groups are managed by ANDREA"
+  );
+  assert(
+    api.customToolGroupsAreManagedByAndrea("group_native") === false,
+    "group_native can deliver groups to the image"
+  );
+
+  for (const executionMode of ["group_emulated", "group_aggregated"]) {
+    const orchestrated = {
+      ...clone(valid),
+      run_id: `${executionMode}_01`,
+      execution_mode: executionMode,
+      extra_inputs: [],
+    };
+    reset();
+    api.addCustomToolDefinition(orchestrated);
+    assert(
+      JSON.stringify(api.customToolsPayload()) ===
+        JSON.stringify({ tools: [orchestrated] }),
+      `${executionMode} public payload omits orchestration-only groups`
+    );
+
+    const invalidRuntimeGroups = { ...orchestrated, extra_inputs: ["groups"] };
+    reset();
+    assertThrows(
+      () => api.addCustomToolDefinition(invalidRuntimeGroups),
+      "ANDREA manages groups.tsv as an orchestration-only input"
+    );
+  }
+
+  for (const extraInputs of [["groups"], ["column_phenotypes"]]) {
+    const groupNative = {
+      ...clone(valid),
+      run_id: `group_native_${extraInputs[0]}`,
+      execution_mode: "group_native",
+      extra_inputs: extraInputs,
+    };
+    reset();
+    api.addCustomToolDefinition(groupNative);
+  }
+  for (const extraInputs of [[], ["groups", "column_phenotypes"]]) {
+    const invalidGroupNative = {
+      ...clone(valid),
+      execution_mode: "group_native",
+      extra_inputs: extraInputs,
+    };
+    reset();
+    assertThrows(
+      () => api.addCustomToolDefinition(invalidGroupNative),
+      "group_native requires exactly one runtime context input"
+    );
+  }
+
   const missingOutputs = clone(valid);
   delete missingOutputs.outputs;
   reset();
@@ -224,6 +292,17 @@ class ExternalToolsJavaScriptContractTests(unittest.TestCase):
             source,
         )
         self.assertIn("? [fixedExecutionMode]", source)
+
+    def test_orchestration_only_groups_are_disabled_in_the_form(self) -> None:
+        source = MAIN_PATH.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "customToolGroupsAreManagedByAndrea(executionMode)",
+            source,
+        )
+        self.assertIn('selected.delete("groups");', source)
+        self.assertIn("checkbox.disabled = managedByAndrea;", source)
+        self.assertIn("(managed by ANDREA)", source)
 
     def test_external_tool_contract_and_form_normalization(self) -> None:
         result = subprocess.run(

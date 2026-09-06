@@ -1237,6 +1237,13 @@ textarea {
   color: #0f766e;
 }
 
+.custom-tool-extra-choice.managed-by-andrea {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
 .custom-tool-extra-empty {
   border: 1px dashed rgba(148, 163, 184, 0.55);
   border-radius: 999px;
