@@ -8,13 +8,6 @@
       "execution": {
         "mode": "column_native"
       }
-    },
-    {
-      "id": "group_aggregated_groups_2",
-      "execution": {
-        "mode": "group_aggregated"
-      },
-      "group_count": 2
     }
   ]
 }

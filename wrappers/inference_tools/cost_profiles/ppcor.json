@@ -29,16 +29,6 @@
       "param_overrides": {
         "method": "kendall"
       }
-    },
-    {
-      "id": "group_emulated_pearson_groups_2",
-      "execution": {
-        "mode": "group_emulated"
-      },
-      "group_count": 2,
-      "param_overrides": {
-        "method": "pearson"
-      }
     }
   ]
 }

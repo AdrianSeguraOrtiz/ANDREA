@@ -141,19 +141,17 @@
       "properties": {
         "mode": {
           "type": "string",
-          "minLength": 1,
-          "description": "Logical execution mode. Must be one of the tool's execution_capabilities."
+          "enum": ["global", "group_native", "column_native"],
+          "description": "Physical execution mode measured inside one wrapper container."
         },
         "physical_task_policy": {
           "type": "string",
           "enum": [
             "single",
             "native_grouped",
-            "andrea_group_emulated",
-            "column_native",
-            "andrea_group_aggregated"
+            "column_native"
           ],
-          "description": "How the logical run maps to physical wrapper/container tasks."
+          "description": "Shape of the measured physical wrapper task."
         },
         "group_count": {
           "type": "integer",
@@ -162,8 +160,8 @@
         },
         "aggregation_step": {
           "type": "string",
-          "enum": ["none", "column_to_group"],
-          "description": "Deterministic ANDREA post-processing step represented by this profile, if any."
+          "enum": ["none"],
+          "description": "Physical benchmark profiles never include orchestration post-processing."
         }
       }
     },
@@ -173,6 +171,7 @@
       "required": [
         "column_kind",
         "expression_profile",
+        "gene_id_source",
         "extras_provided",
         "required_inputs_satisfied",
         "optional_inputs_provided",
@@ -196,19 +195,23 @@
         "gene_id_source": {
           "type": "string",
           "minLength": 1,
-          "description": "Gene identifier source used by the benchmark fixture generator. Defaults to synthetic when omitted in older measured profiles."
+          "description": "Gene identifier source used by the benchmark fixture generator."
         },
         "extras_provided": {
-          "$ref": "#/$defs/input_key_array"
+          "$ref": "#/$defs/input_key_array",
+          "description": "Runtime-delivered extra inputs physically generated under /io/extra for the benchmark container. Orchestration-only inputs must not appear here."
         },
         "required_inputs_satisfied": {
-          "$ref": "#/$defs/input_key_array"
+          "$ref": "#/$defs/input_key_array",
+          "description": "Runtime-delivered required inputs satisfied by the physical benchmark fixture."
         },
         "optional_inputs_provided": {
-          "$ref": "#/$defs/input_key_array"
+          "$ref": "#/$defs/input_key_array",
+          "description": "Runtime-delivered optional inputs selected by the physical benchmark fixture."
         },
         "conditional_inputs_satisfied": {
-          "$ref": "#/$defs/input_key_array"
+          "$ref": "#/$defs/input_key_array",
+          "description": "Runtime-delivered conditional inputs activated and satisfied by the physical benchmark fixture."
         },
         "tf_count_policy": {
           "anyOf": [
@@ -243,7 +246,7 @@
         "group_count": {
           "type": "integer",
           "minimum": 0,
-          "description": "Number of groups represented in grouped extra inputs."
+          "description": "Number of groups consumed by a native grouped wrapper; zero for global and column-native tasks."
         },
         "has_tf_list": {
           "type": "boolean",
@@ -256,8 +259,8 @@
         },
         "aggregation_step": {
           "type": "string",
-          "enum": ["none", "column_to_group"],
-          "description": "Post-processing aggregation step attached to this benchmark profile."
+          "enum": ["none"],
+          "description": "Physical benchmark profiles exclude orchestration post-processing."
         },
         "notes": {
           "type": "array",

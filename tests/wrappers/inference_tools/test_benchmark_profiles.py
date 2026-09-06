@@ -35,7 +35,9 @@ def _tool_ids() -> list[str]:
     )
 
 
-def _extra_input_ids(toolspec: dict[str, object], field: str) -> set[str]:
+def _extra_input_ids(
+    toolspec: dict[str, object], field: str, *, delivery: str | None = None
+) -> set[str]:
     extra_inputs = toolspec.get("extra_inputs", {})
     if not isinstance(extra_inputs, dict):
         return set()
@@ -44,7 +46,11 @@ def _extra_input_ids(toolspec: dict[str, object], field: str) -> set[str]:
         return set()
     out = set()
     for entry in entries:
-        if isinstance(entry, dict) and isinstance(entry.get("input"), str):
+        if (
+            isinstance(entry, dict)
+            and isinstance(entry.get("input"), str)
+            and (delivery is None or entry.get("delivery") == delivery)
+        ):
             out.add(str(entry["input"]))
     return out
 
@@ -95,12 +101,6 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                 "optional": set(),
                 "conditional": set(),
             },
-            ("genie3", "group_emulated_groups_2_tf_list"): {
-                "mode": "group_emulated",
-                "required": set(),
-                "optional": {"tf_list"},
-                "conditional": {"groups"},
-            },
             ("inferelator3", "global_prior_sparse"): {
                 "mode": "global",
                 "required": {"prior_grn", "tf_list"},
@@ -140,23 +140,17 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                 },
                 "conditional": set(),
             },
-            ("infercsn", "group_emulated_groups_2_default"): {
-                "mode": "group_emulated",
-                "required": {"groups"},
+            ("infercsn", "global_default"): {
+                "mode": "global",
+                "required": set(),
                 "optional": set(),
                 "conditional": set(),
             },
-            ("infercsn", "group_emulated_groups_2_tf_list"): {
-                "mode": "group_emulated",
-                "required": {"groups"},
+            ("infercsn", "global_tf_list"): {
+                "mode": "global",
+                "required": set(),
                 "optional": {"tf_list"},
                 "conditional": set(),
-            },
-            ("infercsn", "group_emulated_groups_2_entropy_pseudotime"): {
-                "mode": "group_emulated",
-                "required": {"groups"},
-                "optional": {"tf_list"},
-                "conditional": {"pseudotime"},
             },
         }
         resolved = {}
@@ -207,15 +201,24 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                 )
                 self.assertGreater(len(profiles), 0)
 
-                declared_modes = set(toolspec.get("execution_capabilities", []))
+                declared_modes = set(toolspec.get("execution_capabilities", [])).intersection(
+                    {"global", "group_native", "column_native"}
+                )
                 resolved_modes = {profile.execution_profile["mode"] for profile in profiles}
                 self.assertTrue(
                     declared_modes.issubset(resolved_modes),
                     f"{tool_id}: missing modes {declared_modes - resolved_modes}",
                 )
 
-                required_inputs = _extra_input_ids(toolspec, "required")
+                required_inputs = _extra_input_ids(
+                    toolspec, "required", delivery="runtime"
+                )
                 for profile in profiles:
+                    self.assertIn(
+                        profile.input_profile["column_kind"],
+                        toolspec["accepts"],
+                        f"{tool_id}/{profile.profile_id}: incompatible column kind",
+                    )
                     self.assertTrue(
                         required_inputs.issubset(
                             set(profile.input_profile["required_inputs_satisfied"])
@@ -223,7 +226,9 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                         f"{tool_id}/{profile.profile_id}: missing required inputs",
                     )
 
-                optional_inputs = _extra_input_ids(toolspec, "optional")
+                optional_inputs = _extra_input_ids(
+                    toolspec, "optional", delivery="runtime"
+                )
                 resolved_optional = set().union(
                     *[
                         set(profile.input_profile["optional_inputs_provided"])
@@ -237,7 +242,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                 )
 
                 conditional_inputs = _extra_input_ids(
-                    toolspec, "conditional_required"
+                    toolspec, "conditional_required", delivery="runtime"
                 )
                 resolved_conditional = set().union(
                     *[
@@ -316,9 +321,8 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                                 "optional_inputs": [],
                             },
                             {
-                                "id": "group_emulated_tf_limit_25",
-                                "execution": {"mode": "group_emulated"},
-                                "group_count": 3,
+                                "id": "global_tf_limit_25",
+                                "execution": {"mode": "global"},
                                 "optional_inputs": ["tf_list"],
                                 "param_overrides": {"limit": 25},
                             },
@@ -337,7 +341,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
 
         self.assertEqual(
             [profile.profile_id for profile in profiles],
-            ["global_no_tf", "group_emulated_tf_limit_25"],
+            ["global_no_tf", "global_tf_limit_25"],
         )
         self.assertEqual(profiles[0].input_profile["extras_provided"], [])
         self.assertEqual(profiles[0].params_profile["cost_relevant_params"], ["limit"])
@@ -345,32 +349,29 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             profiles[0].params_profile["cost_relevant_values"],
             {"limit": 50},
         )
-        grouped = profiles[1]
-        self.assertEqual(grouped.execution, {"mode": "group_emulated"})
+        tf_profile = profiles[1]
+        self.assertEqual(tf_profile.execution, {"mode": "global"})
         self.assertEqual(
-            grouped.execution_profile["physical_task_policy"], "andrea_group_emulated"
+            tf_profile.execution_profile["physical_task_policy"], "single"
         )
-        self.assertEqual(grouped.execution_profile["group_count"], 3)
-        self.assertEqual(grouped.params["limit"], 25)
-        self.assertEqual(grouped.params_profile["cost_relevant_params"], ["limit"])
+        self.assertEqual(tf_profile.execution_profile["group_count"], 0)
+        self.assertEqual(tf_profile.params["limit"], 25)
+        self.assertEqual(tf_profile.params_profile["cost_relevant_params"], ["limit"])
         self.assertEqual(
-            grouped.params_profile["cost_relevant_values"],
+            tf_profile.params_profile["cost_relevant_values"],
             {"limit": 25},
         )
         self.assertEqual(
-            set(grouped.input_profile["extras_provided"]),
-            {"groups", "tf_list"},
+            set(tf_profile.input_profile["extras_provided"]),
+            {"tf_list"},
         )
+        self.assertEqual(tf_profile.input_profile["conditional_inputs_satisfied"], [])
         self.assertEqual(
-            set(grouped.input_profile["conditional_inputs_satisfied"]),
-            {"groups"},
-        )
-        self.assertEqual(
-            set(grouped.input_profile["optional_inputs_provided"]),
+            set(tf_profile.input_profile["optional_inputs_provided"]),
             {"tf_list"},
         )
 
-    def test_column_native_and_group_aggregated_cost_profiles_resolve(self) -> None:
+    def test_column_native_cost_profile_resolves_runtime_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             catalog_root = base / "catalog"
@@ -385,6 +386,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                             "column_native",
                             "group_aggregated",
                         ],
+                        "accepts": ["cells"],
                         "params": {},
                         "extra_inputs": {
                             "required": [],
@@ -392,6 +394,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                                 {
                                     "input": "tf_list",
                                     "usage": "Restricts candidate regulators.",
+                                    "delivery": "runtime",
                                 },
                             ],
                             "conditional_required": [
@@ -401,7 +404,16 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                                     "op": "eq",
                                     "value": "group_aggregated",
                                     "usage": "Maps column-native outputs to groups.",
-                                }
+                                    "delivery": "orchestration_only",
+                                },
+                                {
+                                    "input": "prior_grn",
+                                    "execution": "mode",
+                                    "op": "eq",
+                                    "value": "column_native",
+                                    "usage": "Read by the physical column-native wrapper.",
+                                    "delivery": "runtime",
+                                },
                             ],
                         },
                     }
@@ -418,11 +430,6 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                                 "id": "column_native_tf_list",
                                 "execution": {"mode": "column_native"},
                                 "optional_inputs": ["tf_list"],
-                            },
-                            {
-                                "id": "group_aggregated_groups_2",
-                                "execution": {"mode": "group_aggregated"},
-                                "group_count": 2,
                             },
                         ]
                     }
@@ -446,20 +453,86 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         self.assertEqual(column_native.execution_profile["aggregation_step"], "none")
         self.assertEqual(column_native.input_profile["output_density_class"], "dense")
         self.assertTrue(column_native.input_profile["has_tf_list"])
+        self.assertEqual(
+            column_native.input_profile["conditional_inputs_satisfied"],
+            ["prior_grn"],
+        )
+        self.assertEqual(
+            column_native.input_profile["extras_provided"],
+            ["prior_grn", "tf_list"],
+        )
 
-        group_aggregated = profiles[1]
-        self.assertEqual(group_aggregated.execution_profile["mode"], "group_aggregated")
-        self.assertEqual(
-            group_aggregated.execution_profile["physical_task_policy"],
-            "andrea_group_aggregated",
-        )
-        self.assertEqual(group_aggregated.execution_profile["group_count"], 2)
-        self.assertEqual(
-            group_aggregated.execution_profile["aggregation_step"], "column_to_group"
-        )
-        self.assertEqual(
-            group_aggregated.input_profile["conditional_inputs_satisfied"], ["groups"]
-        )
+    def test_logical_orchestrated_modes_are_not_cost_profiles(self) -> None:
+        for tool_id, mode in (
+            ("genie3", "group_emulated"),
+            ("kscreni", "group_aggregated"),
+        ):
+            with tempfile.TemporaryDirectory() as tmp:
+                config_path = Path(tmp) / f"{tool_id}.json"
+                config_path.write_text(
+                    json.dumps(
+                        {
+                            "profiles": [
+                                {"id": "logical", "execution": {"mode": mode}}
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                with self.subTest(tool_id=tool_id, mode=mode), self.assertRaisesRegex(
+                    ValueError, "physical execution only"
+                ):
+                    resolve_benchmark_profiles(
+                        tool_id=tool_id,
+                        catalog_tools_root=CATALOG_TOOLS_ROOT,
+                        param_overrides_dir=PARAM_OVERRIDES_DIR,
+                        cost_profiles_dir=Path(tmp),
+                    )
+
+    def test_physical_benchmark_io_uses_runtime_contract(self) -> None:
+        cases = [
+            ("genie3", "global_default", "global"),
+            ("kscreni", "column_native_default", "column_native"),
+        ]
+
+        for tool_id, profile_id, expected_physical_mode in cases:
+            with self.subTest(tool_id=tool_id, profile_id=profile_id):
+                profiles = resolve_benchmark_profiles(
+                    tool_id=tool_id,
+                    catalog_tools_root=CATALOG_TOOLS_ROOT,
+                    param_overrides_dir=PARAM_OVERRIDES_DIR,
+                    cost_profiles_dir=COST_PROFILES_DIR,
+                )
+                profile = next(
+                    candidate
+                    for candidate in profiles
+                    if candidate.profile_id == profile_id
+                )
+
+                with tempfile.TemporaryDirectory() as tmp:
+                    io_dir = Path(tmp)
+                    bundle = write_benchmark_io_dir(
+                        io_dir,
+                        BenchmarkInputSize(genes=24, columns=16),
+                        BenchmarkInputProfile.from_cost_input_profile(
+                            profile.input_profile,
+                            seed=123,
+                        ),
+                    )
+                    (io_dir / "execution.json").write_text(
+                        json.dumps(profile.execution),
+                        encoding="utf-8",
+                    )
+                    physical_execution = json.loads(
+                        (io_dir / "execution.json").read_text(encoding="utf-8")
+                    )
+
+                self.assertEqual(profile.execution_profile["mode"], expected_physical_mode)
+                self.assertEqual(
+                    physical_execution["mode"],
+                    expected_physical_mode,
+                )
+                self.assertNotIn("groups", bundle.extras)
 
     def test_profile_rejects_non_optional_input_selection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

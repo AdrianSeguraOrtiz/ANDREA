@@ -15,13 +15,6 @@
       "execution": {
         "mode": "global"
       }
-    },
-    {
-      "id": "group_emulated_groups_2",
-      "execution": {
-        "mode": "group_emulated"
-      },
-      "group_count": 2
     }
   ]
 }

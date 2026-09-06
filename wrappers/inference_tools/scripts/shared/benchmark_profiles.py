@@ -19,9 +19,14 @@ DEFAULT_OPTIONAL_BENCHMARK_INPUTS = {"tf_list"}
 EXECUTION_POLICY_BY_MODE = {
     "global": "single",
     "group_native": "native_grouped",
-    "group_emulated": "andrea_group_emulated",
     "column_native": "column_native",
-    "group_aggregated": "andrea_group_aggregated",
+}
+KNOWN_EXECUTION_MODES = {
+    "global",
+    "group_native",
+    "group_emulated",
+    "column_native",
+    "group_aggregated",
 }
 CONDITIONAL_OPS = {"eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte"}
 PRIOR_LIKE_INPUTS = {"grnboost_network", "prior_grn", "prior_grn_by_group"}
@@ -201,7 +206,7 @@ def _resolve_one_profile(
         "mode": mode,
         "physical_task_policy": EXECUTION_POLICY_BY_MODE[mode],
         "group_count": group_count,
-        "aggregation_step": "column_to_group" if mode == "group_aggregated" else "none",
+        "aggregation_step": "none",
     }
     params, params_profile = _resolve_profile_params(
         params_schema=params_schema,
@@ -211,30 +216,46 @@ def _resolve_one_profile(
         profile_id=profile_id,
         profile_config_path=profile_config_path,
     )
-    required_inputs = _extra_input_entries(toolspec, "required")
+    runtime_required_inputs = _extra_input_entries(
+        toolspec,
+        "required",
+        delivery="runtime",
+    )
     selected_optional = _selected_optional_inputs(
         toolspec=toolspec,
         raw_profile=raw_profile,
         default_optional_inputs=default_optional_inputs,
     )
-    conditional_inputs = _active_conditional_inputs(
+    runtime_optional_inputs = sorted(
+        set(selected_optional).intersection(
+            _extra_input_entries(toolspec, "optional", delivery="runtime")
+        )
+    )
+    runtime_conditional_inputs = _active_conditional_inputs(
         toolspec=toolspec,
         resolved_params=params,
         execution=execution,
+        delivery="runtime",
+    )
+    conditional_inputs = sorted(runtime_conditional_inputs)
+    runtime_inputs = sorted(
+        set(runtime_required_inputs)
+        .union(runtime_optional_inputs)
+        .union(runtime_conditional_inputs)
     )
     _validate_generated_inputs(
         profile_id=profile_id,
-        required_inputs=required_inputs,
-        optional_inputs=selected_optional,
-        conditional_inputs=conditional_inputs,
+        runtime_inputs=runtime_inputs,
     )
     input_profile = _build_input_profile(
         raw_profile=raw_profile,
         mode=mode,
+        accepted_column_kinds=_accepted_column_kinds(toolspec),
         group_count=group_count,
-        required_inputs=required_inputs,
+        required_inputs=runtime_required_inputs,
         optional_inputs=selected_optional,
         conditional_inputs=conditional_inputs,
+        runtime_inputs=runtime_inputs,
         default_prior_density=default_prior_density,
     )
     return BenchmarkProfile(
@@ -246,7 +267,7 @@ def _resolve_one_profile(
         params=params,
         params_profile=params_profile,
         input_profile=input_profile,
-        required_inputs=tuple(required_inputs),
+        required_inputs=tuple(runtime_required_inputs),
         optional_inputs=tuple(selected_optional),
         conditional_inputs=tuple(conditional_inputs),
     )
@@ -299,7 +320,7 @@ def _execution_capabilities(toolspec: dict[str, Any]) -> list[str]:
     ]
     if not modes:
         raise ValueError("toolspec.execution_capabilities must not be empty.")
-    unknown = sorted(set(modes).difference(EXECUTION_POLICY_BY_MODE))
+    unknown = sorted(set(modes).difference(KNOWN_EXECUTION_MODES))
     if unknown:
         raise ValueError(f"Unsupported execution_capabilities: {unknown}")
     return list(dict.fromkeys(modes))
@@ -315,12 +336,8 @@ def _default_execution_mode(capabilities: Sequence[str]) -> str:
         return "global"
     if "group_native" in capabilities:
         return "group_native"
-    if "group_emulated" in capabilities:
-        return "group_emulated"
     if "column_native" in capabilities:
         return "column_native"
-    if "group_aggregated" in capabilities:
-        return "group_aggregated"
     raise ValueError(f"No benchmarkable execution mode in: {list(capabilities)}")
 
 
@@ -346,6 +363,11 @@ def _execution_payload(
         raise ValueError(
             f"profile.execution.mode={mode!r} is not in execution_capabilities: {list(capabilities)}"
         )
+    if mode not in EXECUTION_POLICY_BY_MODE:
+        raise ValueError(
+            "cost profiles benchmark physical execution only; "
+            f"execution.mode={mode!r} must be global, group_native, or column_native"
+        )
     execution["mode"] = mode
     return execution
 
@@ -368,7 +390,7 @@ def _profile_group_count(
         raise ValueError(
             f"profile.group_count must be 0 for execution.mode={mode}."
         )
-    if mode in {"group_native", "group_emulated", "group_aggregated"} and group_count < 1:
+    if mode == "group_native" and group_count < 1:
         raise ValueError(f"profile.group_count must be >= 1 for execution.mode={mode}.")
     return group_count
 
@@ -537,7 +559,12 @@ def _profile_ref(*, profile_id: str, profile_config_path: Path | None) -> str:
     return f"{profile_config_path.name}:{profile_id}:inline"
 
 
-def _extra_input_entries(toolspec: dict[str, Any], field: str) -> list[str]:
+def _extra_input_entries(
+    toolspec: dict[str, Any],
+    field: str,
+    *,
+    delivery: str | None = None,
+) -> list[str]:
     extra_inputs = toolspec.get("extra_inputs", {})
     if not isinstance(extra_inputs, dict):
         return []
@@ -547,6 +574,8 @@ def _extra_input_entries(toolspec: dict[str, Any], field: str) -> list[str]:
     out: list[str] = []
     for entry in raw_entries:
         if not isinstance(entry, dict):
+            continue
+        if delivery is not None and entry.get("delivery") != delivery:
             continue
         input_key = str(entry.get("input", "")).strip()
         if input_key:
@@ -560,7 +589,9 @@ def _selected_optional_inputs(
     raw_profile: dict[str, Any],
     default_optional_inputs: set[str],
 ) -> list[str]:
-    declared_optional = set(_extra_input_entries(toolspec, "optional"))
+    declared_optional = set(
+        _extra_input_entries(toolspec, "optional", delivery="runtime")
+    )
     if "optional_inputs" in raw_profile:
         raw_optional = raw_profile.get("optional_inputs")
         if not isinstance(raw_optional, list):
@@ -586,6 +617,7 @@ def _active_conditional_inputs(
     toolspec: dict[str, Any],
     resolved_params: dict[str, Any],
     execution: dict[str, Any],
+    delivery: str | None = None,
 ) -> list[str]:
     extra_inputs = toolspec.get("extra_inputs", {})
     if not isinstance(extra_inputs, dict):
@@ -597,6 +629,8 @@ def _active_conditional_inputs(
     out: list[str] = []
     for rule in raw_rules:
         if not isinstance(rule, dict):
+            continue
+        if delivery is not None and rule.get("delivery") != delivery:
             continue
         input_key = str(rule.get("input", "")).strip()
         if not input_key:
@@ -666,12 +700,9 @@ def _compare_values(*, actual: Any, op: str, expected: Any) -> bool:
 def _validate_generated_inputs(
     *,
     profile_id: str,
-    required_inputs: Sequence[str],
-    optional_inputs: Sequence[str],
-    conditional_inputs: Sequence[str],
+    runtime_inputs: Sequence[str],
 ) -> None:
-    selected = set(required_inputs).union(optional_inputs).union(conditional_inputs)
-    unsupported = sorted(selected.difference(GENERATED_EXTRA_INPUTS))
+    unsupported = sorted(set(runtime_inputs).difference(GENERATED_EXTRA_INPUTS))
     if unsupported:
         raise ValueError(
             f"profile {profile_id}: no benchmark generator exists for input(s): {unsupported}"
@@ -682,24 +713,36 @@ def _build_input_profile(
     *,
     raw_profile: dict[str, Any],
     mode: str,
+    accepted_column_kinds: Sequence[str],
     group_count: int,
     required_inputs: Sequence[str],
     optional_inputs: Sequence[str],
     conditional_inputs: Sequence[str],
+    runtime_inputs: Sequence[str],
     default_prior_density: float,
 ) -> dict[str, Any]:
-    extras = sorted(
-        set(required_inputs).union(optional_inputs).union(conditional_inputs)
-    )
+    extras = sorted(set(runtime_inputs))
     column_kind = raw_profile.get("column_kind")
     if column_kind is None:
-        column_kind = "samples" if mode == "global" else "cells"
+        if mode == "global" and "samples" in accepted_column_kinds:
+            column_kind = "samples"
+        elif "cells" in accepted_column_kinds:
+            column_kind = "cells"
+        else:
+            column_kind = accepted_column_kinds[0]
+    if column_kind not in accepted_column_kinds:
+        raise ValueError(
+            f"profile column_kind={column_kind!r} is not accepted by the ToolSpec: "
+            f"{list(accepted_column_kinds)}"
+        )
     expression_profile = raw_profile.get("expression_profile")
     if expression_profile is None:
         expression_profile = (
-            "synthetic_benchmark"
-            if mode == "global"
-            else "synthetic_single_cell_benchmark"
+            "synthetic_single_cell_benchmark"
+            if column_kind == "cells"
+            else "synthetic_spatial_benchmark"
+            if column_kind == "spots"
+            else "synthetic_benchmark"
         )
     gene_id_source = raw_profile.get("gene_id_source", "synthetic")
     prior_density = raw_profile.get("prior_density")
@@ -735,12 +778,26 @@ def _build_input_profile(
         "group_count": group_count,
         "has_tf_list": "tf_list" in extras,
         "output_density_class": (
-            "dense" if mode in {"column_native", "group_aggregated"} else "sparse"
+            "dense" if mode == "column_native" else "sparse"
         ),
-        "aggregation_step": "column_to_group" if mode == "group_aggregated" else "none",
+        "aggregation_step": "none",
         "notes": [str(note) for note in notes]
         or ["Resolved by benchmark_profiles.py from ToolSpec defaults."],
     }
+
+
+def _accepted_column_kinds(toolspec: dict[str, Any]) -> tuple[str, ...]:
+    raw_accepts = toolspec.get("accepts")
+    if not isinstance(raw_accepts, list):
+        raise ValueError("toolspec.accepts must be a non-empty array.")
+    accepted = tuple(
+        str(value).strip()
+        for value in raw_accepts
+        if isinstance(value, str) and value.strip()
+    )
+    if not accepted:
+        raise ValueError("toolspec.accepts must be a non-empty array.")
+    return accepted
 
 
 def _validate_density(value: Any) -> float:

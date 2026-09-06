@@ -21,7 +21,7 @@ Usage examples:
    python benchmark_costs.py \
      --tool genie3 \
      --profile global_tf_list \
-     --profile group_emulated_groups_2_tf_list
+     --profile global_default
 
 Exit codes:
 - 0: script completed (even if some runs failed; inspect report summary)
@@ -34,11 +34,11 @@ Cost model written to cost.json:
   including status/failure information, ok_rate, failure_breakdown, and p50/p90
   runtime estimates.
 
-For `execution.mode=group_emulated`, each runtime point measures one physical
-wrapper task. The logical group count is stored in `execution_profile`; planner
-ETA code applies the group/task multiplier later. For `group_aggregated`, the
-benchmarkable upstream execution is still `column_native`; ANDREA adds a
-deterministic aggregation overhead during planning.
+Cost profiles describe physical wrapper tasks only. Logical `group_emulated`
+runs reuse `global` profiles because ANDREA creates one global child task per
+group. Logical `group_aggregated` runs reuse `column_native` profiles and add a
+deterministic aggregation task. The planner obtains total ETA from the complete
+task graph; it does not apply an implicit grouped multiplier.
 """
 
 from __future__ import annotations
@@ -563,6 +563,8 @@ def run_container_once(
     timeout_s: int,
 ) -> tuple[str, float, str]:
     uid_gid = f"{os.getuid()}:{os.getgid()}"
+    resolved_io_dir = io_dir.resolve()
+    resolved_out_dir = (io_dir / "out").resolve()
     container_name = docker_container_name(
         image_tag=image_tag,
         io_dir=io_dir,
@@ -585,7 +587,9 @@ def run_container_once(
         "--memory",
         f"{ram_gb}g",
         "-v",
-        f"{io_dir}:/io",
+        f"{resolved_io_dir}:/io:ro",
+        "-v",
+        f"{resolved_out_dir}:/io/out:rw",
         image_tag,
         "--input",
         "/io/expression.tsv",
@@ -768,14 +772,14 @@ def build_feature_vector(
     n_cells = int(columns) if input_profile.get("column_kind") == "cells" else 0
     if mode == "column_native":
         expected_contexts = max(1, n_cells)
-    elif mode in {"group_native", "group_emulated", "group_aggregated"}:
+    elif mode == "group_native":
         expected_contexts = max(1, group_count)
     else:
         expected_contexts = 1
     aggregation_step = str(
         execution_profile.get("aggregation_step")
         or input_profile.get("aggregation_step")
-        or ("column_to_group" if mode == "group_aggregated" else "none")
+        or "none"
     )
     return {
         "execution_mode": mode,
@@ -787,7 +791,7 @@ def build_feature_vector(
         "has_tf_list": "tf_list" in set(input_profile.get("extras_provided", [])),
         "output_density_class": str(
             input_profile.get("output_density_class")
-            or ("dense" if mode in {"column_native", "group_aggregated"} else "sparse")
+            or ("dense" if mode == "column_native" else "sparse")
         ),
         "aggregation_step": aggregation_step,
         "threads": int(threads),

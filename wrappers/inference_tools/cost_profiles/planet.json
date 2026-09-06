@@ -27,20 +27,6 @@
         "diffusion_timesteps": 20,
         "sampling_timesteps": 20
       }
-    },
-    {
-      "id": "group_emulated_hsa05224_fast_sampling_groups_2",
-      "execution": {
-        "mode": "group_emulated"
-      },
-      "group_count": 2,
-      "param_overrides": {
-        "gene_set": "hsa05224",
-        "metacell": false,
-        "ensemble": 1,
-        "diffusion_timesteps": 20,
-        "sampling_timesteps": 20
-      }
     }
   ]
 }

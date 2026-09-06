@@ -116,7 +116,12 @@ def discover_input_keys(input_specs_root: Path) -> set[str]:
     }
 
 
-def _input_entries(toolspec: dict[str, Any], field: str) -> set[str]:
+def _input_entries(
+    toolspec: dict[str, Any],
+    field: str,
+    *,
+    delivery: str | None = None,
+) -> set[str]:
     extra_inputs = toolspec.get("extra_inputs", {})
     if not isinstance(extra_inputs, dict):
         return set()
@@ -126,6 +131,8 @@ def _input_entries(toolspec: dict[str, Any], field: str) -> set[str]:
     out: set[str] = set()
     for entry in raw_entries:
         if not isinstance(entry, dict):
+            continue
+        if delivery is not None and entry.get("delivery") != delivery:
             continue
         input_key = str(entry.get("input", "")).strip()
         if input_key:
@@ -351,8 +358,19 @@ def semantic_errors_for_cost(
         if isinstance(execution_capabilities, list)
         else set()
     )
+    accepted_column_kinds = _string_set(toolspec.get("accepts"))
     required_inputs = _input_entries(toolspec, "required")
     optional_inputs = _input_entries(toolspec, "optional")
+    runtime_required_inputs = _input_entries(
+        toolspec,
+        "required",
+        delivery="runtime",
+    )
+    runtime_optional_inputs = _input_entries(
+        toolspec,
+        "optional",
+        delivery="runtime",
+    )
     conditional_rules = _conditional_rules(toolspec)
     conditional_inputs = {
         str(rule.get("input", "")).strip()
@@ -484,6 +502,10 @@ def semantic_errors_for_cost(
             errors.append(
                 f"{profile_prefix}.benchmark_config.execution_profile.mode must be one of this tool's execution_capabilities: {sorted(execution_modes)}."
             )
+        if mode not in {"global", "group_native", "column_native"}:
+            errors.append(
+                f"{profile_prefix}.benchmark_config.execution_profile.mode must describe a physical wrapper task: global, group_native, or column_native."
+            )
 
         physical_task_policy = str(
             execution_profile.get("physical_task_policy", "")
@@ -491,21 +513,21 @@ def semantic_errors_for_cost(
         expected_policy = {
             "global": "single",
             "group_native": "native_grouped",
-            "group_emulated": "andrea_group_emulated",
             "column_native": "column_native",
-            "group_aggregated": "andrea_group_aggregated",
         }.get(mode)
         if expected_policy is not None and physical_task_policy != expected_policy:
             errors.append(
                 f"{profile_prefix}.benchmark_config.execution_profile.physical_task_policy must be '{expected_policy}' when mode='{mode}'."
             )
 
+        physical_execution_mode = mode
+
         group_count = execution_profile.get("group_count")
         if mode in {"global", "column_native"} and group_count != 0:
             errors.append(
                 f"{profile_prefix}.benchmark_config.execution_profile.group_count must be 0 when mode='{mode}'."
             )
-        if mode in {"group_native", "group_emulated", "group_aggregated"} and (
+        if mode == "group_native" and (
             not isinstance(group_count, int)
             or isinstance(group_count, bool)
             or group_count < 1
@@ -517,6 +539,13 @@ def semantic_errors_for_cost(
         input_profile = benchmark_config.get("input_profile")
         if not isinstance(input_profile, dict):
             continue
+        column_kind = input_profile.get("column_kind")
+        if column_kind not in accepted_column_kinds:
+            errors.append(
+                f"{profile_prefix}.benchmark_config.input_profile.column_kind "
+                "must be accepted by the ToolSpec: "
+                f"{sorted(accepted_column_kinds)}."
+            )
         input_group_count = input_profile.get("group_count")
         if input_group_count != group_count:
             errors.append(
@@ -548,37 +577,50 @@ def semantic_errors_for_cost(
                 f"{profile_prefix}.benchmark_config.input_profile.extras_provided lists input(s) not declared by this ToolSpec: {unsupported_extras}."
             )
 
-        missing_required = sorted(required_inputs.difference(required_satisfied))
+        missing_required = sorted(
+            runtime_required_inputs.difference(required_satisfied)
+        )
         if missing_required:
             errors.append(
                 f"{profile_prefix}.benchmark_config.input_profile.required_inputs_satisfied is missing required input(s): {missing_required}."
             )
-        missing_required_extras = sorted(required_satisfied.difference(extras_provided))
+        missing_required_extras = sorted(
+            runtime_required_inputs.difference(extras_provided)
+        )
         if missing_required_extras:
             errors.append(
-                f"{profile_prefix}.benchmark_config.input_profile.extras_provided must include required input(s): {missing_required_extras}."
+                f"{profile_prefix}.benchmark_config.input_profile.extras_provided must include runtime-delivered required input(s): {missing_required_extras}."
             )
-        unknown_required = sorted(required_satisfied.difference(required_inputs))
+        unknown_required = sorted(
+            required_satisfied.difference(runtime_required_inputs)
+        )
         if unknown_required:
             errors.append(
                 f"{profile_prefix}.benchmark_config.input_profile.required_inputs_satisfied lists input(s) not required by this ToolSpec: {unknown_required}."
             )
 
-        unknown_optional = sorted(optional_provided.difference(optional_inputs))
+        unknown_optional = sorted(
+            optional_provided.difference(runtime_optional_inputs)
+        )
         if unknown_optional:
             errors.append(
                 f"{profile_prefix}.benchmark_config.input_profile.optional_inputs_provided lists input(s) not optional in this ToolSpec: {unknown_optional}."
             )
-        missing_optional_extras = sorted(optional_provided.difference(extras_provided))
+        missing_optional_extras = sorted(
+            optional_provided.intersection(runtime_optional_inputs).difference(
+                extras_provided
+            )
+        )
         if missing_optional_extras:
             errors.append(
-                f"{profile_prefix}.benchmark_config.input_profile.extras_provided must include optional input(s): {missing_optional_extras}."
+                f"{profile_prefix}.benchmark_config.input_profile.extras_provided must include runtime-delivered optional input(s): {missing_optional_extras}."
             )
 
-        active_conditional = {
+        active_runtime_conditional = {
             str(rule.get("input", "")).strip()
             for rule in conditional_rules
-            if str(rule.get("input", "")).strip()
+            if rule.get("delivery") == "runtime"
+            and str(rule.get("input", "")).strip()
             and _conditional_rule_matches(
                 rule=rule,
                 toolspec=toolspec,
@@ -586,27 +628,131 @@ def semantic_errors_for_cost(
                 execution_profile=execution_profile,
             )
         }
+        active_orchestration_inputs = {
+            str(rule.get("input", "")).strip()
+            for rule in conditional_rules
+            if rule.get("delivery") == "orchestration_only"
+            and str(rule.get("input", "")).strip()
+            and _conditional_rule_matches(
+                rule=rule,
+                toolspec=toolspec,
+                resolved_params=resolved_params,
+                execution_profile=execution_profile,
+            )
+        }
+        active_orchestration_inputs.update(
+            required_inputs.difference(runtime_required_inputs)
+        )
+        active_orchestration_inputs.update(
+            optional_inputs.difference(runtime_optional_inputs)
+        )
         missing_conditional = sorted(
-            active_conditional.difference(conditional_satisfied)
+            active_runtime_conditional.difference(conditional_satisfied)
         )
         if missing_conditional:
             errors.append(
                 f"{profile_prefix}.benchmark_config.input_profile.conditional_inputs_satisfied is missing active conditional input(s): {missing_conditional}."
             )
         inactive_conditional = sorted(
-            conditional_satisfied.difference(active_conditional)
+            conditional_satisfied.difference(active_runtime_conditional)
         )
         if inactive_conditional:
             errors.append(
                 f"{profile_prefix}.benchmark_config.input_profile.conditional_inputs_satisfied lists inactive conditional input(s): {inactive_conditional}."
             )
         missing_conditional_extras = sorted(
-            conditional_satisfied.difference(extras_provided)
+            active_runtime_conditional.difference(extras_provided)
         )
         if missing_conditional_extras:
             errors.append(
-                f"{profile_prefix}.benchmark_config.input_profile.extras_provided must include conditional input(s): {missing_conditional_extras}."
+                f"{profile_prefix}.benchmark_config.input_profile.extras_provided must include runtime-delivered conditional input(s): {missing_conditional_extras}."
             )
+        leaked_orchestration_inputs = sorted(
+            active_orchestration_inputs.intersection(extras_provided)
+        )
+        if leaked_orchestration_inputs:
+            errors.append(
+                f"{profile_prefix}.benchmark_config.input_profile.extras_provided must not include orchestration-only input(s) in the physical wrapper fixture for execution.mode={physical_execution_mode}: {leaked_orchestration_inputs}."
+            )
+
+        expected_runtime_extras = (
+            runtime_required_inputs
+            | optional_provided.intersection(runtime_optional_inputs)
+            | active_runtime_conditional
+        )
+        unexpected_runtime_extras = sorted(
+            extras_provided.difference(expected_runtime_extras)
+        )
+        if unexpected_runtime_extras:
+            errors.append(
+                f"{profile_prefix}.benchmark_config.input_profile.extras_provided contains inactive runtime input(s): {unexpected_runtime_extras}."
+            )
+
+        if isinstance(runtime_points, list):
+            for point_idx, point in enumerate(runtime_points, start=1):
+                if not isinstance(point, dict):
+                    continue
+                feature_vector = point.get("feature_vector")
+                if not isinstance(feature_vector, dict):
+                    continue
+                feature_prefix = (
+                    f"{profile_prefix}.runtime_points[{point_idx}].feature_vector"
+                )
+                if feature_vector.get("execution_mode") != mode:
+                    errors.append(
+                        f"{feature_prefix}.execution_mode must match the physical "
+                        "execution_profile.mode."
+                    )
+                if feature_vector.get("n_groups") != group_count:
+                    errors.append(
+                        f"{feature_prefix}.n_groups must match "
+                        "execution_profile.group_count."
+                    )
+                columns = point.get("columns")
+                expected_cells = columns if column_kind == "cells" else 0
+                if feature_vector.get("n_cells") != expected_cells:
+                    errors.append(
+                        f"{feature_prefix}.n_cells must be {expected_cells} for "
+                        f"column_kind={column_kind!r}."
+                    )
+                genes = point.get("genes")
+                if feature_vector.get("n_genes") != genes:
+                    errors.append(
+                        f"{feature_prefix}.n_genes must match the runtime point genes."
+                    )
+                expected_contexts = (
+                    max(1, int(expected_cells))
+                    if mode == "column_native"
+                    and isinstance(expected_cells, int)
+                    and not isinstance(expected_cells, bool)
+                    else max(1, int(group_count))
+                    if mode == "group_native"
+                    and isinstance(group_count, int)
+                    and not isinstance(group_count, bool)
+                    else 1
+                )
+                if feature_vector.get("expected_contexts") != expected_contexts:
+                    errors.append(
+                        f"{feature_prefix}.expected_contexts must be "
+                        f"{expected_contexts}."
+                    )
+                expected_dense_edges = (
+                    int(expected_cells) * int(genes) * max(0, int(genes) - 1)
+                    if isinstance(expected_cells, int)
+                    and not isinstance(expected_cells, bool)
+                    and isinstance(genes, int)
+                    and not isinstance(genes, bool)
+                    else None
+                )
+                if (
+                    expected_dense_edges is not None
+                    and feature_vector.get("expected_dense_edges")
+                    != expected_dense_edges
+                ):
+                    errors.append(
+                        f"{feature_prefix}.expected_dense_edges must be "
+                        f"{expected_dense_edges}."
+                    )
     return errors
 
 

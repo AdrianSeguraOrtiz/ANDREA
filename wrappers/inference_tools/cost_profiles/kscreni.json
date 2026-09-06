@@ -20,17 +20,6 @@
         "nfeatures": 15,
         "knn": 2
       }
-    },
-    {
-      "id": "group_aggregated_groups_2",
-      "execution": {
-        "mode": "group_aggregated"
-      },
-      "group_count": 2,
-      "param_overrides": {
-        "nfeatures": 15,
-        "knn": 2
-      }
     }
   ]
 }

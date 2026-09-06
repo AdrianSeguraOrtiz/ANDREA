@@ -7,7 +7,7 @@ has no config file, the resolver uses a conservative default profile:
 
 - `global` when the tool supports global execution.
 - Otherwise `group_native` when available.
-- Otherwise `group_emulated`.
+- Otherwise `column_native`.
 - Required and active conditional inputs are generated.
 - Optional inputs are omitted by default except cheap/common `tf_list`.
 
@@ -22,12 +22,6 @@ Example:
       "execution": {"mode": "global"},
       "optional_inputs": ["tf_list"],
       "param_overrides": {"limit": 50}
-    },
-    {
-      "id": "group_emulated_groups_2",
-      "execution": {"mode": "group_emulated"},
-      "group_count": 2,
-      "optional_inputs": ["tf_list"]
     }
   ]
 }
@@ -55,9 +49,10 @@ valid or would be wasteful:
   and Planet can request `human_breast_cancer_pathway` so the benchmark genes
   overlap their bundled KEGG/RegNetwork resources.
 
-For `execution.mode=group_emulated`, each size point represents one physical
-wrapper task. The profile still records the logical `group_count`, and planner
-ETA code applies the grouped-task multiplier later.
+Profiles describe only executable container contracts: `global`,
+`group_native`, or `column_native`. Logical `group_emulated` runs select the
+corresponding `global` profile for every child task. Logical
+`group_aggregated` runs select `column_native` and plan aggregation separately.
 
 Useful script options:
 
@@ -66,6 +61,6 @@ Useful script options:
 - `--profile TOOL_ID:PROFILE_ID`: run one profile for one tool.
 - `--plan-only`: print the fully resolved benchmark matrix without building or
   running containers.
-- `--group-count N`: fallback group count for grouped profiles that omit it.
+- `--group-count N`: fallback group count for native-grouped profiles that omit it.
 - `--prior-density FLOAT`: fallback density for generated prior-like inputs.
 - `--optional-input INPUT_ID`: optional input to include in implicit profiles.

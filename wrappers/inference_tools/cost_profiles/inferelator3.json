@@ -20,14 +20,6 @@
       },
       "group_count": 2,
       "prior_density": 0.05
-    },
-    {
-      "id": "group_emulated_groups_2_prior_sparse",
-      "execution": {
-        "mode": "group_emulated"
-      },
-      "group_count": 2,
-      "prior_density": 0.05
     }
   ]
 }

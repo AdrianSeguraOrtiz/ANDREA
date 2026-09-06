@@ -25,19 +25,6 @@
         "ensemble": 3,
         "diffusion_timesteps": 25
       }
-    },
-    {
-      "id": "group_emulated_hsa05224_fast_diffusion_groups_2",
-      "execution": {
-        "mode": "group_emulated"
-      },
-      "group_count": 2,
-      "param_overrides": {
-        "gene_set": "hsa05224",
-        "metacell": false,
-        "ensemble": 3,
-        "diffusion_timesteps": 25
-      }
     }
   ]
 }

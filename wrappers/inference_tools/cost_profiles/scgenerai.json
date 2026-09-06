@@ -35,19 +35,6 @@
       "param_overrides": {
         "nepochs": 1
       }
-    },
-    {
-      "id": "group_aggregated_fast_groups_2",
-      "execution": {
-        "mode": "group_aggregated"
-      },
-      "group_count": 2,
-      "optional_inputs": [
-        "column_descriptors"
-      ],
-      "param_overrides": {
-        "nepochs": 1
-      }
     }
   ]
 }

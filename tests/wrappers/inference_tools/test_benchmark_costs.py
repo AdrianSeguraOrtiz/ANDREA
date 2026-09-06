@@ -103,6 +103,7 @@ def _valid_cost_payload() -> dict[str, object]:
                     "input_profile": {
                         "column_kind": "samples",
                         "expression_profile": "synthetic_benchmark",
+                        "gene_id_source": "synthetic",
                         "extras_provided": [],
                         "required_inputs_satisfied": [],
                         "optional_inputs_provided": [],
@@ -146,20 +147,7 @@ def _semantic_errors(payload: object, *, tool_id: str = "genie3") -> list[str]:
     )
 
 
-class BenchmarkCostsPhase4Test(unittest.TestCase):
-    def test_toolcost_schema_rejects_old_non_profile_payloads(self) -> None:
-        old_payload = {
-            "benchmark_config": {},
-            "runtime_points": [_runtime_point()],
-        }
-
-        messages = _schema_error_messages(old_payload)
-
-        self.assertTrue(
-            any("'schema_version' is a required property" in m for m in messages)
-        )
-        self.assertTrue(any("'profiles' is a required property" in m for m in messages))
-
+class BenchmarkCostsContractTest(unittest.TestCase):
     def test_toolcost_schema_rejects_missing_input_profile(self) -> None:
         payload = copy.deepcopy(_valid_cost_payload())
         del payload["profiles"][0]["benchmark_config"]["input_profile"]
@@ -197,6 +185,70 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
         self.assertTrue(
             any("not declared by this ToolSpec" in error for error in errors)
         )
+
+    def test_toolcost_semantics_rejects_unaccepted_column_kind(self) -> None:
+        payload = copy.deepcopy(_valid_cost_payload())
+
+        errors = _semantic_errors(payload, tool_id="infercsn")
+
+        self.assertTrue(
+            any("column_kind must be accepted by the ToolSpec" in error for error in errors),
+            errors,
+        )
+
+    def test_toolcost_semantics_rejects_logical_orchestration_mode(self) -> None:
+        payload = copy.deepcopy(_valid_cost_payload())
+        benchmark_config = payload["profiles"][0]["benchmark_config"]
+        benchmark_config["execution_profile"] = {
+            "mode": "group_emulated",
+            "physical_task_policy": "andrea_group_emulated",
+            "group_count": 2,
+            "aggregation_step": "none",
+        }
+        errors = _semantic_errors(payload)
+
+        self.assertTrue(
+            any("must describe a physical wrapper task" in error for error in errors),
+            errors,
+        )
+
+    def test_physical_benchmark_io_writes_physical_mode(self) -> None:
+        cases = [
+            ("genie3", "global_default", "global"),
+            ("kscreni", "column_native_default", "column_native"),
+        ]
+
+        for tool_id, profile_id, expected_mode in cases:
+            with self.subTest(tool_id=tool_id, profile_id=profile_id):
+                target = resolve_tool_targets(
+                    selected_tools=[(tool_id, CATALOG_TOOLS_ROOT / tool_id)],
+                    catalog_tools_root=CATALOG_TOOLS_ROOT,
+                    param_overrides_dir=PARAM_OVERRIDES_DIR,
+                    cost_profiles_dir=COST_PROFILES_DIR,
+                    default_group_count=2,
+                    default_prior_density=0.05,
+                    default_optional_inputs=None,
+                    profile_filters=[profile_id],
+                )[0]
+                profile = target.profiles[0]
+
+                with tempfile.TemporaryDirectory() as tmp:
+                    io_dir = Path(tmp)
+                    benchmark_costs.prepare_io_dir(
+                        io_dir,
+                        benchmark_costs.SizePoint(genes=24, columns=16),
+                        resolved_params=profile.params,
+                        execution=profile.execution,
+                        seed=123,
+                        input_profile=profile.input_profile,
+                    )
+                    execution = json.loads(
+                        (io_dir / "execution.json").read_text(encoding="utf-8")
+                    )
+                    extras = sorted(path.name for path in (io_dir / "extra").iterdir())
+
+                self.assertEqual(execution, {"mode": expected_mode})
+                self.assertNotIn("groups.tsv", extras)
 
     def test_toolcost_semantics_reject_threads_incompatible_with_toolspec(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -295,7 +347,7 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
             runtime_points=[{"status": "ok"}],
         )
         second = make_cost_profile_entry(
-            profile_id="group_emulated_groups_2",
+            profile_id="global_tf_list",
             benchmark_config={"profile": "b"},
             runtime_points=[{"status": "partial"}],
         )
@@ -305,7 +357,7 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
         self.assertEqual(payload["schema_version"], "1.0")
         self.assertEqual(
             [profile["profile_id"] for profile in payload["profiles"]],
-            ["global_default", "group_emulated_groups_2"],
+            ["global_default", "global_tf_list"],
         )
 
     def test_tool_run_summary_reports_timeouts_separately_from_failures(self) -> None:
@@ -609,6 +661,11 @@ class BenchmarkCostsPhase4Test(unittest.TestCase):
 
         self.assertEqual(status, "timeout")
         self.assertIn("Run exceeded timeout", message)
+        docker_run = next(
+            command for command in calls if command[:2] == ["docker", "run"]
+        )
+        self.assertIn(f"{io_dir.resolve()}:/io:ro", docker_run)
+        self.assertIn(f"{(io_dir / 'out').resolve()}:/io/out:rw", docker_run)
         self.assertTrue(
             any(command[:4] == ["docker", "rm", "-f", "andrea_timeout_test"] for command in calls),
             calls,

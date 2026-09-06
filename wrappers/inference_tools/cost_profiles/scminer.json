@@ -1,4 +1,5 @@
 {
+  "column_kind": "cells",
   "cost_relevant_params": [
     "driver_source",
     "species_type",
@@ -32,19 +33,6 @@
       "execution": {
         "mode": "global"
       },
-      "param_overrides": {
-        "driver_source": "custom_tf_list",
-        "downSample_N": null,
-        "n_bootstraps": 1,
-        "consensus_pvalue": 1
-      }
-    },
-    {
-      "id": "group_emulated_custom_tf_fast_groups_2",
-      "execution": {
-        "mode": "group_emulated"
-      },
-      "group_count": 2,
       "param_overrides": {
         "driver_source": "custom_tf_list",
         "downSample_N": null,

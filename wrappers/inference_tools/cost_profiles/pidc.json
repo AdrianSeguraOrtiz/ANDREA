@@ -25,17 +25,6 @@
         "discretizer": "uniform_count",
         "number_of_bins": 4
       }
-    },
-    {
-      "id": "group_emulated_uniform_width_bins_4_groups_2",
-      "execution": {
-        "mode": "group_emulated"
-      },
-      "group_count": 2,
-      "param_overrides": {
-        "discretizer": "uniform_width",
-        "number_of_bins": 4
-      }
     }
   ]
 }
