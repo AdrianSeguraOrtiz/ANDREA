@@ -118,6 +118,37 @@ class CustomToolsContractTests(unittest.TestCase):
             errors,
         )
 
+    def test_core_rejects_runtime_rule_for_logical_execution_mode(self) -> None:
+        _required, _optional, _conditional, errors = _parse_extra_inputs_spec(
+            tool_id="invalid",
+            toolspec={
+                "extra_inputs": {
+                    "required": [],
+                    "optional": [],
+                    "conditional_required": [
+                        {
+                            "input": "tf_list",
+                            "execution": "mode",
+                            "op": "eq",
+                            "value": "group_emulated",
+                            "usage": "Invalid logical-mode runtime rule.",
+                            "message": "tf_list is required.",
+                            "delivery": "runtime",
+                        }
+                    ],
+                }
+            },
+        )
+
+        self.assertTrue(
+            any(
+                "delivery=runtime cannot depend on logical execution.mode=group_emulated"
+                in error
+                for error in errors
+            ),
+            errors,
+        )
+
     def test_core_requires_group_native_context_source(self) -> None:
         with self.assertRaisesRegex(
             ValueError, "exactly one runtime-delivered context source"

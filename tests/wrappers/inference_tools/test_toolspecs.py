@@ -243,6 +243,37 @@ class ToolSpecCatalogTest(unittest.TestCase):
             errors,
         )
 
+    def test_runtime_delivery_cannot_depend_on_logical_execution_mode(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(
+            execution_capabilities=["global", "group_emulated"],
+            conditional_required=[
+                {
+                    "input": "tf_list",
+                    "execution": "mode",
+                    "op": "eq",
+                    "value": "group_emulated",
+                    "usage": "Invalid logical-mode runtime rule.",
+                    "message": "tf_list is required.",
+                    "delivery": "runtime",
+                }
+            ],
+        )
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertTrue(
+            any(
+                "delivery=runtime cannot depend on logical "
+                "execution.mode=group_emulated" in error
+                for error in errors
+            ),
+            errors,
+        )
+
     def test_group_emulated_requires_global_capability(self) -> None:
         module = _load_validate_toolspecs_module()
         instance = self._minimal_toolspec(

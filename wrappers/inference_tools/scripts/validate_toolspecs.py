@@ -338,11 +338,24 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                 rule.get("input") == "groups"
                 and rule.get("execution") == "mode"
                 and rule.get("op") == "eq"
-                and rule.get("value") in {"group_emulated", "group_aggregated"}
+                and rule.get("value") in ("group_emulated", "group_aggregated")
             ):
                 errors.append(
                     "extra_inputs.conditional_required[{idx}].delivery=orchestration_only is reserved for groups when execution.mode is group_emulated or group_aggregated.".format(
                         idx=idx
+                    )
+                )
+            elif (
+                delivery == "runtime"
+                and rule.get("execution") == "mode"
+                and rule.get("value") in ("group_emulated", "group_aggregated")
+            ):
+                errors.append(
+                    "extra_inputs.conditional_required[{idx}].delivery=runtime "
+                    "cannot depend on logical execution.mode={mode}; runtime "
+                    "rules must target the physical child mode.".format(
+                        idx=idx,
+                        mode=rule.get("value"),
                     )
                 )
             param_name = rule.get("param")
@@ -379,7 +392,7 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
                         "runtime"
                         if value == "group_native"
                         else "orchestration_only"
-                        if value in {"group_emulated", "group_aggregated"}
+                        if value in ("group_emulated", "group_aggregated")
                         else None
                     )
                     if expected_delivery and delivery != expected_delivery:

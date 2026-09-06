@@ -17,6 +17,10 @@ The image must accept ANDREA's standard `/io` layout:
 /io/out/
 ```
 
+ANDREA mounts `/io` read-only and mounts `/io/out` separately as read-write.
+External images must not modify their inputs or create scratch files elsewhere
+under `/io`; all temporary and final files must live below `/io/out`.
+
 ANDREA runs the image with a thread count and the inputs declared for runtime
 delivery. The image is responsible for:
 

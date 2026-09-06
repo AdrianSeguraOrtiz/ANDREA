@@ -59,6 +59,10 @@ Each tool container is executed with:
   --threads 8
 ```
 
+The host mounts `/io` read-only and overlays `/io/out` as the only writable
+directory. A wrapper must treat every input as immutable and place temporary
+files, checkpoints, logs, and final artifacts under `/io/out`.
+
 When a plan is executed by the ANDREA orchestrator, `/io/execution.json` is also
 mounted next to `params.json` and contains the physical wrapper mode. Containers
 must validate it and execute exactly one of `global`, `group_native`, or

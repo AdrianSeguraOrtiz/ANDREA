@@ -1259,11 +1259,6 @@ def run_infer_network_plan(
             + "\n".join(error_lines)
         )
 
-    _clear_previous_execution_artifacts(
-        run_dir=run_dir,
-        logical_runs=logical_runs,
-    )
-
     report_issues = [
         issue
         for issue in run_report.get("issues", [])
@@ -1336,6 +1331,13 @@ def run_infer_network_plan(
         expression_columns=expression_columns,
         active_extra_input_keys_by_run=active_extra_input_keys_by_run,
         group_to_columns=group_to_columns,
+    )
+
+    # Keep a valid previous execution intact until every environment and input
+    # precheck that precedes runtime materialization has succeeded.
+    _clear_previous_execution_artifacts(
+        run_dir=run_dir,
+        logical_runs=logical_runs,
     )
 
     runtime_io_by_tool = {}

@@ -119,6 +119,27 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
 
             self.assertTrue(all(not path.exists() for path in stale_paths))
 
+    def test_rerun_preserves_previous_outputs_when_docker_precheck_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._prepare_planned_run(Path(tmp))
+            previous_network = (
+                run_dir / "tools" / "aracne__01" / "io" / "out" / "network.csv"
+            )
+            previous_network.parent.mkdir(parents=True, exist_ok=True)
+            previous_network.write_text("previous result\n", encoding="utf-8")
+
+            with patch(
+                "andrea.core.commands.infer_network.run._ensure_docker_cli",
+                side_effect=RuntimeError("Docker is unavailable"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "Docker is unavailable"):
+                    self.mod.run_infer_network_plan(run_dir=run_dir)
+
+            self.assertEqual(
+                previous_network.read_text(encoding="utf-8"),
+                "previous result\n",
+            )
+
     def _cell_aggregated_toolspec(self) -> dict:
         return {
             "id": "fakecell",

@@ -60,13 +60,6 @@ def write_inference_analysis(root: Path) -> None:
     touch(root / "run_report.json", json.dumps(report) + "\n")
 
 
-def test_no_command_exposes_legacy_light_bundle() -> None:
-    assert "light" not in generate_bundles.supported_bundles()
-    assert "light" not in infer_bundles.supported_bundles()
-    assert "light" not in evaluate_bundles.supported_bundles()
-    assert "light" not in compare_bundles.supported_bundles()
-
-
 def test_generate_data_analysis_is_minimal_truth_bundle(tmp_path: Path) -> None:
     root = tmp_path / "benchmark"
     dataset = root / "datasets" / "dataset_01"

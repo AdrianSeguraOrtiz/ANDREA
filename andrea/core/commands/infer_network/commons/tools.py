@@ -235,12 +235,24 @@ def _parse_extra_inputs_spec(
             input_key == "groups"
             and execution_name == "mode"
             and op == "eq"
-            and value in {"group_emulated", "group_aggregated"}
+            and value in ("group_emulated", "group_aggregated")
         ):
             errors.append(
                 "toolspec.extra_inputs.conditional_required"
                 f"[{idx}].delivery=orchestration_only is reserved for groups "
                 "when execution.mode is group_emulated or group_aggregated"
+            )
+            continue
+        if (
+            delivery == "runtime"
+            and execution_name == "mode"
+            and value in ("group_emulated", "group_aggregated")
+        ):
+            errors.append(
+                "toolspec.extra_inputs.conditional_required"
+                f"[{idx}].delivery=runtime cannot depend on logical "
+                f"execution.mode={value}; runtime rules must target the "
+                "physical child mode"
             )
             continue
         if param_name and known_params is not None and param_name not in known_params:
