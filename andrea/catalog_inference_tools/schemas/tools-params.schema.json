@@ -47,11 +47,16 @@
                 "exclusiveMinimum": 0
               },
               "cpuset_cpus": {
-                "description": "Canonical strictly increasing logical CPU indices. Requires resources.threads and must contain at least that many entries.",
+                "description": "Canonical strictly increasing logical CPU indices defining the allowed affinity domain. Requires resources.threads and must contain at least that many entries.",
                 "type": "array",
                 "minItems": 1,
                 "uniqueItems": true,
                 "items": {"type": "integer", "minimum": 0}
+              },
+              "timeout_seconds": {
+                "description": "Optional positive wall-clock deadline in seconds for every physical task of this logical run.",
+                "type": "number",
+                "exclusiveMinimum": 0
               }
             },
             "dependentRequired": {"cpuset_cpus": ["threads"]}

@@ -95,7 +95,12 @@ The matching `tools_params.json` entry uses the derived tool ID explicitly:
       "tool_id": "custom_spathi_01",
       "params": {},
       "execution": {"mode": "group_native"},
-      "resources": {"threads": 8, "ram_gb": 16, "cpuset_cpus": [0, 1, 2, 3, 4, 5, 6, 7]}
+      "resources": {
+        "threads": 4,
+        "ram_gb": 16,
+        "cpuset_cpus": [0, 1, 2, 3, 4, 5, 6, 7],
+        "timeout_seconds": 86400
+      }
     }
   ]
 }
@@ -134,10 +139,14 @@ resource is omitted, the planner selects it from the ToolSpec/cost profile;
 external tools without a cost profile otherwise use the documented conservative
 fallback. An explicit `ram_gb` is applied as the Docker memory limit to every
 physical child of the logical run and must fit the global planning budget.
-Optional `cpuset_cpus` requires an
-explicit thread count, must be a strictly increasing list with at least that
-many available logical CPUs, and is applied to Docker without repair or
-clamping.
+Optional `cpuset_cpus` requires an explicit thread count and must be a strictly
+increasing list with at least that many available logical CPUs. It defines the
+allowed affinity domain, while `threads` remains the Docker CPU quota; multiple
+tasks may share the same domain when their summed quotas fit it. Both limits are
+applied to Docker without repair or clamping. Optional `timeout_seconds` is a
+positive wall-clock deadline for every physical child. When it expires, ANDREA
+terminates and removes the detached container after collecting its logs and
+telemetry, and records exit code `124`.
 
 `outputs` is required and must contain exactly `directed` and `sign`.
 `directed` is a boolean; `sign` accepts `none`, `signed` or `mixed`. There are

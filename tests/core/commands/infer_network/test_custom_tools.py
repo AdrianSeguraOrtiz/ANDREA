@@ -407,7 +407,8 @@ class CustomToolsContractTests(unittest.TestCase):
                                 "resources": {
                                     "threads": 2,
                                     "ram_gb": 12.5,
-                                    "cpuset_cpus": [0, 1],
+                                    "cpuset_cpus": [0, 1, 2, 3],
+                                    "timeout_seconds": 3600,
                                 },
                             }
                         ]
@@ -420,7 +421,12 @@ class CustomToolsContractTests(unittest.TestCase):
         self.assertEqual(parsed["demo_01"]["params"], {"seed": 7})
         self.assertEqual(
             parsed["demo_01"]["resources"],
-            {"threads": 2, "ram_gb": 12.5, "cpuset_cpus": [0, 1]},
+            {
+                "threads": 2,
+                "ram_gb": 12.5,
+                "cpuset_cpus": [0, 1, 2, 3],
+                "timeout_seconds": 3600.0,
+            },
         )
 
     def test_tools_params_rejects_invalid_exact_ram(self) -> None:
@@ -461,6 +467,26 @@ class CustomToolsContractTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "threads is required"):
                 _load_tools_params(tools_params_path)
+
+    def test_tools_params_rejects_invalid_timeout(self) -> None:
+        for value in (True, 0, -1, "60"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                tools_params_path = Path(tmp) / "tools_params.json"
+                tools_params_path.write_text(
+                    json.dumps(
+                        {
+                            "runs": [
+                                {
+                                    "tool_id": "genie3",
+                                    "resources": {"timeout_seconds": value},
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                with self.assertRaisesRegex(ValueError, "timeout_seconds"):
+                    _load_tools_params(tools_params_path)
 
     def test_tools_params_rejects_null_resources(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -873,6 +873,107 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             ["[warn_tool] wrapper produced a best-effort result"],
         )
 
+    def test_run_wave_stops_and_reports_timed_out_container(self) -> None:
+        from andrea.core.commands.infer_network.commons import runtime_helpers
+
+        class FakeSampler:
+            def sample(self) -> None:
+                return None
+
+            def finish(self, **_kwargs):
+                return {
+                    "wall_time_seconds": 0.21,
+                    "scope": "physical_task",
+                    "assigned_resources": {
+                        "threads": 1,
+                        "ram_limit_bytes": 1024**3,
+                    },
+                    "telemetry": {"status": "partial"},
+                }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            shared_expression = base / "expression.tsv"
+            shared_expression.write_text("gene\tS1\nG1\t1\n", encoding="utf-8")
+            tool_io = runtime_helpers._prepare_tool_runtime_io(
+                run_dir=base,
+                tool_id="slow_tool",
+                run_id="slow_tool",
+                output_dir="tools/slow_tool",
+                resolved_params={},
+                resolved_execution={"mode": "global"},
+                shared_expression=shared_expression,
+                shared_extras={},
+                extra_input_keys=set(),
+            )
+            wave = PlanWave(
+                index=1,
+                threads_used=1,
+                ram_gb_used=1.0,
+                eta_seconds=1.0,
+                tasks=[
+                    ToolPlanItem(
+                        tool_id="slow_tool",
+                        run_id="slow_tool",
+                        image="example/slow:1.0",
+                        threads=1,
+                        ram_gb=1.0,
+                        eta_seconds=1.0,
+                        eta_source="test",
+                        output_dir="tools/slow_tool",
+                        timeout_seconds=0.1,
+                    )
+                ],
+            )
+
+            with (
+                patch.object(
+                    runtime_helpers, "_ensure_docker_image", return_value="local"
+                ),
+                patch.object(
+                    runtime_helpers, "_docker_run_detached", return_value="container-1"
+                ),
+                patch.object(
+                    runtime_helpers.ContainerTelemetrySampler,
+                    "attach",
+                    return_value=FakeSampler(),
+                ),
+                patch.object(
+                    runtime_helpers, "_docker_inspect_status", return_value="running"
+                ),
+                patch.object(runtime_helpers, "_docker_kill") as docker_kill,
+                patch.object(
+                    runtime_helpers, "_docker_wait_exit_code", return_value=137
+                ),
+                patch.object(
+                    runtime_helpers, "_docker_logs", return_value="partial log"
+                ),
+                patch.object(runtime_helpers, "_docker_rm") as docker_rm,
+                patch.object(
+                    runtime_helpers.time,
+                    "perf_counter_ns",
+                    side_effect=[1_000_000_000, 1_200_000_000, 1_210_000_000],
+                ),
+            ):
+                results = runtime_helpers._run_wave(
+                    wave=wave,
+                    runtime_io_by_tool={"slow_tool": tool_io},
+                    pulled_images=set(),
+                    poll_interval_s=0.01,
+                    warnings=[],
+                    state_writer=None,
+                )
+
+            result = results["slow_tool"]
+            self.assertEqual(result.status, "failed")
+            self.assertEqual(result.exit_code, 124)
+            self.assertEqual(result.error, "Execution timed out after 0.1 seconds.")
+            self.assertIn(
+                "partial log", Path(result.logs_path).read_text(encoding="utf-8")
+            )
+            docker_kill.assert_called_once_with("container-1")
+            docker_rm.assert_called_once_with("container-1")
+
     def test_group_aggregated_run_writes_group_rows_and_keeps_column_auxiliary(
         self,
     ) -> None:
@@ -1324,7 +1425,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                     )
                 ],
             )
-        with self.assertRaisesRegex(ValueError, "overlapping CPU affinities"):
+        with self.assertRaisesRegex(ValueError, "partially overlapping"):
             _validate_wave_resource_schedule(
                 plan_payload=limits,
                 waves=[

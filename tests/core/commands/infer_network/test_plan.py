@@ -569,7 +569,11 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                         "tool_id": "custom_demo_tool_01",
                         "execution": {"mode": "global"},
                         "params": {"threshold": 0.25},
-                        "resources": {"threads": 3, "ram_gb": 2.345678901},
+                        "resources": {
+                            "threads": 3,
+                            "ram_gb": 2.345678901,
+                            "timeout_seconds": 120,
+                        },
                     }
                 ],
             )
@@ -631,11 +635,11 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         self.assertEqual(frozen_custom_tools["tools"][0]["run_id"], "demo_tool_01")
         self.assertEqual(
             frozen_tools_params["runs"][0]["resources"],
-            {"threads": 3, "ram_gb": 2.345678901},
+            {"threads": 3, "ram_gb": 2.345678901, "timeout_seconds": 120.0},
         )
         self.assertEqual(
             resolved_resources,
-            {"threads": 3, "ram_gb": 2.345678901},
+            {"threads": 3, "ram_gb": 2.345678901, "timeout_seconds": 120.0},
         )
         self.assertEqual(
             report_payload["inputs"]["custom_tools_path"],
@@ -658,12 +662,15 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         self.assertEqual(logical_run["tool_id"], "custom_demo_tool_01")
         self.assertEqual(logical_run["tool_origin"], "custom")
         self.assertEqual(
-            logical_run["resources"], {"threads": 3, "ram_gb": 2.345678901}
+            logical_run["resources"],
+            {"threads": 3, "ram_gb": 2.345678901, "timeout_seconds": 120.0},
         )
         first_task = plan_payload["waves"][0]["tasks"][0]
         self.assertEqual(first_task["threads"], 3)
         self.assertEqual(first_task["ram_gb"], 2.345678901)
+        self.assertEqual(first_task["timeout_seconds"], 120.0)
         self.assertEqual(logical_run["physical_tasks"][0]["ram_gb"], 2.345678901)
+        self.assertEqual(logical_run["physical_tasks"][0]["timeout_seconds"], 120.0)
         self.assertTrue(first_task["network_disabled"])
         self.assertEqual(first_task["eta_source"], "fallback_no_cost")
         self.assertTrue(

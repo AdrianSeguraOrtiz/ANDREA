@@ -119,11 +119,15 @@ finished_run_dir = infer_network(
 ```
 
 `tools_params.json` controls selected runs, scientific parameters, execution
-modes and optional operational resources (`threads`, `ram_gb` and an exact
-`cpuset_cpus`). Operational resources are frozen separately from parameters;
+modes and optional operational resources (`threads`, `ram_gb`, an affinity
+domain in `cpuset_cpus`, and `timeout_seconds`). Operational resources are
+frozen separately from parameters;
 `ram_gb` is preserved without decimal rounding and converted only to its
 nearest-byte representation for the exact Docker memory limit applied to every
 physical task in that logical run.
+`threads` is the CPU quota and may be smaller than the number of CPUs in the
+allowed affinity domain. The optional timeout is enforced inside ANDREA so
+detached containers are terminated and their logs and telemetry are retained.
 `custom_tools.json` is optional and is used for temporary external Docker
 images. Every external definition must explicitly declare an `outputs` object
 with exactly `directed` and `sign`; no defaults are inferred. These capabilities

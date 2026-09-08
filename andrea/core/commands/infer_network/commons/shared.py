@@ -53,6 +53,7 @@ class ToolPlanItem:
     eta_provenance: Optional[dict[str, Any]] = None
     network_disabled: bool = False
     cpuset_cpus: Optional[tuple[int, ...]] = None
+    timeout_seconds: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -94,6 +95,8 @@ class RunningTool:
     container_id: str
     telemetry_sampler: Any
     progress_file: Path
+    timeout_seconds: Optional[float] = None
+    deadline_monotonic_ns: Optional[int] = None
     last_snapshot: Optional[tuple[int, str, str, str]] = None
 
 

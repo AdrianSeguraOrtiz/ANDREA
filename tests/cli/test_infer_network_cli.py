@@ -23,6 +23,12 @@ class InferNetworkCliTests(unittest.TestCase):
         self.assertIn("run", result.output)
         self.assertIn("execute", result.output)
 
+    def test_plan_help_documents_per_run_timeout(self) -> None:
+        result = self.runner.invoke(app, ["infer-network", "plan", "--help"])
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("timeout_seconds", result.output)
+
     def test_plan_subcommand_calls_core_plan(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

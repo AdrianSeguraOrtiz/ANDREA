@@ -239,6 +239,17 @@ def _docker_logs(container_id: str) -> str:
     return logs
 
 
+def _docker_kill(container_id: str) -> None:
+    result = _run_cmd(["docker", "kill", container_id])
+    if result.returncode == 0:
+        return
+    # The container may have exited between the status poll and the kill.
+    if _docker_inspect_status(container_id) in {"exited", "dead"}:
+        return
+    details = (result.stderr or result.stdout or "").strip()
+    raise RuntimeError(f"docker kill failed for {container_id}: {details}")
+
+
 def _docker_rm(container_id: str) -> None:
     _ = _run_cmd(["docker", "rm", "-f", container_id])
 
@@ -448,6 +459,13 @@ def _run_wave(
                     container_id=container_id,
                     telemetry_sampler=telemetry_sampler,
                     progress_file=tool_io.progress_file,
+                    timeout_seconds=task.timeout_seconds,
+                    deadline_monotonic_ns=(
+                        task_started_monotonic_ns
+                        + round(float(task.timeout_seconds) * 1_000_000_000)
+                        if task.timeout_seconds is not None
+                        else None
+                    ),
                 )
 
                 progress.update(
@@ -455,7 +473,14 @@ def _run_wave(
                     percent=3,
                     status="running",
                     phase="container_started",
-                    message=f"threads={task.threads}, ram={task.ram_gb}GB",
+                    message=(
+                        f"threads={task.threads}, ram={task.ram_gb}GB"
+                        + (
+                            f", timeout={task.timeout_seconds:g}s"
+                            if task.timeout_seconds is not None
+                            else ""
+                        )
+                    ),
                 )
                 if state_writer is not None:
                     state_writer.update_tool(
@@ -463,7 +488,14 @@ def _run_wave(
                         status="running",
                         phase="container_started",
                         percent=3,
-                        message=f"threads={task.threads}, ram={task.ram_gb}GB",
+                        message=(
+                            f"threads={task.threads}, ram={task.ram_gb}GB"
+                            + (
+                                f", timeout={task.timeout_seconds:g}s"
+                                if task.timeout_seconds is not None
+                                else ""
+                            )
+                        ),
                     )
             except Exception as exc:  # noqa: BLE001
                 if container_id is not None:
@@ -532,6 +564,89 @@ def _run_wave(
                         state.last_snapshot = snapshot
 
                 status = _docker_inspect_status(state.container_id)
+                timed_out = (
+                    status not in {"exited", "dead"}
+                    and state.deadline_monotonic_ns is not None
+                    and time.perf_counter_ns() >= state.deadline_monotonic_ns
+                )
+                if timed_out:
+                    logs_path = tool_io.tool_dir / "container.log"
+                    timeout_text = f"{float(state.timeout_seconds):g}"
+                    error = f"Execution timed out after {timeout_text} seconds."
+                    logs = ""
+                    try:
+                        _docker_kill(state.container_id)
+                        _docker_wait_exit_code(state.container_id)
+                    except Exception as exc:  # noqa: BLE001
+                        error = f"{error} Container termination error: {exc}"
+                    try:
+                        logs = _docker_logs(state.container_id)
+                    except Exception as exc:  # noqa: BLE001
+                        error = f"{error} Log collection error: {exc}"
+                    log_payload = error
+                    if logs:
+                        log_payload = f"{log_payload}\n{logs}"
+                    _write_text(logs_path, f"{log_payload}\n")
+
+                    task_finished_monotonic_ns = time.perf_counter_ns()
+                    task_finished_at_utc = utc_now()
+                    try:
+                        measurement = state.telemetry_sampler.finish(
+                            task_finished_monotonic_ns=task_finished_monotonic_ns,
+                            task_finished_at_utc=task_finished_at_utc,
+                            output_dir=tool_io.out_dir,
+                        )
+                    finally:
+                        _docker_rm(state.container_id)
+
+                    progress_warnings: tuple[str, ...] = ()
+                    if tool_io.progress_file.exists():
+                        try:
+                            progress_warnings = _read_progress_warnings(
+                                tool_io.progress_file
+                            )
+                        except Exception as exc:  # noqa: BLE001
+                            progress_warnings = (
+                                "could not read wrapper warnings from progress.json: "
+                                f"{exc}",
+                            )
+                    results[tool_id] = ToolExecutionResult(
+                        tool_id=tool_id,
+                        status="failed",
+                        exit_code=124,
+                        measurement=measurement,
+                        network_path=None,
+                        progress_path=(
+                            str(tool_io.progress_file.resolve())
+                            if tool_io.progress_file.exists()
+                            else None
+                        ),
+                        logs_path=str(logs_path.resolve()),
+                        error=error,
+                        warnings=progress_warnings,
+                    )
+                    for warning in progress_warnings:
+                        warnings.append(f"[{tool_id}] {warning}")
+                    duration = float(measurement["wall_time_seconds"])
+                    progress.update(
+                        tool_id,
+                        percent=100,
+                        status="failed",
+                        phase="timed_out",
+                        message=f"{duration:.2f}s (limit {timeout_text}s)",
+                    )
+                    if state_writer is not None:
+                        state_writer.update_tool(
+                            tool_id,
+                            status="failed",
+                            phase="timed_out",
+                            percent=100,
+                            message=error,
+                            error=error,
+                        )
+                    del running[tool_id]
+                    continue
+
                 if status not in {"exited", "dead"}:
                     continue
 

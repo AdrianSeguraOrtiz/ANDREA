@@ -14,6 +14,7 @@ from andrea.core.commands.infer_network.commons.planner import (
 )
 from andrea.core.commands.infer_network.commons.resources import (
     normalize_cpuset_cpus,
+    normalize_timeout_seconds,
     parse_linux_cpuset,
     validate_cpuset_available,
 )
@@ -91,6 +92,14 @@ def test_cpuset_contract_is_canonical_and_available() -> None:
         validate_cpuset_available((3,), source="test", available=(0, 1, 2))
 
 
+def test_timeout_contract_accepts_only_positive_finite_numbers() -> None:
+    assert normalize_timeout_seconds(60, source="test") == 60.0
+    assert normalize_timeout_seconds(0.25, source="test") == 0.25
+    for invalid in (True, 0, -1, float("inf"), "60"):
+        with pytest.raises(ValueError, match="greater than zero"):
+            normalize_timeout_seconds(invalid, source="test")
+
+
 def test_docker_launch_applies_exact_threads_ram_and_cpuset() -> None:
     from andrea.core.commands.infer_network.commons import runtime_helpers
 
@@ -147,7 +156,7 @@ def test_planners_preserve_high_precision_ram_allocations() -> None:
     assert cp_sat_waves[0].ram_gb_used == exact_ram_gb
 
 
-def test_scheduler_never_overlaps_reserved_or_unpinned_cpu_sets() -> None:
+def test_scheduler_supports_shared_domains_but_rejects_ambiguous_affinity() -> None:
     disjoint, _ = _build_parallel_waves(
         items=[_task("a", (0, 1)), _task("b", (2, 3))],
         max_cores=4,
@@ -155,6 +164,11 @@ def test_scheduler_never_overlaps_reserved_or_unpinned_cpu_sets() -> None:
     )
     overlapping, _ = _build_parallel_waves(
         items=[_task("a", (0, 1)), _task("b", (1, 2))],
+        max_cores=4,
+        max_ram_gb=4.0,
+    )
+    shared_domain, _ = _build_parallel_waves(
+        items=[_task("a", (0, 1, 2, 3)), _task("b", (0, 1, 2, 3))],
         max_cores=4,
         max_ram_gb=4.0,
     )
@@ -166,6 +180,7 @@ def test_scheduler_never_overlaps_reserved_or_unpinned_cpu_sets() -> None:
 
     assert len(disjoint) == 1
     assert len(overlapping) == 2
+    assert len(shared_domain) == 1
     assert len(mixed) == 2
 
     cp_sat_warnings: list[str] = []
@@ -182,6 +197,19 @@ def test_scheduler_never_overlaps_reserved_or_unpinned_cpu_sets() -> None:
     assert cp_sat is not None
     assert len(cp_sat[1]) == 2
     assert cp_sat_warnings == []
+
+    shared_cp_sat = _optimize_mode_selection_cp_sat(
+        mode_options_by_tool={
+            "a": [_task("a", (0, 1, 2, 3))],
+            "b": [_task("b", (0, 1, 2, 3))],
+        },
+        max_cores=4,
+        max_ram_gb=4.0,
+        time_limit_seconds=5.0,
+        warnings=[],
+    )
+    assert shared_cp_sat is not None
+    assert len(shared_cp_sat[1]) == 1
 
 
 def test_scheduler_rejects_items_outside_resource_budget() -> None:

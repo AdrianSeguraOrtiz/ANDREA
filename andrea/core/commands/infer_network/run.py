@@ -60,7 +60,11 @@ from .commons.network_exports import (
     export_network_gexf,
     export_network_graphml,
 )
-from .commons.resources import normalize_cpuset_cpus, validate_cpuset_available
+from .commons.resources import (
+    normalize_cpuset_cpus,
+    normalize_timeout_seconds,
+    validate_cpuset_available,
+)
 from .commons.runtime_helpers import (
     _ensure_docker_cli,
     _prepare_shared_inputs,
@@ -139,7 +143,10 @@ def _load_logical_runs_from_plan(
             or not physical_tasks
             or "resources" not in raw_run
             or not isinstance(resources, dict)
-            or bool(set(resources) - {"threads", "ram_gb", "cpuset_cpus"})
+            or bool(
+                set(resources)
+                - {"threads", "ram_gb", "cpuset_cpus", "timeout_seconds"}
+            )
         ):
             raise ValueError(f"plan.json.runs[{idx}] is invalid")
         requested_threads = resources.get("threads")
@@ -165,6 +172,11 @@ def _load_logical_runs_from_plan(
             )
             if requested_threads is None or len(cpuset) < requested_threads:
                 raise ValueError(f"plan.json.runs[{idx}].resources is invalid")
+        if "timeout_seconds" in resources:
+            normalize_timeout_seconds(
+                resources.get("timeout_seconds"),
+                source=f"plan.json.runs[{idx}].resources.timeout_seconds",
+            )
         if run_id in logical_runs:
             raise ValueError(f"plan.json contains duplicate run_id: {run_id!r}")
         logical_runs[run_id] = {
@@ -211,6 +223,7 @@ def _validate_physical_task_plan(
             columns = physical.get("columns")
             threads = physical.get("threads")
             ram_gb = physical.get("ram_gb")
+            timeout_seconds = physical.get("timeout_seconds")
             group_label_raw = physical.get("group_label")
             group_label = (
                 str(group_label_raw).strip()
@@ -233,6 +246,11 @@ def _validate_physical_task_plan(
                 raise ValueError(
                     f"[{run_id}] physical_tasks[{index}] has an invalid task_id, "
                     "output_dir, columns, threads, or ram_gb value"
+                )
+            if timeout_seconds is not None:
+                normalize_timeout_seconds(
+                    timeout_seconds,
+                    source=f"[{run_id}] physical_tasks[{index}].timeout_seconds",
                 )
             if task_id in expected:
                 raise ValueError(f"plan.json contains duplicate physical task: {task_id}")
@@ -293,6 +311,7 @@ def _validate_physical_task_plan(
             or task.group_label != expected_group
             or task.threads != int(physical["threads"])
             or task.ram_gb != float(physical["ram_gb"])
+            or task.timeout_seconds != physical.get("timeout_seconds")
         ):
             raise ValueError(
                 f"[{task_id}] wave task does not match its physical task declaration"
@@ -339,6 +358,18 @@ def _validate_wave_resource_schedule(
             raise ValueError(
                 f"plan.json wave {wave.index} exceeds the declared resource_limits"
             )
+        domain_threads: dict[tuple[int, ...], int] = {}
+        for task in wave.tasks:
+            if task.cpuset_cpus is not None:
+                domain_threads[task.cpuset_cpus] = (
+                    domain_threads.get(task.cpuset_cpus, 0) + task.threads
+                )
+        for domain, assigned_threads in domain_threads.items():
+            if assigned_threads > len(domain):
+                raise ValueError(
+                    f"plan.json wave {wave.index} assigns {assigned_threads} CPU "
+                    f"quota cores to affinity domain {list(domain)}"
+                )
         for left_index, left in enumerate(wave.tasks):
             for right in wave.tasks[left_index + 1 :]:
                 if left.cpuset_cpus is None and right.cpuset_cpus is None:
@@ -347,9 +378,14 @@ def _validate_wave_resource_schedule(
                     raise ValueError(
                         f"plan.json wave {wave.index} mixes pinned and unpinned tasks"
                     )
-                if set(left.cpuset_cpus).intersection(right.cpuset_cpus):
+                left_domain = set(left.cpuset_cpus)
+                right_domain = set(right.cpuset_cpus)
+                if left_domain.intersection(right_domain) and (
+                    left_domain != right_domain
+                ):
                     raise ValueError(
-                        f"plan.json wave {wave.index} contains overlapping CPU affinities"
+                        f"plan.json wave {wave.index} contains partially overlapping "
+                        "CPU affinity domains"
                     )
 
 
@@ -1019,10 +1055,13 @@ def _finalize_group_aggregated_logical_run(
         output_dir=out_dir,
     )
 
+    logical_exit_code = 0
+    if status not in {"completed", "completed_with_warnings"}:
+        logical_exit_code = 124 if child_result.exit_code == 124 else 1
     logical_result = ToolExecutionResult(
         tool_id=run_id,
         status=status,
-        exit_code=0 if status in {"completed", "completed_with_warnings"} else 1,
+        exit_code=logical_exit_code,
         measurement=measurement,
         network_path=network_path,
         progress_path=str(progress_path.resolve()),
@@ -1231,10 +1270,17 @@ def _finalize_grouped_logical_run(
         output_dir=out_dir,
     )
 
+    logical_exit_code = 0
+    if status not in {"completed", "completed_with_warnings"}:
+        logical_exit_code = (
+            124
+            if any(result.exit_code == 124 for _label, result in child_failures)
+            else 1
+        )
     logical_result = ToolExecutionResult(
         tool_id=run_id,
         status=status,
-        exit_code=0 if status in {"completed", "completed_with_warnings"} else 1,
+        exit_code=logical_exit_code,
         measurement=measurement,
         network_path=network_path,
         progress_path=str(progress_path.resolve()),
@@ -1567,6 +1613,12 @@ def run_infer_network_plan(
                 compatibility_blocks.setdefault(run_id, []).append(
                     f"task '{task_id}' CPU affinity does not exactly match the "
                     "frozen per-run resources.cpuset_cpus request."
+                )
+            requested_timeout = resolved_resources.get("timeout_seconds")
+            if planned_task.timeout_seconds != requested_timeout:
+                compatibility_blocks.setdefault(run_id, []).append(
+                    f"task '{task_id}' timeout does not exactly match the frozen "
+                    "per-run resources.timeout_seconds request."
                 )
         rule_blocks, rule_warnings, rule_errors = _collect_compatibility_rule_issues(
             tool_id=run_id,

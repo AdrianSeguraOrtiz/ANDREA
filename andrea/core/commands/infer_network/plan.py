@@ -44,7 +44,11 @@ from .commons.planner import (
     _optimize_mode_selection,
     _optimize_mode_selection_cp_sat,
 )
-from .commons.resources import normalize_cpuset_cpus, validate_cpuset_available
+from .commons.resources import (
+    normalize_cpuset_cpus,
+    normalize_timeout_seconds,
+    validate_cpuset_available,
+)
 from .commons.shared import (
     DEFAULT_OUTPUT_DIR,
     DatasetContext,
@@ -298,7 +302,12 @@ def plan_infer_network(
             "preflight_report runs.resolved_resources must match selected runs exactly"
         )
     for run_id, resources in resolved_resources_by_tool.items():
-        if set(resources) - {"threads", "ram_gb", "cpuset_cpus"}:
+        if set(resources) - {
+            "threads",
+            "ram_gb",
+            "cpuset_cpus",
+            "timeout_seconds",
+        }:
             raise ValueError(
                 f"preflight_report resolved_resources for {run_id!r} is invalid"
             )
@@ -343,6 +352,11 @@ def plan_infer_network(
             validate_cpuset_available(
                 cpuset,
                 source=f"[{run_id}] resources.cpuset_cpus",
+            )
+        if "timeout_seconds" in resources:
+            normalize_timeout_seconds(
+                resources.get("timeout_seconds"),
+                source=f"preflight_report resources.timeout_seconds for {run_id!r}",
             )
 
     blocking_run_issues = {
@@ -564,6 +578,9 @@ def plan_infer_network(
                         if "cpuset_cpus" in resolved_resources_by_tool[run_id]
                         else None
                     ),
+                    requested_timeout_seconds=resolved_resources_by_tool[run_id].get(
+                        "timeout_seconds"
+                    ),
                 )
                 warnings.extend(plan_warnings)
                 if tool_origin == "custom":
@@ -614,6 +631,9 @@ def plan_infer_network(
                     tuple(resolved_resources_by_tool[run_id]["cpuset_cpus"])
                     if "cpuset_cpus" in resolved_resources_by_tool[run_id]
                     else None
+                ),
+                requested_timeout_seconds=resolved_resources_by_tool[run_id].get(
+                    "timeout_seconds"
                 ),
             )
             warnings.extend(plan_warnings)
@@ -749,6 +769,8 @@ def plan_infer_network(
             task_payload = asdict(task)
             if task_payload.get("eta_provenance") is None:
                 task_payload.pop("eta_provenance", None)
+            if task_payload.get("timeout_seconds") is None:
+                task_payload.pop("timeout_seconds", None)
             note = _task_eta_note(task.eta_source)
             if note is not None:
                 task_payload["note"] = note
@@ -804,6 +826,8 @@ def plan_infer_network(
                 "eta_start_seconds": round(task_start, 3),
                 "eta_end_seconds": round(task_end, 3),
             }
+            if task.timeout_seconds is not None:
+                task_payload["timeout_seconds"] = float(task.timeout_seconds)
             if task.eta_provenance is not None:
                 task_payload["eta_provenance"] = task.eta_provenance
             note = _task_eta_note(task.eta_source)

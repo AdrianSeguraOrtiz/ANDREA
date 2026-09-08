@@ -14,7 +14,7 @@ from andrea.core.shared.json_io import (
     write_json as _write_json,
 )
 
-from .resources import normalize_cpuset_cpus
+from .resources import normalize_cpuset_cpus, normalize_timeout_seconds
 from .shared import (
     DatasetContext,
     PlanWave,
@@ -273,6 +273,16 @@ def _load_plan_waves(
                 if cpuset_raw is not None
                 else None
             )
+            timeout_seconds = (
+                normalize_timeout_seconds(
+                    raw_task.get("timeout_seconds"),
+                    source=(
+                        f"plan.json task {raw_task.get('tool_id')!r}.timeout_seconds"
+                    ),
+                )
+                if raw_task.get("timeout_seconds") is not None
+                else None
+            )
             task = ToolPlanItem(
                 tool_id=str(raw_task.get("tool_id", "")),
                 run_id=str(raw_task.get("run_id", "")),
@@ -294,6 +304,7 @@ def _load_plan_waves(
                 ),
                 network_disabled=bool(raw_task.get("network_disabled")),
                 cpuset_cpus=cpuset_cpus,
+                timeout_seconds=timeout_seconds,
             )
             if (
                 not task.tool_id

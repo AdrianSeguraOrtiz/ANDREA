@@ -36,6 +36,7 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
                         eta_seconds=10.0,
                         eta_source="cost_profile",
                         output_dir="tools/genie3_01",
+                        timeout_seconds=60.0,
                     ),
                     ToolPlanItem(
                         tool_id="lioness_01__column_native",
@@ -127,6 +128,7 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
         self.assertEqual(payload["waves"][0]["tools"], ["genie3_01", "lioness_01__column_native"])
         self.assertEqual(payload["tools"]["lioness_01__column_native"]["run_id"], "lioness_01")
         self.assertEqual(payload["tools"]["lioness_01__column_native"]["wave"], 1)
+        self.assertEqual(payload["tools"]["genie3_01"]["timeout_seconds"], 60.0)
         self.assertEqual(
             [
                 event["phase"]
@@ -166,6 +168,13 @@ class InferNetworkExecutionStateTests(InferNetworkCoreTestCase):
 
         with self.assertRaisesRegex(ValueError, "tools.genie3_01.status"):
             write_execution_state(Path(tempfile.gettempdir()) / "execution_state.json", payload)
+
+    def test_validation_rejects_invalid_timeout(self) -> None:
+        payload = build_initial_execution_state(run_id="run_a", waves=self._waves())
+        payload["tools"]["genie3_01"]["timeout_seconds"] = 0
+
+        with self.assertRaisesRegex(ValueError, "timeout_seconds"):
+            validate_execution_state(payload)
 
     def test_writer_updates_wave_tool_and_logical_summary(self) -> None:
         logical_runs = {

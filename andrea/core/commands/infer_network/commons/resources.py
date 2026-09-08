@@ -2,9 +2,23 @@
 
 from __future__ import annotations
 
+import math
 import os
 from collections.abc import Iterable
 from typing import Any
+
+
+def normalize_timeout_seconds(raw: Any, *, source: str) -> float:
+    """Validate a per-physical-task execution deadline in seconds."""
+
+    if (
+        isinstance(raw, bool)
+        or not isinstance(raw, (int, float))
+        or not math.isfinite(float(raw))
+        or float(raw) <= 0
+    ):
+        raise ValueError(f"{source} must be a finite number greater than zero")
+    return float(raw)
 
 
 def normalize_cpuset_cpus(raw: Any, *, source: str) -> tuple[int, ...]:

@@ -15,7 +15,7 @@ from andrea.core.shared.param_validation import (
     validate_param_value as _validate_param_value,
 )
 
-from .resources import normalize_cpuset_cpus
+from .resources import normalize_cpuset_cpus, normalize_timeout_seconds
 from .shared import DatasetContext, SchemaConstraints
 from .tool_rule_eval import (
     COMPATIBILITY_OPS,
@@ -361,7 +361,8 @@ def _load_tools_params(
     # {"runs": [{"run_id": "...", "tool_id": "...", "params": {...},
     #             "execution": {...},
     #             "resources": {"threads": N, "ram_gb": R,
-    #                           "cpuset_cpus": [0, 1]}}, ...]}
+    #                           "cpuset_cpus": [0, 1],
+    #                           "timeout_seconds": S}}, ...]}
     runs = raw.get("runs")
     if not isinstance(runs, list) or not runs:
         raise ValueError(
@@ -412,7 +413,8 @@ def _load_tools_params(
                 f"tools-params.runs[{idx}].resources must be an object when provided"
             )
         unexpected_resource_keys = sorted(
-            set(resources) - {"threads", "ram_gb", "cpuset_cpus"}
+            set(resources)
+            - {"threads", "ram_gb", "cpuset_cpus", "timeout_seconds"}
         )
         if unexpected_resource_keys:
             raise ValueError(
@@ -460,6 +462,11 @@ def _load_tools_params(
                     "at least resources.threads logical CPUs"
                 )
             resolved_resources["cpuset_cpus"] = list(cpuset_cpus)
+        if "timeout_seconds" in resources:
+            resolved_resources["timeout_seconds"] = normalize_timeout_seconds(
+                resources.get("timeout_seconds"),
+                source=f"tools-params.runs[{idx}].resources.timeout_seconds",
+            )
 
         if run_id in parsed:
             raise ValueError(f"Duplicate run_id in tools-params: {run_id}")

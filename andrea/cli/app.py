@@ -214,7 +214,7 @@ def infer_network_preflight(
             "Optional tools_params.json to pre-validate requested runs "
             "({'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
             "'execution': {'mode': ...}, 'resources': {'threads': 8, 'ram_gb': 16, "
-            "'cpuset_cpus': [0, 1, ...]}}, ...]})."
+            "'cpuset_cpus': [0, 1, ...], 'timeout_seconds': 3600}}, ...]})."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(
@@ -292,7 +292,7 @@ def infer_network_plan(
             "Path to tools_params.json in runs format: "
             "{'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
             "'execution': {'mode': ...}, 'resources': {'threads': 8, 'ram_gb': 16, "
-            "'cpuset_cpus': [0, 1, ...]}}, ...]}."
+            "'cpuset_cpus': [0, 1, ...], 'timeout_seconds': 3600}}, ...]}."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(
@@ -379,7 +379,7 @@ def infer_network_execute(
             "Path to tools_params.json in runs format: "
             "{'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
             "'execution': {'mode': ...}, 'resources': {'threads': 8, 'ram_gb': 16, "
-            "'cpuset_cpus': [0, 1, ...]}}, ...]}."
+            "'cpuset_cpus': [0, 1, ...], 'timeout_seconds': 3600}}, ...]}."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(

@@ -518,6 +518,7 @@ def _fallback_plan_item(
     eta_provenance: Optional[dict[str, Any]] = None,
     cpuset_cpus: Optional[tuple[int, ...]] = None,
     ram_gb: Optional[float] = None,
+    timeout_seconds: Optional[float] = None,
 ) -> ToolPlanItem:
     if threads < 1 or threads > max_cores:
         raise ValueError(
@@ -550,6 +551,7 @@ def _fallback_plan_item(
         group_label=group_label,
         eta_provenance=eta_provenance,
         cpuset_cpus=cpuset_cpus,
+        timeout_seconds=timeout_seconds,
     )
 
 
@@ -631,6 +633,7 @@ def _estimate_tool_mode_options(
     requested_threads: Optional[int] = None,
     requested_ram_gb: Optional[float] = None,
     requested_cpuset: Optional[tuple[int, ...]] = None,
+    requested_timeout_seconds: Optional[float] = None,
 ) -> tuple[list[ToolPlanItem], list[str]]:
     if execution_mode not in {"global", "group_native", "column_native"}:
         raise ValueError(
@@ -701,6 +704,7 @@ def _estimate_tool_mode_options(
                     },
                     cpuset_cpus=requested_cpuset,
                     ram_gb=requested_ram_gb,
+                    timeout_seconds=requested_timeout_seconds,
                 )
             ],
             warnings,
@@ -739,6 +743,7 @@ def _estimate_tool_mode_options(
                     },
                     cpuset_cpus=requested_cpuset,
                     ram_gb=requested_ram_gb,
+                    timeout_seconds=requested_timeout_seconds,
                 )
             ],
             warnings,
@@ -819,6 +824,7 @@ def _estimate_tool_mode_options(
                     },
                     cpuset_cpus=requested_cpuset,
                     ram_gb=requested_ram_gb,
+                    timeout_seconds=requested_timeout_seconds,
                 )
             ],
             warnings,
@@ -932,6 +938,7 @@ def _estimate_tool_mode_options(
                     },
                 },
                 cpuset_cpus=requested_cpuset,
+                timeout_seconds=requested_timeout_seconds,
             )
         )
 
@@ -974,6 +981,7 @@ def _estimate_tool_mode_options(
                 },
                 cpuset_cpus=requested_cpuset,
                 ram_gb=requested_ram_gb,
+                timeout_seconds=requested_timeout_seconds,
             )
         ],
         warnings,
@@ -1010,11 +1018,23 @@ def _build_parallel_waves(
                     task.cpuset_cpus is not None for task in wave.tasks
                 )
             else:
-                affinity_conflict = any(
-                    task.cpuset_cpus is None
-                    or bool(set(item.cpuset_cpus) & set(task.cpuset_cpus))
-                    for task in wave.tasks
-                )
+                affinity_conflict = False
+                shared_domain_threads = item.threads
+                item_domain = set(item.cpuset_cpus)
+                for task in wave.tasks:
+                    if task.cpuset_cpus is None:
+                        affinity_conflict = True
+                        break
+                    task_domain = set(task.cpuset_cpus)
+                    if item_domain == task_domain:
+                        shared_domain_threads += task.threads
+                    elif item_domain.intersection(task_domain):
+                        # Partially overlapping domains have no unambiguous
+                        # aggregate quota. Keep them in separate waves.
+                        affinity_conflict = True
+                        break
+                if shared_domain_threads > len(item.cpuset_cpus):
+                    affinity_conflict = True
             if affinity_conflict:
                 continue
             next_cores = wave.threads_used + item.threads
@@ -1202,9 +1222,11 @@ def _optimize_mode_selection_cp_sat(
         # Prevent empty "used" waves: wave_used[w] == 1 implies at least one task in wave w.
         model.Add(sum(assignment_terms) >= wave_used[w])
 
-        # Pinned tasks only share a wave when their CPU sets are disjoint. An
-        # unpinned task never shares a wave with a pinned task because Docker's
-        # CPU quota alone cannot guarantee that it avoids the reserved CPUs.
+        # An affinity set is an allowed CPU domain, while ``threads`` remains
+        # the Docker CPU quota. Equal domains may therefore be shared as long
+        # as their aggregate quota fits that domain. Partially overlapping
+        # domains remain separate because their aggregate capacity is
+        # ambiguous. Pinned and unpinned tasks never share a wave.
         for left_index, left_tool_id in enumerate(tool_ids):
             for right_index in range(left_index + 1, len(tool_ids)):
                 right_tool_id = tool_ids[right_index]
@@ -1218,13 +1240,35 @@ def _optimize_mode_selection_cp_sat(
                         right_cpuset = right_mode.cpuset_cpus
                         conflicts = (left_cpuset is None) != (right_cpuset is None)
                         if left_cpuset is not None and right_cpuset is not None:
-                            conflicts = bool(set(left_cpuset) & set(right_cpuset))
+                            left_domain = set(left_cpuset)
+                            right_domain = set(right_cpuset)
+                            conflicts = bool(left_domain & right_domain) and (
+                                left_domain != right_domain
+                            )
                         if conflicts:
                             model.Add(
                                 x[(left_index, left_mode_index, w)]
                                 + x[(right_index, right_mode_index, w)]
                                 <= 1
                             )
+
+        affinity_domains = sorted(
+            {
+                mode.cpuset_cpus
+                for modes in mode_options_by_tool.values()
+                for mode in modes
+                if mode.cpuset_cpus is not None
+            }
+        )
+        for domain in affinity_domains:
+            domain_terms = []
+            for tool_index, tool_id in enumerate(tool_ids):
+                for mode_index, mode in enumerate(mode_options_by_tool[tool_id]):
+                    if mode.cpuset_cpus == domain:
+                        domain_terms.append(
+                            x[(tool_index, mode_index, w)] * int(mode.threads)
+                        )
+            model.Add(sum(domain_terms) <= len(domain))
 
     # Force contiguous usage of waves to reduce symmetry.
     for w in range(max_waves - 1):

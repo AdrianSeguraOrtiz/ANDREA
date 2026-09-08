@@ -22,6 +22,7 @@ from typing import Any, Optional
 
 from andrea.core.shared.json_io import load_json_object
 
+from .resources import normalize_timeout_seconds
 from .shared import PlanWave
 
 EXECUTION_STATE_SCHEMA_VERSION = "1.0"
@@ -218,6 +219,8 @@ def build_initial_execution_state(
                 "errors": [],
                 "warnings": [],
             }
+            if task.timeout_seconds is not None:
+                tool_entries[task_id]["timeout_seconds"] = float(task.timeout_seconds)
 
         wave_entries.append(
             {
@@ -498,6 +501,11 @@ def _validate_tool(tool: Any, *, expected_tool_id: str) -> None:
             raise ValueError(
                 f"execution_state.tools.{expected_tool_id}.{key} must be a non-negative number"
             )
+    if "timeout_seconds" in tool:
+        normalize_timeout_seconds(
+            tool.get("timeout_seconds"),
+            source=f"execution_state.tools.{expected_tool_id}.timeout_seconds",
+        )
     for key in ("errors", "warnings"):
         value = tool.get(key)
         if not isinstance(value, list):
