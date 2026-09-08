@@ -704,7 +704,12 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             "tool_id": "custom_demo_tool_01",
             "params": {},
             "execution": {"mode": "global"},
-            "resources": {"threads": 1, "ram_gb": 8.0, "cpuset_cpus": [0]},
+            "resources": {
+                "threads": 1,
+                "ram_gb": 8.0,
+                "cpuset_cpus": [0, 1],
+                "timeout_seconds": 3600,
+            },
         }
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -767,6 +772,31 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         )
 
         self.assertEqual(normalized[0]["resources"]["ram_gb"], 12.345678901)
+
+    def test_gui_normalizes_and_validates_run_timeout(self) -> None:
+        normalized = gui_server._normalize_runs(
+            [
+                {
+                    "tool_id": "genie3",
+                    "resources": {"timeout_seconds": 0.25},
+                }
+            ]
+        )
+        self.assertEqual(normalized[0]["resources"]["timeout_seconds"], 0.25)
+
+        for value in (True, 0, -1, "60"):
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(ValueError, "timeout_seconds"),
+            ):
+                gui_server._normalize_runs(
+                    [
+                        {
+                            "tool_id": "genie3",
+                            "resources": {"timeout_seconds": value},
+                        }
+                    ]
+                )
 
     def test_job_payload_includes_running_execution_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

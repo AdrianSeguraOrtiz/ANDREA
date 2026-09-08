@@ -92,6 +92,7 @@ function readRuntimeResources(card, tool) {
   const rawThreads = String(card.querySelector(".runtime-threads")?.value || "");
   const rawRamGb = String(card.querySelector(".runtime-ram-gb")?.value || "");
   const rawCpuset = String(card.querySelector(".runtime-cpuset")?.value || "");
+  const rawTimeout = String(card.querySelector(".runtime-timeout")?.value || "");
   const resources = {};
   let threads = null;
   if (rawThreads) {
@@ -127,6 +128,13 @@ function readRuntimeResources(card, tool) {
       throw new Error("CPU affinity must contain at least as many CPUs as threads.");
     }
     resources.cpuset_cpus = cpuset;
+  }
+  if (rawTimeout) {
+    const timeoutSeconds = Number(rawTimeout);
+    if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
+      throw new Error("Timeout must be a finite number greater than zero seconds.");
+    }
+    resources.timeout_seconds = timeoutSeconds;
   }
   return resources;
 }
@@ -504,6 +512,7 @@ export function addRunCard(initial = {}) {
   const runtimeThreadsInput = node.querySelector(".runtime-threads");
   const runtimeRamInput = node.querySelector(".runtime-ram-gb");
   const runtimeCpusetInput = node.querySelector(".runtime-cpuset");
+  const runtimeTimeoutInput = node.querySelector(".runtime-timeout");
 
   const availableTools = listAvailableToolsFn ? listAvailableToolsFn() : [];
   if (!availableTools.length) {
@@ -593,6 +602,7 @@ export function addRunCard(initial = {}) {
   runtimeCpusetInput.value = Array.isArray(initialResources.cpuset_cpus)
     ? initialResources.cpuset_cpus.join(",")
     : "";
+  runtimeTimeoutInput.value = initialResources.timeout_seconds ?? "";
   const threading = toolThreading(tool);
   if (threading.max_threads === null) {
     runtimeThreadsInput.removeAttribute("max");
@@ -602,7 +612,8 @@ export function addRunCard(initial = {}) {
   runtimeThreadsInput.placeholder = `default ${threading.default_threads}`;
   runtimeThreadsInput.title = "Operational thread allocation; this does not change scientific parameters.";
   runtimeRamInput.title = "Exact operational container RAM limit in GiB; this does not change scientific parameters.";
-  runtimeCpusetInput.title = "Optional exact logical CPU affinity for reproducible performance measurements.";
+  runtimeCpusetInput.title = "Optional allowed logical CPU affinity domain; Docker still limits CPU use to the thread quota.";
+  runtimeTimeoutInput.title = "Optional wall-clock deadline for each physical task of this run.";
 
   runIdInput.addEventListener("input", () => {
     refreshRunCardsValidation();
@@ -612,7 +623,7 @@ export function addRunCard(initial = {}) {
     refreshRunCardsValidation();
     notifyRunsChanged();
   });
-  for (const resourceInput of [runtimeThreadsInput, runtimeRamInput, runtimeCpusetInput]) {
+  for (const resourceInput of [runtimeThreadsInput, runtimeRamInput, runtimeCpusetInput, runtimeTimeoutInput]) {
     resourceInput.addEventListener("input", () => {
       refreshRunCardsValidation();
       notifyRunsChanged();

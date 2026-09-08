@@ -316,6 +316,13 @@ class ExternalToolsJavaScriptContractTests(unittest.TestCase):
         self.assertIn("resources.ram_gb = ramGb;", source)
         self.assertIn("Number.isFinite(ramGb)", source)
 
+    def test_run_resources_include_operational_timeout(self) -> None:
+        source = RUN_CARDS_PATH.read_text(encoding="utf-8")
+
+        self.assertIn('card.querySelector(".runtime-timeout")', source)
+        self.assertIn("resources.timeout_seconds = timeoutSeconds;", source)
+        self.assertIn("Number.isFinite(timeoutSeconds)", source)
+
     def test_orchestration_only_groups_are_disabled_in_the_form(self) -> None:
         source = MAIN_PATH.read_text(encoding="utf-8")
 

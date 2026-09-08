@@ -46,7 +46,10 @@ from andrea.core.commands.infer_network.commons.execution_state import (
     execution_state_path,
     read_execution_state_if_exists,
 )
-from andrea.core.commands.infer_network.commons.resources import normalize_cpuset_cpus
+from andrea.core.commands.infer_network.commons.resources import (
+    normalize_cpuset_cpus,
+    normalize_timeout_seconds,
+)
 from andrea.core.commands.infer_network.commons.tools import (
     _normalize_tool_request_identity,
 )
@@ -459,7 +462,7 @@ def _normalize_runs(
         if not isinstance(resources, dict):
             raise ValueError(f"runs[{idx}].resources must be an object")
         unexpected_resources = sorted(
-            set(resources) - {"threads", "ram_gb", "cpuset_cpus"}
+            set(resources) - {"threads", "ram_gb", "cpuset_cpus", "timeout_seconds"}
         )
         if unexpected_resources:
             raise ValueError(
@@ -498,6 +501,11 @@ def _normalize_runs(
                     "and at least that many CPU indices"
                 )
             normalized_resources["cpuset_cpus"] = list(cpuset)
+        if "timeout_seconds" in resources:
+            normalized_resources["timeout_seconds"] = normalize_timeout_seconds(
+                resources.get("timeout_seconds"),
+                source=f"runs[{idx}].resources.timeout_seconds",
+            )
 
         normalized.append(
             {

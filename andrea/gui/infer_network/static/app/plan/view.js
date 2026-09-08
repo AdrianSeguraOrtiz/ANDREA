@@ -176,7 +176,7 @@ export function renderPlan(plan) {
     runsTable.className = "wave-table";
     runsTable.innerHTML =
       "<thead><tr>" +
-      "<th>run_id</th><th>tool_id</th><th>mode</th><th>threads</th><th>ram_gb</th><th>cpuset</th><th>physical_tasks</th><th>eta_s</th>" +
+      "<th>run_id</th><th>tool_id</th><th>mode</th><th>threads</th><th>ram_gb</th><th>cpuset</th><th>timeout_s</th><th>physical_tasks</th><th>eta_s</th>" +
       "</tr></thead>";
     const runsBody = document.createElement("tbody");
     for (const run of logicalRuns) {
@@ -188,6 +188,7 @@ export function renderPlan(plan) {
         run?.resources?.threads ?? "tool default",
         run?.resources?.ram_gb ?? "planner selected",
         Array.isArray(run?.resources?.cpuset_cpus) ? run.resources.cpuset_cpus.join(",") : "-",
+        run?.resources?.timeout_seconds ?? "-",
         run.physical_tasks_total ?? "-",
         run.eta_seconds ?? "-",
       ];
@@ -246,7 +247,7 @@ export function renderPlan(plan) {
     table.className = "wave-table";
     table.innerHTML =
       "<thead><tr>" +
-      "<th>run_id</th><th>task_id</th><th>group</th><th>threads</th><th>cpuset</th><th>ram_gb</th><th>eta_s</th><th>source</th><th>note</th>" +
+      "<th>run_id</th><th>task_id</th><th>group</th><th>threads</th><th>cpuset</th><th>ram_gb</th><th>timeout_s</th><th>eta_s</th><th>source</th><th>note</th>" +
       "</tr></thead>";
 
     const tbody = document.createElement("tbody");
@@ -260,6 +261,7 @@ export function renderPlan(plan) {
         task.threads ?? "-",
         Array.isArray(task.cpuset_cpus) ? task.cpuset_cpus.join(",") : "-",
         task.ram_gb ?? "-",
+        task.timeout_seconds ?? "-",
         task.eta_seconds ?? "-",
         task.eta_source || "-",
         task.note || "",
@@ -322,7 +324,7 @@ export function renderPlanInlinePreview(plan, virtualPath) {
     runsTable.className = "wave-table";
     runsTable.innerHTML =
       "<thead><tr>" +
-      "<th>run_id</th><th>tool_id</th><th>mode</th><th>threads</th><th>ram_gb</th><th>cpuset</th><th>physical_tasks</th><th>eta_s</th>" +
+      "<th>run_id</th><th>tool_id</th><th>mode</th><th>threads</th><th>ram_gb</th><th>cpuset</th><th>timeout_s</th><th>physical_tasks</th><th>eta_s</th>" +
       "</tr></thead>";
     const runsBody = document.createElement("tbody");
     for (const run of logicalRuns) {
@@ -334,6 +336,7 @@ export function renderPlanInlinePreview(plan, virtualPath) {
         run?.resources?.threads ?? "tool default",
         run?.resources?.ram_gb ?? "planner selected",
         Array.isArray(run?.resources?.cpuset_cpus) ? run.resources.cpuset_cpus.join(",") : "-",
+        run?.resources?.timeout_seconds ?? "-",
         run.physical_tasks_total ?? "-",
         run.eta_seconds ?? "-",
       ];
@@ -373,7 +376,7 @@ export function renderPlanInlinePreview(plan, virtualPath) {
     table.className = "wave-table";
     table.innerHTML =
       "<thead><tr>" +
-      "<th>run_id</th><th>task_id</th><th>group</th><th>threads</th><th>cpuset</th><th>ram_gb</th><th>eta_s</th><th>source</th><th>note</th>" +
+      "<th>run_id</th><th>task_id</th><th>group</th><th>threads</th><th>cpuset</th><th>ram_gb</th><th>timeout_s</th><th>eta_s</th><th>source</th><th>note</th>" +
       "</tr></thead>";
     const tbody = document.createElement("tbody");
     const tasks = Array.isArray(wave.tasks) ? wave.tasks : [];
@@ -386,6 +389,7 @@ export function renderPlanInlinePreview(plan, virtualPath) {
         task.threads ?? "-",
         Array.isArray(task.cpuset_cpus) ? task.cpuset_cpus.join(",") : "-",
         task.ram_gb ?? "-",
+        task.timeout_seconds ?? "-",
         task.eta_seconds ?? "-",
         task.eta_source || "-",
         task.note || "",
