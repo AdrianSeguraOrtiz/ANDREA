@@ -121,8 +121,9 @@ finished_run_dir = infer_network(
 `tools_params.json` controls selected runs, scientific parameters, execution
 modes and optional operational resources (`threads`, `ram_gb` and an exact
 `cpuset_cpus`). Operational resources are frozen separately from parameters;
-`ram_gb` is the exact Docker memory limit applied to every physical task in
-that logical run.
+`ram_gb` is preserved without decimal rounding and converted only to its
+nearest-byte representation for the exact Docker memory limit applied to every
+physical task in that logical run.
 `custom_tools.json` is optional and is used for temporary external Docker
 images. Every external definition must explicitly declare an `outputs` object
 with exactly `directed` and `sign`; no defaults are inferred. These capabilities

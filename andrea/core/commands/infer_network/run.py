@@ -292,7 +292,7 @@ def _validate_physical_task_plan(
             or task.output_dir != str(physical["output_dir"])
             or task.group_label != expected_group
             or task.threads != int(physical["threads"])
-            or round(task.ram_gb, 3) != round(float(physical["ram_gb"]), 3)
+            or task.ram_gb != float(physical["ram_gb"])
         ):
             raise ValueError(
                 f"[{task_id}] wave task does not match its physical task declaration"
@@ -327,10 +327,10 @@ def _validate_wave_resource_schedule(
         raise ValueError("plan.json wave indices must be contiguous and start at 1")
     for wave in waves:
         threads_used = sum(task.threads for task in wave.tasks)
-        ram_gb_used = round(sum(task.ram_gb for task in wave.tasks), 3)
+        ram_gb_used = sum(task.ram_gb for task in wave.tasks)
         if (
             wave.threads_used != threads_used
-            or round(wave.ram_gb_used, 3) != ram_gb_used
+            or wave.ram_gb_used != ram_gb_used
         ):
             raise ValueError(
                 f"plan.json wave {wave.index} resource totals do not match its tasks"
@@ -1556,9 +1556,9 @@ def run_infer_network_plan(
                     f"frozen per-run request requires threads={requested_threads}."
                 )
             requested_ram_gb = resolved_resources.get("ram_gb")
-            if requested_ram_gb is not None and round(
-                float(planned_task.ram_gb), 3
-            ) != round(float(requested_ram_gb), 3):
+            if requested_ram_gb is not None and float(
+                planned_task.ram_gb
+            ) != float(requested_ram_gb):
                 compatibility_blocks.setdefault(run_id, []).append(
                     f"task '{task_id}' has ram_gb={planned_task.ram_gb}, but the "
                     f"frozen per-run request requires ram_gb={requested_ram_gb}."

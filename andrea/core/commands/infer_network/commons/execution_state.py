@@ -213,7 +213,7 @@ def build_initial_execution_state(
                 "message": "Queued",
                 "wave": int(wave.index),
                 "threads": int(task.threads),
-                "ram_gb": round(float(task.ram_gb), 3),
+                "ram_gb": float(task.ram_gb),
                 "eta_seconds": round(float(task.eta_seconds), 3),
                 "errors": [],
                 "warnings": [],
@@ -225,7 +225,7 @@ def build_initial_execution_state(
                 "status": "queued",
                 "percent": 0,
                 "threads_used": int(wave.threads_used),
-                "ram_gb_used": round(float(wave.ram_gb_used), 3),
+                "ram_gb_used": float(wave.ram_gb_used),
                 "eta_seconds": round(float(wave.eta_seconds), 3),
                 "tools": task_ids,
             }

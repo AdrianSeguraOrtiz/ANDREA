@@ -158,7 +158,9 @@ def _docker_run_detached(
         or ram_gb <= 0
     ):
         raise ValueError("ram_gb must be a finite number greater than zero")
-    memory_limit = f"{float(ram_gb):.3f}".rstrip("0").rstrip(".")
+    memory_limit_bytes = round(float(ram_gb) * 1024**3)
+    if memory_limit_bytes < 1:
+        raise ValueError("ram_gb must resolve to at least one byte")
     cmd = ["docker", "run", "-d"]
     resolved_io_dir = io_dir.resolve()
     resolved_out_dir = (io_dir / "out").resolve()
@@ -175,7 +177,7 @@ def _docker_run_detached(
             "--cpus",
             str(threads),
             "--memory",
-            f"{memory_limit}g",
+            str(memory_limit_bytes),
             "-v",
             f"{resolved_io_dir}:/io:ro",
             "-v",

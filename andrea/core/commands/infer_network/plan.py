@@ -798,7 +798,7 @@ def plan_infer_network(
                 "columns": int(raw_physical["columns"]),
                 "output_dir": str(raw_physical["output_dir"]),
                 "threads": int(task.threads),
-                "ram_gb": round(float(task.ram_gb), 3),
+                "ram_gb": float(task.ram_gb),
                 "eta_seconds": round(float(task.eta_seconds), 3),
                 "eta_source": str(task.eta_source),
                 "eta_start_seconds": round(task_start, 3),
@@ -843,7 +843,7 @@ def plan_infer_network(
         "output_profile": normalized_output_profile,
         "resource_limits": {
             "max_cores": int(max_cores),
-            "max_ram_gb": round(float(effective_ram), 3),
+            "max_ram_gb": float(effective_ram),
         },
         "totals": {
             "logical_runs_total": int(len(selected_tools)),
@@ -851,8 +851,8 @@ def plan_infer_network(
             "tasks_total": int(sum(len(w.tasks) for w in waves)),
             "waves_total": int(len(waves)),
             "threads_peak": int(max((w.threads_used for w in waves), default=0)),
-            "ram_peak_gb": round(
-                float(max((w.ram_gb_used for w in waves), default=0.0)), 3
+            "ram_peak_gb": float(
+                max((w.ram_gb_used for w in waves), default=0.0)
             ),
         },
         "runs": logical_runs_payload,

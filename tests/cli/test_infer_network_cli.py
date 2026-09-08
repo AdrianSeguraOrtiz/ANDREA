@@ -52,12 +52,15 @@ class InferNetworkCliTests(unittest.TestCase):
                         str(custom_tools),
                         "--output-dir",
                         str(output_dir),
+                        "--max-ram-gb",
+                        "12.345678901",
                     ],
                 )
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
         plan_mock.assert_called_once()
         self.assertEqual(plan_mock.call_args.kwargs["custom_tools_path"], custom_tools)
+        self.assertEqual(plan_mock.call_args.kwargs["max_ram_gb"], 12.345678901)
 
     def test_run_subcommand_calls_core_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

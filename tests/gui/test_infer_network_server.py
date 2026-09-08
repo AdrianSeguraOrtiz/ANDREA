@@ -756,6 +756,18 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                     ]
                 )
 
+    def test_gui_preserves_high_precision_exact_run_ram(self) -> None:
+        normalized = gui_server._normalize_runs(
+            [
+                {
+                    "tool_id": "genie3",
+                    "resources": {"ram_gb": 12.345678901},
+                }
+            ]
+        )
+
+        self.assertEqual(normalized[0]["resources"]["ram_gb"], 12.345678901)
+
     def test_job_payload_includes_running_execution_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp) / "run"

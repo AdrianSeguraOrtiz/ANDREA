@@ -91,7 +91,7 @@ def test_cpuset_contract_is_canonical_and_available() -> None:
         validate_cpuset_available((3,), source="test", available=(0, 1, 2))
 
 
-def test_docker_launch_applies_exact_threads_and_cpuset() -> None:
+def test_docker_launch_applies_exact_threads_ram_and_cpuset() -> None:
     from andrea.core.commands.infer_network.commons import runtime_helpers
 
     with (
@@ -104,19 +104,47 @@ def test_docker_launch_applies_exact_threads_and_cpuset() -> None:
             ),
         ) as run_cmd,
     ):
+        exact_ram_gb = 12.345678901
         runtime_helpers._docker_run_detached(
             image="example/tool:1.0",
             io_dir=Path(tmp),
             threads=4,
-            ram_gb=1024.0,
+            ram_gb=exact_ram_gb,
             cpuset_cpus=(2, 3, 6, 7),
         )
 
     command = run_cmd.call_args.args[0]
     assert command[command.index("--cpus") + 1] == "4"
-    assert command[command.index("--memory") + 1] == "1024g"
+    assert command[command.index("--memory") + 1] == str(
+        round(exact_ram_gb * 1024**3)
+    )
     assert command[command.index("--cpuset-cpus") + 1] == "2,3,6,7"
     assert command[command.index("--threads") + 1] == "4"
+
+
+def test_planners_preserve_high_precision_ram_allocations() -> None:
+    exact_ram_gb = 1.234567891
+    item = replace(_task("exact", None), ram_gb=exact_ram_gb)
+
+    heuristic_waves, _ = _build_parallel_waves(
+        items=[item],
+        max_cores=2,
+        max_ram_gb=exact_ram_gb,
+    )
+    assert heuristic_waves[0].tasks[0].ram_gb == exact_ram_gb
+    assert heuristic_waves[0].ram_gb_used == exact_ram_gb
+
+    cp_sat_warnings: list[str] = []
+    _selected, cp_sat_waves, _eta = _optimize_mode_selection_cp_sat(
+        mode_options_by_tool={"exact": [item]},
+        max_cores=2,
+        max_ram_gb=exact_ram_gb,
+        time_limit_seconds=2.0,
+        warnings=cp_sat_warnings,
+    )
+    assert not cp_sat_warnings
+    assert cp_sat_waves[0].tasks[0].ram_gb == exact_ram_gb
+    assert cp_sat_waves[0].ram_gb_used == exact_ram_gb
 
 
 def test_scheduler_never_overlaps_reserved_or_unpinned_cpu_sets() -> None:

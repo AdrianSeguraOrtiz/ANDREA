@@ -20,6 +20,7 @@ from .tools import _resolve_runtime_extra_input_keys
 ETA_ESTIMATION_POLICY_VERSION = "cost_profile_v2"
 MIN_EXACT_PROFILE_SIZE_SCALE = 0.75
 MIN_APPROX_PROFILE_SIZE_SCALE = 1.0
+_GIB = 1024**3
 
 
 def _load_tool_cost_profile(
@@ -542,7 +543,7 @@ def _fallback_plan_item(
         run_id=run_id,
         image=image,
         threads=int(threads),
-        ram_gb=round(assigned_ram_gb, 3),
+        ram_gb=assigned_ram_gb,
         eta_seconds=round(fallback_eta, 3),
         eta_source=eta_source,
         output_dir=output_dir,
@@ -779,11 +780,10 @@ def _estimate_tool_mode_options(
         {
             (
                 int(point["threads"]),
-                round(
+                (
                     float(requested_ram_gb)
                     if requested_ram_gb is not None
-                    else float(point["ram_gb"]),
-                    3,
+                    else float(point["ram_gb"])
                 ),
             )
             for point in eligible_points
@@ -861,8 +861,8 @@ def _estimate_tool_mode_options(
         }
         size_exact = pg == dataset.genes and pc == dataset.columns
         resource_exact = int(nearest.get("threads", threads)) == int(threads) and round(
-            float(nearest.get("ram_gb", ram)), 3
-        ) == round(float(ram), 3)
+            float(nearest.get("ram_gb", ram)) * _GIB
+        ) == round(float(ram) * _GIB)
         point_quality = ("exact_size" if size_exact else "nearest_size") + (
             "_exact_resources" if resource_exact else "_nearest_resources"
         )
@@ -891,7 +891,7 @@ def _estimate_tool_mode_options(
                 run_id=run_id,
                 image=image,
                 threads=int(threads),
-                ram_gb=round(float(ram), 3),
+                ram_gb=float(ram),
                 eta_seconds=round(float(eta), 3),
                 eta_source="cost_profile",
                 output_dir=output_dir,
@@ -1035,7 +1035,7 @@ def _build_parallel_waves(
             waves[best_idx] = PlanWave(
                 index=wave.index,
                 threads_used=wave.threads_used + item.threads,
-                ram_gb_used=round(wave.ram_gb_used + item.ram_gb, 3),
+                ram_gb_used=wave.ram_gb_used + item.ram_gb,
                 eta_seconds=max(wave.eta_seconds, item.eta_seconds),
                 tasks=next_tasks,
             )
@@ -1045,7 +1045,7 @@ def _build_parallel_waves(
             PlanWave(
                 index=len(waves) + 1,
                 threads_used=item.threads,
-                ram_gb_used=round(item.ram_gb, 3),
+                ram_gb_used=item.ram_gb,
                 eta_seconds=item.eta_seconds,
                 tasks=[item],
             )
@@ -1147,9 +1147,8 @@ def _optimize_mode_selection_cp_sat(
 
     num_tools = len(tool_ids)
     max_waves = num_tools
-    ram_scale = 1000
     eta_scale = 1000
-    max_ram_units = max(1, int(round(max_ram_gb * ram_scale)))
+    max_ram_units = max(1, round(max_ram_gb * _GIB))
 
     horizon = 0
     for tool_id in tool_ids:
@@ -1190,7 +1189,7 @@ def _optimize_mode_selection_cp_sat(
             for m, mode in enumerate(modes):
                 var = x[(i, m, w)]
                 cores_terms.append(var * int(mode.threads))
-                ram_terms.append(var * int(round(mode.ram_gb * ram_scale)))
+                ram_terms.append(var * round(mode.ram_gb * _GIB))
                 assignment_terms.append(var)
 
                 eta_units = int(round(mode.eta_seconds * eta_scale))
@@ -1288,7 +1287,7 @@ def _optimize_mode_selection_cp_sat(
             PlanWave(
                 index=len(waves) + 1,
                 threads_used=int(threads_used),
-                ram_gb_used=round(float(ram_used), 3),
+                ram_gb_used=float(ram_used),
                 eta_seconds=wave_eta_seconds,
                 tasks=tasks,
             )
