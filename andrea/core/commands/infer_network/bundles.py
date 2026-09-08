@@ -27,7 +27,7 @@ BUNDLE_SPECS: tuple[BundleSpec, ...] = (
         purpose="Complete inference archive for inspection, debugging and storage.",
         contents_summary=(
             "Frozen inputs, shared inputs and per-tool workspaces.",
-            "Merged networks, graph exports, runtime state, logs and final reports.",
+            "Merged networks, requested graph exports, runtime state, logs and final reports.",
         ),
     ),
     BundleSpec(
@@ -97,11 +97,20 @@ def _resolve_full(*, spec: BundleSpec, root: Path) -> BundleResolution:
     missing_required: list[str] = [
         rel for rel in FULL_ALWAYS_REQUIRED_FILES if not (root / rel).is_file()
     ]
-    if (root / "merged_network_raw.csv").is_file():
+    output_profile = None
+    try:
+        report = json.loads((root / "run_report.json").read_text(encoding="utf-8"))
+        if isinstance(report, dict):
+            output_profile = report.get("output_profile")
+    except (OSError, json.JSONDecodeError):
+        pass
+    if output_profile not in {"canonical", "full"}:
+        missing_required.append("run_report.json:output_profile")
+    if output_profile == "full" and (root / "merged_network_raw.csv").is_file():
         for rel in ("merged_network_raw.gexf", "merged_network_raw.graphml"):
             if not (root / rel).is_file():
                 missing_required.append(rel)
-    if (root / "merged_network_normalized.csv").is_file():
+    if output_profile == "full" and (root / "merged_network_normalized.csv").is_file():
         for rel in (
             "merged_network_normalized.gexf",
             "merged_network_normalized.graphml",
@@ -203,6 +212,7 @@ def _resolve_report(*, spec: BundleSpec, root: Path) -> BundleResolution:
     for pattern in (
         "tools/*/resolved_params.json",
         "tools/*/resolved_execution.json",
+        "tools/*/resolved_resources.json",
     ):
         append_glob(
             root=root,

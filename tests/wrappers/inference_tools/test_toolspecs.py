@@ -124,6 +124,28 @@ class ToolSpecCatalogTest(unittest.TestCase):
             errors,
         )
 
+    def test_runtime_resources_supported_tool_may_have_no_intrinsic_maximum(
+        self,
+    ) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["global"])
+        instance["runtime_resources"]["threading"] = {
+            "supported": True,
+            "default_threads": 1,
+            "max_threads": None,
+            "upstream_mapping": "Wrapper maps --threads to upstream workers.",
+        }
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertFalse(
+            any("runtime_resources.threading" in error for error in errors),
+            errors,
+        )
+
     def test_group_aggregated_requires_column_native_capability(self) -> None:
         module = _load_validate_toolspecs_module()
         instance = self._minimal_toolspec(

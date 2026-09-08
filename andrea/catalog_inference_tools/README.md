@@ -159,6 +159,8 @@ mode.
 ## Schemas
 
 - `schemas/toolspec.schema.json`: ToolSpec contract.
+- `schemas/tools-params.schema.json`: per-run scientific, execution and operational resource requests.
+- `schemas/custom-tools.schema.json`: run-local external Docker tool definitions.
 - `schemas/toolcost.schema.json`: Cost profile contract for `tools/<tool_id>/cost.json`.
 - `schemas/dataset-manifest.schema.json`: orchestrator input manifest (includes embedded dataset spec).
 - `schemas/input-spec.schema.json`: contract for declarative per-input validation rules.

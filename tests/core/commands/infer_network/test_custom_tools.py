@@ -17,13 +17,23 @@ from andrea.core.commands.infer_network.commons.shared import (
 )
 from andrea.core.commands.infer_network.commons.tools import (
     _load_tools_params,
-    _parse_extra_inputs_spec,
     _parse_execution_capabilities,
+    _parse_extra_inputs_spec,
     _scan_catalog_compatibility,
 )
 
 
 class CustomToolsContractTests(unittest.TestCase):
+    def test_custom_tools_file_requires_at_least_one_definition(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(
+            ValueError, "non-empty tools array"
+        ):
+            normalize_custom_tools_payload(
+                payload={"tools": []},
+                tools_root=Path(tmp),
+                constraints=self._constraints(),
+            )
+
     @staticmethod
     def _constraints() -> SchemaConstraints:
         return SchemaConstraints(
@@ -48,6 +58,14 @@ class CustomToolsContractTests(unittest.TestCase):
             "execution_mode": "global",
             "extra_inputs": ["tf_list"],
             "outputs": {"directed": True, "sign": "none"},
+            "runtime_resources": {
+                "threading": {
+                    "supported": True,
+                    "default_threads": 2,
+                    "max_threads": 8,
+                    "upstream_mapping": "cli:--threads",
+                }
+            },
         }
 
     def _normalize(
@@ -69,6 +87,36 @@ class CustomToolsContractTests(unittest.TestCase):
         self.assertEqual(
             serialize_custom_tools(specs),
             {"tools": [self._valid_tool()]},
+        )
+
+    def test_multithreaded_tool_can_declare_no_intrinsic_maximum(self) -> None:
+        tool = self._valid_tool()
+        tool["runtime_resources"]["threading"]["max_threads"] = None
+
+        specs, blocked = self._normalize(tool)
+
+        self.assertEqual(blocked, [])
+        self.assertIsNone(
+            specs["custom_demo_01"]["runtime_resources"]["threading"][
+                "max_threads"
+            ]
+        )
+
+    def test_single_threaded_tool_cannot_use_null_maximum(self) -> None:
+        tool = self._valid_tool()
+        tool["runtime_resources"]["threading"] = {
+            "supported": False,
+            "default_threads": 1,
+            "max_threads": None,
+            "upstream_mapping": "No upstream parallel runtime control.",
+        }
+
+        specs, blocked = self._normalize(tool)
+
+        self.assertEqual(specs, {})
+        self.assertIn(
+            "supported=false requires default_threads=max_threads=1",
+            blocked[0]["issues"][0]["message"],
         )
 
     def test_core_rejects_unmanaged_orchestration_input(self) -> None:
@@ -205,6 +253,7 @@ class CustomToolsContractTests(unittest.TestCase):
             "execution_mode",
             "extra_inputs",
             "outputs",
+            "runtime_resources",
         ):
             tool = self._valid_tool()
             del tool[key]
@@ -312,6 +361,7 @@ class CustomToolsContractTests(unittest.TestCase):
                         "tool_id": "custom_demo_01",
                         "params": {},
                         "execution": {"mode": "global"},
+                        "resources": {},
                     }
                 },
             )
@@ -341,6 +391,86 @@ class CustomToolsContractTests(unittest.TestCase):
 
             aliased_tool = load({**valid_run, "tool_id": "demo_01"})
             self.assertEqual(aliased_tool["demo_01"]["tool_id"], "demo_01")
+
+    def test_tools_params_preserves_operational_resources_separately(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tools_params_path = Path(tmp) / "tools_params.json"
+            tools_params_path.write_text(
+                json.dumps(
+                    {
+                        "runs": [
+                            {
+                                "run_id": "demo_01",
+                                "tool_id": "genie3",
+                                "params": {"seed": 7},
+                                "execution": {"mode": "global"},
+                                "resources": {
+                                    "threads": 2,
+                                    "ram_gb": 12.5,
+                                    "cpuset_cpus": [0, 1],
+                                },
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            parsed = _load_tools_params(tools_params_path)
+
+        self.assertEqual(parsed["demo_01"]["params"], {"seed": 7})
+        self.assertEqual(
+            parsed["demo_01"]["resources"],
+            {"threads": 2, "ram_gb": 12.5, "cpuset_cpus": [0, 1]},
+        )
+
+    def test_tools_params_rejects_invalid_exact_ram(self) -> None:
+        for value in (True, 0, -1, "16"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                tools_params_path = Path(tmp) / "tools_params.json"
+                tools_params_path.write_text(
+                    json.dumps(
+                        {
+                            "runs": [
+                                {
+                                    "tool_id": "genie3",
+                                    "resources": {"ram_gb": value},
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                with self.assertRaisesRegex(ValueError, "ram_gb"):
+                    _load_tools_params(tools_params_path)
+
+    def test_tools_params_rejects_cpuset_without_exact_threads(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tools_params_path = Path(tmp) / "tools_params.json"
+            tools_params_path.write_text(
+                json.dumps(
+                    {
+                        "runs": [
+                            {
+                                "tool_id": "genie3",
+                                "resources": {"cpuset_cpus": [0, 1]},
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "threads is required"):
+                _load_tools_params(tools_params_path)
+
+    def test_tools_params_rejects_null_resources(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tools_params_path = Path(tmp) / "tools_params.json"
+            tools_params_path.write_text(
+                json.dumps({"runs": [{"tool_id": "genie3", "resources": None}]}),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "resources must be an object"):
+                _load_tools_params(tools_params_path)
 
     def test_tools_params_catalog_identity_keeps_existing_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -554,6 +684,7 @@ class CustomToolsContractTests(unittest.TestCase):
                     "evidence": "external_tool_output",
                 },
             ),
+            ("missing runtime resources", "runtime_resources", None),
         ]
         for label, key, value in cases:
             corrupt = copy.deepcopy(specs)

@@ -50,6 +50,8 @@ required = [
     "andrea/gui/evaluate_inference/static/index.html",
     "andrea/gui/compare_networks/static/index.html",
     "andrea/catalog_inference_tools/schemas/toolspec.schema.json",
+    "andrea/catalog_inference_tools/schemas/tools-params.schema.json",
+    "andrea/catalog_inference_tools/schemas/custom-tools.schema.json",
     "andrea/catalog_simulation_data_tools/schemas/simulatorspec.schema.json",
     "andrea/catalog_simulation_data_tools/input_specs/regulatory_network.json",
 ]

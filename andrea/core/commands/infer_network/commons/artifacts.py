@@ -7,13 +7,19 @@ import shutil
 from pathlib import Path
 from typing import Any, Optional
 
+from andrea.core.shared.json_io import (
+    load_json_object as _load_json_object,
+)
+from andrea.core.shared.json_io import (
+    write_json as _write_json,
+)
+
+from .resources import normalize_cpuset_cpus
 from .shared import (
     DatasetContext,
     PlanWave,
     SchemaConstraints,
     ToolPlanItem,
-    _load_json_object,
-    _write_json,
 )
 
 
@@ -217,6 +223,25 @@ def _load_plan_waves(
     for raw_wave in raw_waves:
         if not isinstance(raw_wave, dict):
             raise ValueError("plan.json contains invalid wave entry")
+        raw_index = raw_wave.get("index")
+        raw_threads_used = raw_wave.get("threads_used")
+        raw_ram_used = raw_wave.get("ram_gb_used")
+        raw_wave_eta = raw_wave.get("eta_seconds")
+        if (
+            isinstance(raw_index, bool)
+            or not isinstance(raw_index, int)
+            or raw_index < 1
+            or isinstance(raw_threads_used, bool)
+            or not isinstance(raw_threads_used, int)
+            or raw_threads_used < 1
+            or isinstance(raw_ram_used, bool)
+            or not isinstance(raw_ram_used, (int, float))
+            or raw_ram_used <= 0
+            or isinstance(raw_wave_eta, bool)
+            or not isinstance(raw_wave_eta, (int, float))
+            or raw_wave_eta < 0
+        ):
+            raise ValueError("plan.json contains invalid wave resource metadata")
         tasks_raw = raw_wave.get("tasks", [])
         if not isinstance(tasks_raw, list) or not tasks_raw:
             raise ValueError("plan.json contains empty or invalid wave tasks")
@@ -224,13 +249,37 @@ def _load_plan_waves(
         for raw_task in tasks_raw:
             if not isinstance(raw_task, dict):
                 raise ValueError("plan.json contains invalid task entry")
+            raw_threads = raw_task.get("threads")
+            raw_ram = raw_task.get("ram_gb")
+            raw_eta = raw_task.get("eta_seconds")
+            if (
+                isinstance(raw_threads, bool)
+                or not isinstance(raw_threads, int)
+                or raw_threads < 1
+                or isinstance(raw_ram, bool)
+                or not isinstance(raw_ram, (int, float))
+                or raw_ram <= 0
+                or isinstance(raw_eta, bool)
+                or not isinstance(raw_eta, (int, float))
+                or raw_eta < 0
+            ):
+                raise ValueError("plan.json contains invalid task resource metadata")
+            cpuset_raw = raw_task.get("cpuset_cpus")
+            cpuset_cpus = (
+                normalize_cpuset_cpus(
+                    cpuset_raw,
+                    source=f"plan.json task {raw_task.get('tool_id')!r}.cpuset_cpus",
+                )
+                if cpuset_raw is not None
+                else None
+            )
             task = ToolPlanItem(
                 tool_id=str(raw_task.get("tool_id", "")),
                 run_id=str(raw_task.get("run_id", "")),
                 image=str(raw_task.get("image", "")),
-                threads=int(raw_task.get("threads", 0)),
-                ram_gb=float(raw_task.get("ram_gb", 0.0)),
-                eta_seconds=float(raw_task.get("eta_seconds", 0.0)),
+                threads=raw_threads,
+                ram_gb=float(raw_ram),
+                eta_seconds=float(raw_eta),
                 eta_source=str(raw_task.get("eta_source", "")),
                 output_dir=str(raw_task.get("output_dir", "")),
                 group_label=(
@@ -244,6 +293,7 @@ def _load_plan_waves(
                     else None
                 ),
                 network_disabled=bool(raw_task.get("network_disabled")),
+                cpuset_cpus=cpuset_cpus,
             )
             if (
                 not task.tool_id
@@ -258,15 +308,20 @@ def _load_plan_waves(
             tasks.append(task)
             selected_modes.append(task)
         wave = PlanWave(
-            index=int(raw_wave.get("index", len(waves) + 1)),
-            threads_used=int(raw_wave.get("threads_used", 0)),
-            ram_gb_used=float(raw_wave.get("ram_gb_used", 0.0)),
-            eta_seconds=float(raw_wave.get("eta_seconds", 0.0)),
+            index=raw_index,
+            threads_used=raw_threads_used,
+            ram_gb_used=float(raw_ram_used),
+            eta_seconds=float(raw_wave_eta),
             tasks=tasks,
         )
         waves.append(wave)
 
-    total_eta = float(
-        plan_payload.get("eta_total_seconds", sum(w.eta_seconds for w in waves))
-    )
+    total_eta_raw = plan_payload.get("eta_total_seconds")
+    if (
+        isinstance(total_eta_raw, bool)
+        or not isinstance(total_eta_raw, (int, float))
+        or total_eta_raw < 0
+    ):
+        raise ValueError("plan.json eta_total_seconds is invalid")
+    total_eta = float(total_eta_raw)
     return selected_modes, waves, round(total_eta, 3)

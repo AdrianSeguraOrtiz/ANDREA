@@ -7,7 +7,9 @@ import multiprocessing
 from pathlib import Path
 from typing import Any, Optional
 
-from .shared import DatasetContext, PlanWave, ToolPlanItem, _load_json_object
+from andrea.core.shared.json_io import load_json_object as _load_json_object
+
+from .shared import DatasetContext, PlanWave, ToolPlanItem
 from .threading import (
     default_threads_for_limits,
     resolve_tool_threading,
@@ -513,7 +515,24 @@ def _fallback_plan_item(
     threads: int = 1,
     group_label: Optional[str] = None,
     eta_provenance: Optional[dict[str, Any]] = None,
+    cpuset_cpus: Optional[tuple[int, ...]] = None,
+    ram_gb: Optional[float] = None,
 ) -> ToolPlanItem:
+    if threads < 1 or threads > max_cores:
+        raise ValueError(
+            f"[{tool_id}] fallback threads={threads} is outside planner limit "
+            f"1..{max_cores}"
+        )
+    assigned_ram_gb = min(float(max_ram_gb), 4.0) if ram_gb is None else float(ram_gb)
+    if (
+        not math.isfinite(assigned_ram_gb)
+        or assigned_ram_gb <= 0
+        or assigned_ram_gb > max_ram_gb
+    ):
+        raise ValueError(
+            f"[{tool_id}] fallback ram_gb={assigned_ram_gb} is outside planner "
+            f"limit 0..{max_ram_gb}"
+        )
     fallback_eta = max(10.0, 0.02 * dataset.genes * dataset.columns)
     if execution_mode == "column_native":
         dense_cell_edges = max(0, dataset.genes * (dataset.genes - 1)) * dataset.columns
@@ -522,13 +541,14 @@ def _fallback_plan_item(
         tool_id=tool_id,
         run_id=run_id,
         image=image,
-        threads=max(1, min(max_cores, int(threads))),
-        ram_gb=max(1.0, min(max_ram_gb, 4.0)),
+        threads=int(threads),
+        ram_gb=round(assigned_ram_gb, 3),
         eta_seconds=round(fallback_eta, 3),
         eta_source=eta_source,
         output_dir=output_dir,
         group_label=group_label,
         eta_provenance=eta_provenance,
+        cpuset_cpus=cpuset_cpus,
     )
 
 
@@ -607,6 +627,9 @@ def _estimate_tool_mode_options(
     max_ram_gb: float,
     output_dir: str,
     group_label: Optional[str] = None,
+    requested_threads: Optional[int] = None,
+    requested_ram_gb: Optional[float] = None,
+    requested_cpuset: Optional[tuple[int, ...]] = None,
 ) -> tuple[list[ToolPlanItem], list[str]]:
     if execution_mode not in {"global", "group_native", "column_native"}:
         raise ValueError(
@@ -618,12 +641,33 @@ def _estimate_tool_mode_options(
     image = str(toolspec.get("docker_image", "")).strip()
     if not image:
         raise ValueError(f"[{tool_id}] toolspec.docker_image is missing")
-    threading, threading_warnings = resolve_tool_threading(
+    threading = resolve_tool_threading(
         tool_id=tool_id,
         toolspec=toolspec,
     )
-    warnings.extend(threading_warnings)
-    fallback_threads = default_threads_for_limits(threading, max_cores=max_cores)
+    if requested_threads is not None:
+        if not thread_count_allowed_by_tool(threading, int(requested_threads)):
+            raise ValueError(
+                f"[{tool_id}] requested threads={requested_threads} is incompatible "
+                "with toolspec.runtime_resources.threading"
+            )
+        if int(requested_threads) > int(max_cores):
+            raise ValueError(
+                f"[{tool_id}] requested threads={requested_threads} exceeds "
+                f"max_cores={max_cores}"
+            )
+        fallback_threads = int(requested_threads)
+    else:
+        fallback_threads = default_threads_for_limits(threading, max_cores=max_cores)
+    if requested_ram_gb is not None and (
+        not math.isfinite(float(requested_ram_gb))
+        or float(requested_ram_gb) <= 0
+        or float(requested_ram_gb) > float(max_ram_gb)
+    ):
+        raise ValueError(
+            f"[{tool_id}] requested ram_gb={requested_ram_gb} is outside "
+            f"max_ram_gb={max_ram_gb}"
+        )
 
     cost = cost_profile
     cost_features = _inference_cost_features(
@@ -651,10 +695,11 @@ def _estimate_tool_mode_options(
                         "eta_source": "fallback",
                         "warnings": [
                             "no cost.json payload available",
-                            *threading_warnings,
                         ],
                         "cost_features": cost_features,
                     },
+                    cpuset_cpus=requested_cpuset,
+                    ram_gb=requested_ram_gb,
                 )
             ],
             warnings,
@@ -687,10 +732,12 @@ def _estimate_tool_mode_options(
                     group_label=group_label,
                     eta_provenance={
                         "eta_source": "fallback",
-                        "warnings": [*profile_warnings, *threading_warnings],
+                        "warnings": list(profile_warnings),
                         "execution_mode": execution_mode,
                         "cost_features": cost_features,
                     },
+                    cpuset_cpus=requested_cpuset,
+                    ram_gb=requested_ram_gb,
                 )
             ],
             warnings,
@@ -718,13 +765,64 @@ def _estimate_tool_mode_options(
         if thread_count_allowed_by_tool(threading, int(point["threads"]))
     ]
 
+    eligible_points = [
+        p
+        for p in valid_points
+        if int(p["threads"]) <= max_cores
+        and float(p["ram_gb"]) <= max_ram_gb
+        and (
+            requested_threads is None
+            or int(p["threads"]) == int(requested_threads)
+        )
+    ]
     candidate_resources = sorted(
         {
-            (int(p["threads"]), round(float(p["ram_gb"]), 3))
-            for p in valid_points
-            if int(p["threads"]) <= max_cores and float(p["ram_gb"]) <= max_ram_gb
+            (
+                int(point["threads"]),
+                round(
+                    float(requested_ram_gb)
+                    if requested_ram_gb is not None
+                    else float(point["ram_gb"]),
+                    3,
+                ),
+            )
+            for point in eligible_points
         }
     )
+
+    if requested_threads is not None and not candidate_resources:
+        warnings.append(
+            f"[{tool_id}] no cost-profile point exists for requested "
+            f"threads={requested_threads}; using a conservative fallback estimate."
+        )
+        return (
+            [
+                _fallback_plan_item(
+                    tool_id=tool_id,
+                    run_id=run_id,
+                    image=image,
+                    dataset=dataset,
+                    execution_mode=execution_mode,
+                    max_cores=max_cores,
+                    max_ram_gb=max_ram_gb,
+                    eta_source="fallback_requested_threads_without_cost_point",
+                    output_dir=output_dir,
+                    threads=int(requested_threads),
+                    group_label=group_label,
+                    eta_provenance={
+                        "eta_source": "fallback",
+                        "warnings": [
+                            "no cost profile point for the exact requested thread count"
+                        ],
+                        "cost_features": cost_features,
+                        "requested_threads": int(requested_threads),
+                    },
+                    cpuset_cpus=requested_cpuset,
+                    ram_gb=requested_ram_gb,
+                )
+            ],
+            warnings,
+        )
 
     for threads, ram in candidate_resources:
         nearest = _nearest_runtime_point(
@@ -780,7 +878,6 @@ def _estimate_tool_mode_options(
         eta = max(0.1, robust_base * size_scale * risk_penalty * uncertainty_penalty)
         provenance_warnings = [
             *profile_warnings,
-            *threading_warnings,
             *cost_point_warnings,
         ]
         if nearest.get("status") == "partial":
@@ -834,6 +931,7 @@ def _estimate_tool_mode_options(
                         "warnings": provenance_warnings,
                     },
                 },
+                cpuset_cpus=requested_cpuset,
             )
         )
 
@@ -870,11 +968,12 @@ def _estimate_tool_mode_options(
                         "match_quality": profile_match.get("match_quality"),
                         "warnings": [
                             "selected profile has no runtime point compatible with resource limits",
-                            *threading_warnings,
                             *cost_point_warnings,
                         ],
                     },
                 },
+                cpuset_cpus=requested_cpuset,
+                ram_gb=requested_ram_gb,
             )
         ],
         warnings,
@@ -893,9 +992,31 @@ def _build_parallel_waves(
     sorted_items = sorted(items, key=lambda x: x.eta_seconds, reverse=True)
 
     for item in sorted_items:
+        if item.threads < 1 or item.threads > max_cores:
+            raise ValueError(
+                f"[{item.tool_id}] planned threads={item.threads} is outside "
+                f"the execution budget 1..{max_cores}"
+            )
+        if item.ram_gb <= 0 or item.ram_gb > max_ram_gb:
+            raise ValueError(
+                f"[{item.tool_id}] planned ram_gb={item.ram_gb} is outside "
+                f"the execution budget 0..{max_ram_gb}"
+            )
         best_idx: Optional[int] = None
         best_score: Optional[tuple[float, float]] = None
         for idx, wave in enumerate(waves):
+            if item.cpuset_cpus is None:
+                affinity_conflict = any(
+                    task.cpuset_cpus is not None for task in wave.tasks
+                )
+            else:
+                affinity_conflict = any(
+                    task.cpuset_cpus is None
+                    or bool(set(item.cpuset_cpus) & set(task.cpuset_cpus))
+                    for task in wave.tasks
+                )
+            if affinity_conflict:
+                continue
             next_cores = wave.threads_used + item.threads
             next_ram = wave.ram_gb_used + item.ram_gb
             if next_cores <= max_cores and next_ram <= max_ram_gb:
@@ -1081,6 +1202,30 @@ def _optimize_mode_selection_cp_sat(
         model.Add(wave_eta[w] <= horizon * wave_used[w])
         # Prevent empty "used" waves: wave_used[w] == 1 implies at least one task in wave w.
         model.Add(sum(assignment_terms) >= wave_used[w])
+
+        # Pinned tasks only share a wave when their CPU sets are disjoint. An
+        # unpinned task never shares a wave with a pinned task because Docker's
+        # CPU quota alone cannot guarantee that it avoids the reserved CPUs.
+        for left_index, left_tool_id in enumerate(tool_ids):
+            for right_index in range(left_index + 1, len(tool_ids)):
+                right_tool_id = tool_ids[right_index]
+                for left_mode_index, left_mode in enumerate(
+                    mode_options_by_tool[left_tool_id]
+                ):
+                    for right_mode_index, right_mode in enumerate(
+                        mode_options_by_tool[right_tool_id]
+                    ):
+                        left_cpuset = left_mode.cpuset_cpus
+                        right_cpuset = right_mode.cpuset_cpus
+                        conflicts = (left_cpuset is None) != (right_cpuset is None)
+                        if left_cpuset is not None and right_cpuset is not None:
+                            conflicts = bool(set(left_cpuset) & set(right_cpuset))
+                        if conflicts:
+                            model.Add(
+                                x[(left_index, left_mode_index, w)]
+                                + x[(right_index, right_mode_index, w)]
+                                <= 1
+                            )
 
     # Force contiguous usage of waves to reduce symmetry.
     for w in range(max_waves - 1):

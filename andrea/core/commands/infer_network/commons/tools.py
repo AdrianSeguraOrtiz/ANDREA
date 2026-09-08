@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import copy
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
 from andrea.core.shared.issues import make_issue
+from andrea.core.shared.json_io import load_json_object as _load_json_object
 from andrea.core.shared.output_capabilities import OUTPUT_SIGN_SEMANTICS
 from andrea.core.shared.param_validation import ParamValidationError
 from andrea.core.shared.param_validation import (
     validate_param_value as _validate_param_value,
 )
 
-from .shared import DatasetContext, SchemaConstraints, _load_json_object
+from .resources import normalize_cpuset_cpus
+from .shared import DatasetContext, SchemaConstraints
 from .tool_rule_eval import (
     COMPATIBILITY_OPS,
     _collect_compatibility_rule_issues,
@@ -354,8 +357,11 @@ def _load_tools_params(
         raise ValueError("tools-params JSON must include at least one tool request")
 
     parsed: dict[str, dict[str, Any]] = {}
-    # Required format:
-    # {"runs": [{"run_id": "...", "tool_id": "...", "params": {...}, "execution": {...}}, ...]}
+    # Canonical format:
+    # {"runs": [{"run_id": "...", "tool_id": "...", "params": {...},
+    #             "execution": {...},
+    #             "resources": {"threads": N, "ram_gb": R,
+    #                           "cpuset_cpus": [0, 1]}}, ...]}
     runs = raw.get("runs")
     if not isinstance(runs, list) or not runs:
         raise ValueError(
@@ -371,6 +377,14 @@ def _load_tools_params(
     for idx, item in enumerate(runs, start=1):
         if not isinstance(item, dict):
             raise ValueError(f"tools-params.runs[{idx}] must be an object")
+        unexpected_item_keys = sorted(
+            set(item) - {"run_id", "tool_id", "params", "execution", "resources"}
+        )
+        if unexpected_item_keys:
+            raise ValueError(
+                f"tools-params.runs[{idx}] has unsupported keys: "
+                f"{unexpected_item_keys}"
+            )
 
         tool_id, run_id = _normalize_tool_request_identity(
             tool_id_raw=item.get("tool_id"),
@@ -392,12 +406,68 @@ def _load_tools_params(
                 f"tools-params.runs[{idx}].execution must be an object when provided"
             )
 
+        resources = item.get("resources", {})
+        if not isinstance(resources, dict):
+            raise ValueError(
+                f"tools-params.runs[{idx}].resources must be an object when provided"
+            )
+        unexpected_resource_keys = sorted(
+            set(resources) - {"threads", "ram_gb", "cpuset_cpus"}
+        )
+        if unexpected_resource_keys:
+            raise ValueError(
+                f"tools-params.runs[{idx}].resources has unsupported keys: "
+                f"{unexpected_resource_keys}"
+            )
+        requested_threads = resources.get("threads")
+        if requested_threads is not None and (
+            isinstance(requested_threads, bool)
+            or not isinstance(requested_threads, int)
+            or requested_threads < 1
+        ):
+            raise ValueError(
+                f"tools-params.runs[{idx}].resources.threads must be an integer >= 1"
+            )
+        resolved_resources: dict[str, Any] = {}
+        if requested_threads is not None:
+            resolved_resources["threads"] = requested_threads
+        requested_ram_gb = resources.get("ram_gb")
+        if requested_ram_gb is not None and (
+            isinstance(requested_ram_gb, bool)
+            or not isinstance(requested_ram_gb, (int, float))
+            or not math.isfinite(float(requested_ram_gb))
+            or requested_ram_gb <= 0
+        ):
+            raise ValueError(
+                f"tools-params.runs[{idx}].resources.ram_gb must be a finite "
+                "number > 0"
+            )
+        if requested_ram_gb is not None:
+            resolved_resources["ram_gb"] = float(requested_ram_gb)
+        if "cpuset_cpus" in resources:
+            cpuset_cpus = normalize_cpuset_cpus(
+                resources.get("cpuset_cpus"),
+                source=f"tools-params.runs[{idx}].resources.cpuset_cpus",
+            )
+            if requested_threads is None:
+                raise ValueError(
+                    f"tools-params.runs[{idx}].resources.threads is required "
+                    "when cpuset_cpus is provided"
+                )
+            if len(cpuset_cpus) < requested_threads:
+                raise ValueError(
+                    f"tools-params.runs[{idx}].resources.cpuset_cpus must contain "
+                    "at least resources.threads logical CPUs"
+                )
+            resolved_resources["cpuset_cpus"] = list(cpuset_cpus)
+
         if run_id in parsed:
             raise ValueError(f"Duplicate run_id in tools-params: {run_id}")
         parsed[run_id] = {
             "tool_id": tool_id,
             "params": params,
             "execution": execution,
+            "resources": resolved_resources,
         }
     return parsed
 

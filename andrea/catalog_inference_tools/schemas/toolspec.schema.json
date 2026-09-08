@@ -96,9 +96,9 @@
               "description": "Default planner thread assignment when no cost profile is available."
             },
             "max_threads": {
-              "type": "integer",
+              "type": ["integer", "null"],
               "minimum": 1,
-              "description": "Maximum planner thread assignment supported by the wrapper/upstream runtime."
+              "description": "Maximum planner thread assignment supported by the wrapper/upstream runtime, or null when the tool has no intrinsic limit."
             },
             "upstream_mapping": {
               "type": "string",

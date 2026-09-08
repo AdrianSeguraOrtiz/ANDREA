@@ -696,6 +696,9 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - set `supported=false` when there is no safe, public, reproducible mapping;
       in that case `default_threads=1`, `max_threads=1`, and the wrapper must
       reject or ignore only according to the project runtime contract
+    - set `max_threads=null` only when a multithreaded wrapper has no intrinsic
+      upper bound; ANDREA still validates allocations against the effective run
+      resource budget
     - do not expose thread/resource controls as normal `params`
     - if using process-level sharding, each shard must call the public upstream
       entrypoint, preserve shard raw outputs/configs/logs, and merge only after

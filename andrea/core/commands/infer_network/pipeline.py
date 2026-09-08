@@ -29,6 +29,7 @@ def infer_network(
     planner: str = "auto",
     planner_time_limit_seconds: float = 100.0,
     progress_poll_seconds: float = 0.5,
+    output_profile: str = "full",
 ) -> Path:
     """Execute preflight + plan + run for infer-network."""
     preflight_report = preflight_infer_network(
@@ -45,6 +46,7 @@ def infer_network(
         max_ram_gb=max_ram_gb,
         planner=planner,
         planner_time_limit_seconds=planner_time_limit_seconds,
+        output_profile=output_profile,
         preflight_report=preflight_report,
     )
     return run_infer_network_plan(

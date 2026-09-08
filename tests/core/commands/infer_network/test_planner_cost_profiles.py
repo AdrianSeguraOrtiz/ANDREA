@@ -166,6 +166,74 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         self.assertEqual(modes[0].eta_source, "fallback_no_cost")
         self.assertEqual(modes[0].threads, 2)
 
+    def test_null_intrinsic_maximum_accepts_exact_host_bounded_threads(self) -> None:
+        toolspec = self._toolspec()
+        toolspec["runtime_resources"]["threading"]["max_threads"] = None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="unbounded_01",
+                run_id="unbounded_01",
+                toolspec=toolspec,
+                cost_profile=None,
+                execution_mode="global",
+                resolved_params={"limit": 50},
+                extras_present=set(),
+                logical_group_count=0,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=64,
+                max_ram_gb=4.0,
+                output_dir="tools/unbounded_01",
+                requested_threads=60,
+            )
+
+        self.assertEqual(warnings, [])
+        self.assertEqual(modes[0].threads, 60)
+        self.assertEqual(modes[0].eta_source, "fallback_no_cost")
+
+    def test_exact_ram_overrides_external_fallback_allocation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="custom_spathi_01",
+                run_id="spathi_01",
+                toolspec=self._toolspec(),
+                cost_profile=None,
+                execution_mode="global",
+                resolved_params={},
+                extras_present=set(),
+                logical_group_count=0,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=8,
+                max_ram_gb=64.0,
+                output_dir="tools/spathi_01",
+                requested_threads=2,
+                requested_ram_gb=48.0,
+            )
+
+        self.assertEqual(warnings, [])
+        self.assertEqual(modes[0].threads, 2)
+        self.assertEqual(modes[0].ram_gb, 48.0)
+
+    def test_exact_ram_must_fit_global_planner_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(
+            ValueError, "outside max_ram_gb"
+        ):
+            _estimate_tool_mode_options(
+                tool_id="custom_spathi_01",
+                run_id="spathi_01",
+                toolspec=self._toolspec(),
+                cost_profile=None,
+                execution_mode="global",
+                resolved_params={},
+                extras_present=set(),
+                logical_group_count=0,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=8,
+                max_ram_gb=32.0,
+                output_dir="tools/spathi_01",
+                requested_ram_gb=48.0,
+            )
+
     def test_cost_points_above_toolspec_max_threads_are_ignored(self) -> None:
         cost_payload = {
             "profiles": [

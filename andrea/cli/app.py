@@ -213,7 +213,8 @@ def infer_network_preflight(
         help=(
             "Optional tools_params.json to pre-validate requested runs "
             "({'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated|column_native|group_aggregated'}}, ...]})."
+            "'execution': {'mode': ...}, 'resources': {'threads': 8, 'ram_gb': 16, "
+            "'cpuset_cpus': [0, 1, ...]}}, ...]})."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(
@@ -290,7 +291,8 @@ def infer_network_plan(
         help=(
             "Path to tools_params.json in runs format: "
             "{'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated|column_native|group_aggregated'}}, ...]}."
+            "'execution': {'mode': ...}, 'resources': {'threads': 8, 'ram_gb': 16, "
+            "'cpuset_cpus': [0, 1, ...]}}, ...]}."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(
@@ -319,6 +321,10 @@ def infer_network_plan(
         100.0,
         help="Time limit in seconds for cp_sat planning attempts.",
     ),
+    output_profile: str = typer.Option(
+        "full",
+        help="Output materialization profile: canonical (CSV/report only) or full (includes graph exports).",
+    ),
 ):
     """Generate a frozen run directory and plan.json without executing containers."""
     _run_core(
@@ -331,6 +337,7 @@ def infer_network_plan(
         max_ram_gb=max_ram_gb,
         planner=planner,
         planner_time_limit_seconds=planner_time_limit_seconds,
+        output_profile=output_profile,
     )
 
 
@@ -371,7 +378,8 @@ def infer_network_execute(
         help=(
             "Path to tools_params.json in runs format: "
             "{'runs': [{'run_id': ..., 'tool_id': ..., 'params': ..., "
-            "'execution': {'mode': 'global|group_native|group_emulated|column_native|group_aggregated'}}, ...]}."
+            "'execution': {'mode': ...}, 'resources': {'threads': 8, 'ram_gb': 16, "
+            "'cpuset_cpus': [0, 1, ...]}}, ...]}."
         ),
     ),
     custom_tools: Optional[Path] = typer.Option(
@@ -404,6 +412,10 @@ def infer_network_execute(
         0.5,
         help="Polling interval in seconds for reading per-tool progress.json during execution.",
     ),
+    output_profile: str = typer.Option(
+        "full",
+        help="Output materialization profile: canonical (CSV/report only) or full (includes graph exports).",
+    ),
 ):
     """End-to-end execution wrapper (preflight + plan + run)."""
     _run_core(
@@ -417,6 +429,7 @@ def infer_network_execute(
         planner=planner,
         planner_time_limit_seconds=planner_time_limit_seconds,
         progress_poll_seconds=progress_poll_seconds,
+        output_profile=output_profile,
     )
 
 

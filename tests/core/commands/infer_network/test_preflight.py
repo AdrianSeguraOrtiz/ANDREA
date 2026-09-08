@@ -634,6 +634,7 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                         "tool_id": "custom_demo_tool_01",
                         "execution": {"mode": "global"},
                         "params": {"alpha": 0.7, "nested": {"flag": True}},
+                        "resources": {"threads": 1, "ram_gb": 8.0},
                     }
                 ],
             )
@@ -647,6 +648,14 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                         "execution_mode": "global",
                         "extra_inputs": [],
                         "outputs": {"directed": True, "sign": "mixed"},
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": False,
+                                "default_threads": 1,
+                                "max_threads": 1,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     }
                 ],
             )
@@ -670,6 +679,10 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
         self.assertEqual(
             preflight_report["runs"]["resolved_params"]["demo_tool_01"],
             {"alpha": 0.7, "nested": {"flag": True}},
+        )
+        self.assertEqual(
+            preflight_report["runs"]["resolved_resources"]["demo_tool_01"],
+            {"threads": 1, "ram_gb": 8.0},
         )
         warning_entry = next(
             item
@@ -702,6 +715,14 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                         "execution_mode": "global",
                         "extra_inputs": [],
                         "outputs": {"directed": True, "sign": "mixed"},
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": False,
+                                "default_threads": 1,
+                                "max_threads": 1,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     },
                     {
                         "run_id": "bad_mode",
@@ -710,6 +731,14 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                         "execution_mode": "unsupported_mode",
                         "extra_inputs": [],
                         "outputs": {"directed": True, "sign": "mixed"},
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": False,
+                                "default_threads": 1,
+                                "max_threads": 1,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     },
                 ],
             )
@@ -753,6 +782,14 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                         "execution_mode": "global",
                         "extra_inputs": [],
                         "outputs": {"directed": True, "sign": "mixed"},
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": False,
+                                "default_threads": 1,
+                                "max_threads": 1,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     }
                 ],
             )
@@ -792,6 +829,14 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                         "execution_mode": "global",
                         "extra_inputs": [],
                         "outputs": {"directed": True, "sign": "mixed"},
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": False,
+                                "default_threads": 1,
+                                "max_threads": 1,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     }
                 ],
             )

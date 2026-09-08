@@ -227,15 +227,18 @@ def _validate_runtime_resources(instance: dict[str, Any], errors: list[str]) -> 
         or default_threads < 1
     ):
         errors.append("runtime_resources.threading.default_threads must be >= 1.")
-    if (
+    if max_threads is not None and (
         isinstance(max_threads, bool)
         or not isinstance(max_threads, int)
         or max_threads < 1
     ):
-        errors.append("runtime_resources.threading.max_threads must be >= 1.")
+        errors.append(
+            "runtime_resources.threading.max_threads must be null or >= 1."
+        )
     if (
         isinstance(default_threads, int)
         and not isinstance(default_threads, bool)
+        and max_threads is not None
         and isinstance(max_threads, int)
         and not isinstance(max_threads, bool)
         and default_threads > max_threads

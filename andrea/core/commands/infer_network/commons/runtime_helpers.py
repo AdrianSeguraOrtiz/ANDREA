@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import shutil
 import time
@@ -21,11 +22,19 @@ from rich.progress import (
 
 from andrea.core.shared.container_runtime import (
     docker_image_exists as _docker_image_exists,
+)
+from andrea.core.shared.container_runtime import (
     ensure_docker_cli as _shared_ensure_docker_cli,
+)
+from andrea.core.shared.container_runtime import (
     pull_docker_image,
+)
+from andrea.core.shared.container_runtime import (
     run_cmd as _run_cmd,
 )
+from andrea.core.shared.json_io import write_json as _write_json
 
+from .resources import docker_cpuset
 from .shared import (
     DatasetContext,
     PlanWave,
@@ -33,9 +42,9 @@ from .shared import (
     SchemaConstraints,
     ToolExecutionResult,
     ToolRuntimeIO,
-    _write_json,
     _write_text,
 )
+from .telemetry import ContainerTelemetrySampler, not_started_measurement, utc_now
 
 
 def _clip_progress_text(value: str, *, max_length: int = 72) -> str:
@@ -137,8 +146,19 @@ def _docker_run_detached(
     io_dir: Path,
     threads: int,
     ram_gb: float,
+    cpuset_cpus: tuple[int, ...] | None = None,
     network_disabled: bool = False,
 ) -> str:
+    if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
+        raise ValueError("threads must be an integer >= 1")
+    if (
+        isinstance(ram_gb, bool)
+        or not isinstance(ram_gb, (int, float))
+        or not math.isfinite(float(ram_gb))
+        or ram_gb <= 0
+    ):
+        raise ValueError("ram_gb must be a finite number greater than zero")
+    memory_limit = f"{float(ram_gb):.3f}".rstrip("0").rstrip(".")
     cmd = ["docker", "run", "-d"]
     resolved_io_dir = io_dir.resolve()
     resolved_out_dir = (io_dir / "out").resolve()
@@ -147,13 +167,15 @@ def _docker_run_detached(
         cmd.extend(["--user", f"{os.getuid()}:{os.getgid()}"])
     if network_disabled:
         cmd.extend(["--network", "none"])
+    if cpuset_cpus is not None:
+        cmd.extend(["--cpuset-cpus", docker_cpuset(cpuset_cpus)])
 
     cmd.extend(
         [
             "--cpus",
-            str(max(1, int(threads))),
+            str(threads),
             "--memory",
-            f"{max(0.5, float(ram_gb)):.3g}g",
+            f"{memory_limit}g",
             "-v",
             f"{resolved_io_dir}:/io:ro",
             "-v",
@@ -168,7 +190,7 @@ def _docker_run_detached(
             "--output-dir",
             "/io/out",
             "--threads",
-            str(max(1, int(threads))),
+            str(threads),
         ]
     )
 
@@ -373,6 +395,7 @@ def _run_wave(
         for task in wave.tasks:
             tool_io = runtime_io_by_tool[task.tool_id]
             logs_path = tool_io.tool_dir / "container.log"
+            container_id: str | None = None
             try:
                 progress.update(
                     task.tool_id,
@@ -400,17 +423,28 @@ def _run_wave(
                     if state_writer is not None:
                         state_writer.record_warning_message(warning)
 
+                task_started_monotonic_ns = time.perf_counter_ns()
+                task_started_at_utc = utc_now()
                 container_id = _docker_run_detached(
                     image=task.image,
                     io_dir=tool_io.io_dir,
                     threads=task.threads,
                     ram_gb=task.ram_gb,
+                    cpuset_cpus=task.cpuset_cpus,
                     network_disabled=task.network_disabled,
+                )
+                telemetry_sampler = ContainerTelemetrySampler.attach(
+                    container_id=container_id,
+                    assigned_threads=task.threads,
+                    assigned_ram_gb=task.ram_gb,
+                    requested_cpuset_cpus=task.cpuset_cpus,
+                    task_started_monotonic_ns=task_started_monotonic_ns,
+                    task_started_at_utc=task_started_at_utc,
                 )
                 running[task.tool_id] = RunningTool(
                     tool_id=task.tool_id,
                     container_id=container_id,
-                    started_at=time.perf_counter(),
+                    telemetry_sampler=telemetry_sampler,
                     progress_file=tool_io.progress_file,
                 )
 
@@ -430,6 +464,8 @@ def _run_wave(
                         message=f"threads={task.threads}, ram={task.ram_gb}GB",
                     )
             except Exception as exc:  # noqa: BLE001
+                if container_id is not None:
+                    _docker_rm(container_id)
                 error = str(exc)
                 _write_text(logs_path, f"{error}\n")
                 progress.update(
@@ -452,7 +488,11 @@ def _run_wave(
                     tool_id=task.tool_id,
                     status="failed",
                     exit_code=127,
-                    duration_seconds=0.0,
+                    measurement=not_started_measurement(
+                        threads=task.threads,
+                        ram_gb=task.ram_gb,
+                        requested_cpuset_cpus=task.cpuset_cpus,
+                    ),
                     network_path=None,
                     progress_path=None,
                     logs_path=str(logs_path.resolve()),
@@ -463,6 +503,7 @@ def _run_wave(
             for tool_id in list(running.keys()):
                 state = running[tool_id]
                 tool_io = runtime_io_by_tool[tool_id]
+                state.telemetry_sampler.sample()
 
                 if state.progress_file.exists():
                     try:
@@ -497,7 +538,6 @@ def _run_wave(
                 logs = ""
                 error: Optional[str] = None
                 network_path: Optional[str] = None
-
                 try:
                     exit_code = _docker_wait_exit_code(state.container_id)
                     logs = _docker_logs(state.container_id)
@@ -505,10 +545,18 @@ def _run_wave(
                 except Exception as exc:  # noqa: BLE001
                     error = f"Failed while collecting container outputs: {exc}"
                     _write_text(logs_path, f"{error}\n")
+                task_finished_monotonic_ns = time.perf_counter_ns()
+                task_finished_at_utc = utc_now()
+                try:
+                    measurement = state.telemetry_sampler.finish(
+                        task_finished_monotonic_ns=task_finished_monotonic_ns,
+                        task_finished_at_utc=task_finished_at_utc,
+                        output_dir=tool_io.out_dir,
+                    )
                 finally:
                     _docker_rm(state.container_id)
 
-                duration = round(time.perf_counter() - state.started_at, 3)
+                duration = float(measurement["wall_time_seconds"])
                 network_file = tool_io.out_dir / "network.csv"
                 progress_warnings: tuple[str, ...] = ()
                 if tool_io.progress_file.exists():
@@ -544,7 +592,7 @@ def _run_wave(
                     tool_id=tool_id,
                     status=final_status,
                     exit_code=exit_code,
-                    duration_seconds=duration,
+                    measurement=measurement,
                     network_path=network_path,
                     progress_path=(
                         str(tool_io.progress_file.resolve())

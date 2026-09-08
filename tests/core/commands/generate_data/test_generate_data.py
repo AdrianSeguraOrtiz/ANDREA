@@ -12,6 +12,7 @@ from unittest.mock import patch
 from jsonschema import Draft202012Validator
 
 from andrea.core.commands.generate_data import cost_planner
+from andrea.core.commands.generate_data.backends import docker_runner
 from andrea.core.commands.generate_data.pipeline import (
     _copy_dataset_from_stage,
     _validate_selected_native_outputs,
@@ -19,7 +20,6 @@ from andrea.core.commands.generate_data.pipeline import (
     execute_generate_data,
     run_generate_data,
 )
-from andrea.core.commands.generate_data.backends import docker_runner
 from andrea.core.commands.generate_data.plan import plan_generate_data_request
 from andrea.core.commands.generate_data.request import (
     validate_simulation_plan,
@@ -2687,6 +2687,14 @@ class GenerateDataDyngenTests(unittest.TestCase):
                                 "execution_mode": "global",
                                 "extra_inputs": ["tf_list"],
                                 "outputs": {"directed": True, "sign": "none"},
+                                "runtime_resources": {
+                                    "threading": {
+                                        "supported": False,
+                                        "default_threads": 1,
+                                        "max_threads": 1,
+                                        "upstream_mapping": "cli:--threads",
+                                    }
+                                },
                             }
                         ]
                     },

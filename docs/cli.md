@@ -96,7 +96,8 @@ andrea infer-network plan \
   --max-cores 8 \
   --max-ram-gb 32 \
   --planner auto \
-  --planner-time-limit-seconds 100
+  --planner-time-limit-seconds 100 \
+  --output-profile full
 
 andrea infer-network run \
   --run-dir inferred_networks/<run_dir>
@@ -110,21 +111,36 @@ andrea infer-network execute \
   --tools-params path/to/tools_params.json \
   --output-dir inferred_networks \
   --max-cores 8 \
-  --max-ram-gb 32
+  --max-ram-gb 32 \
+  --output-profile canonical
 ```
 
 `--custom-tools` is optional and is only needed for temporary external Docker
-tools. Every external definition must declare an `outputs` object containing
+tools. Every external definition must declare both an `outputs` object containing
 exactly `directed` (boolean) and `sign` (`none`, `signed` or `mixed`). Missing or
-unknown output semantics block preflight. Its matching `tools_params.json` run
+unknown output semantics block preflight. It must also declare a strict
+`runtime_resources.threading` capability. Its matching `tools_params.json` run
 must use the same `run_id` and the derived tool ID, obtained by prefixing
 the complete definition ID with literal `custom_`. Existing prefixes are not
 collapsed, and custom definitions cannot be reused under aliases. Main outputs
 include
 `plan.json`, `preflight_report.json`, `run_report.json`, per-run workspaces,
-merged raw and normalized networks, runtime state, logs and graph exports when
-available. The analysis bundle can feed `evaluate-inference` and
+merged raw and normalized networks, runtime state and logs. `full` additionally
+exports GraphML/GEXF/Cytoscape artifacts; `canonical` omits those derivative
+graphs for lower-overhead automated runs. Every completed result records
+monotonic end-to-end task wall time, container CPU, cgroup peak memory, output bytes, assigned
+resources and telemetry provenance. Block-I/O counters are explicitly recorded
+as unavailable rather than inferred from output size. OOM events, OOM kills and
+generic memory-limit hits remain separate counters so a cgroup-v1 `memory.failcnt`
+is never mislabeled as a killed container. The analysis bundle can feed `evaluate-inference` and
 `compare-networks`.
+
+Physical results distinguish the monotonic ANDREA task wall clock from the
+optional Docker container wall clock. Logical grouped timings begin with the
+first physical child and include logical postprocessing, but not input
+preparation. Use `execution.measurement.wall_time_seconds` in the final run
+report for end-to-end performance: it covers verification, preparation,
+scheduling, merging, and requested output generation.
 
 ## `evaluate-inference`
 

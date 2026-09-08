@@ -178,7 +178,7 @@ def _merge_network_outputs(
                 tool_id=result.tool_id,
                 status="failed",
                 exit_code=result.exit_code,
-                duration_seconds=result.duration_seconds,
+                measurement=result.measurement,
                 network_path=result.network_path,
                 progress_path=result.progress_path,
                 logs_path=result.logs_path,

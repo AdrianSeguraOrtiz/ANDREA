@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://andrea.org/schemas/tools-params.schema.json",
+  "title": "ANDREA inference run requests",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["runs"],
+  "properties": {
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tool_id"],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          },
+          "tool_id": {"type": "string", "minLength": 1},
+          "params": {"type": "object"},
+          "execution": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "global",
+                  "group_native",
+                  "group_emulated",
+                  "column_native",
+                  "group_aggregated"
+                ]
+              }
+            }
+          },
+          "resources": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "threads": {"type": "integer", "minimum": 1},
+              "ram_gb": {
+                "description": "Exact container memory limit in GiB for every physical task of this logical run.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "cpuset_cpus": {
+                "description": "Canonical strictly increasing logical CPU indices. Requires resources.threads and must contain at least that many entries.",
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"type": "integer", "minimum": 0}
+              }
+            },
+            "dependentRequired": {"cpuset_cpus": ["threads"]}
+          }
+        }
+      }
+    }
+  }
+}

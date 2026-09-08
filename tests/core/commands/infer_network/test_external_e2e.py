@@ -45,6 +45,14 @@ class ExternalInferenceEndToEndTests(InferNetworkCoreTestCase):
                             "directed": True,
                             "sign": "signed",
                         },
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": False,
+                                "default_threads": 1,
+                                "max_threads": 1,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     }
                 ],
             )
@@ -93,7 +101,7 @@ class ExternalInferenceEndToEndTests(InferNetworkCoreTestCase):
                         tool_id=task.tool_id,
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.1,
+                        measurement={"wall_time_seconds": 0.1},
                         network_path=str(network_path),
                         progress_path=None,
                         logs_path=None,

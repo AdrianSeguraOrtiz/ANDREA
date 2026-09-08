@@ -299,6 +299,48 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             [1],
         )
 
+    def test_unbounded_threading_contract_accepts_any_positive_benchmark_count(
+        self,
+    ) -> None:
+        unbounded = _catalog_toolspec("genie3", supported=True)
+        unbounded["runtime_resources"]["threading"]["max_threads"] = None
+
+        self.assertEqual(
+            benchmark_costs.filter_threads_for_tool(
+                tool_id="unbounded_tool",
+                toolspec=unbounded,
+                requested_threads=[1, 8, 64],
+            ),
+            [1, 8, 64],
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog_root = Path(tmp) / "tools"
+            (catalog_root / "unbounded_tool").mkdir(parents=True)
+            unbounded["id"] = "unbounded_tool"
+            (catalog_root / "unbounded_tool" / "toolspec.json").write_text(
+                json.dumps(unbounded, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            payload = copy.deepcopy(_valid_cost_payload())
+            profile = payload["profiles"][0]
+            profile["benchmark_config"]["threads_tested"] = [64]
+            profile["runtime_points"][0]["threads"] = 64
+
+            errors = validate_tool_costs.semantic_errors_for_cost(
+                tool_id="unbounded_tool",
+                instance=payload,
+                catalog_tools_root=catalog_root,
+                known_input_keys=validate_tool_costs.discover_input_keys(
+                    CATALOG_TOOLS_ROOT.parent / "input_specs"
+                ),
+            )
+
+        self.assertFalse(
+            any("runtime_resources.threading" in error for error in errors),
+            errors,
+        )
+
     def test_profile_filters_support_tool_qualified_and_unqualified_ids(self) -> None:
         targets = resolve_tool_targets(
             selected_tools=[

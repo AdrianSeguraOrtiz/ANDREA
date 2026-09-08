@@ -108,6 +108,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 "tool_origins": {"cellrun": "catalog"},
                 "resolved_params": {"cellrun": {}},
                 "resolved_execution": {"cellrun": {"mode": "group_aggregated"}},
+                "resolved_resources": {"cellrun": {}},
                 "issues": {"cellrun": []},
                 "skipped": {},
             },
@@ -271,6 +272,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                     "resolved_execution": {
                         "native_run": {"mode": "group_native"},
                     },
+                    "resolved_resources": {"native_run": {}},
                     "issues": {"native_run": []},
                     "skipped": {},
                 },
@@ -567,6 +569,7 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                         "tool_id": "custom_demo_tool_01",
                         "execution": {"mode": "global"},
                         "params": {"threshold": 0.25},
+                        "resources": {"threads": 3, "ram_gb": 2.5},
                     }
                 ],
             )
@@ -580,6 +583,14 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                         "execution_mode": "global",
                         "extra_inputs": [],
                         "outputs": {"directed": True, "sign": "mixed"},
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": True,
+                                "default_threads": 1,
+                                "max_threads": None,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     }
                 ],
             )
@@ -594,12 +605,21 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 tools_params_path=tools_params_path,
                 custom_tools_path=custom_tools_path,
                 output_dir=output_dir,
+                max_cores=4,
                 planner="heuristic",
                 preflight_report=preflight,
             )
 
             frozen_custom_tools = json.loads(
                 (run_dir / "input" / "custom_tools.json").read_text(encoding="utf-8")
+            )
+            frozen_tools_params = json.loads(
+                (run_dir / "input" / "tools_params.json").read_text(encoding="utf-8")
+            )
+            resolved_resources = json.loads(
+                (run_dir / "tools" / "demo_tool_01" / "resolved_resources.json").read_text(
+                    encoding="utf-8"
+                )
             )
             plan_payload = json.loads(
                 (run_dir / "plan.json").read_text(encoding="utf-8")
@@ -609,6 +629,11 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
             )
 
         self.assertEqual(frozen_custom_tools["tools"][0]["run_id"], "demo_tool_01")
+        self.assertEqual(
+            frozen_tools_params["runs"][0]["resources"],
+            {"threads": 3, "ram_gb": 2.5},
+        )
+        self.assertEqual(resolved_resources, {"threads": 3, "ram_gb": 2.5})
         self.assertEqual(
             report_payload["inputs"]["custom_tools_path"],
             "input/custom_tools.json",
@@ -629,7 +654,12 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         logical_run = plan_payload["runs"][0]
         self.assertEqual(logical_run["tool_id"], "custom_demo_tool_01")
         self.assertEqual(logical_run["tool_origin"], "custom")
+        self.assertEqual(
+            logical_run["resources"], {"threads": 3, "ram_gb": 2.5}
+        )
         first_task = plan_payload["waves"][0]["tasks"][0]
+        self.assertEqual(first_task["threads"], 3)
+        self.assertEqual(first_task["ram_gb"], 2.5)
         self.assertTrue(first_task["network_disabled"])
         self.assertEqual(first_task["eta_source"], "fallback_no_cost")
         self.assertTrue(
@@ -671,6 +701,14 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                         "execution_mode": "global",
                         "extra_inputs": ["tf_list"],
                         "outputs": {"directed": True, "sign": "signed"},
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": False,
+                                "default_threads": 1,
+                                "max_threads": 1,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     }
                 ],
             )
@@ -807,12 +845,26 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 tools_params_path=tools_params_path,
             )
 
-            with self.assertRaisesRegex(ValueError, "max_cores must be >= 1"):
+            with self.assertRaisesRegex(
+                ValueError, "max_cores must be an integer >= 1"
+            ):
                 self.mod.plan_infer_network(
                     dataset_manifest_path=manifest_path,
                     tools_params_path=tools_params_path,
                     output_dir=output_dir,
                     max_cores=0,
+                    planner="heuristic",
+                    preflight_report=preflight,
+                )
+
+            with self.assertRaisesRegex(
+                ValueError, "max_cores must be an integer >= 1"
+            ):
+                self.mod.plan_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                    output_dir=output_dir,
+                    max_cores=True,
                     planner="heuristic",
                     preflight_report=preflight,
                 )
@@ -823,5 +875,28 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                     tools_params_path=tools_params_path,
                     output_dir=output_dir,
                     planner="unknown_planner",
+                    preflight_report=preflight,
+                )
+
+            for invalid_ram in (True, 0, float("nan"), float("inf")):
+                with self.subTest(invalid_ram=invalid_ram), self.assertRaisesRegex(
+                    ValueError, "max_ram_gb must be a number > 0"
+                ):
+                    self.mod.plan_infer_network(
+                        dataset_manifest_path=manifest_path,
+                        tools_params_path=tools_params_path,
+                        output_dir=output_dir,
+                        max_ram_gb=invalid_ram,
+                        planner="heuristic",
+                        preflight_report=preflight,
+                    )
+
+            with self.assertRaisesRegex(ValueError, "output_profile must be one of"):
+                self.mod.plan_infer_network(
+                    dataset_manifest_path=manifest_path,
+                    tools_params_path=tools_params_path,
+                    output_dir=output_dir,
+                    output_profile="compact",
+                    planner="heuristic",
                     preflight_report=preflight,
                 )

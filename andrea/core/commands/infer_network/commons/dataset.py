@@ -6,18 +6,22 @@ import csv
 from pathlib import Path
 from typing import Any, Optional
 
+from andrea.core.shared.input_specs import load_input_specs
 from andrea.core.shared.input_validation import (
     read_tsv_column_values as _shared_read_tsv_column_values,
+)
+from andrea.core.shared.input_validation import (
     validate_text_list_with_spec as _shared_validate_text_list_with_spec,
+)
+from andrea.core.shared.input_validation import (
     validate_tsv_file_with_spec as _shared_validate_tsv_file_with_spec,
 )
-from andrea.core.shared.input_specs import load_input_specs
+from andrea.core.shared.json_io import load_json_object as _load_json_object
 
 from .shared import (
     INPUT_SPECS_DIR,
     DatasetContext,
     SchemaConstraints,
-    _load_json_object,
     _resolve_path,
 )
 

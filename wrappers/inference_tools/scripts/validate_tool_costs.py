@@ -326,13 +326,17 @@ def _thread_value_allowed(threading: dict[str, Any] | None, threads: Any) -> boo
     max_threads = threading.get("max_threads")
     if supported is False:
         return threads == 1
-    if (
+    return bool(
         supported is True
-        and isinstance(max_threads, int)
-        and not isinstance(max_threads, bool)
-    ):
-        return threads <= max_threads
-    return False
+        and (
+            max_threads is None
+            or (
+                isinstance(max_threads, int)
+                and not isinstance(max_threads, bool)
+                and threads <= max_threads
+            )
+        )
+    )
 
 
 def semantic_errors_for_cost(

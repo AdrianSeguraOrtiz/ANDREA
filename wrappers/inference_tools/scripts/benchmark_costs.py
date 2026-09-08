@@ -63,9 +63,9 @@ from shared.benchmark_inputs import (
     write_benchmark_io_dir,
 )
 from shared.benchmark_profiles import (
+    DEFAULT_COST_PROFILES_DIR,
     DEFAULT_GROUP_COUNT,
     DEFAULT_PRIOR_DENSITY,
-    DEFAULT_COST_PROFILES_DIR,
     BenchmarkProfile,
     resolve_benchmark_profiles,
 )
@@ -935,11 +935,16 @@ def _threading_config(toolspec: dict[str, Any]) -> dict[str, Any]:
         not isinstance(supported, bool)
         or isinstance(default_threads, bool)
         or not isinstance(default_threads, int)
-        or isinstance(max_threads, bool)
-        or not isinstance(max_threads, int)
         or default_threads < 1
-        or max_threads < 1
-        or default_threads > max_threads
+        or (
+            max_threads is not None
+            and (
+                isinstance(max_threads, bool)
+                or not isinstance(max_threads, int)
+                or max_threads < 1
+                or default_threads > max_threads
+            )
+        )
         or not upstream_mapping
     ):
         raise RuntimeError("toolspec.runtime_resources.threading is invalid.")
@@ -955,9 +960,13 @@ def filter_threads_for_tool(
 ) -> list[int]:
     threading = _threading_config(toolspec)
     supported = bool(threading["supported"])
-    max_threads = int(threading["max_threads"])
+    max_threads = threading["max_threads"]
     if supported:
-        allowed = [value for value in requested_threads if 1 <= value <= max_threads]
+        allowed = [
+            value
+            for value in requested_threads
+            if value >= 1 and (max_threads is None or value <= max_threads)
+        ]
     else:
         allowed = [value for value in requested_threads if value == 1]
     ignored = sorted(set(requested_threads).difference(allowed))

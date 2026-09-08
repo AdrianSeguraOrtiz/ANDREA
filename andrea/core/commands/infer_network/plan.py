@@ -9,6 +9,7 @@ Phase dependencies:
 
 from __future__ import annotations
 
+import math
 import multiprocessing
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
@@ -18,6 +19,7 @@ from typing import Any, Optional
 from rich import print
 
 from andrea.core.shared.dataset_identity import fingerprint_dataset_content
+from andrea.core.shared.json_io import write_json as _write_json
 from andrea.core.shared.output_capabilities import (
     validate_selected_tool_identity_maps,
 )
@@ -42,13 +44,13 @@ from .commons.planner import (
     _optimize_mode_selection,
     _optimize_mode_selection_cp_sat,
 )
+from .commons.resources import normalize_cpuset_cpus, validate_cpuset_available
 from .commons.shared import (
     DEFAULT_OUTPUT_DIR,
     DatasetContext,
     _detect_host_ram_gb,
     _slugify_token,
     _task_eta_note,
-    _write_json,
 )
 from .commons.tools import (
     RUNTIME_INPUT_CONTRACT_SCHEMA_VERSION,
@@ -131,10 +133,18 @@ def plan_infer_network(
     max_ram_gb: Optional[float] = None,
     planner: str = "auto",
     planner_time_limit_seconds: float = 100.0,
+    output_profile: str = "full",
     preflight_report: Optional[dict[str, Any]] = None,
 ) -> Path:
-    if max_cores < 1:
-        raise ValueError("max_cores must be >= 1")
+    if isinstance(max_cores, bool) or not isinstance(max_cores, int) or max_cores < 1:
+        raise ValueError("max_cores must be an integer >= 1")
+    if max_ram_gb is not None and (
+        isinstance(max_ram_gb, bool)
+        or not isinstance(max_ram_gb, (int, float))
+        or not math.isfinite(float(max_ram_gb))
+        or max_ram_gb <= 0
+    ):
+        raise ValueError("max_ram_gb must be a number > 0 when provided")
     host_ram = _detect_host_ram_gb()
     effective_ram = host_ram if max_ram_gb is None else min(float(max_ram_gb), host_ram)
     if effective_ram <= 0:
@@ -143,8 +153,16 @@ def plan_infer_network(
     planner_mode = str(planner).strip().lower().replace("-", "_")
     if planner_mode not in {"auto", "heuristic", "cp_sat"}:
         raise ValueError("planner must be one of: auto, heuristic, cp_sat")
-    if planner_time_limit_seconds <= 0:
-        raise ValueError("planner_time_limit_seconds must be > 0")
+    if (
+        isinstance(planner_time_limit_seconds, bool)
+        or not isinstance(planner_time_limit_seconds, (int, float))
+        or not math.isfinite(float(planner_time_limit_seconds))
+        or planner_time_limit_seconds <= 0
+    ):
+        raise ValueError("planner_time_limit_seconds must be a finite number > 0")
+    normalized_output_profile = str(output_profile).strip().lower()
+    if normalized_output_profile not in {"canonical", "full"}:
+        raise ValueError("output_profile must be one of: canonical, full")
 
     if preflight_report is None:
         preflight_report = preflight_infer_network(
@@ -202,6 +220,11 @@ def plan_infer_network(
         for k, v in runs_payload.get("resolved_execution", {}).items()
         if isinstance(k, str) and isinstance(v, dict)
     }
+    resolved_resources_by_tool = {
+        str(k): v
+        for k, v in runs_payload.get("resolved_resources", {}).items()
+        if isinstance(k, str) and isinstance(v, dict)
+    }
     run_issues = {
         str(k): [item for item in v if isinstance(item, dict)]
         for k, v in runs_payload.get("issues", {}).items()
@@ -241,6 +264,11 @@ def plan_infer_network(
             for k, v in runs_payload.get("resolved_execution", {}).items()
             if isinstance(k, str) and isinstance(v, dict)
         }
+        resolved_resources_by_tool = {
+            str(k): v
+            for k, v in runs_payload.get("resolved_resources", {}).items()
+            if isinstance(k, str) and isinstance(v, dict)
+        }
         run_issues = {
             str(k): [item for item in v if isinstance(item, dict)]
             for k, v in runs_payload.get("issues", {}).items()
@@ -265,6 +293,57 @@ def plan_infer_network(
         runs_payload,
         label="preflight_report runs",
     )
+    if set(resolved_resources_by_tool) != set(selected_tools):
+        raise ValueError(
+            "preflight_report runs.resolved_resources must match selected runs exactly"
+        )
+    for run_id, resources in resolved_resources_by_tool.items():
+        if set(resources) - {"threads", "ram_gb", "cpuset_cpus"}:
+            raise ValueError(
+                f"preflight_report resolved_resources for {run_id!r} is invalid"
+            )
+        threads = resources.get("threads")
+        if threads is not None and (
+            isinstance(threads, bool) or not isinstance(threads, int) or threads < 1
+        ):
+            raise ValueError(
+                f"preflight_report resources.threads for {run_id!r} is invalid"
+            )
+        if threads is not None and threads > max_cores:
+            raise ValueError(
+                f"[{run_id}] requested resources.threads={threads} exceeds "
+                f"max_cores={max_cores}"
+            )
+        ram_gb = resources.get("ram_gb")
+        if ram_gb is not None and (
+            isinstance(ram_gb, bool)
+            or not isinstance(ram_gb, (int, float))
+            or not math.isfinite(float(ram_gb))
+            or ram_gb <= 0
+        ):
+            raise ValueError(
+                f"preflight_report resources.ram_gb for {run_id!r} is invalid"
+            )
+        if ram_gb is not None and float(ram_gb) > effective_ram:
+            raise ValueError(
+                f"[{run_id}] requested resources.ram_gb={float(ram_gb):g} exceeds "
+                f"max_ram_gb={effective_ram:g}"
+            )
+        cpuset_raw = resources.get("cpuset_cpus")
+        if cpuset_raw is not None:
+            cpuset = normalize_cpuset_cpus(
+                cpuset_raw,
+                source=f"preflight_report resources.cpuset_cpus for {run_id!r}",
+            )
+            if threads is None or len(cpuset) < threads:
+                raise ValueError(
+                    f"[{run_id}] resources.cpuset_cpus requires resources.threads "
+                    "and must contain at least that many CPUs"
+                )
+            validate_cpuset_available(
+                cpuset,
+                source=f"[{run_id}] resources.cpuset_cpus",
+            )
 
     blocking_run_issues = {
         run_id: [
@@ -476,6 +555,15 @@ def plan_infer_network(
                     max_ram_gb=effective_ram,
                     output_dir=task_output_dir,
                     group_label=group_label,
+                    requested_threads=resolved_resources_by_tool[run_id].get(
+                        "threads"
+                    ),
+                    requested_ram_gb=resolved_resources_by_tool[run_id].get("ram_gb"),
+                    requested_cpuset=(
+                        tuple(resolved_resources_by_tool[run_id]["cpuset_cpus"])
+                        if "cpuset_cpus" in resolved_resources_by_tool[run_id]
+                        else None
+                    ),
                 )
                 warnings.extend(plan_warnings)
                 if tool_origin == "custom":
@@ -520,6 +608,13 @@ def plan_infer_network(
                 max_cores=max_cores,
                 max_ram_gb=effective_ram,
                 output_dir=task_output_dir,
+                requested_threads=resolved_resources_by_tool[run_id].get("threads"),
+                requested_ram_gb=resolved_resources_by_tool[run_id].get("ram_gb"),
+                requested_cpuset=(
+                    tuple(resolved_resources_by_tool[run_id]["cpuset_cpus"])
+                    if "cpuset_cpus" in resolved_resources_by_tool[run_id]
+                    else None
+                ),
             )
             warnings.extend(plan_warnings)
             if tool_origin == "custom":
@@ -556,6 +651,7 @@ def plan_infer_network(
             "tool_id": catalog_tool_id,
             "tool_origin": tool_origin,
             "execution": logical_execution,
+            "resources": resolved_resources_by_tool[run_id],
             "physical_tasks": physical_tasks,
         }
 
@@ -601,6 +697,10 @@ def plan_infer_network(
         _write_json(
             tool_out / "resolved_execution.json",
             resolved_execution_by_tool.get(tool_id, {}),
+        )
+        _write_json(
+            tool_out / "resolved_resources.json",
+            resolved_resources_by_tool.get(tool_id, {}),
         )
 
     custom_tools_payload = serialize_custom_tools(custom_tools) if custom_tools else None
@@ -721,6 +821,7 @@ def plan_infer_network(
                 "tool_id": logical_spec["tool_id"],
                 "tool_origin": logical_spec["tool_origin"],
                 "execution": logical_spec["execution"],
+                "resources": logical_spec["resources"],
                 "physical_tasks_total": len(physical_tasks_payload),
                 "eta_start_seconds": logical_eta_start,
                 "eta_end_seconds": logical_eta_end,
@@ -739,6 +840,7 @@ def plan_infer_network(
             "used": planner_used,
             "cp_sat_time_limit_seconds": float(planner_time_limit_seconds),
         },
+        "output_profile": normalized_output_profile,
         "resource_limits": {
             "max_cores": int(max_cores),
             "max_ram_gb": round(float(effective_ram), 3),
@@ -770,6 +872,7 @@ def plan_infer_network(
     report_payload = {
         "run_id": run_id,
         "status": "planned",
+        "output_profile": normalized_output_profile,
         "inputs": {
             "dataset_manifest_path": report_path(frozen_manifest, base_dir=run_dir),
             "tools_params_path": report_path(frozen_tools_params, base_dir=run_dir),
@@ -815,7 +918,7 @@ def plan_infer_network(
         },
         "issues": [],
         "execution": {
-            "elapsed_seconds": 0.0,
+            "measurement": None,
             "planner_requested": planner_mode,
             "planner_used": planner_used,
             "planner_time_limit_seconds": float(planner_time_limit_seconds),

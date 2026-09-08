@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://andrea.org/schemas/custom-tools.schema.json",
+  "title": "ANDREA run-local external inference tools",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tools"],
+  "properties": {
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id",
+          "name",
+          "docker_image",
+          "execution_mode",
+          "extra_inputs",
+          "outputs",
+          "runtime_resources"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          },
+          "name": {"type": "string", "minLength": 1},
+          "docker_image": {"type": "string", "minLength": 1},
+          "execution_mode": {
+            "type": "string",
+            "enum": [
+              "global",
+              "group_native",
+              "group_emulated",
+              "column_native",
+              "group_aggregated"
+            ]
+          },
+          "extra_inputs": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+          },
+          "outputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["directed", "sign"],
+            "properties": {
+              "directed": {"type": "boolean"},
+              "sign": {"type": "string", "enum": ["none", "signed", "mixed"]}
+            }
+          },
+          "runtime_resources": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["threading"],
+            "properties": {
+              "threading": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "supported",
+                  "default_threads",
+                  "max_threads",
+                  "upstream_mapping"
+                ],
+                "properties": {
+                  "supported": {"type": "boolean"},
+                  "default_threads": {"type": "integer", "minimum": 1},
+                  "max_threads": {"type": ["integer", "null"], "minimum": 1},
+                  "upstream_mapping": {"type": "string", "minLength": 1}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

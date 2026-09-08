@@ -8,11 +8,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 from andrea.core.shared.input_specs import DEFAULT_INPUT_SPECS_DIR
-from andrea.core.shared.json_io import (
-    load_json_object as _load_json_object,
-    write_json as _write_json,
-)
-from andrea.core.shared.param_validation import ParamValidationError
 
 DEFAULT_OUTPUT_DIR = Path("./inferred_networks")
 CATALOG_ROOT = Path(__file__).resolve().parents[4] / "catalog_inference_tools"
@@ -57,6 +52,7 @@ class ToolPlanItem:
     group_label: Optional[str] = None
     eta_provenance: Optional[dict[str, Any]] = None
     network_disabled: bool = False
+    cpuset_cpus: Optional[tuple[int, ...]] = None
 
 
 @dataclass(frozen=True)
@@ -84,7 +80,7 @@ class ToolExecutionResult:
     tool_id: str
     status: str
     exit_code: int
-    duration_seconds: float
+    measurement: dict[str, Any]
     network_path: Optional[str]
     progress_path: Optional[str]
     logs_path: Optional[str]
@@ -96,7 +92,7 @@ class ToolExecutionResult:
 class RunningTool:
     tool_id: str
     container_id: str
-    started_at: float
+    telemetry_sampler: Any
     progress_file: Path
     last_snapshot: Optional[tuple[int, str, str, str]] = None
 

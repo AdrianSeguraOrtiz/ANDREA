@@ -5,7 +5,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .shared import CATALOG_ROOT, SchemaConstraints, _load_json_object
+from andrea.core.shared.json_io import load_json_object as _load_json_object
+
+from .shared import CATALOG_ROOT, SchemaConstraints
 
 
 def _has_toolspecs(tools_root: Path) -> bool:

@@ -22,7 +22,9 @@ from .commons.dataset import (
     _parse_dataset_context,
     _validate_dataset_inputs_by_specs,
 )
+from .commons.resources import validate_cpuset_available
 from .commons.shared import PREFLIGHT_SCHEMA_VERSION
+from .commons.threading import resolve_tool_threading, thread_count_allowed_by_tool
 from .commons.tools import (
     _check_tool_compatibility,
     _collect_compatibility_rule_issues,
@@ -80,6 +82,7 @@ def preflight_infer_network(
     skipped_tools: dict[str, str] = {}
     resolved_params_by_tool: dict[str, dict[str, Any]] = {}
     resolved_execution_by_tool: dict[str, dict[str, Any]] = {}
+    resolved_resources_by_tool: dict[str, dict[str, Any]] = {}
     run_issues: dict[str, list[dict[str, Any]]] = {}
     requested_total = 0
 
@@ -118,6 +121,7 @@ def preflight_infer_network(
             catalog_tool_id = requested_tool_id
             user_params = run_spec.get("params", {})
             user_execution = run_spec.get("execution", {})
+            user_resources = run_spec.get("resources", {})
             if not catalog_tool_id:
                 add_run_issue(
                     run_id,
@@ -144,6 +148,15 @@ def preflight_infer_network(
                     message="invalid tool request (execution must be object)",
                 )
                 skipped_tools[run_id] = "invalid tool request: execution must be object"
+                continue
+            if not isinstance(user_resources, dict):
+                add_run_issue(
+                    run_id,
+                    severity="block",
+                    code="invalid_request",
+                    message="invalid tool request (resources must be object)",
+                )
+                skipped_tools[run_id] = "invalid tool request: resources must be object"
                 continue
 
             tool_origin = "custom" if catalog_tool_id in custom_tools else "catalog"
@@ -191,6 +204,45 @@ def preflight_infer_network(
                         run_id,
                         severity="block",
                         code="invalid_execution",
+                        message=message,
+                    )
+                    skipped_tools[run_id] = message
+                    continue
+            threading = resolve_tool_threading(
+                tool_id=run_id,
+                toolspec=toolspec,
+            )
+            requested_threads = user_resources.get("threads")
+            if requested_threads is not None and not thread_count_allowed_by_tool(
+                threading, int(requested_threads)
+            ):
+                message = (
+                    f"Requested resources.threads={requested_threads} is incompatible "
+                    "with toolspec.runtime_resources.threading: "
+                    f"supported={threading.supported}, "
+                    f"max_threads={threading.max_threads}."
+                )
+                add_run_issue(
+                    run_id,
+                    severity="block",
+                    code="invalid_runtime_resources",
+                    message=message,
+                )
+                skipped_tools[run_id] = message
+                continue
+            requested_cpuset = user_resources.get("cpuset_cpus")
+            if requested_cpuset is not None:
+                try:
+                    validate_cpuset_available(
+                        requested_cpuset,
+                        source=f"[{run_id}] resources.cpuset_cpus",
+                    )
+                except (RuntimeError, ValueError) as exc:
+                    message = str(exc)
+                    add_run_issue(
+                        run_id,
+                        severity="block",
+                        code="invalid_runtime_resources",
                         message=message,
                     )
                     skipped_tools[run_id] = message
@@ -310,6 +362,7 @@ def preflight_infer_network(
             selected_tool_origins[run_id] = tool_origin
             resolved_params_by_tool[run_id] = resolved_params
             resolved_execution_by_tool[run_id] = resolved_execution
+            resolved_resources_by_tool[run_id] = dict(user_resources)
             conditional_input_messages = _collect_conditional_input_issues(
                 tool_id=run_id,
                 toolspec=toolspec,
@@ -345,6 +398,7 @@ def preflight_infer_network(
             "tool_origins": selected_tool_origins,
             "resolved_params": resolved_params_by_tool,
             "resolved_execution": resolved_execution_by_tool,
+            "resolved_resources": resolved_resources_by_tool,
             "issues": run_issues,
             "skipped": skipped_tools,
         },

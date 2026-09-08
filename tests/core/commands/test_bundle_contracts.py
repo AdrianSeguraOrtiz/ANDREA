@@ -22,13 +22,14 @@ def paths(resolution) -> set[str]:
     return {source.virtual_path for source in resolution.sources}
 
 
-def write_inference_analysis(root: Path) -> None:
+def write_inference_analysis(root: Path, *, output_profile: str = "full") -> None:
     network_header = "source,target,score,sign,evidence,context,tool_id\n"
     touch(root / "merged_network_raw.csv", network_header)
     touch(root / "merged_network_normalized.csv", network_header)
     report = {
         "run_id": "inference_01",
         "status": "executed",
+        "output_profile": output_profile,
         "dataset": {
             "id": "dataset_01",
             "fingerprint": DATASET_FINGERPRINT,
@@ -292,6 +293,19 @@ def test_infer_network_full_waits_for_graph_exports_but_report_does_not(
     assert "merged_network_normalized_cytoscape.py" in full.missing_required
     assert report.available
     assert analysis.available
+
+
+def test_infer_network_canonical_profile_does_not_require_graph_exports(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "run"
+    write_inference_analysis(root, output_profile="canonical")
+
+    full = infer_bundles.resolve_bundle(bundle_id="full", run_dir=root)
+    graphs = infer_bundles.resolve_bundle(bundle_id="graphs", run_dir=root)
+
+    assert full.available
+    assert not graphs.available
 
 
 def test_evaluate_inference_analysis_is_evaluation_report_only(

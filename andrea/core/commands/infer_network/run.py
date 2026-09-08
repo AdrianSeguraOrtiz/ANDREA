@@ -10,6 +10,7 @@ Phase dependencies:
 from __future__ import annotations
 
 import csv
+import math
 import os
 import shutil
 import tempfile
@@ -26,6 +27,12 @@ from andrea.core.shared.dataset_identity import (
     validate_dataset_fingerprint,
 )
 from andrea.core.shared.issues import issue_messages, make_issue
+from andrea.core.shared.json_io import (
+    load_json_object as _load_json_object,
+)
+from andrea.core.shared.json_io import (
+    write_json as _write_json,
+)
 from andrea.core.shared.output_capabilities import (
     validate_frozen_output_capabilities,
     validate_selected_tool_identity_maps,
@@ -53,6 +60,7 @@ from .commons.network_exports import (
     export_network_gexf,
     export_network_graphml,
 )
+from .commons.resources import normalize_cpuset_cpus, validate_cpuset_available
 from .commons.runtime_helpers import (
     _ensure_docker_cli,
     _prepare_shared_inputs,
@@ -63,10 +71,9 @@ from .commons.shared import (
     PlanWave,
     ToolExecutionResult,
     ToolPlanItem,
-    _load_json_object,
     _slugify_token,
-    _write_json,
 )
+from .commons.telemetry import directory_size_bytes, not_started_measurement, utc_now
 from .commons.threading import resolve_tool_threading, thread_count_allowed_by_tool
 from .commons.tools import (
     EXECUTION_CAPABILITIES,
@@ -112,6 +119,7 @@ def _load_logical_runs_from_plan(
         tool_id = str(raw_run.get("tool_id", "")).strip()
         tool_origin = raw_run.get("tool_origin")
         execution = raw_run.get("execution", {})
+        resources = raw_run.get("resources")
         execution_mode = (
             str(execution.get("mode", "")).strip()
             if isinstance(execution, dict)
@@ -129,8 +137,34 @@ def _load_logical_runs_from_plan(
             or set(execution) != {"mode"}
             or not isinstance(physical_tasks, list)
             or not physical_tasks
+            or "resources" not in raw_run
+            or not isinstance(resources, dict)
+            or bool(set(resources) - {"threads", "ram_gb", "cpuset_cpus"})
         ):
             raise ValueError(f"plan.json.runs[{idx}] is invalid")
+        requested_threads = resources.get("threads")
+        if requested_threads is not None and (
+            isinstance(requested_threads, bool)
+            or not isinstance(requested_threads, int)
+            or requested_threads < 1
+        ):
+            raise ValueError(f"plan.json.runs[{idx}].resources is invalid")
+        requested_ram_gb = resources.get("ram_gb")
+        if requested_ram_gb is not None and (
+            isinstance(requested_ram_gb, bool)
+            or not isinstance(requested_ram_gb, (int, float))
+            or not math.isfinite(float(requested_ram_gb))
+            or requested_ram_gb <= 0
+        ):
+            raise ValueError(f"plan.json.runs[{idx}].resources is invalid")
+        requested_cpuset = resources.get("cpuset_cpus")
+        if requested_cpuset is not None:
+            cpuset = normalize_cpuset_cpus(
+                requested_cpuset,
+                source=f"plan.json.runs[{idx}].resources.cpuset_cpus",
+            )
+            if requested_threads is None or len(cpuset) < requested_threads:
+                raise ValueError(f"plan.json.runs[{idx}].resources is invalid")
         if run_id in logical_runs:
             raise ValueError(f"plan.json contains duplicate run_id: {run_id!r}")
         logical_runs[run_id] = {
@@ -138,6 +172,7 @@ def _load_logical_runs_from_plan(
             "tool_id": tool_id,
             "tool_origin": tool_origin,
             "execution": execution,
+            "resources": resources,
             "physical_tasks": physical_tasks,
         }
     return logical_runs
@@ -174,6 +209,8 @@ def _validate_physical_task_plan(
             task_id = str(physical.get("task_id", "")).strip()
             output_dir = str(physical.get("output_dir", "")).strip()
             columns = physical.get("columns")
+            threads = physical.get("threads")
+            ram_gb = physical.get("ram_gb")
             group_label_raw = physical.get("group_label")
             group_label = (
                 str(group_label_raw).strip()
@@ -186,10 +223,16 @@ def _validate_physical_task_plan(
                 or not isinstance(columns, int)
                 or isinstance(columns, bool)
                 or columns < 1
+                or isinstance(threads, bool)
+                or not isinstance(threads, int)
+                or threads < 1
+                or isinstance(ram_gb, bool)
+                or not isinstance(ram_gb, (int, float))
+                or ram_gb <= 0
             ):
                 raise ValueError(
                     f"[{run_id}] physical_tasks[{index}] has an invalid task_id, "
-                    "output_dir, or columns value"
+                    "output_dir, columns, threads, or ram_gb value"
                 )
             if task_id in expected:
                 raise ValueError(f"plan.json contains duplicate physical task: {task_id}")
@@ -248,11 +291,66 @@ def _validate_physical_task_plan(
             task.run_id != run_id
             or task.output_dir != str(physical["output_dir"])
             or task.group_label != expected_group
+            or task.threads != int(physical["threads"])
+            or round(task.ram_gb, 3) != round(float(physical["ram_gb"]), 3)
         ):
             raise ValueError(
                 f"[{task_id}] wave task does not match its physical task declaration"
             )
     return observed
+
+
+def _validate_wave_resource_schedule(
+    *,
+    plan_payload: dict[str, Any],
+    waves: list[PlanWave],
+) -> None:
+    """Verify that the frozen wave schedule obeys its declared resource budget."""
+
+    limits = plan_payload.get("resource_limits")
+    if not isinstance(limits, dict) or set(limits) != {"max_cores", "max_ram_gb"}:
+        raise ValueError("plan.json resource_limits is invalid")
+    max_cores = limits.get("max_cores")
+    max_ram_gb = limits.get("max_ram_gb")
+    if (
+        isinstance(max_cores, bool)
+        or not isinstance(max_cores, int)
+        or max_cores < 1
+        or isinstance(max_ram_gb, bool)
+        or not isinstance(max_ram_gb, (int, float))
+        or max_ram_gb <= 0
+    ):
+        raise ValueError("plan.json resource_limits is invalid")
+
+    expected_indices = list(range(1, len(waves) + 1))
+    if [wave.index for wave in waves] != expected_indices:
+        raise ValueError("plan.json wave indices must be contiguous and start at 1")
+    for wave in waves:
+        threads_used = sum(task.threads for task in wave.tasks)
+        ram_gb_used = round(sum(task.ram_gb for task in wave.tasks), 3)
+        if (
+            wave.threads_used != threads_used
+            or round(wave.ram_gb_used, 3) != ram_gb_used
+        ):
+            raise ValueError(
+                f"plan.json wave {wave.index} resource totals do not match its tasks"
+            )
+        if threads_used > max_cores or ram_gb_used > float(max_ram_gb):
+            raise ValueError(
+                f"plan.json wave {wave.index} exceeds the declared resource_limits"
+            )
+        for left_index, left in enumerate(wave.tasks):
+            for right in wave.tasks[left_index + 1 :]:
+                if left.cpuset_cpus is None and right.cpuset_cpus is None:
+                    continue
+                if left.cpuset_cpus is None or right.cpuset_cpus is None:
+                    raise ValueError(
+                        f"plan.json wave {wave.index} mixes pinned and unpinned tasks"
+                    )
+                if set(left.cpuset_cpus).intersection(right.cpuset_cpus):
+                    raise ValueError(
+                        f"plan.json wave {wave.index} contains overlapping CPU affinities"
+                    )
 
 
 def _remove_runtime_artifact(path: Path) -> None:
@@ -583,6 +681,199 @@ def _link_or_copy_output(source: Path, destination: Path) -> None:
         shutil.copy2(source, destination)
 
 
+def _logical_measurement(
+    *,
+    child_results: Iterable[ToolExecutionResult],
+    postprocess_started_monotonic_ns: int,
+    finished_monotonic_ns: int,
+    finished_at_utc: str,
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Aggregate physical measurements without calling CPU time wall time.
+
+    Child cgroup peaks are not timestamped.  For overlapping child intervals we
+    therefore report a conservative upper bound, and name that semantic in the
+    result instead of presenting it as a directly observed concurrent peak.
+    """
+
+    measurements = [result.measurement for result in child_results]
+    intervals: list[tuple[int, int, dict[str, Any]]] = []
+    for measurement in measurements:
+        started = measurement.get("task_started_monotonic_ns")
+        finished = measurement.get("task_finished_monotonic_ns")
+        if (
+            isinstance(started, int)
+            and not isinstance(started, bool)
+            and isinstance(finished, int)
+            and not isinstance(finished, bool)
+            and finished >= started
+        ):
+            intervals.append((started, finished, measurement))
+
+    logical_started_ns = (
+        min(start for start, _end, _measurement in intervals)
+        if intervals
+        else postprocess_started_monotonic_ns
+    )
+    logical_started_at_utc = None
+    if intervals:
+        earliest = min(intervals, key=lambda item: item[0])[2]
+        raw_started_at = earliest.get("task_started_at_utc")
+        if isinstance(raw_started_at, str):
+            logical_started_at_utc = raw_started_at
+
+    cpu_values = [measurement.get("cpu_time_seconds") for measurement in measurements]
+    cpu_complete = bool(cpu_values) and all(
+        isinstance(value, (int, float)) and not isinstance(value, bool)
+        for value in cpu_values
+    )
+    cpu_time = (
+        round(sum(float(value) for value in cpu_values), 6)
+        if cpu_complete
+        else None
+    )
+    child_wall_sum = round(
+        sum(
+            float(value)
+            for measurement in measurements
+            if isinstance((value := measurement.get("wall_time_seconds")), (int, float))
+            and not isinstance(value, bool)
+        ),
+        6,
+    )
+
+    candidate_times = sorted(
+        {time_ns for start, end, _measurement in intervals for time_ns in (start, end)}
+    )
+    memory_complete = (
+        bool(intervals)
+        and len(intervals) == len(measurements)
+        and all(
+            isinstance(measurement.get("peak_memory_bytes"), int)
+            and not isinstance(measurement.get("peak_memory_bytes"), bool)
+            for _start, _end, measurement in intervals
+        )
+    )
+    peak_memory: int | None = 0 if memory_complete else None
+    threads_peak = 0
+    ram_limit_peak = 0
+    for time_ns in candidate_times:
+        active = [
+            measurement
+            for start, end, measurement in intervals
+            if start <= time_ns < end
+        ]
+        memory_values = [measurement.get("peak_memory_bytes") for measurement in active]
+        if memory_complete and memory_values:
+            observed_upper_bound = sum(int(value) for value in memory_values)
+            peak_memory = max(peak_memory or 0, observed_upper_bound)
+        threads_peak = max(
+            threads_peak,
+            sum(
+                int(resources.get("threads", 0))
+                for measurement in active
+                if isinstance(
+                    (resources := measurement.get("assigned_resources")), dict
+                )
+            ),
+        )
+        ram_limit_peak = max(
+            ram_limit_peak,
+            sum(
+                int(resources.get("ram_limit_bytes", 0))
+                for measurement in active
+                if isinstance(
+                    (resources := measurement.get("assigned_resources")), dict
+                )
+            ),
+        )
+
+    statuses = [
+        telemetry.get("status")
+        for measurement in measurements
+        if isinstance((telemetry := measurement.get("telemetry")), dict)
+    ]
+    if statuses and all(status == "complete" for status in statuses):
+        telemetry_status = "complete"
+    elif any(status in {"complete", "partial"} for status in statuses):
+        telemetry_status = "partial"
+    else:
+        telemetry_status = "unavailable"
+    requested_cpusets = sorted(
+        {
+            tuple(cpuset)
+            for measurement in measurements
+            if isinstance(
+                (resources := measurement.get("assigned_resources")), dict
+            )
+            and isinstance(
+                (cpuset := resources.get("cpuset_cpus_requested")), list
+            )
+        }
+    )
+    effective_cpusets = sorted(
+        {
+            tuple(cpuset)
+            for measurement in measurements
+            if isinstance(
+                (resources := measurement.get("assigned_resources")), dict
+            )
+            and isinstance(
+                (cpuset := resources.get("cpuset_cpus_effective")), list
+            )
+        }
+    )
+    return {
+        "schema_version": "1.0",
+        "scope": "logical_run",
+        "wall_time_seconds": round(
+            max(0, finished_monotonic_ns - logical_started_ns) / 1_000_000_000.0,
+            6,
+        ),
+        "child_wall_time_sum_seconds": child_wall_sum,
+        "postprocess_wall_time_seconds": round(
+            max(0, finished_monotonic_ns - postprocess_started_monotonic_ns)
+            / 1_000_000_000.0,
+            6,
+        ),
+        "cpu_time_seconds": cpu_time,
+        "peak_memory_bytes": peak_memory,
+        "output_bytes": directory_size_bytes(output_dir),
+        "io_read_bytes": None,
+        "io_write_bytes": None,
+        "task_started_at_utc": logical_started_at_utc,
+        "task_finished_at_utc": finished_at_utc,
+        "task_started_monotonic_ns": logical_started_ns,
+        "task_finished_monotonic_ns": int(finished_monotonic_ns),
+        "assigned_resources": {
+            "threads_peak": threads_peak,
+            "ram_limit_peak_bytes": ram_limit_peak,
+            "cpuset_cpus_requested_sets": [list(value) for value in requested_cpusets],
+            "cpuset_cpus_effective_sets": [list(value) for value in effective_cpusets],
+        },
+        "telemetry": {
+            "status": telemetry_status,
+            "wall_source": "andrea_monotonic_clock",
+            "wall_semantics": (
+                "logical_run_from_first_physical_task_start_through_logical_"
+                "postprocess; input_preparation_is_excluded"
+            ),
+            "cpu_source": "sum_of_child_container_cpu",
+            "cpu_semantics": "sum_excludes_andrea_host_postprocess",
+            "memory_source": (
+                "child_container_cgroup_peaks" if memory_complete else None
+            ),
+            "memory_semantics": (
+                "overlap_upper_bound_from_child_peaks_excludes_andrea_host_postprocess"
+                if memory_complete
+                else "unavailable_when_any_child_peak_or_interval_is_unavailable"
+            ),
+            "io_source": None,
+            "io_semantics": "unavailable",
+        },
+    }
+
+
 def _finalize_group_aggregated_logical_run(
     *,
     run_dir: Path,
@@ -592,7 +883,7 @@ def _finalize_group_aggregated_logical_run(
     group_to_columns: dict[str, list[str]],
     warnings: list[str],
 ) -> tuple[ToolExecutionResult, dict[str, Any]]:
-    started_at = time.perf_counter()
+    postprocess_started_monotonic_ns = time.perf_counter_ns()
     tool_dir = run_dir / "tools" / run_id
     out_dir = tool_dir / "io" / "out"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -615,7 +906,15 @@ def _finalize_group_aggregated_logical_run(
             tool_id=child_task_id or run_id,
             status="failed",
             exit_code=127,
-            duration_seconds=0.0,
+            measurement=not_started_measurement(
+                threads=int(physical_tasks[0].get("threads", 1)),
+                ram_gb=float(physical_tasks[0].get("ram_gb", 1.0)),
+                requested_cpuset_cpus=(
+                    tuple(logical_spec["resources"]["cpuset_cpus"])
+                    if "cpuset_cpus" in logical_spec["resources"]
+                    else None
+                ),
+            ),
             network_path=None,
             progress_path=None,
             logs_path=None,
@@ -683,10 +982,6 @@ def _finalize_group_aggregated_logical_run(
     for warning in result_warnings:
         _append_warning_once(warnings, f"[{run_id}] {warning}")
 
-    duration = round(
-        float(child_result.duration_seconds) + time.perf_counter() - started_at,
-        3,
-    )
     progress_payload = {
         "percent": 100,
         "status": status,
@@ -714,11 +1009,21 @@ def _finalize_group_aggregated_logical_run(
         log_lines.append(f"error={error}")
     logs_path.write_text("\n".join(log_lines) + "\n", encoding="utf-8")
 
+    finished_monotonic_ns = time.perf_counter_ns()
+    finished_at_utc = utc_now()
+    measurement = _logical_measurement(
+        child_results=[child_result],
+        postprocess_started_monotonic_ns=postprocess_started_monotonic_ns,
+        finished_monotonic_ns=finished_monotonic_ns,
+        finished_at_utc=finished_at_utc,
+        output_dir=out_dir,
+    )
+
     logical_result = ToolExecutionResult(
         tool_id=run_id,
         status=status,
         exit_code=0 if status in {"completed", "completed_with_warnings"} else 1,
-        duration_seconds=duration,
+        measurement=measurement,
         network_path=network_path,
         progress_path=str(progress_path.resolve()),
         logs_path=str(logs_path.resolve()),
@@ -747,6 +1052,7 @@ def _finalize_grouped_logical_run(
     child_results: dict[str, ToolExecutionResult],
     warnings: list[str],
 ) -> tuple[ToolExecutionResult, dict[str, Any]]:
+    postprocess_started_monotonic_ns = time.perf_counter_ns()
     tool_dir = run_dir / "tools" / run_id
     out_dir = tool_dir / "io" / "out"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -757,8 +1063,8 @@ def _finalize_grouped_logical_run(
     child_failures: list[tuple[str, ToolExecutionResult]] = []
     child_rows: list[dict[str, Any]] = []
     successful_groups: list[str] = []
-    durations: list[float] = []
     result_warnings: list[str] = []
+    measured_children: list[ToolExecutionResult] = []
 
     for physical in logical_spec["physical_tasks"]:
         task_id = str(physical.get("task_id", "")).strip()
@@ -769,13 +1075,21 @@ def _finalize_grouped_logical_run(
                 tool_id=task_id,
                 status="failed",
                 exit_code=127,
-                duration_seconds=0.0,
+                measurement=not_started_measurement(
+                    threads=int(physical.get("threads", 1)),
+                    ram_gb=float(physical.get("ram_gb", 1.0)),
+                    requested_cpuset_cpus=(
+                        tuple(logical_spec["resources"]["cpuset_cpus"])
+                        if "cpuset_cpus" in logical_spec["resources"]
+                        else None
+                    ),
+                ),
                 network_path=None,
                 progress_path=None,
                 logs_path=None,
                 error="Internal grouped task result is missing.",
             )
-        durations.append(float(result.duration_seconds))
+        measured_children.append(result)
         child_payload[task_id] = {
             **asdict(result),
             "group_label": group_label,
@@ -800,7 +1114,7 @@ def _finalize_grouped_logical_run(
                             tool_id=task_id,
                             status="failed",
                             exit_code=result.exit_code,
-                            duration_seconds=result.duration_seconds,
+                            measurement=result.measurement,
                             network_path=result.network_path,
                             progress_path=result.progress_path,
                             logs_path=result.logs_path,
@@ -830,7 +1144,7 @@ def _finalize_grouped_logical_run(
                             tool_id=task_id,
                             status="failed",
                             exit_code=result.exit_code,
-                            duration_seconds=result.duration_seconds,
+                            measurement=result.measurement,
                             network_path=result.network_path,
                             progress_path=result.progress_path,
                             logs_path=result.logs_path,
@@ -907,11 +1221,21 @@ def _finalize_grouped_logical_run(
         log_lines.append(f"warning={warning}")
     logs_path.write_text("\n".join(log_lines) + "\n", encoding="utf-8")
 
+    finished_monotonic_ns = time.perf_counter_ns()
+    finished_at_utc = utc_now()
+    measurement = _logical_measurement(
+        child_results=measured_children,
+        postprocess_started_monotonic_ns=postprocess_started_monotonic_ns,
+        finished_monotonic_ns=finished_monotonic_ns,
+        finished_at_utc=finished_at_utc,
+        output_dir=out_dir,
+    )
+
     logical_result = ToolExecutionResult(
         tool_id=run_id,
         status=status,
         exit_code=0 if status in {"completed", "completed_with_warnings"} else 1,
-        duration_seconds=round(sum(durations), 3),
+        measurement=measurement,
         network_path=network_path,
         progress_path=str(progress_path.resolve()),
         logs_path=str(logs_path.resolve()),
@@ -932,7 +1256,8 @@ def run_infer_network_plan(
     run_dir: Path,
     progress_poll_seconds: float = 0.5,
 ) -> Path:
-    started_at = time.perf_counter()
+    run_started_monotonic_ns = time.perf_counter_ns()
+    run_started_at_utc = utc_now()
     if progress_poll_seconds <= 0:
         raise ValueError("progress_poll_seconds must be > 0")
 
@@ -953,6 +1278,11 @@ def run_infer_network_plan(
     plan_payload = _load_json_object(plan_path, "plan")
     preflight_report = _load_json_object(preflight_path, "preflight_report")
     run_report = _load_json_object(run_report_path, "run_report")
+    output_profile = plan_payload.get("output_profile")
+    if output_profile not in {"canonical", "full"}:
+        raise ValueError("plan.json output_profile must be canonical or full")
+    if run_report.get("output_profile") != output_profile:
+        raise ValueError("run_report output_profile does not match plan.json")
 
     output_capabilities_by_run = validate_frozen_output_capabilities(
         run_report.get("tools"),
@@ -960,6 +1290,7 @@ def run_infer_network_plan(
     )
 
     _selected_modes, waves, _total_eta = _load_plan_waves(plan_payload)
+    _validate_wave_resource_schedule(plan_payload=plan_payload, waves=waves)
     logical_runs = _load_logical_runs_from_plan(plan_payload)
     planned_tasks_by_id = _validate_physical_task_plan(
         logical_runs=logical_runs,
@@ -1020,6 +1351,11 @@ def run_infer_network_plan(
         for k, v in runs_payload.get("resolved_execution", {}).items()
         if isinstance(k, str) and isinstance(v, dict)
     }
+    resolved_resources_by_tool = {
+        str(k): v
+        for k, v in runs_payload.get("resolved_resources", {}).items()
+        if isinstance(k, str) and isinstance(v, dict)
+    }
     skipped_tools = {
         str(k): str(v)
         for k, v in runs_payload.get("skipped", {}).items()
@@ -1040,6 +1376,10 @@ def run_infer_network_plan(
         )
     if set(logical_runs) != set(selected_tools):
         raise ValueError("plan.json runs must match preflight selected runs exactly")
+    if set(resolved_resources_by_tool) != set(selected_tools):
+        raise ValueError(
+            "preflight resolved_resources must match selected runs exactly"
+        )
     frozen_manifest = run_dir / "input" / "dataset-manifest.json"
     dataset = _parse_dataset_context(
         dataset_manifest_path=frozen_manifest,
@@ -1118,6 +1458,26 @@ def run_infer_network_plan(
                 f"plan.json execution for {run_id!r} does not match the frozen "
                 "preflight execution"
             )
+        resolved_resources = resolved_resources_by_tool.get(run_id, {})
+        if logical_spec["resources"] != resolved_resources:
+            raise ValueError(
+                f"plan.json resources for {run_id!r} do not match the frozen "
+                "preflight resource request"
+            )
+        requested_cpuset_raw = resolved_resources.get("cpuset_cpus")
+        requested_cpuset = (
+            normalize_cpuset_cpus(
+                requested_cpuset_raw,
+                source=f"[{run_id}] resources.cpuset_cpus",
+            )
+            if requested_cpuset_raw is not None
+            else None
+        )
+        if requested_cpuset is not None:
+            validate_cpuset_available(
+                requested_cpuset,
+                source=f"[{run_id}] resources.cpuset_cpus",
+            )
         if expected_origin == "custom":
             if toolspec.get("_andrea_run_id") != run_id:
                 raise ValueError(
@@ -1158,11 +1518,10 @@ def run_infer_network_plan(
             runtime_input_snapshot["mounted_extra_inputs"]
         )
         _parse_execution_capabilities(tool_id=run_id, toolspec=toolspec)
-        threading, threading_warnings = resolve_tool_threading(
+        threading = resolve_tool_threading(
             tool_id=run_id,
             toolspec=toolspec,
         )
-        compatibility_warnings.extend(threading_warnings)
         expected_image = str(toolspec.get("docker_image", "")).strip()
         for physical in logical_spec["physical_tasks"]:
             if not isinstance(physical, dict):
@@ -1186,6 +1545,28 @@ def run_infer_network_plan(
                     "toolspec.runtime_resources.threading: "
                     f"task '{task_id}' has threads={planned_task.threads}, "
                     f"supported={threading.supported}, max_threads={threading.max_threads}."
+                )
+            requested_threads = resolved_resources.get("threads")
+            if (
+                requested_threads is not None
+                and int(planned_task.threads) != int(requested_threads)
+            ):
+                compatibility_blocks.setdefault(run_id, []).append(
+                    f"task '{task_id}' has threads={planned_task.threads}, but the "
+                    f"frozen per-run request requires threads={requested_threads}."
+                )
+            requested_ram_gb = resolved_resources.get("ram_gb")
+            if requested_ram_gb is not None and round(
+                float(planned_task.ram_gb), 3
+            ) != round(float(requested_ram_gb), 3):
+                compatibility_blocks.setdefault(run_id, []).append(
+                    f"task '{task_id}' has ram_gb={planned_task.ram_gb}, but the "
+                    f"frozen per-run request requires ram_gb={requested_ram_gb}."
+                )
+            if planned_task.cpuset_cpus != requested_cpuset:
+                compatibility_blocks.setdefault(run_id, []).append(
+                    f"task '{task_id}' CPU affinity does not exactly match the "
+                    "frozen per-run resources.cpuset_cpus request."
                 )
         rule_blocks, rule_warnings, rule_errors = _collect_compatibility_rule_issues(
             tool_id=run_id,
@@ -1473,7 +1854,15 @@ def run_infer_network_plan(
                     tool_id=logical_run_id,
                     status="failed",
                     exit_code=127,
-                    duration_seconds=0.0,
+                    measurement=not_started_measurement(
+                        threads=int(physical_tasks[0].get("threads", 1)),
+                        ram_gb=float(physical_tasks[0].get("ram_gb", 1.0)),
+                        requested_cpuset_cpus=(
+                            tuple(logical_spec["resources"]["cpuset_cpus"])
+                            if "cpuset_cpus" in logical_spec["resources"]
+                            else None
+                        ),
+                    ),
                     network_path=None,
                     progress_path=None,
                     logs_path=None,
@@ -1575,7 +1964,7 @@ def run_infer_network_plan(
     merged_norm_graphml_path: Path | None = None
     merged_norm_cytoscape_script_path: Path | None = None
 
-    if merged_raw_path is not None:
+    if output_profile == "full" and merged_raw_path is not None:
         merged_raw_gexf_path = run_dir / "merged_network_raw.gexf"
         state_writer.update_global(
             status="running",
@@ -1593,7 +1982,7 @@ def run_infer_network_plan(
         )
         export_network_graphml(merged_raw_path, merged_raw_graphml_path)
 
-    if merged_norm_path is not None:
+    if output_profile == "full" and merged_norm_path is not None:
         merged_norm_gexf_path = run_dir / "merged_network_normalized.gexf"
         state_writer.update_global(
             status="running",
@@ -1659,7 +2048,49 @@ def run_infer_network_plan(
         base_dir=run_dir,
     )
 
-    elapsed_total = round(time.perf_counter() - started_at, 3)
+    run_finished_monotonic_ns = time.perf_counter_ns()
+    run_finished_at_utc = utc_now()
+    physical_finish_times = [
+        value
+        for result in physical_results.values()
+        if isinstance(
+            (value := result.measurement.get("task_finished_monotonic_ns")), int
+        )
+        and not isinstance(value, bool)
+    ]
+    final_postprocess_started_ns = max(
+        physical_finish_times,
+        default=run_started_monotonic_ns,
+    )
+    execution_measurement = _logical_measurement(
+        child_results=physical_results.values(),
+        postprocess_started_monotonic_ns=final_postprocess_started_ns,
+        finished_monotonic_ns=run_finished_monotonic_ns,
+        finished_at_utc=run_finished_at_utc,
+        output_dir=run_dir,
+    )
+    execution_measurement.update(
+        {
+            "scope": "andrea_execution",
+            "wall_time_seconds": round(
+                (run_finished_monotonic_ns - run_started_monotonic_ns)
+                / 1_000_000_000.0,
+                6,
+            ),
+            "task_started_at_utc": run_started_at_utc,
+            "task_started_monotonic_ns": run_started_monotonic_ns,
+        }
+    )
+    execution_measurement["telemetry"]["cpu_semantics"] = (
+        "sum_of_physical_container_cpu_excludes_andrea_host_process"
+    )
+    execution_measurement["telemetry"]["wall_semantics"] = (
+        "andrea_execution_end_to_end_including_input_verification_preparation_"
+        "scheduling_merging_and_requested_output_materialization"
+    )
+    execution_measurement["telemetry"]["memory_semantics"] = (
+        "overlap_upper_bound_from_physical_container_peaks_excludes_andrea_host_process"
+    )
     run_report["status"] = "executed"
     run_report["tools"] = {
         "selected": selected_tools,
@@ -1711,7 +2142,7 @@ def run_infer_network_plan(
         execution_info = {}
     execution_info.update(
         {
-            "elapsed_seconds": elapsed_total,
+            "measurement": execution_measurement,
             "waves_total": len(waves),
             "tools_selected": len(selected_tools),
             "physical_tasks_total": int(
@@ -1743,7 +2174,10 @@ def run_infer_network_plan(
     print(f"  skipped tools: {len(skipped_tools)}")
     print(f"  completed tools: {len(completed_tools)}")
     print(f"  failed tools: {len(failed_tools)}")
-    print(f"  elapsed time: {elapsed_total:.2f}s")
+    print(
+        "  elapsed time: "
+        f"{float(execution_measurement['wall_time_seconds']):.2f}s"
+    )
     print(f"  waves: {len(waves)}")
     if merged_raw_path:
         print(f"  merged raw: {merged_raw_path}")

@@ -97,6 +97,7 @@ run_dir = plan_infer_network(
     max_ram_gb=32,
     planner="auto",
     planner_time_limit_seconds=100,
+    output_profile="full",
     preflight_report=preflight,
 )
 
@@ -113,14 +114,36 @@ finished_run_dir = infer_network(
     output_dir=Path("inferred_networks"),
     max_cores=8,
     max_ram_gb=32,
+    output_profile="canonical",
 )
 ```
 
-`tools_params.json` controls selected runs, parameters and execution modes.
+`tools_params.json` controls selected runs, scientific parameters, execution
+modes and optional operational resources (`threads`, `ram_gb` and an exact
+`cpuset_cpus`). Operational resources are frozen separately from parameters;
+`ram_gb` is the exact Docker memory limit applied to every physical task in
+that logical run.
 `custom_tools.json` is optional and is used for temporary external Docker
 images. Every external definition must explicitly declare an `outputs` object
 with exactly `directed` and `sign`; no defaults are inferred. These capabilities
-are frozen in the run report for downstream evaluation.
+are frozen in the run report for downstream evaluation. It must also declare a
+strict `runtime_resources.threading` capability. The `canonical` output profile
+keeps CSV/report handoffs while skipping derivative graph exports; `full`
+includes them.
+
+Timing scopes are explicit. A physical result reports `scope: physical_task`:
+its monotonic wall clock includes Docker launch and exit collection, while
+`container_wall_time_seconds` is recorded separately from Docker's own state
+timestamps when available. A grouped logical result measures from its first
+physical child through ANDREA's logical postprocessing and therefore excludes
+input preparation. The authoritative end-to-end latency is
+`run_report.json.execution.measurement`; it includes input verification and
+preparation, scheduling, merging, and the requested output materialization.
+
+For multithreaded tools, `max_threads: null` declares that the wrapper has no
+intrinsic thread ceiling. ANDREA still requires each operational allocation to
+fit the run's effective CPU budget. Single-threaded tools must declare
+`supported: false`, `default_threads: 1` and `max_threads: 1`.
 
 ## Evaluate Inference
 

@@ -71,7 +71,15 @@ The equivalent `custom_tools.json` fields are explicit and portable:
       "docker_image": "example/spathi:0.1.0",
       "execution_mode": "group_native",
       "extra_inputs": ["tf_list", "groups"],
-      "outputs": {"directed": true, "sign": "none"}
+      "outputs": {"directed": true, "sign": "none"},
+      "runtime_resources": {
+        "threading": {
+          "supported": true,
+          "default_threads": 1,
+          "max_threads": null,
+          "upstream_mapping": "cli:--threads"
+        }
+      }
     }
   ]
 }
@@ -86,18 +94,26 @@ The matching `tools_params.json` entry uses the derived tool ID explicitly:
       "run_id": "spathi_01",
       "tool_id": "custom_spathi_01",
       "params": {},
-      "execution": {"mode": "group_native"}
+      "execution": {"mode": "group_native"},
+      "resources": {"threads": 8, "ram_gb": 16, "cpuset_cpus": [0, 1, 2, 3, 4, 5, 6, 7]}
     }
   ]
 }
 ```
 
 The `custom_tools.json` root contains exactly `tools`, and every tool entry must
-contain exactly the six fields shown above. `name` must be non-empty and
+contain exactly the seven fields shown above. `name` must be non-empty and
 `extra_inputs` must be present even when its value is `[]`. String values are
 canonical: surrounding whitespace is rejected, and enum values such as
 `execution_mode` and `outputs.sign` are case-sensitive. ANDREA does not insert
 missing fields while loading or freezing this file.
+
+`runtime_resources.threading` is mandatory. It declares whether `--threads`
+may exceed one, its default and intrinsic maximum accepted value, and how the
+wrapper maps it to the upstream runtime. `max_threads: null` means that a
+multithreaded tool has no intrinsic limit; the run remains bounded by the
+explicit ANDREA resource budget. A single-threaded image must declare both
+counts as `1`; ANDREA never assumes or silently forces one thread.
 
 `run_id` must match `[A-Za-z0-9][A-Za-z0-9._-]*` exactly; it is never slugified
 or otherwise repaired.
@@ -111,8 +127,17 @@ prepends the literal `custom_` to the complete definition `run_id`; an existing
 pair `run_id: "spathi_01"`, `tool_id: "custom_spathi_01"`, while `run_id:
 "custom_spathi_01"` would derive `tool_id: "custom_custom_spathi_01"`.
 Unprefixed or differently named aliases are rejected.
-The request uses the normal `runs` array with `run_id`, `tool_id`, `params` and
-`execution`.
+The request uses the normal `runs` array with `run_id`, `tool_id`, `params`,
+`execution` and optional operational `resources`. `resources.threads` and
+`resources.ram_gb` are exact allocations, not scientific parameters. If a
+resource is omitted, the planner selects it from the ToolSpec/cost profile;
+external tools without a cost profile otherwise use the documented conservative
+fallback. An explicit `ram_gb` is applied as the Docker memory limit to every
+physical child of the logical run and must fit the global planning budget.
+Optional `cpuset_cpus` requires an
+explicit thread count, must be a strictly increasing list with at least that
+many available logical CPUs, and is applied to Docker without repair or
+clamping.
 
 `outputs` is required and must contain exactly `directed` and `sign`.
 `directed` is a boolean; `sign` accepts `none`, `signed` or `mixed`. There are
@@ -151,7 +176,15 @@ For example, an emulated tool that reads only a TF list uses:
   "docker_image": "example/emulated:1.0",
   "execution_mode": "group_emulated",
   "extra_inputs": ["tf_list"],
-  "outputs": {"directed": true, "sign": "none"}
+  "outputs": {"directed": true, "sign": "none"},
+  "runtime_resources": {
+    "threading": {
+      "supported": false,
+      "default_threads": 1,
+      "max_threads": 1,
+      "upstream_mapping": "cli:--threads"
+    }
+  }
 }
 ```
 

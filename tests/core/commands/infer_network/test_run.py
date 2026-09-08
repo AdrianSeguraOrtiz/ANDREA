@@ -29,6 +29,7 @@ from andrea.core.commands.infer_network.run import (
     _finalize_grouped_logical_run,
     _load_logical_runs_from_plan,
     _validate_physical_task_plan,
+    _validate_wave_resource_schedule,
 )
 
 from ._helpers import InferNetworkCoreTestCase
@@ -42,11 +43,14 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 "tool_id": "tool",
                 "tool_origin": "catalog",
                 "execution": {"mode": "group_emulated"},
+                "resources": {},
                 "physical_tasks": [
                     {
                         "task_id": "grouped__group_01_a",
                         "group_label": "A",
                         "columns": 2,
+                        "threads": 1,
+                        "ram_gb": 1.0,
                         "output_dir": "tools/grouped/subruns/01_a",
                     }
                 ],
@@ -585,6 +589,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         "tool_id": "aracne3",
                         "execution": {"mode": "group_emulated"},
                         "params": {"seed": 42},
+                        "resources": {"threads": 3},
                     }
                 ],
             )
@@ -596,6 +601,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 dataset_manifest_path=manifest_path,
                 tools_params_path=tools_params_path,
                 output_dir=base / "out",
+                max_cores=4,
                 planner="heuristic",
                 preflight_report=preflight,
             )
@@ -611,6 +617,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             ):
                 results = {}
                 for task in wave.tasks:
+                    self.assertEqual(task.threads, 3)
                     tool_io = runtime_io_by_tool[task.tool_id]
                     self.assertEqual(
                         json.loads(
@@ -639,7 +646,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id=task.tool_id,
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.1,
+                        measurement={"wall_time_seconds": 0.1},
                         network_path=str(network_path),
                         progress_path=None,
                         logs_path=None,
@@ -743,7 +750,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id=task.tool_id,
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.1,
+                        measurement={"wall_time_seconds": 0.1},
                         network_path=str(network_path),
                         progress_path=None,
                         logs_path=None,
@@ -931,7 +938,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id=task.tool_id,
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.5,
+                        measurement={"wall_time_seconds": 0.5},
                         network_path=str(network_path),
                         progress_path=None,
                         logs_path=str(tool_io.tool_dir / "container.log"),
@@ -1037,7 +1044,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id="aggregate_run__column_native",
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.1,
+                        measurement={"wall_time_seconds": 0.1},
                         network_path=str(upstream),
                         progress_path=None,
                         logs_path=None,
@@ -1105,7 +1112,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id="grouped__a",
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.1,
+                        measurement={"wall_time_seconds": 0.1},
                         network_path=str(empty_network),
                         progress_path=None,
                         logs_path=None,
@@ -1115,7 +1122,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id="grouped__b",
                         status="failed",
                         exit_code=1,
-                        duration_seconds=0.1,
+                        measurement={"wall_time_seconds": 0.1},
                         network_path=None,
                         progress_path=None,
                         logs_path=None,
@@ -1170,7 +1177,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id="grouped__a",
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.1,
+                        measurement={"wall_time_seconds": 0.1},
                         network_path=str(child_network),
                         progress_path=None,
                         logs_path=None,
@@ -1240,6 +1247,27 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                     progress_poll_seconds=0.1,
                 )
 
+    def test_run_rejects_task_ram_that_differs_from_frozen_request(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._prepare_planned_run(Path(tmp))
+            plan_path = run_dir / "plan.json"
+            preflight_path = run_dir / "preflight_report.json"
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+            run_id = plan["runs"][0]["run_id"]
+            plan["runs"][0]["resources"] = {"ram_gb": 0.5}
+            preflight["runs"]["resolved_resources"][run_id] = {"ram_gb": 0.5}
+            plan_path.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
+            preflight_path.write_text(
+                json.dumps(preflight, indent=2) + "\n", encoding="utf-8"
+            )
+
+            with (
+                patch("andrea.core.commands.infer_network.run._ensure_docker_cli"),
+                self.assertRaisesRegex(ValueError, "frozen per-run request requires"),
+            ):
+                self.mod.run_infer_network_plan(run_dir=run_dir)
+
     def test_logical_plan_requires_explicit_canonical_tool_origin(self) -> None:
         base_run = {
             "run_id": "demo",
@@ -1249,7 +1277,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
         }
         cases = [
             ({**base_run}, "missing"),
-            ({**base_run, "tool_origin": "external"}, "invalid"),
+            ({**base_run, "tool_origin": "external", "resources": {}}, "invalid"),
         ]
         for raw_run, label in cases:
             with (
@@ -1257,6 +1285,58 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                 self.assertRaisesRegex(ValueError, r"plan\.json\.runs\[1\] is invalid"),
             ):
                 _load_logical_runs_from_plan({"runs": [raw_run]})
+
+    def test_wave_resource_schedule_rejects_tampered_totals_and_affinity(self) -> None:
+        base_task = ToolPlanItem(
+            tool_id="a",
+            run_id="a",
+            image="image",
+            threads=2,
+            ram_gb=1.0,
+            eta_seconds=1.0,
+            eta_source="test",
+            output_dir="tools/a",
+            cpuset_cpus=(0, 1),
+        )
+        conflicting = ToolPlanItem(
+            tool_id="b",
+            run_id="b",
+            image="image",
+            threads=1,
+            ram_gb=1.0,
+            eta_seconds=1.0,
+            eta_source="test",
+            output_dir="tools/b",
+            cpuset_cpus=(1,),
+        )
+        limits = {"resource_limits": {"max_cores": 4, "max_ram_gb": 4.0}}
+
+        with self.assertRaisesRegex(ValueError, "resource totals"):
+            _validate_wave_resource_schedule(
+                plan_payload=limits,
+                waves=[
+                    PlanWave(
+                        index=1,
+                        threads_used=1,
+                        ram_gb_used=1.0,
+                        eta_seconds=1.0,
+                        tasks=[base_task],
+                    )
+                ],
+            )
+        with self.assertRaisesRegex(ValueError, "overlapping CPU affinities"):
+            _validate_wave_resource_schedule(
+                plan_payload=limits,
+                waves=[
+                    PlanWave(
+                        index=1,
+                        threads_used=3,
+                        ram_gb_used=2.0,
+                        eta_seconds=1.0,
+                        tasks=[base_task, conflicting],
+                    )
+                ],
+            )
 
     def test_run_rejects_plan_tool_identity_mismatch(self) -> None:
         cases = [
@@ -1327,7 +1407,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id=task.tool_id,
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.5,
+                        measurement={"wall_time_seconds": 0.5},
                         network_path=str(
                             (
                                 run_dir
@@ -1478,7 +1558,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id=task.tool_id,
                         status="completed",
                         exit_code=0,
-                        duration_seconds=0.1,
+                        measurement={"wall_time_seconds": 0.1},
                         network_path=str(network_path),
                         progress_path=None,
                         logs_path=None,
@@ -1602,7 +1682,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id=task.tool_id,
                         status="completed_with_warnings",
                         exit_code=0,
-                        duration_seconds=0.5,
+                        measurement={"wall_time_seconds": 0.5},
                         network_path=str(
                             (
                                 run_dir
@@ -1854,7 +1934,7 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
                         tool_id=task.tool_id,
                         status=status,
                         exit_code=exit_code,
-                        duration_seconds=0.2,
+                        measurement={"wall_time_seconds": 0.2},
                         network_path=str(
                             (
                                 run_dir

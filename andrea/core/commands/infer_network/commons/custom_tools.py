@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from andrea.core.shared.issues import make_issue
+from andrea.core.shared.json_io import load_json_object as _load_json_object
 from andrea.core.shared.output_capabilities import OUTPUT_SIGN_SEMANTICS
 from andrea.core.shared.paths import validate_portable_identifier
 
-from .shared import SchemaConstraints, _load_json_object
+from .shared import SchemaConstraints
 from .tools import EXECUTION_CAPABILITIES, _validate_execution_capability_contract
 
 CUSTOM_TOOL_PREFIX = "custom_"
@@ -23,6 +24,7 @@ _CUSTOM_TOOL_SCHEMA_KEYS = {
     "execution_mode",
     "extra_inputs",
     "outputs",
+    "runtime_resources",
 }
 _CUSTOM_TOOL_OUTPUT_KEYS = {"directed", "sign"}
 
@@ -46,12 +48,12 @@ def _raw_custom_tool_entries(raw: dict[str, Any]) -> list[dict[str, Any]]:
         raise ValueError(
             "custom_tools JSON has unsupported top-level keys: " + ", ".join(unexpected)
         )
-    if isinstance(raw.get("tools"), list):
+    if isinstance(raw.get("tools"), list) and raw["tools"]:
         entries = raw["tools"]
         if not all(isinstance(item, dict) for item in entries):
             raise ValueError("custom_tools.tools entries must be objects")
         return entries
-    raise ValueError("custom_tools JSON must contain a tools array")
+    raise ValueError("custom_tools JSON must contain a non-empty tools array")
 
 
 def _unexpected_custom_tool_keys(raw_tool: dict[str, Any]) -> list[str]:
@@ -133,6 +135,110 @@ def normalize_custom_tool_outputs(
         outputs["sign"] = sign
 
     return outputs, errors
+
+
+def normalize_custom_tool_runtime_resources(
+    raw_runtime_resources: Any,
+) -> tuple[dict[str, Any], list[str]]:
+    """Validate the runtime capability declared by an external image.
+
+    External tools use the same threading vocabulary as catalog ToolSpecs.  The
+    declaration is intentionally mandatory: ANDREA must never silently turn an
+    unknown external runtime into a single-threaded one.
+    """
+
+    errors: list[str] = []
+    if not isinstance(raw_runtime_resources, dict):
+        return {}, ["runtime_resources must be an object"]
+    if set(raw_runtime_resources) != {"threading"}:
+        unexpected = sorted(set(raw_runtime_resources) - {"threading"})
+        missing = sorted({"threading"} - set(raw_runtime_resources))
+        if unexpected:
+            errors.append(
+                "runtime_resources has unsupported keys: " + ", ".join(unexpected)
+            )
+        if missing:
+            errors.append("runtime_resources.threading is required")
+
+    raw_threading = raw_runtime_resources.get("threading")
+    if not isinstance(raw_threading, dict):
+        return {}, [*errors, "runtime_resources.threading must be an object"]
+    expected_keys = {
+        "supported",
+        "default_threads",
+        "max_threads",
+        "upstream_mapping",
+    }
+    if set(raw_threading) != expected_keys:
+        unexpected = sorted(set(raw_threading) - expected_keys)
+        missing = sorted(expected_keys - set(raw_threading))
+        if unexpected:
+            errors.append(
+                "runtime_resources.threading has unsupported keys: "
+                + ", ".join(unexpected)
+            )
+        if missing:
+            errors.append(
+                "runtime_resources.threading is missing: " + ", ".join(missing)
+            )
+
+    supported = raw_threading.get("supported")
+    default_threads = raw_threading.get("default_threads")
+    max_threads = raw_threading.get("max_threads")
+    upstream_mapping = raw_threading.get("upstream_mapping")
+    if not isinstance(supported, bool):
+        errors.append("runtime_resources.threading.supported must be a boolean")
+    if (
+        isinstance(default_threads, bool)
+        or not isinstance(default_threads, int)
+        or default_threads < 1
+    ):
+        errors.append(
+            "runtime_resources.threading.default_threads must be an integer >= 1"
+        )
+    if max_threads is not None and (
+        isinstance(max_threads, bool)
+        or not isinstance(max_threads, int)
+        or max_threads < 1
+    ):
+        errors.append(
+            "runtime_resources.threading.max_threads must be null or an integer >= 1"
+        )
+    if (
+        isinstance(default_threads, int)
+        and not isinstance(default_threads, bool)
+        and max_threads is not None
+        and isinstance(max_threads, int)
+        and not isinstance(max_threads, bool)
+        and default_threads > max_threads
+    ):
+        errors.append(
+            "runtime_resources.threading.default_threads must not exceed max_threads"
+        )
+    if (
+        not isinstance(upstream_mapping, str)
+        or not upstream_mapping
+        or upstream_mapping != upstream_mapping.strip()
+    ):
+        errors.append(
+            "runtime_resources.threading.upstream_mapping must be a non-empty "
+            "string without surrounding whitespace"
+        )
+    if supported is False and (default_threads != 1 or max_threads != 1):
+        errors.append(
+            "runtime_resources.threading with supported=false requires "
+            "default_threads=max_threads=1"
+        )
+    if errors:
+        return {}, errors
+    return {
+        "threading": {
+            "supported": supported,
+            "default_threads": default_threads,
+            "max_threads": max_threads,
+            "upstream_mapping": upstream_mapping,
+        }
+    }, []
 
 
 def custom_tool_warnings(tool_id: str, toolspec: dict[str, Any]) -> list[str]:
@@ -278,6 +384,16 @@ def normalize_custom_tools_payload(
 
         outputs, output_errors = normalize_custom_tool_outputs(raw_tool.get("outputs"))
         errors.extend(output_errors)
+        if "runtime_resources" not in raw_tool:
+            runtime_resources = {}
+            runtime_resource_errors = ["runtime_resources is required"]
+        else:
+            runtime_resources, runtime_resource_errors = (
+                normalize_custom_tool_runtime_resources(
+                    raw_tool["runtime_resources"]
+                )
+            )
+        errors.extend(runtime_resource_errors)
 
         if errors:
             blocked_entries.append(_blocked_custom_entry(tool_id, "; ".join(errors)))
@@ -295,17 +411,7 @@ def normalize_custom_tools_payload(
             "implementation_url": "",
             "docker_image": docker_image,
             "execution_capabilities": capabilities,
-            "runtime_resources": {
-                "threading": {
-                    "supported": False,
-                    "default_threads": 1,
-                    "max_threads": 1,
-                    "upstream_mapping": (
-                        "External Docker tool threading is not catalog-audited; "
-                        "ANDREA assigns one thread by default."
-                    ),
-                }
-            },
+            "runtime_resources": runtime_resources,
             "taxonomic_scope": {
                 "allowed_groups": sorted(constraints.taxonomic_groups),
                 "supported_species": [],
@@ -515,6 +621,12 @@ def _serialize_custom_tool(tool_id: str, source: Any) -> dict[str, Any]:
     if output_errors:
         raise _serialization_error(tool_id, "; ".join(output_errors))
 
+    runtime_resources, runtime_errors = normalize_custom_tool_runtime_resources(
+        source.get("runtime_resources")
+    )
+    if runtime_errors:
+        raise _serialization_error(tool_id, "; ".join(runtime_errors))
+
     return {
         "run_id": run_id,
         "name": name,
@@ -525,6 +637,7 @@ def _serialize_custom_tool(tool_id: str, source: Any) -> dict[str, Any]:
             "directed": outputs["directed"],
             "sign": outputs["sign"],
         },
+        "runtime_resources": runtime_resources,
     }
 
 

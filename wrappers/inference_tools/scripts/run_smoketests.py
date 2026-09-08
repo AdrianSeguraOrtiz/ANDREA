@@ -627,16 +627,16 @@ def resolve_smoketest_threads(
     *, tool_id: str, catalog_tool_dir: Path, requested_threads: int
 ) -> int:
     toolspec = load_toolspec(catalog_tool_dir)
-    threading, warnings = resolve_tool_threading(tool_id=tool_id, toolspec=toolspec)
-    for warning in warnings:
-        print(f"[{tool_id}] warning: {warning}")
+    threading = resolve_tool_threading(tool_id=tool_id, toolspec=toolspec)
 
     if thread_count_allowed_by_tool(threading, requested_threads):
         return requested_threads
 
     effective_threads = 1
     if threading.supported:
-        effective_threads = max(1, min(requested_threads, threading.max_threads))
+        effective_threads = max(1, requested_threads)
+        if threading.max_threads is not None:
+            effective_threads = min(effective_threads, threading.max_threads)
     if not thread_count_allowed_by_tool(threading, effective_threads):
         effective_threads = 1
 

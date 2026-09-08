@@ -117,6 +117,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
         return {
             "run_id": "inference_01",
             "status": "executed",
+            "output_profile": "full",
             "inputs": {
                 "dataset_manifest_path": "input/dataset-manifest.json",
                 "tools_params_path": "input/tools_params.json",
@@ -148,7 +149,11 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
             "tools": run_tools,
             "issues": [],
             "execution": {
-                "elapsed_seconds": 1.0,
+                "measurement": {
+                    "schema_version": "1.0",
+                    "scope": "andrea_execution",
+                    "wall_time_seconds": 1.0,
+                },
                 "planner_requested": "heuristic",
                 "planner_used": "heuristic",
                 "planner_time_limit_seconds": 100.0,
@@ -1816,6 +1821,14 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                         "execution_mode": "global",
                         "extra_inputs": [],
                         "outputs": {"directed": True, "sign": "signed"},
+                        "runtime_resources": {
+                            "threading": {
+                                "supported": False,
+                                "default_threads": 1,
+                                "max_threads": 1,
+                                "upstream_mapping": "cli:--threads",
+                            }
+                        },
                     }
                 ]
             }
