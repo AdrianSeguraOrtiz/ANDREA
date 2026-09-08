@@ -1372,6 +1372,45 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 )
             run_mock.assert_not_called()
 
+    def test_execute_runs_with_the_parallelism_frozen_by_its_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            scenario_path = base / "scenario.json"
+            simulator_runs_path = base / "simulator-runs.json"
+            output_dir = base / "out"
+            scenario_path.write_text("{}\n", encoding="utf-8")
+            simulator_runs_path.write_text("{}\n", encoding="utf-8")
+            benchmark_root = output_dir / "benchmark"
+            with (
+                patch(
+                    "andrea.core.commands.generate_data.pipeline.preflight_generate_data_scenario"
+                ),
+                patch(
+                    "andrea.core.commands.generate_data.pipeline.plan_generate_data_request"
+                ) as plan_mock,
+                patch(
+                    "andrea.core.commands.generate_data.pipeline.run_generate_data",
+                    return_value=benchmark_root,
+                ) as run_mock,
+            ):
+                result = execute_generate_data(
+                    scenario_request_path=scenario_path,
+                    simulator_runs_path=simulator_runs_path,
+                    output_dir=output_dir,
+                    max_parallel_tasks=8,
+                    max_cores=4,
+                    max_ram_gb=16.0,
+                    progress_poll_seconds=0.25,
+                    show_progress=False,
+                )
+
+            self.assertEqual(result, benchmark_root)
+            self.assertEqual(plan_mock.call_args.kwargs["max_parallel_tasks"], 8)
+            self.assertNotIn("max_parallel_tasks", run_mock.call_args.kwargs)
+            self.assertEqual(run_mock.call_args.kwargs["plan_path"].name, "simulation-plan.json")
+            self.assertEqual(run_mock.call_args.kwargs["progress_poll_seconds"], 0.25)
+            self.assertFalse(run_mock.call_args.kwargs["show_progress"])
+
     def test_validate_plan_accepts_dyngen_grouped_lineage_tree(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             plan_path = self._write_plan(

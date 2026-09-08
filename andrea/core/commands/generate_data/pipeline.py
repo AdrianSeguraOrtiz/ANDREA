@@ -1136,7 +1136,6 @@ def execute_generate_data(
         return run_generate_data(
             plan_path=plan_path,
             output_dir=output_dir,
-            max_parallel_tasks=max_parallel_tasks,
             progress_poll_seconds=progress_poll_seconds,
             show_progress=show_progress,
             progress_callback=progress_callback,
