@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import csv
 import json
+import math
 import shutil
 import subprocess
 import tempfile
@@ -24,14 +25,11 @@ from fastapi.staticfiles import StaticFiles
 
 from andrea.core.commands.infer_network import (
     bundles as infer_network_bundles,
+)
+from andrea.core.commands.infer_network import (
     plan_infer_network,
     preflight_infer_network,
     run_infer_network_plan,
-)
-from andrea.core.shared.bundles import (
-    BundleResolution,
-    BundleSpec,
-    all_files,
 )
 from andrea.core.commands.infer_network.commons.catalog import (
     _load_schema_constraints,
@@ -48,8 +46,14 @@ from andrea.core.commands.infer_network.commons.execution_state import (
     execution_state_path,
     read_execution_state_if_exists,
 )
+from andrea.core.commands.infer_network.commons.resources import normalize_cpuset_cpus
 from andrea.core.commands.infer_network.commons.tools import (
     _normalize_tool_request_identity,
+)
+from andrea.core.shared.bundles import (
+    BundleResolution,
+    BundleSpec,
+    all_files,
 )
 from andrea.gui.common.reproducibility import (
     append_cli_option,
@@ -101,6 +105,7 @@ class GuiJob:
     progress_detail: str = ""
     planner: Optional[str] = None
     planner_time_limit_seconds: Optional[float] = None
+    output_profile: Optional[str] = None
 
 
 @dataclass
@@ -423,6 +428,11 @@ def _normalize_runs(
     for idx, raw in enumerate(raw_runs, start=1):
         if not isinstance(raw, dict):
             raise ValueError(f"runs[{idx}] must be an object")
+        unexpected = sorted(
+            set(raw) - {"run_id", "tool_id", "params", "execution", "resources"}
+        )
+        if unexpected:
+            raise ValueError(f"runs[{idx}] has unsupported keys: {unexpected}")
 
         tool_id, run_id = _normalize_tool_request_identity(
             tool_id_raw=raw.get("tool_id"),
@@ -445,6 +455,49 @@ def _normalize_runs(
             execution = {}
         if not isinstance(execution, dict):
             raise ValueError(f"runs[{idx}].execution must be an object")
+        resources = raw.get("resources", {})
+        if not isinstance(resources, dict):
+            raise ValueError(f"runs[{idx}].resources must be an object")
+        unexpected_resources = sorted(
+            set(resources) - {"threads", "ram_gb", "cpuset_cpus"}
+        )
+        if unexpected_resources:
+            raise ValueError(
+                f"runs[{idx}].resources has unsupported keys: {unexpected_resources}"
+            )
+        threads = resources.get("threads")
+        if threads is not None and (
+            isinstance(threads, bool)
+            or not isinstance(threads, int)
+            or threads < 1
+        ):
+            raise ValueError(f"runs[{idx}].resources.threads must be an integer >= 1")
+        normalized_resources: dict[str, Any] = {}
+        if threads is not None:
+            normalized_resources["threads"] = threads
+        ram_gb = resources.get("ram_gb")
+        if ram_gb is not None and (
+            isinstance(ram_gb, bool)
+            or not isinstance(ram_gb, (int, float))
+            or not math.isfinite(float(ram_gb))
+            or ram_gb <= 0
+        ):
+            raise ValueError(
+                f"runs[{idx}].resources.ram_gb must be a finite number > 0"
+            )
+        if ram_gb is not None:
+            normalized_resources["ram_gb"] = float(ram_gb)
+        if "cpuset_cpus" in resources:
+            cpuset = normalize_cpuset_cpus(
+                resources.get("cpuset_cpus"),
+                source=f"runs[{idx}].resources.cpuset_cpus",
+            )
+            if threads is None or len(cpuset) < threads:
+                raise ValueError(
+                    f"runs[{idx}].resources.cpuset_cpus requires resources.threads "
+                    "and at least that many CPU indices"
+                )
+            normalized_resources["cpuset_cpus"] = list(cpuset)
 
         normalized.append(
             {
@@ -452,6 +505,7 @@ def _normalize_runs(
                 "tool_id": tool_id,
                 "params": params,
                 "execution": execution,
+                "resources": normalized_resources,
             }
         )
 
@@ -694,6 +748,7 @@ def _job_payload(job: GuiJob) -> dict[str, Any]:
         "progress_detail": job.progress_detail,
         "planner": job.planner,
         "planner_time_limit_seconds": job.planner_time_limit_seconds,
+        "output_profile": job.output_profile,
         "artifact_errors": [],
         "bundle_status": _job_bundle_status(job),
     }
@@ -717,9 +772,11 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     dataset_manifest_path = str(dataset_manifest)
     tools_params_path = str(tools_params)
     custom_tools_path = str(custom_tools) if custom_tools.exists() else None
-    plan_payload = (
-        read_json_if_exists(job.plan_path or str(run_dir / "plan.json")) or {}
-    )
+    plan_payload = read_json_if_exists(job.plan_path or str(run_dir / "plan.json"))
+    if not isinstance(plan_payload, dict):
+        return unavailable_reproducibility(
+            "Reproducibility snippets require the frozen plan.json."
+        )
     resource_limits = (
         plan_payload.get("resource_limits", {})
         if isinstance(plan_payload.get("resource_limits"), dict)
@@ -735,6 +792,11 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
     max_cores = resource_limits.get("max_cores", 4)
     max_ram_gb = resource_limits.get("max_ram_gb")
     planner = str(planner_payload.get("requested", "auto") or "auto")
+    output_profile = plan_payload.get("output_profile")
+    if output_profile not in {"canonical", "full"}:
+        return unavailable_reproducibility(
+            "Reproducibility snippets require a valid frozen output profile."
+        )
     planner_time_limit_seconds = float(
         planner_payload.get("cp_sat_time_limit_seconds", 100.0)
     )
@@ -757,6 +819,8 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         planner,
         "--planner-time-limit-seconds",
         str(planner_time_limit_seconds),
+        "--output-profile",
+        output_profile,
         "--progress-poll-seconds",
         str(progress_poll_seconds),
     ]
@@ -792,6 +856,8 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
         planner,
         "--planner-time-limit-seconds",
         str(planner_time_limit_seconds),
+        "--output-profile",
+        output_profile,
     ]
     append_cli_option(cli_plan_args, "--custom-tools", custom_tools_path)
     append_cli_option(cli_plan_args, "--max-ram-gb", max_ram_gb)
@@ -821,6 +887,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             f"    max_ram_gb={python_literal(max_ram_gb)},",
             f"    planner={python_literal(planner)},",
             f"    planner_time_limit_seconds={planner_time_limit_seconds},",
+            f"    output_profile={python_literal(output_profile)},",
             f"    progress_poll_seconds={progress_poll_seconds},",
             ")",
             "",
@@ -858,6 +925,7 @@ def _build_reproducibility_payload(job: GuiJob) -> dict[str, Any]:
             f"    max_ram_gb={python_literal(max_ram_gb)},",
             f"    planner={python_literal(planner)},",
             f"    planner_time_limit_seconds={planner_time_limit_seconds},",
+            f"    output_profile={python_literal(output_profile)},",
             "    preflight_report=preflight_report,",
             ")",
             "",
@@ -1305,6 +1373,8 @@ def _collect_output_readiness(
             "normalized_csv_ready": False,
             "run_report_file_ready": False,
             "final_report_ready": False,
+            "output_profile": None,
+            "graph_exports_required": False,
             "graph_exports_ready": False,
             "partial": False,
             "failed_runs": 0,
@@ -1320,6 +1390,12 @@ def _collect_output_readiness(
     final_report_ready = (
         isinstance(run_report, dict) and run_report.get("status") == "executed"
     )
+    output_profile = (
+        run_report.get("output_profile") if isinstance(run_report, dict) else None
+    )
+    if output_profile not in {"canonical", "full"}:
+        output_profile = None
+    graph_exports_required = output_profile == "full"
     csv_ready = raw_csv.is_file() and normalized_csv.is_file()
 
     graph_paths = {
@@ -1359,9 +1435,14 @@ def _collect_output_readiness(
     explorer_available = bool(csv_ready or final_report_ready)
 
     if finalizing_artifacts:
+        requested_artifacts = (
+            "graph artifacts and the final run report"
+            if graph_exports_required
+            else "the final run report"
+        )
         message = (
-            "Merged CSV outputs are available. ANDREA is still finalizing graph "
-            "artifacts and the final run report."
+            "Merged CSV outputs are available. ANDREA is still finalizing "
+            f"{requested_artifacts}."
         )
     elif final_report_ready and partial and csv_ready:
         message = "Partial merged results are available; one or more runs failed."
@@ -1407,6 +1488,8 @@ def _collect_output_readiness(
         "normalized_csv_ready": normalized_csv.is_file(),
         "run_report_file_ready": run_report_file_ready,
         "final_report_ready": final_report_ready,
+        "output_profile": output_profile,
+        "graph_exports_required": graph_exports_required,
         "graph_exports_ready": graph_exports_ready,
         "partial": partial,
         "failed_runs": tools_failed,
@@ -1468,11 +1551,13 @@ def _infer_bundle_readiness(
         "ready" if output_readiness.get("graph_exports_ready") else "pending"
     )
     if bundle_id == "full":
-        return [
+        readiness = [
             {"label": "Merged CSVs", "status": csv_status},
             {"label": "Run report", "status": report_status},
-            {"label": "Graph exports", "status": graphs_status},
         ]
+        if output_readiness.get("graph_exports_required"):
+            readiness.append({"label": "Graph exports", "status": graphs_status})
+        return readiness
     if bundle_id == "analysis":
         return [
             {"label": "Merged CSVs", "status": csv_status},
@@ -1493,13 +1578,17 @@ def _infer_bundle_runtime_missing(
     report_file_ready = bool(output_readiness.get("run_report_file_ready"))
     csv_ready = bool(output_readiness.get("csv_ready"))
     graphs_ready = bool(output_readiness.get("graph_exports_ready"))
+    output_profile = output_readiness.get("output_profile")
+    graphs_required = bool(output_readiness.get("graph_exports_required"))
     if bundle_id in {"full", "report"} and not report_ready:
         missing.append("run_report.json final report is not complete")
     if bundle_id == "analysis" and not report_file_ready:
         missing.append("run_report.json is not available")
     if bundle_id in {"full", "analysis"} and not csv_ready:
         missing.append("merged CSV outputs are not complete")
-    if bundle_id == "full" and csv_ready and not graphs_ready:
+    if bundle_id == "full" and report_file_ready and output_profile is None:
+        missing.append("run_report.json output_profile is invalid")
+    if bundle_id == "full" and graphs_required and csv_ready and not graphs_ready:
         missing.append("graph exports are not complete")
     if bundle_id == "graphs" and not graphs_ready:
         missing.append("graph exports are not complete")
@@ -1889,6 +1978,7 @@ def _run_job(
             job.planner_time_limit_seconds = float(
                 options.get("planner_time_limit_seconds", 100.0)
             )
+            job.output_profile = str(options.get("output_profile", "full") or "full")
         elif action == "run":
             job.progress_percent = 5
             job.progress_label = "Starting execution"
@@ -1973,6 +2063,7 @@ def _run_job(
                 planner_time_limit_seconds=float(
                     options.get("planner_time_limit_seconds", 100.0)
                 ),
+                output_profile=str(options.get("output_profile", "full") or "full"),
                 preflight_report=preflight_report,
             )
             run_dir_resolved = run_dir.resolve()

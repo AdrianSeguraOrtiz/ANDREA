@@ -15,6 +15,7 @@ const CUSTOM_TOOL_DEFINITION_KEYS = new Set([
   "execution_mode",
   "extra_inputs",
   "outputs",
+  "runtime_resources",
 ]);
 const CUSTOM_TOOL_EVIDENCE = "external_tool_output";
 const OUTPUT_SIGN_SEMANTICS = new Set(["none", "signed", "mixed"]);
@@ -131,6 +132,41 @@ function normalizeCustomToolOutputs(rawOutputs) {
   };
 }
 
+function normalizeCustomToolRuntimeResources(rawResources) {
+  if (!isPlainObject(rawResources) || Object.keys(rawResources).length !== 1 || !Object.hasOwn(rawResources, "threading")) {
+    throw new Error("runtime_resources must contain exactly threading.");
+  }
+  const threading = rawResources.threading;
+  const expected = ["supported", "default_threads", "max_threads", "upstream_mapping"];
+  if (!isPlainObject(threading) || Object.keys(threading).sort().join(",") !== [...expected].sort().join(",")) {
+    throw new Error(`runtime_resources.threading must contain exactly: ${expected.join(", ")}.`);
+  }
+  const { supported, default_threads: defaultThreads, max_threads: maxThreads, upstream_mapping: upstreamMapping } = threading;
+  if (typeof supported !== "boolean") {
+    throw new Error("runtime_resources.threading.supported must be true or false.");
+  }
+  if (!Number.isInteger(defaultThreads) || defaultThreads < 1) {
+    throw new Error("runtime_resources.threading.default_threads must be an integer >= 1.");
+  }
+  if (maxThreads !== null && (!Number.isInteger(maxThreads) || maxThreads < 1 || defaultThreads > maxThreads)) {
+    throw new Error("runtime_resources.threading.max_threads must be null or an integer >= default_threads.");
+  }
+  if (typeof upstreamMapping !== "string" || !upstreamMapping || upstreamMapping !== upstreamMapping.trim()) {
+    throw new Error("runtime_resources.threading.upstream_mapping must be a canonical non-empty string.");
+  }
+  if (!supported && (defaultThreads !== 1 || maxThreads !== 1)) {
+    throw new Error("A single-threaded image requires default_threads=max_threads=1.");
+  }
+  return {
+    threading: {
+      supported,
+      default_threads: defaultThreads,
+      max_threads: maxThreads,
+      upstream_mapping: upstreamMapping,
+    },
+  };
+}
+
 function requireCanonicalString(rawTool, key) {
   if (!Object.hasOwn(rawTool, key)) {
     throw new Error(`${key} is required.`);
@@ -225,6 +261,7 @@ function validateCustomToolDefinition(rawTool) {
     execution_mode: executionMode,
     extra_inputs: extraInputs,
     outputs: normalizeCustomToolOutputs(rawTool.outputs),
+    runtime_resources: normalizeCustomToolRuntimeResources(rawTool.runtime_resources),
   };
 }
 
@@ -389,6 +426,7 @@ function toBootstrapTool(rawTool, paramsSchema) {
       evidence: CUSTOM_TOOL_EVIDENCE,
     },
     progress: { kind: "none" },
+    runtime_resources: normalized.runtime_resources,
     artifacts_aux: [],
     params_schema: paramsSchema,
     default_params: {},
@@ -486,6 +524,7 @@ export function customToolsPayload(selectedToolIds = null) {
         execution_mode: tool.execution_mode,
         extra_inputs: [...tool.extra_inputs],
         outputs,
+        runtime_resources: normalizeCustomToolRuntimeResources(tool.runtime_resources),
       };
     }),
   };
@@ -646,6 +685,14 @@ export function buildSimpleCustomToolFromForm() {
   if (!OUTPUT_SIGN_SEMANTICS.has(signValue)) {
     throw new Error("Sign semantics must be selected explicitly.");
   }
+  const threadingSupportedRaw = document.getElementById("custom-tool-threading-supported")?.value || "";
+  if (!new Set(["true", "false"]).has(threadingSupportedRaw)) {
+    throw new Error("Multithreading support must be selected explicitly.");
+  }
+  const defaultThreads = Number(document.getElementById("custom-tool-default-threads")?.value);
+  const maxThreadsRaw = String(document.getElementById("custom-tool-max-threads")?.value || "");
+  const maxThreads = maxThreadsRaw === "" ? null : Number(maxThreadsRaw);
+  const upstreamMapping = String(document.getElementById("custom-tool-thread-mapping")?.value || "");
   const tool = {
     run_id: runId,
     name,
@@ -655,6 +702,14 @@ export function buildSimpleCustomToolFromForm() {
     outputs: {
       directed: directedValue === "true",
       sign: signValue,
+    },
+    runtime_resources: {
+      threading: {
+        supported: threadingSupportedRaw === "true",
+        default_threads: defaultThreads,
+        max_threads: maxThreads,
+        upstream_mapping: upstreamMapping,
+      },
     },
   };
   const normalizedTool = validateCustomToolDefinition(tool);

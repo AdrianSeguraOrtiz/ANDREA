@@ -49,6 +49,7 @@ def _strict_run_report(
     return {
         "run_id": run_id,
         "status": "executed",
+        "output_profile": "full",
         "inputs": inputs,
         "dataset": {
             "id": "dataset_a",
@@ -92,7 +93,11 @@ def _strict_run_report(
         },
         "issues": [],
         "execution": {
-            "elapsed_seconds": 1.0,
+            "measurement": {
+                "schema_version": "1.0",
+                "scope": "andrea_execution",
+                "wall_time_seconds": 1.0,
+            },
             "planner_requested": "heuristic",
             "planner_used": "heuristic",
             "planner_time_limit_seconds": 100.0,

@@ -698,13 +698,13 @@ textarea {
   gap: 0.55rem;
   min-width: 0;
   max-width: 100%;
-  width: min(760px, calc(100vw - 2rem));
+  width: min(1080px, calc(100vw - 2rem));
 }
 
 .run-top {
   display: grid;
   gap: 0.42rem;
-  grid-template-columns: minmax(0, 1fr) minmax(86px, 0.72fr) minmax(90px, 0.78fr) 1.85rem;
+  grid-template-columns: minmax(140px, 1fr) minmax(110px, 0.8fr) minmax(110px, 0.8fr) minmax(80px, 0.55fr) minmax(90px, 0.65fr) minmax(130px, 0.85fr) 1.85rem;
   align-items: end;
   min-width: 0;
 }

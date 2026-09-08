@@ -76,6 +76,7 @@ function buildOptions() {
     max_ram_gb: $("max-ram").value.trim() ? Number($("max-ram").value) : null,
     planner: $("planner").value,
     planner_time_limit_seconds: Number($("planner-time").value),
+    output_profile: $("output-profile").value,
     progress_poll_seconds: Number($("progress-poll").value),
   };
 }

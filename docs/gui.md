@@ -121,7 +121,10 @@ orchestrates the run:
   into group-level rows.
 
 Planning freezes inputs, resolves parameters, records fingerprints, estimates
-costs and splits work into waves. If CP-SAT planning is enabled, the time limit
+costs and splits work into waves. Each selected run can optionally fix its
+thread count, RAM limit and logical CPU affinity without adding those
+operational choices to its scientific parameters. The output profile selects canonical CSV/report
+artifacts or the full derivative graph set. If CP-SAT planning is enabled, the time limit
 controls how long ANDREA spends searching for a better schedule before using a
 heuristic fallback.
 
@@ -134,7 +137,8 @@ without adding it to the official catalog.
 ![infer-network external Docker tool](assets/gui_infer_network_external_tool.png)
 
 The form asks for the minimum execution contract: display name, run ID, image
-name and tag, execution mode, direction/sign output semantics, required Step 1
+name and tag, execution mode, direction/sign output semantics, threading
+capability, required Step 1
 extras and flat key-value image parameters. The image must follow ANDREA's `/io` contract, documented in
 [External Docker tools](external-docker-tools.md). The run is added to the same
 selected-run list as catalog tools and is written through `custom_tools.json`

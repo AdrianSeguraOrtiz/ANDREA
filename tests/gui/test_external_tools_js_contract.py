@@ -93,6 +93,14 @@ function assertThrows(callback, expected) {
     execution_mode: "global",
     extra_inputs: [],
     outputs: { directed: true, sign: "none" },
+    runtime_resources: {
+      threading: {
+        supported: true,
+        default_threads: 2,
+        max_threads: 8,
+        upstream_mapping: "cli:--threads",
+      },
+    },
   };
   const paramsSchema = {
     alpha: {
@@ -234,6 +242,10 @@ function assertThrows(callback, expected) {
     "custom-tool-image-tag": ":1.0",
     "custom-tool-output-directed": "false",
     "custom-tool-output-sign": "mixed",
+    "custom-tool-threading-supported": "true",
+    "custom-tool-default-threads": "2",
+    "custom-tool-max-threads": "",
+    "custom-tool-thread-mapping": "cli:--threads",
   };
   global.document = {
     getElementById: (id) => ({ value: formValues[id] }),
@@ -260,6 +272,10 @@ function assertThrows(callback, expected) {
   assert(
     JSON.stringify(built.tool.outputs) === JSON.stringify({ directed: false, sign: "mixed" }),
     "form output capabilities"
+  );
+  assert(
+    built.tool.runtime_resources.threading.max_threads === null,
+    "an empty maximum declares no intrinsic tool limit"
   );
 
   process.stdout.write("ok\n");
@@ -292,6 +308,13 @@ class ExternalToolsJavaScriptContractTests(unittest.TestCase):
             source,
         )
         self.assertIn("? [fixedExecutionMode]", source)
+
+    def test_run_resources_include_exact_ram_outside_scientific_params(self) -> None:
+        source = RUN_CARDS_PATH.read_text(encoding="utf-8")
+
+        self.assertIn('card.querySelector(".runtime-ram-gb")', source)
+        self.assertIn("resources.ram_gb = ramGb;", source)
+        self.assertIn("Number.isFinite(ramGb)", source)
 
     def test_orchestration_only_groups_are_disabled_in_the_form(self) -> None:
         source = MAIN_PATH.read_text(encoding="utf-8")

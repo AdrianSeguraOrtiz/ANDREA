@@ -325,6 +325,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             def fake_plan(**kwargs):  # noqa: ANN003
                 plan_payload = {
                     "run_id": "gui_run_001",
+                    "output_profile": "full",
                     "waves": [
                         {
                             "index": 1,
@@ -358,13 +359,14 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                         {
                             "run_id": "gui_run_001",
                             "status": "planned",
+                            "output_profile": "full",
                             "execution": {
                                 "planner_used": "heuristic",
                                 "waves_total": 1,
                                 "tools_selected": 1,
                                 "tools_completed": 0,
                                 "tools_failed": 0,
-                                "elapsed_seconds": 0.0,
+                                "measurement": None,
                             },
                             "issues": [],
                             "outputs": {
@@ -386,7 +388,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                 payload = json.loads(report_path.read_text(encoding="utf-8"))
                 payload["status"] = "executed"
                 payload["execution"]["tools_completed"] = 1
-                payload["execution"]["elapsed_seconds"] = 0.7
+                payload["execution"]["measurement"] = {
+                    "wall_time_seconds": 0.7
+                }
                 report_path.write_text(
                     json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
                     encoding="utf-8",
@@ -640,6 +644,14 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                                             "directed": True,
                                             "sign": "none",
                                         },
+                                        "runtime_resources": {
+                                            "threading": {
+                                                "supported": False,
+                                                "default_threads": 1,
+                                                "max_threads": 1,
+                                                "upstream_mapping": "cli:--threads",
+                                            }
+                                        },
                                     }
                                 ]
                             }
@@ -676,6 +688,14 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                     "execution_mode": "global",
                     "extra_inputs": ["tf_list"],
                     "outputs": {"directed": True, "sign": "none"},
+                    "runtime_resources": {
+                        "threading": {
+                            "supported": False,
+                            "default_threads": 1,
+                            "max_threads": 1,
+                            "upstream_mapping": "cli:--threads",
+                        }
+                    },
                 }
             ]
         }
@@ -684,6 +704,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             "tool_id": "custom_demo_tool_01",
             "params": {},
             "execution": {"mode": "global"},
+            "resources": {"threads": 1, "ram_gb": 8.0, "cpuset_cpus": [0]},
         }
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -720,6 +741,20 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                         runs_raw=[run],
                         custom_tools_path=custom_tools_path,
                     )
+
+    def test_gui_rejects_invalid_exact_run_ram(self) -> None:
+        for value in (True, 0, -1, "16"):
+            with self.subTest(value=value), self.assertRaisesRegex(
+                ValueError, "ram_gb"
+            ):
+                gui_server._normalize_runs(
+                    [
+                        {
+                            "tool_id": "genie3",
+                            "resources": {"ram_gb": value},
+                        }
+                    ]
+                )
 
     def test_job_payload_includes_running_execution_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -763,6 +798,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                     {
                         "run_id": "run",
                         "status": "planned",
+                        "output_profile": "full",
                         "tools": {
                             "catalog_tool_ids": {"run_01": "dummy"},
                         },
@@ -897,6 +933,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                     {
                         "run_id": "run",
                         "status": "executed",
+                        "output_profile": "full",
                         "execution": {"tools_completed": 1, "tools_failed": 0},
                     },
                     indent=2,
@@ -997,6 +1034,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                     {
                         "run_id": "run",
                         "status": "executed",
+                        "output_profile": "full",
                         "tools": {
                             "status_by_tool": {
                                 "run_01": "completed_with_warnings",
@@ -1084,6 +1122,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                     {
                         "run_id": "run",
                         "status": "planned",
+                        "output_profile": "full",
                         "execution": {"tools_completed": 1, "tools_failed": 0},
                     },
                     indent=2,
@@ -1133,6 +1172,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                     {
                         "run_id": "run",
                         "status": "executed",
+                        "output_profile": "full",
                         "execution": {"tools_completed": 1, "tools_failed": 1},
                         "tools": {"failed": {"run_02": "test failure"}},
                     },
@@ -1167,6 +1207,55 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         self.assertTrue(readiness["final_report_ready"])
         self.assertTrue(readiness["partial"])
         self.assertEqual(readiness["failed_runs"], 1)
+
+    def test_canonical_profile_full_bundle_does_not_wait_for_graphs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "run"
+            self._write_merged_csvs(run_dir)
+            report_path = run_dir / "run_report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "run_id": "run",
+                        "status": "executed",
+                        "output_profile": "canonical",
+                        "execution": {"tools_completed": 1, "tools_failed": 0},
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            self._register_job(
+                job_id="job_canonical_outputs",
+                run_dir=run_dir,
+                status="completed",
+                stage="executed",
+                run_report_path=str(report_path),
+            )
+
+            client = TestClient(gui_server.create_app())
+            payload = client.get(
+                "/api/infer-network/jobs/job_canonical_outputs/bundles"
+            ).json()
+
+        readiness = payload["output_readiness"]
+        full_bundle = next(item for item in payload["bundles"] if item["id"] == "full")
+        graphs_bundle = next(
+            item for item in payload["bundles"] if item["id"] == "graphs"
+        )
+        self.assertEqual(readiness["output_profile"], "canonical")
+        self.assertFalse(readiness["graph_exports_required"])
+        self.assertTrue(full_bundle["available"])
+        self.assertFalse(graphs_bundle["available"])
+        self.assertEqual(
+            full_bundle["readiness"],
+            [
+                {"label": "Merged CSVs", "status": "ready"},
+                {"label": "Run report", "status": "ready"},
+            ],
+        )
 
     def test_run_endpoint_requires_planned_job(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

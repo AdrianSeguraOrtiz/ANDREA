@@ -164,6 +164,13 @@
               Planner Time Limit (s)
               <input id="planner-time" type="number" min="0.1" step="0.1" value="100" />
             </label>
+            <label>
+              Output Profile
+              <select id="output-profile">
+                <option value="full" selected>full</option>
+                <option value="canonical">canonical</option>
+              </select>
+            </label>
           </div>
           <div class="planner-help">
             <strong>Planner time limit</strong>
@@ -496,6 +503,35 @@
             </section>
             <section class="external-tool-form-section">
               <div class="external-tool-section-head">
+                <strong>Runtime threading contract</strong>
+                <span>Declare how the image handles ANDREA's <code>--threads</code> value.</span>
+              </div>
+              <div class="external-tool-identity-grid">
+                <label>
+                  Multithreading support
+                  <select id="custom-tool-threading-supported" required>
+                    <option value="" selected>Select…</option>
+                    <option value="true">supported</option>
+                    <option value="false">single-threaded</option>
+                  </select>
+                </label>
+                <label>
+                  Default threads
+                  <input id="custom-tool-default-threads" type="number" min="1" step="1" />
+                </label>
+                <label>
+                  Maximum threads
+                  <input id="custom-tool-max-threads" type="number" min="1" step="1" placeholder="No intrinsic maximum" />
+                </label>
+                <label>
+                  Upstream mapping
+                  <input id="custom-tool-thread-mapping" type="text" placeholder="cli:--threads" />
+                </label>
+              </div>
+              <span class="field-hint">Leave maximum threads empty only when a multithreaded image has no intrinsic limit. For a single-threaded image, both counts must be 1. This is operational metadata, not a scientific parameter.</span>
+            </section>
+            <section class="external-tool-form-section">
+              <div class="external-tool-section-head">
                 <strong>Network output semantics</strong>
                 <span>Declare what the image can infer so later evaluation selects valid metric levels.</span>
               </div>
@@ -602,6 +638,18 @@
           <label>
             Run ID
             <input class="run-id" type="text" />
+          </label>
+          <label>
+            Threads
+            <input class="runtime-threads" type="number" min="1" step="1" placeholder="Tool default" />
+          </label>
+          <label>
+            RAM (GiB)
+            <input class="runtime-ram-gb" type="number" min="0.001" step="any" placeholder="Planner selected" />
+          </label>
+          <label>
+            CPU Affinity
+            <input class="runtime-cpuset" type="text" placeholder="e.g. 0,1,2,3" />
           </label>
           <button class="remove-run icon-btn" type="button" aria-label="Remove run">×</button>
         </div>

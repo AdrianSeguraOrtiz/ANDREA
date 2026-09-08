@@ -45,6 +45,92 @@ function toolExecutionCapabilities(tool) {
     : [];
 }
 
+function toolThreading(tool) {
+  const threading = tool?.spec?.runtime_resources?.threading;
+  if (
+    !threading ||
+    typeof threading.supported !== "boolean" ||
+    !Number.isInteger(threading.default_threads) ||
+    threading.default_threads < 1 ||
+    (
+      threading.max_threads !== null &&
+      (
+        !Number.isInteger(threading.max_threads) ||
+        threading.max_threads < threading.default_threads
+      )
+    ) ||
+    (!threading.supported && (threading.default_threads !== 1 || threading.max_threads !== 1)) ||
+    typeof threading.upstream_mapping !== "string" ||
+    !threading.upstream_mapping ||
+    threading.upstream_mapping !== threading.upstream_mapping.trim()
+  ) {
+    throw new Error("Tool runtime threading metadata is invalid.");
+  }
+  return threading;
+}
+
+function parseCpuAffinity(rawValue) {
+  const raw = String(rawValue || "");
+  if (!raw) {
+    return null;
+  }
+  const tokens = raw.split(",");
+  const cpus = tokens.map((token) => {
+    if (!/^\d+$/.test(token)) {
+      throw new Error("CPU affinity must use canonical comma-separated indices, e.g. 0,1,2,3.");
+    }
+    return Number(token);
+  });
+  if (cpus.some((cpu, index) => !Number.isSafeInteger(cpu) || cpu < 0 || (index > 0 && cpu <= cpus[index - 1]))) {
+    throw new Error("CPU affinity indices must be unique and strictly increasing.");
+  }
+  return cpus;
+}
+
+function readRuntimeResources(card, tool) {
+  const threading = toolThreading(tool);
+  const rawThreads = String(card.querySelector(".runtime-threads")?.value || "");
+  const rawRamGb = String(card.querySelector(".runtime-ram-gb")?.value || "");
+  const rawCpuset = String(card.querySelector(".runtime-cpuset")?.value || "");
+  const resources = {};
+  let threads = null;
+  if (rawThreads) {
+    threads = Number(rawThreads);
+    if (
+      !Number.isInteger(threads) ||
+      threads < 1 ||
+      (threading.max_threads !== null && threads > threading.max_threads)
+    ) {
+      const upperBound = threading.max_threads === null
+        ? "the run resource budget"
+        : String(threading.max_threads);
+      throw new Error(`Threads must be an integer from 1 to ${upperBound}.`);
+    }
+    if (!threading.supported && threads !== 1) {
+      throw new Error("This tool is single-threaded and only accepts threads=1.");
+    }
+    resources.threads = threads;
+  }
+  if (rawRamGb) {
+    const ramGb = Number(rawRamGb);
+    if (!Number.isFinite(ramGb) || ramGb <= 0) {
+      throw new Error("RAM must be a finite number greater than zero GiB.");
+    }
+    resources.ram_gb = ramGb;
+  }
+  const cpuset = parseCpuAffinity(rawCpuset);
+  if (cpuset !== null) {
+    if (threads === null) {
+      throw new Error("Threads must be set explicitly when CPU affinity is provided.");
+    }
+    if (cpuset.length < threads) {
+      throw new Error("CPU affinity must contain at least as many CPUs as threads.");
+    }
+    resources.cpuset_cpus = cpuset;
+  }
+  return resources;
+}
+
 function fixedCustomExecutionMode(tool) {
   if (tool?.tool_origin !== "custom") {
     return null;
@@ -290,6 +376,11 @@ function validateRunCard(card) {
   }
 
   if (tool) {
+    try {
+      readRuntimeResources(card, tool);
+    } catch (err) {
+      messages.push(String(err?.message || "Invalid runtime resources."));
+    }
     const organism = currentDatasetOrganism();
     const dataset = currentDatasetExpression();
     const allowedGroups = Array.isArray(tool.taxonomic_scope?.allowed_groups)
@@ -410,6 +501,9 @@ export function addRunCard(initial = {}) {
   const openParamsBtn = node.querySelector(".open-params");
   const resetParamsBtn = node.querySelector(".reset-params");
   const removeBtn = node.querySelector(".remove-run");
+  const runtimeThreadsInput = node.querySelector(".runtime-threads");
+  const runtimeRamInput = node.querySelector(".runtime-ram-gb");
+  const runtimeCpusetInput = node.querySelector(".runtime-cpuset");
 
   const availableTools = listAvailableToolsFn ? listAvailableToolsFn() : [];
   if (!availableTools.length) {
@@ -493,6 +587,22 @@ export function addRunCard(initial = {}) {
     ? "External run IDs are fixed by their custom tool definition."
     : "Choose a unique logical run ID.";
   renderRunParamsForm(node, tool, initial.params || null);
+  const initialResources = initial.resources || {};
+  runtimeThreadsInput.value = initialResources.threads ?? "";
+  runtimeRamInput.value = initialResources.ram_gb ?? "";
+  runtimeCpusetInput.value = Array.isArray(initialResources.cpuset_cpus)
+    ? initialResources.cpuset_cpus.join(",")
+    : "";
+  const threading = toolThreading(tool);
+  if (threading.max_threads === null) {
+    runtimeThreadsInput.removeAttribute("max");
+  } else {
+    runtimeThreadsInput.max = String(threading.max_threads);
+  }
+  runtimeThreadsInput.placeholder = `default ${threading.default_threads}`;
+  runtimeThreadsInput.title = "Operational thread allocation; this does not change scientific parameters.";
+  runtimeRamInput.title = "Exact operational container RAM limit in GiB; this does not change scientific parameters.";
+  runtimeCpusetInput.title = "Optional exact logical CPU affinity for reproducible performance measurements.";
 
   runIdInput.addEventListener("input", () => {
     refreshRunCardsValidation();
@@ -502,6 +612,12 @@ export function addRunCard(initial = {}) {
     refreshRunCardsValidation();
     notifyRunsChanged();
   });
+  for (const resourceInput of [runtimeThreadsInput, runtimeRamInput, runtimeCpusetInput]) {
+    resourceInput.addEventListener("input", () => {
+      refreshRunCardsValidation();
+      notifyRunsChanged();
+    });
+  }
   openParamsBtn.addEventListener("click", () => {
     if (typeof openParamsModalFn === "function") {
       openParamsModalFn(node);
@@ -583,6 +699,7 @@ export function collectRuns() {
       );
     }
 
+    const resources = readRuntimeResources(card, tool);
     runs.push({
       run_id: runId,
       tool_id: toolId,
@@ -590,6 +707,7 @@ export function collectRuns() {
       execution: {
         mode: executionMode,
       },
+      resources,
     });
   });
   return runs;
