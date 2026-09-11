@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 from andrea.core.commands.evaluate_inference import evaluate_inference
@@ -13,6 +15,7 @@ from andrea.core.commands.evaluate_inference.evaluation import (
     _auroc,
     _average_precision,
     _context_counts_by_family,
+    _create_evaluation_dir,
     _load_inferred_rows,
     _sparse_auroc,
     _sparse_average_precision,
@@ -22,6 +25,39 @@ from andrea.core.commands.evaluate_inference.evaluation import (
 
 class EvaluateInferenceCoreTests(unittest.TestCase):
     DATASET_FINGERPRINT = {"algorithm": "sha256", "value": "a" * 64}
+
+    def test_evaluation_directory_bounds_long_ids_without_losing_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp) / "evaluations"
+            inference_parent = Path(tmp) / ("inference_" + "a" * 180)
+            inference_parent.mkdir()
+            run_report_path = inference_parent / "run_report.json"
+            created_at = datetime(2026, 9, 11, 23, 40, 5, tzinfo=timezone.utc)
+            truth_id = "truth_" + "b" * 180
+
+            first = _create_evaluation_dir(
+                output_root=output_root,
+                run_report_path=run_report_path,
+                run_report={"run_id": "fallback"},
+                truth_manifest={"dataset_id": truth_id},
+                created_at=created_at,
+            )
+            second = _create_evaluation_dir(
+                output_root=output_root,
+                run_report_path=run_report_path,
+                run_report={"run_id": "fallback"},
+                truth_manifest={"dataset_id": truth_id},
+                created_at=created_at,
+            )
+
+            name_limit = os.pathconf(output_root, "PC_NAME_MAX")
+            self.assertLessEqual(len(first.name), name_limit)
+            self.assertLessEqual(len(second.name), name_limit)
+            self.assertRegex(
+                first.name,
+                r"^evaluation_inference_a+__truth_b+_20260911T234005Z_[0-9a-f]{16}$",
+            )
+            self.assertEqual(second.name, first.name + "_02")
 
     @staticmethod
     def _manifest(

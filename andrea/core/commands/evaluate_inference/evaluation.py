@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import html
 import json
 import math
+import os
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -61,6 +63,8 @@ VALID_SIGNS = {"+", "-"}
 VIEW_ASSETS_PACKAGE = "andrea.core.commands.evaluate_inference.view_assets"
 GROUND_TRUTH_SCHEMA_PACKAGE = "andrea.catalog_simulation_data_tools"
 GROUND_TRUTH_SCHEMA_RESOURCE = "schemas/ground-truth-manifest.schema.json"
+_EVALUATION_NAME_FALLBACK_LIMIT = 255
+_EVALUATION_COLLISION_SUFFIX_RESERVE = 16
 
 
 @dataclass(frozen=True)
@@ -599,7 +603,21 @@ def _create_evaluation_dir(
     inference_id = _slugify(run_report_path.parent.name or run_report["run_id"])
     truth_id = _slugify(str(truth_manifest.get("dataset_id") or "truth"))
     timestamp = created_at.strftime("%Y%m%dT%H%M%SZ")
-    dirname = f"evaluation_{inference_id}__{truth_id}_{timestamp}"
+    try:
+        name_limit = int(os.pathconf(output_root, "PC_NAME_MAX"))
+    except (OSError, ValueError):
+        name_limit = _EVALUATION_NAME_FALLBACK_LIMIT
+    if name_limit <= 0:
+        name_limit = _EVALUATION_NAME_FALLBACK_LIMIT
+    base_limit = name_limit - _EVALUATION_COLLISION_SUFFIX_RESERVE
+    if base_limit < 32:
+        raise OSError(f"Evaluation output filesystem has an unsupported name limit: {name_limit}")
+    dirname = _bounded_evaluation_dirname(
+        inference_id=inference_id,
+        truth_id=truth_id,
+        timestamp=timestamp,
+        maximum_length=base_limit,
+    )
     candidate = output_root / dirname
     suffix = 2
     while candidate.exists():
@@ -607,6 +625,34 @@ def _create_evaluation_dir(
         suffix += 1
     candidate.mkdir(parents=False, exist_ok=False)
     return candidate
+
+
+def _bounded_evaluation_dirname(
+    *,
+    inference_id: str,
+    truth_id: str,
+    timestamp: str,
+    maximum_length: int,
+) -> str:
+    """Preserve readable IDs unless their complete component exceeds NAME_MAX."""
+
+    dirname = f"evaluation_{inference_id}__{truth_id}_{timestamp}"
+    if len(dirname) <= maximum_length:
+        return dirname
+    digest = hashlib.sha256(dirname.encode("ascii")).hexdigest()[:16]
+    fixed_length = len(f"evaluation____{timestamp}_{digest}")
+    identifier_budget = maximum_length - fixed_length
+    if identifier_budget < 2:
+        raise ValueError("Evaluation directory name limit cannot preserve bounded identity")
+    inference_budget = (identifier_budget + 1) // 2
+    truth_budget = identifier_budget - inference_budget
+    bounded = (
+        f"evaluation_{inference_id[:inference_budget]}__{truth_id[:truth_budget]}_"
+        f"{timestamp}_{digest}"
+    )
+    if len(bounded) > maximum_length:
+        raise AssertionError("Bounded evaluation directory name exceeds its declared limit")
+    return bounded
 
 
 def _slugify(value: str) -> str:
