@@ -187,7 +187,34 @@ def _resolve_simulator_params(
         raise ValueError(
             f"[{simulator_id}] invalid simulator_params: {'; '.join(errors)}"
         )
+    if simulator_id == "boolode":
+        _validate_boolode_time_grid(resolved)
     return resolved
+
+
+def _validate_boolode_time_grid(params: dict[str, Any]) -> None:
+    """Reject incompatible sampling branches in the pinned upstream BoolODE."""
+    time = float(params["simulation_time"])
+    points = int(time / float(params["integration_step_size"]))
+    if points < 3:
+        raise ValueError(
+            "[boolode] simulation_time / integration_step_size must produce at least three time points."
+        )
+    columns = int(params["num_cells"]) * (1 if params["sample_cells"] else points - 1)
+    if columns < 1000:
+        return
+    if params["sample_cells"]:
+        raise ValueError(
+            "[boolode] sample_cells=true requires num_cells < 1000; the pinned upstream resampling branch needs full trajectories."
+        )
+    if not time.is_integer():
+        raise ValueError(
+            "[boolode] simulation_time must be an integer when full trajectory output has at least 1000 columns."
+        )
+    if points < int(time) * 100:
+        raise ValueError(
+            "[boolode] integration_step_size must be <= 0.01 when full trajectory output has at least 1000 columns; upstream samples indices up to simulation_time * 100 - 1. Use the default integration_step_size=0.01."
+        )
 
 
 def _split_param_path(path: Any) -> list[str]:

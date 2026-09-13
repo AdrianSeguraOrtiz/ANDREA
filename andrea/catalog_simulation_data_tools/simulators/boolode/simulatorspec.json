@@ -124,7 +124,7 @@
       "default": 8.0,
       "min": 0.0,
       "exclusive_min": true,
-      "description": "Maps to jobs[].simulation_time, the maximum simulated trajectory time. Integral values are serialized as YAML integers because the pinned BoolODE implementation uses range(1, tmax*100) in its large-output sampling branch; the wrapper rejects non-integral values when that branch would be reached."
+      "description": "Maps to jobs[].simulation_time, the maximum simulated trajectory time. Integral values are serialized as YAML integers because the pinned BoolODE implementation uses range(1, tmax*100) when the full trajectory output has at least 1000 columns. ANDREA and the wrapper reject non-integral values in that branch."
     },
     "num_cells": {
       "type": "int",
@@ -145,7 +145,7 @@
       "type": "bool",
       "required": false,
       "default": false,
-      "description": "Maps to jobs[].sample_cells. When true, BoolODE samples one time point from each trajectory during simulation; this is incompatible with n_clusters > 1 in the pinned implementation."
+      "description": "Maps to jobs[].sample_cells. When true, BoolODE samples one time point from each trajectory during simulation; this requires n_clusters=1 and num_cells<1000 in the pinned implementation."
     },
     "sample_parameters": {
       "type": "bool",
@@ -172,7 +172,7 @@
       "default": 0.01,
       "min": 0.0,
       "exclusive_min": true,
-      "description": "Maps to jobs[].integration_step_size and controls the ODE simulation time grid."
+      "description": "Maps to jobs[].integration_step_size and controls the ODE simulation time grid. With sample_cells=false, the full output has num_cells * (int(simulation_time / integration_step_size) - 1) columns. At 1000 or more columns upstream resamples indices up to simulation_time*100-1, requiring integration_step_size<=0.01 and integral simulation_time. The default 0.01 is recommended; smaller steps retain upstream's fixed index-sampling range. At least three time points are required in all cases."
     },
     "dropout": {
       "type": "object",

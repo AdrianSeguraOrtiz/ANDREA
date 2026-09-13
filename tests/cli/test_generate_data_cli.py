@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -23,6 +24,73 @@ class GenerateDataCliTests(unittest.TestCase):
         self.assertIn("plan", result.output)
         self.assertIn("run", result.output)
         self.assertIn("execute", result.output)
+
+    def test_boolode_incompatible_grid_fails_during_planning(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            scenario = root / "scenario.json"
+            runs = root / "runs.json"
+            plan = root / "plan.json"
+            scenario.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "id": "boolode-grid-check",
+                        "data_axes": {
+                            "measurement": "rna_expression",
+                            "resolution": "single_cell",
+                            "column_kind": "cells",
+                            "experimental_design": "trajectory",
+                        },
+                        "truth_requirements": {"contexts": ["global", "group"]},
+                        "organism": {
+                            "taxonomic_group": "synthetic",
+                            "ncbi_taxon_id": None,
+                        },
+                        "requested_extras": ["groups", "tf_list"],
+                    }
+                )
+            )
+            runs.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "runs": [
+                            {
+                                "run_id": "boolode-grid-check",
+                                "simulator_id": "boolode",
+                                "replicates": 1,
+                                "base_seed": 1,
+                                "params": {
+                                    "simulation_time": 8,
+                                    "integration_step_size": 0.1,
+                                    "num_cells": 300,
+                                },
+                            }
+                        ],
+                    }
+                )
+            )
+            with patch(
+                "andrea.core.commands.generate_data.selection._evaluate_runtime_requirements",
+                return_value=[],
+            ):
+                result = self.runner.invoke(
+                    app,
+                    [
+                        "generate-data",
+                        "plan",
+                        "--scenario",
+                        str(scenario),
+                        "--simulator-runs",
+                        str(runs),
+                        "--out",
+                        str(plan),
+                    ],
+                )
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("integration_step_size must be <= 0.01", result.output)
+            self.assertFalse(plan.exists())
 
     def test_preflight_calls_core(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

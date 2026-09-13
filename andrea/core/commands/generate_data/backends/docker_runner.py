@@ -53,9 +53,34 @@ def _ensure_docker_image(*, simulator_id: str, image: str) -> str:
 
 def _read_progress(progress_path: Path) -> dict[str, object] | None:
     try:
-        return json.loads(progress_path.read_text(encoding="utf-8"))
+        payload = json.loads(progress_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _failure_details(stage_dir: Path) -> str:
+    """Keep error messages useful even when a wrapper redirects its streams."""
+    raw_dir = stage_dir / "provenance" / "raw"
+    for name in (
+        "wrapper_error.log",
+        "docker_wrapper.stderr.log",
+        "docker_wrapper.stdout.log",
+    ):
+        path = raw_dir / name
+        if not path.is_file():
+            continue
+        with path.open("rb") as handle:
+            handle.seek(max(0, path.stat().st_size - 8192))
+            details = handle.read().decode("utf-8", errors="replace").strip()
+        if details:
+            return details
+    progress = _read_progress(stage_dir / "progress.json")
+    if progress and progress.get("message"):
+        return str(progress["message"])
+    return (
+        "No diagnostic message was emitted; inspect the preserved simulator artifacts."
+    )
 
 
 def run_docker_simulator(
@@ -122,6 +147,13 @@ def run_docker_simulator(
         _write_json(request_path, request_payload)
 
         cmd = ["docker", "run", "--rm"]
+        runtime_environment = {}
+        if request.simulator_id == "boolode":
+            # Pinned BoolODE constructs model terms from Python sets. Fix their
+            # iteration order as well as the numerical random generator seed.
+            runtime_environment["PYTHONHASHSEED"] = str(seed)
+            cmd.extend(["-e", f"PYTHONHASHSEED={seed}"])
+        _write_json(raw_dir / "docker_wrapper.environment.json", runtime_environment)
         if hasattr(os, "getuid") and hasattr(os, "getgid"):
             cmd.extend(["--user", f"{os.getuid()}:{os.getgid()}"])
         cmd.extend(
@@ -185,11 +217,7 @@ def run_docker_simulator(
             image_origin + "\n", encoding="utf-8"
         )
         if returncode != 0:
-            details = (
-                stderr_path.read_text(encoding="utf-8")
-                or stdout_path.read_text(encoding="utf-8")
-                or ""
-            ).strip()
+            details = _failure_details(stage_dir)
             raise RuntimeError(
                 f"Docker simulator '{request.simulator_id}' failed with exit code "
                 f"{returncode}: {details}"

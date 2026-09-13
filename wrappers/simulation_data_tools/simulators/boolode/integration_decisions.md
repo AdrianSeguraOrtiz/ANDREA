@@ -91,6 +91,31 @@ Not claimed as extras:
 - Thread controls are not exposed as simulator parameters.
 - No function-valued callbacks are exposed by the reviewed public BoolODE API.
 
+### Pinned upstream sampling constraints
+
+The time grid has `int(simulation_time / integration_step_size)` points. Full
+trajectories omit the initial time point, so the actual output width is
+`num_cells * (time_points - 1)`, or `num_cells` with `sample_cells=true`.
+`BoolODE.utils.generateInputFiles` enters its resampling branch at 1000 columns.
+That branch draws indices from `range(1, simulation_time * 100)` independently
+of the chosen integration step; it requires integer `simulation_time`, full
+trajectories (`sample_cells=false`) and enough time points to cover that range.
+ANDREA checks these constraints during parameter resolution, before execution
+through core, CLI or GUI; the wrapper validates them again for direct requests.
+The default step `0.01` is recommended. Smaller steps remain supported but keep
+upstream's fixed index range, so they sample an earlier part of each trajectory.
+Coarser steps remain valid when the output stays below 1000 columns.
+
+ANDREA starts BoolODE containers with `PYTHONHASHSEED` equal to the run seed and
+records that environment in `provenance/raw/docker_wrapper.environment.json`.
+The pinned model generator builds terms from sets; fixing NumPy's seed alone
+does not fix term ordering between Python processes. This environment setting
+is specific to BoolODE and leaves the other simulator containers unchanged.
+
+Upstream stdout/stderr are streamed to `provenance/raw/upstream_*.log`, including
+failed executions. The wrapper emits the exception type and message on stderr,
+saves its traceback in `wrapper_error.log`, and marks `progress.json` as failed.
+
 ## Normalized Output Contract
 
 - `expression.tsv`: public gene IDs in rows and public expression-column IDs in columns, from BoolODE `ExpressionData.csv` after optional dropout.

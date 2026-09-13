@@ -7,12 +7,12 @@ import argparse
 import ast
 import contextlib
 import csv
-import io
 import json
 import math
 import os
 import platform
 import shutil
+import subprocess
 import sys
 import traceback
 from datetime import datetime, timezone
@@ -251,19 +251,28 @@ def normalize_params(raw_params: dict[str, Any]) -> dict[str, Any]:
         minimum=0.0,
         strict_min=True,
     )
-    if int(params["simulation_time"] / params["integration_step_size"]) < 3:
+    time_points = int(params["simulation_time"] / params["integration_step_size"])
+    if time_points < 3:
         raise ValueError("simulation_time / integration_step_size must produce at least three time points.")
-    estimated_full_columns = params["num_cells"] * int(params["simulation_time"] / params["integration_step_size"])
-    if (
-        not params["sample_cells"]
-        and estimated_full_columns >= 1000
-        and not float(params["simulation_time"]).is_integer()
-    ):
-        raise ValueError(
-            "The pinned BoolODE implementation requires simulation_time to be an integer "
-            "when full trajectory output has at least 1000 columns; use an integer "
-            "simulation_time or increase integration_step_size/reduce num_cells."
-        )
+    # Full trajectories omit t=0; pre-sampled trajectories contribute one column.
+    output_columns = params["num_cells"] * (1 if params["sample_cells"] else time_points - 1)
+    if output_columns >= 1000:
+        if params["sample_cells"]:
+            raise ValueError(
+                "sample_cells=true requires num_cells < 1000; the pinned upstream "
+                "resampling branch needs full trajectories."
+            )
+        if not params["simulation_time"].is_integer():
+            raise ValueError(
+                "simulation_time must be an integer when full trajectory output "
+                "has at least 1000 columns."
+            )
+        if time_points < int(params["simulation_time"]) * 100:
+            raise ValueError(
+                "integration_step_size must be <= 0.01 when full trajectory output "
+                "has at least 1000 columns; upstream samples indices up to "
+                "simulation_time * 100 - 1. Use the default integration_step_size=0.01."
+            )
     dropout = params["dropout"]
     if not isinstance(dropout, dict):
         raise ValueError("dropout must be an object.")
@@ -729,8 +738,14 @@ def write_session_info(raw_dir: Path) -> None:
         scipy_version = "unknown"
         sklearn_version = "unknown"
     try:
-        commit = os.popen(f"git -C {BOOLODE_HOME} rev-parse HEAD").read().strip() or "unknown"
-    except Exception:  # noqa: BLE001
+        result = subprocess.run(
+            ["git", f"--git-dir={BOOLODE_HOME / '.git'}", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        commit = result.stdout.strip() or "unknown"
+    except (OSError, subprocess.CalledProcessError):
         commit = "unknown"
     lines = [
         f"python={platform.python_version()}",
@@ -860,12 +875,10 @@ def main(argv: list[str] | None = None) -> int:
         config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
 
         write_progress(output_dir, "running", "run_simulator", "Running BoolODE public Python API.", percent=45)
-        stdout = io.StringIO()
-        stderr = io.StringIO()
-        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            run_boolode(config_path)
-        (raw_dir / "upstream_stdout.log").write_text(stdout.getvalue(), encoding="utf-8")
-        (raw_dir / "upstream_stderr.log").write_text(stderr.getvalue(), encoding="utf-8")
+        with (raw_dir / "upstream_stdout.log").open("w", encoding="utf-8") as stdout:
+            with (raw_dir / "upstream_stderr.log").open("w", encoding="utf-8") as stderr:
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    run_boolode(config_path)
 
         upstream_dir = boolode_output_dir / JOB_NAME
         if not upstream_dir.exists():
@@ -957,6 +970,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except BaseException as exc:  # noqa: BLE001
         (raw_dir / "wrapper_error.log").write_text(traceback.format_exc(), encoding="utf-8")
+        print(f"BoolODE wrapper failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         try:
             write_progress(
                 output_dir,
