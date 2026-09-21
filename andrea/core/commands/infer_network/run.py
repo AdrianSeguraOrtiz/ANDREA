@@ -16,7 +16,6 @@ import shutil
 import tempfile
 import time
 from contextlib import ExitStack
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -59,6 +58,11 @@ from .commons.network_exports import (
     export_cytoscape_style_script,
     export_network_gexf,
     export_network_graphml,
+)
+from .commons.resource_decisions import (
+    PLANNING_DECISIONS,
+    execution_resource_outcome,
+    result_payload_with_resource_outcome,
 )
 from .commons.resources import (
     normalize_cpuset_cpus,
@@ -824,11 +828,12 @@ def _logical_measurement(
             ),
         )
 
-    statuses = [
-        telemetry.get("status")
+    child_telemetry = [
+        telemetry
         for measurement in measurements
         if isinstance((telemetry := measurement.get("telemetry")), dict)
     ]
+    statuses = [telemetry.get("status") for telemetry in child_telemetry]
     if statuses and all(status == "complete" for status in statuses):
         telemetry_status = "complete"
     elif any(status in {"complete", "partial"} for status in statuses):
@@ -889,6 +894,15 @@ def _logical_measurement(
         },
         "telemetry": {
             "status": telemetry_status,
+            "oom_killed": any(
+                bool(telemetry.get("oom_killed")) for telemetry in child_telemetry
+            ),
+            "oom_kill_events": sum(
+                int(value)
+                for telemetry in child_telemetry
+                if isinstance((value := telemetry.get("oom_kill_events")), int)
+                and not isinstance(value, bool)
+            ),
             "wall_source": "andrea_monotonic_clock",
             "wall_semantics": (
                 "logical_run_from_first_physical_task_start_through_logical_"
@@ -957,7 +971,7 @@ def _finalize_group_aggregated_logical_run(
             error="Internal column-native task result is missing.",
         )
     child_payload[child_task_id] = {
-        **asdict(child_result),
+        **result_payload_with_resource_outcome(child_result),
         "output_dir": str(physical_tasks[0].get("output_dir", "")),
     }
 
@@ -1070,7 +1084,7 @@ def _finalize_group_aggregated_logical_run(
         warnings=tuple(result_warnings),
     )
     logical_payload = {
-        **asdict(logical_result),
+        **result_payload_with_resource_outcome(logical_result),
         "execution": logical_spec["execution"],
         "physical_tasks_total": len(logical_spec["physical_tasks"]),
         "child_results": child_payload,
@@ -1130,7 +1144,7 @@ def _finalize_grouped_logical_run(
             )
         measured_children.append(result)
         child_payload[task_id] = {
-            **asdict(result),
+            **result_payload_with_resource_outcome(result),
             "group_label": group_label,
             "output_dir": str(physical.get("output_dir", "")),
         }
@@ -1289,7 +1303,7 @@ def _finalize_grouped_logical_run(
         warnings=tuple(result_warnings),
     )
     logical_payload = {
-        **asdict(logical_result),
+        **result_payload_with_resource_outcome(logical_result),
         "execution": logical_spec["execution"],
         "physical_tasks_total": len(logical_spec["physical_tasks"]),
         "child_results": child_payload,
@@ -1338,6 +1352,24 @@ def run_infer_network_plan(
     _selected_modes, waves, _total_eta = _load_plan_waves(plan_payload)
     _validate_wave_resource_schedule(plan_payload=plan_payload, waves=waves)
     logical_runs = _load_logical_runs_from_plan(plan_payload)
+    planned_resource_decisions = {
+        str(run.get("run_id", "")): run.get("resource_decision")
+        for run in plan_payload.get("runs", [])
+        if isinstance(run, dict)
+    }
+    if set(planned_resource_decisions) != set(logical_runs) or any(
+        not isinstance(decision, dict)
+        or decision.get("status") not in PLANNING_DECISIONS
+        for decision in planned_resource_decisions.values()
+    ):
+        raise ValueError("plan.json contains invalid run resource decisions")
+    reported_resource_decisions = run_report.get("tools", {}).get(
+        "resource_decisions"
+    )
+    if reported_resource_decisions != planned_resource_decisions:
+        raise ValueError(
+            "run_report resource decisions do not match the frozen plan"
+        )
     planned_tasks_by_id = _validate_physical_task_plan(
         logical_runs=logical_runs,
         waves=waves,
@@ -1922,7 +1954,7 @@ def run_infer_network_plan(
                 )
             logical_results[logical_run_id] = result
             logical_results_payload[logical_run_id] = {
-                **asdict(result),
+                **result_payload_with_resource_outcome(result),
                 "execution": logical_spec["execution"],
                 "physical_tasks_total": 1,
                 "child_results": {},
@@ -2094,7 +2126,9 @@ def run_infer_network_plan(
     for logical_run_id, result in execution_results.items():
         status_by_tool[logical_run_id] = result.status
         if logical_run_id in logical_results_payload:
-            logical_results_payload[logical_run_id].update(asdict(result))
+            logical_results_payload[logical_run_id].update(
+                result_payload_with_resource_outcome(result)
+            )
     logical_results_payload = _relativize_result_payload(
         logical_results_payload,
         base_dir=run_dir,
@@ -2151,9 +2185,18 @@ def run_infer_network_plan(
         "output_capabilities": output_capabilities_by_run,
         "skipped": skipped_tools,
         "status_by_tool": status_by_tool,
+        "resource_decisions": planned_resource_decisions,
         "completed": completed_tools,
         "completed_contexts": completed_contexts,
         "failed": failed_tools,
+        "resource_outcomes": {
+            tool_id: execution_resource_outcome(result)
+            for tool_id, result in sorted(execution_results.items())
+        },
+        "physical_resource_outcomes": {
+            task_id: execution_resource_outcome(result)
+            for task_id, result in sorted(physical_results.items())
+        },
         "results": logical_results_payload,
     }
     run_report["outputs"] = {

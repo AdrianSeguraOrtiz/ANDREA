@@ -671,6 +671,15 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
         self.assertEqual(first_task["timeout_seconds"], 120.0)
         self.assertEqual(logical_run["physical_tasks"][0]["ram_gb"], 2.345678901)
         self.assertEqual(logical_run["physical_tasks"][0]["timeout_seconds"], 120.0)
+        self.assertEqual(logical_run["resource_decision"]["status"], "eligible")
+        self.assertEqual(
+            logical_run["resource_decision"]["physical_tasks"][0]["status"],
+            "eligible",
+        )
+        self.assertEqual(
+            report_payload["tools"]["resource_decisions"]["demo_tool_01"],
+            logical_run["resource_decision"],
+        )
         self.assertTrue(first_task["network_disabled"])
         self.assertEqual(first_task["eta_source"], "fallback_no_cost")
         self.assertTrue(

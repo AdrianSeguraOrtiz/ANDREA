@@ -128,6 +128,9 @@ physical task in that logical run.
 `threads` is the CPU quota and may be smaller than the number of CPUs in the
 allowed affinity domain. The optional timeout is enforced inside ANDREA so
 detached containers are terminated and their logs and telemetry are retained.
+Planning emits a typed, advisory resource decision for every logical and
+physical task. Execution emits a typed resource outcome that separates
+completion, timeout, cgroup OOM and ordinary runtime failure.
 `custom_tools.json` is optional and is used for temporary external Docker
 images. Every external definition must explicitly declare an `outputs` object
 with exactly `directed` and `sign`; no defaults are inferred. These capabilities

@@ -44,6 +44,7 @@ from .commons.planner import (
     _optimize_mode_selection,
     _optimize_mode_selection_cp_sat,
 )
+from .commons.resource_decisions import planned_logical_resource_decision
 from .commons.resources import (
     normalize_cpuset_cpus,
     normalize_timeout_seconds,
@@ -800,6 +801,7 @@ def plan_infer_network(
     for run_id in selected_tools:
         logical_spec = logical_run_specs[run_id]
         physical_tasks_payload: list[dict[str, Any]] = []
+        selected_physical_tasks = []
         logical_starts: list[float] = []
         logical_ends: list[float] = []
         for raw_physical in logical_spec["physical_tasks"]:
@@ -810,6 +812,7 @@ def plan_infer_network(
                     f"Planner did not select a mode for physical task '{task_id}'"
                 )
             task = scheduled["task"]
+            selected_physical_tasks.append(task)
             task_start = float(scheduled["eta_start_seconds"])
             task_end = float(scheduled["eta_end_seconds"])
             logical_starts.append(task_start)
@@ -839,6 +842,15 @@ def plan_infer_network(
 
         logical_eta_start = round(min(logical_starts), 3) if logical_starts else 0.0
         logical_eta_end = round(max(logical_ends), 3) if logical_ends else 0.0
+        logical_resource_decision = planned_logical_resource_decision(
+            selected_physical_tasks
+        )
+        if logical_resource_decision["status"] == "estimated_infeasible_time":
+            warnings.append(
+                f"[{run_id}] ANDREA estimates that one or more physical tasks "
+                "will exceed their requested timeout; see plan.json "
+                "runs[].resource_decision."
+            )
         logical_runs_payload.append(
             {
                 "run_id": run_id,
@@ -850,6 +862,7 @@ def plan_infer_network(
                 "eta_start_seconds": logical_eta_start,
                 "eta_end_seconds": logical_eta_end,
                 "eta_seconds": round(logical_eta_end - logical_eta_start, 3),
+                "resource_decision": logical_resource_decision,
                 "physical_tasks": physical_tasks_payload,
             }
         )
@@ -877,6 +890,14 @@ def plan_infer_network(
             "threads_peak": int(max((w.threads_used for w in waves), default=0)),
             "ram_peak_gb": float(
                 max((w.ram_gb_used for w in waves), default=0.0)
+            ),
+            "estimated_infeasible_runs": int(
+                sum(
+                    1
+                    for run in logical_runs_payload
+                    if run["resource_decision"]["status"]
+                    == "estimated_infeasible_time"
+                )
             ),
         },
         "runs": logical_runs_payload,
@@ -931,6 +952,12 @@ def plan_infer_network(
             "output_capabilities": output_capabilities_by_run,
             "skipped": skipped_tools,
             "status_by_tool": {tool_id: "pending" for tool_id in selected_tools},
+            "resource_decisions": {
+                str(run["run_id"]): run["resource_decision"]
+                for run in logical_runs_payload
+            },
+            "resource_outcomes": {},
+            "physical_resource_outcomes": {},
             "completed": [],
             "failed": {},
             "results": {},
@@ -965,6 +992,14 @@ def plan_infer_network(
     print(f"  skipped tools: {len(skipped_tools)}")
     print(f"  waves: {len(waves)}")
     print(f"  estimated total time: {total_eta:.2f}s")
+    estimated_infeasible_runs = plan_payload["totals"][
+        "estimated_infeasible_runs"
+    ]
+    if estimated_infeasible_runs:
+        print(
+            "  estimated infeasible runs: "
+            f"{estimated_infeasible_runs} (see plan.json resource_decision)"
+        )
     if warnings:
         print(f"  warnings: {len(warnings)} (see run_report.json)")
 

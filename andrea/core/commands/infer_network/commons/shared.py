@@ -133,6 +133,11 @@ def _task_eta_note(eta_source: str) -> Optional[str]:
         return "No matching cost profile was found for this execution mode; ETA is a conservative fallback estimate."
     if eta_source == "fallback_invalid_cost":
         return "Cost profile was invalid or unusable; ETA is a conservative fallback estimate."
+    if eta_source == "fallback_requested_threads_without_cost_point":
+        return (
+            "No cost-profile point uses the requested thread count; "
+            "ETA is a conservative fallback estimate."
+        )
     if eta_source == "fallback_no_usable_runtime_point":
         return "A matching cost profile was found, but no usable benchmark runtime point fit the available resources; ETA is a conservative fallback estimate."
     return None

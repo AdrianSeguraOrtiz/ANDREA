@@ -1593,6 +1593,24 @@ class InferNetworkRunTests(InferNetworkCoreTestCase):
             self.assertEqual(report_payload["execution"]["tools_completed"], 1)
             self.assertEqual(report_payload["execution"]["tools_failed"], 0)
             self.assertEqual(
+                report_payload["tools"]["resource_outcomes"]["aracne__01"][
+                    "status"
+                ],
+                "completed",
+            )
+            self.assertEqual(
+                report_payload["tools"]["results"]["aracne__01"][
+                    "resource_outcome"
+                ]["status"],
+                "completed",
+            )
+            self.assertEqual(
+                report_payload["tools"]["physical_resource_outcomes"][
+                    "aracne__01"
+                ]["status"],
+                "completed",
+            )
+            self.assertEqual(
                 report_payload["tools"]["completed_contexts"],
                 {"aracne__01": ["global"]},
             )

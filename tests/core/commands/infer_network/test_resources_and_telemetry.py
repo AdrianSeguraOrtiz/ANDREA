@@ -430,3 +430,29 @@ def test_logical_peak_is_unavailable_when_any_child_peak_is_unknown(
         measurement["telemetry"]["memory_semantics"]
         == "unavailable_when_any_child_peak_or_interval_is_unavailable"
     )
+
+
+def test_logical_measurement_preserves_child_oom_evidence(tmp_path: Path) -> None:
+    child = _result(
+        "oom",
+        started=1_000_000_000,
+        finished=2_000_000_000,
+        wall=1.0,
+        cpu=0.5,
+        memory=100,
+        cpuset=[0],
+    )
+    child.measurement["telemetry"].update(
+        {"oom_killed": True, "oom_kill_events": 1}
+    )
+
+    measurement = _logical_measurement(
+        child_results=[child],
+        postprocess_started_monotonic_ns=2_000_000_000,
+        finished_monotonic_ns=2_000_000_000,
+        finished_at_utc="2026-01-01T00:00:02Z",
+        output_dir=tmp_path,
+    )
+
+    assert measurement["telemetry"]["oom_killed"] is True
+    assert measurement["telemetry"]["oom_kill_events"] == 1

@@ -142,6 +142,17 @@ preparation. Use `execution.measurement.wall_time_seconds` in the final run
 report for end-to-end performance: it covers verification, preparation,
 scheduling, merging, and requested output generation.
 
+`plan.json` records a canonical `resource_decision` for every physical and
+logical run. Its status is `eligible` unless an empirical cost-profile ETA
+exceeds that task's requested `timeout_seconds`, in which case it is
+`estimated_infeasible_time`. A fallback ETA is recorded but cannot exclude a
+tool without empirical evidence. The decision is advisory: an automated
+orchestrator can decline to start it, while an interactive user can still
+execute the frozen plan. Final `run_report.json` entries expose typed
+`resource_outcome` values
+(`completed`, `completed_with_warnings`, `timeout`, `memory_limit` or
+`runtime_failure`), so consumers do not need to classify failures from logs.
+
 ## `evaluate-inference`
 
 `evaluate-inference` compares inferred networks against a ground-truth manifest.
