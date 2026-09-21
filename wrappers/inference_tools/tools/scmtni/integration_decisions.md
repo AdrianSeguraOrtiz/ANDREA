@@ -34,8 +34,30 @@ Status: threading-contract migration updated to use upstream target-gene shardin
 - Cost behavior:
   - `cost.json` was regenerated after this change for `threads=1,2,4,8`,
     `ram_gb=8,16,32`, sizes `50x20`, `100x40` and `200x80`.
-  - Both benchmark profiles passed: the lineage-aware prior profile with two
-    groups and the INDEP profile corrected to one group.
+  - The catalog retains only the valid lineage-aware native-group measurements.
+    The previous INDEP measurements were produced through the now-invalid
+    `group_native + indep=true` contract and were removed rather than relabelled.
+    `cost_profiles/scmtni.json` defines the correct physical `global` INDEP
+    profile for the next explicit cost regeneration; planning uses the normal
+    fallback estimate until those measurements exist.
+
+## Group execution contract
+
+- `indep=false` is the native multi-task method: ANDREA delivers `groups.tsv`
+  and `lineage_tree.tsv` once, and the wrapper emits one `group:<id>` network
+  for every native scMTNI cluster.
+- `indep=true` is the independent method. A logical `group_emulated` request is
+  partitioned by ANDREA into one physical `global` invocation per group. The
+  child sees only its expression slice, does not receive `groups.tsv`, creates
+  a single internal cluster, and emits only `context=global`; ANDREA restores
+  the corresponding public `group:<id>` context during the merge.
+- Direct `global` execution is the same physical INDEP route over the complete
+  expression matrix. The wrapper rejects inconsistent physical combinations,
+  while ToolSpec compatibility rules reject inconsistent logical combinations
+  before planning.
+- `q>0` is blocked for `group_emulated`: the standardized prior is keyed by
+  public group, while an isolated physical child intentionally does not receive
+  that orchestration identity. Independent no-prior runs therefore use `q=0`.
 
 ## Parameter Boundary
 

@@ -67,7 +67,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             [profile.profile_id for profile in profiles],
             [
                 "group_native_groups_2_q2_with_prior",
-                "group_native_groups_1_q0_independent",
+                "global_q0_independent",
             ],
         )
         q2_profile = profiles[0]
@@ -75,23 +75,25 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         self.assertEqual(q2_profile.execution_profile["group_count"], 2)
         self.assertEqual(
             set(q2_profile.input_profile["required_inputs_satisfied"]),
-            {"groups", "tf_list"},
+            {"tf_list"},
         )
         self.assertEqual(
             set(q2_profile.input_profile["conditional_inputs_satisfied"]),
-            {"lineage_tree", "prior_grn_by_group"},
+            {"groups", "lineage_tree", "prior_grn_by_group"},
         )
         self.assertEqual(
             set(q2_profile.input_profile["extras_provided"]),
             {"groups", "lineage_tree", "prior_grn_by_group", "tf_list"},
         )
         q0_profile = profiles[1]
+        self.assertEqual(q0_profile.execution_profile["mode"], "global")
+        self.assertEqual(q0_profile.execution_profile["group_count"], 0)
         self.assertEqual(q0_profile.params["q"], 0)
         self.assertIs(q0_profile.params["indep"], True)
         self.assertEqual(q0_profile.input_profile["conditional_inputs_satisfied"], [])
         self.assertEqual(
             set(q0_profile.input_profile["extras_provided"]),
-            {"groups", "tf_list"},
+            {"tf_list"},
         )
     def test_repository_profiles_capture_tool_specific_input_contracts(self) -> None:
         expected = {
@@ -115,9 +117,9 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             },
             ("scmtni", "group_native_groups_2_q2_with_prior"): {
                 "mode": "group_native",
-                "required": {"groups", "tf_list"},
+                "required": {"tf_list"},
                 "optional": set(),
-                "conditional": {"lineage_tree", "prior_grn_by_group"},
+                "conditional": {"groups", "lineage_tree", "prior_grn_by_group"},
             },
             ("simic", "group_native_phenotypes_2_default"): {
                 "mode": "group_native",

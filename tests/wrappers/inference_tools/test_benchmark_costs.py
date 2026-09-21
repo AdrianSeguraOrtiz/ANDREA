@@ -355,7 +355,7 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             default_optional_inputs=None,
             profile_filters=[
                 "genie3:global_tf_list",
-                "group_native_groups_1_q0_independent",
+                "global_q0_independent",
             ],
         )
 
@@ -366,7 +366,7 @@ class BenchmarkCostsContractTest(unittest.TestCase):
         )
         self.assertEqual(
             [profile.profile_id for profile in targets[1].profiles],
-            ["group_native_groups_1_q0_independent"],
+            ["global_q0_independent"],
         )
 
     def test_profile_filter_rejects_unknown_ids(self) -> None:

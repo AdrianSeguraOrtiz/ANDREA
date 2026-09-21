@@ -513,6 +513,12 @@ def _parse_execution_capabilities(
         tool_id=tool_id,
         capabilities=capabilities,
     )
+    default_mode = toolspec.get("default_execution_mode")
+    if default_mode is not None and default_mode not in capabilities:
+        raise ValueError(
+            f"[{tool_id}] toolspec.default_execution_mode must be one of "
+            f"execution_capabilities: {capabilities}"
+        )
     if "group_native" in capabilities:
         extra_inputs = toolspec.get("extra_inputs")
         required = (
@@ -551,7 +557,12 @@ def _parse_execution_capabilities(
     return capabilities
 
 
-def _default_execution_mode(capabilities: list[str]) -> str:
+def _default_execution_mode(
+    capabilities: list[str], *, toolspec: dict[str, Any]
+) -> str:
+    configured = toolspec.get("default_execution_mode")
+    if isinstance(configured, str) and configured in capabilities:
+        return configured
     for mode in EXECUTION_CAPABILITY_ORDER:
         if mode in capabilities:
             return mode
@@ -580,7 +591,7 @@ def _resolve_run_execution(
     if mode_raw is not None:
         if not isinstance(mode_raw, str):
             errors.append("execution.mode must be string when provided")
-            mode = _default_execution_mode(capabilities)
+            mode = _default_execution_mode(capabilities, toolspec=toolspec)
         else:
             mode = mode_raw.strip()
             if mode not in EXECUTION_CAPABILITIES:
@@ -589,7 +600,7 @@ def _resolve_run_execution(
                     f"{_execution_capability_choices()}"
                 )
     else:
-        mode = _default_execution_mode(capabilities)
+        mode = _default_execution_mode(capabilities, toolspec=toolspec)
 
     if mode and mode not in capabilities:
         errors.append(

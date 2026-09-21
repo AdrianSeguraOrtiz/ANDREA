@@ -43,6 +43,11 @@ the `column_native` contract and ANDREA derives the logical group networks from
 its `column:<id>` rows. Contexts outside the planned set mark the run as failed
 during merge.
 
+Catalog ToolSpecs may declare `default_execution_mode` when their scientific
+parameter defaults require a specific logical route. The value must be one of
+the declared `execution_capabilities`; an explicit run request still takes
+precedence.
+
 ## GUI Form
 
 The `infer-network` GUI includes `Add External Docker Tool`. The form asks for
@@ -147,6 +152,16 @@ applied to Docker without repair or clamping. Optional `timeout_seconds` is a
 positive wall-clock deadline for every physical child. When it expires, ANDREA
 terminates and removes the detached container after collecting its logs and
 telemetry, and records exit code `124`.
+
+Planning compares the conservative physical-container ETA with this timeout and
+stores an advisory `resource_decision` in `plan.json`. Final results expose a
+typed `resource_outcome`, distinguishing wall-clock timeout, cgroup OOM kill and
+ordinary runtime failure. External orchestrators should consume these fields
+instead of matching human-readable errors.
+
+An external tool without an empirical `cost.json` remains `eligible` even when
+its fallback ETA exceeds the timeout; the fallback is retained as uncertainty
+evidence but is not a scientifically adequate reason to exclude the method.
 
 `outputs` is required and must contain exactly `directed` and `sign`.
 `directed` is a boolean; `sign` accepts `none`, `signed` or `mixed`. There are

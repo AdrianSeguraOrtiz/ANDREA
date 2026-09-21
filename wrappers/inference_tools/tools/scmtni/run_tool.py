@@ -35,7 +35,7 @@ SCMTNI_BIN = Path("/app/bin/scMTNI")
 def _load_execution(params_path: Path) -> str:
     return _load_execution_mode(
         params_path,
-        supported_modes={"group_native"},
+        supported_modes={"global", "group_native"},
     )
 
 
@@ -920,7 +920,11 @@ def _merge_shard_outputs(
 
 
 def _collect_network_rows(
-    *, raw_output_root: Path, clusters: Sequence[str], max_regulators: int
+    *,
+    raw_output_root: Path,
+    clusters: Sequence[str],
+    max_regulators: int,
+    execution_mode: str,
 ) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
 
@@ -964,7 +968,11 @@ def _collect_network_rows(
                         "score": abs(coeff),
                         "sign": "?",
                         "evidence": "association",
-                        "context": f"group:{cluster}",
+                        "context": (
+                            "global"
+                            if execution_mode == "global"
+                            else f"group:{cluster}"
+                        ),
                     }
                 )
 
@@ -1007,11 +1015,23 @@ def main() -> None:
     )
 
     try:
-        _load_execution(args.params)
+        execution_mode = _load_execution(args.params)
         raw_params = _load_params(args.params)
         params = _resolve_params(raw_params)
 
-        groups_path = _require_extra_file(args.extra, "groups.tsv", "groups")
+        if execution_mode == "global" and not params["indep"]:
+            raise ValueError("execution.mode=global requires indep=true.")
+        if execution_mode == "group_native" and params["indep"]:
+            raise ValueError(
+                "execution.mode=group_native requires indep=false; "
+                "use group_emulated for independent per-group inference."
+            )
+
+        groups_path = (
+            _require_extra_file(args.extra, "groups.tsv", "groups")
+            if execution_mode == "group_native"
+            else None
+        )
         tf_path = _require_extra_file(args.extra, "tf_list.txt", "tf_list")
         lineage_tree_path = _optional_extra_file(args.extra, "lineage_tree.tsv")
         prior_path = _optional_extra_file(args.extra, "prior_grn_by_group.tsv")
@@ -1025,13 +1045,11 @@ def main() -> None:
         )
 
         genes, sample_ids, values_by_gene = _read_expression_tsv(args.input)
-        cluster_order, cluster_to_indices = _load_groups(groups_path, sample_ids)
-
-        if params["indep"] and len(cluster_order) != 1:
-            raise ValueError(
-                "indep=true expects exactly one cluster in groups. "
-                f"Found {len(cluster_order)} clusters: {cluster_order}"
-            )
+        if groups_path is None:
+            cluster_order = ["global"]
+            cluster_to_indices = {"global": list(range(len(sample_ids)))}
+        else:
+            cluster_order, cluster_to_indices = _load_groups(groups_path, sample_ids)
 
         lineage_edges: Optional[List[Tuple[str, str, float, float]]] = None
         if not params["indep"]:
@@ -1146,6 +1164,7 @@ def main() -> None:
             raw_output_root=collection_raw_output_root,
             clusters=cluster_order,
             max_regulators=params["x"],
+            execution_mode=execution_mode,
         )
         _write_network_csv(args.output_dir / "network.csv", rows)
 

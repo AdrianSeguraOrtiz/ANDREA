@@ -273,6 +273,14 @@ def semantic_errors_for_toolspec(*, tool_id: str, instance: Any) -> list[str]:
     execution_modes = {
         x for x in execution_capabilities if isinstance(x, str) and x.strip()
     }
+    default_execution_mode = instance.get("default_execution_mode")
+    if (
+        default_execution_mode is not None
+        and default_execution_mode not in execution_modes
+    ):
+        errors.append(
+            "default_execution_mode must be one of execution_capabilities."
+        )
     taxonomic_scope = instance.get("taxonomic_scope")
     if not isinstance(taxonomic_scope, dict):
         errors.append("taxonomic_scope is required and must be an object.")

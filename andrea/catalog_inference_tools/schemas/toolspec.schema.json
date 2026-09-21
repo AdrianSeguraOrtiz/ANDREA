@@ -466,6 +466,17 @@
       },
       "description": "Execution modes supported by the tool wrapper: global, native grouped inference, orchestrator-emulated grouped inference, native per-column inference, and/or ANDREA group aggregation from native per-column outputs."
     },
+    "default_execution_mode": {
+      "type": "string",
+      "enum": [
+        "global",
+        "group_native",
+        "group_emulated",
+        "column_native",
+        "group_aggregated"
+      ],
+      "description": "Optional logical execution mode selected when a run omits execution.mode. It must also appear in execution_capabilities."
+    },
     "runtime_resources": {
       "$ref": "#/$defs/runtime_resources"
     },

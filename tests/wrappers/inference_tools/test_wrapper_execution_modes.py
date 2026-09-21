@@ -52,14 +52,14 @@ def _has_r_jsonlite() -> bool:
 class PythonWrapperExecutionModeTests(unittest.TestCase):
     def test_wrappers_require_an_explicit_physical_execution_mode(self) -> None:
         cases = (
-            ("cespgrn", "load_execution_mode", "column_native"),
-            ("scgenerai", "load_execution_mode", "column_native"),
-            ("simic", "_load_execution", "group_native"),
-            ("miniex3", "_load_execution_mode", "group_native"),
-            ("scmtni", "_load_execution", "group_native"),
+            ("cespgrn", "load_execution_mode", ("column_native",)),
+            ("scgenerai", "load_execution_mode", ("column_native",)),
+            ("simic", "_load_execution", ("group_native",)),
+            ("miniex3", "_load_execution_mode", ("group_native",)),
+            ("scmtni", "_load_execution", ("global", "group_native")),
         )
 
-        for tool_id, loader_name, physical_mode in cases:
+        for tool_id, loader_name, physical_modes in cases:
             with self.subTest(tool=tool_id):
                 loader = getattr(_load_python_wrapper(tool_id), loader_name)
                 with tempfile.TemporaryDirectory() as tmp:
@@ -77,11 +77,12 @@ class PythonWrapperExecutionModeTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "non-empty string"):
                         loader(params_path)
 
-                    execution_path.write_text(
-                        json.dumps({"mode": physical_mode}),
-                        encoding="utf-8",
-                    )
-                    self.assertEqual(loader(params_path), physical_mode)
+                    for physical_mode in physical_modes:
+                        execution_path.write_text(
+                            json.dumps({"mode": physical_mode}),
+                            encoding="utf-8",
+                        )
+                        self.assertEqual(loader(params_path), physical_mode)
 
                     execution_path.write_text(
                         json.dumps({"mode": "group_emulated"}),
@@ -89,6 +90,48 @@ class PythonWrapperExecutionModeTests(unittest.TestCase):
                     )
                     with self.assertRaisesRegex(ValueError, "physical execution.mode"):
                         loader(params_path)
+
+    def test_scmtni_physical_global_emits_only_global_context(self) -> None:
+        wrapper = _load_python_wrapper("scmtni")
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_root = Path(tmp)
+            cluster_dir = raw_root / "global" / "fold0"
+            cluster_dir.mkdir(parents=True)
+            (cluster_dir / "var_mb_pw_k3.txt").write_text(
+                "OG1_global\tOG2_global\t0.5\n",
+                encoding="utf-8",
+            )
+
+            rows = wrapper._collect_network_rows(
+                raw_output_root=raw_root,
+                clusters=["global"],
+                max_regulators=3,
+                execution_mode="global",
+            )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["context"], "global")
+
+    def test_scmtni_native_mode_preserves_group_context(self) -> None:
+        wrapper = _load_python_wrapper("scmtni")
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_root = Path(tmp)
+            cluster_dir = raw_root / "A" / "fold0"
+            cluster_dir.mkdir(parents=True)
+            (cluster_dir / "var_mb_pw_k3.txt").write_text(
+                "OG1_A\tOG2_A\t0.5\n",
+                encoding="utf-8",
+            )
+
+            rows = wrapper._collect_network_rows(
+                raw_output_root=raw_root,
+                clusters=["A"],
+                max_regulators=3,
+                execution_mode="group_native",
+            )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["context"], "group:A")
 
 
 @unittest.skipUnless(

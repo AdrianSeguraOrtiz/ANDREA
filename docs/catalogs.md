@@ -62,7 +62,7 @@ compatibility rules.
 | scGeneRAI | `column_native`, `group_aggregated` | directed=False, sign=none, evidence=association | https://doi.org/10.1093/nar/gkac1212 |
 | SCING | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1016/j.isci.2023.107124, https://doi.org/10.1101/2022.09.07.506959 |
 | scMINER | `global`, `group_emulated` | directed=True, sign=signed, evidence=association | https://doi.org/10.1038/s41467-025-59620-6, https://doi.org/10.1093/bioinformatics/bty907 |
-| scMTNI | `group_native` | directed=True, sign=none, evidence=association | https://doi.org/10.1038/s41467-023-38637-9 |
+| scMTNI | `global`, `group_native`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1038/s41467-023-38637-9 |
 | scRegulate | `global`, `group_native`, `group_emulated` | directed=True, sign=signed, evidence=association | https://doi.org/10.1093/bioinformatics/btaf638 |
 | scSGL | `global`, `group_emulated` | directed=False, sign=signed, evidence=association | https://doi.org/10.1093/bioinformatics/btac288 |
 | SimiC | `group_native` | directed=True, sign=signed, evidence=association | https://doi.org/10.1038/s42003-022-03319-7 |

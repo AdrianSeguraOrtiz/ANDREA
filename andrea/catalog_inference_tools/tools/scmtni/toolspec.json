@@ -26,19 +26,17 @@
     }
   },
   "execution_capabilities": [
-    "group_native"
+    "global",
+    "group_native",
+    "group_emulated"
   ],
+  "default_execution_mode": "group_native",
   "accepts": [
     "cells"
   ],
   "assumes": "scrna_specific",
   "extra_inputs": {
     "required": [
-      {
-        "input": "groups",
-        "usage": "Wrapper uses groups.tsv to map expression samples/cells to scMTNI clusters, create per-cluster expression inputs, and define native multitask output contexts.",
-        "delivery": "runtime"
-      },
       {
         "input": "tf_list",
         "usage": "Wrapper maps tf_list entries to expression genes and orthogroup IDs, then writes the upstream TF set used by scMTNI for per-cluster regulator-target models.",
@@ -47,6 +45,24 @@
     ],
     "optional": [],
     "conditional_required": [
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_native",
+        "message": "groups is required when execution.mode=group_native because scMTNI jointly models the declared groups.",
+        "usage": "The wrapper uses groups.tsv to map expression cells to scMTNI clusters, create per-cluster expression inputs, and define native multitask output contexts.",
+        "delivery": "runtime"
+      },
+      {
+        "input": "groups",
+        "execution": "mode",
+        "op": "eq",
+        "value": "group_emulated",
+        "message": "groups is required when execution.mode=group_emulated because ANDREA runs independent scMTNI once per declared group.",
+        "usage": "ANDREA partitions expression by groups.tsv and invokes the physical global scMTNI INDEP path once per group; the wrapper receives only that group's expression and ANDREA restores the public group context while merging outputs.",
+        "delivery": "orchestration_only"
+      },
       {
         "input": "lineage_tree",
         "param": "indep",
@@ -152,5 +168,57 @@
     ],
     "supported_species": []
   },
-  "compatibility_rules": []
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "execution.mode",
+          "op": "in",
+          "value": [
+            "global",
+            "group_emulated"
+          ]
+        },
+        {
+          "field": "param.indep",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "action": "block",
+      "message": "scMTNI global and group_emulated execution require indep=true; use group_native with indep=false for joint lineage-aware inference."
+    },
+    {
+      "conditions": [
+        {
+          "field": "execution.mode",
+          "op": "eq",
+          "value": "group_native"
+        },
+        {
+          "field": "param.indep",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "action": "block",
+      "message": "scMTNI group_native execution requires indep=false so that the declared groups are fitted jointly along lineage_tree; use group_emulated for independent per-group inference."
+    },
+    {
+      "conditions": [
+        {
+          "field": "execution.mode",
+          "op": "eq",
+          "value": "group_emulated"
+        },
+        {
+          "field": "param.q",
+          "op": "gt",
+          "value": 0
+        }
+      ],
+      "action": "block",
+      "message": "scMTNI group_emulated execution requires q=0 because group-specific prior rows cannot be assigned safely after ANDREA isolates each physical child."
+    }
+  ]
 }

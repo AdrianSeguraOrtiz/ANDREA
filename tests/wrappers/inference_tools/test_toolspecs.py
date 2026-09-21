@@ -89,6 +89,21 @@ class ToolSpecCatalogTest(unittest.TestCase):
             errors,
         )
 
+    def test_default_execution_mode_must_be_a_declared_capability(self) -> None:
+        module = _load_validate_toolspecs_module()
+        instance = self._minimal_toolspec(execution_capabilities=["global"])
+        instance["default_execution_mode"] = "group_native"
+
+        errors = module.semantic_errors_for_toolspec(
+            tool_id="cell_tool",
+            instance=instance,
+        )
+
+        self.assertIn(
+            "default_execution_mode must be one of execution_capabilities.",
+            errors,
+        )
+
     def test_runtime_resources_supported_false_requires_one_thread(self) -> None:
         module = _load_validate_toolspecs_module()
         instance = self._minimal_toolspec(execution_capabilities=["global"])
