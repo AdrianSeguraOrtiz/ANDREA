@@ -139,6 +139,33 @@ class InferenceToolSmoketestScripts(unittest.TestCase):
         ):
             module.load_configs(tool_id="missing", configs_dir=Path(tmp))
 
+    def test_scmtni_smoketests_cover_native_and_emulated_physical_modes(self) -> None:
+        module = _load_run_smoketests_module()
+        configs = module.load_configs(
+            tool_id="scmtni",
+            configs_dir=REPO_ROOT
+            / "wrappers"
+            / "inference_tools"
+            / "tests"
+            / "smoketest_configs",
+        )
+
+        self.assertEqual(
+            {config.name for config in configs},
+            {"global_independent", "group_native"},
+        )
+        by_name = {config.name: config for config in configs}
+        emulated_child = by_name["global_independent"]
+        self.assertEqual(emulated_child.execution, {"mode": "global"})
+        self.assertTrue(emulated_child.param_overrides["indep"])
+        self.assertEqual(emulated_child.param_overrides["q"], 0)
+        self.assertNotIn("groups.tsv", emulated_child.extra_files)
+
+        native = by_name["group_native"]
+        self.assertEqual(native.execution, {"mode": "group_native"})
+        self.assertIn("groups.tsv", native.extra_files)
+        self.assertTrue(native.require_group_context)
+
     def test_smoketest_container_uses_the_production_mount_boundary(self) -> None:
         module = _load_run_smoketests_module()
         with tempfile.TemporaryDirectory() as tmp:
