@@ -238,6 +238,7 @@ def _load_tools_bootstrap() -> dict[str, Any]:
                     for x in toolspec.get("execution_capabilities", [])
                     if isinstance(x, str)
                 ],
+                "default_execution_mode": toolspec.get("default_execution_mode"),
                 "taxonomic_scope": toolspec.get("taxonomic_scope", {}),
                 "compatibility_rules": toolspec.get("compatibility_rules", []),
                 "method_summary": str(toolspec.get("method_summary", "")),

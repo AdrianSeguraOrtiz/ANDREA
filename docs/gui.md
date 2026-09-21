@@ -128,6 +128,13 @@ artifacts or the full derivative graph set. If CP-SAT planning is enabled, the t
 controls how long ANDREA spends searching for a better schedule before using a
 heuristic fallback.
 
+The run and task tables show ANDREA's canonical resource decision. `eligible`
+means the planned container ETA fits its requested wall-clock budget (or no
+timeout was requested); `estimated_infeasible_time` means it does not. The plan
+remains executable because an estimate is evidence rather than a replacement
+for the explicit timeout. Conservative fallback ETAs never mark a run
+infeasible without an empirical cost profile.
+
 ### External Docker Tools
 
 The same screen can add temporary external Docker tools. This is useful for

@@ -33,6 +33,17 @@ from andrea.core.commands.infer_network.commons.shared import PlanWave, ToolPlan
     "GUI test dependencies are not installed",
 )
 class InferNetworkGuiServerTests(unittest.TestCase):
+    def test_bootstrap_exposes_scmtni_execution_default(self) -> None:
+        payload = gui_server._load_tools_bootstrap()
+        scmtni = next(
+            tool for tool in payload["tools"] if tool["tool_id"] == "scmtni"
+        )
+        self.assertEqual(scmtni["default_execution_mode"], "group_native")
+        self.assertEqual(
+            scmtni["execution_capabilities"],
+            ["global", "group_native", "group_emulated"],
+        )
+
     def test_static_gui_uses_bundle_download_modal(self) -> None:
         index = (Path(gui_server.STATIC_DIR) / "index.html").read_text(encoding="utf-8")
         style = (Path(gui_server.STATIC_DIR) / "styles.css").read_text(encoding="utf-8")
@@ -60,6 +71,12 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         run_cards = (
             Path(gui_server.STATIC_DIR) / "app" / "runs" / "cards.js"
         ).read_text(encoding="utf-8")
+        catalog_model = (
+            Path(gui_server.STATIC_DIR) / "app" / "catalog" / "model.js"
+        ).read_text(encoding="utf-8")
+        plan_view = (
+            Path(gui_server.STATIC_DIR) / "app" / "plan" / "view.js"
+        ).read_text(encoding="utf-8")
 
         self.assertIn("bundle-modal", index)
         self.assertIn("Explorer view: available output files", index)
@@ -82,6 +99,11 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         self.assertIn("renderPlanFailure", jobs_controller)
         self.assertIn("dataset.expression.genes", run_cards)
         self.assertIn("dataset.expression.columns", run_cards)
+        self.assertIn("default_execution_mode", catalog_model)
+        self.assertIn(
+            "taskResourceDecisions.get(task.tool_id)",
+            plan_view,
+        )
         self.assertIn(".tool-item-custom-badge", style)
         self.assertIn(".external-tool-callout", style)
         self.assertIn("Request New Tool", index)

@@ -18,6 +18,10 @@ export function defaultGroupModeForTool(tool) {
   const capabilities = Array.isArray(tool?.execution_capabilities)
     ? tool.execution_capabilities.map((item) => String(item || "").trim()).filter(Boolean)
     : [];
+  const configured = String(tool?.default_execution_mode || "").trim();
+  if (configured && capabilities.includes(configured)) {
+    return configured;
+  }
   const preferredOrder = [
     "global",
     "group_native",
