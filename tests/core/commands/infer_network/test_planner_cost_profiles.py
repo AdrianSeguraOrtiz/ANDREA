@@ -95,7 +95,14 @@ def _profile(
 
 
 class PlannerCostProfileSelectionTest(unittest.TestCase):
-    def _dataset(self, tmp: Path, *, extras: dict[str, Path | None]) -> DatasetContext:
+    def _dataset(
+        self,
+        tmp: Path,
+        *,
+        extras: dict[str, Path | None],
+        genes: int = 10,
+        columns: int = 5,
+    ) -> DatasetContext:
         expression = tmp / "expression.tsv"
         expression.write_text("gene\tS1\tS2\nG1\t1\t2\n", encoding="utf-8")
         return DatasetContext(
@@ -104,8 +111,8 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
             expression_profile="mixed",
             taxonomic_group="animal",
             ncbi_taxon_id=9606,
-            genes=10,
-            columns=5,
+            genes=genes,
+            columns=columns,
             expression_matrix_path=expression,
             extras=extras,
         )
@@ -165,6 +172,86 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         self.assertEqual(warnings, [])
         self.assertEqual(modes[0].eta_source, "fallback_no_cost")
         self.assertEqual(modes[0].threads, 2)
+
+    def test_unprofiled_memory_is_a_fair_machine_relative_slot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="genie3_01",
+                run_id="genie3_01",
+                toolspec=self._toolspec(),
+                cost_profile=None,
+                execution_mode="global",
+                resolved_params={"limit": 50},
+                extras_present=set(),
+                logical_group_count=0,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=120,
+                max_ram_gb=960.0,
+                output_dir="tools/genie3_01",
+            )
+
+        self.assertEqual(warnings, [])
+        self.assertEqual(modes[0].ram_gb, 64.0)
+        self.assertEqual(
+            modes[0].eta_provenance["ram_allocation_source"],
+            "machine_relative_unprofiled_slot",
+        )
+
+    def test_large_dataset_does_not_extrapolate_profiled_memory_limit(self) -> None:
+        cost_payload = {"profiles": [_profile("global_default")]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="genie3_01",
+                run_id="genie3_01",
+                toolspec=self._toolspec(),
+                cost_profile=cost_payload,
+                execution_mode="global",
+                resolved_params={"limit": 50},
+                extras_present=set(),
+                logical_group_count=0,
+                dataset=self._dataset(
+                    Path(tmp), extras={}, genes=3_000, columns=3_000
+                ),
+                max_cores=120,
+                max_ram_gb=960.0,
+                output_dir="tools/genie3_01",
+            )
+
+        self.assertTrue(any("exceed the measured" in warning for warning in warnings))
+        self.assertEqual(modes[0].ram_gb, 64.0)
+        cost_profile = modes[0].eta_provenance["cost_profile"]
+        self.assertTrue(cost_profile["outside_profile_size_envelope"])
+        self.assertEqual(
+            cost_profile["ram_allocation_source"],
+            "machine_relative_unprofiled_slot",
+        )
+
+    def test_profiled_memory_is_retained_inside_measured_size_envelope(self) -> None:
+        cost_payload = {"profiles": [_profile("global_default")]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            modes, warnings = _estimate_tool_mode_options(
+                tool_id="genie3_01",
+                run_id="genie3_01",
+                toolspec=self._toolspec(),
+                cost_profile=cost_payload,
+                execution_mode="global",
+                resolved_params={"limit": 50},
+                extras_present=set(),
+                logical_group_count=0,
+                dataset=self._dataset(Path(tmp), extras={}),
+                max_cores=120,
+                max_ram_gb=960.0,
+                output_dir="tools/genie3_01",
+            )
+
+        self.assertEqual(warnings, [])
+        self.assertEqual(modes[0].ram_gb, 1.0)
+        self.assertEqual(
+            modes[0].eta_provenance["cost_profile"]["ram_allocation_source"],
+            "measured_cost_point",
+        )
 
     def test_null_intrinsic_maximum_accepts_exact_host_bounded_threads(self) -> None:
         toolspec = self._toolspec()

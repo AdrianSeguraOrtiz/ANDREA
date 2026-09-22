@@ -20,7 +20,39 @@ from .tools import _resolve_runtime_extra_input_keys
 ETA_ESTIMATION_POLICY_VERSION = "cost_profile_v2"
 MIN_EXACT_PROFILE_SIZE_SCALE = 0.75
 MIN_APPROX_PROFILE_SIZE_SCALE = 1.0
+STANDARD_RESOURCE_SLOT_THREADS = 8
+MINIMUM_UNPROFILED_RAM_GB = 4.0
 _GIB = 1024**3
+
+
+def _unprofiled_ram_gb(*, max_cores: int, max_ram_gb: float) -> float:
+    """Give an unprofiled task one fair, machine-relative memory slot.
+
+    A successful cost point records the container limit used by that tiny
+    benchmark; it is not a memory model that can safely be extrapolated to a
+    much larger matrix.  Outside the measured size envelope, divide the
+    available machine memory among the number of standard eight-thread slots
+    that could run concurrently.  The planner remains free to run fewer tasks
+    when memory, rather than CPU, is limiting.
+    """
+
+    standard_threads = max(1, min(STANDARD_RESOURCE_SLOT_THREADS, int(max_cores)))
+    concurrent_slots = max(1, math.ceil(int(max_cores) / standard_threads))
+    fair_share = float(max_ram_gb) / concurrent_slots
+    minimum = min(float(max_ram_gb), MINIMUM_UNPROFILED_RAM_GB)
+    return min(float(max_ram_gb), max(minimum, fair_share))
+
+
+def _outside_profile_size_envelope(
+    *, points: list[dict[str, Any]], genes: int, columns: int
+) -> bool:
+    """Return whether either dataset axis exceeds every measured cost point."""
+
+    if not points:
+        return True
+    max_genes = max(max(1, int(point.get("genes", 1))) for point in points)
+    max_columns = max(max(1, int(point.get("columns", 1))) for point in points)
+    return int(genes) > max_genes or int(columns) > max_columns
 
 
 def _load_tool_cost_profile(
@@ -525,7 +557,11 @@ def _fallback_plan_item(
             f"[{tool_id}] fallback threads={threads} is outside planner limit "
             f"1..{max_cores}"
         )
-    assigned_ram_gb = min(float(max_ram_gb), 4.0) if ram_gb is None else float(ram_gb)
+    assigned_ram_gb = (
+        _unprofiled_ram_gb(max_cores=max_cores, max_ram_gb=max_ram_gb)
+        if ram_gb is None
+        else float(ram_gb)
+    )
     if (
         not math.isfinite(assigned_ram_gb)
         or assigned_ram_gb <= 0
@@ -539,6 +575,11 @@ def _fallback_plan_item(
     if execution_mode == "column_native":
         dense_cell_edges = max(0, dataset.genes * (dataset.genes - 1)) * dataset.columns
         fallback_eta = max(fallback_eta, 10.0 + (0.0000001 * dense_cell_edges))
+    provenance = dict(eta_provenance or {})
+    provenance["ram_allocation_source"] = (
+        "explicit_request" if ram_gb is not None else "machine_relative_unprofiled_slot"
+    )
+    provenance["assigned_ram_gb"] = round(float(assigned_ram_gb), 6)
     return ToolPlanItem(
         tool_id=tool_id,
         run_id=run_id,
@@ -549,7 +590,7 @@ def _fallback_plan_item(
         eta_source=eta_source,
         output_dir=output_dir,
         group_label=group_label,
-        eta_provenance=eta_provenance,
+        eta_provenance=provenance,
         cpuset_cpus=cpuset_cpus,
         timeout_seconds=timeout_seconds,
     )
@@ -771,6 +812,22 @@ def _estimate_tool_mode_options(
         if thread_count_allowed_by_tool(threading, int(point["threads"]))
     ]
 
+    outside_size_envelope = _outside_profile_size_envelope(
+        points=valid_points,
+        genes=dataset.genes,
+        columns=dataset.columns,
+    )
+    unprofiled_ram = _unprofiled_ram_gb(
+        max_cores=max_cores,
+        max_ram_gb=max_ram_gb,
+    )
+    if outside_size_envelope and requested_ram_gb is None:
+        warnings.append(
+            f"[{tool_id}] dataset dimensions exceed the measured cost-profile "
+            f"envelope; assigning a machine-relative {unprofiled_ram:.6g} GiB "
+            "memory slot instead of extrapolating a tested container limit."
+        )
+
     eligible_points = [
         p
         for p in valid_points
@@ -788,7 +845,11 @@ def _estimate_tool_mode_options(
                 (
                     float(requested_ram_gb)
                     if requested_ram_gb is not None
-                    else float(point["ram_gb"])
+                    else (
+                        unprofiled_ram
+                        if outside_size_envelope
+                        else float(point["ram_gb"])
+                    )
                 ),
             )
             for point in eligible_points
@@ -925,6 +986,16 @@ def _estimate_tool_mode_options(
                         ),
                         "nearest_runtime_point": nearest_point,
                         "raw_size_scale": round(float(raw_size_scale), 6),
+                        "outside_profile_size_envelope": outside_size_envelope,
+                        "ram_allocation_source": (
+                            "explicit_request"
+                            if requested_ram_gb is not None
+                            else (
+                                "machine_relative_unprofiled_slot"
+                                if outside_size_envelope
+                                else "measured_cost_point"
+                            )
+                        ),
                         "size_scale": round(float(size_scale), 6),
                         "size_scale_floor": round(float(size_scale_floor), 6),
                         "risk_penalty": round(float(risk_penalty), 6),
