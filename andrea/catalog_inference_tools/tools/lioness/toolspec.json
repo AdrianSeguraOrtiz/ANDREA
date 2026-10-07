@@ -7,7 +7,8 @@
   ],
   "first_author": "Marieke Lydia Kuijjer",
   "year": 2019,
-  "method_summary": "LIONESS estimates one sample-specific network per input sample by comparing an aggregate network built from all samples with leave-one-sample-out aggregate networks through a linear interpolation equation. The lionessR package implements this framework with a default Pearson-correlation aggregate network function, while allowing other complete weighted adjacency-matrix functions in upstream R code.",
+  "method_summary": "LIONESS estimates a network per sample by linearly combining an aggregate network with its leave-one-sample-out counterpart. This integration fixes the lionessR aggregate function to Pearson correlation and preserves the resulting signed, undirected sample-specific weights; these interpolated weights are not bounded correlation coefficients.",
+  "method_family": "correlation",
   "method_keywords": [
     "single_sample",
     "single_cell",
@@ -18,7 +19,7 @@
     "undirected"
   ],
   "implementation_url": "https://www.bioconductor.org/packages/release/bioc/html/lionessR.html",
-  "docker_image": "adriansegura99/inference-tools_lioness:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_lioness:1.1.0",
   "execution_capabilities": [
     "column_native",
     "group_aggregated"

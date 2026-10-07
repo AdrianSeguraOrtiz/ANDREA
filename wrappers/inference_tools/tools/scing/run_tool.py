@@ -489,7 +489,7 @@ def _run_scing(
 
 
 def _convert_network(raw_path: Path, output_path: Path, expression: ExpressionInput) -> int:
-    raw = pd.read_csv(raw_path, dtype={"source": str, "target": str})
+    raw = pd.read_csv(raw_path, dtype={"source": str, "target": str}, keep_default_na=False)
     required = {"source", "target", "importance"}
     missing = sorted(required.difference(raw.columns))
     if missing:

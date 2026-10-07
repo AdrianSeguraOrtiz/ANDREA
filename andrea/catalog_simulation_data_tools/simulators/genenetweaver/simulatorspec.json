@@ -7,7 +7,7 @@
   ],
   "first_author": "Thomas Schaffter",
   "year": 2011,
-  "simulation_summary": "Generates in silico bulk RNA expression benchmarks from GeneNetWeaver dynamical network XML/SBML models, including perturbational steady-state experiments and time-series experiments with native signed global GRN gold standards.",
+  "simulation_summary": "Generates in silico bulk RNA expression from a fixed GeneNetWeaver dynamical XML/SBML model using ODE or SDE simulation. Supports perturbational steady states and time series with native signed global topology; perturbations do not imply group-specific or column-specific regulatory rewiring.",
   "simulation_keywords": [
     "bulk",
     "rna_expression",
@@ -21,7 +21,7 @@
     "sde"
   ],
   "implementation_url": "https://github.com/tschaffter/genenetweaver",
-  "docker_image": "adriansegura99/simulator_genenetweaver:1.0.0",
+  "docker_image": "adriansegura99/simulator_genenetweaver:1.1.0",
   "extra_inputs": {
     "required": [],
     "optional": [],
@@ -304,7 +304,7 @@
       "type": "object",
       "required": false,
       "default": {
-        "absolute_precision": 0.00001,
+        "absolute_precision": 1e-05,
         "relative_precision": 0.001
       },
       "description": "GNW deterministic ODE solver tolerances.",
@@ -312,7 +312,7 @@
         "absolute_precision": {
           "type": "float",
           "required": false,
-          "default": 0.00001,
+          "default": 1e-05,
           "min": 0.0,
           "exclusive_min": true,
           "description": "Maps to absolutePrecision."
@@ -485,7 +485,8 @@
           "limitations": [
             "The public GRN is fixed for the whole dataset and does not vary by perturbation column.",
             "Kinetic parameters in the XML drive expression but are not exported as public edge magnitudes.",
-            "Autoregulatory interactions are excluded by default through GNW settings."
+            "Autoregulatory interactions are excluded by default through GNW settings.",
+            "Global truth contains unit-weight signed topology from the fixed dynamical model, not kinetic interaction magnitudes or a new network per perturbation/timepoint."
           ]
         },
         {
@@ -704,7 +705,8 @@
           "limitations": [
             "The GRN is fixed across the whole time course.",
             "GNW time-series outputs do not model timepoint-specific network rewiring.",
-            "Kinetic parameters in the XML drive dynamics but are not exported as public truth edge magnitudes."
+            "Kinetic parameters in the XML drive dynamics but are not exported as public truth edge magnitudes.",
+            "Global truth contains unit-weight signed topology from the fixed dynamical model, not kinetic interaction magnitudes or a new network per perturbation/timepoint."
           ]
         },
         {

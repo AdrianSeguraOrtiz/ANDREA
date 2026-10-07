@@ -17,7 +17,7 @@ from .threading import (
 )
 from .tools import _resolve_runtime_extra_input_keys
 
-ETA_ESTIMATION_POLICY_VERSION = "cost_profile_v2"
+ETA_ESTIMATION_POLICY_VERSION = "cost_profile_v3"
 MIN_EXACT_PROFILE_SIZE_SCALE = 0.75
 MIN_APPROX_PROFILE_SIZE_SCALE = 1.0
 STANDARD_RESOURCE_SLOT_THREADS = 8
@@ -99,7 +99,7 @@ def _nearest_runtime_point(
         and float(p.get("ram_gb", -1.0)) == float(ram_gb)
     ]
     if not same_resource:
-        same_resource = points
+        same_resource = [p for p in points if int(p.get("threads", -1)) == threads] or points
     if not same_resource:
         return None
 
@@ -110,6 +110,68 @@ def _nearest_runtime_point(
         return abs(math.log(genes / pg)) + abs(math.log(columns / pc))
 
     return min(same_resource, key=score)
+
+
+def _measured_size_scale(
+    *, points: list[dict[str, Any]], nearest: dict[str, Any], genes: int,
+    columns: int, threads: int, ram_gb: float,
+) -> tuple[float, dict[str, Any]]:
+    """Interpolate only along an axis (or aspect ratio) actually measured.
+
+    A diagonal benchmark grid cannot identify separate gene and cell effects.
+    Unsupported geometry retains a scheduling heuristic, explicitly uncalibrated;
+    it must never be presented as an empirical timeout feasibility decision.
+    """
+    pg, pc = int(nearest['genes']), int(nearest['columns'])
+    base = max(float(nearest['seconds_p50']), float(nearest['seconds_p90']))
+    same_resources = [p for p in points if int(p['threads']) == threads
+                      and math.isclose(float(p['ram_gb']), ram_gb)]
+    if genes == pg and columns == pc and nearest in same_resources:
+        return 1.0, {"method": "measured_point", "calibrated": True}
+    paths = [
+        ("columns", columns, [p for p in same_resources if int(p['genes']) == genes]),
+        ("genes", genes, [p for p in same_resources if int(p['columns']) == columns]),
+        ("genes", genes, [p for p in same_resources
+                         if int(p['genes']) * columns == int(p['columns']) * genes]),
+    ]
+    for axis, target, candidates in paths:
+        by_size = {int(p[axis]): p for p in candidates}
+        sizes = sorted(by_size)
+        if len(sizes) < 2:
+            continue
+        lower = [s for s in sizes if s <= target]
+        upper = [s for s in sizes if s >= target]
+        interpolated = bool(lower and upper)
+        if interpolated:
+            lo, hi = lower[-1], upper[0]
+        elif not lower:
+            lo, hi = sizes[:2]
+        else:
+            lo, hi = sizes[-2:]
+        if lo == hi:
+            point = by_size[lo]
+            return max(float(point['seconds_p90']), float(point['seconds_p50'])) / base, {
+                "method": "measured_point", "calibrated": True}
+        if not interpolated and (target > 4 * hi or target < lo / 4):
+            continue
+        t0 = max(float(by_size[lo]['seconds_p50']), float(by_size[lo]['seconds_p90']))
+        t1 = max(float(by_size[hi]['seconds_p50']), float(by_size[hi]['seconds_p90']))
+        exponent = math.log(t1 / t0) / math.log(hi / lo)
+        # Decline unstable/negative extrapolations; interpolation still stays
+        # within the two measured positive durations.
+        if not interpolated and not 0 <= exponent <= 4:
+            continue
+        predicted = t0 * (target / lo) ** exponent
+        return predicted / base, {
+            "method": "measured_axis_interpolation" if interpolated else "measured_axis_extrapolation",
+            "axis": axis, "anchor_sizes": [lo, hi], "anchor_seconds": [t0, t1],
+            "exponent": exponent, "calibrated": interpolated,
+        }
+    heuristic = max(MIN_EXACT_PROFILE_SIZE_SCALE, math.sqrt((genes / pg) * (columns / pc)))
+    return heuristic, {
+        "method": "uncalibrated_size_heuristic", "calibrated": False,
+        "reason": "No measured axis supports these dimensions/resources; used for scheduling only.",
+    }
 
 
 def _flatten_param_values(value: Any, prefix: str = "") -> dict[str, Any]:
@@ -150,7 +212,9 @@ def _profile_cost_relevant_params(profile: dict[str, Any]) -> list[str]:
     if not isinstance(raw, list):
         return []
     return [
-        str(item).strip() for item in raw if isinstance(item, str) and str(item).strip()
+        str(item).strip() for item in raw
+        if isinstance(item, str) and str(item).strip()
+        and str(item).rsplit('.', 1)[-1] not in {'seed', 'random_seed', 'random_state'}
     ]
 
 
@@ -394,6 +458,11 @@ def _select_cost_profile(
     extras_present: set[str],
     resolved_params: dict[str, Any],
     logical_group_count: Optional[int],
+    genes: int = 1,
+    columns: int = 1,
+    max_cores: int = 1,
+    requested_threads: Optional[int] = None,
+    requested_ram_gb: Optional[float] = None,
 ) -> tuple[Optional[dict[str, Any]], dict[str, Any], list[str]]:
     """Select the most compatible cost profile for a planned run."""
     profiles = cost_payload.get("profiles")
@@ -413,9 +482,7 @@ def _select_cost_profile(
         resolved_execution={"mode": execution_mode},
     )
     relevant_extras_present = extras_present.intersection(relevant_inputs)
-    candidates: list[
-        tuple[tuple[int, int, int, int, int], dict[str, Any], dict[str, Any]]
-    ] = []
+    candidates = []
     mode_matches = 0
     for profile_idx, profile in enumerate(profiles):
         if not isinstance(profile, dict):
@@ -462,8 +529,15 @@ def _select_cost_profile(
             profile_cost_relevant_values=cost_relevant_values,
             cost_relevant_params=cost_relevant_params,
         )
-        valid_points = _valid_runtime_points(profile)
+        valid_points = [p for p in _valid_runtime_points(profile)
+                        if int(p['threads']) <= max_cores
+                        and (requested_threads is None or int(p['threads']) == requested_threads)]
         no_runtime_penalty = 1 if not valid_points else 0
+        size_distance = min((abs(math.log(genes / int(p['genes'])))
+                             + abs(math.log(columns / int(p['columns'])))
+                             for p in valid_points), default=math.inf)
+        resource_penalty = int(requested_ram_gb is not None and not any(
+            math.isclose(float(p['ram_gb']), requested_ram_gb) for p in valid_points))
         profile_id = str(profile.get("profile_id", "")).strip()
         metadata = {
             "profile_id": profile_id,
@@ -482,12 +556,18 @@ def _select_cost_profile(
             "group_distance": int(group_distance),
             "profile_execution_mode": execution_mode,
             "profile_group_count": profile_group_count,
+            "ignored_randomness_params": [
+                k for k in _profile_params_profile(profile).get('cost_relevant_params', [])
+                if k not in cost_relevant_params
+            ],
         }
         score = (
             no_runtime_penalty,
             len(extra_inputs_missing_from_profile),
             param_diffs,
             group_distance,
+            resource_penalty,
+            size_distance,
             profile_idx,
         )
         candidates.append((score, profile, metadata))
@@ -530,6 +610,15 @@ def _select_cost_profile(
             f"[{tool_id}] selected approximate cost profile {metadata['profile_id']}: "
             f"group count differs by {metadata['group_distance']}."
         )
+
+    if _profile_match_is_approximate(metadata):
+        warnings.append(
+            f"[{tool_id}] no calibrated cost profile matches the cost-relevant "
+            "parameters, runtime inputs and group count. Cross-parameter scaling "
+            "is unsupported; the fallback ETA is an uncalibrated scheduling heuristic, "
+            "not a runtime prediction or an upper bound."
+        )
+        return None, metadata, warnings
 
     return selected, metadata, warnings
 
@@ -576,6 +665,9 @@ def _fallback_plan_item(
         dense_cell_edges = max(0, dataset.genes * (dataset.genes - 1)) * dataset.columns
         fallback_eta = max(fallback_eta, 10.0 + (0.0000001 * dense_cell_edges))
     provenance = dict(eta_provenance or {})
+    provenance["estimation_policy"] = ETA_ESTIMATION_POLICY_VERSION
+    provenance["calibrated"] = False
+    provenance["interpretation"] = "Scheduling heuristic only; runtime accuracy and an upper bound are not established."
     provenance["ram_allocation_source"] = (
         "explicit_request" if ram_gb is not None else "machine_relative_unprofiled_slot"
     )
@@ -759,6 +851,11 @@ def _estimate_tool_mode_options(
         extras_present=extras_present,
         resolved_params=resolved_params,
         logical_group_count=logical_group_count,
+        genes=dataset.genes,
+        columns=dataset.columns,
+        max_cores=max_cores,
+        requested_threads=requested_threads,
+        requested_ram_gb=requested_ram_gb,
     )
     warnings.extend(profile_warnings)
     if selected_profile is None:
@@ -780,6 +877,7 @@ def _estimate_tool_mode_options(
                         "eta_source": "fallback",
                         "warnings": list(profile_warnings),
                         "execution_mode": execution_mode,
+                        "rejected_profile": profile_match,
                         "cost_features": cost_features,
                     },
                     cpuset_cpus=requested_cpuset,
@@ -913,7 +1011,10 @@ def _estimate_tool_mode_options(
             if profile_is_approximate
             else MIN_EXACT_PROFILE_SIZE_SCALE
         )
-        size_scale = max(size_scale_floor, raw_size_scale)
+        size_scale, size_model = _measured_size_scale(
+            points=valid_points, nearest=nearest, genes=dataset.genes,
+            columns=dataset.columns, threads=threads, ram_gb=ram,
+        )
         robust_base = max(p90, (0.70 * p90 + 0.30 * p50))
         profile_id = str(selected_profile.get("profile_id", "")).strip()
         nearest_point = {
@@ -947,6 +1048,14 @@ def _estimate_tool_mode_options(
             *profile_warnings,
             *cost_point_warnings,
         ]
+        if not size_model["calibrated"]:
+            size_warning = (
+                f"[{tool_id}] runtime is extrapolated beyond supported cost measurements "
+                f"({size_model['method']}); this ETA is not a calibrated timeout prediction."
+            )
+            provenance_warnings.append(size_warning)
+            if size_warning not in warnings:
+                warnings.append(size_warning)
         if nearest.get("status") == "partial":
             provenance_warnings.append(
                 "nearest benchmark point has partial success; ETA includes risk penalty"
@@ -960,11 +1069,12 @@ def _estimate_tool_mode_options(
                 threads=int(threads),
                 ram_gb=float(ram),
                 eta_seconds=round(float(eta), 3),
-                eta_source="cost_profile",
+                eta_source="cost_profile" if size_model["calibrated"] else "cost_profile_extrapolated",
                 output_dir=output_dir,
                 group_label=group_label,
                 eta_provenance={
-                    "eta_source": "cost_profile",
+                    "eta_source": "cost_profile" if size_model["calibrated"] else "cost_profile_extrapolated",
+                    "calibrated": size_model["calibrated"],
                     "cost_features": cost_features,
                     "cost_profile": {
                         "estimation_policy": ETA_ESTIMATION_POLICY_VERSION,
@@ -986,6 +1096,7 @@ def _estimate_tool_mode_options(
                         ),
                         "nearest_runtime_point": nearest_point,
                         "raw_size_scale": round(float(raw_size_scale), 6),
+                        "size_model": size_model,
                         "outside_profile_size_envelope": outside_size_envelope,
                         "ram_allocation_source": (
                             "explicit_request"

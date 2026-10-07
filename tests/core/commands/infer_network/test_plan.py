@@ -9,6 +9,35 @@ from ._helpers import InferNetworkCoreTestCase
 
 
 class InferNetworkPlanTests(InferNetworkCoreTestCase):
+    def test_analysis_identity_is_not_overwritten_by_logical_run_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            manifest_path, _ = self._write_dataset_bundle(base, tf_values=["G1"])
+            logical_ids = ["first_method", "last_method"]
+            tools_params_path = self._write_tools_params(
+                base,
+                runs=[
+                    {"run_id": run_id, "tool_id": "genie3", "params": {"seed": seed}}
+                    for run_id, seed in zip(logical_ids, [17, 23])
+                ],
+            )
+            run_dir = self.mod.plan_infer_network(
+                dataset_manifest_path=manifest_path,
+                tools_params_path=tools_params_path,
+                output_dir=base / "inference",
+                max_cores=2,
+                max_ram_gb=8,
+                planner="heuristic",
+            )
+            plan = json.loads((run_dir / "plan.json").read_text(encoding="utf-8"))
+            report = json.loads((run_dir / "run_report.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(plan["run_id"], run_dir.name)
+        self.assertEqual(report["run_id"], run_dir.name)
+        self.assertNotIn(run_dir.name, logical_ids)
+        self.assertEqual([run["run_id"] for run in plan["runs"]], logical_ids)
+        self.assertEqual(report["tools"]["selected"], logical_ids)
+
     def _phenotype_native_toolspec(self) -> dict:
         return {
             "id": "phenotype_native",
@@ -522,14 +551,15 @@ class InferNetworkPlanTests(InferNetworkCoreTestCase):
                 ["tf_list"],
             )
             first_wave_task = plan_payload["waves"][0]["tasks"][0]
-            self.assertEqual(first_wave_task["eta_source"], "cost_profile")
+            self.assertEqual(first_wave_task["eta_source"], "cost_profile_extrapolated")
+            self.assertFalse(first_wave_task["eta_provenance"]["calibrated"])
             self.assertIn("eta_provenance", first_wave_task)
             self.assertIn(
                 "profile_id",
                 first_wave_task["eta_provenance"]["cost_profile"],
             )
             first_physical_task = plan_payload["runs"][0]["physical_tasks"][0]
-            self.assertEqual(first_physical_task["eta_source"], "cost_profile")
+            self.assertEqual(first_physical_task["eta_source"], "cost_profile_extrapolated")
             self.assertIn("eta_provenance", first_physical_task)
 
             report_payload = json.loads(

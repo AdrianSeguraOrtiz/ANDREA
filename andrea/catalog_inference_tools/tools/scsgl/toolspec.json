@@ -18,7 +18,7 @@
     "undirected"
   ],
   "implementation_url": "https://github.com/Single-Cell-Graph-Learning/scSGL/tree/7fb2a011f6e1061daf4c976225027e76f4e0e4ea",
-  "docker_image": "adriansegura99/inference-tools_scsgl:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_scsgl:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -106,7 +106,7 @@
       "exclusive_min": true,
       "max": 1,
       "exclusive_max": true,
-      "description": "Desired density of the positive/activating part of the learned signed graph passed to learn_signed_graph(pos_density=...). Upstream provides no default; the demo uses 0.45 for one GSD example, but the upstream notebook notes that density search can fail for some requested values. Higher densities request denser graphs and can substantially increase runtime."
+      "description": "Desired density of the positive/activating part of the learned signed graph passed to learn_signed_graph(pos_density=...). Upstream provides no default; the demo uses 0.45 for one GSD example, but the upstream notebook notes that density search can fail for some requested values. Higher densities request denser graphs and can substantially increase runtime. Positive and negative densities must sum to at most one because the learned signed supports are disjoint."
     },
     "neg_density": {
       "type": "float",
@@ -116,7 +116,7 @@
       "exclusive_min": true,
       "max": 1,
       "exclusive_max": true,
-      "description": "Desired density of the negative/inhibitory part of the learned signed graph passed to learn_signed_graph(neg_density=...). Upstream provides no default; the demo uses 0.45 for one GSD example, but the upstream notebook notes that density search can fail for some requested values. Higher densities request denser graphs and can substantially increase runtime."
+      "description": "Desired density of the negative/inhibitory part of the learned signed graph passed to learn_signed_graph(neg_density=...). Upstream provides no default; the demo uses 0.45 for one GSD example, but the upstream notebook notes that density search can fail for some requested values. Higher densities request denser graphs and can substantially increase runtime. Positive and negative densities must sum to at most one because the learned signed supports are disjoint."
     },
     "association_kernel": {
       "type": "enum",
@@ -162,5 +162,6 @@
       "require_non_empty": true,
       "description": "Public expression gene ids retained by scSGL after its all-zero-gene filter, plus status for any all-zero genes omitted by the upstream function."
     }
-  ]
+  ],
+  "method_family": "graph"
 }

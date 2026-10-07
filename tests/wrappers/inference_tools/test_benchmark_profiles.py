@@ -56,6 +56,18 @@ def _extra_input_ids(
 
 
 class BenchmarkProfileResolverTest(unittest.TestCase):
+    def test_tigress_default_calibration_does_not_inherit_smoke_overrides(self) -> None:
+        profiles = {p.profile_id: p for p in resolve_benchmark_profiles(
+            tool_id="tigress", catalog_tools_root=CATALOG_TOOLS_ROOT,
+            param_overrides_dir=PARAM_OVERRIDES_DIR, cost_profiles_dir=COST_PROFILES_DIR,
+        )}
+        self.assertEqual(profiles["global_default"].params["nsplit"], 20)
+        full = profiles["global_default_spec_defaults"]
+        self.assertEqual(full.params["nsplit"], 100)
+        self.assertEqual(full.params["nstepsLARS"], 5)
+        self.assertIsNone(full.params["limit"])
+        self.assertEqual(full.params_profile["source"], "toolspec_defaults")
+
     def test_scmtni_profiles_satisfy_param_conditionals(self) -> None:
         profiles = resolve_benchmark_profiles(
             tool_id="scmtni",
@@ -68,6 +80,8 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             [
                 "group_native_groups_2_q2_with_prior",
                 "global_q0_independent",
+                "group_native_groups_2_q2_with_prior_spec_defaults",
+                "global_q0_independent_spec_defaults",
             ],
         )
         q2_profile = profiles[0]

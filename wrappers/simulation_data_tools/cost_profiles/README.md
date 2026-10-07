@@ -94,3 +94,14 @@ candidate-regulator artifact must be rerun; they must not be relabelled.
 
 `validate_simulator_costs.py` checks that those fields stay synchronized with
 the benchmark config and measured runtime point.
+
+For release calibration, use `--catalog-images --repeats 3 --results-dir PATH`.
+This measures the current catalog image by immutable local ID without rebuilding.
+Per-simulator evidence directories retain inputs, outputs, stdout/stderr, raw
+measurements, resolved configuration and hardware/source/image provenance.
+Filtered cost writes require `--merge-existing`; unselected profiles are preserved.
+Existing historical costs remain usable for inspection, but cannot pass
+`make validate-release-costs` until regenerated against the current specs/images.
+Timings from tiny or demonstration input bundles characterize those bundles only;
+particularly, GRouNdGAN toy bundles are untrained smoke fixtures, not biological
+validation or a calibrated model of training on real expression data.

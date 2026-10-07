@@ -198,3 +198,16 @@ The integration tests should establish all of the following:
   candidate target.
 - A `group_emulated` run performs independent fits. It does not share
   information or impose smoothness across groups.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [inferCSN paper](https://doi.org/10.1038/s41540-025-00564-4), [CRAN package](https://CRAN.R-project.org/package=inferCSN), and the available CRAN **1.2.0** source tarball (`DESCRIPTION`, `R/inferCSN.R`, `R/sparse_regression_model.R`, `R/network_sift.R`, `R/subsampling.R`). The source identifies package version 1.2.0 and its CRAN packaging metadata.
+- `method_family=regression`: the selected public sparse-regression core, not the paper's complete pseudotime-window/reference-network workflow. Rechecked regulator/target defaults, L0/L0L1/L0L2 penalty, cross-validation, subsampling, R-squared threshold and optional public max filter against the function implementation. The wrapper exposes one signed coefficient network per supplied matrix; group emulation consists of independent calls.
+- `cores` remains controlled by assigned runtime threads. Zero-variance and empty-network behavior is documented above; no hidden state partition or calibration was added.
+- Corrected R expression parsing so numeric-looking and NA-like gene names retain identity before regulator matching and output conversion. This is an identifier-preservation fix; the public package call, parameter defaults and signed coefficient score mapping are unchanged.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Additional executable-path finding: the existing image lacked `RANN`, although the exposed `subsampling_method=meta_cells` path calls `RANN::nn2` (a Suggested dependency). The Dockerfile now installs pinned RANN 2.6.2 explicitly and checks igraph availability. A dedicated `meta_cells` smoke variant exercises the path with ratio 0.5. `irlba` is not required by this selected path because package 1.2.0 actually defaults `fast_pca=FALSE`, despite its documentation saying TRUE.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/infercsn:audit-local`; image ID `sha256:c7b99f10043f2786c8e3ced48def47b0f29e6a4257e4a684293218fc522d4020`. The repository smoke runner passed `raw` (21 rows), `max_sift` (18 rows), `meta_cells` (21 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.

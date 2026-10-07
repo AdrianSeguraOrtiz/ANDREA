@@ -130,5 +130,5 @@ version = { attr = "andrea.config.__version__" }
 testpaths = ["tests"]
 
 [build-system]
-requires = ["setuptools>=69.0.0", "wheel"]
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"

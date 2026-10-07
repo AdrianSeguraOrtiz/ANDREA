@@ -198,6 +198,39 @@ def _runtime_penalty(point: dict[str, Any]) -> float:
     )
 
 
+def _dimension_from_rule(params: dict[str, Any], rule: Any) -> int | float | None:
+    """Read the path, fixed or affine dimension encoding in a cost profile."""
+    if isinstance(rule, str):
+        value = _value_at_path(params, rule)
+    elif isinstance(rule, dict) and "fixed" in rule:
+        value = rule["fixed"]
+    elif isinstance(rule, dict) and isinstance(rule.get("param"), str):
+        value = _value_at_path(params, rule["param"])
+        multiplier = (
+            _value_at_path(params, rule["multiplier_param"])
+            if isinstance(rule.get("multiplier_param"), str)
+            else rule.get("multiplier", 1)
+        )
+        offset = rule.get("offset", 0)
+        if not all(
+            isinstance(item, (int, float))
+            and not isinstance(item, bool)
+            and math.isfinite(item)
+            for item in (value, multiplier, offset)
+        ):
+            return None
+        value = value * multiplier + offset
+    else:
+        return None
+    if (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    ):
+        return value
+    return None
+
+
 def _estimate_dimensions(
     *, params: dict[str, Any], selected_profile: dict[str, Any] | None
 ) -> tuple[int, int, int, int, dict[str, Any]]:
@@ -210,13 +243,10 @@ def _estimate_dimensions(
     cells = None
     genes = None
     if dimension_profile:
-        cells_param = str(dimension_profile.get("cells_param") or "").strip()
-        if cells_param:
-            cells = _value_at_path(params, cells_param)
+        cells = _dimension_from_rule(params, dimension_profile.get("cells_param"))
         genes_param = dimension_profile.get("genes_param")
-        if isinstance(genes_param, str):
-            genes = _value_at_path(params, genes_param)
-        elif isinstance(genes_param, dict):
+        genes = _dimension_from_rule(params, genes_param)
+        if isinstance(genes_param, dict) and "fixed" not in genes_param:
             total = 0
             found = False
             for path in genes_param:

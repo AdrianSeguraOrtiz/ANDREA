@@ -8,6 +8,7 @@
   "first_author": "Xiong Li",
   "year": 2025,
   "method_summary": "This integration runs the public CRAN inferCSN 1.2.0 sparse-regression core once on the supplied expression matrix. ANDREA can invoke that same global core independently for each group. It does not implement the paper's broader pseudotime/state-window/reference-network workflow. The optional max filter calls the public CRAN network_sift().",
+  "method_family": "regression",
   "method_keywords": [
     "single_cell",
     "sparse_regression",
@@ -16,7 +17,7 @@
     "directed"
   ],
   "implementation_url": "https://CRAN.R-project.org/package=inferCSN",
-  "docker_image": "adriansegura99/inference-tools_infercsn:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_infercsn:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"

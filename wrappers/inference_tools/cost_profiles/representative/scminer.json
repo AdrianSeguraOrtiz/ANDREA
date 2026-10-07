@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_global_9487790c93",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [
+            "tf_list"
+          ],
+          "tf_count_policy": "Fixed identities in the checksum-pinned fixture",
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": true,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/scminer.json:representative_global_9487790c93",
+          "resolved_params": {
+            "driver_source": "custom_tf_list",
+            "species_type": "hg",
+            "downSample_N": null,
+            "n_bootstraps": 100,
+            "consensus_pvalue": 0.01,
+            "random_seed": 286001491
+          },
+          "cost_relevant_params": [
+            "consensus_pvalue",
+            "downSample_N",
+            "driver_source",
+            "n_bootstraps",
+            "species_type"
+          ],
+          "cost_relevant_values": {
+            "consensus_pvalue": 0.01,
+            "downSample_N": null,
+            "driver_source": "custom_tf_list",
+            "n_bootstraps": 100,
+            "species_type": "hg"
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00017",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
+            "extra/tf_list.txt": "5f50c5ed49d93c3d6c236c3252e14dbeb759176a00fc450abf28f3c29c9612a3",
+            "params.json": "faf75818b9e8da1f719d312fbcb441fb733ba25953b30d7b5f54576bb582ea6f"
+          },
+          "source_result_sha256": "761220563764e6fab54e520aa576d4fe85834484a5d25db16daa7078531f6333",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

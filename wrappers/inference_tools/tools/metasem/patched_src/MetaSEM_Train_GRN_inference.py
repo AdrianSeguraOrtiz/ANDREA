@@ -105,8 +105,8 @@ class Train_inference:
         return eye - adj.transpose(0, 1)
 
     def data_prepare(self, input_path, net_path):
-        ground_truth = pd.read_csv(net_path, header=0)
-        data = pd.read_csv(input_path, header=0, index_col=0)
+        ground_truth = pd.read_csv(net_path, header=0, dtype=str, keep_default_na=False)
+        data = pd.read_csv(input_path, header=0, index_col=0, dtype=str, keep_default_na=False)
         gene_name = [str(value) for value in data.columns]
         data_values = data.to_numpy(dtype=float)
         data_values = _standardize_expression(data_values)

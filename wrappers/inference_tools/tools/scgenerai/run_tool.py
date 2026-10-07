@@ -131,6 +131,8 @@ def read_expression_tsv(path: Path) -> ExpressionInput:
         raise ValueError("expression.tsv must have a gene column and at least one cell.")
 
     cell_ids = [str(value) for value in header[1:]]
+    if len(cell_ids) < 10:
+        raise ValueError("scGeneRAI requires at least ten cells for its upstream training/test split.")
     if any(not value for value in cell_ids):
         raise ValueError("expression.tsv contains an empty cell identifier.")
     duplicated_cells = sorted({value for value in cell_ids if cell_ids.count(value) > 1})
@@ -266,7 +268,10 @@ def convert_raw_results(raw_dir: Path, cell_ids: list[str]) -> pd.DataFrame:
     seen: set[tuple[str, str, str]] = set()
     for sample_index, cell_id in enumerate(cell_ids):
         raw_path = find_raw_lrp_file(results_dir, sample_index)
-        raw = pd.read_csv(raw_path)
+        raw = pd.read_csv(
+            raw_path, dtype={"source_gene": str, "target_gene": str},
+            keep_default_na=False,
+        )
         required = {"LRP", "source_gene", "target_gene"}
         missing = sorted(required.difference(raw.columns))
         if missing:

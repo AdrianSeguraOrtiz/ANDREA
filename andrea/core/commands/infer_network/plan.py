@@ -703,10 +703,10 @@ def plan_infer_network(
     else:
         print(f"planner: requested={planner_mode}, used={planner_used}")
 
-    run_id = (
+    analysis_run_id = (
         f"{dataset.dataset_id}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     )
-    run_dir = output_dir.resolve() / run_id
+    run_dir = output_dir.resolve() / analysis_run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     tools_dir = run_dir / "tools"
     tools_dir.mkdir(parents=True, exist_ok=True)
@@ -871,7 +871,7 @@ def plan_infer_network(
     plan_payload = {
         "schema_version": PLAN_SCHEMA_VERSION,
         "generated_at_utc": plan_generated_at,
-        "run_id": run_id,
+        "run_id": analysis_run_id,
         "planner": {
             "requested": planner_mode,
             "used": planner_used,
@@ -915,7 +915,7 @@ def plan_infer_network(
         if isinstance(run, dict) and run.get("run_id")
     }
     report_payload = {
-        "run_id": run_id,
+        "run_id": analysis_run_id,
         "status": "planned",
         "output_profile": normalized_output_profile,
         "inputs": {

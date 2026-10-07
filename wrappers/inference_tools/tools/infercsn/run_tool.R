@@ -211,7 +211,9 @@ read_expression_tsv <- function(expr_path) {
     sep = "\t",
     header = TRUE,
     check.names = FALSE,
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    colClasses = "character",
+    na.strings = character()
   )
   if (ncol(df) < 2L) {
     stop("expression.tsv must have at least 2 columns: gene + >=1 cell.", call. = FALSE)

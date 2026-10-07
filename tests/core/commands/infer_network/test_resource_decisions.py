@@ -72,7 +72,7 @@ def test_fallback_eta_cannot_exclude_a_tool_without_empirical_evidence() -> None
 
         assert decision["status"] == "eligible"
         assert decision["eta_source"] == eta_source
-        assert decision["evidence"] == "conservative_fallback"
+        assert decision["evidence"] == "uncalibrated_heuristic"
         assert decision["reason"] == (
             "fallback_estimate_exceeds_timeout_without_empirical_evidence"
         )

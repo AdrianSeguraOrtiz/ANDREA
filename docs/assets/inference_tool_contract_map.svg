@@ -10,18 +10,16 @@
 <text x="925.00" y="532.00" font-family="Helvetica" font-size="13.00" font-weight="700" text-anchor="middle" fill="#162033" opacity="1.000">EXPRESSION COLUMNS</text>
 <rect x="406.00" y="132.00" width="298.00" height="81.20" rx="9.00" ry="9.00" fill="#eeeee9" stroke="#94aebf" stroke-width="1.00" opacity="1.000"/>
 <line x1="422.00" y1="152.00" x2="688.00" y2="152.00" stroke="#8aa7ba" stroke-width="0.80" opacity="0.750"/>
-<rect x="406.00" y="222.40" width="298.00" height="96.60" rx="9.00" ry="9.00" fill="#f7efe2" stroke="#e2b887" stroke-width="1.00" opacity="1.000"/>
+<rect x="406.00" y="222.40" width="298.00" height="112.00" rx="9.00" ry="9.00" fill="#f7efe2" stroke="#e2b887" stroke-width="1.00" opacity="1.000"/>
 <line x1="422.00" y1="242.40" x2="688.00" y2="242.40" stroke="#dfb17c" stroke-width="0.80" opacity="0.750"/>
-<rect x="406.00" y="328.20" width="298.00" height="96.60" rx="9.00" ry="9.00" fill="#f0f0e5" stroke="#a3c09f" stroke-width="1.00" opacity="1.000"/>
-<line x1="422.00" y1="348.20" x2="688.00" y2="348.20" stroke="#9abb96" stroke-width="0.80" opacity="0.750"/>
-<rect x="406.00" y="434.00" width="298.00" height="81.20" rx="9.00" ry="9.00" fill="#f4edec" stroke="#c2abd7" stroke-width="1.00" opacity="1.000"/>
+<rect x="406.00" y="343.60" width="298.00" height="81.20" rx="9.00" ry="9.00" fill="#f0f0e5" stroke="#a3c09f" stroke-width="1.00" opacity="1.000"/>
+<line x1="422.00" y1="363.60" x2="688.00" y2="363.60" stroke="#9abb96" stroke-width="0.80" opacity="0.750"/>
+<rect x="406.00" y="434.00" width="298.00" height="96.60" rx="9.00" ry="9.00" fill="#f4edec" stroke="#c2abd7" stroke-width="1.00" opacity="1.000"/>
 <line x1="422.00" y1="454.00" x2="688.00" y2="454.00" stroke="#bca3d4" stroke-width="0.80" opacity="0.750"/>
-<rect x="406.00" y="524.40" width="298.00" height="50.40" rx="9.00" ry="9.00" fill="#f3ede3" stroke="#bba88c" stroke-width="1.00" opacity="1.000"/>
-<line x1="422.00" y1="544.40" x2="688.00" y2="544.40" stroke="#b4a082" stroke-width="0.80" opacity="0.750"/>
-<rect x="406.00" y="584.00" width="298.00" height="35.00" rx="9.00" ry="9.00" fill="#ebf0e8" stroke="#7dc1ba" stroke-width="1.00" opacity="1.000"/>
-<line x1="422.00" y1="604.00" x2="688.00" y2="604.00" stroke="#70bcb5" stroke-width="0.80" opacity="0.750"/>
-<rect x="406.00" y="628.20" width="298.00" height="65.80" rx="9.00" ry="9.00" fill="#f6ede7" stroke="#d7a7b4" stroke-width="1.00" opacity="1.000"/>
-<line x1="422.00" y1="648.20" x2="688.00" y2="648.20" stroke="#d39fae" stroke-width="0.80" opacity="0.750"/>
+<rect x="406.00" y="539.80" width="298.00" height="65.80" rx="9.00" ry="9.00" fill="#f3ede3" stroke="#bba88c" stroke-width="1.00" opacity="1.000"/>
+<line x1="422.00" y1="559.80" x2="688.00" y2="559.80" stroke="#b4a082" stroke-width="0.80" opacity="0.750"/>
+<rect x="406.00" y="614.80" width="298.00" height="50.40" rx="9.00" ry="9.00" fill="#ebf0e8" stroke="#7dc1ba" stroke-width="1.00" opacity="1.000"/>
+<line x1="422.00" y1="634.80" x2="688.00" y2="634.80" stroke="#70bcb5" stroke-width="0.80" opacity="0.750"/>
 <path d="M 286.00,206.00 C 369.85,206.00 397.15,156.00 481.00,156.00" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 286.00,340.67 C 369.85,340.67 397.15,156.00 481.00,156.00" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
 <path d="M 658.00,156.00 C 741.16,156.00 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
@@ -69,35 +67,33 @@
 <path d="M 658.00,277.20 C 741.16,277.20 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
 <path d="M 659.00,277.20 C 750.80,277.20 771.20,296.00 863.00,296.00" fill="none" stroke="#c47a00" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="1.5 4"/>
 <path d="M 659.00,277.20 C 750.80,277.20 771.20,408.00 863.00,408.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 286.00,206.00 C 369.85,206.00 397.15,292.60 481.00,292.60" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,610.00 C 369.85,610.00 397.15,292.60 481.00,292.60" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
+<path d="M 286.00,206.00 C 369.85,206.00 397.15,292.60 481.00,292.60" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
 <path d="M 286.00,340.67 C 369.85,340.67 397.15,292.60 481.00,292.60" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
 <path d="M 658.00,292.60 C 741.16,292.60 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 659.00,292.60 C 750.80,292.60 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 659.00,292.60 C 750.80,292.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 659.00,292.60 C 750.80,292.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
 <path d="M 286.00,206.00 C 369.85,206.00 397.15,308.00 481.00,308.00" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,340.67 C 369.85,340.67 397.15,308.00 481.00,308.00" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
 <path d="M 658.00,308.00 C 741.16,308.00 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 658.00,308.00 C 741.16,308.00 772.84,617.00 856.00,617.00" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="1.5 4"/>
 <path d="M 659.00,308.00 C 750.80,308.00 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
 <path d="M 659.00,308.00 C 750.80,308.00 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,206.00 C 369.85,206.00 397.15,352.20 481.00,352.20" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,340.67 C 369.85,340.67 397.15,352.20 481.00,352.20" fill="none" stroke="#64748b" stroke-width="1.55" opacity="0.340" stroke-linecap="round" stroke-dasharray="1.5 4"/>
-<path d="M 658.00,352.20 C 741.16,352.20 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 659.00,352.20 C 750.80,352.20 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 659.00,352.20 C 750.80,352.20 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,206.00 C 369.85,206.00 397.15,323.40 481.00,323.40" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 658.00,323.40 C 741.16,323.40 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
+<path d="M 658.00,323.40 C 741.16,323.40 772.84,617.00 856.00,617.00" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="1.5 4"/>
+<path d="M 659.00,323.40 C 750.80,323.40 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 659.00,323.40 C 750.80,323.40 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 286.00,206.00 C 369.85,206.00 397.15,367.60 481.00,367.60" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,475.33 C 369.85,475.33 397.15,367.60 481.00,367.60" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
-<path d="M 286.00,340.67 C 369.85,340.67 397.15,367.60 481.00,367.60" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
+<path d="M 286.00,340.67 C 369.85,340.67 397.15,367.60 481.00,367.60" fill="none" stroke="#64748b" stroke-width="1.55" opacity="0.340" stroke-linecap="round" stroke-dasharray="1.5 4"/>
 <path d="M 658.00,367.60 C 741.16,367.60 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 658.00,367.60 C 741.16,367.60 772.84,552.00 856.00,552.00" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round"/>
 <path d="M 659.00,367.60 C 750.80,367.60 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 659.00,367.60 C 750.80,367.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
 <path d="M 659.00,367.60 C 750.80,367.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 286.00,206.00 C 369.85,206.00 397.15,383.00 481.00,383.00" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,475.33 C 369.85,475.33 397.15,383.00 481.00,383.00" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
+<path d="M 286.00,340.67 C 369.85,340.67 397.15,383.00 481.00,383.00" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
 <path d="M 658.00,383.00 C 741.16,383.00 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 658.00,383.00 C 741.16,383.00 772.84,682.00 856.00,682.00" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="3 2 1 2"/>
 <path d="M 658.00,383.00 C 741.16,383.00 772.84,552.00 856.00,552.00" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round"/>
-<path d="M 658.00,383.00 C 741.16,383.00 772.84,649.50 856.00,649.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="8 3 1.5 3"/>
 <path d="M 659.00,383.00 C 750.80,383.00 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 659.00,383.00 C 750.80,383.00 771.20,296.00 863.00,296.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
 <path d="M 659.00,383.00 C 750.80,383.00 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 286.00,610.00 C 369.85,610.00 397.15,398.40 481.00,398.40" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
 <path d="M 286.00,340.67 C 369.85,340.67 397.15,398.40 481.00,398.40" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
@@ -129,59 +125,58 @@
 <path d="M 658.00,504.20 C 741.16,504.20 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
 <path d="M 659.00,504.20 C 750.80,504.20 771.20,296.00 863.00,296.00" fill="none" stroke="#c47a00" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="1.5 4"/>
 <path d="M 659.00,504.20 C 750.80,504.20 771.20,408.00 863.00,408.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 286.00,610.00 C 369.85,610.00 397.15,548.40 481.00,548.40" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,206.00 C 369.85,206.00 397.15,548.40 481.00,548.40" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,340.67 C 369.85,340.67 397.15,548.40 481.00,548.40" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 658.00,548.40 C 741.16,548.40 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 659.00,548.40 C 750.80,548.40 771.20,296.00 863.00,296.00" fill="none" stroke="#c47a00" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="1.5 4"/>
-<path d="M 659.00,548.40 C 750.80,548.40 771.20,408.00 863.00,408.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 286.00,206.00 C 369.85,206.00 397.15,519.60 481.00,519.60" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,475.33 C 369.85,475.33 397.15,519.60 481.00,519.60" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 658.00,519.60 C 741.16,519.60 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
+<path d="M 659.00,519.60 C 750.80,519.60 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 659.00,519.60 C 750.80,519.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 659.00,519.60 C 750.80,519.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,610.00 C 369.85,610.00 397.15,563.80 481.00,563.80" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 286.00,206.00 C 369.85,206.00 397.15,563.80 481.00,563.80" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,340.67 C 369.85,340.67 397.15,563.80 481.00,563.80" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
 <path d="M 658.00,563.80 C 741.16,563.80 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 659.00,563.80 C 750.80,563.80 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 659.00,563.80 C 750.80,563.80 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,206.00 C 369.85,206.00 397.15,608.00 481.00,608.00" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 658.00,608.00 C 741.16,608.00 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 659.00,608.00 C 750.80,608.00 771.20,296.00 863.00,296.00" fill="none" stroke="#c47a00" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="1.5 4"/>
-<path d="M 659.00,608.00 C 750.80,608.00 771.20,408.00 863.00,408.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 286.00,610.00 C 369.85,610.00 397.15,652.20 481.00,652.20" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
-<path d="M 286.00,206.00 C 369.85,206.00 397.15,652.20 481.00,652.20" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
-<path d="M 286.00,340.67 C 369.85,340.67 397.15,652.20 481.00,652.20" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
-<path d="M 658.00,652.20 C 741.16,652.20 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 659.00,652.20 C 750.80,652.20 771.20,296.00 863.00,296.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 286.00,610.00 C 369.85,610.00 397.15,667.60 481.00,667.60" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,206.00 C 369.85,206.00 397.15,667.60 481.00,667.60" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,340.67 C 369.85,340.67 397.15,667.60 481.00,667.60" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
-<path d="M 658.00,667.60 C 741.16,667.60 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 659.00,667.60 C 750.80,667.60 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 659.00,667.60 C 750.80,667.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 659.00,667.60 C 750.80,667.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,206.00 C 369.85,206.00 397.15,683.00 481.00,683.00" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 286.00,475.33 C 369.85,475.33 397.15,683.00 481.00,683.00" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
-<path d="M 658.00,683.00 C 741.16,683.00 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
-<path d="M 659.00,683.00 C 750.80,683.00 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 659.00,683.00 C 750.80,683.00 771.20,296.00 863.00,296.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
-<path d="M 659.00,683.00 C 750.80,683.00 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 659.00,563.80 C 750.80,563.80 771.20,296.00 863.00,296.00" fill="none" stroke="#c47a00" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="1.5 4"/>
+<path d="M 659.00,563.80 C 750.80,563.80 771.20,408.00 863.00,408.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 286.00,610.00 C 369.85,610.00 397.15,579.20 481.00,579.20" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,206.00 C 369.85,206.00 397.15,579.20 481.00,579.20" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,340.67 C 369.85,340.67 397.15,579.20 481.00,579.20" fill="none" stroke="#744210" stroke-width="2.25" opacity="0.340" stroke-linecap="round"/>
+<path d="M 658.00,579.20 C 741.16,579.20 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
+<path d="M 659.00,579.20 C 750.80,579.20 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 659.00,579.20 C 750.80,579.20 771.20,296.00 863.00,296.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 659.00,579.20 C 750.80,579.20 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,206.00 C 369.85,206.00 397.15,594.60 481.00,594.60" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 658.00,594.60 C 741.16,594.60 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
+<path d="M 659.00,594.60 C 750.80,594.60 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 659.00,594.60 C 750.80,594.60 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 286.00,206.00 C 369.85,206.00 397.15,638.80 481.00,638.80" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 658.00,638.80 C 741.16,638.80 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
+<path d="M 659.00,638.80 C 750.80,638.80 771.20,296.00 863.00,296.00" fill="none" stroke="#c47a00" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="1.5 4"/>
+<path d="M 659.00,638.80 C 750.80,638.80 771.20,408.00 863.00,408.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 286.00,206.00 C 369.85,206.00 397.15,654.20 481.00,654.20" fill="none" stroke="#6b46c1" stroke-width="1.95" opacity="0.340" stroke-linecap="round" stroke-dasharray="6 4"/>
+<path d="M 658.00,654.20 C 741.16,654.20 772.84,584.50 856.00,584.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="5 3"/>
+<path d="M 658.00,654.20 C 741.16,654.20 772.84,682.00 856.00,682.00" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="3 2 1 2"/>
+<path d="M 658.00,654.20 C 741.16,654.20 772.84,552.00 856.00,552.00" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round"/>
+<path d="M 658.00,654.20 C 741.16,654.20 772.84,649.50 856.00,649.50" fill="none" stroke="#8b95a3" stroke-width="1.15" opacity="0.240" stroke-linecap="round" stroke-dasharray="8 3 1.5 3"/>
+<path d="M 659.00,654.20 C 750.80,654.20 771.20,184.00 863.00,184.00" fill="none" stroke="#2f855a" stroke-width="2.35" opacity="0.520" stroke-linecap="round"/>
+<path d="M 659.00,654.20 C 750.80,654.20 771.20,296.00 863.00,296.00" fill="none" stroke="#2b6cb0" stroke-width="2.00" opacity="0.520" stroke-linecap="round" stroke-dasharray="6 4"/>
 <rect x="412.00" y="137.00" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#2f6690" stroke="none" stroke-width="1.00" opacity="0.860"/>
 <text x="555.00" y="144.50" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#2f6690" opacity="1.000">Information-theoretic</text>
 <text x="690.00" y="144.50" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#2f6690" opacity="1.000">4</text>
 <rect x="412.00" y="227.40" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#c9791f" stroke="none" stroke-width="1.00" opacity="0.860"/>
-<text x="555.00" y="234.90" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#c9791f" opacity="1.000">Tree / ensemble</text>
-<text x="690.00" y="234.90" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#c9791f" opacity="1.000">5</text>
-<rect x="412.00" y="333.20" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#4c8a4f" stroke="none" stroke-width="1.00" opacity="0.860"/>
-<text x="555.00" y="340.70" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#4c8a4f" opacity="1.000">Regression / statistical</text>
-<text x="690.00" y="340.70" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#4c8a4f" opacity="1.000">5</text>
+<text x="555.00" y="234.90" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#c9791f" opacity="1.000">Tree ensembles</text>
+<text x="690.00" y="234.90" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#c9791f" opacity="1.000">6</text>
+<rect x="412.00" y="348.60" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#4c8a4f" stroke="none" stroke-width="1.00" opacity="0.860"/>
+<text x="555.00" y="356.10" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#4c8a4f" opacity="1.000">Sparse / regularized regression</text>
+<text x="690.00" y="356.10" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#4c8a4f" opacity="1.000">4</text>
 <rect x="412.00" y="439.00" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#8a5fbf" stroke="none" stroke-width="1.00" opacity="0.860"/>
-<text x="555.00" y="446.50" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#8a5fbf" opacity="1.000">Deep learning / neural</text>
-<text x="690.00" y="446.50" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#8a5fbf" opacity="1.000">4</text>
-<rect x="412.00" y="529.40" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#7b5a2a" stroke="none" stroke-width="1.00" opacity="0.860"/>
-<text x="555.00" y="536.90" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#7b5a2a" opacity="1.000">Graph / kernel</text>
-<text x="690.00" y="536.90" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#7b5a2a" opacity="1.000">2</text>
-<rect x="412.00" y="589.00" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#008c86" stroke="none" stroke-width="1.00" opacity="0.860"/>
-<text x="555.00" y="596.50" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">Context / aggregation</text>
-<text x="690.00" y="596.50" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#008c86" opacity="1.000">1</text>
-<rect x="412.00" y="633.20" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#b4577a" stroke="none" stroke-width="1.00" opacity="0.860"/>
-<text x="555.00" y="640.70" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#b4577a" opacity="1.000">Workflow / prior-based</text>
-<text x="690.00" y="640.70" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#b4577a" opacity="1.000">3</text>
+<text x="555.00" y="446.50" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#8a5fbf" opacity="1.000">Neural / deep generative</text>
+<text x="690.00" y="446.50" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#8a5fbf" opacity="1.000">5</text>
+<rect x="412.00" y="544.80" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#7b5a2a" stroke="none" stroke-width="1.00" opacity="0.860"/>
+<text x="555.00" y="552.30" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#7b5a2a" opacity="1.000">Graphical models / graph learning</text>
+<text x="690.00" y="552.30" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#7b5a2a" opacity="1.000">3</text>
+<rect x="412.00" y="619.80" width="5.00" height="15.00" rx="2.00" ry="2.00" fill="#008c86" stroke="none" stroke-width="1.00" opacity="0.860"/>
+<text x="555.00" y="627.30" font-family="Helvetica" font-size="9.90" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">Correlation / interpolation</text>
+<text x="690.00" y="627.30" font-family="Helvetica" font-size="8.70" font-weight="700" text-anchor="end" fill="#008c86" opacity="1.000">2</text>
 <rect x="70.00" y="177.00" width="210.00" height="58.00" rx="8.00" ry="8.00" fill="#fbfaf7" stroke="#cfc6b8" stroke-width="1.00" opacity="1.000"/>
 <circle cx="83.00" cy="195.00" r="2.70" fill="#5d6878" stroke="none" stroke-width="1.00" opacity="1.000"/>
 <circle cx="83.00" cy="206.00" r="2.70" fill="#5d6878" stroke="none" stroke-width="1.00" opacity="1.000"/>
@@ -409,8 +404,8 @@
 <text x="505.00" y="205.10" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scMINER</text>
 <rect x="573.00" y="196.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
 <text x="580.00" y="204.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
-<rect x="592.00" y="196.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="204.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
+<rect x="592.00" y="196.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#f4e8d2" stroke="#c47a00" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="204.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#c47a00" opacity="1.000">M</text>
 <rect x="611.00" y="196.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
 <text x="618.00" y="204.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">1</text>
 <rect x="630.00" y="196.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
@@ -450,7 +445,7 @@
 <text x="637.00" y="279.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">2</text>
 <rect x="487.00" y="285.85" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#f4e7d6" stroke="#c9791f" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="292.60" r="2.80" fill="#c9791f" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="295.50" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">pySCENIC</text>
+<text x="505.00" y="295.50" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">MINI-EX v3</text>
 <rect x="573.00" y="287.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
 <text x="580.00" y="295.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
 <rect x="592.00" y="287.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
@@ -458,10 +453,10 @@
 <rect x="611.00" y="287.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
 <text x="618.00" y="295.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="287.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="295.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">2</text>
+<text x="637.00" y="295.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">6</text>
 <rect x="487.00" y="301.25" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#f4e7d6" stroke="#c9791f" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="308.00" r="2.80" fill="#c9791f" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="310.90" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">SCING</text>
+<text x="505.00" y="310.90" font-family="Helvetica" font-size="6.93" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">pySCENIC GRN step</text>
 <rect x="573.00" y="302.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
 <text x="580.00" y="310.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
 <rect x="592.00" y="302.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
@@ -469,40 +464,40 @@
 <rect x="611.00" y="302.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
 <text x="618.00" y="310.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="302.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="310.50" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">11</text>
-<rect x="487.00" y="345.45" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#e5e9db" stroke="#4c8a4f" stroke-width="1.00" opacity="1.000"/>
-<circle cx="496.00" cy="352.20" r="2.80" fill="#4c8a4f" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="355.10" font-family="Helvetica" font-size="6.55" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">inferCSN CRAN core</text>
-<rect x="573.00" y="346.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
-<text x="580.00" y="354.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
-<rect x="592.00" y="346.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="354.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
-<rect x="611.00" y="346.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
-<text x="618.00" y="354.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
-<rect x="630.00" y="346.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="354.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">8</text>
+<text x="637.00" y="310.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">2</text>
+<rect x="487.00" y="316.65" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#f4e7d6" stroke="#c9791f" stroke-width="1.00" opacity="1.000"/>
+<circle cx="496.00" cy="323.40" r="2.80" fill="#c9791f" stroke="none" stroke-width="1.00" opacity="1.000"/>
+<text x="505.00" y="326.30" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">SCING</text>
+<rect x="573.00" y="318.10" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
+<text x="580.00" y="325.90" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
+<rect x="592.00" y="318.10" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="325.90" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">0</text>
+<rect x="611.00" y="318.10" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
+<text x="618.00" y="325.90" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
+<rect x="630.00" y="318.10" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
+<text x="637.00" y="325.90" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">11</text>
 <rect x="487.00" y="360.85" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#e5e9db" stroke="#4c8a4f" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="367.60" r="2.80" fill="#4c8a4f" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="370.50" font-family="Helvetica" font-size="7.86" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">Inferelator 3.0</text>
+<text x="505.00" y="370.50" font-family="Helvetica" font-size="6.55" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">inferCSN CRAN core</text>
 <rect x="573.00" y="362.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
 <text x="580.00" y="370.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
-<rect x="592.00" y="362.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#f4e8d2" stroke="#c47a00" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="370.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#c47a00" opacity="1.000">M</text>
+<rect x="592.00" y="362.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="370.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
 <rect x="611.00" y="362.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
 <text x="618.00" y="370.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="362.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="370.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">7</text>
+<text x="637.00" y="370.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">8</text>
 <rect x="487.00" y="376.25" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#e5e9db" stroke="#4c8a4f" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="383.00" r="2.80" fill="#4c8a4f" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="385.90" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">ppcor</text>
-<rect x="573.00" y="377.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e8e5e0" stroke="#5d6878" stroke-width="0.75" opacity="1.000"/>
-<text x="580.00" y="385.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#5d6878" opacity="1.000">U</text>
-<rect x="592.00" y="377.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="385.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
-<rect x="611.00" y="377.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
-<text x="618.00" y="385.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">1</text>
+<text x="505.00" y="385.90" font-family="Helvetica" font-size="7.86" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">Inferelator 3.0</text>
+<rect x="573.00" y="377.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
+<text x="580.00" y="385.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
+<rect x="592.00" y="377.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#f4e8d2" stroke="#c47a00" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="385.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#c47a00" opacity="1.000">M</text>
+<rect x="611.00" y="377.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
+<text x="618.00" y="385.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="377.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="385.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">1</text>
+<text x="637.00" y="385.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">7</text>
 <rect x="487.00" y="391.65" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#e5e9db" stroke="#4c8a4f" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="398.40" r="2.80" fill="#4c8a4f" stroke="none" stroke-width="1.00" opacity="1.000"/>
 <text x="505.00" y="401.30" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">SimiC</text>
@@ -569,72 +564,72 @@
 <text x="618.00" y="506.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="498.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
 <text x="637.00" y="506.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">6</text>
-<rect x="487.00" y="541.65" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#ebe4d7" stroke="#7b5a2a" stroke-width="1.00" opacity="1.000"/>
-<circle cx="496.00" cy="548.40" r="2.80" fill="#7b5a2a" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="551.30" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">CeSpGRN</text>
-<rect x="573.00" y="543.10" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e8e5e0" stroke="#5d6878" stroke-width="0.75" opacity="1.000"/>
-<text x="580.00" y="550.90" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#5d6878" opacity="1.000">U</text>
-<rect x="592.00" y="543.10" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="550.90" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
-<rect x="611.00" y="543.10" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
-<text x="618.00" y="550.90" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
-<rect x="630.00" y="543.10" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="550.90" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">12</text>
+<rect x="487.00" y="512.85" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#ede4e9" stroke="#8a5fbf" stroke-width="1.00" opacity="1.000"/>
+<circle cx="496.00" cy="519.60" r="2.80" fill="#8a5fbf" stroke="none" stroke-width="1.00" opacity="1.000"/>
+<text x="505.00" y="522.50" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scRegulate</text>
+<rect x="573.00" y="514.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
+<text x="580.00" y="522.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
+<rect x="592.00" y="514.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="522.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
+<rect x="611.00" y="514.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
+<text x="618.00" y="522.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
+<rect x="630.00" y="514.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
+<text x="637.00" y="522.10" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">20</text>
 <rect x="487.00" y="557.05" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#ebe4d7" stroke="#7b5a2a" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="563.80" r="2.80" fill="#7b5a2a" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="566.70" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scSGL</text>
+<text x="505.00" y="566.70" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">CeSpGRN</text>
 <rect x="573.00" y="558.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e8e5e0" stroke="#5d6878" stroke-width="0.75" opacity="1.000"/>
 <text x="580.00" y="566.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#5d6878" opacity="1.000">U</text>
 <rect x="592.00" y="558.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
 <text x="599.00" y="566.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
-<rect x="611.00" y="558.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
-<text x="618.00" y="566.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">1</text>
+<rect x="611.00" y="558.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
+<text x="618.00" y="566.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="558.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="566.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">3</text>
-<rect x="487.00" y="601.25" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#dceae2" stroke="#008c86" stroke-width="1.00" opacity="1.000"/>
-<circle cx="496.00" cy="608.00" r="2.80" fill="#008c86" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="610.90" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">LIONESS</text>
-<rect x="573.00" y="602.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e8e5e0" stroke="#5d6878" stroke-width="0.75" opacity="1.000"/>
-<text x="580.00" y="610.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#5d6878" opacity="1.000">U</text>
-<rect x="592.00" y="602.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="610.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
-<rect x="611.00" y="602.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
-<text x="618.00" y="610.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">1</text>
-<rect x="630.00" y="602.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="610.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">0</text>
-<rect x="487.00" y="645.45" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#f2e3e0" stroke="#b4577a" stroke-width="1.00" opacity="1.000"/>
-<circle cx="496.00" cy="652.20" r="2.80" fill="#b4577a" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="655.10" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">MINI-EX v3</text>
-<rect x="573.00" y="646.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
-<text x="580.00" y="654.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
-<rect x="592.00" y="646.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="654.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">0</text>
-<rect x="611.00" y="646.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
-<text x="618.00" y="654.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
-<rect x="630.00" y="646.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="654.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">6</text>
-<rect x="487.00" y="660.85" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#f2e3e0" stroke="#b4577a" stroke-width="1.00" opacity="1.000"/>
-<circle cx="496.00" cy="667.60" r="2.80" fill="#b4577a" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="670.50" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scMTNI</text>
-<rect x="573.00" y="662.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
-<text x="580.00" y="670.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
-<rect x="592.00" y="662.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="670.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">0</text>
-<rect x="611.00" y="662.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
-<text x="618.00" y="670.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
-<rect x="630.00" y="662.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="670.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">6</text>
-<rect x="487.00" y="676.25" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#f2e3e0" stroke="#b4577a" stroke-width="1.00" opacity="1.000"/>
-<circle cx="496.00" cy="683.00" r="2.80" fill="#b4577a" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="505.00" y="685.90" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scRegulate</text>
-<rect x="573.00" y="677.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
-<text x="580.00" y="685.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
-<rect x="592.00" y="677.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
-<text x="599.00" y="685.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
-<rect x="611.00" y="677.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
-<text x="618.00" y="685.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
-<rect x="630.00" y="677.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="685.50" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">20</text>
+<text x="637.00" y="566.30" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">12</text>
+<rect x="487.00" y="572.45" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#ebe4d7" stroke="#7b5a2a" stroke-width="1.00" opacity="1.000"/>
+<circle cx="496.00" cy="579.20" r="2.80" fill="#7b5a2a" stroke="none" stroke-width="1.00" opacity="1.000"/>
+<text x="505.00" y="582.10" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scMTNI</text>
+<rect x="573.00" y="573.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e6e7" stroke="#2b6cb0" stroke-width="0.75" opacity="1.000"/>
+<text x="580.00" y="581.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2b6cb0" opacity="1.000">D</text>
+<rect x="592.00" y="573.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="581.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
+<rect x="611.00" y="573.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
+<text x="618.00" y="581.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
+<rect x="630.00" y="573.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
+<text x="637.00" y="581.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">6</text>
+<rect x="487.00" y="587.85" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#ebe4d7" stroke="#7b5a2a" stroke-width="1.00" opacity="1.000"/>
+<circle cx="496.00" cy="594.60" r="2.80" fill="#7b5a2a" stroke="none" stroke-width="1.00" opacity="1.000"/>
+<text x="505.00" y="597.50" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scSGL</text>
+<rect x="573.00" y="589.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e8e5e0" stroke="#5d6878" stroke-width="0.75" opacity="1.000"/>
+<text x="580.00" y="597.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#5d6878" opacity="1.000">U</text>
+<rect x="592.00" y="589.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="597.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
+<rect x="611.00" y="589.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
+<text x="618.00" y="597.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">1</text>
+<rect x="630.00" y="589.30" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
+<text x="637.00" y="597.10" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">3</text>
+<rect x="487.00" y="632.05" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#dceae2" stroke="#008c86" stroke-width="1.00" opacity="1.000"/>
+<circle cx="496.00" cy="638.80" r="2.80" fill="#008c86" stroke="none" stroke-width="1.00" opacity="1.000"/>
+<text x="505.00" y="641.70" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">LIONESS</text>
+<rect x="573.00" y="633.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e8e5e0" stroke="#5d6878" stroke-width="0.75" opacity="1.000"/>
+<text x="580.00" y="641.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#5d6878" opacity="1.000">U</text>
+<rect x="592.00" y="633.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="641.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
+<rect x="611.00" y="633.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
+<text x="618.00" y="641.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">1</text>
+<rect x="630.00" y="633.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
+<text x="637.00" y="641.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">0</text>
+<rect x="487.00" y="647.45" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#dceae2" stroke="#008c86" stroke-width="1.00" opacity="1.000"/>
+<circle cx="496.00" cy="654.20" r="2.80" fill="#008c86" stroke="none" stroke-width="1.00" opacity="1.000"/>
+<text x="505.00" y="657.10" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">ppcor</text>
+<rect x="573.00" y="648.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e8e5e0" stroke="#5d6878" stroke-width="0.75" opacity="1.000"/>
+<text x="580.00" y="656.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#5d6878" opacity="1.000">U</text>
+<rect x="592.00" y="648.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e2e9dd" stroke="#2f855a" stroke-width="0.75" opacity="1.000"/>
+<text x="599.00" y="656.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#2f855a" opacity="1.000">S</text>
+<rect x="611.00" y="648.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#edeae5" stroke="#8792a2" stroke-width="0.75" opacity="1.000"/>
+<text x="618.00" y="656.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#8792a2" opacity="1.000">1</text>
+<rect x="630.00" y="648.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
+<text x="637.00" y="656.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">1</text>
 <rect x="1032.00" y="156.00" width="208.00" height="530.00" rx="14.00" ry="14.00" fill="#fffdf8" stroke="#cfc6b8" stroke-width="1.10" opacity="1.000"/>
 <text x="1050.00" y="188.00" font-family="Helvetica" font-size="15.00" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">Visual encoding</text>
 <text x="1050.00" y="223.00" font-family="Helvetica" font-size="11.60" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">Inputs</text>

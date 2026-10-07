@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_global_3f9502d894",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [
+            "prior_grn"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [
+            "prior_grn"
+          ],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/scregulate.json:representative_global_3f9502d894",
+          "resolved_params": {
+            "prior_source": "provided_prior",
+            "epochs": 2000,
+            "freeze_epochs": 1500,
+            "train_val_split_ratio": 0.8,
+            "batch_size": 3500,
+            "learning_rate": 0.00025,
+            "alpha_max": 0.7,
+            "alpha_scale": 0.06,
+            "beta_max": 0.4,
+            "gamma_max": 2.6,
+            "early_stopping_patience": 350,
+            "min_targets": 5,
+            "min_TFs": 1,
+            "fine_tune_epochs": 500,
+            "fine_tune_batch_size": 3500,
+            "fine_tune_min_epochs": 0,
+            "fine_tune_beta_max": 0.5,
+            "fine_tune_max_weight_norm": 4.0,
+            "fine_tune_early_stopping_patience": 250,
+            "random_state": 1448024689
+          },
+          "cost_relevant_params": [
+            "batch_size",
+            "early_stopping_patience",
+            "epochs",
+            "fine_tune_batch_size",
+            "fine_tune_early_stopping_patience",
+            "fine_tune_epochs",
+            "fine_tune_min_epochs",
+            "freeze_epochs",
+            "learning_rate",
+            "min_TFs",
+            "min_targets",
+            "prior_source"
+          ],
+          "cost_relevant_values": {
+            "batch_size": 3500,
+            "early_stopping_patience": 350,
+            "epochs": 2000,
+            "fine_tune_batch_size": 3500,
+            "fine_tune_early_stopping_patience": 250,
+            "fine_tune_epochs": 500,
+            "fine_tune_min_epochs": 0,
+            "freeze_epochs": 1500,
+            "learning_rate": 0.00025,
+            "min_TFs": 1,
+            "min_targets": 5,
+            "prior_source": "provided_prior"
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00032",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
+            "extra/prior_grn.tsv": "9d05743b71299970c62d50dca48fc634faf604d42aea80bd5dbd227514b07872",
+            "params.json": "c94c04ba8eb720af5e6dfdd5b2068df92a412993185ed92779ab051bc74971be"
+          },
+          "source_result_sha256": "162e6a1ca8e2f5eaeb32438717e847113578b3166335d2048baa0cce199a8fdd",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

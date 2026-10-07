@@ -351,3 +351,12 @@ Additional Phase 2 static validation passed and remains applicable:
   on very small/simple fixtures. The wrapper filters those zero scores and
   emits a valid header-only `network.csv`; unknown aliases and non-finite
   weights remain failures.
+
+
+## Scientific and runtime contract audit (2026-09-29)
+
+The primary paper (https://doi.org/10.1016/j.cels.2017.08.014) and NetworkInference.jl at `e5a3de323127f002e57bbd91c834f7739939ba0e` were rechecked, including README options and `src/infer_network.jl` and `src/network_inference.jl`. `method_family=information`: the selected PIDC entrypoint uses partial information decomposition and network-context scoring, not directed regression. The generic column semantics are supported by the upstream package, while no temporal ordering is modeled. The four exposed discretization/estimation parameters match the selected API; Bayesian blocks ignores number_of_bins. Added early catalog blocks for fewer than three genes, fewer than two observations, and logarithm bases at or below one (nonnegative information measures). Non-maximum-likelihood estimators remain exposed with a warning because the source explicitly says they violate the accelerated PIDC marginal-consistency assumption; empirical scaling and all estimator/discretizer combinations were not rebenchmarked. Undirected, unsigned raw PIDC weights and distributed Julia process mapping remain unchanged.
+
+Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
+
+Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/pidc:local` (image ID `sha256:60c45b617aeb780259c4f67e7193b3e822e136f7f4ab35f28b1b99afea48a5c9`; no wrapper overlay). The official smoketest runner passed `global_uniform_width` (10 rows), `global_uniform_count` (10 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.

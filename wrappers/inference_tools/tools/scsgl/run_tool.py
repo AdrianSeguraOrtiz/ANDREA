@@ -92,9 +92,13 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
             + ", ".join(sorted(SUPPORTED_KERNELS))
         )
 
+    pos_density = _as_density("pos_density", raw_params["pos_density"])
+    neg_density = _as_density("neg_density", raw_params["neg_density"])
+    if pos_density + neg_density > 1.0:
+        raise ValueError("pos_density + neg_density must be <= 1 for disjoint signed edges.")
     return ResolvedParams(
-        pos_density=_as_density("pos_density", raw_params["pos_density"]),
-        neg_density=_as_density("neg_density", raw_params["neg_density"]),
+        pos_density=pos_density,
+        neg_density=neg_density,
         association_kernel=str(association_kernel),
     )
 

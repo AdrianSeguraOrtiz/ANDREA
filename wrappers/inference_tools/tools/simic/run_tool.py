@@ -149,12 +149,18 @@ def _require_float(
 def _resolve_random_seed(value: Any) -> Optional[int]:
     if value is None:
         return None
-    return _require_int(value, "random_seed")
+    seed = _require_int(value, "random_seed", minimum=0)
+    if seed > 2**32 - 1:
+        raise ValueError("random_seed must be <= 4294967295 for NumPy.")
+    return seed
 
 
 def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
     require_param_keys(raw_params, EXPECTED_PARAMS)
     warn_unknown_params(raw_params, EXPECTED_PARAMS)
+    for name in ("num_TFs", "num_target_genes"):
+        if raw_params[name] == 0:
+            raise ValueError(f"{name} must be -1 or a positive integer.")
 
     sort_by = raw_params["wauc_sort_by"]
     if not isinstance(sort_by, str):
@@ -208,7 +214,7 @@ def _load_execution(params_path: Path) -> str:
 
 
 def _read_expression_tsv(expr_path: Path) -> pd.DataFrame:
-    df = pd.read_csv(expr_path, sep="\t", header=0)
+    df = pd.read_csv(expr_path, sep="\t", header=0, dtype=str, keep_default_na=False)
     if df.shape[1] < 2:
         raise ValueError(
             "expression.tsv must have at least 2 columns: gene + >=1 cell."

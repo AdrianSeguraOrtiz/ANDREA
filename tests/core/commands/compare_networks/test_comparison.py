@@ -2028,9 +2028,11 @@ class CompareNetworksCoreTests(unittest.TestCase):
         self.assertTrue(-180 <= angle <= 180)
 
     def test_shared_view_keeps_edge_differences_out_of_static_report(self) -> None:
-        view_script = (
-            Path("andrea/core/commands/compare_networks/view_assets/view.js")
-        ).read_text(encoding="utf-8")
+        from importlib.resources import files
+
+        view_script = files(
+            "andrea.core.commands.compare_networks.view_assets"
+        ).joinpath("view.js").read_text(encoding="utf-8")
 
         self.assertIn("comparison.sqlite", view_script)
         self.assertIn("edge_scores.csv", view_script)

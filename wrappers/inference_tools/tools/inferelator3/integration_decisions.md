@@ -253,3 +253,14 @@ Smoketest outcome:
 Environment note:
 
 - The default Python 3.13 interpreter lacks `pytest` and `rich`; pytest/core checks were run under the local `PYENV_VERSION=3.10.7` environment where those dependencies are installed.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [Inferelator 3.0 paper](https://doi.org/10.1093/bioinformatics/btac117) and the exact official [inferelator 0.6.3 wheel](https://pypi.org/project/inferelator/0.6.3/). Inspected `workflow.py`, `workflows/tfa_workflow.py`, `workflows/amusr_workflow.py`, BBSR/AMuSR regression setters and postprocessing result/confidence code.
+- `method_family=regression`: prior-informed TF activity followed by BBSR for global tasks or the selected native multitask regression. Checked `auto` routing, required TF/prior files, grouped metadata, bootstrap/feature/prior-weight settings and per-task output selection. The catalog does not expose every method supported by the upstream package (for example its separate StARS paths).
+- Output score remains `combined_confidences`; sign is taken from available coefficient/sign-sum columns, so it is intentionally not advertised as an unconditionally signed coefficient magnitude. `clr_only` controls BBSR predictor selection and does not turn this integration into the standalone CLR method.
+- Corrected expression, prior and group TSV parsing to preserve literal identifiers such as `001` and `NA` before internal aliasing. Regression tests exercise a matching expression/prior/group contract. Joblib/MPControl thread routing and the existing alias round-trip are retained.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/inferelator3:audit-local`; image ID `sha256:eecf7d3b8e35131d330ef7dfc32729f5133dc4df05e7037e0fab6ccb21c9970d`. The repository smoke runner passed `global` (4 rows), `group_native` (22 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.

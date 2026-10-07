@@ -89,6 +89,9 @@ as_int_checked <- function(name, value, min_value = NULL) {
   if (!is_scalar_number(value) || abs(value - round(value)) > 1e-9) {
     stop(sprintf("%s must be an integer.", name), call. = FALSE)
   }
+  if (abs(value) > .Machine$integer.max) {
+    stop(sprintf("%s exceeds R's non-missing integer range.", name), call. = FALSE)
+  }
   out <- as.integer(round(value))
   if (!is.null(min_value) && out < min_value) {
     stop(sprintf("%s must be >= %d.", name, as.integer(min_value)), call. = FALSE)
@@ -189,7 +192,9 @@ read_expression_tsv <- function(expr_path) {
     sep = "\t",
     header = TRUE,
     check.names = FALSE,
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    colClasses = "character",
+    na.strings = character()
   )
   if (ncol(df) < 3L) {
     stop("expression.tsv must have one gene column and at least two expression columns.", call. = FALSE)

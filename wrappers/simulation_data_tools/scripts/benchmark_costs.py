@@ -22,6 +22,15 @@ _REPO_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT_FOR_IMPORTS) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT_FOR_IMPORTS))
 
+_BENCHMARK_ROOT = Path(__file__).resolve().parents[3]
+if str(_BENCHMARK_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BENCHMARK_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from benchmark_support import (
+    atomic_json, collect_provenance, merge_profiles, persistent_workdir, write_process_logs,
+    profile_fingerprint,
+)
+
 from andrea.core.commands.generate_data.request import (
     _resolve_simulator_params,
     resolve_simulator_runtime_resources,
@@ -229,14 +238,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Print the resolved benchmark matrix and exit without building images or running containers.",
     )
+    parser.add_argument(
+        "--catalog-images", action="store_true",
+        help="Use the image referenced by each catalog spec without rebuilding; run its immutable local image ID.",
+    )
+    parser.add_argument(
+        "--results-dir", type=Path,
+        help="Persist inputs, outputs, stdout/stderr, raw measurements and provenance below this directory.",
+    )
     return parser.parse_args(argv)
 
 
 def save_json(path: Path, payload: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(payload, fh, indent=2, ensure_ascii=True)
-        fh.write("\n")
+    atomic_json(path, payload)
 
 
 def parse_size(value: str) -> SizePoint:
@@ -278,6 +292,8 @@ def detect_host_ram_gb() -> float:
 
 
 def validate_runtime_args(args: argparse.Namespace) -> None:
+    if args.profile and not args.merge_existing and not args.no_write_cost and not args.plan_only:
+        raise RuntimeError("Filtered cost writes require --merge-existing; use --no-write-cost for experiments.")
     if args.repeats < 1:
         raise RuntimeError("--repeats must be >= 1.")
     if args.group_count < 1:
@@ -1368,10 +1384,12 @@ def run_container_once(
     try:
         result = run_cmd(cmd, timeout_s=timeout_s, capture_output=True)
         elapsed = time.perf_counter() - started
+        write_process_logs(workdir, result)
         logs = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
         if result.returncode != 0:
             return (classify_failure(logs), elapsed, None, None, logs.strip())
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as exc:
+        write_process_logs(workdir, exc)
         elapsed = time.perf_counter() - started
         cleanup_error = cleanup_timed_out_container(
             container_name=container_name,
@@ -1797,6 +1815,7 @@ def execute_profile_benchmarks(
         if error:
             payload["error"] = error
         profile_runs.append(payload)
+        save_json(workdir / "measurements.json", profile_runs)
         print(f"  -> {status} ({elapsed:.3f}s)")
         if status != "ok" and error:
             compact_error = " ".join(str(error).split())
@@ -1988,7 +2007,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     for target in targets:
         simulator_id = target.simulator_id
         simulator_threads = threads_by_simulator[simulator_id]
-        image_tag = docker_image_tag(simulator_id)
+        image_tag = target.spec["docker_image"] if args.catalog_images else docker_image_tag(simulator_id)
         wrapper_dir = args.wrappers_root / simulator_id
         if not wrapper_dir.is_dir():
             print(f"[{simulator_id}] ERROR: missing wrapper dir: {wrapper_dir}", file=sys.stderr)
@@ -2005,16 +2024,24 @@ def run(argv: Sequence[str] | None = None) -> int:
         wrote_cost = False
         simulator_has_unpersistable_profile = False
         try:
-            if not args.skip_build:
+            if not args.skip_build and not args.catalog_images:
                 build_image(
                     simulator_id=simulator_id,
                     catalog_simulators_root=args.catalog_simulators_root,
                     wrappers_root=args.wrappers_root,
                     image_tag=image_tag,
                 )
-            workdir, workdir_context = allocate_simulator_workdir(
-                simulator_id, args.keep_workdir
+            provenance = collect_provenance(
+                root=REPO_ROOT, spec_path=target.catalog_simulator_dir / "simulatorspec.json",
+                image=image_tag, seed=args.seed, source_dir=wrapper_dir,
             )
+            image_tag = provenance["image_id"]
+            if args.results_dir:
+                workdir = persistent_workdir(args.results_dir, simulator_id)
+                print(f"[{simulator_id}] evidence: {workdir}")
+            else:
+                workdir, workdir_context = allocate_simulator_workdir(simulator_id, args.keep_workdir)
+            save_json(workdir / "provenance.json", provenance)
             for profile in target.profiles:
                 profile_sizes = sizes_for_profile(
                     profile=profile,
@@ -2023,6 +2050,13 @@ def run(argv: Sequence[str] | None = None) -> int:
                 )
                 print(f"[{simulator_id}] profile: {profile.profile_id}")
                 profile_workdir = workdir / safe_path_token(profile.profile_id)
+                profile_sha256 = profile_fingerprint(profile, root=REPO_ROOT, kind="simulation")
+                save_json(profile_workdir / "benchmark_config.json", {
+                    **build_benchmark_config(simulator_id=simulator_id, profile=profile,
+                        sizes=profile_sizes, threads=simulator_threads, ram_gb=ram_gb, args=args),
+                    "provenance": provenance,
+                    "profile_sha256": profile_sha256,
+                })
                 profile_runs, run_index, fail_fast_triggered = execute_profile_benchmarks(
                     simulator_id=simulator_id,
                     spec=target.spec,
@@ -2063,14 +2097,14 @@ def run(argv: Sequence[str] | None = None) -> int:
                     cost_entries.append(
                         make_cost_profile_entry(
                             profile_id=profile.profile_id,
-                            benchmark_config=build_benchmark_config(
+                            benchmark_config={**build_benchmark_config(
                                 simulator_id=simulator_id,
                                 profile=profile,
                                 sizes=profile_sizes,
                                 threads=simulator_threads,
                                 ram_gb=ram_gb,
                                 args=args,
-                            ),
+                            ), "provenance": provenance, "profile_sha256": profile_sha256},
                             runtime_points=runtime_points,
                         )
                     )

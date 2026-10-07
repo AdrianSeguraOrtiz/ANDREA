@@ -21,20 +21,51 @@ from andrea.core.commands.compare_networks.utils import (
     slugify,
     unique_preserve_order,
 )
+from andrea.core.shared.output_capabilities import validate_frozen_output_capabilities
 
 
 def build_network_tables(
     source_data: list[SourceData],
+    *,
+    warnings: list[str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[NetworkInstance]]:
     network_index: list[dict[str, Any]] = []
     instances: list[NetworkInstance] = []
     for data in source_data:
         catalog_ids = catalog_ids_from_run_report(data.run_report)
+        tools = data.run_report.get("tools")
+        capabilities = None
+        if isinstance(tools, dict) and "output_capabilities" in tools:
+            capabilities = validate_frozen_output_capabilities(
+                tools, label=f"[{data.source.source_id}] run_report tools"
+            )
+        elif warnings is not None:
+            warnings.append(
+                f"[{data.source.source_id}] missing frozen output_capabilities: "
+                "legacy comparison projects the stored edge rows at every level; "
+                "direction and sign capabilities cannot be verified. Regenerate "
+                "the inference bundle to enforce method-specific levels."
+            )
         grouped = group_rows(data.rows)
         for (tool_id, context), rows in sorted(grouped.items()):
             catalog_tool_id = catalog_ids.get(tool_id, tool_id)
             run_id = str(data.run_report.get("run_id") or "")
-            for level in COMPARISON_LEVELS:
+            levels = COMPARISON_LEVELS
+            if capabilities is not None:
+                if tool_id not in capabilities:
+                    raise ValueError(
+                        f"[{data.source.source_id}] network tool {tool_id!r} "
+                        "is absent from frozen output_capabilities"
+                    )
+                capability = capabilities[tool_id]
+                # Match evaluate-inference: signed is a directed, signed level;
+                # the CSV orientation of an undirected edge supplies no direction.
+                levels = ["topology"]
+                if capability["directed"]:
+                    levels.append("directed")
+                    if capability["sign"] != "none":
+                        levels.append("signed")
+            for level in levels:
                 aggregated = aggregate_rows(rows, level=level)
                 nodes = collect_nodes_from_scores(aggregated, level=level)
                 network_id = build_network_id(

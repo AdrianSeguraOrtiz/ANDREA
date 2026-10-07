@@ -24,6 +24,19 @@
       "optional_inputs": [
         "tf_list"
       ]
+    },
+    {
+      "id": "global_tf_list_meta_cells",
+      "execution": {
+        "mode": "global"
+      },
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "subsampling_method": "meta_cells",
+        "subsampling_ratio": 0.5
+      }
     }
   ]
 }

@@ -8,6 +8,7 @@
   "first_author": "Yongqing Zhang",
   "year": 2023,
   "method_summary": "MetaSEM infers gene regulatory networks from scRNA-seq data with a meta-learning framework composed of an encoder, a meta-decoder and a GRN layer. The GRN layer embeds a structural equation model adjacency matrix as directed regulatory weights, and bi-level optimization trains the encoder and meta-decoder to learn pseudo-labels from sparse high-dimensional single-cell expression data.",
+  "method_family": "neural",
   "method_keywords": [
     "single_cell",
     "meta_learning",
@@ -17,7 +18,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/ZhangLab312/MetaSEM/tree/482987b360ca57172f0276fd64e27b2681223b00",
-  "docker_image": "adriansegura99/inference-tools_metasem:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_metasem:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"

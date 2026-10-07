@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_group_native_5f4b81f3ac",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 12179,
+            "columns": 100
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "group_native",
+          "physical_task_policy": "native_grouped",
+          "group_count": 2,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_observed",
+          "gene_id_source": "published_arabidopsis_root",
+          "extras_provided": [
+            "cluster_identities",
+            "cluster_markers",
+            "groups",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [
+            "cluster_identities",
+            "cluster_markers",
+            "groups",
+            "tf_list"
+          ],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": "Fixed identities in the checksum-pinned fixture",
+          "prior_density": null,
+          "group_count": 2,
+          "has_tf_list": true,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/miniex3.json:representative_group_native_5f4b81f3ac",
+          "resolved_params": {
+            "reference_species": "ath",
+            "doMotifAnalysis": true,
+            "motifFilter": "TF-F_motifs",
+            "topMarkers": 700,
+            "expressionFilter": 10,
+            "topRegulons": 150
+          },
+          "cost_relevant_params": [
+            "doMotifAnalysis",
+            "expressionFilter",
+            "motifFilter",
+            "reference_species",
+            "topMarkers",
+            "topRegulons"
+          ],
+          "cost_relevant_values": {
+            "doMotifAnalysis": true,
+            "expressionFilter": 10,
+            "motifFilter": "TF-F_motifs",
+            "reference_species": "ath",
+            "topMarkers": 700,
+            "topRegulons": 150
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00036",
+          "genes": 12179,
+          "columns": 100,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "ce744e5f79200df7aef3f2494a5ec15dc8f420d46f3d05da8e8640847b28a6aa",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "source_result_sha256": "53c34b77e50ea314d59bc1f687455f3bcf6fa10a2032a1b816fe4dde146ad357",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

@@ -7,7 +7,7 @@
   ],
   "first_author": "Tim Van den Bulcke",
   "year": 2006,
-  "simulation_summary": "Generates synthetic transcriptional regulatory networks and bulk microarray-like RNA expression datasets from known source-network topology, nonlinear regulatory functions, external-condition inputs and configurable biological/experimental noise.",
+  "simulation_summary": "Runs SynTReN 1.2 to generate fixed transcriptional network topology and bulk microarray-like expression under randomized or predefined external conditions. The public route preserves unsigned global topology, not temporal or context-specific rewiring. The original release has an academic-use license; the build recovers it from a pinned archived ANDREA image.",
   "simulation_keywords": [
     "bulk",
     "rna_expression",
@@ -20,7 +20,7 @@
     "java"
   ],
   "implementation_url": "https://web.archive.org/web/20191023060930/http://bioinformatics.intec.ugent.be/kmarchal/SynTReN/index.html",
-  "docker_image": "adriansegura99/simulator_syntren:1.0.0",
+  "docker_image": "adriansegura99/simulator_syntren:1.1.0",
   "extra_inputs": {
     "required": [],
     "optional": [],
@@ -388,7 +388,8 @@
           "score_semantics": "score is 1.0 because SynTReN exposes simulated topology but not a public edge-confidence score; sign is '?' because the verified generated SIF export uses token un for generated edges.",
           "limitations": [
             "SynTReN uses one fixed regulatory network for every expression column in the run.",
-            "Internal transfer-function signs affect expression generation but are not preserved in a stable public signed edge artifact by the verified API route."
+            "Internal transfer-function signs affect expression generation but are not preserved in a stable public signed edge artifact by the verified API route.",
+            "The 1.2 release is recovered from a previously published image because the original upstream archive is unavailable; this is artifact-based reconstruction, not a source build. Native license terms remain in /opt/syntren/LICENSE-AGREEMENT.TXT."
           ]
         },
         {
@@ -561,7 +562,8 @@
           "score_semantics": "score is 1.0 because SynTReN exposes simulated topology but not a public edge-confidence score; sign is '?' because the verified generated SIF export uses token un for generated edges.",
           "limitations": [
             "Predefined external conditions perturb inputs but do not rewire the generated TRN.",
-            "The public GRN therefore remains global for all perturbation columns."
+            "The public GRN therefore remains global for all perturbation columns.",
+            "The 1.2 release is recovered from a previously published image because the original upstream archive is unavailable; this is artifact-based reconstruction, not a source build. Native license terms remain in /opt/syntren/LICENSE-AGREEMENT.TXT."
           ]
         },
         {

@@ -9,6 +9,7 @@
   "first_author": "Camilla Ferrari",
   "year": 2022,
   "method_summary": "MINI-EX infers plant cell-type-specific GRNs from scRNA-seq by first building a GRNBoost2 expression network, then filtering regulons with TF motif enrichment and cluster-specific target/TF expression. It prioritizes retained regulons using network centrality, median coexpression, TF/TG cluster specificity and optional GO-term-guided Borda ranking.",
+  "method_family": "tree",
   "method_keywords": [
     "single_cell",
     "cell_type_specific",
@@ -18,7 +19,7 @@
     "plant"
   ],
   "implementation_url": "https://github.com/VIB-PSB/MINI-EX/tree/3f220a68e8057fe4d33665e956a3f3bbe41ff4c8",
-  "docker_image": "adriansegura99/inference-tools_miniex3:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_miniex3:1.1.0",
   "runtime_resources": {
     "threading": {
       "supported": true,

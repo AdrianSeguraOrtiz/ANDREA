@@ -49,11 +49,10 @@ def planned_task_resource_decision(task: ToolPlanItem) -> dict[str, Any]:
         if task.timeout_seconds is not None
         else None
     )
-    evidence = (
-        "empirical_cost_profile"
-        if task.eta_source == "cost_profile"
-        else "conservative_fallback"
-    )
+    evidence = {
+        "cost_profile": "empirical_cost_profile",
+        "cost_profile_extrapolated": "uncalibrated_extrapolation",
+    }.get(task.eta_source, "uncalibrated_heuristic")
     status = "eligible"
     reason = "no_timeout_requested"
     if timeout_seconds is not None:
@@ -62,8 +61,10 @@ def planned_task_resource_decision(task: ToolPlanItem) -> dict[str, Any]:
             reason = "estimated_runtime_exceeds_timeout"
         elif estimated_seconds > timeout_seconds:
             reason = "fallback_estimate_exceeds_timeout_without_empirical_evidence"
-        else:
+        elif evidence == "empirical_cost_profile":
             reason = "estimated_runtime_within_timeout"
+        else:
+            reason = "runtime_unknown_without_matching_calibration"
 
     decision = {
         "schema_version": RESOURCE_DECISION_SCHEMA_VERSION,

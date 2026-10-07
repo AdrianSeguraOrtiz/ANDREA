@@ -99,3 +99,39 @@ Not claimed as extras:
 - `provenance/raw/`: request snapshot, resolved params, copied upstream input files, public ID maps, raw expression arrays, technical-noise intermediates, parsed truth source edges and runtime package information.
 
 The smoke matrix covers steady-state and differentiation, global and group truth, custom input files, technical-noise paths and public ID consistency.
+
+## Scientific audit, 2026-09-29
+
+Sources: [primary publication](https://pubmed.ncbi.nlm.nih.gov/32871105/),
+[pinned simulator source](https://github.com/PayamDiba/SERGIO/blob/a6190b74425112834c8fa9b4b6157d9cb3d1ab88/SERGIO/sergio.py), and
+[pinned examples](https://github.com/PayamDiba/SERGIO/tree/a6190b74425112834c8fa9b4b6157d9cb3d1ab88).
+Installed source was inspected for regulator/target indexing, signed K values,
+steady-state/differentiation sampling and noise RNG, against the wrapper's
+custom-input validation and `truth_edges`/`write_truth_networks` mappings.
+
+Truth uses nonzero non-self K entries: score=abs(K) and sign=sign(K). The same
+coupling graph is used in every simulated bin, even when master-regulator rates
+or differentiation states differ. Group truth and prior-by-group repeat that
+graph. They support contextual pairing but do not establish rewiring. Lineage
+is derived only from the differentiation bifurcation input, not inferred from
+expression. Exported gene/cell IDs follow explicit native-index maps.
+
+All reviewed stochastic simulation and technical-noise draws use NumPy, seeded
+by the wrapper. No bounded public worker-count API is exposed, so one assigned
+thread remains the contract. Clean output can be continuous concentrations;
+Poisson count conversion and dropout depend on selected technical-noise
+settings. A fixed seed does not make datasets realistic by itself. The default
+presets fix gene/bin counts to their bundled inputs; arbitrary networks require
+valid custom target/master-regulator files and the documented acyclic/dynamics
+constraints. Column-specific regulatory truth is not claimed.
+
+### Executed validation for the audited wrapper
+
+On 2026-09-29 the repository Dockerfile built
+`adriansegura99/simulator_sergio:1.1.0` successfully (local image
+`sha256:8a89df636711d9882e8a59d6e3a9b7dda9c181e58da62656d7216ea69f2a2ac6`). The wrapper SHA-256 inside
+that image matched the current repository file. All **5/5** simulator smoke
+configurations passed on this final image, using the repository smoke runner
+with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
+These checks cover executable contracts and fixture outputs; they do not
+calibrate costs or independently validate biological realism.

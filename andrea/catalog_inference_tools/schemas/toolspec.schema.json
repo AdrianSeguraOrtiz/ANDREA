@@ -13,6 +13,7 @@
     "first_author",
     "year",
     "method_summary",
+    "method_family",
     "method_keywords",
     "implementation_url",
     "docker_image",
@@ -96,7 +97,10 @@
               "description": "Default planner thread assignment when no cost profile is available."
             },
             "max_threads": {
-              "type": ["integer", "null"],
+              "type": [
+                "integer",
+                "null"
+              ],
               "minimum": 1,
               "description": "Maximum planner thread assignment supported by the wrapper/upstream runtime, or null when the tool has no intrinsic limit."
             },
@@ -805,6 +809,18 @@
       "additionalProperties": {
         "$ref": "#/$defs/param_def"
       }
+    },
+    "method_family": {
+      "type": "string",
+      "enum": [
+        "information",
+        "tree",
+        "regression",
+        "neural",
+        "graph",
+        "correlation"
+      ],
+      "description": "Reviewed primary algorithmic family of the integrated implementation; contexts, priors and workflow stages are described separately in method_summary and execution_capabilities."
     }
   }
 }

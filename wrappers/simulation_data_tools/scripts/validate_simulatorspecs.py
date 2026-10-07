@@ -11,6 +11,7 @@ Usage examples:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,7 +44,6 @@ from shared.catalog_simulators import (
     DEFAULT_SCHEMA_PATH,
     DEFAULT_WRAPPERS_ROOT,
     discover_catalog_simulator_dirs,
-    expected_docker_image,
     load_json,
     select_simulators,
 )
@@ -482,9 +482,12 @@ def semantic_errors(
     if spec.get("id") != simulator_id:
         errors.append(f"id must match catalog directory name '{simulator_id}'")
 
-    expected_image = expected_docker_image(simulator_id)
-    if spec.get("docker_image") != expected_image:
-        errors.append(f"docker_image must be '{expected_image}'")
+    image_prefix = f"adriansegura99/simulator_{simulator_id}:"
+    image = str(spec.get("docker_image", ""))
+    if not image.startswith(image_prefix) or not re.fullmatch(
+        r"\d+\.\d+\.\d+(?:[-.][A-Za-z0-9_.-]+)?", image[len(image_prefix):]
+    ):
+        errors.append(f"docker_image must use '{image_prefix}<version>' with an explicit version tag")
 
     publications = spec.get("publication", [])
     if not all(

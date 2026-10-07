@@ -14,6 +14,11 @@ _REPO_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT_FOR_IMPORTS) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT_FOR_IMPORTS))
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from benchmark_support import (
+    build_context_fingerprint, load_script, profile_fingerprint, provenance_errors, release_profile_errors,
+)
+
 from andrea.core.commands.generate_data.catalog import get_semantic_capability
 from andrea.core.commands.generate_data.request import validate_simulator_inputs
 
@@ -27,6 +32,7 @@ from shared.catalog_simulators import (
 )
 
 DEFAULT_SCHEMA_PATH = CATALOG_ROOT / "schemas" / "simulatorcost.schema.json"
+_BENCHMARK = load_script(Path(__file__).with_name("benchmark_costs.py"), "andrea_simulator_cost_benchmark")
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -61,6 +67,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Stop at the first invalid cost profile.",
     )
+    parser.add_argument("--require-provenance", action="store_true", help="Require current catalog image/spec provenance and at least three timing repeats.")
+    parser.add_argument("--cost-profiles-dir", type=Path, default=_BENCHMARK.DEFAULT_COST_PROFILES_DIR)
+    parser.add_argument("--param-overrides-dir", type=Path, default=_BENCHMARK.DEFAULT_PARAM_OVERRIDES_DIR)
     return parser.parse_args(argv)
 
 
@@ -546,7 +555,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     cost_files = discover_cost_files(
         args.catalog_simulators_root,
         simulator_filters=args.simulator,
-        require=args.require,
+        require=args.require or args.require_provenance,
     )
     if not cost_files:
         print("No simulator cost.json files found; nothing to validate.")
@@ -576,7 +585,25 @@ def run(argv: Sequence[str] | None = None) -> int:
                 if isinstance(payload, dict)
                 else []
             )
-            errors = [*schema_errors, *semantic_errors, *coverage_errors]
+            evidence_errors = []
+            if isinstance(payload, dict):
+                context_hash = None
+                if args.require_provenance:
+                    context_hash = build_context_fingerprint(root=_REPO_ROOT_FOR_IMPORTS, kind="simulation", identifier=simulator_id)
+                    expected = {
+                        profile.profile_id: profile_fingerprint(profile, root=_REPO_ROOT_FOR_IMPORTS, kind="simulation")
+                        for profile in _BENCHMARK.resolve_benchmark_profiles(
+                            simulator_id=simulator_id, spec=load_simulatorspec(args.catalog_simulators_root, simulator_id),
+                            cost_profiles_dir=args.cost_profiles_dir, param_overrides_dir=args.param_overrides_dir,
+                            default_group_count=_BENCHMARK.DEFAULT_GROUP_COUNT,
+                        )
+                    }
+                    evidence_errors.extend(release_profile_errors(payload, expected))
+                evidence_errors.extend(provenance_errors(
+                    payload, args.catalog_simulators_root / simulator_id / "simulatorspec.json",
+                    required=args.require_provenance, build_context_sha256=context_hash,
+                ))
+            errors = [*schema_errors, *semantic_errors, *coverage_errors, *evidence_errors]
             if errors:
                 invalid += 1
                 print(f"[{simulator_id}] invalid:")

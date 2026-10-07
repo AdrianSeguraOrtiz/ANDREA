@@ -8,7 +8,7 @@
   ],
   "first_author": "Qingfei Pan",
   "year": 2025,
-  "method_summary": "scMINER is a mutual information-based systems biology framework for single-cell transcriptomics that combines MI-based clustering, cell type-specific TF and signaling-gene network inference, and hidden-driver activity analysis. The selected integration mirrors its network-inference path, where scMINER prepares homogeneous-cell expression and candidate-driver files for SJARACNe, and SJARACNe reconstructs directed driver-target networks with mutual-information edge weights and correlation-derived signs.",
+  "method_summary": "scMINER is a mutual information-based systems biology framework for single-cell transcriptomics that combines MI-based clustering, cell type-specific TF and signaling-gene network inference, and hidden-driver activity analysis. The selected integration mirrors its network-inference path, where scMINER prepares homogeneous-cell expression and candidate-driver files for SJARACNe, and SJARACNe reconstructs directed driver-target networks with mutual-information edge weights and correlation-derived signs. Sign is taken from the accompanying Spearman coefficient; zero or unavailable correlations retain an unknown sign.",
   "method_keywords": [
     "single_cell",
     "mutual_information",
@@ -19,7 +19,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/jyyulab/scMINER/tree/48d4bc4e7fe7ccc880e5816857f264eb7c2161e9",
-  "docker_image": "adriansegura99/inference-tools_scminer:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_scminer:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -215,7 +215,7 @@
   },
   "outputs": {
     "directed": true,
-    "sign": "signed",
+    "sign": "mixed",
     "evidence": "association"
   },
   "progress": {
@@ -287,7 +287,8 @@
       "required": false,
       "default": 123,
       "min": 0,
-      "description": "Seed passed to scMINER's sampling step before optional downsampling."
+      "description": "Seed passed to scMINER's sampling step before optional downsampling.",
+      "max": 2147483647
     }
   },
   "artifacts_aux": [
@@ -333,5 +334,6 @@
       "require_non_empty": true,
       "description": "SJARACNe CWL workflow input file emitted by sjaracne local, preserving resolved expression, driver, p-value, depth and bootstrap settings for each upstream run."
     }
-  ]
+  ],
+  "method_family": "information"
 }

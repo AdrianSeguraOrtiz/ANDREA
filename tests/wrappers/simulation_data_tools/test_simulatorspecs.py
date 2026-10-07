@@ -126,7 +126,7 @@ def _valid_semantic_spec() -> dict:
         "schema_version": "1.0",
         "id": "dyngen",
         "name": "dyngen test",
-        "docker_image": "adriansegura99/simulator_dyngen:1.0.0",
+        "docker_image": "adriansegura99/simulator_dyngen:1.1.0",
         "publication": ["https://doi.org/10.1000/example"],
         "first_author": "Test Author",
         "year": 2024,
@@ -266,7 +266,7 @@ class SimulatorSpecCatalogTest(unittest.TestCase):
         self.assertEqual(dyngen["first_author"], "Robrecht Cannoodt")
         self.assertEqual(
             dyngen["docker_image"],
-            "adriansegura99/simulator_dyngen:1.0.0",
+            "adriansegura99/simulator_dyngen:1.1.0",
         )
 
     def test_dyngen_capabilities_are_single_cell_only(self) -> None:

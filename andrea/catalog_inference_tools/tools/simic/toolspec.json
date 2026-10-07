@@ -17,7 +17,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/jianhao2016/SimiC/tree/fa47e69e5c793bce1500dc35283e112cd8f51992",
-  "docker_image": "adriansegura99/inference-tools_simic:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_simic:1.1.0",
   "runtime_resources": {
     "threading": {
       "supported": true,
@@ -131,7 +131,9 @@
           "type": "int",
           "required": false,
           "default": 42,
-          "description": "Deterministic seed."
+          "description": "Deterministic seed.",
+          "min": 0,
+          "max": 4294967295
         },
         {
           "type": "object",
@@ -204,5 +206,29 @@
     ],
     "supported_species": []
   },
-  "compatibility_rules": []
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "param.num_TFs",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "action": "block",
+      "message": "SimiC num_TFs must be -1 or a positive integer; zero selects no variables."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.num_target_genes",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "action": "block",
+      "message": "SimiC num_target_genes must be -1 or a positive integer; zero selects no variables."
+    }
+  ],
+  "method_family": "regression"
 }

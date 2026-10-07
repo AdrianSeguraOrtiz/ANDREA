@@ -191,6 +191,7 @@ export function toolSpecInfoPayload(tool) {
           },
           { label: "First author", value: firstAuthor || "-" },
           { label: "Publication year", value: tool?.year ? String(tool.year) : "-" },
+          { label: "Primary method family", value: ({ information: "Information-theoretic", tree: "Tree ensembles", regression: "Sparse / regularized regression", neural: "Neural / deep generative", graph: "Graphical models / graph learning", correlation: "Correlation / interpolation" })[tool?.method_family] || "Not annotated" },
           { label: "Keywords", value: keywords.length ? keywords.join(", ") : "-" },
           {
             label: "Implementation",

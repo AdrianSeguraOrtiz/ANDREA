@@ -451,3 +451,12 @@ Upstream Dockerfile decision:
 - Shared fixture compatibility check passed: `expression.tsv`, `groups.tsv` and `column_phenotypes.tsv` use the same 30 cell IDs; `tf_list`, `prior_grn`, `prior_grn_by_group` and `lineage_tree` remain consistent with the shared expression and group fixtures.
 - `python -m py_compile wrappers/inference_tools/tools/simic/run_tool.py`: passed.
 - SimiC smoketest: passed.
+
+
+## Scientific and runtime contract audit (2026-09-29)
+
+The primary article (https://doi.org/10.1038/s42003-022-03319-7) and pinned `fa47e69e5c793bce1500dc35283e112cd8f51992` `clus_regression.py`, weighted-AUC code and examples were rechecked. `method_family=regression` follows the joint regularized-regression objective; phenotype adjacency and fused/similarity penalties are separate descriptors. Confirmed ordered phenotype input, TF/non-TF targets, signed incidence weights, lambda defaults, cross-validation route and last-fit behavior for num_rep. Fixed input parsing to preserve identifiers `001` and `NA`; bounded explicit seeds to NumPy's valid domain; reject zero selected TFs or targets instead of launching an empty regression problem. The -1 all-variable sentinel remains. Existing stratified split safeguards preserve training/test capacity. Focused wrapper and split tests passed; full fitting, CV and weighted-AUC execution were not rerun during this audit.
+
+Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
+
+Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/simic:local` (image ID `sha256:e351a26e538a2aea63f127b8e951c75972c3220058862fc47a1368368b7564ee`; no wrapper overlay). The official smoketest runner passed `default` (24 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.

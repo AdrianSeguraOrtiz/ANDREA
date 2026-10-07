@@ -121,7 +121,8 @@ function renderResultsExplorerStatus(outputReadiness = null) {
   const classes = ["results-explorer-status"];
   if (outputReadiness.partial) {
     classes.push("status-partial");
-  } else if (outputReadiness.finalizing_artifacts || !outputReadiness.graph_exports_ready) {
+  } else if (outputReadiness.finalizing_artifacts
+    || (outputReadiness.graph_exports_required && !outputReadiness.graph_exports_ready)) {
     classes.push("status-finalizing");
   } else {
     classes.push("status-ready");
@@ -135,12 +136,16 @@ function renderResultsExplorerStatus(outputReadiness = null) {
   chips.className = "results-explorer-status-chips";
   appendReadinessChip(chips, "Merged CSVs", Boolean(outputReadiness.csv_ready));
   appendReadinessChip(chips, "Run report", Boolean(outputReadiness.final_report_ready));
-  appendReadinessChip(chips, "Graph exports", Boolean(outputReadiness.graph_exports_ready));
+  if (outputReadiness.graph_exports_required || outputReadiness.graph_exports_ready) {
+    appendReadinessChip(chips, "Graph exports", Boolean(outputReadiness.graph_exports_ready));
+  }
   statusNode.append(main, chips);
   if (outputReadiness.finalizing_artifacts && outputReadiness.csv_ready) {
     const note = document.createElement("div");
     note.className = "results-explorer-status-note";
-    note.textContent = "CSV inspection is available while ANDREA finishes report and graph artifacts.";
+    note.textContent = outputReadiness.graph_exports_required
+      ? "CSV inspection is available while ANDREA finishes report and graph artifacts."
+      : "CSV inspection is available while ANDREA finishes the final report.";
     statusNode.appendChild(note);
   }
   statusNode.hidden = false;

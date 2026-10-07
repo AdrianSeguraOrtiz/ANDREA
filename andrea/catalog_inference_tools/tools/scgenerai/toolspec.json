@@ -7,7 +7,7 @@
   ],
   "first_author": "Philipp Keyl",
   "year": 2023,
-  "method_summary": "scGeneRAI trains a neural network on static scRNA-seq data to impute masked gene expression values from arbitrary sets of other genes, then applies layer-wise relevance propagation to estimate gene-gene relevance for individual cells. The selected public score is LRPau, an absolute undirected average of reciprocal raw LRP scores for each gene pair.",
+  "method_summary": "scGeneRAI trains a neural network on static scRNA-seq data to impute masked gene expression values from arbitrary sets of other genes, then applies layer-wise relevance propagation to estimate gene-gene relevance for individual cells. The selected public score is LRPau, an absolute undirected average of reciprocal raw LRP scores for each gene pair. The integrated upstream code fixes the training split seed but does not seed initial network weights or NumPy masking; repeated fits can therefore differ and no public full-run seed is exposed.",
   "method_keywords": [
     "single_cell",
     "explainable_ai",
@@ -17,7 +17,7 @@
     "undirected"
   ],
   "implementation_url": "https://github.com/PhGK/scGeneRAI",
-  "docker_image": "adriansegura99/inference-tools_scgenerai:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_scgenerai:1.1.0",
   "runtime_resources": {
     "threading": {
       "supported": true,
@@ -44,7 +44,19 @@
     ],
     "supported_species": []
   },
-  "compatibility_rules": [],
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 10
+        }
+      ],
+      "action": "block",
+      "message": "scGeneRAI requires at least ten cells because its upstream training size is (n_cells // 10) * 9."
+    }
+  ],
   "accepts": [
     "cells"
   ],
@@ -144,5 +156,6 @@
       "require_non_empty": true,
       "description": "Mapping from file-safe internal cell aliases used for upstream result filenames back to original ANDREA expression column identifiers."
     }
-  ]
+  ],
+  "method_family": "neural"
 }

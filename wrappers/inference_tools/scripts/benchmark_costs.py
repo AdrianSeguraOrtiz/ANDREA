@@ -24,7 +24,8 @@ Usage examples:
      --profile global_default
 
 Exit codes:
-- 0: script completed (even if some runs failed; inspect report summary)
+- 0: all selected benchmark points completed successfully
+- 1: a build or measurement failed; incomplete profiles are not saved
 - 2: usage/runtime error (invalid args, missing paths, etc.)
 
 Cost model written to cost.json:
@@ -70,6 +71,15 @@ from shared.benchmark_profiles import (
     resolve_benchmark_profiles,
 )
 from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR
+
+_BENCHMARK_ROOT = Path(__file__).resolve().parents[3]
+if str(_BENCHMARK_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BENCHMARK_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from benchmark_support import (
+    atomic_json, collect_provenance, merge_profiles, persistent_workdir, write_process_logs,
+    profile_fingerprint,
+)
 
 INFERENCE_TOOLS_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -264,14 +274,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Stop after first failed run.",
     )
+    parser.add_argument(
+        "--catalog-images", action="store_true",
+        help="Use the image referenced by each catalog spec without rebuilding; run its immutable local image ID.",
+    )
+    parser.add_argument(
+        "--results-dir", type=Path,
+        help="Persist inputs, outputs, stdout/stderr, raw measurements and provenance below this directory.",
+    )
+    parser.add_argument(
+        "--merge-existing", action="store_true",
+        help="Replace selected --profile entries while preserving other existing profiles.",
+    )
     return parser.parse_args(argv)
 
 
 def save_json(path: Path, payload: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(payload, fh, indent=2, ensure_ascii=True)
-        fh.write("\n")
+    atomic_json(path, payload)
 
 
 def load_json_object(path: Path, label: str) -> dict[str, Any]:
@@ -607,10 +626,12 @@ def run_container_once(
     try:
         result = run_cmd(cmd, cwd=REPO_ROOT, timeout_s=timeout_s, capture_output=True)
         elapsed = time.perf_counter() - started
+        write_process_logs(io_dir.parent, result)
         logs = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
         if result.returncode != 0:
             return (classify_failure(logs), elapsed, logs.strip())
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as exc:
+        write_process_logs(io_dir.parent, exc)
         elapsed = time.perf_counter() - started
         cleanup = cleanup_timed_out_container(
             container_name=container_name,
@@ -808,6 +829,10 @@ def write_tool_cost_profile(
 
 
 def validate_runtime_args(args: argparse.Namespace) -> None:
+    if args.profile and not args.merge_existing and not args.no_write_cost and not args.plan_only:
+        raise RuntimeError("Filtered cost writes require --merge-existing; use --no-write-cost for experiments.")
+    if args.merge_existing and not args.profile:
+        raise RuntimeError("--merge-existing requires at least one --profile.")
     """Validate global CLI limits before running any benchmark."""
     if args.repeats < 1:
         raise RuntimeError("--repeats must be >= 1.")
@@ -1145,6 +1170,7 @@ def execute_tool_benchmarks(
         if error_or_empty:
             run_payload["error"] = error_or_empty
         tool_runs.append(run_payload)
+        save_json(workdir / "measurements.json", tool_runs)
 
         if status != "ok":
             print(f"  -> {status} ({elapsed:.3f}s)")
@@ -1205,27 +1231,30 @@ def run(argv: Sequence[str] | None = None) -> int:
     global_success = 0
     global_timeout = 0
     global_fail = 0
+    had_error = False
 
     for target in targets:
         tool_id = target.tool_id
         tool_threads = threads_by_tool[tool_id]
-        image_tag = docker_image_tag(tool_id)
+        image_tag = target.toolspec["docker_image"] if args.catalog_images else docker_image_tag(tool_id)
         tool_source_dir = args.tool_sources_root / tool_id
         if not tool_source_dir.exists() or not tool_source_dir.is_dir():
             print(
                 f"[{tool_id}] ERROR: missing tool source directory: {tool_source_dir}",
                 file=sys.stderr,
             )
+            had_error = True
             if args.fail_fast:
                 break
             continue
 
         cost_path = target.catalog_tool_dir / "cost.json"
         wrote_cost = False
+        unpersistable_profile = False
         workdir_context: tempfile.TemporaryDirectory[str] | None = None
 
         try:
-            if not args.skip_build:
+            if not args.skip_build and not args.catalog_images:
                 build_image(
                     tool_id,
                     catalog_tools_root=args.catalog_tools_root,
@@ -1233,10 +1262,19 @@ def run(argv: Sequence[str] | None = None) -> int:
                     image_tag=image_tag,
                 )
 
-            workdir, workdir_context = allocate_tool_workdir(
-                tool_id=tool_id,
-                keep_workdir=args.keep_workdir,
+            provenance = collect_provenance(
+                root=REPO_ROOT, spec_path=target.catalog_tool_dir / "toolspec.json",
+                image=image_tag, seed=args.seed, source_dir=tool_source_dir,
             )
+            image_tag = provenance["image_id"]
+            if args.results_dir:
+                workdir = persistent_workdir(args.results_dir, tool_id)
+                print(f"[{tool_id}] evidence: {workdir}")
+            else:
+                workdir, workdir_context = allocate_tool_workdir(
+                    tool_id=tool_id, keep_workdir=args.keep_workdir,
+                )
+            save_json(workdir / "provenance.json", provenance)
             cost_profile_entries: list[dict[str, Any]] = []
             tool_total_runs = 0
             tool_success_runs = 0
@@ -1258,7 +1296,10 @@ def run(argv: Sequence[str] | None = None) -> int:
                     input_profile=profile.input_profile,
                     args=args,
                 )
+                benchmark_config["provenance"] = provenance
+                benchmark_config["profile_sha256"] = profile_fingerprint(profile, root=REPO_ROOT, kind="inference")
                 profile_workdir = workdir / safe_path_token(profile.profile_id)
+                save_json(profile_workdir / "benchmark_config.json", benchmark_config)
                 profile_runs, run_index, fail_fast_triggered = execute_tool_benchmarks(
                     tool_id=tool_id,
                     profile_id=profile.profile_id,
@@ -1292,7 +1333,13 @@ def run(argv: Sequence[str] | None = None) -> int:
                     execution_profile=profile.execution_profile,
                     input_profile=profile.input_profile,
                 )
-                if runtime_points:
+                expected_runs = len(profile_sizes) * len(tool_threads) * len(ram_gb) * args.repeats
+                profile_complete = len(profile_runs) == expected_runs and all(r["status"] == "ok" for r in profile_runs)
+                if not profile_complete:
+                    had_error = True
+                    unpersistable_profile = True
+                    print(f"[{tool_id}/{profile.profile_id}] incomplete or unsuccessful matrix; preserving existing costs.")
+                if runtime_points and profile_complete:
                     cost_profile_entries.append(
                         make_cost_profile_entry(
                             profile_id=profile.profile_id,
@@ -1311,16 +1358,16 @@ def run(argv: Sequence[str] | None = None) -> int:
                 if fail_fast_triggered:
                     break
 
-            if cost_profile_entries and not args.no_write_cost:
-                write_tool_cost_profile(
-                    cost_path=cost_path,
-                    cost_payload=make_cost_payload(
-                        profile_entries=cost_profile_entries,
-                    ),
-                )
+            can_write = bool(cost_profile_entries) and (args.merge_existing or not unpersistable_profile)
+            if can_write and not args.no_write_cost:
+                payload = make_cost_payload(profile_entries=cost_profile_entries)
+                if args.merge_existing:
+                    payload = merge_profiles(cost_path, payload)
+                write_tool_cost_profile(cost_path=cost_path, cost_payload=payload)
                 wrote_cost = True
             elif not cost_profile_entries:
-                print(f"[{tool_id}] warning: no profile runs were observed.")
+                had_error = True
+                print(f"[{tool_id}] no complete successful profiles to save.")
 
             print(
                 f"[{tool_id}] summary: profiles={len(cost_profile_entries)}/{len(target.profiles)} "
@@ -1330,6 +1377,7 @@ def run(argv: Sequence[str] | None = None) -> int:
             )
 
         except Exception as exc:  # noqa: BLE001
+            had_error = True
             print(f"[{tool_id}] ERROR: {exc}", file=sys.stderr)
             if args.fail_fast:
                 break
@@ -1346,7 +1394,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         f"timeout_runs={global_timeout} "
         f"failed_runs={global_fail}"
     )
-    return 0
+    return 1 if had_error or global_fail or global_timeout else 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:

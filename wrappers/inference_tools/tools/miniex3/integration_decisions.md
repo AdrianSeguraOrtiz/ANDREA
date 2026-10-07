@@ -353,3 +353,14 @@ Schema changes made:
 - Full custom species annotation bundles are intentionally excluded in Phase 1. Supporting them properly likely requires new annotation input specs, compressed motif-map handling and stronger conditional validation.
 - `reference_species` is wrapper-level because upstream represents species as file-path choices in `miniex.config`, not as one named parameter.
 - MINI-EX is plant-focused and that restriction is now explicit in `taxonomic_scope` and `compatibility_rules`.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [MINI-EX paper](https://doi.org/10.1016/j.molp.2022.10.016) and [pinned v3 workflow](https://github.com/VIB-PSB/MINI-EX/tree/3f220a68e8057fe4d33665e956a3f3bbe41ff4c8), especially `miniex.config`, `miniex.nf`, configuration/input documentation and `bin/MINIEX_scoreEdges.py`.
+- `method_family=tree` identifies its expression-network core (GRNBoost2). MINI-EX is a composition: motif enrichment, cluster expression/marker filtering and Borda regulon ranking remain essential features, separately described in keywords and required/optional inputs. A supplied `grnboost_network` skips only the tree-fitting stage, not the MINI-EX filtering/ranking workflow.
+- Checked native grouped output, species/motif configuration, required TF/marker/identity inputs, optional GO terms/background/cache, default parameter mappings and group alias round-trip. `topRegulons` controls visualization selection, not an edge confidence threshold.
+- `MINIEX_scoreEdges.py` joins the original GRNBoost2 `weight` with regulon-level Borda ranks. The wrapper correctly retains that unsigned TF-to-target importance as score and keeps ranks in auxiliary output. Group emulation would alter the method by splitting before the shared expression network, so it remains unexposed. No new biological species/resources or upstream workflow variants were added by this audit.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/miniex3:audit-local`; image ID `sha256:189f85817bf964e00274a25eb0b25f409be0c4fd72309a1a216cd3db50cdc733`. The repository smoke runner passed `default` (24 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.

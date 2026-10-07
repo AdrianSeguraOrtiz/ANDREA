@@ -185,7 +185,7 @@ def _load_execution(params_path: Path) -> ResolvedExecution:
 
 
 def _read_expression_tsv(expr_path: Path) -> pd.DataFrame:
-    df = pd.read_csv(expr_path, sep="\t", header=0)
+    df = pd.read_csv(expr_path, sep="\t", header=0, dtype=str, keep_default_na=False)
     if df.shape[1] < 2:
         raise ValueError(
             "expression.tsv must have at least 2 columns: gene + >=1 observation."
@@ -235,7 +235,7 @@ def _read_prior_grn(
     genes: list[str],
     tf_names: list[str],
 ) -> pd.DataFrame:
-    prior_edges = pd.read_csv(prior_path, sep="\t", header=0)
+    prior_edges = pd.read_csv(prior_path, sep="\t", header=0, dtype=str, keep_default_na=False)
     required = {"source", "target", "score"}
     missing = sorted(required.difference(prior_edges.columns))
     if missing:
@@ -305,7 +305,7 @@ def _write_gene_alias_map(alias_map: dict[str, str], output_path: Path) -> None:
 
 
 def _read_groups_tsv(groups_path: Path, expression_columns: list[str]) -> pd.DataFrame:
-    groups = pd.read_csv(groups_path, sep="\t", header=0)
+    groups = pd.read_csv(groups_path, sep="\t", header=0, dtype=str, keep_default_na=False)
     if groups.shape[1] < 2:
         raise ValueError("groups.tsv must have at least 2 columns.")
     if "cluster" not in groups.columns:

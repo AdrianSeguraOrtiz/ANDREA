@@ -8,7 +8,7 @@
   ],
   "first_author": "Hechen Li",
   "year": 2025,
-  "simulation_summary": "Simulates multi-modal single-cell data with gene expression, chromatin accessibility, RNA velocity and spatial locations while modeling cell identity, gene regulatory networks, cell-cell interactions, chromatin accessibility and technical noise.",
+  "simulation_summary": "Runs scMultiSim for RNA expression with optional chromatin, velocity and spatial/CCI outputs. Dynamic cell-specific GRNs are native; global and group truth are wrapper aggregates. Spatial columns represent simulated individual cell locations, labeled spots in ANDREA, without multi-cell spot aggregation.",
   "simulation_keywords": [
     "scrna",
     "single_cell",
@@ -18,7 +18,7 @@
     "cell_lineage"
   ],
   "implementation_url": "https://github.com/ZhangLabGT/scMultiSim",
-  "docker_image": "adriansegura99/simulator_scmultisim:1.0.0",
+  "docker_image": "adriansegura99/simulator_scmultisim:1.1.0",
   "extra_inputs": {
     "required": [],
     "optional": [],
@@ -913,7 +913,9 @@
           "score_semantics": "Static runs use score=abs(effect) and sign=sign(effect); dynamic runs use score=mean(abs(effect)) across cells and sign from mean signed effect.",
           "limitations": [
             "Global truth is wrapper-derived from scMultiSim GRN effect structures rather than emitted as a canonical upstream truth file.",
-            "Dynamic global truth summarizes changing cell-specific networks and opposing signed effects can yield ambiguous signs."
+            "Dynamic global truth summarizes changing cell-specific networks and opposing signed effects can yield ambiguous signs.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -1204,7 +1206,9 @@
           "score_semantics": "score is mean(abs(effect)) across cells; sign is derived from the mean signed effect.",
           "limitations": [
             "Global truth for dynamic grouped runs is a wrapper-derived summary of cell-specific GRN matrices.",
-            "Opposing signed effects across cells can yield an ambiguous global sign."
+            "Opposing signed effects across cells can yield an ambiguous global sign.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -1224,7 +1228,9 @@
           "limitations": [
             "Group truth is an ANDREA-derived summary, not a native scMultiSim object.",
             "Continuous populations produce branch or trajectory-segment labels rather than curated biological clusters.",
-            "Opposing signed effects within a group can yield an ambiguous sign."
+            "Opposing signed effects within a group can yield an ambiguous sign.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -1629,7 +1635,9 @@
           "score_semantics": "score is mean(abs(effect)) across cells; sign is derived from the mean signed effect.",
           "limitations": [
             "Global truth for dynamic column-truth runs is a wrapper-derived summary of scMultiSim cell_specific_grn matrices.",
-            "Opposing signed effects across cells can yield an ambiguous global sign."
+            "Opposing signed effects across cells can yield an ambiguous global sign.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -1649,7 +1657,9 @@
           "limitations": [
             "Group truth is a cumulative ANDREA-derived summary layered on top of a column-truth run.",
             "Continuous populations produce branch or trajectory-segment labels rather than curated biological clusters.",
-            "Opposing signed effects within a group can yield an ambiguous sign."
+            "Opposing signed effects within a group can yield an ambiguous sign.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -1666,7 +1676,9 @@
           "score_semantics": "score is abs(effect) for each cell/regulator/target effect; sign is derived from the effect sign.",
           "limitations": [
             "Column truth is available only when scMultiSim emits cell_specific_grn.",
-            "The public export filters zero-effect rows and self-loops."
+            "The public export filters zero-effect rows and self-loops.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         }
       ],
@@ -2034,7 +2046,9 @@
           "score_semantics": "Static runs use score=abs(effect) and sign=sign(effect); dynamic runs use score=mean(abs(effect)) across cells and sign from mean signed effect.",
           "limitations": [
             "Global truth is wrapper-derived from scMultiSim GRN effect structures rather than emitted as a canonical upstream truth file.",
-            "Dynamic global truth summarizes changing cell-specific networks and opposing signed effects can yield ambiguous signs."
+            "Dynamic global truth summarizes changing cell-specific networks and opposing signed effects can yield ambiguous signs.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -2375,7 +2389,9 @@
           "score_semantics": "score is mean(abs(effect)) across cells; sign is derived from the mean signed effect.",
           "limitations": [
             "Global truth for dynamic grouped runs is a wrapper-derived summary of cell-specific GRN matrices.",
-            "Opposing signed effects across cells can yield an ambiguous global sign."
+            "Opposing signed effects across cells can yield an ambiguous global sign.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -2395,7 +2411,9 @@
           "limitations": [
             "Group truth is an ANDREA-derived summary, not a native scMultiSim object.",
             "Continuous populations produce branch or trajectory-segment labels rather than curated biological clusters.",
-            "Opposing signed effects within a group can yield an ambiguous sign."
+            "Opposing signed effects within a group can yield an ambiguous sign.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -2850,7 +2868,9 @@
           "score_semantics": "score is mean(abs(effect)) across cells; sign is derived from the mean signed effect.",
           "limitations": [
             "Global truth for dynamic column-truth runs is a wrapper-derived summary of scMultiSim cell_specific_grn matrices.",
-            "Opposing signed effects across cells can yield an ambiguous global sign."
+            "Opposing signed effects across cells can yield an ambiguous global sign.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -2870,7 +2890,9 @@
           "limitations": [
             "Group truth is a cumulative ANDREA-derived summary layered on top of a column-truth run.",
             "Continuous populations produce branch or trajectory-segment labels rather than curated biological clusters.",
-            "Opposing signed effects within a group can yield an ambiguous sign."
+            "Opposing signed effects within a group can yield an ambiguous sign.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         },
         {
@@ -2887,7 +2909,9 @@
           "score_semantics": "score is abs(effect) for each cell/regulator/target effect; sign is derived from the effect sign.",
           "limitations": [
             "Column truth is available only when scMultiSim emits cell_specific_grn.",
-            "The public export filters zero-effect rows and self-loops."
+            "The public export filters zero-effect rows and self-loops.",
+            "Spatial spot IDs each identify one simulated cell location; the wrapper performs no spatial spot deconvolution or multi-cell aggregation. Positive/negative mean effects can cancel in group/global summaries while mean absolute strength remains nonzero.",
+            "The run seed controls expression simulation, but dynamic.GRN.seed is not exposed/mapped and retains upstream default 0. Distinct run seeds do not guarantee independently sampled dynamic GRN rewiring; inspect truth hashes before treating replicates as distinct networks."
           ]
         }
       ],

@@ -121,6 +121,100 @@
         },
         "runtime_resources_profile": {
           "$ref": "#/$defs/runtime_resources_profile"
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "recorded_at_utc",
+            "git_commit",
+            "git_dirty",
+            "source_sha256",
+            "spec_sha256",
+            "image_reference",
+            "image_id",
+            "image_repo_digests",
+            "platform",
+            "cpu_model",
+            "logical_cpus",
+            "host_memory_bytes",
+            "docker_server",
+            "seed",
+            "timing_scope"
+          ],
+          "properties": {
+            "recorded_at_utc": {
+              "type": "string",
+              "minLength": 1
+            },
+            "git_commit": {
+              "type": "string",
+              "minLength": 7
+            },
+            "git_dirty": {
+              "type": "boolean"
+            },
+            "source_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "spec_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "image_reference": {
+              "type": "string",
+              "minLength": 1
+            },
+            "image_id": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "image_repo_digests": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "platform": {
+              "type": "string"
+            },
+            "cpu_model": {
+              "type": "string"
+            },
+            "logical_cpus": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "host_memory_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "docker_server": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "seed": {
+              "type": "integer"
+            },
+            "timing_scope": {
+              "type": "string"
+            },
+            "build_context_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Fingerprint of the effective Dockerfile and local COPY inputs, including generated entrypoints and shared templates."
+            }
+          }
+        },
+        "profile_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Fingerprint of the resolved current benchmark profile and fixture/timing recipe."
         }
       }
     },

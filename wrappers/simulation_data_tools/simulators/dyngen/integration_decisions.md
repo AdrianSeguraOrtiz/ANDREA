@@ -104,3 +104,48 @@ Native outputs are preserved only when requested; currently this includes `rna_v
 - `provenance/raw/`: request snapshot, parameter snapshots, `model.rds`, `dataset.rds`, session info, public ID maps, group derivation tables and `column_networks_index.tsv` for column truth.
 
 The smoke matrix covers trajectory, time-series and perturbational runs across global, group and cumulative column truth, including public ID consistency across expression, truth, gene universe and extras.
+
+## Scientific audit, 2026-09-29
+
+Sources: [primary paper](https://www.nature.com/articles/s41467-021-24152-2),
+[official model workflow](https://dyngen.dynverse.org/articles/getting_started.html),
+[backbone semantics](https://dyngen.dynverse.org/reference/backbone.html), and
+[CRAN 1.1.1 source archive](https://cran.r-project.org/src/contrib/Archive/dyngen/dyngen_1.1.1.tar.gz).
+The installed 1.1.1 namespace was inspected, specifically `generate_dataset`,
+`as_list`, `generate_cells`, `generate_experiment`, `simulation_default` and
+`initialise_model`, against the wrapper's parameter and output mappings.
+
+`as_list` exports RNA counts as mature plus precursor counts and separately
+exposes log2(counts+1), spliced/unspliced counts, protein, velocity and cellwise
+GRN state. ANDREA keeps RNA as its primary measurement; it does not claim all
+upstream modalities as independent primary benchmark profiles. Global edges use
+the kinetic graph and its effect signs; per-cell activity is a different
+simulator quantity, and group truth is a thresholded aggregate (mean absolute
+activity at least 0.1, including missing sparse activities as zero). Those three
+truth layers should not be interpreted as identical edge weights.
+
+Milestone assignment, group order, lineage summaries and pseudotime are wrapper
+derivations. Synchronised experiments retain sampled cells and timepoint-group
+metadata; a pseudotime projection is not a physical time measurement. Knockdown
+metadata is aligned to upstream simulations and fixed by semantic bindings.
+Only built-in backbone presets are exposed, not arbitrary R callbacks or custom
+backbone files. Setting a seed/resource count defines a configuration, not a
+guarantee of byte-identical output across R/package/parallel environments.
+
+The Dockerfile no longer downloads a floating `data_files` branch. It pins the
+reference cache to upstream commit `767f1d11fb7fe3706e0431f6197818c3ad50d359`
+and archive SHA-256
+`7a7e813008330c4ba822278b4e0390bf85dd35169f3e7e2fa4e400159cd5ac9b`.
+All 145 extracted files were hash-compared against the existing 1.0.0 image
+cache and matched; this pin changes retrieval provenance, not the reference data.
+
+### Executed validation for the audited wrapper
+
+On 2026-09-29 the repository Dockerfile built
+`adriansegura99/simulator_dyngen:1.1.0` successfully (local image
+`sha256:d4107d91b7e5aaf1aaa24998dd90cd2fe135b14b446e3e21f74c9d158f11f11c`). The wrapper SHA-256 inside
+that image matched the current repository file. All **12/12** simulator smoke
+configurations passed on this final image, using the repository smoke runner
+with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
+These checks cover executable contracts and fixture outputs; they do not
+calibrate costs or independently validate biological realism.

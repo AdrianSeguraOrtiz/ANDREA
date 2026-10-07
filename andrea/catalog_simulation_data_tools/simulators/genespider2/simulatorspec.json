@@ -8,7 +8,7 @@
   ],
   "first_author": "Mateusz Garbulowski",
   "year": 2024,
-  "simulation_summary": "Generates signed GeneSPIDER2 regulatory networks and perturbation-based bulk, bulk time-series or single-cell RNA expression data through the public MATLAB API, packaged as a MATLAB Compiler application for MATLAB Runtime execution.",
+  "simulation_summary": "Uses the GeneSPIDER2 MATLAB API for signed network generation, linear bulk perturbation responses, time series, and single-cell count or fold-change simulation. Group truth repeats the fixed global network under wrapper-derived expression clusters; it is not native group-specific rewiring. Execution uses a precompiled MATLAB Runtime application.",
   "simulation_keywords": [
     "bulk",
     "scrna",
@@ -21,7 +21,7 @@
     "timepoints"
   ],
   "implementation_url": "https://bitbucket.org/sonnhammergrni/genespider",
-  "docker_image": "adriansegura99/simulator_genespider2:1.0.0",
+  "docker_image": "adriansegura99/simulator_genespider2:1.1.0",
   "extra_inputs": {
     "required": [],
     "optional": [],
@@ -428,7 +428,8 @@
           "limitations": [
             "The public scalefree2 generator determines the signed edge magnitudes exported as truth.",
             "Diagonal self-degradation/stability terms are excluded from public GRN truth.",
-            "Custom input_tsv truth uses the loaded matrix and does not prove upstream biological validity."
+            "Custom input_tsv truth uses the loaded matrix and does not prove upstream biological validity.",
+            "Single-cell groups are deterministic wrapper k-means labels on generated expression, not the latent upstream n_clusts assignments. The same signed global matrix is repeated across these groups. Bulk responses and non-raw-count single-cell outputs may be signed fold changes, not non-negative count data."
           ]
         },
         {
@@ -641,7 +642,8 @@
           "limitations": [
             "The GRN is fixed across the simulated time course.",
             "Diagonal self-degradation/stability terms are excluded from public GRN truth.",
-            "simts models one perturbation vector over time and does not emit timepoint-specific rewiring."
+            "simts models one perturbation vector over time and does not emit timepoint-specific rewiring.",
+            "Single-cell groups are deterministic wrapper k-means labels on generated expression, not the latent upstream n_clusts assignments. The same signed global matrix is repeated across these groups. Bulk responses and non-raw-count single-cell outputs may be signed fold changes, not non-negative count data."
           ]
         },
         {
@@ -816,7 +818,8 @@
           "score_semantics": "score is abs(A[target, regulator]); sign is + for positive activation effects and - for negative repression effects.",
           "limitations": [
             "GeneSPIDER2 does not emit column-specific or group-specific GRN matrices for scdata.",
-            "Global truth is fixed across all columns."
+            "Global truth is fixed across all columns.",
+            "Single-cell groups are deterministic wrapper k-means labels on generated expression, not the latent upstream n_clusts assignments. The same signed global matrix is repeated across these groups. Bulk responses and non-raw-count single-cell outputs may be signed fold changes, not non-negative count data."
           ]
         },
         {
@@ -1039,7 +1042,8 @@
           "score_semantics": "score is abs(A[target, regulator]); sign is + for positive activation effects and - for negative repression effects.",
           "limitations": [
             "Global truth is fixed across all derived groups.",
-            "GeneSPIDER2 clustered expression does not imply group-specific GRN rewiring."
+            "GeneSPIDER2 clustered expression does not imply group-specific GRN rewiring.",
+            "Single-cell groups are deterministic wrapper k-means labels on generated expression, not the latent upstream n_clusts assignments. The same signed global matrix is repeated across these groups. Bulk responses and non-raw-count single-cell outputs may be signed fold changes, not non-negative count data."
           ]
         },
         {
@@ -1057,7 +1061,8 @@
           "score_semantics": "Group truth uses the same score and sign as the fixed global truth edge.",
           "limitations": [
             "Group labels are wrapper-derived rather than native GeneSPIDER outputs.",
-            "All group networks are identical because GeneSPIDER2 uses one fixed GRN for the run."
+            "All group networks are identical because GeneSPIDER2 uses one fixed GRN for the run.",
+            "Single-cell groups are deterministic wrapper k-means labels on generated expression, not the latent upstream n_clusts assignments. The same signed global matrix is repeated across these groups. Bulk responses and non-raw-count single-cell outputs may be signed fold changes, not non-negative count data."
           ]
         },
         {

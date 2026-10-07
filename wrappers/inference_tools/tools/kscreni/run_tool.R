@@ -164,7 +164,9 @@ read_expression_tsv <- function(expr_path) {
     sep = "\t",
     header = TRUE,
     check.names = FALSE,
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    colClasses = "character",
+    na.strings = character()
   )
   if (ncol(df) != length(header)) {
     stop("expression.tsv rows do not match the header width.", call. = FALSE)
@@ -277,7 +279,11 @@ run_kscreni_with_safe_pca <- function(expr, params, threads, log_path) {
   )
 
   pbmc <- Seurat::RunPCA(pbmc, features = variable_features, npcs = safe_npcs)
-  pbmc <- Seurat::FindNeighbors(pbmc, k.param = params$knn, features = variable_features)
+  # Seurat defaults to dims=1:10; small inputs can have fewer computed PCs.
+  neighbor_dims <- seq_len(min(10L, ncol(Seurat::Embeddings(pbmc, "pca"))))
+  pbmc <- Seurat::FindNeighbors(
+    pbmc, k.param = params$knn, features = variable_features, dims = neighbor_dims
+  )
   mat <- as.matrix(pbmc@graphs$RNA_snn)
   ncell <- ncol(expr)
 

@@ -181,3 +181,14 @@ Observed on `inferred_networks/gui_dataset_20260623T214216Z`:
 - A default DigNet run with `ensemble=30` and `diffusion_timesteps=1000` remained in the first diffusion ensemble member after more than 18 minutes while planned through the generic 4 GB fallback.
 - Added `andrea/catalog_inference_tools/tools/dignet/cost.json` as a conservative planner profile so future plans reserve 8 GB per default DigNet task and display multi-hour ETA instead of the previous fallback estimate.
 - The ToolSpec descriptions for `ensemble` and `diffusion_timesteps` now document runtime scaling and bounded-runtime overrides. The defaults themselves remain aligned with the selected upstream public configuration.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [DigNet paper](https://doi.org/10.1101/gr.279551.124) and [pinned implementation](https://github.com/zpliulab/DigNet/tree/5109401ac242d2b671156eab4b4a5fabd808b612), specifically `README.md`, `config.py`, `DigNet.py`, `pathway/pathway.py` and `make_final_net.py`.
+- `method_family=neural`: discrete diffusion with graph-transformer denoising. Checked the actual pretrained inference entrypoint, PCA loading, metacell/KNN settings, ensemble count, diffusion steps and final vote matrix. The summary now explicitly identifies the selected human cancer checkpoint/PCA and bundled human resources, rather than implying unrestricted model training or per-cell network output.
+- Global physical output is one directed unsigned matrix for the supplied profile. Group emulation is orchestration; `cell_specific_network` was removed from keywords because this integrated entrypoint returns no individual-cell networks. Human gene-set filtering and the PCA feature-count restriction remain enforced; these limitations are not evidence of broad species support.
+- CPU execution uses the pinned checkpoint, `args.n_job=min(threads, ensemble)`, and one math-library thread per job. Scores preserve upstream positive ensemble votes, so changing `ensemble` changes their magnitude. Training, arbitrary pretrained checkpoints and alternate organism resources remain unexposed.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/dignet:audit-local`; image ID `sha256:2725d6e9014deee7306195d955521ddd584be1af078a5447c33a0b6341b4db24`. The repository smoke runner passed `global` (4 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.

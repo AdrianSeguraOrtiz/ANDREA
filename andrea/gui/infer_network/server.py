@@ -242,6 +242,7 @@ def _load_tools_bootstrap() -> dict[str, Any]:
                 "taxonomic_scope": toolspec.get("taxonomic_scope", {}),
                 "compatibility_rules": toolspec.get("compatibility_rules", []),
                 "method_summary": str(toolspec.get("method_summary", "")),
+                "method_family": str(toolspec.get("method_family", "")),
                 "method_keywords": [
                     x for x in toolspec.get("method_keywords", []) if isinstance(x, str)
                 ],
@@ -1556,9 +1557,12 @@ def _infer_bundle_readiness(
     report_status = (
         "ready" if output_readiness.get("final_report_ready") else "pending"
     )
-    graphs_status = (
-        "ready" if output_readiness.get("graph_exports_ready") else "pending"
-    )
+    if output_readiness.get("graph_exports_ready"):
+        graphs_status = "ready"
+    elif output_readiness.get("output_profile") == "canonical":
+        graphs_status = "not_required"
+    else:
+        graphs_status = "pending"
     if bundle_id == "full":
         readiness = [
             {"label": "Merged CSVs", "status": csv_status},
@@ -1600,7 +1604,11 @@ def _infer_bundle_runtime_missing(
     if bundle_id == "full" and graphs_required and csv_ready and not graphs_ready:
         missing.append("graph exports are not complete")
     if bundle_id == "graphs" and not graphs_ready:
-        missing.append("graph exports are not complete")
+        missing.append(
+            "graph exports were not requested by the canonical output profile"
+            if output_profile == "canonical"
+            else "graph exports are not complete"
+        )
     return missing
 
 
@@ -2725,7 +2733,10 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         options_cfg = dict(options)
-        options_cfg.setdefault("output_dir", str(output_dir))
+        output_dir_raw = str(options_cfg.get("output_dir") or "").strip()
+        if output_dir_raw:
+            output_dir = Path(output_dir_raw).resolve()
+        options_cfg["output_dir"] = str(output_dir)
         planner_time_limit_seconds = float(
             options_cfg.get("planner_time_limit_seconds", 100.0)
         )
@@ -2741,6 +2752,7 @@ def create_app() -> FastAPI:
             job.planner_time_limit_seconds = planner_time_limit_seconds
             job.tools_params_path = str(tools_params_path)
             job.custom_tools_path = str(custom_tools_path) if custom_tools_path else None
+            job.output_dir = str(output_dir)
             job.error = None
             job.traceback = None
             job.run_dir = None

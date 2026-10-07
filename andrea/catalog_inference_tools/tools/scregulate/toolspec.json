@@ -17,7 +17,7 @@
     "signed_grn"
   ],
   "implementation_url": "https://pypi.org/project/scRegulate/1.0.1/",
-  "docker_image": "adriansegura99/inference-tools_scregulate:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_scregulate:1.1.0",
   "execution_capabilities": [
     "global",
     "group_native",
@@ -413,5 +413,6 @@
       "require_non_empty": true,
       "description": "Serialized PyTorch state dictionary for the final scRegulate model used to export the network."
     }
-  ]
+  ],
+  "method_family": "neural"
 }

@@ -11,6 +11,7 @@ import json
 import math
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -327,6 +328,11 @@ def read_boolean_model(path: Path) -> set[str]:
     missing = required.difference(df.columns)
     if missing:
         raise ValueError(f"BoolODE Boolean model is missing column(s): {', '.join(sorted(missing))}")
+    if df[["Gene", "Rule"]].isna().any().any():
+        raise ValueError(
+            "BoolODE Gene/Rule values must not be empty or pandas missing-value tokens "
+            "(for example NA, NaN or NULL); the pinned upstream parser does not preserve them."
+        )
     genes = {str(gene).strip() for gene in df["Gene"] if str(gene).strip()}
     if not genes:
         raise ValueError("BoolODE Boolean model contains no genes.")
@@ -528,21 +534,62 @@ def load_expression(path: Path) -> pd.DataFrame:
     return numeric
 
 
-def parse_ref_network(path: Path, expression_genes: set[str]) -> list[dict[str, Any]]:
+def boolean_rule_signs(rule: str, genes: set[str]) -> dict[str, str]:
+    """Resolve literal polarity without trusting BoolODE's first-``not`` heuristic.
+
+    AND/OR preserve monotonicity and NOT reverses it. A regulator occurring
+    with both polarities has no unambiguous sign under this conservative rule.
+    These are logical influence signs, not fitted kinetic effect sizes.
+    """
+    aliases = {gene: f"_gene_{index}" for index, gene in enumerate(sorted(genes))}
+    reverse = {alias: gene for gene, alias in aliases.items()}
+    tokens = re.findall(r"[()]|[^()\s]+", rule)
+    expression = " ".join(aliases.get(token, token) for token in tokens)
+    polarities: dict[str, set[str]] = {}
+
+    def visit(node: ast.AST, negative: bool = False) -> None:
+        if isinstance(node, ast.Expression):
+            visit(node.body, negative)
+        elif isinstance(node, ast.BoolOp) and isinstance(node.op, (ast.And, ast.Or)):
+            for value in node.values:
+                visit(value, negative)
+        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+            visit(node.operand, not negative)
+        elif isinstance(node, ast.Name) and node.id in reverse:
+            polarities.setdefault(reverse[node.id], set()).add("-" if negative else "+")
+        elif isinstance(node, ast.Constant) and node.value in (0, 1, False, True):
+            return
+        else:
+            raise ValueError("Boolean rule uses an unsupported expression")
+
+    try:
+        visit(ast.parse(expression, mode="eval"))
+    except (SyntaxError, ValueError):
+        # Preserve native topology, but do not invent signs for other syntax.
+        return {gene: "?" for gene in genes.intersection(tokens)}
+    return {gene: next(iter(signs)) if len(signs) == 1 else "?" for gene, signs in polarities.items()}
+
+
+def parse_ref_network(path: Path, expression_genes: set[str], model_path: Path) -> list[dict[str, Any]]:
     df = pd.read_csv(path, dtype=str)
     required = {"Gene1", "Gene2", "Type"}
     missing = required.difference(df.columns)
     if missing:
         raise ValueError(f"refNetwork.csv is missing column(s): {', '.join(sorted(missing))}")
+    model = pd.read_csv(model_path, sep="\t", dtype=str, keep_default_na=False)
+    signs_by_target = {
+        str(row["Gene"]).strip(): boolean_rule_signs(str(row["Rule"]), expression_genes)
+        for row in model.to_dict(orient="records")
+    }
     rows: list[dict[str, Any]] = []
     for line_no, row in enumerate(df.to_dict(orient="records"), start=2):
         source = str(row["Gene1"]).strip()
         target = str(row["Gene2"]).strip()
-        sign = str(row["Type"]).strip()
+        native_sign = str(row["Type"]).strip()
         if not source or not target or source == target:
             continue
-        if sign not in {"+", "-"}:
-            raise ValueError(f"refNetwork.csv line {line_no} has unsupported Type value {sign!r}.")
+        if native_sign not in {"+", "-"}:
+            raise ValueError(f"refNetwork.csv line {line_no} has unsupported Type value {native_sign!r}.")
         unknown = sorted({source, target}.difference(expression_genes))
         if unknown:
             raise ValueError(f"refNetwork.csv line {line_no} references genes absent from expression.tsv: {unknown}")
@@ -551,7 +598,7 @@ def parse_ref_network(path: Path, expression_genes: set[str]) -> list[dict[str, 
                 "source": source,
                 "target": target,
                 "score": 1.0,
-                "sign": sign,
+                "sign": signs_by_target.get(target, {}).get(source, "?"),
                 "evidence": "simulated_truth",
                 "context": "global",
                 "line_no": line_no,
@@ -914,7 +961,9 @@ def main(argv: list[str] | None = None) -> int:
         columns = list(expression.columns)
         expression_gene_set = set(genes)
         pseudotime = load_pseudotime(selected_dir / "PseudoTime.csv", columns)
-        global_edges = parse_ref_network(selected_dir / "refNetwork.csv", expression_gene_set)
+        global_edges = parse_ref_network(
+            selected_dir / "refNetwork.csv", expression_gene_set, Path(staged_inputs["model_definition"])
+        )
 
         groups = None
         observed_groups = None

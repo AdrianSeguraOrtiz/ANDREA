@@ -14,6 +14,14 @@
         "mode": "group_native"
       },
       "group_count": 2
+    },
+    {
+      "id": "group_native_phenotypes_2_default_spec_defaults",
+      "execution": {
+        "mode": "group_native"
+      },
+      "group_count": 2,
+      "parameter_base": "spec_defaults"
     }
   ]
 }

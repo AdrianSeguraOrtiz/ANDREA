@@ -457,3 +457,12 @@ association output.
 - For high-dimensional data where the covariance matrix is singular, upstream
   uses Moore-Penrose generalized inverse and may not provide p-values or
   statistics. The network edge coefficients remain the selected score source.
+
+
+## Scientific and runtime contract audit (2026-09-29)
+
+The primary paper (https://doi.org/10.5351/CSAM.2015.22.6.665), CRAN ppcor 1.1 interface and the selected `pcor` call were rechecked. `method_family=correlation` identifies partial correlation, not a regression-network method merely because inverse covariance is used. `spcor` and pairwise test helpers remain excluded; Pearson, Spearman and Kendall modes retain upstream semantics. Fixed input parsing so public identifiers such as `001` and `NA` survive unchanged. Singular-covariance/p-value warnings previously captured only in a log now reach final progress.warnings, exposing generalized-inverse inference to ANDREA. A Docker run on a singular six-gene matrix passed, preserved both identifiers, returned 15 signed associations, and surfaced both upstream warnings. No causal activation/repression claim follows from the coefficient signs. Significance matrices remain auxiliary; no p-value filter is applied.
+
+Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
+
+Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/ppcor:local` (image ID `sha256:0ef33bf59f81f3c5ab8907eb96d42260e85b7576d6ed1ef779656e1e78736e9f`; no wrapper overlay). The official smoketest runner passed `global_pearson` (28 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.

@@ -234,3 +234,35 @@ Observed implementation details from smoke tests:
 - The wrapper copies both bundled and custom XML inputs to `provenance/raw/input_network.xml` before executing GNW. Therefore raw GNW output prefixes are stable as `input_network_*`, independent of the upstream XML basename.
 - GNW may write empty stdout/stderr logs for successful runs. The wrapper still preserves `provenance/raw/upstream_stdout.log` and `upstream_stderr.log`, but smoke tests do not require those log files to be non-empty.
 - `native/` stores only requested native outputs, while the full raw GNW output tree is always preserved under `provenance/raw/gnw_output/`.
+
+## Scientific audit, 2026-09-29
+
+Sources: [primary paper](https://doi.org/10.1093/bioinformatics/btr373),
+[pinned benchmark exporter](https://github.com/tschaffter/genenetweaver/blob/c5310349f5d5723306585c2bb62aedbdeb70db46/src/ch/epfl/lis/gnw/BenchmarkGeneratorDream4.java),
+[pinned settings and RNG](https://github.com/tschaffter/genenetweaver/blob/c5310349f5d5723306585c2bb62aedbdeb70db46/src/ch/epfl/lis/gnw/GnwSettings.java), and
+[pinned time-series implementation](https://github.com/tschaffter/genenetweaver/blob/c5310349f5d5723306585c2bb62aedbdeb70db46/src/ch/epfl/lis/gnw/TimeSeriesExperiment.java).
+The installed Java source/settings were inspected against `build_settings`,
+`read_steady_expression`, `read_time_series_expression` and `parse_truth_edges`.
+
+The selected model remains a fixed signed graph under all exported knockout,
+knockdown, multifactorial and time-series conditions. The wrapper's unit-weight
+signed truth represents topology, not the kinetic strengths or a rewired graph
+per condition. Expression is a simulated continuous bulk-like response, not a
+sequencing count model. Timepoints are taken from native time-series rows;
+perturbation metadata is derived from the requested families and native sidecar
+matrices. The source seed is mapped to GNW's `randomSeed` (MersenneTwister).
+The official CLI has no reviewed bounded worker-count option, so one assigned
+thread remains the contract. Custom inputs remain dynamical XML/SBML models;
+upstream network extraction, GUI and evaluation features are not claimed as
+part of this wrapper. No newly fabricated group or column truth is introduced.
+
+### Executed validation for the audited wrapper
+
+On 2026-09-29 the repository Dockerfile built
+`adriansegura99/simulator_genenetweaver:1.1.0` successfully (local image
+`sha256:b94e5d58ee521d5d67d9c49687ece93f92272f15e520094b4b3bcf6e1f1120ae`). The wrapper SHA-256 inside
+that image matched the current repository file. All **3/3** simulator smoke
+configurations passed on this final image, using the repository smoke runner
+with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
+These checks cover executable contracts and fixture outputs; they do not
+calibrate costs or independently validate biological realism.

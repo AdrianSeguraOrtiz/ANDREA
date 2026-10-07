@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_global_40982e279e",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [
+            "tf_list"
+          ],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": "Fixed identities in the checksum-pinned fixture",
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": true,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/scmtni.json:representative_global_40982e279e",
+          "resolved_params": {
+            "x": 50,
+            "p": 0.2,
+            "b": -0.9,
+            "q": 0.0,
+            "indep": true,
+            "split_genes": true
+          },
+          "cost_relevant_params": [
+            "indep",
+            "q",
+            "split_genes",
+            "x"
+          ],
+          "cost_relevant_values": {
+            "indep": true,
+            "q": 0.0,
+            "split_genes": true,
+            "x": 50
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00018",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
+            "extra/tf_list.txt": "5f50c5ed49d93c3d6c236c3252e14dbeb759176a00fc450abf28f3c29c9612a3",
+            "params.json": "fbd81c5da6cc9df5567f01c8bd85ef9581279d5c756b8ed2a9314d6ae6e10e07"
+          },
+          "source_result_sha256": "ad4227d7deb3dd41a9351b83363c6ec9925ed72dab9f9168c0b607c3a69dbb4e",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

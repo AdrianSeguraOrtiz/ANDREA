@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Callable, Optional
+import csv
+import math
 
 import pandas as pd
 from arboreto.algo import _prepare_input
@@ -25,18 +27,27 @@ def load_tf_list(extra_dir: Path) -> Optional[list[str]]:
 
 
 def read_expression_tsv(expr_path: Path) -> pd.DataFrame:
-    df = pd.read_csv(expr_path, sep="\t", header=0)
+    with expr_path.open(encoding="utf-8", newline="") as handle:
+        header = next(csv.reader(handle, delimiter="\t"), [])
+    observations = header[1:]
+    if any(not name for name in observations) or len(set(observations)) != len(observations):
+        raise ValueError("expression.tsv observation identifiers must be non-empty and unique.")
+    df = pd.read_csv(expr_path, sep="\t", header=0, dtype=str, keep_default_na=False)
     if df.shape[1] < 2:
         raise ValueError(
             "expression.tsv must have at least 2 columns: gene + >=1 observation."
         )
 
     gene_col = df.columns[0]
+    if df[gene_col].eq("").any():
+        raise ValueError("expression.tsv contains an empty gene identifier.")
     if df[gene_col].duplicated().any():
-        df = df.drop_duplicates(subset=[gene_col], keep="first")
+        raise ValueError("expression.tsv contains duplicated gene identifiers.")
 
     genes = df[gene_col].astype(str).tolist()
     numeric = df.set_index(gene_col).apply(pd.to_numeric, errors="raise")
+    if not all(math.isfinite(value) for value in numeric.to_numpy().ravel()):
+        raise ValueError("expression.tsv contains non-finite expression values.")
 
     obs_x_genes = numeric.T
     obs_x_genes.columns = genes

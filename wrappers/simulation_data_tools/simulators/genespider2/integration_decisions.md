@@ -28,7 +28,7 @@ Evidence paths:
 Packaging decision:
 
 - GeneSPIDER2 is MATLAB-only. Octave is not compatible with the pinned source because the public API uses MATLAB `arguments` blocks, tables/groupcounts and Statistics Toolbox distributions.
-- The wrapper compiles `run_genespider2.m` with MATLAB Compiler. The final container installs MATLAB Runtime R2026a Update 3 from MathWorks and runs the compiled binary; no MATLAB license is needed at runtime.
+- The checked-in application was compiled from `run_genespider2.m` with MATLAB Compiler; the Dockerfile does not compile it. The final container installs MATLAB Runtime R2026a Update 3 from MathWorks and runs the compiled binary; no MATLAB license is needed at runtime.
 - The container also clones the pinned upstream repository for audit/provenance, but runtime execution does not depend on the local evidence `repo/` directory.
 - The wrapper executes public upstream functions from the compiled package: `datastruct.scalefree2`, `datastruct.noise`, `datastruct.scdata`, `datastruct.simts` and `datastruct.Network`.
 
@@ -149,3 +149,38 @@ Phase 3 checks performed:
 - `andrea infer-network preflight --dataset-manifest <generated dataset-manifest.json>` passed for the generated dataset.
 - `python -m pytest tests/wrappers/simulation_data_tools/test_generate_data_schemas.py tests/wrappers/simulation_data_tools/test_simulatorspecs.py tests/wrappers/simulation_data_tools/test_benchmark_costs.py tests/core/commands/generate_data/test_semantic_model.py tests/core/commands/generate_data/test_bootstrap.py tests/core/commands/generate_data/test_generate_data.py tests/cli/test_generate_data_cli.py tests/gui/test_generate_data_server.py -q`: 115 passed.
 - `make validate-generation-catalog`
+
+## Scientific audit, 2026-09-29
+
+Sources: [GeneSPIDER2 paper](https://academic.oup.com/nargab/article/6/3/lqae121/7759978),
+[pinned public source](https://bitbucket.org/sonnhammergrni/genespider/src/0ac785abf89dbf65cb01132da703d0e75196abc2/),
+and the installed `+datastruct/scdata.m`, `simts.m`, `scalefree2.m` and Network
+class, cross-checked against `run_genespider2.m` and Python normalization.
+
+Matrix entry A[target, source] defines an edge, so public orientation is
+source-column to target-row and sign comes from A. Bulk perturbation responses
+use the public static gain matrix; `simts` advances a linear model with step
+`0.1 * min(abs(eig(A)))` and includes the initial timepoint. Single-cell output
+may be raw counts or signed log-fold changes depending on `raw_counts`; it must
+not always be described as non-negative RNA counts. The latent upstream
+`n_clusts` does not provide exported cell labels. ANDREA's groups instead use a
+seeded k-means derivation on generated expression and repeat the fixed global
+network. They are neither native cell types nor newly rewired truth networks.
+
+MATLAB RNG receives the run seed and `maxNumCompThreads` receives resource
+allocation. The Dockerfile executes an existing compiled application: it does
+not compile MATLAB code during a clean Docker build. Recompiling modified
+`run_genespider2.m` requires MATLAB Compiler; execution needs only matching
+MATLAB Runtime. Upstream source and the compiled executable are separate
+provenance components; a source pin alone does not prove a newly compiled binary.
+
+### Executed validation for the audited wrapper
+
+On 2026-09-29 the repository Dockerfile built
+`adriansegura99/simulator_genespider2:1.1.0` successfully (local image
+`sha256:fa855165942408b5b5ba237f79e3e92b4e41a546df1893ebee7f1f0d80747ae4`). The wrapper SHA-256 inside
+that image matched the current repository file. All **5/5** simulator smoke
+configurations passed on this final image, using the repository smoke runner
+with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
+These checks cover executable contracts and fixture outputs; they do not
+calibrate costs or independently validate biological realism.

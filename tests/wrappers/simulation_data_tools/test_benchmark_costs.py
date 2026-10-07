@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -172,6 +173,22 @@ def _valid_cost_payload() -> dict[str, object]:
 
 
 class SimulatorBenchmarkCostsTests(unittest.TestCase):
+    def setUp(self) -> None:
+        def evidence(**kwargs):
+            return {
+                "recorded_at_utc": "2026-09-29T00:00:00+00:00",
+                "git_commit": "f" * 40, "git_dirty": False,
+                "source_sha256": "a" * 64,
+                "spec_sha256": hashlib.sha256(kwargs["spec_path"].read_bytes()).hexdigest(),
+                "image_reference": kwargs["image"], "image_id": "sha256:" + "b" * 64,
+                "image_repo_digests": [], "platform": "test", "cpu_model": "test",
+                "logical_cpus": 1, "host_memory_bytes": 1024, "docker_server": "test",
+                "seed": kwargs["seed"], "timing_scope": "test",
+            }
+        evidence_patch = patch.object(benchmark_costs, "collect_provenance", side_effect=evidence)
+        evidence_patch.start()
+        self.addCleanup(evidence_patch.stop)
+
     def test_merge_existing_requires_explicit_profile(self) -> None:
         args = benchmark_costs.parse_args(["--merge-existing"])
 
@@ -496,6 +513,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                         str(COST_PROFILES_DIR),
                         "--simulator",
                         "boolode",
+                        "--merge-existing",
                         "--profile",
                         "single_cell_cells_trajectory_global_custom_default",
                         "--threads",
@@ -543,6 +561,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                         str(COST_PROFILES_DIR),
                         "--simulator",
                         "boolode",
+                        "--merge-existing",
                         "--profile",
                         "single_cell_cells_trajectory_global_custom_default",
                         "--threads",
@@ -701,6 +720,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                         str(COST_PROFILES_DIR),
                         "--simulator",
                         "dyngen",
+                        "--merge-existing",
                         "--profile",
                         "single_cell_cells_trajectory_global_linear_default",
                         "--size",
@@ -817,6 +837,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                         str(COST_PROFILES_DIR),
                         "--simulator",
                         "dyngen",
+                        "--merge-existing",
                         "--profile",
                         "single_cell_cells_trajectory_global_linear_default",
                         "--size",
@@ -837,7 +858,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             self.assertEqual(exit_code, 1)
             self.assertEqual(cost_path.read_bytes(), original_cost)
 
-    def test_partial_success_without_merge_does_not_replace_cost(self) -> None:
+    def test_filtered_write_without_merge_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
             catalog_root = tmp_root / "catalog_simulators"
@@ -869,33 +890,33 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                     return_value=(workdir, None),
                 ),
             ):
-                exit_code = benchmark_costs.run(
-                    [
-                        "--catalog-simulators-root",
-                        str(catalog_root),
-                        "--wrappers-root",
-                        str(wrappers_root),
-                        "--param-overrides-dir",
-                        str(PARAM_OVERRIDES_DIR),
-                        "--cost-profiles-dir",
-                        str(COST_PROFILES_DIR),
-                        "--simulator",
-                        "dyngen",
-                        "--profile",
-                        "single_cell_cells_trajectory_global_linear_default",
-                        "--profile",
-                        "single_cell_cells_time_series_global_linear_default",
-                        "--size",
-                        "10x10",
-                        "--threads",
-                        "1",
-                        "--ram-gb",
-                        "1",
-                        "--skip-build",
-                    ]
-                )
+                with self.assertRaisesRegex(RuntimeError, "require --merge-existing"):
+                    benchmark_costs.run(
+                        [
+                            "--catalog-simulators-root",
+                            str(catalog_root),
+                            "--wrappers-root",
+                            str(wrappers_root),
+                            "--param-overrides-dir",
+                            str(PARAM_OVERRIDES_DIR),
+                            "--cost-profiles-dir",
+                            str(COST_PROFILES_DIR),
+                            "--simulator",
+                            "dyngen",
+                            "--profile",
+                            "single_cell_cells_trajectory_global_linear_default",
+                            "--profile",
+                            "single_cell_cells_time_series_global_linear_default",
+                            "--size",
+                            "10x10",
+                            "--threads",
+                            "1",
+                            "--ram-gb",
+                            "1",
+                            "--skip-build",
+                        ]
+                    )
 
-            self.assertEqual(exit_code, 1)
             self.assertEqual(cost_path.read_bytes(), original_cost)
 
     def test_profile_sizes_override_default_sizes_unless_cli_size_is_explicit(self) -> None:

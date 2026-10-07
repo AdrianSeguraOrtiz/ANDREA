@@ -227,3 +227,12 @@ Commands run on 2026-06-16:
 - Paper and pinned code differ on hidden width; wrapper mirrors pinned code.
 - Exact scores may vary with PyTorch/NumPy stochastic behavior even though the
   upstream split seed is fixed.
+
+
+## Scientific and runtime contract audit (2026-09-29)
+
+The primary paper (https://doi.org/10.1093/nar/gkac1212) and pinned `77177a2589775ff125622bc4e8bf26a54f95ca62` source (`scGeneRAI.py`, `dataloading_simple.py`, README) were rechecked. `method_family=neural` describes neural prediction with LRP attribution. The integrated `LRPau=True` route is unsigned and undirected, with native per-cell networks; this does not expose all directed/signed attribution variants. Confirmed gene standardization, categorical descriptor alignment, 2*nfeatures hidden width, defaults and CPU thread control against code. Fixed CSV output parsing to preserve numeric-looking and NA-like public gene identifiers. Added the actual ten-cell minimum because training size is `(n_cells // 10) * 9`. Important reproducibility limit: torch.manual_seed(0) occurs after initial network construction and NumPy masking is stochastic, so it does not guarantee identical repeated fits. Default-length training and full attribution benchmarks were not rerun; the bounded one-epoch inference smoke below verifies the native output contract.
+
+Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
+
+Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/scgenerai:local` (image ID `sha256:163cbd392a16db1c792a7cc12a80d974db0ebf08ced58af8688fd54ff8a98865`; no wrapper overlay). The official smoketest runner passed `default` (36 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.

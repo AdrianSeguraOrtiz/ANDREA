@@ -221,3 +221,15 @@ Phase 3 validation:
 - `group_emulated` is an ANDREA orchestration mode, not a MetaSEM-native or
   physical mode. ANDREA invokes every child with `execution.mode=global`; the
   wrapper requires `execution.json` and emits `context=global`.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [MetaSEM paper](https://doi.org/10.3390/ijms24032595) and [pinned upstream source](https://github.com/ZhangLab312/MetaSEM/tree/482987b360ca57172f0276fd64e27b2681223b00), specifically `MetaSEM_main.py` and the three GRN-inference `SRC` files. Compared the selected inference class with ANDREA's checked-in CPU/dimension/epoch/batch/PyTorch compatibility replacements.
+- `method_family=neural`: encoder/meta-decoder plus an SEM adjacency layer with bi-level training. Checked upstream default-branch learning rates/alpha/gamma, wrapper epoch/batch controls, pseudo-GRN vs provided-prior path and sender/receiver orientation in `extractEdgesFromMatrix`. One matrix yields one global signed network; there is no native per-cell network mode.
+- The unlabelled pseudo scaffold is an explicit wrapper adaptation; a provided prior is converted to upstream binary Gene1/Gene2 membership and label/mask input, not treated as calibrated signed coefficient weights. CPU compatibility patches and this boundary remain recorded in `raw/metasem_config.json`.
+- Fixed a second identifier-coercion site inside patched `data_prepare`: prior genes such as `001` previously became integers and failed to match expression headers, potentially yielding an empty TF mask. The exported TSV reader now also preserves NA-like identifiers. Full upstream learning-objective equivalence and large training behavior are not certified by these bounded contract tests.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/metasem:audit-local`; image ID `sha256:e7e0793d23f0981f9128ca69ac64a42cc45cb38776dd41403c578ee66d886fdb`. The repository smoke runner passed `global_unlabeled_pseudo` (56 rows), `global_provided_prior` (21 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.
+- An additional check inside this rebuilt image called the actual patched `data_prepare` with genes `001` and `NA`: both identifiers, the TF mask and the labelled prior edge survived unchanged. This check did not train a model.

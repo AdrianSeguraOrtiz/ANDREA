@@ -7,7 +7,7 @@
   ],
   "first_author": "Payam Dibaeinia",
   "year": 2020,
-  "simulation_summary": "Simulates single-cell gene expression from a user-provided gene regulatory network using stochastic differential equations, with steady-state multi-cell-type and differentiation modes plus optional technical-noise modules.",
+  "simulation_summary": "Runs SERGIO stochastic differential equations on a supplied fixed signed GRN, in steady-state multi-cell-type or differentiation mode, with optional technical noise. Group truth repeats the same interaction graph across simulated bins; lineage and state changes do not create group-specific regulatory rewiring.",
   "simulation_keywords": [
     "scrna",
     "single_cell",
@@ -17,7 +17,7 @@
     "technical_noise"
   ],
   "implementation_url": "https://github.com/PayamDiba/SERGIO",
-  "docker_image": "adriansegura99/simulator_sergio:1.0.0",
+  "docker_image": "adriansegura99/simulator_sergio:1.1.0",
   "extra_inputs": {
     "required": [],
     "optional": [],
@@ -712,7 +712,8 @@
           "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
           "limitations": [
             "SERGIO does not emit a separate canonical truth file; the public global truth is normalized from the native simulator GRN input/state used to run the simulation.",
-            "Hill coefficients and half-response values affect simulation dynamics but are not represented as separate columns in the public truth edge table."
+            "Hill coefficients and half-response values affect simulation dynamics but are not represented as separate columns in the public truth edge table.",
+            "Cell bins and differentiation lineage describe expression-state changes under a fixed GRN. Repeating that graph per bin supplies contextual pairing, not independently simulated rewiring."
           ]
         },
         {
@@ -947,7 +948,8 @@
           "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
           "limitations": [
             "SERGIO does not emit a separate canonical truth file; the public global truth is normalized from the native simulator GRN input/state used to run the simulation.",
-            "Hill coefficients and half-response values affect simulation dynamics but are not represented as separate columns in the public truth edge table."
+            "Hill coefficients and half-response values affect simulation dynamics but are not represented as separate columns in the public truth edge table.",
+            "Cell bins and differentiation lineage describe expression-state changes under a fixed GRN. Repeating that graph per bin supplies contextual pairing, not independently simulated rewiring."
           ]
         },
         {
@@ -1184,7 +1186,8 @@
           "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
           "limitations": [
             "The global truth is the fixed simulator GRN used for every bin.",
-            "SERGIO bin-specific expression differences arise from master-regulator rates and stochastic dynamics, not from different bin-specific GRN topology."
+            "SERGIO bin-specific expression differences arise from master-regulator rates and stochastic dynamics, not from different bin-specific GRN topology.",
+            "Cell bins and differentiation lineage describe expression-state changes under a fixed GRN. Repeating that graph per bin supplies contextual pairing, not independently simulated rewiring."
           ]
         },
         {
@@ -1202,7 +1205,8 @@
           "score_semantics": "Group truth uses the same score=abs(K), public sign '+' for K>0 and public sign '-' for K<0 as global truth because SERGIO does not change target-interaction K values by bin.",
           "limitations": [
             "Group truth is an ANDREA-derived context expansion, not a native SERGIO group-specific GRN output.",
-            "All group networks have identical topology and edge parameters; this documents SERGIO's fixed-GRN design rather than dynamic group-specific regulation."
+            "All group networks have identical topology and edge parameters; this documents SERGIO's fixed-GRN design rather than dynamic group-specific regulation.",
+            "Cell bins and differentiation lineage describe expression-state changes under a fixed GRN. Repeating that graph per bin supplies contextual pairing, not independently simulated rewiring."
           ]
         },
         {
@@ -1526,7 +1530,8 @@
           "score_semantics": "score is abs(K), where K is SERGIO's signed maximum interaction strength; public sign is '+' for K>0 and '-' for K<0.",
           "limitations": [
             "The global truth is the fixed simulator GRN used for every bin.",
-            "SERGIO bin-specific expression differences arise from master-regulator rates and stochastic dynamics, not from different bin-specific GRN topology."
+            "SERGIO bin-specific expression differences arise from master-regulator rates and stochastic dynamics, not from different bin-specific GRN topology.",
+            "Cell bins and differentiation lineage describe expression-state changes under a fixed GRN. Repeating that graph per bin supplies contextual pairing, not independently simulated rewiring."
           ]
         },
         {
@@ -1544,7 +1549,8 @@
           "score_semantics": "Group truth uses the same score=abs(K), public sign '+' for K>0 and public sign '-' for K<0 as global truth because SERGIO does not change target-interaction K values by bin.",
           "limitations": [
             "Group truth is an ANDREA-derived context expansion, not a native SERGIO group-specific GRN output.",
-            "All group networks have identical topology and edge parameters; this documents SERGIO's fixed-GRN design rather than dynamic group-specific regulation."
+            "All group networks have identical topology and edge parameters; this documents SERGIO's fixed-GRN design rather than dynamic group-specific regulation.",
+            "Cell bins and differentiation lineage describe expression-state changes under a fixed GRN. Repeating that graph per bin supplies contextual pairing, not independently simulated rewiring."
           ]
         },
         {

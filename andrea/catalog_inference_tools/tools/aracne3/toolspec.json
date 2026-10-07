@@ -8,16 +8,17 @@
   ],
   "first_author": "Adam A Margolin",
   "year": 2006,
-  "method_summary": "ARACNe reconstructs an undirected gene association network from expression data using mutual information and data processing inequality pruning to remove indirect dependencies. The ARACNe3 implementation used here strengthens the base method with adaptive partitioning and consensus over subsampled subnetworks.",
+  "method_summary": "ARACNe3 estimates mutual information by adaptive partitioning, prunes subsampled networks using significance control and a maximum-entropy weakest-edge reduction, and consolidates their supported regulator-target associations. Mutual information is symmetric; the supplied regulator list constrains candidate source genes but the score does not establish causal direction.",
+  "method_family": "information",
   "method_keywords": [
     "mutual_information",
     "information_theory",
-    "dpi_pruning",
+    "maximum_entropy_pruning",
     "subsampling",
     "undirected"
   ],
   "implementation_url": "https://github.com/califano-lab/ARACNe3",
-  "docker_image": "adriansegura99/inference-tools_aracne3:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_aracne3:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -41,7 +42,7 @@
     "required": [
       {
         "input": "tf_list",
-        "usage": "Wrapper passes tf_list.txt to ARACNe3 with the -r regulator option, so ARACNe3 computes MI/DPI edges only from those candidate regulators to expression targets.",
+        "usage": "Wrapper passes tf_list.txt to the required -r regulator option. ARACNe3 evaluates those regulator-target pairs, applies significance and maximum-entropy pruning, and consolidates subsampled networks.",
         "delivery": "runtime"
       }
     ],
@@ -82,7 +83,7 @@
       "required": false,
       "default": 1,
       "min": 1,
-      "description": "Iteration control parameter: number of subnetworks (adaptive=false) or target occupancy threshold (adaptive=true)."
+      "description": "Number of subnetworks when adaptive=false, or minimum regulon occupancy when adaptive=true. ANDREA explicitly passes this value; its default 1 is not the upstream adaptive-mode implicit default 30."
     },
     "adaptive": {
       "type": "bool",
@@ -160,7 +161,7 @@
     {
       "path_pattern": "aracne3.stderr.log",
       "kind": "file",
-      "require_non_empty": true,
+      "require_non_empty": false,
       "description": "Stderr log emitted by the ARACNe3 binary."
     },
     {

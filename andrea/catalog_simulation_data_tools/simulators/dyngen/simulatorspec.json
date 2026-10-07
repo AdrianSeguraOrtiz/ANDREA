@@ -7,7 +7,7 @@
   ],
   "first_author": "Robrecht Cannoodt",
   "year": 2021,
-  "simulation_summary": "Simulates dynamic single-cell gene regulatory processes from a user-specified backbone, exposing cell-state annotations, regulatory ground truth and optional multimodal trajectory-derived artefacts such as RNA velocity and cell-specific GRNs.",
+  "simulation_summary": "Simulates dynamic single-cell gene expression from a selected predefined backbone. Exposes native global and cellwise regulatory activity, wrapper-derived group networks, synchronised sampling or knockdowns. Arbitrary user-defined backbone files and non-RNA primary measurements are not implemented by this wrapper.",
   "simulation_keywords": [
     "scrna",
     "trajectory",
@@ -19,7 +19,7 @@
     "knockdown"
   ],
   "implementation_url": "https://github.com/dynverse/dyngen",
-  "docker_image": "adriansegura99/simulator_dyngen:1.0.0",
+  "docker_image": "adriansegura99/simulator_dyngen:1.1.0",
   "extra_inputs": {
     "required": [],
     "optional": [],
@@ -446,7 +446,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Represents the static simulator regulatory graph for the generated process, not group-specific or cell-specific regulatory activity."
+            "Represents the static simulator regulatory graph for the generated process, not group-specific or cell-specific regulatory activity.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -637,7 +638,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Represents the static simulator regulatory graph for the generated process, not the group-derived active regulatory summaries."
+            "Represents the static simulator regulatory graph for the generated process, not the group-derived active regulatory summaries.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -655,7 +657,8 @@
           "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
           "limitations": [
             "Group truth is an ANDREA-derived summary, not a native dyngen object.",
-            "The active-edge set depends on the milestone maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold."
+            "The active-edge set depends on the milestone maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -947,7 +950,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Global truth remains the static simulator regulatory graph and is not recomputed as a cellwise aggregate."
+            "Global truth remains the static simulator regulatory graph and is not recomputed as a cellwise aggregate.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -965,7 +969,8 @@
           "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
           "limitations": [
             "Group truth is an ANDREA-derived summary layered on top of a cell-specific dyngen run.",
-            "The active-edge set depends on maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold."
+            "The active-edge set depends on maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -982,7 +987,8 @@
           "score_semantics": "score is abs(strength) for that cell/regulator/target row; sign is derived from the row strength sign.",
           "limitations": [
             "Column truth is available only when dyngen computes and stores the cellwise GRN.",
-            "The public export filters zero-strength rows and self-loops."
+            "The public export filters zero-strength rows and self-loops.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         }
       ],
@@ -1264,7 +1270,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Represents the static simulator regulatory graph for the generated process, not group-specific or cell-specific regulatory activity."
+            "Represents the static simulator regulatory graph for the generated process, not group-specific or cell-specific regulatory activity.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -1470,7 +1477,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Represents the static simulator regulatory graph for the generated process, not the group-derived active regulatory summaries."
+            "Represents the static simulator regulatory graph for the generated process, not the group-derived active regulatory summaries.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -1488,7 +1496,8 @@
           "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
           "limitations": [
             "Group truth is an ANDREA-derived summary, not a native dyngen object.",
-            "The active-edge set depends on the milestone maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold."
+            "The active-edge set depends on the milestone maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -1795,7 +1804,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Global truth remains the static simulator regulatory graph and is not recomputed as a cellwise aggregate."
+            "Global truth remains the static simulator regulatory graph and is not recomputed as a cellwise aggregate.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -1813,7 +1823,8 @@
           "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
           "limitations": [
             "Group truth is an ANDREA-derived summary layered on top of a cell-specific dyngen run.",
-            "The active-edge set depends on maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold."
+            "The active-edge set depends on maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -1830,7 +1841,8 @@
           "score_semantics": "score is abs(strength) for that cell/regulator/target row; sign is derived from the row strength sign.",
           "limitations": [
             "Column truth is available only when dyngen computes and stores the cellwise GRN.",
-            "The public export filters zero-strength rows and self-loops."
+            "The public export filters zero-strength rows and self-loops.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         }
       ],
@@ -2127,7 +2139,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Represents the static simulator regulatory graph for the generated process, not group-specific or cell-specific regulatory activity."
+            "Represents the static simulator regulatory graph for the generated process, not group-specific or cell-specific regulatory activity.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -2370,7 +2383,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Represents the static simulator regulatory graph for the generated process, not the group-derived active regulatory summaries."
+            "Represents the static simulator regulatory graph for the generated process, not the group-derived active regulatory summaries.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -2388,7 +2402,8 @@
           "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
           "limitations": [
             "Group truth is an ANDREA-derived summary, not a native dyngen object.",
-            "The active-edge set depends on the milestone maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold."
+            "The active-edge set depends on the milestone maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -2732,7 +2747,8 @@
           "generation": "The wrapper exports non-self-loop dyngen feature_network regulator-target rows as context=global in truth/networks.csv.",
           "score_semantics": "score is abs(strength); sign is derived from dyngen effect/strength sign.",
           "limitations": [
-            "Global truth remains the static simulator regulatory graph and is not recomputed as a cellwise aggregate."
+            "Global truth remains the static simulator regulatory graph and is not recomputed as a cellwise aggregate.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -2750,7 +2766,8 @@
           "score_semantics": "score is mean(abs(strength)) across group cells after treating missing cell-edge values as zero; sign is derived from mean signed strength; edges require mean(abs(strength)) >= 0.1.",
           "limitations": [
             "Group truth is an ANDREA-derived summary layered on top of a cell-specific dyngen run.",
-            "The active-edge set depends on maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold."
+            "The active-edge set depends on maximum-membership group assignment and the fixed 0.1 mean-absolute-strength threshold.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         },
         {
@@ -2767,7 +2784,8 @@
           "score_semantics": "score is abs(strength) for that cell/regulator/target row; sign is derived from the row strength sign.",
           "limitations": [
             "Column truth is available only when dyngen computes and stores the cellwise GRN.",
-            "The public export filters zero-strength rows and self-loops."
+            "The public export filters zero-strength rows and self-loops.",
+            "Cellwise regulatory activity and thresholded group summaries are different quantities from the fixed global kinetic graph; group activity uses mean absolute strength >= 0.1. A pseudotime projection or timepoint-group label is not a direct physical elapsed-time measurement."
           ]
         }
       ],

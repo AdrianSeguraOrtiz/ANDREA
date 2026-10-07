@@ -25,6 +25,12 @@ RUN R -q -e "install.packages(c('jsonlite','remotes'), repos='https://cloud.r-pr
   && R -q -e "remotes::install_version('inferCSN', version='${INFERCSN_VERSION}', repos='https://cloud.r-project.org', dependencies=c('Depends','Imports','LinkingTo'), upgrade='never')" \
   && R -q -e "stopifnot(as.character(utils::packageVersion('inferCSN')) == '${INFERCSN_VERSION}')"
 
+# The exposed meta_cells subsampling path uses RANN::nn2. RANN is only
+# Suggested by inferCSN, so installing Depends/Imports does not install it.
+ARG RANN_VERSION=2.6.2
+RUN R -q -e "remotes::install_version('RANN', version='${RANN_VERSION}', repos='https://cloud.r-project.org', dependencies=FALSE, upgrade='never')" \
+  && R -q -e "stopifnot(as.character(utils::packageVersion('RANN')) == '${RANN_VERSION}'); stopifnot(requireNamespace('igraph', quietly=TRUE))"
+
 COPY run_tool.sh /app/run_tool.sh
 COPY run_tool.R /app/run_tool.R
 

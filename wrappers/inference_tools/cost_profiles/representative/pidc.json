@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_global_1ae9070729",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/pidc.json:representative_global_1ae9070729",
+          "resolved_params": {
+            "discretizer": "bayesian_blocks",
+            "estimator": "maximum_likelihood",
+            "number_of_bins": 10,
+            "base": 2.0
+          },
+          "cost_relevant_params": [
+            "base",
+            "discretizer",
+            "estimator",
+            "number_of_bins"
+          ],
+          "cost_relevant_values": {
+            "base": 2.0,
+            "discretizer": "bayesian_blocks",
+            "estimator": "maximum_likelihood",
+            "number_of_bins": 10
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00004",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
+            "params.json": "2b3d003a4362c76be157d8f19c77d2280859c04a42bf2c5aaaf7f072aad93d3b"
+          },
+          "source_result_sha256": "ca5e4461acf92da2f5419949148ee74844b598e25808637a60a5451b7daea1b4",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

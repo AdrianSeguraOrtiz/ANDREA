@@ -4,6 +4,7 @@ import importlib
 import unittest
 
 from typer.testing import CliRunner
+from andrea.config import __version__
 
 CLI_MODULE = importlib.import_module("andrea.cli.app")
 app = CLI_MODULE.app
@@ -25,7 +26,7 @@ class AndreaCliBootstrapTests(unittest.TestCase):
     def test_version_flag_prints_package_version(self) -> None:
         result = self.runner.invoke(app, ["--version"])
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("ANDREA 0.1.0", result.output)
+        self.assertIn(f"ANDREA {__version__}", result.output)
 
     def test_infer_network_namespace_is_bootstrapped(self) -> None:
         result = self.runner.invoke(app, ["infer-network", "--help"])

@@ -2,6 +2,7 @@ FROM python:3.7-slim-bullseye
 
 ARG BOOLODE_REPO=https://github.com/Murali-group/BoolODE.git
 ARG BOOLODE_COMMIT=ba8884af40f98fc648b3f36f0b81a5a8cf22c9b9
+ARG DEBIAN_SNAPSHOT=20260601T000000Z
 
 ENV DEBIAN_FRONTEND=noninteractive \
     BOOLODE_HOME=/opt/BoolODE \
@@ -12,7 +13,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     VECLIB_MAXIMUM_THREADS=1 \
     NUMEXPR_NUM_THREADS=1
 
-RUN apt-get update \
+# The live bullseye-security index can reference packages no longer on mirrors.
+# Use signed dated archives; only their historical Valid-Until is disabled.
+RUN printf 'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/%s/ bullseye main\ndeb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/%s/ bullseye-security main\n' "$DEBIAN_SNAPSHOT" "$DEBIAN_SNAPSHOT" > /etc/apt/sources.list \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         git \

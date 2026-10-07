@@ -16,7 +16,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/jpvert/tigress",
-  "docker_image": "adriansegura99/inference-tools_tigress:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_tigress:1.1.0",
   "runtime_resources": {
     "threading": {
       "supported": true,
@@ -80,7 +80,7 @@
       "required": false,
       "default": 5,
       "min": 1,
-      "description": "Maximum number of LARS steps used by TIGRESS."
+      "description": "Requested number of LARS steps. Upstream limits this to the number of candidate TFs minus one; the wrapper can retry a shorter realized LARS path and records effective_nstepsLARS and a warning."
     },
     "nsplit": {
       "type": "int",
@@ -103,13 +103,13 @@
         "area",
         "max"
       ],
-      "description": "Stability selection scoring method."
+      "description": "Stability selection scoring: area averages selection frequencies over LARS steps; max uses the maximum stability frequency. The pinned implementation is patched to forward this argument to stabilityselection()."
     },
     "allsteps": {
       "type": "bool",
       "required": false,
       "default": true,
-      "description": "Whether TIGRESS returns scores for all LARS steps up to nstepsLARS."
+      "description": "Whether upstream returns matrices for every LARS step. ANDREA exports only the last step in network.csv in both cases."
     },
     "limit": {
       "type": "union",
@@ -136,13 +136,15 @@
       "type": "union",
       "required": false,
       "default": null,
-      "description": "Optional random seed used by wrapper before calling TIGRESS.",
+      "description": "Optional nonnegative R integer seed. With multiple workers, doRNG assigns reproducible foreach streams; changing the worker mode can still change the random draws.",
       "oneOf": [
         {
           "type": "int",
           "required": false,
           "default": 666,
-          "description": "Deterministic seed."
+          "description": "Deterministic seed.",
+          "min": 0,
+          "max": 2147483647
         },
         {
           "type": "object",
@@ -153,7 +155,14 @@
       ]
     }
   },
-  "artifacts_aux": [],
+  "artifacts_aux": [
+    {
+      "path_pattern": "raw/tigress_config.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Requested parameters, effective LARS steps, retained TFs and narrow upstream repairs for successful inference."
+    }
+  ],
   "taxonomic_scope": {
     "allowed_groups": [
       "animal",
@@ -168,5 +177,18 @@
     ],
     "supported_species": []
   },
-  "compatibility_rules": []
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 4
+        }
+      ],
+      "action": "block",
+      "message": "TIGRESS needs at least four observations so each stability-selection half contains at least two observations."
+    }
+  ],
+  "method_family": "regression"
 }

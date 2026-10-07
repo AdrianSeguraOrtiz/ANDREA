@@ -1,0 +1,198 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_global_10319b1f20",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/metasem.json:representative_global_10319b1f20",
+          "resolved_params": {
+            "pseudo_grn_mode": "unlabeled_all_genes",
+            "epochs": 20,
+            "batch_size": 64,
+            "alpha": 0.45,
+            "lr": 0.001,
+            "lr_meta": 0.0005,
+            "gamma": 0.95,
+            "gamma_meta": 0.85,
+            "random_seed": 1050598919
+          },
+          "cost_relevant_params": [
+            "alpha",
+            "batch_size",
+            "epochs",
+            "gamma",
+            "gamma_meta",
+            "lr",
+            "lr_meta",
+            "pseudo_grn_mode"
+          ],
+          "cost_relevant_values": {
+            "alpha": 0.45,
+            "batch_size": 64,
+            "epochs": 20,
+            "gamma": 0.95,
+            "gamma_meta": 0.85,
+            "lr": 0.001,
+            "lr_meta": 0.0005,
+            "pseudo_grn_mode": "unlabeled_all_genes"
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00008",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
+            "params.json": "79885f4c33699128b4bfba64184a1ea7700cdcf9a66b8a204c75d9f747322d44"
+          },
+          "source_result_sha256": "371d6abde06ab93da3423786932e924f569e86711f59fe466ac2644867a45004",
+          "physical_index": 0
+        }
+      ]
+    },
+    {
+      "profile_id": "representative_global_bad6ce553b",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [
+            "prior_grn"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [
+            "prior_grn"
+          ],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/metasem.json:representative_global_bad6ce553b",
+          "resolved_params": {
+            "pseudo_grn_mode": "provided_prior",
+            "epochs": 20,
+            "batch_size": 64,
+            "alpha": 0.45,
+            "lr": 0.001,
+            "lr_meta": 0.0005,
+            "gamma": 0.95,
+            "gamma_meta": 0.85,
+            "random_seed": 1289291957
+          },
+          "cost_relevant_params": [
+            "alpha",
+            "batch_size",
+            "epochs",
+            "gamma",
+            "gamma_meta",
+            "lr",
+            "lr_meta",
+            "pseudo_grn_mode"
+          ],
+          "cost_relevant_values": {
+            "alpha": 0.45,
+            "batch_size": 64,
+            "epochs": 20,
+            "gamma": 0.95,
+            "gamma_meta": 0.85,
+            "lr": 0.001,
+            "lr_meta": 0.0005,
+            "pseudo_grn_mode": "provided_prior"
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00033",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
+            "extra/prior_grn.tsv": "9d05743b71299970c62d50dca48fc634faf604d42aea80bd5dbd227514b07872",
+            "params.json": "79d0ad4528a9056fd9ab9fa6805ac094fbbd5d235c42d28b1df2038d6c051f8c"
+          },
+          "source_result_sha256": "f262069500bc6ad7c03c22cfaf4c163632e2a5ef359a9db7fde984e6c684f2e3",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

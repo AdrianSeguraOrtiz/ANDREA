@@ -19,7 +19,7 @@ Phase 3 status: executable wrapper, Dockerfile, catalog SimulatorSpec, smoke-tes
 
 ## Installation And Version
 
-- Chosen Docker route: copy the verified local SynTReN 1.2 release into the image at build time and verify `SynTReN.jar` checksum.
+- Chosen Docker route: recover the exact release from a pinned, previously published ANDREA image and verify `SynTReN.jar` checksum (see scientific audit below).
 - Rationale: no live official package, public repository, tag or commit could be found. The official supplement is public but does not contain the headless CLI needed by ANDREA.
 - Runtime dependency patch: the container uses OpenJDK 8 and places XStream 1.4.7 plus xmlpull/xpp3 ahead of the bundled XStream 1.2.1 on classpath. This is a compatibility fix for XML deserialization; the simulator execution remains SynTReN's public Java CLI/API.
 - Checksums:
@@ -169,3 +169,43 @@ Negative behavior implemented in wrapper:
 - `andrea generate-data execute` with bulk observational SynTReN generated `/tmp/andrea_syntren_phase3/benchmarks/syntren_phase3_observational_20260623T151258Z`.
 - `andrea generate-data execute` with bulk perturbational SynTReN generated `/tmp/andrea_syntren_phase3/benchmarks/syntren_phase3_perturbational_20260623T151302Z`.
 - `andrea infer-network preflight --dataset-manifest <generated dataset-manifest.json> --tools-params <genie3 tools params>`: passed for both generated SynTReN dataset manifests with `genie3__01` selected and no run issues.
+
+## Scientific audit, 2026-09-29
+
+Sources: [primary paper](https://doi.org/10.1186/1471-2105-7-43),
+[archived official distribution page](https://web.archive.org/web/20191023060930/http://bioinformatics.intec.ugent.be/kmarchal/SynTReN/index.html),
+and the installed 1.2 `doc/RELEASE NOTES.txt`, `doc/additional documentation.html`,
+`data/samples/*.ini` and `LICENSE-AGREEMENT.TXT`. Source archive limitations are
+retained above; the public paper supplement is not silently substituted for 1.2.
+
+The Dockerfile previously depended on an absent, unversioned `repo/` directory.
+It now recovers `/opt/syntren` from the already published immutable image
+`adriansegura99/simulator_syntren@sha256:a9306fefe4d0f5a9c8cf619aa825fe55362574f6b3edb4e6c481745f266048f4`
+via a build stage. The registry manifest was retrieved on 2026-09-29. The native
+academic-use license is preserved and the JAR SHA-256 remains verified. This is
+portable reconstruction from an archived binary distribution, **not** a clean
+upstream source build or a change of license to ANDREA's MIT license. The build
+still depends on availability of that published image until an upstream 1.2
+archive is restored.
+
+The native matrix is genes by conditions. Randomized externals support the
+observational capability; predefined continuous external inputs support the
+perturbational capability. A concentration series is not time-series sampling.
+Public truth is the same global topology for all columns; the verified SIF route
+usually exports unsigned `un` tokens. The parser preserves actual `ac`/`re`
+tokens if present but never invents signs for `un`. Perturbation metadata uses
+the first external-input column as baseline; reported dose is absolute delta,
+not a calibrated biological intervention. Source-gene TF lists and prior networks
+are truth-derived oracle inputs. `randomSeed` is passed to the native ini; no
+bounded threading or context-specific regulatory rewiring is claimed.
+
+### Executed validation for the audited wrapper
+
+On 2026-09-29 the repository Dockerfile built
+`adriansegura99/simulator_syntren:1.1.0` successfully (local image
+`sha256:96599313e251c97ff57678d2adb0ff4ad851e633b98e0f6b215c810a10e1be59`). The wrapper SHA-256 inside
+that image matched the current repository file. All **3/3** simulator smoke
+configurations passed on this final image, using the repository smoke runner
+with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
+These checks cover executable contracts and fixture outputs; they do not
+calibrate costs or independently validate biological realism.

@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_column_native_173bb854e0",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "column_native",
+          "physical_task_policy": "column_native",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "dense",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/cespgrn.json:representative_column_native_173bb854e0",
+          "resolved_params": {
+            "kernel_source": "expression",
+            "prior_mode": "none",
+            "expression_preprocessing": "library_size_log1p",
+            "pca_components": 20,
+            "bandwidth": 0.1,
+            "n_neigh": 30,
+            "lamb": 0.1,
+            "prior_beta": 1.0,
+            "max_iters": 1000,
+            "n_intervals": 100,
+            "batch_size": null,
+            "random_seed": 1050498785
+          },
+          "cost_relevant_params": [
+            "bandwidth",
+            "batch_size",
+            "expression_preprocessing",
+            "kernel_source",
+            "lamb",
+            "max_iters",
+            "n_intervals",
+            "n_neigh",
+            "pca_components",
+            "prior_beta",
+            "prior_mode"
+          ],
+          "cost_relevant_values": {
+            "bandwidth": 0.1,
+            "batch_size": null,
+            "expression_preprocessing": "library_size_log1p",
+            "kernel_source": "expression",
+            "lamb": 0.1,
+            "max_iters": 1000,
+            "n_intervals": 100,
+            "n_neigh": 30,
+            "pca_components": 20,
+            "prior_beta": 1.0,
+            "prior_mode": "none"
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00027",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
+            "params.json": "fce0a3a1e06fe7fa19e5ba156966fbeb4c699170c609820106a0771b814f3d11"
+          },
+          "source_result_sha256": "1842315d0c48d46b634659e3587ae393f32ed9fe8d40952165bd5aa5f5e1736c",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

@@ -110,3 +110,51 @@ Native outputs are preserved only when requested; examples include true counts, 
 - `provenance/raw/`: request snapshot, resolved options, result RDS, raw counts/metadata, session info, group derivation tables and `column_networks_index.tsv` for column truth.
 
 The smoke matrix covers single-cell and spatial global, group and cumulative column truth, ATAC standardized extras and spatial CCI standardized extras, including public ID consistency across expression, truth, gene universe and generated extras.
+
+## Scientific audit, 2026-09-29
+
+Sources: [primary paper](https://www.nature.com/articles/s41592-025-02651-0),
+[official package documentation](https://zhanglabgt.github.io/scMultiSim/), and
+[Bioconductor package](https://bioconductor.org/packages/scMultiSim/).
+The installed scMultiSim **1.8.0** namespace was inspected, including
+`sim_true_counts`, `.CreateDynGRN`, dynamic-GRN defaults and the normalization
+path, against ANDREA's matrix orientation, identifiers, parameter bindings and
+truth aggregation. Online documentation may describe a different release;
+installed package version is the runtime authority for this audit.
+
+Column truth is normalized from native dynamic per-cell matrices. Static global
+truth uses native GRN effects; dynamic global and group networks aggregate mean
+absolute effects and derive sign from the signed mean. Opposing signs can cancel
+without zero absolute strength, so `?` is meaningful and aggregates are not
+native per-group regulatory programs. Column/global/group requirements retain
+the documented cumulative semantics and dynamic-GRN parameter constraints.
+
+Spatial columns are individual simulated cells at coordinates. ANDREA labels
+them `spots`, but does not combine several cells into a sequencing spot. The
+catalog now makes that scope explicit. CCI is a separate ligand-receptor extra,
+not an intracellular GRN edge table; chromatin accessibility is an extra while
+primary expression remains RNA. Pseudotime, tree labels and synthetic chromatin
+regions are simulator/wrapper constructs, not experimentally measured times or
+organism genomic coordinates. Native/random callbacks remain constrained to the
+implemented presets; byte-level reproducibility across different package or
+parallel environments is not claimed from seed assignment alone.
+
+The installed `.dynamic_grn_default_params()` has a separate `seed=0`, used by
+`.CreateDynGRN`. ANDREA maps the request seed to `rand.seed` and technical-noise
+functions but currently leaves that dynamic-GRN seed at its upstream default.
+Consequently different request seeds do not establish independent network
+rewiring, even when expression differs. The spec records this limitation;
+benchmark analyses must inspect truth hashes and distinguish expression
+replicates from independent network replicates. This audit preserves that
+upstream configuration rather than silently changing historical semantics.
+
+### Executed validation for the audited wrapper
+
+On 2026-09-29 the repository Dockerfile built
+`adriansegura99/simulator_scmultisim:1.1.0` successfully (local image
+`sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e`). The wrapper SHA-256 inside
+that image matched the current repository file. All **11/11** simulator smoke
+configurations passed on this final image, using the repository smoke runner
+with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
+These checks cover executable contracts and fixture outputs; they do not
+calibrate costs or independently validate biological realism.

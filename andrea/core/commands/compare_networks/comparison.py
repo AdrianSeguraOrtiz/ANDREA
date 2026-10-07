@@ -111,7 +111,10 @@ def compare_networks(
         label="Building network tables",
         detail="Building network index and internal edge-score maps.",
     ):
-        network_index, network_instances = build_network_tables(source_data)
+        capability_warnings: list[str] = []
+        network_index, network_instances = build_network_tables(
+            source_data, warnings=capability_warnings
+        )
         edge_score_rows = edge_score_row_count(network_instances)
         evaluation_metrics, evaluation_warnings = build_evaluation_metrics(source_data)
 
@@ -200,7 +203,8 @@ def compare_networks(
             evaluation_metrics=evaluation_metric_rows,
         )
     warnings = (
-        evaluation_warnings
+        capability_warnings
+        + evaluation_warnings
         + distance_warnings
         + coordinate_warnings
         + _context_scale_warnings(context_counts_by_family)
@@ -216,7 +220,10 @@ def compare_networks(
         "sources": [source_report_item(item) for item in source_data],
         "contexts": contexts,
         "context_counts_by_family": context_counts_by_family,
-        "levels": list(COMPARISON_LEVELS),
+        "levels": [
+            level for level in COMPARISON_LEVELS
+            if any(row["level"] == level for row in network_index)
+        ],
         "metrics_available": metrics_available(evaluation_metrics),
         "distances_available": distances_available(distances),
         "warnings": warnings,

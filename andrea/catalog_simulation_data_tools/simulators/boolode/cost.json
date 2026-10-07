@@ -2,6 +2,300 @@
   "schema_version": "1.0",
   "profiles": [
     {
+      "profile_id": "single_cell_cells_trajectory_global_custom_default",
+      "benchmark_config": {
+        "simulator_id": "boolode",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "single_cell",
+          "column_kind": "cells",
+          "experimental_design": "trajectory"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 3,
+            "cells": 3
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0,
+          32.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": "num_cells",
+          "genes_param": {
+            "fixed": 3
+          },
+          "group_count": 0,
+          "population_count": 0
+        },
+        "input_profile": {
+          "requested_extras": [],
+          "effective_extras": [
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [
+            "boolode_initial_conditions",
+            "boolode_interaction_strengths"
+          ],
+          "conditional_inputs_satisfied": [
+            "boolode_boolean_model"
+          ],
+          "input_source_modes": {
+            "model_preset": "custom_files"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "boolode.json:single_cell_cells_trajectory_global_custom_default:inline",
+          "resolved_base_params": {
+            "model_preset": "custom_files",
+            "model_type": "hill",
+            "simulation_time": 0.08,
+            "num_cells": 100,
+            "n_clusters": 1,
+            "sample_cells": false,
+            "sample_parameters": false,
+            "sample_std": 0.1,
+            "identical_parameters": false,
+            "integration_step_size": 0.01,
+            "dropout": {
+              "enabled": false,
+              "drop_cutoff": 0.5,
+              "drop_prob": 0.5
+            }
+          },
+          "cost_relevant_params": [
+            "model_preset",
+            "model_type",
+            "simulation_time",
+            "n_clusters",
+            "sample_cells",
+            "sample_parameters",
+            "integration_step_size",
+            "dropout.enabled"
+          ],
+          "cost_relevant_values": {
+            "model_preset": "custom_files",
+            "model_type": "hill",
+            "simulation_time": 0.08,
+            "n_clusters": 1,
+            "sample_cells": false,
+            "sample_parameters": false,
+            "integration_step_size": 0.01,
+            "dropout.enabled": false
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": false,
+          "default_threads": 1,
+          "max_threads": 1,
+          "upstream_mapping": "The reviewed BoolODE YAML exposes only a do_parallel boolean; the pinned implementation calls multiprocessing.Pool() without a process-count argument and hard-codes KMeans n_jobs=8. The wrapper therefore rejects runtime_resources.threads != 1, writes do_parallel=false, and patches the imported public BoolODE KMeans constructor to n_jobs=1 before calling BoolODE.ConfigParser.parse(...).execute_jobs()."
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-09-30T05:07:37.559904+00:00",
+          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "git_dirty": true,
+          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
+          "spec_sha256": "6ff51feb25c48e2f373a52a0516fef269bb055ea092e9362055bc924b2ff642d",
+          "build_context_sha256": "04fe708093e3a8ed880bfa5b2eff56c56bac843c68bb7e06cf16db3030b3d7ac",
+          "image_reference": "adriansegura99/simulator_boolode:1.1.0",
+          "image_id": "sha256:5961de0161af7790d9b3873c39e2a05f10dca823c97a8b906bbe847de6d1d263",
+          "image_repo_digests": [
+            "adriansegura99/simulator_boolode@sha256:3d22a530be3226ea82fc1c58424bbe51f234a7dc6351f3c581d73975841ac87b"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "5ebb141af4abe88bd357bcd330d560ec0fc730431a4c69f478666d07e87084b8"
+      },
+      "runtime_points": [
+        {
+          "genes": 3,
+          "cells": 3,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.54536,
+          "seconds_p90": 2.165558,
+          "output_bytes_p50": 13954,
+          "output_bytes_p90": 13954,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "boolode",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "trajectory"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_default",
+            "profile_id": "single_cell_cells_trajectory_global_custom_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "trajectory",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "tf_list"
+            ],
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 3,
+            "cells": 3,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 3,
+            "n_cells": 3,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 2,
+            "conditional_inputs_count": 1,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "model_preset": "custom_files",
+              "model_type": "hill",
+              "simulation_time": 0.08,
+              "n_clusters": 1,
+              "sample_cells": false,
+              "sample_parameters": false,
+              "integration_step_size": 0.01,
+              "dropout.enabled": false
+            },
+            "input_source_modes": {
+              "model_preset": "custom_files"
+            }
+          }
+        },
+        {
+          "genes": 3,
+          "cells": 3,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 32.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.505968,
+          "seconds_p90": 1.525941,
+          "output_bytes_p50": 13954,
+          "output_bytes_p90": 13954,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "boolode",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "trajectory"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_default",
+            "profile_id": "single_cell_cells_trajectory_global_custom_default",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "trajectory",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "tf_list"
+            ],
+            "requested_extras": [],
+            "effective_extras": [
+              "tf_list"
+            ],
+            "genes": 3,
+            "cells": 3,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 3,
+            "n_cells": 3,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {},
+            "requested_extras_count": 0,
+            "effective_extras_count": 1,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 2,
+            "conditional_inputs_count": 1,
+            "threads": 1,
+            "ram_gb": 32.0,
+            "cost_relevant_values": {
+              "model_preset": "custom_files",
+              "model_type": "hill",
+              "simulation_time": 0.08,
+              "n_clusters": 1,
+              "sample_cells": false,
+              "sample_parameters": false,
+              "integration_step_size": 0.01,
+              "dropout.enabled": false
+            },
+            "input_source_modes": {
+              "model_preset": "custom_files"
+            }
+          }
+        }
+      ]
+    },
+    {
       "profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
       "benchmark_config": {
         "simulator_id": "boolode",
@@ -27,11 +321,10 @@
           1
         ],
         "ram_gb_tested": [
-          8,
-          16,
-          32
+          8.0,
+          32.0
         ],
-        "repeats": 1,
+        "repeats": 3,
         "timeout_seconds": 1800,
         "dimension_profile": {
           "cells_param": "num_cells",
@@ -121,7 +414,28 @@
           "default_threads": 1,
           "max_threads": 1,
           "upstream_mapping": "The reviewed BoolODE YAML exposes only a do_parallel boolean; the pinned implementation calls multiprocessing.Pool() without a process-count argument and hard-codes KMeans n_jobs=8. The wrapper therefore rejects runtime_resources.threads != 1, writes do_parallel=false, and patches the imported public BoolODE KMeans constructor to n_jobs=1 before calling BoolODE.ConfigParser.parse(...).execute_jobs()."
-        }
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-09-30T05:07:37.559904+00:00",
+          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "git_dirty": true,
+          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
+          "spec_sha256": "6ff51feb25c48e2f373a52a0516fef269bb055ea092e9362055bc924b2ff642d",
+          "build_context_sha256": "04fe708093e3a8ed880bfa5b2eff56c56bac843c68bb7e06cf16db3030b3d7ac",
+          "image_reference": "adriansegura99/simulator_boolode:1.1.0",
+          "image_id": "sha256:5961de0161af7790d9b3873c39e2a05f10dca823c97a8b906bbe847de6d1d263",
+          "image_repo_digests": [
+            "adriansegura99/simulator_boolode@sha256:3d22a530be3226ea82fc1c58424bbe51f234a7dc6351f3c581d73975841ac87b"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "4bc796278e0fe9f5c7e6bcf096a074705203d8bd8ee553f2e526de5013b50e7e"
       },
       "runtime_points": [
         {
@@ -130,21 +444,21 @@
           "groups": 2,
           "population_count": 2,
           "threads": 1,
-          "ram_gb": 8,
+          "ram_gb": 8.0,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.496858,
-          "seconds_p90": 1.496858,
-          "output_bytes_p50": 18297,
-          "output_bytes_p90": 18297,
+          "seconds_p50": 1.551543,
+          "seconds_p90": 1.554107,
+          "output_bytes_p50": 18370,
+          "output_bytes_p90": 18370,
           "peak_memory_mb_p50": null,
           "peak_memory_mb_p90": null,
           "feature_vector": {
@@ -162,6 +476,7 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
+            "profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "trajectory",
@@ -170,6 +485,16 @@
               "group"
             ],
             "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
             "requested_extras": [
               "cluster_identities",
               "column_phenotypes",
@@ -194,6 +519,8 @@
             "cells": 4,
             "groups": 2,
             "population_count": 2,
+            "n_genes": 3,
+            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -203,7 +530,7 @@
             "optional_inputs_count": 2,
             "conditional_inputs_count": 1,
             "threads": 1,
-            "ram_gb": 8,
+            "ram_gb": 8.0,
             "cost_relevant_values": {
               "model_preset": "custom_files",
               "model_type": "hill",
@@ -216,20 +543,7 @@
             },
             "input_source_modes": {
               "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "prior_grn",
-              "prior_grn_by_group",
-              "pseudotime",
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 4
+            }
           }
         },
         {
@@ -238,21 +552,21 @@
           "groups": 2,
           "population_count": 2,
           "threads": 1,
-          "ram_gb": 16,
+          "ram_gb": 32.0,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.636511,
-          "seconds_p90": 1.636511,
-          "output_bytes_p50": 18297,
-          "output_bytes_p90": 18297,
+          "seconds_p50": 1.512152,
+          "seconds_p90": 1.516859,
+          "output_bytes_p50": 18370,
+          "output_bytes_p90": 18370,
           "peak_memory_mb_p50": null,
           "peak_memory_mb_p90": null,
           "feature_vector": {
@@ -270,6 +584,7 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
+            "profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "trajectory",
@@ -278,6 +593,16 @@
               "group"
             ],
             "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
             "requested_extras": [
               "cluster_identities",
               "column_phenotypes",
@@ -302,6 +627,8 @@
             "cells": 4,
             "groups": 2,
             "population_count": 2,
+            "n_genes": 3,
+            "n_cells": 4,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -311,7 +638,7 @@
             "optional_inputs_count": 2,
             "conditional_inputs_count": 1,
             "threads": 1,
-            "ram_gb": 16,
+            "ram_gb": 32.0,
             "cost_relevant_values": {
               "model_preset": "custom_files",
               "model_type": "hill",
@@ -324,128 +651,7 @@
             },
             "input_source_modes": {
               "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "prior_grn",
-              "prior_grn_by_group",
-              "pseudotime",
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 4
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 4,
-          "groups": 2,
-          "population_count": 2,
-          "threads": 1,
-          "ram_gb": 32,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.621974,
-          "seconds_p90": 1.621974,
-          "output_bytes_p50": 18297,
-          "output_bytes_p90": 18297,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "boolode",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "trajectory"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global",
-                "group"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "trajectory",
-            "truth_context_families": [
-              "global",
-              "group"
-            ],
-            "truth_context_count": 2,
-            "requested_extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "prior_grn",
-              "prior_grn_by_group",
-              "pseudotime",
-              "tf_list"
-            ],
-            "effective_extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "prior_grn",
-              "prior_grn_by_group",
-              "pseudotime",
-              "tf_list"
-            ],
-            "genes": 3,
-            "cells": 4,
-            "groups": 2,
-            "population_count": 2,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 8,
-            "effective_extras_count": 8,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 2,
-            "conditional_inputs_count": 1,
-            "threads": 1,
-            "ram_gb": 32,
-            "cost_relevant_values": {
-              "model_preset": "custom_files",
-              "model_type": "hill",
-              "simulation_time": 0.08,
-              "n_clusters": 2,
-              "sample_cells": false,
-              "sample_parameters": false,
-              "integration_step_size": 0.01,
-              "dropout.enabled": false
-            },
-            "input_source_modes": {
-              "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_group_custom_full_extras",
-            "extras": [
-              "cluster_identities",
-              "column_phenotypes",
-              "enrichment_background",
-              "groups",
-              "prior_grn",
-              "prior_grn_by_group",
-              "pseudotime",
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 4
+            }
           }
         }
       ]
@@ -475,11 +681,10 @@
           1
         ],
         "ram_gb_tested": [
-          8,
-          16,
-          32
+          8.0,
+          32.0
         ],
-        "repeats": 1,
+        "repeats": 3,
         "timeout_seconds": 1800,
         "dimension_profile": {
           "cells_param": "num_cells",
@@ -561,7 +766,28 @@
           "default_threads": 1,
           "max_threads": 1,
           "upstream_mapping": "The reviewed BoolODE YAML exposes only a do_parallel boolean; the pinned implementation calls multiprocessing.Pool() without a process-count argument and hard-codes KMeans n_jobs=8. The wrapper therefore rejects runtime_resources.threads != 1, writes do_parallel=false, and patches the imported public BoolODE KMeans constructor to n_jobs=1 before calling BoolODE.ConfigParser.parse(...).execute_jobs()."
-        }
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-09-30T05:07:37.559904+00:00",
+          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "git_dirty": true,
+          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
+          "spec_sha256": "6ff51feb25c48e2f373a52a0516fef269bb055ea092e9362055bc924b2ff642d",
+          "build_context_sha256": "04fe708093e3a8ed880bfa5b2eff56c56bac843c68bb7e06cf16db3030b3d7ac",
+          "image_reference": "adriansegura99/simulator_boolode:1.1.0",
+          "image_id": "sha256:5961de0161af7790d9b3873c39e2a05f10dca823c97a8b906bbe847de6d1d263",
+          "image_repo_digests": [
+            "adriansegura99/simulator_boolode@sha256:3d22a530be3226ea82fc1c58424bbe51f234a7dc6351f3c581d73975841ac87b"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "16aea82a7f2550187711cd7a3090d28e6c052840e91c4c867024c262626ba86d"
       },
       "runtime_points": [
         {
@@ -570,21 +796,21 @@
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 8,
+          "ram_gb": 8.0,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.523361,
-          "seconds_p90": 1.523361,
-          "output_bytes_p50": 14398,
-          "output_bytes_p90": 14398,
+          "seconds_p50": 1.472072,
+          "seconds_p90": 1.485307,
+          "output_bytes_p50": 14471,
+          "output_bytes_p90": 14471,
           "peak_memory_mb_p50": null,
           "peak_memory_mb_p90": null,
           "feature_vector": {
@@ -601,6 +827,7 @@
               ]
             },
             "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
+            "profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "trajectory",
@@ -608,6 +835,12 @@
               "global"
             ],
             "truth_context_count": 1,
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "pseudotime",
+              "tf_list"
+            ],
             "requested_extras": [
               "enrichment_background",
               "prior_grn",
@@ -624,6 +857,8 @@
             "cells": 3,
             "groups": 0,
             "population_count": 0,
+            "n_genes": 3,
+            "n_cells": 3,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
@@ -633,7 +868,7 @@
             "optional_inputs_count": 2,
             "conditional_inputs_count": 1,
             "threads": 1,
-            "ram_gb": 8,
+            "ram_gb": 8.0,
             "cost_relevant_values": {
               "model_preset": "custom_files",
               "model_type": "hill",
@@ -646,335 +881,30 @@
             },
             "input_source_modes": {
               "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "pseudotime",
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 3
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 3,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 16,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.652494,
-          "seconds_p90": 1.652494,
-          "output_bytes_p50": 14398,
-          "output_bytes_p90": 14398,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "boolode",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "trajectory"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "trajectory",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "requested_extras": [
-              "enrichment_background",
-              "prior_grn",
-              "pseudotime",
-              "tf_list"
-            ],
-            "effective_extras": [
-              "enrichment_background",
-              "prior_grn",
-              "pseudotime",
-              "tf_list"
-            ],
-            "genes": 3,
-            "cells": 3,
-            "groups": 0,
-            "population_count": 0,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 4,
-            "effective_extras_count": 4,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 2,
-            "conditional_inputs_count": 1,
-            "threads": 1,
-            "ram_gb": 16,
-            "cost_relevant_values": {
-              "model_preset": "custom_files",
-              "model_type": "hill",
-              "simulation_time": 0.08,
-              "n_clusters": 1,
-              "sample_cells": false,
-              "sample_parameters": false,
-              "integration_step_size": 0.01,
-              "dropout.enabled": false
-            },
-            "input_source_modes": {
-              "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "pseudotime",
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 3
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 3,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 32,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.633341,
-          "seconds_p90": 1.633341,
-          "output_bytes_p50": 14398,
-          "output_bytes_p90": 14398,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "boolode",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "trajectory"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "trajectory",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "requested_extras": [
-              "enrichment_background",
-              "prior_grn",
-              "pseudotime",
-              "tf_list"
-            ],
-            "effective_extras": [
-              "enrichment_background",
-              "prior_grn",
-              "pseudotime",
-              "tf_list"
-            ],
-            "genes": 3,
-            "cells": 3,
-            "groups": 0,
-            "population_count": 0,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 4,
-            "effective_extras_count": 4,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 2,
-            "conditional_inputs_count": 1,
-            "threads": 1,
-            "ram_gb": 32,
-            "cost_relevant_values": {
-              "model_preset": "custom_files",
-              "model_type": "hill",
-              "simulation_time": 0.08,
-              "n_clusters": 1,
-              "sample_cells": false,
-              "sample_parameters": false,
-              "integration_step_size": 0.01,
-              "dropout.enabled": false
-            },
-            "input_source_modes": {
-              "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
-            "extras": [
-              "enrichment_background",
-              "prior_grn",
-              "pseudotime",
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 3
-          }
-        }
-      ]
-    },
-    {
-      "profile_id": "single_cell_cells_trajectory_global_custom_default",
-      "benchmark_config": {
-        "simulator_id": "boolode",
-        "data_axes": {
-          "measurement": "rna_expression",
-          "resolution": "single_cell",
-          "column_kind": "cells",
-          "experimental_design": "trajectory"
-        },
-        "truth_requirements": {
-          "contexts": [
-            "global"
-          ]
-        },
-        "sizes": [
-          {
-            "genes": 3,
-            "cells": 3
-          }
-        ],
-        "threads_tested": [
-          1
-        ],
-        "ram_gb_tested": [
-          8,
-          16,
-          32
-        ],
-        "repeats": 1,
-        "timeout_seconds": 1800,
-        "dimension_profile": {
-          "cells_param": "num_cells",
-          "genes_param": {
-            "fixed": 3
-          },
-          "group_count": 0,
-          "population_count": 0
-        },
-        "input_profile": {
-          "requested_extras": [],
-          "effective_extras": [
-            "tf_list"
-          ],
-          "required_inputs_satisfied": [],
-          "optional_inputs_provided": [
-            "boolode_initial_conditions",
-            "boolode_interaction_strengths"
-          ],
-          "conditional_inputs_satisfied": [
-            "boolode_boolean_model"
-          ],
-          "input_source_modes": {
-            "model_preset": "custom_files"
-          },
-          "notes": []
-        },
-        "params_profile": {
-          "source": "simulatorspec_defaults_plus_override",
-          "override_file": "boolode.json:single_cell_cells_trajectory_global_custom_default:inline",
-          "resolved_base_params": {
-            "model_preset": "custom_files",
-            "model_type": "hill",
-            "simulation_time": 0.08,
-            "num_cells": 100,
-            "n_clusters": 1,
-            "sample_cells": false,
-            "sample_parameters": false,
-            "sample_std": 0.1,
-            "identical_parameters": false,
-            "integration_step_size": 0.01,
-            "dropout": {
-              "enabled": false,
-              "drop_cutoff": 0.5,
-              "drop_prob": 0.5
             }
-          },
-          "cost_relevant_params": [
-            "dropout.enabled",
-            "integration_step_size",
-            "model_preset",
-            "model_type",
-            "n_clusters",
-            "sample_cells",
-            "sample_parameters",
-            "simulation_time"
-          ],
-          "cost_relevant_values": {
-            "dropout.enabled": false,
-            "integration_step_size": 0.01,
-            "model_preset": "custom_files",
-            "model_type": "hill",
-            "n_clusters": 1,
-            "sample_cells": false,
-            "sample_parameters": false,
-            "simulation_time": 0.08
           }
         },
-        "runtime_resources_profile": {
-          "threading_supported": false,
-          "default_threads": 1,
-          "max_threads": 1,
-          "upstream_mapping": "The reviewed BoolODE YAML exposes only a do_parallel boolean; the pinned implementation calls multiprocessing.Pool() without a process-count argument and hard-codes KMeans n_jobs=8. The wrapper therefore rejects runtime_resources.threads != 1, writes do_parallel=false, and patches the imported public BoolODE KMeans constructor to n_jobs=1 before calling BoolODE.ConfigParser.parse(...).execute_jobs()."
-        }
-      },
-      "runtime_points": [
         {
           "genes": 3,
           "cells": 3,
           "groups": 0,
           "population_count": 0,
           "threads": 1,
-          "ram_gb": 8,
+          "ram_gb": 32.0,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.706226,
-          "seconds_p90": 1.706226,
-          "output_bytes_p50": 13881,
-          "output_bytes_p90": 13881,
+          "seconds_p50": 1.514278,
+          "seconds_p90": 1.519622,
+          "output_bytes_p50": 14471,
+          "output_bytes_p90": 14471,
           "peak_memory_mb_p50": null,
           "peak_memory_mb_p90": null,
           "feature_vector": {
@@ -990,7 +920,8 @@
                 "global"
               ]
             },
-            "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_default",
+            "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
+            "profile_id": "single_cell_cells_trajectory_global_custom_full_extras",
             "expression_profile": "single_cell",
             "column_kind": "cells",
             "experimental_design": "trajectory",
@@ -998,209 +929,53 @@
               "global"
             ],
             "truth_context_count": 1,
-            "requested_extras": [],
+            "extras": [
+              "enrichment_background",
+              "prior_grn",
+              "pseudotime",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "pseudotime",
+              "tf_list"
+            ],
             "effective_extras": [
+              "enrichment_background",
+              "prior_grn",
+              "pseudotime",
               "tf_list"
             ],
             "genes": 3,
             "cells": 3,
             "groups": 0,
             "population_count": 0,
+            "n_genes": 3,
+            "n_cells": 3,
             "n_tfs": null,
             "column_truth_requested": false,
             "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 1,
+            "requested_extras_count": 4,
+            "effective_extras_count": 4,
             "required_inputs_count": 0,
             "optional_inputs_count": 2,
             "conditional_inputs_count": 1,
             "threads": 1,
-            "ram_gb": 8,
+            "ram_gb": 32.0,
             "cost_relevant_values": {
-              "dropout.enabled": false,
-              "integration_step_size": 0.01,
               "model_preset": "custom_files",
               "model_type": "hill",
+              "simulation_time": 0.08,
               "n_clusters": 1,
               "sample_cells": false,
               "sample_parameters": false,
-              "simulation_time": 0.08
-            },
-            "input_source_modes": {
-              "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_custom_default",
-            "extras": [
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 3
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 3,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 16,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.639334,
-          "seconds_p90": 1.639334,
-          "output_bytes_p50": 13881,
-          "output_bytes_p90": 13881,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "boolode",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "trajectory"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_default",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "trajectory",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "requested_extras": [],
-            "effective_extras": [
-              "tf_list"
-            ],
-            "genes": 3,
-            "cells": 3,
-            "groups": 0,
-            "population_count": 0,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 1,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 2,
-            "conditional_inputs_count": 1,
-            "threads": 1,
-            "ram_gb": 16,
-            "cost_relevant_values": {
-              "dropout.enabled": false,
               "integration_step_size": 0.01,
-              "model_preset": "custom_files",
-              "model_type": "hill",
-              "n_clusters": 1,
-              "sample_cells": false,
-              "sample_parameters": false,
-              "simulation_time": 0.08
+              "dropout.enabled": false
             },
             "input_source_modes": {
               "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_custom_default",
-            "extras": [
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 3
-          }
-        },
-        {
-          "genes": 3,
-          "cells": 3,
-          "groups": 0,
-          "population_count": 0,
-          "threads": 1,
-          "ram_gb": 32,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 1.68938,
-          "seconds_p90": 1.68938,
-          "output_bytes_p50": 13881,
-          "output_bytes_p90": 13881,
-          "peak_memory_mb_p50": null,
-          "peak_memory_mb_p90": null,
-          "feature_vector": {
-            "simulator_id": "boolode",
-            "data_axes": {
-              "measurement": "rna_expression",
-              "resolution": "single_cell",
-              "column_kind": "cells",
-              "experimental_design": "trajectory"
-            },
-            "truth_requirements": {
-              "contexts": [
-                "global"
-              ]
-            },
-            "benchmark_profile_id": "single_cell_cells_trajectory_global_custom_default",
-            "expression_profile": "single_cell",
-            "column_kind": "cells",
-            "experimental_design": "trajectory",
-            "truth_context_families": [
-              "global"
-            ],
-            "truth_context_count": 1,
-            "requested_extras": [],
-            "effective_extras": [
-              "tf_list"
-            ],
-            "genes": 3,
-            "cells": 3,
-            "groups": 0,
-            "population_count": 0,
-            "n_tfs": null,
-            "column_truth_requested": false,
-            "dynamic_grn_flags": {},
-            "requested_extras_count": 0,
-            "effective_extras_count": 1,
-            "required_inputs_count": 0,
-            "optional_inputs_count": 2,
-            "conditional_inputs_count": 1,
-            "threads": 1,
-            "ram_gb": 32,
-            "cost_relevant_values": {
-              "dropout.enabled": false,
-              "integration_step_size": 0.01,
-              "model_preset": "custom_files",
-              "model_type": "hill",
-              "n_clusters": 1,
-              "sample_cells": false,
-              "sample_parameters": false,
-              "simulation_time": 0.08
-            },
-            "input_source_modes": {
-              "model_preset": "custom_files"
-            },
-            "profile_id": "single_cell_cells_trajectory_global_custom_default",
-            "extras": [
-              "tf_list"
-            ],
-            "n_genes": 3,
-            "n_cells": 3
+            }
           }
         }
       ]

@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_group_native_df832540b4",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "group_native",
+          "physical_task_policy": "native_grouped",
+          "group_count": 2,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [
+            "column_phenotypes",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [
+            "column_phenotypes",
+            "tf_list"
+          ],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": "Fixed identities in the checksum-pinned fixture",
+          "prior_density": null,
+          "group_count": 2,
+          "has_tf_list": true,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/simic.json:representative_group_native_df832540b4",
+          "resolved_params": {
+            "similarity": true,
+            "lambda1": 0.01,
+            "lambda2": 1e-05,
+            "cross_val": false,
+            "num_TFs": -1,
+            "num_target_genes": -1,
+            "normalization_factor": 1.0,
+            "max_rcd_iter": 500000,
+            "num_rep": 1,
+            "random_seed": 2115541370,
+            "wauc_percent_of_target": 1.0,
+            "wauc_sort_by": "expression",
+            "wauc_adj_r2_threshold": 0.7
+          },
+          "cost_relevant_params": [
+            "cross_val",
+            "max_rcd_iter",
+            "num_TFs",
+            "num_rep",
+            "num_target_genes",
+            "similarity"
+          ],
+          "cost_relevant_values": {
+            "cross_val": false,
+            "max_rcd_iter": 500000,
+            "num_TFs": -1,
+            "num_rep": 1,
+            "num_target_genes": -1,
+            "similarity": true
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00026",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
+            "extra/column_phenotypes.tsv": "9e305d8156769376ac69e596397bf09f29da7f790eed923df7844eaa58ff20bf",
+            "extra/tf_list.txt": "5f50c5ed49d93c3d6c236c3252e14dbeb759176a00fc450abf28f3c29c9612a3",
+            "params.json": "3ecd24c33edf695ed4323ad028d44638fe1b30ffd694dfeee49982d66d8ee283"
+          },
+          "source_result_sha256": "3e7df973a5c06332576626112316004ea0c0876aa27e8bc602c93cf9869a2823",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

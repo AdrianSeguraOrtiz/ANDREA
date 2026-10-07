@@ -127,19 +127,21 @@ def _write_text(path: Path, text: str) -> None:
 
 
 def _task_eta_note(eta_source: str) -> Optional[str]:
+    if eta_source == "cost_profile_extrapolated":
+        return "ETA extrapolates beyond supported measurements; runtime accuracy is unvalidated."
     if eta_source == "fallback_no_cost":
-        return "No cost profile was found; ETA is a conservative fallback estimate."
+        return "No cost profile was found; ETA is an uncalibrated scheduling heuristic, not a runtime guarantee."
     if eta_source == "fallback_no_matching_cost_profile":
-        return "No matching cost profile was found for this execution mode; ETA is a conservative fallback estimate."
+        return "No cost profile matches this execution configuration; ETA is an uncalibrated scheduling heuristic, not a runtime guarantee."
     if eta_source == "fallback_invalid_cost":
-        return "Cost profile was invalid or unusable; ETA is a conservative fallback estimate."
+        return "Cost profile was invalid or unusable; ETA is an uncalibrated scheduling heuristic, not a runtime guarantee."
     if eta_source == "fallback_requested_threads_without_cost_point":
         return (
             "No cost-profile point uses the requested thread count; "
-            "ETA is a conservative fallback estimate."
+            "ETA is an uncalibrated scheduling heuristic, not a runtime guarantee."
         )
     if eta_source == "fallback_no_usable_runtime_point":
-        return "A matching cost profile was found, but no usable benchmark runtime point fit the available resources; ETA is a conservative fallback estimate."
+        return "A matching cost profile was found, but no usable benchmark runtime point fit the available resources; ETA is an uncalibrated scheduling heuristic, not a runtime guarantee."
     return None
 
 

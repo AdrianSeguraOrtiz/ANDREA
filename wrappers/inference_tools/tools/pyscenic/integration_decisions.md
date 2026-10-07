@@ -487,3 +487,12 @@ input catalog.
   does not consume species-specific cisTarget resources.
 - Worker scaling beyond 8 threads is not declared until cost profiling supports
   a larger planning cap.
+
+
+## Scientific and runtime contract audit (2026-09-29)
+
+The SCENIC protocol (https://doi.org/10.1038/s41596-020-0336-2) was compared with the actual PyPI pySCENIC 0.12.1 wheel, `pyscenic/cli/pyscenic.py::find_adjacencies_command`, and this wrapper. `method_family=tree` applies to the selected GRNBoost2/GENIE3 adjacency step. Renamed the display label to pySCENIC GRN step and made explicit that cisTarget motif pruning and AUCell activity scoring are not integrated. Hence this catalog entry is not an independent full SCENIC pipeline in benchmark method counts. Confirmed TF input, unsigned feature importance, Dask worker mapping and omitted seed behavior. Bound supplied seeds to NumPy's 32-bit unsigned domain; fixed output parsing to preserve the valid gene identifier `NA`. Focused conversion tests preserve raw importance and exclude zero/self edges. Full GRNBoost2 and GENIE3 Docker inference was not rerun in this audit.
+
+Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
+
+Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/pyscenic:local` (image ID `sha256:737685d3c79355928be57ab0e4d90bc385a8d8c5cc1bb4d3168e2b90cc893cb9`; no wrapper overlay). The official smoketest runner passed `global_grnboost2` (21 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.

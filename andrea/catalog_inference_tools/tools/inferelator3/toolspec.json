@@ -10,6 +10,7 @@
   "first_author": "Claudia Skok Gibbs",
   "year": 2022,
   "method_summary": "Inferelator 3.0 infers directed gene regulatory networks by estimating transcription factor activity from expression data constrained by a prior knowledge network, then regressing gene expression against that activity estimate with regularized model-selection methods. The Python package supports bulk and single-cell transcriptome data and includes BBSR, StARS-LASSO and multi-task regression strategies.",
+  "method_family": "regression",
   "method_keywords": [
     "regularized_regression",
     "transcription_factor_activity",
@@ -19,7 +20,7 @@
     "single_cell"
   ],
   "implementation_url": "https://pypi.org/project/inferelator/0.6.3/",
-  "docker_image": "adriansegura99/inference-tools_inferelator3:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_inferelator3:1.1.0",
   "execution_capabilities": [
     "global",
     "group_native",

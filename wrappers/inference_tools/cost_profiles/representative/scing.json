@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_global_be3c8016aa",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/scing.json:representative_global_be3c8016aa",
+          "resolved_params": {
+            "n_supercells": 50,
+            "supercell_hvgs": 2000,
+            "supercell_pcs": 10,
+            "n_subsample_networks": 100,
+            "network_hvgs": -1,
+            "gene_neighbors": 20,
+            "gene_pcs": 10,
+            "subsample_fraction": 0.7,
+            "edge_consensus_threshold": 0.2,
+            "remove_cycles": true,
+            "random_seed": 1672263303
+          },
+          "cost_relevant_params": [
+            "edge_consensus_threshold",
+            "gene_neighbors",
+            "gene_pcs",
+            "n_subsample_networks",
+            "n_supercells",
+            "network_hvgs",
+            "remove_cycles",
+            "subsample_fraction",
+            "supercell_hvgs",
+            "supercell_pcs"
+          ],
+          "cost_relevant_values": {
+            "edge_consensus_threshold": 0.2,
+            "gene_neighbors": 20,
+            "gene_pcs": 10,
+            "n_subsample_networks": 100,
+            "n_supercells": 50,
+            "network_hvgs": -1,
+            "remove_cycles": true,
+            "subsample_fraction": 0.7,
+            "supercell_hvgs": 2000,
+            "supercell_pcs": 10
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00009",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
+            "params.json": "7d5761a17c2f588c43b9b7152ad98e47e1a4505b71f231791516785421e790d0"
+          },
+          "source_result_sha256": "15c72e107a22345015f9827b3ef637e4b490608c519e37a21177b13cb28dc263",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

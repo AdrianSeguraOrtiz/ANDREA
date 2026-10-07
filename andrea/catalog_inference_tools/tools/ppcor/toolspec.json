@@ -19,7 +19,7 @@
     "undirected"
   ],
   "implementation_url": "https://CRAN.R-project.org/package=ppcor",
-  "docker_image": "adriansegura99/inference-tools_ppcor:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_ppcor:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -122,5 +122,6 @@
       "require_non_empty": true,
       "description": "Resolved ppcor parameters, upstream package version, expression dimensions and runtime resource mapping."
     }
-  ]
+  ],
+  "method_family": "correlation"
 }

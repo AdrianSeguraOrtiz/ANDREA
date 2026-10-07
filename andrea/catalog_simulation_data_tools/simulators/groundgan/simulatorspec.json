@@ -8,7 +8,7 @@
   ],
   "first_author": "Yazdan Zinati",
   "year": 2024,
-  "simulation_summary": "Reference-based causal GAN simulator for single-cell RNA-seq data with an imposed global causal GRN and optional in silico TF perturbation experiments.",
+  "simulation_summary": "Checkpoint-based single-cell generation using the public GRouNdGAN causal GAN and one imposed unsigned global graph. Embedded toy checkpoints are untrained software demos; scientifically meaningful reference-based simulation requires compatible externally trained checkpoints. The wrapper does not train models and supports one TF perturbation per run.",
   "simulation_keywords": [
     "single_cell",
     "rna_expression",
@@ -20,7 +20,7 @@
     "grn_benchmark"
   ],
   "implementation_url": "https://github.com/Emad-COMBINE-lab/GRouNdGAN",
-  "docker_image": "adriansegura99/simulator_groundgan:1.0.0",
+  "docker_image": "adriansegura99/simulator_groundgan:1.1.0",
   "extra_inputs": {
     "required": [],
     "optional": [],
@@ -91,6 +91,21 @@
         }
       ],
       "message": "perturbation.tf_targets must be non-empty when perturbation.target_source=explicit_list."
+    },
+    {
+      "action": "warn",
+      "conditions": [
+        {
+          "field": "param.input_bundle",
+          "op": "in",
+          "value": [
+            "toy_4gene",
+            "toy_20gene",
+            "toy_50gene"
+          ]
+        }
+      ],
+      "message": "Embedded GRouNdGAN toy checkpoints are untrained random models for software tests only; use appropriately trained custom checkpoints for scientific simulation."
     }
   ],
   "runtime_resources": {
@@ -112,7 +127,7 @@
         "toy_50gene",
         "custom_files"
       ],
-      "description": "Input bundle used for checkpoint inference. toy_* options use demo bundles embedded in the Docker image; custom_files requires the four GroundGAN bundle input files."
+      "description": "toy_* bundles contain seeded random, UNTRAINED weights for software demonstrations and smoke tests only. custom_files requires compatible reference, graph and trained model/controller checkpoints; the wrapper does not verify training quality."
     },
     "run_command": {
       "type": "enum",
@@ -184,7 +199,7 @@
           "type": "array",
           "required": false,
           "default": [],
-          "description": "TF gene identifiers to perturb when target_source=explicit_list.",
+          "description": "Exactly one TF identifier for explicit_list. Multi-target interventions are not represented by the current normalized single-target metadata contract.",
           "items": {
             "type": "string",
             "required": true,
@@ -198,12 +213,13 @@
           "default": [
             0
           ],
-          "description": "Replacement TF expression values used in upstream perturbation mode. One value applies to all targets; otherwise provide one value per target.",
+          "description": "Exactly one non-negative replacement TF expression value. Zero is a knockout; a positive setting has no fixed increase/decrease direction across cells.",
           "items": {
             "type": "float",
             "required": true,
             "default": 0,
-            "description": "One replacement TF expression value."
+            "description": "One replacement TF expression value.",
+            "min": 0
           }
         }
       }
@@ -274,7 +290,9 @@
           "score_semantics": "score is 1.0 because the native causal graph stores topology only; sign is '?' because GRouNdGAN does not encode activation or repression sign in causal_graph.pkl.",
           "limitations": [
             "The imposed GRN is global for the whole generated dataset.",
-            "Checkpoint, causal graph and reference gene order must match exactly."
+            "Checkpoint, causal graph and reference gene order must match exactly.",
+            "The imposed graph is structural, unsigned ground truth; it does not establish effect sizes or effective dependence for arbitrary checkpoints.",
+            "Embedded toy checkpoints are untrained random models, intended only for interface tests. Biological realism and the paper's causal-imposition results require appropriate training."
           ]
         },
         {
@@ -435,7 +453,9 @@
           "limitations": [
             "The public GRN is fixed across control and perturbed cells.",
             "Perturbations change generated expression values but do not rewire the imposed truth graph.",
-            "Perturbation targets must be TFs present in the dataset and causal graph regulator set."
+            "Perturbation targets must be TFs present in the dataset and causal graph regulator set.",
+            "The imposed graph is structural, unsigned ground truth; it does not establish effect sizes or effective dependence for arbitrary checkpoints.",
+            "Embedded toy checkpoints are untrained random models, intended only for interface tests. Biological realism and the paper's causal-imposition results require appropriate training."
           ]
         },
         {
@@ -456,12 +476,13 @@
             "GRouNdGAN before/after generated matrices",
             "resolved perturbation config"
           ],
-          "method": "Write one row per normalized expression column. Control columns receive no direct intervention; perturbed columns receive the configured TF target/value intervention and retain matched_pair_id linking to their control generated cell.",
+          "method": "Export one TF replacement per matched control/perturbed run. A zero replacement is knockout (sign=-1); a positive replacement is set_expression (sign=0, direction unspecified because each control cell has a different baseline).",
           "assumptions": [
             "Upstream perturbation mode generates before and after matrices from the same deterministic batch, so columns can be paired by native row order."
           ],
           "limitations": [
-            "The perturbation design describes direct TF replacement values, not downstream causal effect sizes."
+            "Exactly one TF target is supported per run; simultaneous multiple-target perturbations are rejected before generation.",
+            "A positive replacement is not necessarily overexpression relative to every control cell."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
         },
@@ -470,12 +491,13 @@
           "source_artifacts": [
             "extras/perturbation_design.tsv"
           ],
-          "method": "Collapse the configured TF replacement value from perturbation_design into extras/interventions.tsv.",
+          "method": "Export one TF replacement per matched control/perturbed run. A zero replacement is knockout (sign=-1); a positive replacement is set_expression (sign=0, direction unspecified because each control cell has a different baseline).",
           "assumptions": [
             "Columns with the same TF target and replacement value represent one intervention class."
           ],
           "limitations": [
-            "GRouNdGAN supports setting TF expression values, not typed biological perturbation categories beyond wrapper labels such as knockout when value=0."
+            "Exactly one TF target is supported per run; simultaneous multiple-target perturbations are rejected before generation.",
+            "A positive replacement is not necessarily overexpression relative to every control cell."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/groundgan/run_simulator.py"
         },

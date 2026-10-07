@@ -7,9 +7,12 @@ working if git-ignored workspaces are removed.
 
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -80,14 +83,67 @@ def render_overview_png() -> None:
             ],
             cwd=tmp_dir,
         )
-        _run(["pdftoppm", "-png", "-singlefile", "-r", "180", "andrea_overview.pdf", "andrea_overview"], cwd=tmp_dir)
-        shutil.copyfile(tmp_dir / "andrea_overview.png", OUT_DIR / "andrea_overview.png")
+        _run(
+            [
+                "pdftoppm",
+                "-png",
+                "-singlefile",
+                "-r",
+                "180",
+                "andrea_overview.pdf",
+                "andrea_overview",
+            ],
+            cwd=tmp_dir,
+        )
+        shutil.copyfile(
+            tmp_dir / "andrea_overview.png", OUT_DIR / "andrea_overview.png"
+        )
 
 
-def render_catalog_figures() -> None:
+def render_catalog_figures(output_dir: Path | None = None) -> None:
     """Regenerate catalog figures from tracked documentation figure scripts."""
-    _run(["python3", str(DOC_FIGURE_DIR / "build_simulator_semantic_alluvial.py")])
-    _run(["python3", str(DOC_FIGURE_DIR / "build_inference_tool_contract_map.py")])
+    _run([sys.executable, str(DOC_FIGURE_DIR / "build_simulator_semantic_alluvial.py")])
+    _run([sys.executable, str(DOC_FIGURE_DIR / "build_inference_tool_contract_map.py")])
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        artifacts = {}
+        for source_stem in (
+            "simulator_semantic_coverage",
+            "inference_tool_contract_map",
+        ):
+            for suffix in (".svg", ".pdf"):
+                source = OUT_DIR / (source_stem + suffix)
+                target = output_dir / (source_stem + suffix)
+                shutil.copyfile(source, target)
+                artifacts[target.name] = hashlib.sha256(target.read_bytes()).hexdigest()
+        sources = [
+            *SIMULATOR_DIR.glob("*/simulatorspec.json"),
+            *TOOL_DIR.glob("*/toolspec.json"),
+            *DOC_FIGURE_DIR.glob("build_*.py"),
+            *(ROOT / "andrea/catalog_inference_tools/input_specs").glob("*.json"),
+            *(ROOT / "andrea/catalog_simulation_data_tools/input_specs").glob("*.json"),
+        ]
+        manifest = {
+            "git_commit": subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+            ).strip(),
+            "git_dirty": bool(
+                subprocess.check_output(
+                    ["git", "status", "--porcelain"], cwd=ROOT, text=True
+                ).strip()
+            ),
+            "description": "Catalog figures generated from the current ANDREA sources.",
+            "sources_sha256": {
+                str(path.relative_to(ROOT)): hashlib.sha256(
+                    path.read_bytes()
+                ).hexdigest()
+                for path in sorted(sources)
+            },
+            "artifacts_sha256": artifacts,
+        }
+        (output_dir / "catalog_figures_manifest.json").write_text(
+            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+        )
     for generated_pdf in (
         OUT_DIR / "simulator_semantic_coverage.pdf",
         OUT_DIR / "inference_tool_contract_map.pdf",
@@ -102,7 +158,9 @@ def _markdown_cell(value: object) -> str:
 
 
 def _publications(spec: dict) -> str:
-    publications = [str(item).strip() for item in spec.get("publication", []) if str(item).strip()]
+    publications = [
+        str(item).strip() for item in spec.get("publication", []) if str(item).strip()
+    ]
     return ", ".join(publications) or "-"
 
 
@@ -119,7 +177,12 @@ def _simulator_table(simulators: list[dict]) -> list[str]:
                 continue
             axis = "/".join(
                 str(data_axes.get(key, "-"))
-                for key in ("measurement", "resolution", "column_kind", "experimental_design")
+                for key in (
+                    "measurement",
+                    "resolution",
+                    "column_kind",
+                    "experimental_design",
+                )
             )
             if axis not in axes:
                 axes.append(axis)
@@ -140,11 +203,14 @@ def _simulator_table(simulators: list[dict]) -> list[str]:
 
 def _inference_tool_table(tools: list[dict]) -> list[str]:
     lines = [
-        "| Tool | Execution modes | Output semantics | Publication |",
-        "|---|---|---|---|",
+        "| Tool | Primary method family | Execution modes | Output semantics | Publication |",
+        "|---|---|---|---|---|",
     ]
     for spec in tools:
-        modes = ", ".join(f"`{mode}`" for mode in spec.get("execution_capabilities", [])) or "-"
+        modes = (
+            ", ".join(f"`{mode}`" for mode in spec.get("execution_capabilities", []))
+            or "-"
+        )
         outputs = spec.get("outputs", {})
         if isinstance(outputs, dict):
             output_semantics = ", ".join(
@@ -161,6 +227,7 @@ def _inference_tool_table(tools: list[dict]) -> list[str]:
             + " | ".join(
                 [
                     _markdown_cell(spec.get("name", spec["_path_id"])),
+                    _markdown_cell(spec["method_family"]),
                     _markdown_cell(modes),
                     _markdown_cell(output_semantics),
                     _markdown_cell(_publications(spec)),
@@ -206,6 +273,10 @@ def render_catalogs_page(simulators: list[dict], tools: list[dict]) -> str:
         "publication metadata, execution capabilities, accepted input semantics,",
         "extra inputs, output semantics, parameters, runtime resources and",
         "compatibility rules.",
+        "The figure groups the primary integrated algorithm by the reviewed",
+        "`method_family` field. Context, prior knowledge and workflow composition",
+        "are separate attributes; this grouping does not assert that methods",
+        "within a family are identical. Integration decision logs cite sources.",
         "",
         "![Inference-tool contract map](assets/inference_tool_contract_map.svg)",
         "",
@@ -222,9 +293,22 @@ def render_catalogs_page(simulators: list[dict], tools: list[dict]) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--catalogs-only",
+        action="store_true",
+        help="Skip the overview requiring LaTeX.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Export catalog SVG/PDF figures and a manifest of source hashes.",
+    )
+    args = parser.parse_args()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    render_overview_png()
-    render_catalog_figures()
+    if not args.catalogs_only:
+        render_overview_png()
+    render_catalog_figures(args.output_dir)
     simulators = _load_simulators()
     tools = _load_tools()
     (ROOT / "docs/catalogs.md").write_text(

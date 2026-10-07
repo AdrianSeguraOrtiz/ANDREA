@@ -20,6 +20,23 @@
       },
       "group_count": 2,
       "prior_density": 0.05
+    },
+    {
+      "id": "global_prior_sparse_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "prior_density": 0.05,
+      "parameter_base": "spec_defaults"
+    },
+    {
+      "id": "group_native_groups_2_prior_sparse_spec_defaults",
+      "execution": {
+        "mode": "group_native"
+      },
+      "group_count": 2,
+      "prior_density": 0.05,
+      "parameter_base": "spec_defaults"
     }
   ]
 }

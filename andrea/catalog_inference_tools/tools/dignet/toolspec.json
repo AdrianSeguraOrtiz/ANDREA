@@ -7,18 +7,18 @@
   ],
   "first_author": "Chuanyuan Wang",
   "year": 2024,
-  "method_summary": "DigNet generates gene regulatory networks from scRNA-seq expression profiles with a discrete diffusion generative model and graph-transformer denoising in non-Euclidean graph space. The method models GRN edges as binary on/off states, uses meta-cell integration for noisy scRNA-seq profiles, and aggregates repeated diffusion generations into a final directed network.",
+  "method_summary": "DigNet uses discrete graph diffusion and graph-transformer denoising to infer directed GRNs from scRNA-seq expression, combining repeated generations into edge vote counts. This integration runs the pinned human cancer pretrained checkpoint with its bundled PCA and human pathway resources and returns one network per supplied expression matrix; it does not train a new model or produce one network per cell.",
+  "method_family": "neural",
   "method_keywords": [
     "single_cell",
     "diffusion_model",
     "discrete_generation",
     "graph_transformer",
     "metacell",
-    "cell_specific_network",
     "directed"
   ],
   "implementation_url": "https://github.com/zpliulab/DigNet",
-  "docker_image": "adriansegura99/inference-tools_dignet:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_dignet:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"

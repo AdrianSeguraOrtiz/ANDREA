@@ -19,7 +19,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/XiaYangLabOrg/SCING/tree/fcea8c5c9a806ee3dbc8123c2d13d1d357137f1d",
-  "docker_image": "adriansegura99/inference-tools_scing:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_scing:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -254,5 +254,6 @@
       "require_non_empty": true,
       "description": "Resolved SCING parameters, expression dimensions, selected execution mode, runtime thread mapping and pinned upstream commit."
     }
-  ]
+  ],
+  "method_family": "tree"
 }

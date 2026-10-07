@@ -88,10 +88,13 @@ ORDER = {
     "truth": (
         "global|native",
         "global|derived",
+        "global|mixed",
         "global + group|native",
         "global + group|derived",
+        "global + group|mixed",
         "global + group + column|native",
         "global + group + column|derived",
+        "global + group + column|mixed",
     ),
 }
 
@@ -115,6 +118,7 @@ LABELS = {
     "global + group + column": "global + group + column",
     "native": "native",
     "derived": "derived",
+    "mixed": "native + derived",
 }
 
 BASE_OUTPUT_ROWS = (
@@ -619,9 +623,12 @@ def load_capabilities(spec_entries: list[tuple[Path, dict]]) -> list[Capability]
                 for item in cap.get("truth_contexts", [])
                 if isinstance(item, dict)
             }
-            truth_is_derived = any(truth_contexts.get(context) == "derivable" for context in contexts)
+            origins = {truth_contexts.get(context) for context in contexts}
+            if not contexts or not origins.issubset({"native", "derivable"}):
+                raise ValueError(f"{simulator}: every requested truth context must have a supported origin")
+            truth_is_derived = "derivable" in origins
             truth = truth_label(contexts)
-            truth_origin = "derived" if truth_is_derived else "native"
+            truth_origin = "mixed" if len(origins) > 1 else "derived" if truth_is_derived else "native"
             capabilities.append(
                 Capability(
                     index=index,
@@ -877,14 +884,14 @@ def draw_alluvial(canvas: Canvas, capabilities: list[Capability]) -> None:
             elif stage == "truth":
                 granularity = truth_base(value)
                 origin = truth_origin(value)
-                origin_color = "#2f855a" if origin == "native" else "#2b6cb0"
+                origin_color = {"native": "#2f855a", "derived": "#2b6cb0", "mixed": "#8a6f4d"}[origin]
                 display = granularity.replace(" + ", "+")
                 canvas.rect(x - node_w / 2, y_start, node_w, block_h, fill=blend(origin_color, PANEL, 0.08), stroke=origin_color, stroke_width=1.1, rx=6)
                 chip_w = max(74.0, min(104.0, text_width(display, 7.5, bold=True) + 24.0))
                 chip_x = x + 14
                 canvas.rect(chip_x, y - 11, chip_w, 22, fill="#ffffff", stroke="#d9d0c3", stroke_width=0.9, rx=8)
                 canvas.text(chip_x + 8, y - 1, display, size=7.5, fill=INK, bold=True)
-                canvas.text(chip_x + 8, y + 8, origin, size=6.5, fill=origin_color, bold=True)
+                canvas.text(chip_x + 8, y + 8, LABELS[origin], size=6.5, fill=origin_color, bold=True)
                 canvas.text(chip_x + chip_w - 8, y + 3, str(count), size=7.3, fill=MUTED, bold=True, anchor="end")
             else:
                 label = LABELS.get(value, value.replace("_", "-"))

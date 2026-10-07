@@ -131,3 +131,12 @@
 - The selected scSGL implementation is undirected/symmetric even though the biological GRN terminology can suggest direction.
 - The public API has no reproducibility seed.
 - Degenerate matrices such as all-zero retained genes or no gene variation are runtime validation failures because they depend on expression values, not only metadata.
+
+
+## Scientific and runtime contract audit (2026-09-29)
+
+The primary article (https://doi.org/10.1093/bioinformatics/btac288) and pinned `7fb2a011f6e1061daf4c976225027e76f4e0e4ea` `pysrc/graphlearning/__init__.py`, `signed.py`, and association kernels were rechecked. `method_family=graph` reflects signed graph learning using signal smoothness, not merely the chosen initial association kernel. Confirmed the four kernel names, source default dotprod, required densities, undirected signed outputs and serial runtime. The signed ADMM projection `_vw_step` gives each candidate pair to at most one sign, so requested positive/negative densities cannot sum above one; this impossible parameter combination is now rejected before running the optimizer. Existing bounded-search warnings and raw achieved densities remain important: a valid request does not guarantee convergence or exact density. Focused parameter-domain and output tests passed; all kernels, R/pcaPP behavior and full convergence were not rerun.
+
+Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
+
+Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/scsgl:local` (image ID `sha256:2a5d72721a88f5595207b4715a817cbd28697159268124a2bfc9b217dd0c28e2`; no wrapper overlay). The official smoketest runner passed `global` (15 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.

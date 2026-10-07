@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "representative_global_331ce2597d",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/scsgl.json:representative_global_331ce2597d",
+          "resolved_params": {
+            "pos_density": 0.1,
+            "neg_density": 0.1,
+            "association_kernel": "correlation"
+          },
+          "cost_relevant_params": [
+            "association_kernel",
+            "neg_density",
+            "pos_density"
+          ],
+          "cost_relevant_values": {
+            "association_kernel": "correlation",
+            "neg_density": 0.1,
+            "pos_density": 0.1
+          }
+        }
+      },
+      "fixtures": [
+        {
+          "fixture_key": "run00010",
+          "genes": 100,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
+            "params.json": "3df2c421bff9ba9e50e327948375761153f73289bbed99c117e09d0543060776"
+          },
+          "source_result_sha256": "ec6ca57542a8302e39aa5d804b42c681da5aebf061858de6e28c4dc8b50dc6b5",
+          "physical_index": 0
+        }
+      ]
+    }
+  ]
+}

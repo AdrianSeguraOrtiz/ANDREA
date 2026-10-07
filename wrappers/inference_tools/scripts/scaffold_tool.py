@@ -148,6 +148,7 @@ def toolspec_template(tool_id: str) -> str:
         "first_author": "TODO",
         "year": 2000,
         "method_summary": "TODO: replace with a short 1-2 sentence summary of the method core.",
+        "method_family": "TODO",
         "method_keywords": ["todo_keyword"],
         "implementation_url": "https://example.org/TODO",
         "docker_image": f"TODO/{tool_id}:latest",

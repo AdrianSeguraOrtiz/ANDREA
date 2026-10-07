@@ -7,6 +7,7 @@ It only enforces minimal runtime checks (paths, required keys, basic types).
 
 import argparse
 import csv
+import math
 import os
 import re
 import shlex
@@ -961,12 +962,15 @@ def _collect_network_rows(
                         f"Invalid coefficient at {cluster_path}:{line_number}: {raw_score!r}"
                     ) from exc
 
+                if not math.isfinite(coeff):
+                    raise ValueError(f"Non-finite scMTNI conditional coefficient at {cluster_path}:{line_number}.")
+
                 rows.append(
                     {
                         "source": _strip_cluster_suffix(source, cluster),
                         "target": _strip_cluster_suffix(target, cluster),
                         "score": abs(coeff),
-                        "sign": "?",
+                        "sign": "+" if coeff > 0 else "-",
                         "evidence": "association",
                         "context": (
                             "global"

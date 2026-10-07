@@ -64,3 +64,29 @@ Useful script options:
 - `--group-count N`: fallback group count for native-grouped profiles that omit it.
 - `--prior-density FLOAT`: fallback density for generated prior-like inputs.
 - `--optional-input INPUT_ID`: optional input to include in implicit profiles.
+
+## Release calibration
+
+Profiles ending in `_spec_defaults` use `parameter_base: "spec_defaults"`:
+they start from the ToolSpec defaults, bypassing the development/smoke overrides.
+Explicit per-profile overrides still select the intended execution variant.
+The original bounded profiles are retained as separate configurations. Profiles
+named `fast` remain reduced training configurations; their timings do not certify
+full-training defaults. Extrapolation to unmeasured sizes or parameters remains
+an estimate and must be reported as such.
+
+Use `--catalog-images` to measure the already built/published catalog images.
+The benchmark resolves each image to its immutable local ID before running it;
+it does not rebuild or pull a potentially different image during the campaign.
+Use `--results-dir PATH` to retain raw measurements, configs, inputs, outputs,
+stdout/stderr and hardware/source/image provenance. Each invocation creates new
+per-tool evidence directories. Full inference costs are written atomically only
+for complete successful matrices. Failures return nonzero and retain evidence;
+existing costs for failed profiles remain unchanged.
+
+Filtered writes require `--profile ... --merge-existing`; this replaces only
+completed profiles and preserves unselected entries. Use `--no-write-cost` for
+exploratory runs. A full successful unfiltered campaign replaces the tool's
+complete cost file. `make validate-release-costs` requires every cost file,
+current catalog-image/spec provenance and at least three timing repetitions.
+Three repetitions provide a basic variability check, not a precise tail estimate.

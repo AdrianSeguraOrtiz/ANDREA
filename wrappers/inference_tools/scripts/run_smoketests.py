@@ -215,6 +215,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=60,
         help="Maximum lines to print per output file when --show-output is enabled (<=0 = full file).",
     )
+    parser.add_argument(
+        "--catalog-images", action="store_true",
+        help="Test the images referenced by the catalog without rebuilding them.",
+    )
     return parser.parse_args(argv)
 
 
@@ -1114,7 +1118,8 @@ def run(argv: Sequence[str] | None = None) -> int:
 
         print()
         print(f"[{tool_id}] running smoketest")
-        image_tag = image_tags.get(tool_id, default_image_tag(tool_id))
+        default_tag = str(load_toolspec(catalog_tool_dir)["docker_image"]) if args.catalog_images else default_image_tag(tool_id)
+        image_tag = image_tags.get(tool_id, default_tag)
         effective_threads = resolve_smoketest_threads(
             tool_id=tool_id,
             catalog_tool_dir=catalog_tool_dir,
@@ -1132,7 +1137,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 tool_sources_root=args.tool_sources_root,
                 image_tag=image_tag,
                 threads=effective_threads,
-                skip_image_build=args.skip_image_build,
+                skip_image_build=args.skip_image_build or args.catalog_images,
                 poll_interval_s=max(0.05, args.poll_interval),
                 timeout_s=args.timeout,
                 show_output=args.show_output,

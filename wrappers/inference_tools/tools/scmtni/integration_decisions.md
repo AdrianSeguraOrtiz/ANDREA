@@ -75,3 +75,12 @@ Status: threading-contract migration updated to use upstream target-gene shardin
   runs only one shard per target gene.
 - Current progress is shard-level/coarse; native optimization iteration logs are
   preserved but not merged into a stable cross-shard iteration counter.
+
+
+## Scientific and runtime contract audit (2026-09-29)
+
+The primary article (https://doi.org/10.1038/s41467-023-38637-9), pinned `2282e58e6d8e038194f3a4ebcdae2a785093eb33` README, `Code/MetaLearner.C`, and `Code/common/PotentialManager.C` were rechecked. `method_family=graph` denotes probabilistic graphical-model structure learning; multi-task/lineage/prior inputs are orthogonal descriptors. Confirmed documented target-wise parallelism, INDEP versus joint modes, and parameter/input routing. A substantive correction: `PotentialManager::dumpVarMB_PairwiseFormat` computes target-parent covariance times inverse parent covariance and writes signed conditional coefficients. The old wrapper discarded their sign. network.csv now exports abs(coefficient) plus its statistical +/- sign, omits zero coefficients, rejects nonfinite coefficients, and retains untouched upstream files under raw. These signs express conditional association, not experimentally established activation/repression. Existing core route tests plus a focused coefficient-conversion test cover the handoff. This change requires reevaluation of previously unsigned scMTNI results.
+
+Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
+
+Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/scmtni:local` (image ID `sha256:3f91577a7cbedc1cb5fedb6dcbc5dc85188e3b906cfbb4694132a103537ace66`; no wrapper overlay). The official smoketest runner passed `global_independent` (12 rows), `group_native` (20 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.

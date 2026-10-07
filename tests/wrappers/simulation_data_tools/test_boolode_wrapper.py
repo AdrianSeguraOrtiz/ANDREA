@@ -19,6 +19,10 @@ HAS_RUNTIME = all(
 class BoolodeWrapperTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Keep scientific modules in sys.modules when the upstream stub patch
+        # exits; old NumPy/pandas cannot safely be imported a second time.
+        for name in ("yaml", "numpy", "pandas", "sklearn.cluster"):
+            importlib.import_module(name)
         path = (
             Path(__file__).resolve().parents[3]
             / "wrappers/simulation_data_tools/simulators/boolode/run_simulator.py"
@@ -52,6 +56,41 @@ class BoolodeWrapperTests(unittest.TestCase):
         ]:
             with self.subTest(params=params):
                 self.wrapper.normalize_params(params)
+
+    def test_boolean_truth_respects_negation_scope_and_mixed_polarity(self):
+        genes = {"A", "B", "C", "G-1"}
+        cases = [
+            ("not A and B", {"A": "-", "B": "+"}),
+            ("not (A or B) and C", {"A": "-", "B": "-", "C": "+"}),
+            ("not not A", {"A": "+"}),
+            ("(A and B) or (not A and C)", {"A": "?", "B": "+", "C": "+"}),
+            ("G-1 and not B", {"G-1": "+", "B": "-"}),
+        ]
+        for rule, expected in cases:
+            with self.subTest(rule=rule):
+                self.assertEqual(self.wrapper.boolean_rule_signs(rule, genes), expected)
+
+    def test_native_first_not_bug_does_not_reach_public_truth(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            native = root / "refNetwork.csv"
+            native.write_text("Gene1,Gene2,Type\nA,C,-\nB,C,-\n")
+            model = root / "model.tsv"
+            model.write_text("Gene\tRule\nA\tA\nB\tB\nC\tnot A and B\n")
+            rows = self.wrapper.parse_ref_network(native, {"A", "B", "C"}, model)
+            self.assertEqual({row["source"]: row["sign"] for row in rows}, {"A": "-", "B": "+"})
+            self.assertEqual(native.read_text(), "Gene1,Gene2,Type\nA,C,-\nB,C,-\n")
+
+    def test_custom_model_rejects_upstream_missing_value_identifiers(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            model = Path(temporary) / "model.tsv"
+            for gene in ("NA", "NaN", "NULL", ""):
+                with self.subTest(gene=gene):
+                    model.write_text(f"Gene\tRule\n{gene}\tA\nA\tA\n")
+                    with self.assertRaisesRegex(ValueError, "upstream parser"):
+                        self.wrapper.read_boolean_model(model)
+            model.write_text("Gene\tRule\nNAN1\tNAN1\nA\tNAN1\n")
+            self.assertEqual(self.wrapper.read_boolean_model(model), {"NAN1", "A"})
 
     def test_upstream_failure_keeps_streams_and_exposes_cause(self):
         def fail(_config):

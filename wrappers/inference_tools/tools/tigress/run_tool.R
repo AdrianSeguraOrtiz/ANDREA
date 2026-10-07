@@ -33,7 +33,8 @@ parse_args <- function() {
 }
 
 write_progress <- function(progress_path, status, percent, phase, message,
-                           completed = NULL, total = NULL, error = NULL) {
+                           completed = NULL, total = NULL, error = NULL,
+                           warnings = character()) {
   payload <- list(
     status = status,
     phase = phase,
@@ -44,6 +45,7 @@ write_progress <- function(progress_path, status, percent, phase, message,
   if (!is.null(completed)) payload$completed <- as.integer(completed)
   if (!is.null(total)) payload$total <- as.integer(total)
   if (!is.null(error)) payload$error <- as.character(error)
+  if (length(warnings)) payload$warnings <- as.list(unique(warnings))
 
   tmp_path <- paste0(progress_path, ".tmp")
   writeLines(toJSON(payload, auto_unbox = TRUE, null = "null"), tmp_path, useBytes = TRUE)
@@ -57,7 +59,8 @@ is_scalar_number <- function(x) is.numeric(x) && length(x) == 1L && !is.na(x)
 is_scalar_string <- function(x) is.character(x) && length(x) == 1L && !is.na(x)
 
 as_int_checked <- function(name, x, min_value = NULL) {
-  if (!is_scalar_number(x) || abs(x - round(x)) > 1e-9) {
+  if (!is_scalar_number(x) || !is.finite(x) || abs(x - round(x)) > 1e-9 ||
+      abs(x) > .Machine$integer.max) {
     stop(sprintf("%s must be an integer.", name), call. = FALSE)
   }
   xi <- as.integer(round(x))
@@ -173,7 +176,8 @@ load_tf_list <- function(extra_dir) {
 }
 
 read_expression_tsv <- function(expr_path) {
-  df <- read.delim(expr_path, sep = "\t", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+  df <- read.delim(expr_path, sep = "\t", header = TRUE, check.names = FALSE,
+                   stringsAsFactors = FALSE, colClasses = "character", na.strings = character())
   if (ncol(df) < 2L) {
     stop("expression.tsv must have at least 2 columns: gene + >=1 observation.", call. = FALSE)
   }
@@ -222,10 +226,17 @@ empty_network <- function() {
 # Retry with fewer steps so the wrapper remains usable instead of failing outright.
 run_tigress_with_fallback <- function(expression_data, tf_names, params, threads) {
   requested_steps <- params$nstepsLARS
+  if (nrow(expression_data) < 4L) {
+    stop("TIGRESS requires at least four observations for two non-singleton sample halves.", call. = FALSE)
+  }
+  if (length(tf_names) < 2L) {
+    stop("The pinned TIGRESS implementation requires at least two variable candidate TFs.", call. = FALSE)
+  }
+  initial_steps <- min(requested_steps, length(tf_names) - 1L)
   last_error <- NULL
   usemulticore <- threads > 1L
 
-  for (steps in seq.int(requested_steps, 1L, by = -1L)) {
+  for (steps in seq.int(initial_steps, 1L, by = -1L)) {
     result <- tryCatch(
       tigress::tigress(
         expdata = expression_data,
@@ -269,7 +280,8 @@ build_network <- function(score_matrix, limit) {
   edge_df <- as.data.frame(as.table(score_matrix), stringsAsFactors = FALSE)
   names(edge_df) <- c("source", "target", "score")
   edge_df$score <- as.numeric(edge_df$score)
-  edge_df <- edge_df[is.finite(edge_df$score) & edge_df$score != 0, , drop = FALSE]
+  edge_df <- edge_df[is.finite(edge_df$score) & edge_df$score > 0 &
+                       edge_df$source != edge_df$target, , drop = FALSE]
   if (!nrow(edge_df)) {
     return(empty_network())
   }
@@ -312,6 +324,7 @@ main <- function() {
 
     if (!is.null(params$seed)) {
       set.seed(params$seed)
+      if (threads > 1L) doRNG::registerDoRNG(params$seed)
     }
 
     write_progress(progress_path, "running", 5L, "load_input", "Loading expression and extra inputs")
@@ -328,6 +341,11 @@ main <- function() {
       tf_names <- intersect(tf_names, colnames(expression_data))
     }
     if (ncol(expression_data) < 2L || length(tf_names) < 1L) {
+      dir.create(file.path(output_dir, "raw"), showWarnings = FALSE)
+      writeLines(toJSON(list(requested_params = params, effective_nstepsLARS = 0L,
+                             retained_tfs = tf_names, requested_threads = threads),
+                        auto_unbox = TRUE, null = "null", pretty = TRUE),
+                 file.path(output_dir, "raw", "tigress_config.json"))
       write_progress(progress_path, "running", 96L, "write_output", "Writing empty network.csv")
       out_df <- empty_network()
       write.csv(out_df, file.path(output_dir, "network.csv"), row.names = FALSE)
@@ -338,7 +356,8 @@ main <- function() {
         "done",
         "TIGRESS completed with insufficient variable genes or TFs",
         completed = 0L,
-        total = 0L
+        total = 0L,
+        warnings = "No inference was possible after removing constant genes/TFs."
       )
       return(invisible(NULL))
     }
@@ -352,6 +371,18 @@ main <- function() {
     )
 
     tigress_run <- run_tigress_with_fallback(expression_data, tf_names, params, threads)
+    run_warnings <- character()
+    if (tigress_run$effective_nstepsLARS != params$nstepsLARS) {
+      run_warnings <- sprintf("nstepsLARS reduced from %d to %d for the available TFs/LARS path.",
+                              params$nstepsLARS, tigress_run$effective_nstepsLARS)
+    }
+    dir.create(file.path(output_dir, "raw"), showWarnings = FALSE)
+    writeLines(toJSON(list(requested_params = params,
+                           effective_nstepsLARS = tigress_run$effective_nstepsLARS,
+                           retained_tfs = tf_names, requested_threads = threads,
+                           upstream_patches = c("forward_scoring", "sample_variance_condition")),
+                      auto_unbox = TRUE, null = "null", pretty = TRUE),
+               file.path(output_dir, "raw", "tigress_config.json"))
     tigress_result <- tigress_run$result
 
     score_matrix <- if (is.list(tigress_result)) {
@@ -375,7 +406,8 @@ main <- function() {
       "done",
       "Inference finished",
       completed = nrow(out_df),
-      total = nrow(out_df)
+      total = nrow(out_df),
+      warnings = run_warnings
     )
   }, error = function(e) {
     write_progress(

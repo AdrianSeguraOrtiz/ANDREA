@@ -18,6 +18,13 @@
       "param_overrides": {
         "sift_method": "max"
       }
+    },
+    {
+      "name": "meta_cells",
+      "param_overrides": {
+        "subsampling_method": "meta_cells",
+        "subsampling_ratio": 0.5
+      }
     }
   ]
 }

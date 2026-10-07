@@ -1,8 +1,11 @@
 FROM python:3.10-slim-bookworm
 
+ARG SCREGULATE_PRIOR_REF=ed32e9083f9ebaf391ab4f2aba48374a4c5d0f5b
+
 ENV PYTHONUNBUFFERED=1 \
     CUDA_VISIBLE_DEVICES="" \
     SCREGULATE_PRIORS_DIR=/opt/scregulate_priors \
+    SCREGULATE_PRIOR_REF=${SCREGULATE_PRIOR_REF} \
     OMP_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
     MKL_NUM_THREADS=1 \
@@ -40,21 +43,22 @@ RUN python -m pip install --no-cache-dir --upgrade pip wheel setuptools \
 RUN mkdir -p "${SCREGULATE_PRIORS_DIR}" \
   && python - <<'PY'
 from pathlib import Path
-import shutil
+import hashlib
+import os
+import urllib.request
 
-from scregulate.datasets import collectri_prior
-
-for species in ("human", "mouse"):
-    collectri_prior(species)
-
-src = Path.home() / ".scregulate" / "priors"
 dst = Path("/opt/scregulate_priors")
 dst.mkdir(parents=True, exist_ok=True)
-for filename in ("collectri_human_net.csv", "collectri_mouse_net.csv"):
-    source = src / filename
-    if not source.exists():
-        raise FileNotFoundError(source)
-    shutil.copy2(source, dst / filename)
+checksums = {
+    "collectri_human_net.csv": "5313506f33f38c7d7ed402292feec435a75b9849c982d890b75e530a44b18b8e",
+    "collectri_mouse_net.csv": "b5714c231abb9de06a343d4be531c20ce0f4d0a9c7e88ce0a473ea2aab15c9a8",
+}
+for filename, expected in checksums.items():
+    url = f"https://raw.githubusercontent.com/YDaiLab/scRegulate/{os.environ['SCREGULATE_PRIOR_REF']}/priors/{filename}"
+    data = urllib.request.urlopen(url, timeout=120).read()
+    if hashlib.sha256(data).hexdigest() != expected:
+        raise ValueError(f"Unexpected CollecTRI content: {filename}")
+    (dst / filename).write_bytes(data)
 PY
 
 COPY run_tool.sh /app/run_tool.sh

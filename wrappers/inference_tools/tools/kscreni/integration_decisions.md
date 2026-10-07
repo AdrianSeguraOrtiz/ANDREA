@@ -201,3 +201,15 @@ Fixed implementation choices not exposed:
 - kScReNI can produce dense per-cell gene x gene outputs; large datasets may produce very large raw and `network.csv` artifacts.
 - The upstream `nTrees` argument is present but ignored by the implementation; this should be revisited only if upstream fixes the function or a wrapper deliberately patches the public call.
 - No package-manager release was found. The implementation uses the pinned GitHub commit.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [ScReNI paper](https://doi.org/10.1093/gpbjnl/qzaf060) and the [pinned ScReNI source](https://github.com/Xuxl2020/ScReNI/tree/695772f8555f0b22df1c331e3c900075fee03b2c), specifically `R/Infer_kScReNI_scNetworks.R` and the separate weighted multi-omic/LIONESS implementations.
+- `method_family=tree`: the transcriptome-only kScReNI path uses a Seurat neighbor graph and GENIE3 random forests per cell neighborhood. It is not the weighted RNA/ATAC variant. Checked `nfeatures=4000`, `knn=20`, fixed `set.seed(100)` and the actual fixed 100 trees in the function body; the upstream signature's `nTrees` argument is not consumed there and remains unexposed.
+- The wrapper mirrors that function with a recorded PCA-rank compatibility adaptation and one process per assigned thread. Corrected the adaptation so `FindNeighbors` uses the available PCA dimensions when fewer than 10 exist; it retains upstream dimensions 1:10 for larger inputs. Previously the PCA cap alone still left an invalid default neighbor-dimension request.
+- Corrected R parsing to preserve numeric/NA-like gene identifiers. Native output remains per-column directed unsigned GENIE3 importance; group aggregation remains in ANDREA. These source and reader checks do not establish successful execution of every small or degenerate Seurat input.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/kscreni:audit-local`; image ID `sha256:b9929e56523f1e3fd44ad57ef0589311089575ee43da22cc9715f783794800eb`. The repository smoke runner passed `default` (3081 rows), `fewer_than_ten_pcs` (2971 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.
+- A separate native-container regression used 8 genes and 12 cells, computed 7 PCs and returned all 12 cell networks. The persistent `fewer_than_ten_pcs` smoke variant also exercises the corrected neighbor-dimension bound. Seurat emitted small-fixture variance/PCA warnings but completed successfully.

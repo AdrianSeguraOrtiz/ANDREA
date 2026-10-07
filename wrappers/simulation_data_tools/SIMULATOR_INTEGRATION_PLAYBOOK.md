@@ -45,8 +45,10 @@ The goal is not to reproduce a local vertical slice, bundled example export or c
 6. Docker image names must follow:
 
 ```text
-adriansegura99/simulator_<simulator_id>:1.0.0
+adriansegura99/simulator_<simulator_id>:<version>
 ```
+
+Use a new version tag when wrapper behavior or dependencies change; retain previously published tags for historical replication.
 
 7. `publication` must be a list. Store DOI references as full canonical URLs such as `https://doi.org/...`.
 8. `first_author` must be the full first-author name from the primary publication, not only surname.
@@ -305,7 +307,7 @@ This id will be reused in:
   `wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json`
 - wrapper dir: `wrappers/simulation_data_tools/simulators/<simulator_id>/`
 - smoke configs: `wrappers/simulation_data_tools/tests/smoketest_configs/<simulator_id>*.json`
-- Docker image: `adriansegura99/simulator_<simulator_id>:1.0.0`
+- Docker image: `adriansegura99/simulator_<simulator_id>:<version>`
 
 ### Step 1. Place And Prepare Upstream Evidence
 
@@ -373,7 +375,7 @@ Requirements:
 - Do not implement the wrapper yet
 - Store publication references as a list of full canonical URLs
 - Store `first_author` as the full first-author name
-- Set `docker_image` to `adriansegura99/simulator_<simulator_id>:1.0.0`
+- Set `docker_image` to `adriansegura99/simulator_<simulator_id>:<version>`
 - Identify every semantic capability the simulator can support
 - Identify every extra that is native or derivable
 - Audit every claimed capability independently; for each capability, identify
@@ -660,7 +662,7 @@ When drafting `simulatorspec.json`, use this field-by-field evidence policy.
   - value: `<simulator_id>`
   - evidence: folder name under `andrea/catalog_simulation_data_tools/simulators/`
 - `docker_image`
-  - value: `adriansegura99/simulator_<simulator_id>:1.0.0`
+  - value: `adriansegura99/simulator_<simulator_id>:<version>`
   - evidence: ANDREA naming convention
   - record the decision in `integration_decisions.md`
 
@@ -1269,7 +1271,7 @@ Before considering a simulator integrated, confirm:
 - `simulatorspec.json` validates
 - `publication` is a list of full URLs
 - `first_author` is a full name
-- `docker_image` follows `adriansegura99/simulator_<simulator_id>:1.0.0`
+- `docker_image` follows `adriansegura99/simulator_<simulator_id>:<version>`
 - the Dockerfile installs from a stable public source
 - runtime does not depend on the local evidence repo
 - every declared semantic capability is covered by smoke tests

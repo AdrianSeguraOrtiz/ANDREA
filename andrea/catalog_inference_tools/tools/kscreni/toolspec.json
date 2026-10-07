@@ -8,6 +8,7 @@
   "first_author": "Xueli Xu",
   "year": 2025,
   "method_summary": "kScReNI is the transcriptome-only ScReNI variant for scRNA-seq data alone. It infers cell-specific regulatory networks by identifying neighboring cells with k-nearest neighbors and estimating random-forest importance scores as directed regulator-target weights.",
+  "method_family": "tree",
   "method_keywords": [
     "single_cell",
     "cell_specific_network",
@@ -17,7 +18,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/Xuxl2020/ScReNI",
-  "docker_image": "adriansegura99/inference-tools_kscreni:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_kscreni:1.1.0",
   "execution_capabilities": [
     "column_native",
     "group_aggregated"

@@ -1,6 +1,8 @@
 FROM rocker/r2u:24.04
 
 ARG DYNGEN_VERSION=1.1.1
+ARG DYNGEN_DATA_COMMIT=767f1d11fb7fe3706e0431f6197818c3ad50d359
+ARG DYNGEN_DATA_SHA256=7a7e813008330c4ba822278b4e0390bf85dd35169f3e7e2fa4e400159cd5ac9b
 ENV DEBIAN_FRONTEND=noninteractive \
     R_CRAN_MIRROR=https://cloud.r-project.org \
     DYNGEN_CACHE_DIR=/opt/dyngen-cache
@@ -21,8 +23,11 @@ RUN R -q -e "options(bspm.sudo = TRUE); install.packages(c('assertthat', 'dplyr'
     && R -q -e "options(bspm.sudo = TRUE); remotes::install_version('dyngen', version = Sys.getenv('DYNGEN_VERSION'), repos = Sys.getenv('R_CRAN_MIRROR'), upgrade = 'never', dependencies = FALSE)" \
     && R -q -e "stopifnot(as.character(utils::packageVersion('dyngen')) == Sys.getenv('DYNGEN_VERSION'))"
 
-RUN mkdir -p \"$DYNGEN_CACHE_DIR\" \
-    && R -q -e "options(bspm.sudo = TRUE, dyngen_download_cache_dir = Sys.getenv('DYNGEN_CACHE_DIR')); zip <- tempfile(fileext = '.zip'); utils::download.file('https://github.com/dynverse/dyngen/archive/data_files.zip', zip, quiet = TRUE); utils::unzip(zip, exdir = Sys.getenv('DYNGEN_CACHE_DIR'), overwrite = TRUE, junkpaths = TRUE)"
+RUN mkdir -p "$DYNGEN_CACHE_DIR" \
+    && curl -fsSL "https://codeload.github.com/dynverse/dyngen/zip/${DYNGEN_DATA_COMMIT}" -o /tmp/dyngen-data.zip \
+    && echo "${DYNGEN_DATA_SHA256}  /tmp/dyngen-data.zip" | sha256sum -c - \
+    && unzip -q -j /tmp/dyngen-data.zip -d "$DYNGEN_CACHE_DIR" \
+    && rm /tmp/dyngen-data.zip
 
 WORKDIR /app
 

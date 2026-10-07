@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0",
   "id": "pyscenic",
-  "name": "pySCENIC",
+  "name": "pySCENIC GRN step",
   "publication": [
     "https://doi.org/10.1038/s41596-020-0336-2",
     "https://doi.org/10.1038/nmeth.4463"
   ],
   "first_author": "Bram Van de Sande",
   "year": 2020,
-  "method_summary": "pySCENIC is a Python implementation of the SCENIC workflow for single-cell gene regulatory network analysis. The selected integration mirrors the pySCENIC GRN step, which infers TF-target adjacencies from a cell-by-gene expression matrix and a predefined transcription-factor list using GRNBoost2 by default or GENIE3 as an alternative tree-based regression method.",
+  "method_summary": "pySCENIC is a Python implementation of the SCENIC workflow for single-cell gene regulatory network analysis. The selected integration mirrors the pySCENIC GRN step, which infers TF-target adjacencies from a cell-by-gene expression matrix and a predefined transcription-factor list using GRNBoost2 by default or GENIE3 as an alternative tree-based regression method. Motif pruning (cisTarget) and regulon activity scoring (AUCell) are not executed by this integration.",
   "method_keywords": [
     "single_cell",
     "scenic",
@@ -20,7 +20,7 @@
     "directed"
   ],
   "implementation_url": "https://pypi.org/project/pyscenic/",
-  "docker_image": "adriansegura99/inference-tools_pyscenic:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_pyscenic:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -129,7 +129,9 @@
           "type": "int",
           "required": false,
           "default": 0,
-          "description": "Deterministic seed value."
+          "description": "Deterministic seed value.",
+          "min": 0,
+          "max": 4294967295
         },
         {
           "type": "object",
@@ -139,5 +141,6 @@
         }
       ]
     }
-  }
+  },
+  "method_family": "tree"
 }

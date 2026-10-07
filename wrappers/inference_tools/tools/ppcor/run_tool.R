@@ -42,7 +42,8 @@ parse_args <- function() {
   out
 }
 
-write_progress <- function(progress_path, status, percent, phase, message, error = NULL) {
+write_progress <- function(progress_path, status, percent, phase, message, error = NULL,
+                           warnings = character()) {
   payload <- list(
     status = status,
     phase = phase,
@@ -53,6 +54,7 @@ write_progress <- function(progress_path, status, percent, phase, message, error
   if (!is.null(error)) {
     payload$error <- as.character(error)
   }
+  if (length(warnings)) payload$warnings <- as.list(unique(warnings))
 
   tmp_path <- paste0(progress_path, ".tmp")
   writeLines(toJSON(payload, auto_unbox = TRUE, null = "null"), tmp_path, useBytes = TRUE)
@@ -125,7 +127,9 @@ read_expression_tsv <- function(expr_path) {
     sep = "\t",
     header = TRUE,
     check.names = FALSE,
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    colClasses = "character",
+    na.strings = character()
   )
   if (ncol(df) < 3L) {
     stop("expression.tsv must have one gene column and at least two expression columns.", call. = FALSE)
@@ -184,9 +188,11 @@ write_matrix_tsv <- function(matrix_value, path) {
 }
 
 run_ppcor <- function(observations_by_genes, params, log_path) {
+  upstream_warnings <- character()
   result <- withCallingHandlers(
     ppcor::pcor(observations_by_genes, method = params$method),
     warning = function(warning_condition) {
+      upstream_warnings <<- c(upstream_warnings, conditionMessage(warning_condition))
       append_log(log_path, sprintf("upstream warning: %s", conditionMessage(warning_condition)))
       invokeRestart("muffleWarning")
     }
@@ -200,6 +206,7 @@ run_ppcor <- function(observations_by_genes, params, log_path) {
       dimnames(result[[matrix_name]]) <- list(gene_ids, gene_ids)
     }
   }
+  result$warnings <- unique(upstream_warnings)
   result
 }
 
@@ -339,7 +346,8 @@ main <- function() {
       "completed",
       100L,
       "done",
-      "ppcor completed successfully"
+      "ppcor completed successfully",
+      warnings = result$warnings
     )
   }, error = function(exc) {
     append_log(log_path, sprintf("wrapper failure: %s", conditionMessage(exc)))

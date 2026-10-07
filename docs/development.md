@@ -82,3 +82,19 @@ make smoke-wheel
 `smoke-wheel` installs the built wheel into a temporary virtual environment and
 checks that the `andrea` command starts. Full release steps are documented in
 [release.md](release.md).
+
+Export the catalog figures directly from reviewed specs:
+
+```sh
+make render-doc-assets ARGS="--catalogs-only --output-dir release-logs/catalog-figures"
+```
+
+This writes SVG and PDF figures plus a SHA-256 manifest of the specs, input
+contracts and rendering sources. Inference
+grouping comes from `ToolSpec.method_family`; keywords never override it.
+Simulator flows are derived from executable data axes and truth-context origins,
+including combinations of native and wrapper-derived truth.
+
+Keep manuscripts, submission material and their experiment/replication bundles
+in the ignored `paper/` directory or outside the repository. Only reusable
+software, catalog assets and general documentation belong in version control.

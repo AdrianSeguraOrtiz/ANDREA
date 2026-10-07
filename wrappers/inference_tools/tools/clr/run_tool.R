@@ -146,14 +146,21 @@ read_expression_tsv <- function(expr_path) {
     sep = "\t",
     header = TRUE,
     check.names = FALSE,
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    colClasses = "character",
+    na.strings = character()
   )
   if (ncol(df) < 2L) {
     stop("expression.tsv must have at least 2 columns: gene + >=1 observation.", call. = FALSE)
   }
 
   gene_col <- names(df)[1L]
-  df <- df[!duplicated(df[[gene_col]]), , drop = FALSE]
+  if (anyDuplicated(df[[gene_col]])) {
+    stop("expression.tsv contains duplicated gene identifiers.", call. = FALSE)
+  }
+  if (any(!nzchar(df[[gene_col]]))) {
+    stop("expression.tsv contains an empty gene identifier.", call. = FALSE)
+  }
 
   genes <- as.character(df[[gene_col]])
   observations <- names(df)[-1L]

@@ -241,6 +241,12 @@ def normalize_params(raw: dict[str, Any]) -> dict[str, Any]:
     )
     if perturb["target_source"] == "explicit_list" and not perturb["tf_targets"]:
         raise ValueError("perturbation.tf_targets is required when target_source=explicit_list.")
+    if perturb["target_source"] == "explicit_list" and len(perturb["tf_targets"]) != 1:
+        raise ValueError("The ANDREA perturbation contract currently supports exactly one TF target per run.")
+    if len(perturb["perturbation_values"]) != 1:
+        raise ValueError("perturbation.perturbation_values must contain exactly one replacement value.")
+    if perturb["perturbation_values"][0] < 0:
+        raise ValueError("perturbation replacement expression must be non-negative.")
 
     return params
 
@@ -814,11 +820,13 @@ def write_perturbation_extras(
     columns: list[str],
     perturbations: list[tuple[str, float]],
 ) -> dict[str, str]:
-    if not perturbations:
-        raise ValueError("At least one perturbation is required for perturbational runs.")
+    if len(perturbations) != 1:
+        raise ValueError("Perturbation metadata requires exactly one TF target per run.")
     target, value = perturbations[0]
     effect = "knockout" if value == 0.0 else "set_expression"
-    sign = -1 if value == 0.0 else 1
+    # A positive replacement can increase or decrease each matched cell's TF
+    # expression. Only setting it to zero establishes a common direction.
+    sign = -1 if value == 0.0 else 0
     intervention = f"{effect}_{target}"
     extras: dict[str, str] = {}
 
@@ -1039,6 +1047,19 @@ def run(request_path: Path, output_dir: Path) -> None:
     enforce_request_contract(request, params)
 
     write_json(raw_dir / "request_snapshot.json", request)
+    write_json(
+        raw_dir / "checkpoint_scope.json",
+        {
+            "input_bundle": params["input_bundle"],
+            "training_status": "untrained_demo" if params["input_bundle"] in EMBEDDED_BUNDLES else "user_supplied_unverified",
+            "limitation": (
+                "Embedded toy checkpoints contain seeded random weights and are for software smoke tests only; "
+                "they do not establish realistic expression or scientifically validated regulatory effects."
+                if params["input_bundle"] in EMBEDDED_BUNDLES else
+                "The wrapper checks architecture compatibility, not the training history or biological validity of supplied checkpoints."
+            ),
+        },
+    )
     write_session_info(raw_dir, threads)
 
     write_progress(output_dir, "running", "stage_inputs", "Staging GroundGAN inputs.", percent=10)

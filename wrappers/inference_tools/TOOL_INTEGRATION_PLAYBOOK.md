@@ -806,3 +806,13 @@ Before considering a tool integrated, confirm:
 - `cost.json` exists and validates if planner support is expected for the tool,
   and its thread matrix respects `runtime_resources.threading`
 - the packaged image can be built, and pushed if publication is part of the integration task
+
+## Reviewed method family
+
+Set `method_family` from the actual integrated algorithm: `information`, `tree`,
+`regression`, `neural`, `graph`, or `correlation`. Cite the implementation and
+primary publication in `integration_decisions.md`. Context, priors and downstream
+workflow stages belong in the summary and capability/input fields. The catalog
+figure consumes this explicit family and rejects missing annotations.
+Use a new Docker version tag for changed wrappers or dependencies; never replace
+a historical image used in a published benchmark.

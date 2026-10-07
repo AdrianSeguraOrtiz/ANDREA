@@ -19,6 +19,24 @@
       "optional_inputs": [
         "tf_list"
       ]
+    },
+    {
+      "id": "global_default_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "optional_inputs": [],
+      "parameter_base": "spec_defaults"
+    },
+    {
+      "id": "global_tf_list_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "parameter_base": "spec_defaults"
     }
   ]
 }

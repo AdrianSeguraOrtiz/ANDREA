@@ -430,7 +430,7 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         self.assertEqual(modes[0].eta_seconds, 24.0)
         self.assertEqual(
             modes[0].eta_provenance["cost_profile"]["estimation_policy"],
-            "cost_profile_v2",
+            "cost_profile_v3",
         )
         self.assertEqual(
             modes[0].eta_provenance["cost_profile"]["uncertainty_components"][
@@ -584,11 +584,9 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
             )
 
         self.assertTrue(any("cost-relevant parameter" in w for w in warnings))
-        cost_profile = modes[0].eta_provenance["cost_profile"]
-        self.assertEqual(cost_profile["raw_size_scale"], 0.5)
-        self.assertEqual(cost_profile["size_scale"], 1.0)
-        self.assertEqual(cost_profile["size_scale_floor"], 1.0)
-        self.assertGreater(cost_profile["uncertainty_penalty"], 1.0)
+        self.assertEqual(modes[0].eta_source, "fallback_no_matching_cost_profile")
+        self.assertFalse(modes[0].eta_provenance["calibrated"])
+        self.assertEqual(modes[0].eta_provenance["rejected_profile"]["profile_id"], "global_limit_10")
 
     def test_only_cost_relevant_params_affect_profile_matching(self) -> None:
         cost_payload = {

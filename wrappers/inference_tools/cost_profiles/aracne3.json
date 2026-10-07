@@ -15,6 +15,13 @@
       "execution": {
         "mode": "global"
       }
+    },
+    {
+      "id": "global_default_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults"
     }
   ]
 }

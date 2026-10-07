@@ -46,3 +46,14 @@
   invokes one physical GENIE3 child per group with `execution.mode=global`;
   the wrapper requires `execution.json`, does not receive `groups.tsv`, and
   emits `context=global` for ANDREA to relabel.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [GENIE3 paper](https://doi.org/10.1371/journal.pone.0012776) and the official [Arboreto 0.1.6 package](https://pypi.org/project/arboreto/0.1.6/). The exact PyPI wheel was downloaded and `arboreto/algo.py` and `arboreto/core.py` inspected, including RF/ET defaults, `create_graph`, target selection and feature-importance extraction.
+- `method_family=tree`: independent target regressions with Random Forests or Extra Trees. The wrapper uses Arboreto's lower-level graph path to expose both RF and ET, while `algo.genie3()` itself fixes RF. The configured 1000 trees and sqrt feature sampling match the package defaults. `seed=666` is an explicit ANDREA reproducibility choice, whereas upstream permits no seed.
+- Checked optional TF restriction, all-gene target universe, global physical execution, unsigned directed importance and no downstream normalization. `--threads` remains the Dask worker count with one sklearn job per worker.
+- Fixed the shared Arboreto input reader: preserve literal numeric/NA-like gene IDs, reject duplicate gene or observation IDs instead of silently dropping/mangling them, and reject nonfinite expression before fitting. This shared correction also applies to GRNBoost2; it changes malformed-input handling, not the regression objective.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/genie3:audit-local`; image ID `sha256:655fd7469edcdaa3b10f697fe41923abcfb1dd525881d1fdacdb584f4840fd5a`. The repository smoke runner passed `default` (21 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.

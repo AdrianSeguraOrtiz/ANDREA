@@ -204,7 +204,7 @@ function resolve_params(path::String)::ResolvedParams
         Set(["maximum_likelihood", "dirichlet", "shrinkage"]),
     )
     number_of_bins = get_scalar_int(raw, "number_of_bins", 10; min_value=1)
-    base = get_scalar_float(raw, "base", 2.0; min_value=0.0, disallow_one=true)
+    base = get_scalar_float(raw, "base", 2.0; min_value=1.0)
     return ResolvedParams(discretizer, estimator, number_of_bins, base)
 end
 

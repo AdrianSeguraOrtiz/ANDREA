@@ -7,7 +7,7 @@
   ],
   "first_author": "Shiyu Xu",
   "year": 2025,
-  "method_summary": "Planet is an attention-guided probabilistic diffusion framework for constructing cell-specific gene regulatory networks from gene expression profiles. It models directed TF-to-target edges as binary graph states, uses a Triple Hybrid-Attention Transformer during reverse diffusion, and aggregates repeated generations into edge-level confidence.",
+  "method_summary": "Planet uses a pretrained attention-guided discrete diffusion model to infer a directed, unsigned network for the supplied expression population. This integration runs its CSV/pathway inference route with bundled human gene resources and 10 to 99 retained genes; ANDREA can repeat it independently per group. It does not return one network per individual expression column.",
   "method_keywords": [
     "single_cell",
     "diffusion_model",
@@ -19,7 +19,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/wangchuanyuan1/project-Planet/tree/3d8be3ca788dc436e8d2c888facdeffe49553c61",
-  "docker_image": "adriansegura99/inference-tools_planet:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_planet:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -521,5 +521,6 @@
       "min": 1,
       "description": "Reverse sampling steps passed to upstream args.sampling_timesteps. The Planet paper describes accelerated sampling by reducing the sampling path from 1000 steps to 500 or fewer while preserving generation quality. Keep this value no larger than diffusion_timesteps; runtime scales with this value."
     }
-  }
+  },
+  "method_family": "neural"
 }

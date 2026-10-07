@@ -501,3 +501,13 @@ Implemented runtime validations:
 - The package and implementation are generic, but the literature evidence is strongest for bulk microarray data.
 - `nbins` has a dynamic upstream default, so the ToolSpec must encode it indirectly using `null` as a sentinel.
 - The upstream package has no native way to restrict inference to known TF regulators only; if we ever want a TF-constrained CLR variant, that should probably be a separate tool contract instead of silently repurposing `tf_list`.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [CLR paper](https://doi.org/10.1371/journal.pbio.0050008), [minet implementation paper](https://doi.org/10.1186/1471-2105-9-461), and the actual installed `minet` **3.68.0** namespace in the existing container (`build.mim`, `clr`; package version checked). The Bioconductor tarball endpoint rejected this audit's download, so the installed function bodies were inspected directly.
+- `method_family=information`, even when the chosen MI estimator is correlation-derived: `build.mim` maps squared Pearson/Spearman/Kendall correlation through `-0.5*log(1-r^2)` before CLR context scoring. Discrete MI estimators and discretization options remain explicit parameters; `nbins=null` preserves upstream `sqrt(NROW(dataset))`.
+- Checked the observations-by-genes transpose, serial contract, zero-variance handling, symmetric unsigned output, zero-edge success and lack of wrapper score rescaling. Corrected input parsing so numeric-looking and NA-like gene identifiers survive unchanged; duplicate genes now fail instead of silently discarding a measurement row. No inference kernel change was made.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/clr:audit-local`; image ID `sha256:4ef534d5c8bebbf0dc4b8567388f3870c058492d22c60b470dbce49cc6366357`. The repository smoke runner passed `default` (11 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.

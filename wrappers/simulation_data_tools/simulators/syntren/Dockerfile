@@ -1,4 +1,8 @@
 # syntax=docker/dockerfile:1.7
+# The original 1.2 download is unavailable. Recover the exact licensed release
+# from the previously published immutable ANDREA image; do not use repo/ input.
+FROM adriansegura99/simulator_syntren@sha256:a9306fefe4d0f5a9c8cf619aa825fe55362574f6b3edb4e6c481745f266048f4 AS syntren_release
+
 FROM eclipse-temurin:8-jdk-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -14,9 +18,10 @@ RUN apt-get update \
         python3 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY wrappers/simulation_data_tools/simulators/syntren/repo/syntren1.2release/ /opt/syntren/
+COPY --from=syntren_release /opt/syntren/ /opt/syntren/
 
-RUN test -f /opt/syntren/SynTReN.jar \
+RUN test -f /opt/syntren/LICENSE-AGREEMENT.TXT \
+    && test -f /opt/syntren/SynTReN.jar \
     && echo "1830a5d10c909b135040181b22470aac84ffb6f1ffc085f91089c92f728b8f5a  /opt/syntren/SynTReN.jar" | sha256sum -c -
 
 RUN mkdir -p /opt/syntren-patched-lib \

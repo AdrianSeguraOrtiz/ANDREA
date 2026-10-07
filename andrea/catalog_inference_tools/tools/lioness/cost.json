@@ -22,11 +22,10 @@
           1
         ],
         "ram_gb_tested": [
-          8,
-          16,
-          32
+          8.0,
+          32.0
         ],
-        "repeats": 1,
+        "repeats": 3,
         "timeout_seconds": 1800,
         "execution_profile": {
           "mode": "column_native",
@@ -44,6 +43,7 @@
           "conditional_inputs_satisfied": [],
           "tf_count_policy": null,
           "prior_density": null,
+          "marker_count_per_group": 4,
           "group_count": 0,
           "has_tf_list": false,
           "output_density_class": "dense",
@@ -58,7 +58,28 @@
           "resolved_params": {},
           "cost_relevant_params": [],
           "cost_relevant_values": {}
-        }
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-09-29T19:05:36.312634+00:00",
+          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "git_dirty": true,
+          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
+          "spec_sha256": "35ab70a1334ae2621970be325bae3a00135936a7ff0f0d691f19169a2ad92ff6",
+          "build_context_sha256": "b06a8e92476a304592877914678c070c112a602d24c778a92d4de6f5a8d1d47b",
+          "image_reference": "adriansegura99/inference-tools_lioness:1.1.0",
+          "image_id": "sha256:e8d5eaaf835c2c01fe7990671c9d51008b3fbf92223bc5f4b18ebcdf09e84c6b",
+          "image_repo_digests": [
+            "adriansegura99/inference-tools_lioness@sha256:3ec2f81ed7d16287832a263dffeaefd3b8f221fd3061eeb9a720f63aa00db3ef"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "a0f59429a14c4651a6f26aad06f7e94b99246a92a9cd3797d5cbcb2f86b18709"
       },
       "runtime_points": [
         {
@@ -67,17 +88,17 @@
           "threads": 1,
           "ram_gb": 8,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.678438,
-          "seconds_p90": 6.678438,
+          "seconds_p50": 6.484303,
+          "seconds_p90": 6.651092,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -89,38 +110,7 @@
             "output_density_class": "dense",
             "aggregation_step": "none",
             "threads": 1,
-            "ram_gb": 8
-          }
-        },
-        {
-          "genes": 50,
-          "columns": 20,
-          "threads": 1,
-          "ram_gb": 16,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 6.591731,
-          "seconds_p90": 6.591731,
-          "feature_vector": {
-            "execution_mode": "column_native",
-            "n_cells": 20,
-            "n_genes": 50,
-            "n_groups": 0,
-            "expected_contexts": 20,
-            "expected_dense_edges": 49000,
-            "has_tf_list": false,
-            "output_density_class": "dense",
-            "aggregation_step": "none",
-            "threads": 1,
-            "ram_gb": 16
+            "ram_gb": 8.0
           }
         },
         {
@@ -129,17 +119,17 @@
           "threads": 1,
           "ram_gb": 32,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 6.573842,
-          "seconds_p90": 6.573842,
+          "seconds_p50": 6.389566,
+          "seconds_p90": 6.443172,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -151,7 +141,7 @@
             "output_density_class": "dense",
             "aggregation_step": "none",
             "threads": 1,
-            "ram_gb": 32
+            "ram_gb": 32.0
           }
         },
         {
@@ -160,17 +150,17 @@
           "threads": 1,
           "ram_gb": 8,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 13.521219,
-          "seconds_p90": 13.521219,
+          "seconds_p50": 13.335341,
+          "seconds_p90": 13.343231,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -182,38 +172,7 @@
             "output_density_class": "dense",
             "aggregation_step": "none",
             "threads": 1,
-            "ram_gb": 8
-          }
-        },
-        {
-          "genes": 100,
-          "columns": 40,
-          "threads": 1,
-          "ram_gb": 16,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 13.596605,
-          "seconds_p90": 13.596605,
-          "feature_vector": {
-            "execution_mode": "column_native",
-            "n_cells": 40,
-            "n_genes": 100,
-            "n_groups": 0,
-            "expected_contexts": 40,
-            "expected_dense_edges": 396000,
-            "has_tf_list": false,
-            "output_density_class": "dense",
-            "aggregation_step": "none",
-            "threads": 1,
-            "ram_gb": 16
+            "ram_gb": 8.0
           }
         },
         {
@@ -222,17 +181,17 @@
           "threads": 1,
           "ram_gb": 32,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 13.526384,
-          "seconds_p90": 13.526384,
+          "seconds_p50": 13.354316,
+          "seconds_p90": 13.40306,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -244,7 +203,7 @@
             "output_density_class": "dense",
             "aggregation_step": "none",
             "threads": 1,
-            "ram_gb": 32
+            "ram_gb": 32.0
           }
         },
         {
@@ -253,17 +212,17 @@
           "threads": 1,
           "ram_gb": 8,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 73.522359,
-          "seconds_p90": 73.522359,
+          "seconds_p50": 72.87098,
+          "seconds_p90": 72.959002,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 80,
@@ -275,38 +234,7 @@
             "output_density_class": "dense",
             "aggregation_step": "none",
             "threads": 1,
-            "ram_gb": 8
-          }
-        },
-        {
-          "genes": 200,
-          "columns": 80,
-          "threads": 1,
-          "ram_gb": 16,
-          "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
-          "repeats_failed": 0,
-          "ok_rate": 1,
-          "failure_breakdown": {
-            "oom": 0,
-            "timeout": 0,
-            "error": 0
-          },
-          "seconds_p50": 73.158374,
-          "seconds_p90": 73.158374,
-          "feature_vector": {
-            "execution_mode": "column_native",
-            "n_cells": 80,
-            "n_genes": 200,
-            "n_groups": 0,
-            "expected_contexts": 80,
-            "expected_dense_edges": 3184000,
-            "has_tf_list": false,
-            "output_density_class": "dense",
-            "aggregation_step": "none",
-            "threads": 1,
-            "ram_gb": 16
+            "ram_gb": 8.0
           }
         },
         {
@@ -315,17 +243,17 @@
           "threads": 1,
           "ram_gb": 32,
           "status": "ok",
-          "repeats_total": 1,
-          "repeats_ok": 1,
+          "repeats_total": 3,
+          "repeats_ok": 3,
           "repeats_failed": 0,
-          "ok_rate": 1,
+          "ok_rate": 1.0,
           "failure_breakdown": {
             "oom": 0,
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 73.860892,
-          "seconds_p90": 73.860892,
+          "seconds_p50": 73.206182,
+          "seconds_p90": 73.222665,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 80,
@@ -337,8 +265,148 @@
             "output_density_class": "dense",
             "aggregation_step": "none",
             "threads": 1,
-            "ram_gb": 32
+            "ram_gb": 32.0
           }
+        }
+      ]
+    },
+    {
+      "profile_id": "representative_column_native_dfe9549cd3",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 100,
+            "columns": 200
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 7200,
+        "execution_profile": {
+          "mode": "column_native",
+          "physical_task_policy": "column_native",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "representative_scmultisim",
+          "gene_id_source": "scmultisim_simulator",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "dense",
+          "aggregation_step": "none",
+          "notes": [
+            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
+            "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "representative/lioness.json:representative_column_native_dfe9549cd3",
+          "resolved_params": {},
+          "cost_relevant_params": [],
+          "cost_relevant_values": {}
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-10-06T03:38:23.617768+00:00",
+          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "git_dirty": true,
+          "source_sha256": "1a4e4f55f87dc2bb2be63e20a829be6adfc3ec98e6d9a5ab555c9cbc26ebceb9",
+          "spec_sha256": "35ab70a1334ae2621970be325bae3a00135936a7ff0f0d691f19169a2ad92ff6",
+          "build_context_sha256": "b06a8e92476a304592877914678c070c112a602d24c778a92d4de6f5a8d1d47b",
+          "image_reference": "adriansegura99/inference-tools_lioness:1.1.0",
+          "image_id": "sha256:e8d5eaaf835c2c01fe7990671c9d51008b3fbf92223bc5f4b18ebcdf09e84c6b",
+          "image_repo_digests": [
+            "adriansegura99/inference-tools_lioness@sha256:3ec2f81ed7d16287832a263dffeaefd3b8f221fd3061eeb9a720f63aa00db3ef"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 1729,
+          "timing_scope": "Physical container launch through exit collection; measurements made with frozen ANDREA 0.2.0rc1 runtime and unchanged Docker image. Imported by the current source snapshot; host evaluation/postprocessing excluded."
+        },
+        "profile_sha256": "8e5a62ceecd2c392b823fed5555d08cb5247572f30a62082f3b1d8e7006ae7e1",
+        "calibration_evidence": [
+          {
+            "fixture_key": "run00029",
+            "role": "calibration",
+            "status": "completed",
+            "report_sha256": "e5b74b62857b689d27ce9a09119ed689fe7d7bcb80afdd609d0ea879f72b3e17",
+            "task_id": "run00029",
+            "seconds": 46.726328,
+            "input_sha256": {
+              "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+              "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
+              "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+            },
+            "peak_container_memory_bytes": 1437593600,
+            "cpu_seconds": 45.750048
+          },
+          {
+            "fixture_key": "run00029",
+            "role": "calibration",
+            "status": "completed",
+            "report_sha256": "d1d829e482bc2557865247a7cf72498d59b3c4f4de90a0e7c6ba4602336b9b3d",
+            "task_id": "correction_check",
+            "seconds": 50.08026,
+            "input_sha256": {
+              "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+              "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
+              "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+            },
+            "peak_container_memory_bytes": 1450106880,
+            "cpu_seconds": 48.351273
+          },
+          {
+            "fixture_key": "run00029",
+            "role": "calibration",
+            "status": "completed",
+            "report_sha256": "027df31357a84bd064d6439ea51e76ae379cc1d98734f6de53435436c6eea686",
+            "task_id": "correction_check",
+            "seconds": 49.580878,
+            "input_sha256": {
+              "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+              "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
+              "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+            },
+            "peak_container_memory_bytes": 1436966912,
+            "cpu_seconds": 48.547519
+          }
+        ]
+      },
+      "runtime_points": [
+        {
+          "genes": 100,
+          "columns": 200,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 49.580878,
+          "seconds_p90": 49.9803836
         }
       ]
     }

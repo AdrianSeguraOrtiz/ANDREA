@@ -8,5 +8,16 @@
   },
   "checks": {
     "forbid_self_loops": true
-  }
+  },
+  "variants": [
+    {
+      "name": "default"
+    },
+    {
+      "name": "fewer_than_ten_pcs",
+      "param_overrides": {
+        "nfeatures": 8
+      }
+    }
+  ]
 }

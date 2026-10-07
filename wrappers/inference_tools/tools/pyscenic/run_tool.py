@@ -61,6 +61,8 @@ def _as_int_or_none(name: str, value: Any) -> int | None:
         return None
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError(f"{name} must be an integer or null.")
+    if not 0 <= value <= 2**32 - 1:
+        raise ValueError(f"{name} must be between 0 and 4294967295 for NumPy.")
     return int(value)
 
 
@@ -274,7 +276,10 @@ def _convert_adjacencies(raw_path: Path, network_path: Path) -> int:
     if not raw_path.exists() or raw_path.stat().st_size <= 0:
         raise RuntimeError("pySCENIC did not produce a non-empty adjacency table.")
 
-    raw = pd.read_csv(raw_path, sep="\t", header=0, dtype={"TF": str, "target": str})
+    raw = pd.read_csv(
+        raw_path, sep="\t", header=0, dtype={"TF": str, "target": str},
+        keep_default_na=False,
+    )
     required = {"TF", "target", "importance"}
     missing = sorted(required.difference(raw.columns))
     if missing:

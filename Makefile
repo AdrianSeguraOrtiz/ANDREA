@@ -50,16 +50,16 @@ check-twine-credentials:
 
 smoke-wheel:
 	@$(MAKE) check-dist
-	@tmp_dir=$$(mktemp -d); \
+	@set -eu; tmp_dir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp_dir"' EXIT; \
 	$(PYTHON) -m venv "$$tmp_dir/venv"; \
 	"$$tmp_dir/venv/bin/python" -m pip install --upgrade pip; \
 	"$$tmp_dir/venv/bin/python" -m pip install dist/*.whl; \
-	"$$tmp_dir/venv/bin/andrea" --help >/dev/null; \
+	(cd "$$tmp_dir" && "$$tmp_dir/venv/bin/andrea" --help >/dev/null); \
 	echo "Wheel smoke test passed."
 
 smoke-testpypi:
-	@tmp_dir=$$(mktemp -d); \
+	@set -eu; tmp_dir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp_dir"' EXIT; \
 	$(PYTHON) -m venv "$$tmp_dir/venv"; \
 	"$$tmp_dir/venv/bin/python" -m pip install --upgrade pip; \
@@ -67,18 +67,18 @@ smoke-testpypi:
 		--index-url "$(TESTPYPI_INDEX_URL)" \
 		--extra-index-url "$(PYPI_INDEX_URL)" \
 		"$(PACKAGE_NAME)==$(PACKAGE_VERSION)"; \
-	"$$tmp_dir/venv/bin/andrea" --help >/dev/null; \
+	(cd "$$tmp_dir" && "$$tmp_dir/venv/bin/andrea" --help >/dev/null); \
 	echo "TestPyPI smoke test passed for $(PACKAGE_NAME)==$(PACKAGE_VERSION)."
 
 smoke-pypi:
-	@tmp_dir=$$(mktemp -d); \
+	@set -eu; tmp_dir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp_dir"' EXIT; \
 	$(PYTHON) -m venv "$$tmp_dir/venv"; \
 	"$$tmp_dir/venv/bin/python" -m pip install --upgrade pip; \
 	"$$tmp_dir/venv/bin/python" -m pip install \
 		--index-url "$(PYPI_INDEX_URL)" \
 		"$(PACKAGE_NAME)==$(PACKAGE_VERSION)"; \
-	"$$tmp_dir/venv/bin/andrea" --help >/dev/null; \
+	(cd "$$tmp_dir" && "$$tmp_dir/venv/bin/andrea" --help >/dev/null); \
 	echo "PyPI smoke test passed for $(PACKAGE_NAME)==$(PACKAGE_VERSION)."
 
 publish-testpypi: check-dist check-twine-credentials
@@ -112,7 +112,7 @@ clean:
 	@find . -type d -name '__pycache__' -exec rm -rf {} +
 
 render-doc-assets:
-	@$(PYTHON) scripts/render_doc_assets.py
+	@$(PYTHON) scripts/render_doc_assets.py $(ARGS)
 
 black:
 	@$(PYTHON) -m isort --profile black --skip-glob 'wrappers/**/repo/**' --skip-glob 'wrappers/**/papers/**' andrea wrappers tests
@@ -164,7 +164,7 @@ validate-smoketest-configs:
 	@$(PYTHON) $(INFERENCE_WRAPPER_SCRIPTS)/validate_smoketest_configs.py $(ARGS)
 
 validate-tool-costs:
-	@$(PYTHON) $(INFERENCE_WRAPPER_SCRIPTS)/validate_tool_costs.py $(ARGS)
+	@$(PYTHON) $(INFERENCE_WRAPPER_SCRIPTS)/validate_tool_costs.py --require $(ARGS)
 
 validate-simulatorspecs:
 	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_simulatorspecs.py $(ARGS)
@@ -235,3 +235,7 @@ clean-tool-publications:
 
 test-all:
 	@$(PYTHON) -m pytest $(PYTEST_FLAGS) tests
+
+validate-release-costs:
+	@$(PYTHON) $(INFERENCE_WRAPPER_SCRIPTS)/validate_tool_costs.py --require --require-provenance $(ARGS)
+	@$(PYTHON) $(SIMULATION_WRAPPER_SCRIPTS)/validate_simulator_costs.py --require --require-provenance $(ARGS)

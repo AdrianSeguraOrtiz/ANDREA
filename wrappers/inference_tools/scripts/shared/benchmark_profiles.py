@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .benchmark_inputs import GENERATED_EXTRA_INPUTS
-from .param_profiles import DEFAULT_PARAM_OVERRIDES_DIR, resolve_dev_params
+from .param_profiles import DEFAULT_PARAM_OVERRIDES_DIR, resolve_dev_params, _build_default_params
 
 INFERENCE_TOOLS_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_COST_PROFILES_DIR = INFERENCE_TOOLS_ROOT / "cost_profiles"
@@ -404,6 +404,15 @@ def _resolve_profile_params(
     profile_id: str,
     profile_config_path: Path | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    parameter_base = raw_profile.get("parameter_base", "development")
+    if parameter_base not in {"development", "spec_defaults"}:
+        raise ValueError(f"profile {profile_id}: unknown parameter_base {parameter_base!r}")
+    if parameter_base == "spec_defaults":
+        base_params = _build_default_params(params_schema)
+        base_params_profile = {
+            "source": "toolspec_defaults", "override_file": None,
+            "resolved_params": copy.deepcopy(base_params),
+        }
     params = copy.deepcopy(base_params)
     inline_override = raw_profile.get("param_overrides", {})
     if inline_override is None:

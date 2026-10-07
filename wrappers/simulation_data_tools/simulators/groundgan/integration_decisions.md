@@ -37,7 +37,7 @@ Evidence:
 ## Claimed Semantic Capabilities
 
 The executable wrapper claims only capabilities that can be produced from a
-single pretrained causal-GAN run without fabricating truth contexts.
+single causal-GAN checkpoint run without fabricating truth contexts.
 
 | Capability | ANDREA axes | Truth | Decision |
 | --- | --- | --- | --- |
@@ -71,7 +71,7 @@ Truth row semantics:
 
 Default and embedded input routes:
 
-- `input_bundle=toy_4gene` uses a tiny pretrained bundle embedded inside the
+- `input_bundle=toy_4gene` uses a tiny untrained demo bundle embedded inside the
   Docker image at `/opt/andrea/bundles/groundgan/toy_4gene`.
 - `input_bundle=toy_20gene` and `input_bundle=toy_50gene` use larger demo
   bundles embedded inside the same image.
@@ -242,3 +242,43 @@ Verification completed:
 - Future group truth would require a defensible multi-model input bundle with one
   checkpoint and imposed graph per group; it should not be simulated by copying
   the global graph into group contexts.
+
+## Scientific audit, 2026-09-29
+
+Sources: [primary paper](https://www.nature.com/articles/s41467-024-48516-6),
+[pinned generator](https://github.com/Emad-COMBINE-lab/GRouNdGAN/blob/2df087f9144081c46eb6ce0a1daadd273adcc50a/src/networks/masked_causal_generator.py),
+[pinned causal GAN](https://github.com/Emad-COMBINE-lab/GRouNdGAN/blob/2df087f9144081c46eb6ce0a1daadd273adcc50a/src/gans/causal_gan.py), and
+[pinned perturbation workflow](https://github.com/Emad-COMBINE-lab/GRouNdGAN/blob/2df087f9144081c46eb6ce0a1daadd273adcc50a/src/perturbation/perturbation.py).
+Installed source was inspected alongside the wrapper and `build_toy_bundles.py`.
+
+The paper's realistic/reference-based and causal-imposition results depend on
+training. `build_toy_bundles.py` only initializes seeded random weights and
+saves state dictionaries; it never trains. The embedded 4/20/50-gene bundles
+are **untrained software demos**, not pretrained scientific reference models.
+The catalog now warns on those presets, and `checkpoint_scope.json` records
+whether a run used an untrained demo or a user-supplied checkpoint whose training
+history is not verified by the wrapper. Architecture compatibility does not
+establish realism, successful causal imposition or nonzero effective influence
+of every graph edge. Public truth remains imposed unsigned graph topology.
+
+The previous generator allowed simultaneous multiple TF replacements but wrote
+metadata only for the first target. The current normalized metadata has one
+target per cell, so the wrapper rejects multi-target/multi-value requests and
+negative replacement expression. One zero replacement is a knockout; a positive
+replacement is `set_expression` with sign 0 (unspecified), because its direction
+relative to the matched baseline can differ among cells. Matched control and
+perturbed samples reuse the upstream perturbation-mode TF/noise/LSN state.
+Regression tests cover silent target loss, invalid values and effect direction.
+Training, GRN construction, group truth and cell-specific truth remain unclaimed.
+
+### Executed validation for the audited wrapper
+
+On 2026-09-29 the repository Dockerfile built
+`adriansegura99/simulator_groundgan:1.1.0` successfully (local image
+`sha256:5513ddc3ca4a4af2b8c21be3435bc8be5859b68102210df68f778d9f4db026a0`). The wrapper SHA-256 inside
+that image matched the current repository file. All **5/5** simulator smoke
+configurations passed on this final image, using the repository smoke runner
+with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
+These checks cover executable contracts and fixture outputs; they do not
+calibrate costs or independently validate biological realism.
+The three GRouNdGAN perturbation-metadata unit regressions also passed.

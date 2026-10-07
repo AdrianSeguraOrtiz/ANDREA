@@ -174,10 +174,9 @@ Fixed implementation choices, not exposed:
 - Rationale: this is real runtime parallelism through PyTorch, BLAS/OpenMP and
   upstream multiprocessing, so it belongs under `runtime_resources.threading`
   and should not be exposed as a normal method parameter.
-- Uncertainty: no catalog `cost.json` exists for CeSpGRN yet, so
-  `max_threads=8` is a conservative ANDREA planning and benchmarking cap rather
-  than an upstream hard limit. The planner will use `default_threads=1` until
-  empirical cost points are generated.
+- `max_threads=8` is an ANDREA planning cap, not an upstream hard limit.
+  Catalog cost profiles now exist for expression, TF-prior and spatial paths;
+  their calibration/provenance must be reviewed separately from this interface audit.
 
 ## Output Mapping to `network.csv`
 
@@ -316,3 +315,14 @@ Fixed implementation choices, not exposed:
   above.
 - The runtime compatibility shims for `torch_sqrtm` and `torch.eig` are wrapper
   infrastructure, not exposed method parameters.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [CeSpGRN paper](https://doi.org/10.1093/bioinformatics/btag324) and [pinned source](https://github.com/PeterZZQ/CeSpGRN/tree/2fb222f8a26edf1bdae14a95b1491543f0aaa4e8), specifically `demo.py`, `src/kernel.py`, `src/g_admm.py` and the spatial test workflow.
+- `method_family=graph`: kernel-weighted Gaussian copula graphical model optimized with ADMM, not a neural-network estimator. Checked library-size/log1p preprocessing, PCA/spatial kernel choice, weighted Kendall covariance, optional TF mask, ADMM parameters and `G_admm_minibatch.train` output conversion. The training return is a symmetric partial-correlation tensor; the separately retained `model.thetas` are precision matrices. Absolute values and signs are exported once per unordered pair and cell.
+- `batch_size=null` retains the constructor's `int(ncells/10)` rule; the wrapper rejects its zero-batch case. Defaults for PCA, bandwidth, lambda and iterations deliberately follow the runnable demo, not all low-level optimizer defaults. Full scATAC prior-mask construction remains outside the selected interface.
+- Checked the actual `njobs` multiprocessing path and PyTorch thread mapping. Corrected the stale statement that no cost profile exists: checked-in expression, TF-prior and spatial profiles already exist. Their provenance and full-size performance are separate release checks.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/cespgrn:audit-local`; image ID `sha256:b461221fb9b331e11418734c0953bc2267e3fc19d0f6eb986ae35587d8a2bc14`. The repository smoke runner passed `column_native` (831 rows), `column_native_spatial` (820 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.

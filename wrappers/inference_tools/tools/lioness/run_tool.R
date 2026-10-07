@@ -114,7 +114,9 @@ read_expression_tsv <- function(expr_path) {
     sep = "\t",
     header = TRUE,
     check.names = FALSE,
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    colClasses = "character",
+    na.strings = character()
   )
   if (ncol(df) < 4L) {
     stop("expression.tsv must have one gene column and at least 3 cell/sample columns for LIONESS.", call. = FALSE)

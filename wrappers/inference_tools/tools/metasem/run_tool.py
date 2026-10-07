@@ -365,7 +365,10 @@ def _run_metasem(
 
 
 def _convert_network(raw_edges_path: Path, network_path: Path) -> int:
-    raw = pd.read_csv(raw_edges_path, sep="\t", header=0, dtype={"TF": str, "Target": str})
+    raw = pd.read_csv(
+        raw_edges_path, sep="\t", header=0,
+        dtype={"TF": str, "Target": str}, keep_default_na=False,
+    )
     required = {"TF", "Target", "EdgeWeight"}
     missing = sorted(required.difference(raw.columns))
     if missing:

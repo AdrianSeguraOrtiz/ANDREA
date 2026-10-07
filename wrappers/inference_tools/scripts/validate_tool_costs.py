@@ -31,6 +31,19 @@ from shared.catalog_tools import (
     load_toolspec,
     select_tools,
 )
+from shared.benchmark_profiles import DEFAULT_COST_PROFILES_DIR, resolve_benchmark_profiles
+from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR
+from shared.representative_profiles import (
+    load_representative_profiles, representative_fingerprint, representative_profile_errors,
+)
+
+_BENCHMARK_ROOT = Path(__file__).resolve().parents[3]
+if str(_BENCHMARK_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BENCHMARK_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from benchmark_support import (
+    build_context_fingerprint, profile_fingerprint, provenance_errors, release_profile_errors,
+)
 
 DEFAULT_SCHEMA_PATH = CATALOG_ROOT / "schemas" / "toolcost.schema.json"
 
@@ -94,6 +107,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Stop at the first invalid cost profile.",
     )
+    parser.add_argument("--require", action="store_true", help="Fail if any selected tool has no cost.json.")
+    parser.add_argument("--require-provenance", action="store_true", help="Require current catalog image/spec provenance and at least three timing repeats.")
+    parser.add_argument("--cost-profiles-dir", type=Path, default=DEFAULT_COST_PROFILES_DIR)
+    parser.add_argument("--param-overrides-dir", type=Path, default=DEFAULT_PARAM_OVERRIDES_DIR)
     return parser.parse_args(argv)
 
 
@@ -765,12 +782,18 @@ def run(
     catalog_tools_root: Path,
     tool_filters: list[str],
     fail_fast: bool,
+    require: bool = False,
+    require_provenance: bool = False,
+    cost_profiles_dir: Path = DEFAULT_COST_PROFILES_DIR,
+    param_overrides_dir: Path = DEFAULT_PARAM_OVERRIDES_DIR,
 ) -> int:
-    all_costs = discover_cost_files(catalog_tools_root)
-    if not all_costs:
-        raise RuntimeError(f"No cost.json files found under: {catalog_tools_root}")
-
-    selected = select_tools(all_costs, tool_filters)
+    selected_tools = select_tools(discover_catalog_tool_dirs(catalog_tools_root), tool_filters)
+    missing = [tool_id for tool_id, directory in selected_tools if not (directory / "cost.json").exists()]
+    if missing and (require or require_provenance):
+        raise RuntimeError(f"Missing tool cost.json for: {', '.join(missing)}")
+    if missing:
+        print(f"WARNING: unprofiled catalog tools: {', '.join(missing)}")
+    selected = [(tool_id, directory / "cost.json") for tool_id, directory in selected_tools if (directory / "cost.json").exists()]
     schema = load_json(schema_path)
     validator = build_validator(schema)
     known_input_keys = discover_input_keys(catalog_tools_root.parent / "input_specs")
@@ -788,7 +811,29 @@ def run(
                 catalog_tools_root=catalog_tools_root,
                 known_input_keys=known_input_keys,
             )
-        except RuntimeError as exc:
+            if isinstance(instance, dict):
+                context_hash = None
+                if require_provenance:
+                    context_hash = build_context_fingerprint(root=_BENCHMARK_ROOT, kind="inference", identifier=tool_id)
+                    expected = {
+                        profile.profile_id: profile_fingerprint(profile, root=_BENCHMARK_ROOT, kind="inference")
+                        for profile in resolve_benchmark_profiles(
+                            tool_id=tool_id, catalog_tools_root=catalog_tools_root,
+                            cost_profiles_dir=cost_profiles_dir, param_overrides_dir=param_overrides_dir,
+                        )
+                    }
+                    representative = load_representative_profiles(tool_id, cost_profiles_dir / 'representative')
+                    for recipe in representative:
+                        if recipe['profile_id'] in expected:
+                            raise ValueError(f"Duplicate registered profile: {recipe['profile_id']}")
+                        expected[recipe['profile_id']] = representative_fingerprint(recipe)
+                    semantic_errors.extend(representative_profile_errors(instance, representative))
+                    semantic_errors.extend(release_profile_errors(instance, expected))
+                semantic_errors.extend(provenance_errors(
+                    instance, catalog_tools_root / tool_id / "toolspec.json", required=require_provenance,
+                    build_context_sha256=context_hash,
+                ))
+        except (RuntimeError, ValueError, OSError, KeyError) as exc:
             counters = ValidationCounters(
                 valid=counters.valid, invalid=counters.invalid + 1
             )
@@ -835,6 +880,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             catalog_tools_root=args.catalog_tools_root,
             tool_filters=args.tool,
             fail_fast=args.fail_fast,
+            require=args.require,
+            require_provenance=args.require_provenance,
+            cost_profiles_dir=args.cost_profiles_dir,
+            param_overrides_dir=args.param_overrides_dir,
         )
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

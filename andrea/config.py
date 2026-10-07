@@ -1,6 +1,6 @@
 """Package metadata and CLI banner for ANDREA."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0rc2"
 __author__ = "Adrian Segura Ortiz <adrianseor.99@uma.es>"
 
 HEADER = "\n".join(

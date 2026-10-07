@@ -17,7 +17,7 @@
     "undirected"
   ],
   "implementation_url": "https://github.com/Tchanders/NetworkInference.jl",
-  "docker_image": "adriansegura99/inference-tools_pidc:1.0.0",
+  "docker_image": "adriansegura99/inference-tools_pidc:1.1.0",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -44,7 +44,52 @@
     ],
     "supported_species": []
   },
-  "compatibility_rules": [],
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.genes",
+          "op": "lt",
+          "value": 3
+        }
+      ],
+      "action": "block",
+      "message": "PIDC requires at least 3 expression genes."
+    },
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.columns",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "PIDC requires at least 2 expression columns."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.base",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "action": "block",
+      "message": "PIDC logarithm base 1 is undefined."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.estimator",
+          "op": "ne",
+          "value": "maximum_likelihood"
+        }
+      ],
+      "action": "warn",
+      "message": "The pinned NetworkInference.jl source states that non-maximum-likelihood estimators violate a marginal-distribution consistency assumption in its accelerated PIDC calculation; prefer maximum_likelihood."
+    }
+  ],
   "accepts": [
     "samples",
     "cells",
@@ -123,7 +168,7 @@
         "dirichlet",
         "shrinkage"
       ],
-      "description": "Probability estimator passed to NetworkInference.jl. The README recommends maximum_likelihood for PUC and PIDC."
+      "description": "Probability estimator passed to NetworkInference.jl. The README recommends maximum_likelihood for PUC and PIDC. The pinned source states that dirichlet/shrinkage violate a marginal-consistency assumption in its PIDC acceleration; these choices are retained with a compatibility warning."
     },
     "number_of_bins": {
       "type": "int",
@@ -136,9 +181,10 @@
       "type": "float",
       "required": false,
       "default": 2,
-      "min": 0,
+      "min": 1,
       "exclusive_min": true,
-      "description": "Logarithm base used for information measures in NetworkInference.jl."
+      "description": "Logarithm base greater than one, preserving nonnegative information measures used by PIDC."
     }
-  }
+  },
+  "method_family": "information"
 }

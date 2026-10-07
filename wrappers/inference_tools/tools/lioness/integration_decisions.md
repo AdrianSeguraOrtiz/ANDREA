@@ -318,3 +318,13 @@ Outcome:
   column-native wrapper contract. Logical aggregation is covered by ANDREA core
   tests.
 - No remaining wrapper, ToolSpec, normalized-input, or smoketest inconsistencies were found.
+
+## Release audit (2026-09-29)
+
+- Primary sources: [LIONESS paper](https://doi.org/10.1016/j.isci.2019.03.021), [lionessR implementation paper](https://doi.org/10.1186/s12885-019-6235-7), and installed **lionessR 1.26.0** function bodies inspected directly (`netFun`, `lioness`, package version checked). The installed `netFun` is explicitly `cor(t(x), method="pearson")`; `lioness` implements `n*(aggregate-leave_one_out)+leave_one_out`.
+- `method_family=correlation` describes this fixed Pearson integration, not every aggregate estimator that the general LIONESS framework permits. The summary now warns that interpolated weights need not lie in [-1,1]. Checked sample-wise contexts, symmetric signed export, absolute weight/sign separation, minimum observations, undefined-correlation filtering and serial runtime contract.
+- Corrected input parsing to preserve numeric/NA-like gene IDs. Other user-supplied aggregate functions, PANDA priors and alternative network estimators are not exposed by this entrypoint; those require a different contract, not an automatic change of family.
+
+Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
+
+- Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/lioness:audit-local`; image ID `sha256:e8d5eaaf835c2c01fe7990671c9d51008b3fbf92223bc5f4b18ebcdf09e84c6b`. The repository smoke runner passed `default` (840 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.

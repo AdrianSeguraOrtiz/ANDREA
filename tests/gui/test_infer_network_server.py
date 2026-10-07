@@ -301,6 +301,72 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             content, encoding="utf-8"
         )
 
+    def test_planning_uses_output_directory_selected_after_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            request_dir = root / "request"
+            request_dir.mkdir()
+            initial_output = root / "initial-output"
+            selected_output = root / "selected-output"
+            for requested, expected in (
+                (str(selected_output), selected_output),
+                (None, initial_output),
+                ("   ", initial_output),
+            ):
+                with self.subTest(requested=requested):
+                    job = gui_server.GuiJob(
+                        job_id="output-directory-regression",
+                        created_at="2026-10-05T00:00:00Z",
+                        status="completed",
+                        stage="preflight_ok",
+                        request_dir=str(request_dir),
+                        output_dir=str(initial_output),
+                        dataset_manifest_path=str(
+                            request_dir / "dataset-manifest.json"
+                        ),
+                    )
+                    with gui_server.STATE.lock:
+                        gui_server.STATE.jobs[job.job_id] = job
+                    options = {"planner": "heuristic", "max_cores": 1, "max_ram_gb": 2}
+                    if requested is not None:
+                        options["output_dir"] = requested
+                    with (
+                        patch.object(
+                            gui_server,
+                            "start_background_thread",
+                            start_immediate_background_thread,
+                        ),
+                        patch.object(
+                            gui_server, "preflight_infer_network", return_value={}
+                        ),
+                        patch.object(
+                            gui_server,
+                            "plan_infer_network",
+                            return_value=expected / "run",
+                        ) as planner,
+                    ):
+                        response = TestClient(gui_server.create_app()).post(
+                            "/api/infer-network/plan",
+                            json={
+                                "job_id": job.job_id,
+                                "runs": [
+                                    {
+                                        "run_id": "clr_run",
+                                        "tool_id": "clr",
+                                        "params": {},
+                                    }
+                                ],
+                                "options": options,
+                            },
+                        )
+                    self.assertEqual(response.status_code, 200, response.text)
+                    self.assertEqual(job.status, "completed", job.error)
+                    self.assertEqual(planner.call_args.kwargs["output_dir"], expected)
+                    self.assertEqual(planner.call_args.kwargs["max_cores"], 1)
+                    self.assertEqual(planner.call_args.kwargs["max_ram_gb"], 2)
+                    self.assertEqual(job.output_dir, str(expected))
+                    self.assertEqual(job.run_dir, str(expected / "run"))
+
     def test_preflight_plan_run_workflow(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
@@ -1313,6 +1379,14 @@ class InferNetworkGuiServerTests(unittest.TestCase):
         self.assertFalse(readiness["graph_exports_required"])
         self.assertTrue(full_bundle["available"])
         self.assertFalse(graphs_bundle["available"])
+        self.assertEqual(
+            graphs_bundle["readiness"],
+            [{"label": "Graph exports", "status": "not_required"}],
+        )
+        self.assertIn(
+            "graph exports were not requested by the canonical output profile",
+            graphs_bundle["missing_required"],
+        )
         self.assertEqual(
             full_bundle["readiness"],
             [

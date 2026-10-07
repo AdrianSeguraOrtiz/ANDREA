@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import hashlib
 import subprocess
 import sys
 import tempfile
@@ -148,6 +149,22 @@ def _semantic_errors(payload: object, *, tool_id: str = "genie3") -> list[str]:
 
 
 class BenchmarkCostsContractTest(unittest.TestCase):
+    def setUp(self) -> None:
+        def evidence(**kwargs):
+            return {
+                "recorded_at_utc": "2026-09-29T00:00:00+00:00",
+                "git_commit": "f" * 40, "git_dirty": False,
+                "source_sha256": "a" * 64,
+                "spec_sha256": hashlib.sha256(kwargs["spec_path"].read_bytes()).hexdigest(),
+                "image_reference": kwargs["image"], "image_id": "sha256:" + "b" * 64,
+                "image_repo_digests": [], "platform": "test", "cpu_model": "test",
+                "logical_cpus": 1, "host_memory_bytes": 1024, "docker_server": "test",
+                "seed": kwargs["seed"], "timing_scope": "test",
+            }
+        evidence_patch = patch.object(benchmark_costs, "collect_provenance", side_effect=evidence)
+        evidence_patch.start()
+        self.addCleanup(evidence_patch.stop)
+
     def test_toolcost_schema_rejects_missing_input_profile(self) -> None:
         payload = copy.deepcopy(_valid_cost_payload())
         del payload["profiles"][0]["benchmark_config"]["input_profile"]
@@ -420,6 +437,51 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             {"error": 1, "ok": 1, "timeout": 1},
         )
 
+    def test_failed_matrix_returns_failure_and_preserves_existing_cost(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            catalog = root / "catalog"
+            sources = root / "sources"
+            (catalog / "genie3").mkdir(parents=True)
+            (sources / "genie3").mkdir(parents=True)
+            _write_catalog_toolspec(catalog / "genie3/toolspec.json", "genie3")
+            cost_path = catalog / "genie3/cost.json"
+            original = '{"sentinel": true}\n'
+            cost_path.write_text(original)
+            with patch.object(benchmark_costs, "run_container_once", return_value=("error", 1.0, "failed")):
+                result = benchmark_costs.run([
+                    "--catalog-tools-root", str(catalog), "--tool-sources-root", str(sources),
+                    "--tool", "genie3", "--size", "8x4", "--threads", "1", "--ram-gb", "1",
+                    "--skip-build", "--fail-fast", "--results-dir", str(root / "evidence"),
+                ])
+            self.assertEqual(result, 1)
+            self.assertEqual(cost_path.read_text(), original)
+            measurements = list((root / "evidence").glob("**/measurements.json"))
+            self.assertEqual(len(measurements), 1)
+            self.assertEqual(json.loads(measurements[0].read_text())[0]["status"], "error")
+
+    def test_missing_source_and_failed_build_return_nonzero(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            catalog = root / "catalog"
+            (catalog / "genie3").mkdir(parents=True)
+            _write_catalog_toolspec(catalog / "genie3/toolspec.json", "genie3")
+            argv = ["--catalog-tools-root", str(catalog), "--tool-sources-root", str(root / "sources"),
+                    "--tool", "genie3", "--size", "8x4", "--threads", "1", "--ram-gb", "1"]
+            self.assertEqual(benchmark_costs.run(argv), 1)
+            (root / "sources/genie3").mkdir(parents=True)
+            with patch.object(benchmark_costs, "build_image", side_effect=RuntimeError("build failed")):
+                self.assertEqual(benchmark_costs.run(argv), 1)
+            self.assertFalse((catalog / "genie3/cost.json").exists())
+
+    def test_required_cost_coverage_rejects_missing_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = Path(tmp)
+            (catalog / "genie3").mkdir()
+            _write_catalog_toolspec(catalog / "genie3/toolspec.json", "genie3")
+            with self.assertRaisesRegex(RuntimeError, "Missing tool cost.json for: genie3"):
+                validate_tool_costs.run(TOOL_COST_SCHEMA, catalog, [], False, require=True)
+
     def test_run_writes_selected_profiles_without_pooling_runtime_points(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
@@ -449,8 +511,10 @@ class BenchmarkCostsContractTest(unittest.TestCase):
                         str(COST_PROFILES_DIR),
                         "--tool",
                         "genie3",
+                        "--merge-existing",
                         "--profile",
                         "global_default",
+                        "--merge-existing",
                         "--profile",
                         "global_tf_list",
                         "--size",
@@ -536,6 +600,7 @@ class BenchmarkCostsContractTest(unittest.TestCase):
                         str(COST_PROFILES_DIR),
                         "--tool",
                         "clr",
+                        "--merge-existing",
                         "--profile",
                         "global_default",
                         "--size",
@@ -653,6 +718,7 @@ class BenchmarkCostsContractTest(unittest.TestCase):
                         str(COST_PROFILES_DIR),
                         "--tool",
                         "genie3",
+                        "--merge-existing",
                         "--profile",
                         "global_default",
                         "--threads",
