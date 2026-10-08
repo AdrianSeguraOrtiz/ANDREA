@@ -62,6 +62,7 @@ class ResolvedParams:
     metacell_count: int
     ensemble: int
     diffusion_timesteps: int
+    seed: int
 
 
 @dataclass(frozen=True)
@@ -105,7 +106,10 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
         "diffusion_timesteps",
     }
     require_param_keys(raw_params, expected)
-    warn_unknown_params(raw_params, expected)
+    warn_unknown_params(raw_params, expected | {"seed"})
+    seed = _as_int("seed", raw_params.get("seed", 0), min_value=0)
+    if seed >= 2**32:
+        raise ValueError("seed must be <= 4294967295.")
 
     gene_set = raw_params["gene_set"]
     if not isinstance(gene_set, str) or not gene_set.strip():
@@ -116,6 +120,7 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
     gene_set = gene_set.strip()
 
     return ResolvedParams(
+        seed=seed,
         gene_set=gene_set,
         metacell=_as_bool("metacell", raw_params["metacell"]),
         knn=_as_int("knn", raw_params["knn"], min_value=1),
@@ -373,7 +378,7 @@ def _write_model_config(
     payload = {
         "upstream_repo": "https://github.com/zpliulab/DigNet",
         "upstream_ref": DIGNET_REF,
-        "entrypoint": "Config() -> DigNet(args) -> load_test_data() -> DigNet.test()",
+        "entrypoint": "Config() -> DigNet(args) -> load_test_data() -> seeded upstream diffusion ensemble",
         "execution_mode": mode,
         "model_path": str(MODEL_PATH),
         "pca_path": str(PCA_PATH),
@@ -387,6 +392,9 @@ def _write_model_config(
         "effective_feature_count": prepared.effective_feature_count,
         "pca_feature_count": prepared.pca_feature_count,
         "ensemble": params.ensemble,
+        "seed": params.seed,
+        "ensemble_seeds": [(params.seed + i) % (2**32) for i in range(params.ensemble)],
+        "deterministic_algorithms": True,
         "diffusion_timesteps": params.diffusion_timesteps,
         "requested_threads": threads,
         "upstream_n_job": n_job,
@@ -405,6 +413,46 @@ def _configure_torch_threads() -> None:
         torch.set_num_interop_threads(1)
     except RuntimeError:
         pass
+
+
+def _seed_rng(seed: int) -> None:
+    """Initialize all stochastic backends before preprocessing or model creation."""
+    import random
+
+    import numpy as np
+    import torch
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
+
+
+def _sample_seeded_member(diffusion, testdata, truelabel, show, seed):
+    # Each job resets its own streams: results cannot depend on worker scheduling.
+    import torch
+
+    # Do not reset inter-op threads: n_jobs=1 may run in the initialized parent.
+    torch.set_num_threads(1)
+    _seed_rng(seed)
+    _, adjacency = diffusion.test_step(testdata, truelabel, show=show, seed=seed)
+    return adjacency
+
+
+def _run_seeded_ensemble(trainer, diffusion_pre, testdata, truelabel, seed):
+    """Preserve upstream model loading and vote aggregation, seed each member."""
+    from joblib import Parallel, delayed
+    from make_final_net import cal_final_net
+
+    diffusion = trainer.load_pre_model(diffusion_pre)
+    diffusion.eval()
+    members = Parallel(n_jobs=trainer.n_job)(
+        delayed(_sample_seeded_member)(
+            diffusion, testdata, truelabel, trainer.show, (seed + index) % (2**32)
+        )
+        for index in range(trainer.ensemble)
+    )
+    return cal_final_net(members)
 
 
 def _run_dignet(
@@ -452,6 +500,7 @@ def _run_dignet(
                 args.show = False
                 args.n_job = n_job
 
+                _seed_rng(params.seed)
                 trainer = DigNet(args)
                 diffusion_pre = torch.load(str(MODEL_PATH), map_location=trainer.device)
                 testdata, truelabel = trainer.load_test_data(
@@ -459,7 +508,9 @@ def _run_dignet(
                     num=0,
                     diffusion_pre=diffusion_pre,
                 )
-                adj_final = trainer.test(diffusion_pre, testdata, truelabel)
+                adj_final = _run_seeded_ensemble(
+                    trainer, diffusion_pre, testdata, truelabel, params.seed
+                )
             finally:
                 os.chdir(previous_cwd)
 

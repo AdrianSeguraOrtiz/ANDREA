@@ -13,6 +13,7 @@ GUI screens and catalogs.
 - [Catalogs and coverage](catalogs.md)
 - [External Docker tools](external-docker-tools.md)
 - [Developer notes](development.md)
+- [Release notes and migration](changelog.md)
 - [Release checklist](release.md)
 
 ## Documentation Model

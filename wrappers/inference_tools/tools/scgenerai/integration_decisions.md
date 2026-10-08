@@ -236,3 +236,10 @@ The primary paper (https://doi.org/10.1093/nar/gkac1212) and pinned `77177a25897
 Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
 
 Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/scgenerai:local` (image ID `sha256:163cbd392a16db1c792a7cc12a80d974db0ebf08ced58af8688fd54ff8a98865`; no wrapper overlay). The official smoketest runner passed `default` (36 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.
+
+## Seeded CPU execution (integration 1.1.1)
+
+The public `seed` parameter is an integer in [0, 4294967295], default 0.
+Older complete parameter files that omit it use that same default. The wrapper seeds Python, NumPy and PyTorch before constructing the network. NumPy masking and initial weights are therefore controlled. The upstream fixed train/test split seed (0) remains unchanged. CPU execution requires PyTorch deterministic algorithms, and the image fixes PYTHONHASHSEED=0 for stable hash iteration. Repetition is validated within the pinned image and fixed resources; bitwise identity on arbitrary hardware or library versions is not promised. This supersedes the earlier unseeded execution limitation; the old 1.1.0 image and its measurements retain their original identity.
+
+Rebuild this image and remeasure its baseline and representative cost profiles: previous calibration fingerprints do not describe 1.1.1. The generic seed regression runner checks repeated fresh containers, a changed seed and one/two-worker execution.

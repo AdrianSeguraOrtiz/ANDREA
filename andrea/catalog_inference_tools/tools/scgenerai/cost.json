@@ -60,7 +60,8 @@
             "lr": 0.02,
             "batch_size": 5,
             "lr_decay": 0.995,
-            "early_stopping": true
+            "early_stopping": true,
+            "seed": 0
           },
           "cost_relevant_params": [
             "nepochs",
@@ -80,17 +81,15 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-09-29T22:43:32.398907+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-07T07:54:20.451543+00:00",
+          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
           "git_dirty": true,
-          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
-          "spec_sha256": "c5c39f4c5449d5c546e78b83f346fc56914643913cfcd3f20c48834fbfcdb870",
-          "build_context_sha256": "effb5d6a63b833e771ca6d296825c51f91cb82b1554f0821d047ed800415ec3b",
-          "image_reference": "adriansegura99/inference-tools_scgenerai:1.1.0",
-          "image_id": "sha256:163cbd392a16db1c792a7cc12a80d974db0ebf08ced58af8688fd54ff8a98865",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_scgenerai@sha256:bd37f76ba16d2bb23ad0f43129d71aad9db8748664196c10f17061f8519012ac"
-          ],
+          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "spec_sha256": "8fdfbaf2004315a84ea20310184a0d93864be6f0a082d521dabba4cb306968e8",
+          "build_context_sha256": "a7261b3c2e7a1da4ca475148bce581e99d70e70a71d1f6a40525be03c8a1a17a",
+          "image_reference": "adriansegura99/inference-tools_scgenerai:1.1.1",
+          "image_id": "sha256:2da49602b518e17046f08e19bad49bc9d2c26716ad1d6a84b6c0504d3d278369",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
@@ -99,7 +98,7 @@
           "seed": 12345,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "1612dd89a887138af2ca53a483bc7a275d1af830e579f622444b146e8fed9b84"
+        "profile_sha256": "eab7fe3d01792f54593b8b64b7672748ea2dba1c4ba85e4df9893a2ac65f700c"
       },
       "runtime_points": [
         {
@@ -117,8 +116,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.507588,
-          "seconds_p90": 19.728834,
+          "seconds_p50": 19.313591,
+          "seconds_p90": 19.479226,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -148,8 +147,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.328478,
-          "seconds_p90": 18.562602,
+          "seconds_p50": 19.085814,
+          "seconds_p90": 19.294097,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -179,8 +178,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.194373,
-          "seconds_p90": 18.320184,
+          "seconds_p50": 18.951824,
+          "seconds_p90": 19.187403,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -210,8 +209,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.395976,
-          "seconds_p90": 18.651722,
+          "seconds_p50": 18.962857,
+          "seconds_p90": 19.060171,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -241,8 +240,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 17.752818,
-          "seconds_p90": 17.82768,
+          "seconds_p50": 18.650647,
+          "seconds_p90": 19.014144,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -272,8 +271,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 17.853043,
-          "seconds_p90": 17.897686,
+          "seconds_p50": 18.724612,
+          "seconds_p90": 18.74645,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -303,8 +302,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.043848,
-          "seconds_p90": 18.050122,
+          "seconds_p50": 18.76002,
+          "seconds_p90": 18.807148,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -334,8 +333,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 17.867586,
-          "seconds_p90": 17.88278,
+          "seconds_p50": 18.712005,
+          "seconds_p90": 18.731038,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -365,8 +364,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 82.511667,
-          "seconds_p90": 82.679309,
+          "seconds_p50": 85.23303,
+          "seconds_p90": 85.553795,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -396,8 +395,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 82.190696,
-          "seconds_p90": 82.505758,
+          "seconds_p50": 86.324872,
+          "seconds_p90": 86.3758,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -427,8 +426,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 76.897413,
-          "seconds_p90": 77.203035,
+          "seconds_p50": 81.319307,
+          "seconds_p90": 81.457444,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -458,8 +457,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 76.808361,
-          "seconds_p90": 77.497989,
+          "seconds_p50": 79.840852,
+          "seconds_p90": 80.890766,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -489,8 +488,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 73.593131,
-          "seconds_p90": 73.831499,
+          "seconds_p50": 76.999039,
+          "seconds_p90": 77.138233,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -520,8 +519,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 74.199339,
-          "seconds_p90": 74.303978,
+          "seconds_p50": 76.836707,
+          "seconds_p90": 77.773115,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -551,8 +550,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 73.400593,
-          "seconds_p90": 73.449258,
+          "seconds_p50": 77.299678,
+          "seconds_p90": 78.747146,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -582,8 +581,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 72.713934,
-          "seconds_p90": 73.033797,
+          "seconds_p50": 78.144429,
+          "seconds_p90": 78.416015,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -663,7 +662,8 @@
             "lr": 0.02,
             "batch_size": 5,
             "lr_decay": 0.995,
-            "early_stopping": true
+            "early_stopping": true,
+            "seed": 0
           },
           "cost_relevant_params": [
             "nepochs",
@@ -683,17 +683,15 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-09-29T22:43:32.398907+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-07T07:54:20.451543+00:00",
+          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
           "git_dirty": true,
-          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
-          "spec_sha256": "c5c39f4c5449d5c546e78b83f346fc56914643913cfcd3f20c48834fbfcdb870",
-          "build_context_sha256": "effb5d6a63b833e771ca6d296825c51f91cb82b1554f0821d047ed800415ec3b",
-          "image_reference": "adriansegura99/inference-tools_scgenerai:1.1.0",
-          "image_id": "sha256:163cbd392a16db1c792a7cc12a80d974db0ebf08ced58af8688fd54ff8a98865",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_scgenerai@sha256:bd37f76ba16d2bb23ad0f43129d71aad9db8748664196c10f17061f8519012ac"
-          ],
+          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "spec_sha256": "8fdfbaf2004315a84ea20310184a0d93864be6f0a082d521dabba4cb306968e8",
+          "build_context_sha256": "a7261b3c2e7a1da4ca475148bce581e99d70e70a71d1f6a40525be03c8a1a17a",
+          "image_reference": "adriansegura99/inference-tools_scgenerai:1.1.1",
+          "image_id": "sha256:2da49602b518e17046f08e19bad49bc9d2c26716ad1d6a84b6c0504d3d278369",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
@@ -702,7 +700,7 @@
           "seed": 12345,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "c8bea3bf3dba43337a2c37aa6f1c0cd7a8264797f625410d3517615b902240f0"
+        "profile_sha256": "c1ed32286f1c2a384f2529c615a1b2b10e82d12f9bbb01b4b7ef733078420267"
       },
       "runtime_points": [
         {
@@ -720,8 +718,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.947572,
-          "seconds_p90": 19.008705,
+          "seconds_p50": 19.963648,
+          "seconds_p90": 20.245908,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -751,8 +749,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.877958,
-          "seconds_p90": 18.88419,
+          "seconds_p50": 19.822602,
+          "seconds_p90": 19.957237,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -782,8 +780,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.886414,
-          "seconds_p90": 19.13308,
+          "seconds_p50": 19.769436,
+          "seconds_p90": 19.885857,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -813,8 +811,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.902022,
-          "seconds_p90": 18.999435,
+          "seconds_p50": 19.730055,
+          "seconds_p90": 19.957141,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -844,8 +842,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.183094,
-          "seconds_p90": 18.208148,
+          "seconds_p50": 18.818173,
+          "seconds_p90": 18.989876,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -875,8 +873,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.152951,
-          "seconds_p90": 18.262452,
+          "seconds_p50": 18.846115,
+          "seconds_p90": 19.044145,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -906,8 +904,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.099471,
-          "seconds_p90": 18.21416,
+          "seconds_p50": 18.786289,
+          "seconds_p90": 18.949265,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -937,8 +935,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 18.016675,
-          "seconds_p90": 18.096245,
+          "seconds_p50": 18.775179,
+          "seconds_p90": 18.821224,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 20,
@@ -968,8 +966,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 86.851995,
-          "seconds_p90": 87.267136,
+          "seconds_p50": 90.630564,
+          "seconds_p90": 90.887538,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -999,8 +997,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 86.640213,
-          "seconds_p90": 86.764208,
+          "seconds_p50": 90.200978,
+          "seconds_p90": 90.407836,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -1030,8 +1028,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 81.297937,
-          "seconds_p90": 81.622731,
+          "seconds_p50": 85.609705,
+          "seconds_p90": 85.789057,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -1061,8 +1059,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 81.604705,
-          "seconds_p90": 81.936363,
+          "seconds_p50": 84.398954,
+          "seconds_p90": 85.179374,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -1092,8 +1090,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 76.714651,
-          "seconds_p90": 77.821733,
+          "seconds_p50": 79.274396,
+          "seconds_p90": 79.467362,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -1123,8 +1121,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 77.275259,
-          "seconds_p90": 78.241521,
+          "seconds_p50": 79.310989,
+          "seconds_p90": 79.53085,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -1154,8 +1152,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 75.556747,
-          "seconds_p90": 75.611793,
+          "seconds_p50": 78.532236,
+          "seconds_p90": 78.952102,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -1185,8 +1183,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 75.040364,
-          "seconds_p90": 75.290596,
+          "seconds_p50": 79.219489,
+          "seconds_p90": 80.199255,
           "feature_vector": {
             "execution_mode": "column_native",
             "n_cells": 40,
@@ -1241,7 +1239,7 @@
           "output_density_class": "dense",
           "aggregation_step": "none",
           "notes": [
-            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Supplementary full-parameter measurements with seeded CPU inference; calibration observations are separate from held-out validation.",
             "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
             "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
           ]
@@ -1255,7 +1253,8 @@
             "lr": 0.02,
             "batch_size": 5,
             "lr_decay": 0.995,
-            "early_stopping": true
+            "early_stopping": true,
+            "seed": 0
           },
           "cost_relevant_params": [
             "batch_size",
@@ -1275,71 +1274,63 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-10-06T03:38:24.298804+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-07T05:53:44.552788+00:00",
+          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
           "git_dirty": true,
-          "source_sha256": "1a4e4f55f87dc2bb2be63e20a829be6adfc3ec98e6d9a5ab555c9cbc26ebceb9",
-          "spec_sha256": "c5c39f4c5449d5c546e78b83f346fc56914643913cfcd3f20c48834fbfcdb870",
-          "build_context_sha256": "effb5d6a63b833e771ca6d296825c51f91cb82b1554f0821d047ed800415ec3b",
-          "image_reference": "adriansegura99/inference-tools_scgenerai:1.1.0",
-          "image_id": "sha256:163cbd392a16db1c792a7cc12a80d974db0ebf08ced58af8688fd54ff8a98865",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_scgenerai@sha256:bd37f76ba16d2bb23ad0f43129d71aad9db8748664196c10f17061f8519012ac"
-          ],
+          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "spec_sha256": "8fdfbaf2004315a84ea20310184a0d93864be6f0a082d521dabba4cb306968e8",
+          "build_context_sha256": "a7261b3c2e7a1da4ca475148bce581e99d70e70a71d1f6a40525be03c8a1a17a",
+          "image_reference": "adriansegura99/inference-tools_scgenerai:1.1.1",
+          "image_id": "sha256:2da49602b518e17046f08e19bad49bc9d2c26716ad1d6a84b6c0504d3d278369",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
           "host_memory_bytes": 67432239104,
           "docker_server": "24.0.2",
-          "seed": 1729,
-          "timing_scope": "Physical container launch through exit collection; measurements made with frozen ANDREA 0.2.0rc1 runtime and unchanged Docker image. Imported by the current source snapshot; host evaluation/postprocessing excluded."
+          "seed": 0,
+          "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "afbd5f6861c36011b7291678321c74f6f5aee7d2efbe44507a09bfc040c3f090",
+        "profile_sha256": "3769a0d9293a397c998d3efed460de628e25144700b615336b91a7111a855d76",
         "calibration_evidence": [
           {
             "fixture_key": "run00030",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "ac6f33843ddab63bada183dee2ac0102e93d7c5d21a7a6fa15650a0c469ddf70",
-            "task_id": "run00030",
-            "seconds": 467.652536,
+            "task_id": "scgenerai-representative-repeat1",
+            "seconds": 553.08443826437,
             "input_sha256": {
               "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
               "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
-              "params.json": "5ba463b5a4ba667bbd41c62c4cd031db8e3890b22bdfb655b94aeb3f0f9622ae"
+              "params.json": "1db27cc7c66264ffa527b3ed04ec30951c3fbc6fd7ca8a7668576377eb717fb0"
             },
-            "peak_container_memory_bytes": 905965568,
-            "cpu_seconds": 855.440699
+            "report_sha256": "8f2fd0d82d5ea640d8ec510d88402f8c45c5034c8fc54eed8644d639909ca604"
           },
           {
             "fixture_key": "run00030",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "b6c36877972f877454049829702d82c803d589a59282f7e174bea8dafab29249",
-            "task_id": "correction_check",
-            "seconds": 524.469511,
+            "task_id": "scgenerai-representative-repeat2",
+            "seconds": 554.3826411962509,
             "input_sha256": {
               "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
               "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
-              "params.json": "5ba463b5a4ba667bbd41c62c4cd031db8e3890b22bdfb655b94aeb3f0f9622ae"
+              "params.json": "1db27cc7c66264ffa527b3ed04ec30951c3fbc6fd7ca8a7668576377eb717fb0"
             },
-            "peak_container_memory_bytes": 957001728,
-            "cpu_seconds": 929.769544
+            "report_sha256": "8d5bbc97ba640430e679bf2ad3bff3ce16f1e1dc004073b2ebd30413e75bda60"
           },
           {
             "fixture_key": "run00030",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "b6380feca84d58fdd246ca29d24e839e4ac920d17b1fc29a8246ed56e3aef765",
-            "task_id": "correction_check",
-            "seconds": 519.082091,
+            "task_id": "scgenerai-representative-repeat3",
+            "seconds": 554.3910483270884,
             "input_sha256": {
               "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
               "expression.tsv": "edb3351ff6784c78c1bd542fb06e90a78955e7dd980cc39ca0c9172f190fcbff",
-              "params.json": "5ba463b5a4ba667bbd41c62c4cd031db8e3890b22bdfb655b94aeb3f0f9622ae"
+              "params.json": "1db27cc7c66264ffa527b3ed04ec30951c3fbc6fd7ca8a7668576377eb717fb0"
             },
-            "peak_container_memory_bytes": 905400320,
-            "cpu_seconds": 927.103067
+            "report_sha256": "1e20a21ae8b871bc82576139ba806174f7f38a93b1e29a578f5bfbbfff8f6d25"
           }
         ]
       },
@@ -1359,8 +1350,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 519.082091,
-          "seconds_p90": 523.392027
+          "seconds_p50": 554.3826411962509,
+          "seconds_p90": 554.3893669009209
         }
       ]
     }

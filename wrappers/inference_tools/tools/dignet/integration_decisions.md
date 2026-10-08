@@ -192,3 +192,10 @@ Observed on `inferred_networks/gui_dataset_20260623T214216Z`:
 Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
 
 - Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/dignet:audit-local`; image ID `sha256:2725d6e9014deee7306195d955521ddd584be1af078a5447c33a0b6341b4db24`. The repository smoke runner passed `global` (4 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.
+
+## Seeded CPU execution (integration 1.1.1)
+
+The public `seed` parameter is an integer in [0, 4294967295], default 0.
+Older complete parameter files that omit it use that same default. The wrapper preserves upstream checkpoint loading, diffusion sampling and cal_final_net vote aggregation. It supplies each member i with seed (seed + i) modulo 2^32 and resets Python, NumPy and PyTorch in that member, so joblib scheduling cannot choose its random stream. The parent is also seeded before model construction and preprocessing. CPU execution requires PyTorch deterministic algorithms, and the image fixes PYTHONHASHSEED=0 for stable hash iteration. Repetition is validated within the pinned image and fixed resources; bitwise identity on arbitrary hardware or library versions is not promised. This supersedes the earlier unseeded execution limitation; the old 1.1.0 image and its measurements retain their original identity.
+
+Rebuild this image and remeasure its baseline and representative cost profiles: previous calibration fingerprints do not describe 1.1.1. The generic seed regression runner checks repeated fresh containers, a changed seed and one/two-worker execution.

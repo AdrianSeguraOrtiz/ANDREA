@@ -7,7 +7,7 @@
   ],
   "first_author": "Philipp Keyl",
   "year": 2023,
-  "method_summary": "scGeneRAI trains a neural network on static scRNA-seq data to impute masked gene expression values from arbitrary sets of other genes, then applies layer-wise relevance propagation to estimate gene-gene relevance for individual cells. The selected public score is LRPau, an absolute undirected average of reciprocal raw LRP scores for each gene pair. The integrated upstream code fixes the training split seed but does not seed initial network weights or NumPy masking; repeated fits can therefore differ and no public full-run seed is exposed.",
+  "method_summary": "scGeneRAI trains a neural network on static scRNA-seq data to impute masked gene expression values from arbitrary sets of other genes, then applies layer-wise relevance propagation to estimate gene-gene relevance for individual cells. The selected public score is LRPau, an absolute undirected average of reciprocal raw LRP scores for each gene pair. The wrapper supplies a seed for initial network weights and NumPy masking before fitting, while preserving the upstream fixed train/test split seed of 0.",
   "method_keywords": [
     "single_cell",
     "explainable_ai",
@@ -17,7 +17,7 @@
     "undirected"
   ],
   "implementation_url": "https://github.com/PhGK/scGeneRAI",
-  "docker_image": "adriansegura99/inference-tools_scgenerai:1.1.0",
+  "docker_image": "adriansegura99/inference-tools_scgenerai:1.1.1",
   "runtime_resources": {
     "threading": {
       "supported": true,
@@ -135,6 +135,14 @@
       "required": false,
       "default": true,
       "description": "Whether scGeneRAI.fit() reloads the model checkpoint with the smallest internal test loss."
+    },
+    "seed": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 4294967295,
+      "description": "Wrapper seed for Python, NumPy masking and initial PyTorch weights, applied before model creation. Upstream keeps its fixed train/test split seed of 0. Repeated fits use deterministic CPU algorithms in the pinned environment."
     }
   },
   "artifacts_aux": [

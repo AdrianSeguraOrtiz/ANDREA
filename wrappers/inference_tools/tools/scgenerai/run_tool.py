@@ -35,6 +35,7 @@ class ResolvedParams:
     batch_size: int
     lr_decay: float
     early_stopping: bool
+    seed: int = 0
 
 
 @dataclass(frozen=True)
@@ -92,9 +93,13 @@ def resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
         "early_stopping",
     }
     require_param_keys(raw_params, expected)
-    warn_unknown_params(raw_params, expected)
+    warn_unknown_params(raw_params, expected | {"seed"})
+    seed = _as_int("seed", raw_params.get("seed", 0), min_value=0)
+    if seed >= 2**32:
+        raise ValueError("seed must be <= 4294967295.")
 
     return ResolvedParams(
+        seed=seed,
         nepochs=_as_int("nepochs", raw_params["nepochs"], min_value=1),
         model_depth=_as_int("model_depth", raw_params["model_depth"], min_value=0),
         lr=_as_float("lr", raw_params["lr"], min_value=0.0, exclusive_min=True),
@@ -305,6 +310,19 @@ def convert_raw_results(raw_dir: Path, cell_ids: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=NETWORK_COLUMNS)
 
 
+def _seed_rng(seed: int) -> None:
+    """Initialize all stochastic backends before preprocessing or model creation."""
+    import random
+
+    import numpy as np
+    import torch
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
+
+
 def run_scgenerai(
     *,
     expression: ExpressionInput,
@@ -334,6 +352,8 @@ def run_scgenerai(
     except Exception as exc:  # noqa: BLE001
         append_log(log_path, f"Warning: failed to set torch thread count: {exc}")
 
+    _seed_rng(params.seed)
+    append_log(log_path, f"Full-run seed={params.seed}; deterministic CPU algorithms enabled; upstream split seed=0.")
     model = scgenerai_module.scGeneRAI()
     with log_path.open("a", encoding="utf-8") as log_fh:
         with contextlib.redirect_stdout(log_fh), contextlib.redirect_stderr(log_fh):

@@ -98,3 +98,16 @@ including combinations of native and wrapper-derived truth.
 Keep manuscripts, submission material and their experiment/replication bundles
 in the ignored `paper/` directory or outside the repository. Only reusable
 software, catalog assets and general documentation belong in version control.
+
+Validate seed control in the three seeded neural wrappers after rebuilding
+their catalog images:
+
+```sh
+python wrappers/inference_tools/scripts/validate_seed_reproducibility.py \
+  --results-dir release-logs/seed-regression-new
+```
+
+This runs fresh containers with identical and changed seeds, and checks both
+one-worker and two-worker execution. DigNet/PLaNet must also preserve their
+output when the worker count changes. The small fixtures are regression checks;
+representative full-parameter runs and fresh cost calibration remain separate.

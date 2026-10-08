@@ -23,6 +23,8 @@ RUN git clone https://github.com/PhGK/scGeneRAI.git /opt/scGeneRAI \
 
 ENV PYTHONPATH="/opt/scGeneRAI:${PYTHONPATH}"
 
+ENV PYTHONHASHSEED=0
+
 COPY run_tool.sh /app/run_tool.sh
 COPY run_tool.py /app/run_tool.py
 COPY _run_tool_common.py /app/_run_tool_common.py

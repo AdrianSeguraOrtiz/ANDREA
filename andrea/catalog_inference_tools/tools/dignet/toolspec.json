@@ -7,7 +7,7 @@
   ],
   "first_author": "Chuanyuan Wang",
   "year": 2024,
-  "method_summary": "DigNet uses discrete graph diffusion and graph-transformer denoising to infer directed GRNs from scRNA-seq expression, combining repeated generations into edge vote counts. This integration runs the pinned human cancer pretrained checkpoint with its bundled PCA and human pathway resources and returns one network per supplied expression matrix; it does not train a new model or produce one network per cell.",
+  "method_summary": "DigNet uses discrete graph diffusion and graph-transformer denoising to infer directed GRNs from scRNA-seq expression, combining repeated generations into edge vote counts. This integration runs the pinned human cancer pretrained checkpoint with its bundled PCA and human pathway resources and returns one network per supplied expression matrix; it does not train a new model or produce one network per cell. The wrapper explicitly seeds preprocessing and each diffusion ensemble member for repeatable CPU execution.",
   "method_family": "neural",
   "method_keywords": [
     "single_cell",
@@ -18,7 +18,7 @@
     "directed"
   ],
   "implementation_url": "https://github.com/zpliulab/DigNet",
-  "docker_image": "adriansegura99/inference-tools_dignet:1.1.0",
+  "docker_image": "adriansegura99/inference-tools_dignet:1.1.1",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -512,6 +512,14 @@
       "default": 1000,
       "min": 1,
       "description": "Number of reverse diffusion timesteps used by GaussianDiffusion1D during DigNet test generation. Runtime scales with this value; choose a smaller value when the available runtime budget is limited."
+    },
+    "seed": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 4294967295,
+      "description": "Wrapper seed for preprocessing and diffusion sampling. Ensemble member i uses (seed + i) modulo 2^32 in its own worker, independently of parallel scheduling. Deterministic CPU algorithms are required in the pinned environment."
     }
   }
 }

@@ -60,6 +60,7 @@ class ResolvedParams:
     metacell_count: int
     ensemble: int
     diffusion_timesteps: int
+    seed: int
     sampling_timesteps: int
 
 
@@ -113,7 +114,10 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
         "sampling_timesteps",
     }
     require_param_keys(raw_params, expected)
-    warn_unknown_params(raw_params, expected)
+    warn_unknown_params(raw_params, expected | {"seed"})
+    seed = _as_int("seed", raw_params.get("seed", 0), min_value=0)
+    if seed >= 2**32:
+        raise ValueError("seed must be <= 4294967295.")
 
     gene_set = raw_params["gene_set"]
     if not isinstance(gene_set, str) or not gene_set.strip():
@@ -133,6 +137,7 @@ def _resolve_params(raw_params: dict[str, Any]) -> ResolvedParams:
         raise ValueError("sampling_timesteps must be <= diffusion_timesteps.")
 
     return ResolvedParams(
+        seed=seed,
         gene_set=gene_set,
         metacell=_as_bool("metacell", raw_params["metacell"]),
         knn=_as_int("knn", raw_params["knn"], min_value=1),
@@ -423,7 +428,7 @@ def _write_planet_config(
     payload = {
         "upstream_repo": "https://github.com/wangchuanyuan1/project-Planet",
         "upstream_ref": PLANET_REF,
-        "entrypoint": "Config() -> Planet(args) -> load_test_data() -> Planet.test()",
+        "entrypoint": "Config() -> Planet(args) -> load_test_data() -> seeded upstream diffusion ensemble",
         "execution_mode": mode,
         "model_path": str(MODEL_PATH),
         "tf_path": str(TF_PATH),
@@ -441,6 +446,9 @@ def _write_planet_config(
         "checkpoint_max_nodes": checkpoint.max_nodes,
         "checkpoint_edge_percent": checkpoint.edge_percent,
         "ensemble": params.ensemble,
+        "seed": params.seed,
+        "ensemble_seeds": [(params.seed + i) % (2**32) for i in range(params.ensemble)],
+        "deterministic_algorithms": True,
         "diffusion_timesteps": params.diffusion_timesteps,
         "sampling_timesteps": params.sampling_timesteps,
         "requested_threads": threads,
@@ -465,6 +473,46 @@ def _configure_torch_threads() -> None:
     except RuntimeError:
         pass
     _TORCH_THREADS_CONFIGURED = True
+
+
+def _seed_rng(seed: int) -> None:
+    """Initialize all stochastic backends before preprocessing or model creation."""
+    import random
+
+    import numpy as np
+    import torch
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
+
+
+def _sample_seeded_member(diffusion, testdata, truelabel, show, seed):
+    # Each job resets its own streams: results cannot depend on worker scheduling.
+    import torch
+
+    # Do not reset inter-op threads: n_jobs=1 may run in the initialized parent.
+    torch.set_num_threads(1)
+    _seed_rng(seed)
+    _, adjacency = diffusion.test_step(testdata, truelabel, show=show, seed=seed)
+    return adjacency
+
+
+def _run_seeded_ensemble(trainer, diffusion_pre, testdata, truelabel, seed):
+    """Preserve upstream model loading and vote aggregation, seed each member."""
+    from joblib import Parallel, delayed
+    from make_final_net import cal_final_net
+
+    diffusion = trainer.load_pre_model(diffusion_pre)
+    diffusion.eval()
+    members = Parallel(n_jobs=trainer.n_job)(
+        delayed(_sample_seeded_member)(
+            diffusion, testdata, truelabel, trainer.show, (seed + index) % (2**32)
+        )
+        for index in range(trainer.ensemble)
+    )
+    return cal_final_net(members)
 
 
 def _run_planet(
@@ -520,13 +568,16 @@ def _run_planet(
                     "LLM_metric": "cos",
                 }
 
+                _seed_rng(params.seed)
                 trainer = Planet(args)
                 diffusion_pre = torch.load(str(MODEL_PATH), map_location=trainer.device)
                 testdata, truelabel = trainer.load_test_data(
                     str(prepared.upstream_expression),
                     num=0,
                 )
-                adj_final = trainer.test(diffusion_pre, testdata, truelabel)
+                adj_final = _run_seeded_ensemble(
+                    trainer, diffusion_pre, testdata, truelabel, params.seed
+                )
             finally:
                 os.chdir(previous_cwd)
 

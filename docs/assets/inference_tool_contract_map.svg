@@ -530,7 +530,7 @@
 <rect x="611.00" y="452.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
 <text x="618.00" y="460.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="452.70" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="460.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">6</text>
+<text x="637.00" y="460.50" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">7</text>
 <rect x="487.00" y="466.65" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#ede4e9" stroke="#8a5fbf" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="473.40" r="2.80" fill="#8a5fbf" stroke="none" stroke-width="1.00" opacity="1.000"/>
 <text x="505.00" y="476.30" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">MetaSEM</text>
@@ -552,7 +552,7 @@
 <rect x="611.00" y="483.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
 <text x="618.00" y="491.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="483.50" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="491.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">7</text>
+<text x="637.00" y="491.30" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">8</text>
 <rect x="487.00" y="497.45" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#ede4e9" stroke="#8a5fbf" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="504.20" r="2.80" fill="#8a5fbf" stroke="none" stroke-width="1.00" opacity="1.000"/>
 <text x="505.00" y="507.10" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scGeneRAI</text>
@@ -563,7 +563,7 @@
 <rect x="611.00" y="498.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#dceae2" stroke="#008c86" stroke-width="0.75" opacity="1.000"/>
 <text x="618.00" y="506.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">T</text>
 <rect x="630.00" y="498.90" width="14.00" height="10.60" rx="5.00" ry="5.00" fill="#e3e1dd" stroke="#33415c" stroke-width="0.75" opacity="1.000"/>
-<text x="637.00" y="506.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">6</text>
+<text x="637.00" y="506.70" font-family="Helvetica" font-size="7.40" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">7</text>
 <rect x="487.00" y="512.85" width="166.00" height="13.50" rx="8.00" ry="8.00" fill="#ede4e9" stroke="#8a5fbf" stroke-width="1.00" opacity="1.000"/>
 <circle cx="496.00" cy="519.60" r="2.80" fill="#8a5fbf" stroke="none" stroke-width="1.00" opacity="1.000"/>
 <text x="505.00" y="522.50" font-family="Helvetica" font-size="8.80" font-weight="700" text-anchor="start" fill="#162033" opacity="1.000">scRegulate</text>

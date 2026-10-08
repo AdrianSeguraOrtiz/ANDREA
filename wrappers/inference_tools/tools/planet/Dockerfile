@@ -55,6 +55,8 @@ RUN git clone https://github.com/wangchuanyuan1/project-Planet.git /opt/project-
 
 ENV PYTHONPATH="/app:/opt/project-Planet:${PYTHONPATH}"
 
+ENV PYTHONHASHSEED=0
+
 COPY run_tool.sh /app/run_tool.sh
 COPY run_tool.py /app/run_tool.py
 COPY _run_tool_common.py /app/_run_tool_common.py

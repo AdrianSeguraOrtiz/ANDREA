@@ -56,7 +56,8 @@
             "knn": 20,
             "metacell_count": 100,
             "ensemble": 3,
-            "diffusion_timesteps": 25
+            "diffusion_timesteps": 25,
+            "seed": 0
           },
           "cost_relevant_params": [
             "gene_set",
@@ -76,17 +77,15 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-09-29T12:25:34.903101+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
           "git_dirty": true,
-          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
-          "spec_sha256": "d877adf4cbe5b027528ec672873388cf4ef830019e1ab825cba362ddb9860296",
-          "build_context_sha256": "10cdb104135bbf07cb40b09431282c5a77082ec2bff001dae13fad1202cfbd11",
-          "image_reference": "adriansegura99/inference-tools_dignet:1.1.0",
-          "image_id": "sha256:2725d6e9014deee7306195d955521ddd584be1af078a5447c33a0b6341b4db24",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_dignet@sha256:910c0dc03fc1f1f660365edce82f06921f4d387c7b0282602c099e0c34652c48"
-          ],
+          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+          "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+          "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+          "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
@@ -95,7 +94,7 @@
           "seed": 12345,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "1064810f53408b8f4791c716a7be6cf39c627b9b36d4d8db4e86684fb72a4cf5"
+        "profile_sha256": "ec71b54c81321296a5f58fbecb987542f71018e1a1b03977109bf16fe915e2a0"
       },
       "runtime_points": [
         {
@@ -113,8 +112,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 56.537925,
-          "seconds_p90": 58.870328,
+          "seconds_p50": 61.438896,
+          "seconds_p90": 62.984751,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -144,8 +143,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 59.382896,
-          "seconds_p90": 61.17121,
+          "seconds_p50": 59.436422,
+          "seconds_p90": 60.610471,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -175,8 +174,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 52.586579,
-          "seconds_p90": 53.064685,
+          "seconds_p50": 53.129389,
+          "seconds_p90": 53.55292,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -206,8 +205,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 51.483965,
-          "seconds_p90": 53.419677,
+          "seconds_p50": 53.25488,
+          "seconds_p90": 53.770005,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -237,8 +236,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 44.280585,
-          "seconds_p90": 44.504086,
+          "seconds_p50": 44.420915,
+          "seconds_p90": 44.649366,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -268,8 +267,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 44.096292,
-          "seconds_p90": 44.399193,
+          "seconds_p50": 45.289559,
+          "seconds_p90": 45.890368,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -299,8 +298,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 44.736897,
-          "seconds_p90": 44.976319,
+          "seconds_p50": 45.543131,
+          "seconds_p90": 45.738462,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -330,8 +329,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 44.401725,
-          "seconds_p90": 45.623151,
+          "seconds_p50": 44.88871,
+          "seconds_p90": 45.32948,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -386,7 +385,7 @@
           "output_density_class": "sparse",
           "aggregation_step": "none",
           "notes": [
-            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Supplementary full-parameter measurements with seeded CPU inference; calibration observations are separate from held-out validation.",
             "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
             "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
           ]
@@ -400,7 +399,8 @@
             "knn": 20,
             "metacell_count": 100,
             "ensemble": 30,
-            "diffusion_timesteps": 1000
+            "diffusion_timesteps": 1000,
+            "seed": 0
           },
           "cost_relevant_params": [
             "diffusion_timesteps",
@@ -420,71 +420,63 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-10-06T03:38:22.988313+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-07T05:53:44.391150+00:00",
+          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
           "git_dirty": true,
-          "source_sha256": "1a4e4f55f87dc2bb2be63e20a829be6adfc3ec98e6d9a5ab555c9cbc26ebceb9",
-          "spec_sha256": "d877adf4cbe5b027528ec672873388cf4ef830019e1ab825cba362ddb9860296",
-          "build_context_sha256": "10cdb104135bbf07cb40b09431282c5a77082ec2bff001dae13fad1202cfbd11",
-          "image_reference": "adriansegura99/inference-tools_dignet:1.1.0",
-          "image_id": "sha256:2725d6e9014deee7306195d955521ddd584be1af078a5447c33a0b6341b4db24",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_dignet@sha256:910c0dc03fc1f1f660365edce82f06921f4d387c7b0282602c099e0c34652c48"
-          ],
+          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+          "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+          "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+          "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
           "host_memory_bytes": 67432239104,
           "docker_server": "24.0.2",
-          "seed": 1729,
-          "timing_scope": "Physical container launch through exit collection; measurements made with frozen ANDREA 0.2.0rc1 runtime and unchanged Docker image. Imported by the current source snapshot; host evaluation/postprocessing excluded."
+          "seed": 0,
+          "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "797079ee36290904c176ba5b05ea641fec02ae5cf63f4ee8ed5b4f33ce051c97",
+        "profile_sha256": "bf622c6621d8a046ed96a214a5128b9f27a6463222805f3e116cef6192a612c7",
         "calibration_evidence": [
           {
             "fixture_key": "run00034",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "a18cc4430bfa11de7eb3915e3d459f7ba2bbaa25a38230dbe3a6c9c378d56a02",
-            "task_id": "run00034",
-            "seconds": 4969.528083,
+            "task_id": "dignet-representative-repeat1",
+            "seconds": 5688.487783789635,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
-              "params.json": "bb490b97da3854de82795fbeb60430d9a20cdbe15b3dfe5376424cfb55290015"
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
             },
-            "peak_container_memory_bytes": 3964432384,
-            "cpu_seconds": 9864.922151
+            "report_sha256": "33b26426a52ed60200de726c8fe76d975ecda58c100b06c712e32437aa1abea2"
           },
           {
             "fixture_key": "run00034",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "91ad53f005a3057e287e56928e407955db15f3c439f3e400fadfda58490e3d7b",
-            "task_id": "correction_check",
-            "seconds": 4944.74237,
+            "task_id": "dignet-representative-repeat2",
+            "seconds": 5703.587319999933,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
-              "params.json": "bb490b97da3854de82795fbeb60430d9a20cdbe15b3dfe5376424cfb55290015"
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
             },
-            "peak_container_memory_bytes": 3661717504,
-            "cpu_seconds": 9821.624657
+            "report_sha256": "5b1dd6246ab62c3fd515ece34c25ec8f505c61d9cab53b277a532e408cb00b84"
           },
           {
             "fixture_key": "run00034",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "d0b6f92ab9b5d462108dddda6652b3456060e27ab71685d9173723ba0622df44",
-            "task_id": "correction_check",
-            "seconds": 5184.802201,
+            "task_id": "dignet-representative-repeat3",
+            "seconds": 5745.242151923478,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
-              "params.json": "bb490b97da3854de82795fbeb60430d9a20cdbe15b3dfe5376424cfb55290015"
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
             },
-            "peak_container_memory_bytes": 4022018048,
-            "cpu_seconds": 10236.664895
+            "report_sha256": "8007e3fbede4afc504540365c58b3179e837a97655cac5150705bb9b02a6c170"
           }
         ]
       },
@@ -504,8 +496,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 4969.528083,
-          "seconds_p90": 5141.747377400001
+          "seconds_p50": 5703.587319999933,
+          "seconds_p90": 5736.911185538769
         }
       ]
     }

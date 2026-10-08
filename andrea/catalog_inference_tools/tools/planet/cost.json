@@ -57,7 +57,8 @@
             "metacell_count": 100,
             "ensemble": 1,
             "diffusion_timesteps": 20,
-            "sampling_timesteps": 20
+            "sampling_timesteps": 20,
+            "seed": 0
           },
           "cost_relevant_params": [
             "gene_set",
@@ -79,17 +80,15 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-09-29T20:38:20.157491+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
           "git_dirty": true,
-          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
-          "spec_sha256": "719c1271fba635f0dddca6dc89e49095fb59def0fda5d3b1f550b1d72b73caae",
-          "build_context_sha256": "572abb4f4d769aac2f442748764a3f2ef610d96cc0cd80dd8b8f120ba134a831",
-          "image_reference": "adriansegura99/inference-tools_planet:1.1.0",
-          "image_id": "sha256:07c7e006ef55ff64ef900ae500bdbe2edfa53d0c445b0009aa6a3eb025bd627a",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_planet@sha256:35ac64d06bc42d85c35abf3fc4345d0a781bdb560679b721da7d88264df26d6b"
-          ],
+          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+          "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+          "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+          "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
@@ -98,7 +97,7 @@
           "seed": 12345,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "8a98f85ae1025e0374440e60b88fcde9c4480bbdd26e5e411484f7478f833934"
+        "profile_sha256": "feddd2960fe4ede8c3feec889c415ffe4a9a739f952e19dbbae939f047f5d078"
       },
       "runtime_points": [
         {
@@ -116,8 +115,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.620268,
-          "seconds_p90": 13.39965,
+          "seconds_p50": 10.946378,
+          "seconds_p90": 11.025764,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -147,8 +146,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.679627,
-          "seconds_p90": 10.776252,
+          "seconds_p50": 10.944865,
+          "seconds_p90": 10.966767,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -178,8 +177,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.43687,
-          "seconds_p90": 10.5045,
+          "seconds_p50": 10.620635,
+          "seconds_p90": 10.735525,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -209,8 +208,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.464371,
-          "seconds_p90": 10.533437,
+          "seconds_p50": 10.700137,
+          "seconds_p90": 10.756323,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -240,8 +239,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.550969,
-          "seconds_p90": 10.58261,
+          "seconds_p50": 10.644243,
+          "seconds_p90": 10.708937,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -271,8 +270,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.485958,
-          "seconds_p90": 10.67834,
+          "seconds_p50": 10.783519,
+          "seconds_p90": 10.890848,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -302,8 +301,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.556624,
-          "seconds_p90": 10.624398,
+          "seconds_p50": 10.673149,
+          "seconds_p90": 10.808695,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -333,8 +332,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 10.483406,
-          "seconds_p90": 10.515874,
+          "seconds_p50": 10.818156,
+          "seconds_p90": 10.910296,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 100,
@@ -389,7 +388,7 @@
           "output_density_class": "sparse",
           "aggregation_step": "none",
           "notes": [
-            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Supplementary full-parameter measurements with seeded CPU inference; calibration observations are separate from held-out validation.",
             "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
             "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
           ]
@@ -404,7 +403,8 @@
             "metacell_count": 100,
             "ensemble": 30,
             "diffusion_timesteps": 1000,
-            "sampling_timesteps": 1000
+            "sampling_timesteps": 1000,
+            "seed": 0
           },
           "cost_relevant_params": [
             "diffusion_timesteps",
@@ -426,71 +426,63 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-10-06T03:38:24.028673+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-07T05:53:44.472810+00:00",
+          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
           "git_dirty": true,
-          "source_sha256": "1a4e4f55f87dc2bb2be63e20a829be6adfc3ec98e6d9a5ab555c9cbc26ebceb9",
-          "spec_sha256": "719c1271fba635f0dddca6dc89e49095fb59def0fda5d3b1f550b1d72b73caae",
-          "build_context_sha256": "572abb4f4d769aac2f442748764a3f2ef610d96cc0cd80dd8b8f120ba134a831",
-          "image_reference": "adriansegura99/inference-tools_planet:1.1.0",
-          "image_id": "sha256:07c7e006ef55ff64ef900ae500bdbe2edfa53d0c445b0009aa6a3eb025bd627a",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_planet@sha256:35ac64d06bc42d85c35abf3fc4345d0a781bdb560679b721da7d88264df26d6b"
-          ],
+          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+          "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+          "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+          "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
           "host_memory_bytes": 67432239104,
           "docker_server": "24.0.2",
-          "seed": 1729,
-          "timing_scope": "Physical container launch through exit collection; measurements made with frozen ANDREA 0.2.0rc1 runtime and unchanged Docker image. Imported by the current source snapshot; host evaluation/postprocessing excluded."
+          "seed": 0,
+          "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "3a6cde43e974dfa20b0554625c8028a5ef7428e0031161d3824d27a1bd908a5f",
+        "profile_sha256": "2cd72e892bf8f4d1ee980fa6a9edf738caa9bfc932a11199eba99cd93f2156ce",
         "calibration_evidence": [
           {
             "fixture_key": "run00035",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "062c88a06a36e9b322ca3eaca724850efdf688cb2d0a748a43094b3e85ac4107",
-            "task_id": "run00035",
-            "seconds": 986.752299,
+            "task_id": "planet-representative-repeat1",
+            "seconds": 1194.974248200655,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
-              "params.json": "56b2ef088251d1e0d3ce540726e6db6e61b15277321c443b51ed2f83c5aca906"
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
             },
-            "peak_container_memory_bytes": 4442865664,
-            "cpu_seconds": 1958.850335
+            "report_sha256": "b8a5cb5739341cd6469e0632015c516fb1c6c7f9fdb6d6c1bf6865a439e73f86"
           },
           {
             "fixture_key": "run00035",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "d511c95f150fe070101f9ba7a98dd71460c8ba56ec963f0337beb89ec650120a",
-            "task_id": "correction_check",
-            "seconds": 1177.981786,
+            "task_id": "planet-representative-repeat2",
+            "seconds": 1192.215534850955,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
-              "params.json": "56b2ef088251d1e0d3ce540726e6db6e61b15277321c443b51ed2f83c5aca906"
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
             },
-            "peak_container_memory_bytes": 4721061888,
-            "cpu_seconds": 2268.537918
+            "report_sha256": "dfe993fab77dd2e8272e0ff7d812d62c14ef40f56c49e15ab074e06a9bc6c1e8"
           },
           {
             "fixture_key": "run00035",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "f471f9ba1cdbe97ad08b437910dc56c150c674034315314f7a00e46d7ef4ece3",
-            "task_id": "correction_check",
-            "seconds": 1173.315424,
+            "task_id": "planet-representative-repeat3",
+            "seconds": 1195.2827104106545,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
-              "params.json": "56b2ef088251d1e0d3ce540726e6db6e61b15277321c443b51ed2f83c5aca906"
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
             },
-            "peak_container_memory_bytes": 3488055296,
-            "cpu_seconds": 2261.943934
+            "report_sha256": "85a78973dc4e3725b446d89d581f8a144bf9df41eeb238fc10f97cbb32f6fa9b"
           }
         ]
       },
@@ -510,8 +502,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1173.315424,
-          "seconds_p90": 1177.0485136
+          "seconds_p50": 1194.974248200655,
+          "seconds_p90": 1195.2210179686547
         }
       ]
     }

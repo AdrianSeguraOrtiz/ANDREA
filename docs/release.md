@@ -1,158 +1,26 @@
-# ANDREA release checklist
+# ANDREA release procedure
 
-This checklist describes the local steps for publishing ANDREA to PyPI. It does
-not replace the catalog validation workflows; run it only after the simulator
-and inference-tool catalogs are in the intended release state.
+## 0.2.0 source release
 
-## Cost refinement candidate 0.2.0rc2
+The release contains the audited catalogs, corrected resource planning and
+seed-controlled DigNet, PLaNet and scGeneRAI integrations. Read
+[changelog.md](changelog.md) for changes and migration notes. Registry image
+identities are frozen in [releases/0.2.0-images.json](releases/0.2.0-images.json).
+The Python package version and Docker integration versions are independent.
 
-The completed rc2 receipts report 633 source tests passed (8 skipped), 415
-installed-package tests passed, and 42 successful independent physical cost
-observations. These are recorded results, not a claim that every tool is
-deterministic on every host.
+The validated rc3 calibration is complete: all 32 `cost.json` files pass strict
+provenance checks and contain 155 profiles. The three new `1.1.1` images have
+fresh baseline and representative measurements. Other images remain `1.1.0`.
+Do not rebuild an image merely to publish an already validated local image.
+Keep the original measurement versions, image IDs and receipt hashes intact.
 
-The release target is **0.2.0**. Inspect workflow outcomes and numerical
-differences before removing the release-candidate suffix or creating a final
-version tag. Keep candidate wheels, image digests and measurement receipts
-immutable. Publishing candidate commits does not publish a PyPI release.
-Complete the release checks below before publication. A later version-only
-promotion must preserve measurement provenance and document source equivalence;
-do not relabel old measurements.
+Source commits/tags, registry images and PyPI publication are separate steps.
+Retain the exact checked wheel and source distribution until package-index
+publication; avoid rebuilding them between verification and upload.
 
-The inference planner uses `cost_profile_v3`. It requires matching method
-parameters, runtime inputs and group counts before using a calibration.
-Random seeds are retained in provenance but do not define separate cost regimes.
-Measured points and supported axis interpolation use `cost_profile`;
-unsupported size/resource transfers use `cost_profile_extrapolated`, and
-unsupported method configurations use a fallback scheduling heuristic. Neither
-uncalibrated case certifies timeout feasibility or a runtime upper bound.
-A diagonal genes/cells grid cannot identify the two size effects separately.
+## Verify a release
 
-Supplementary recipes under `wrappers/inference_tools/cost_profiles/representative/`
-cover 29 profiles and 32 fixture sizes across the 24 inference tools, including
-full DigNet/PLaNet settings and MINI-EX with motif analysis. Each point requires
-three successful, individually identified measurements. Calibration evidence
-and subsequent validation executions are kept separate.
-Baseline profiles are preserved. Representative fixture inputs are byte-pinned
-in each recipe and retained in the evidence bundle. To regenerate a tool's
-supplementary profiles with those inputs:
-
-```sh
-python wrappers/inference_tools/scripts/benchmark_representative_costs.py \
-  --tool dignet \
-  --fixture-root release-logs/cost-refinement-20261006/fixtures \
-  --results-dir ../andrea-cost-evidence/dignet-representative-new
-```
-
-Inspect `release-logs/cost-refinement-20261006/refinement-state.json` for the
-finite refinement workflow. Completion evidence is `calibration-import.json`,
-`strict-cost-validation.log`, the source/installed test receipts, and
-`heldout-comparison.json`. The latter compares old and new forecasts frozen
-before separate executions; its limits include repeated input datasets and
-only three unseen cell-count subsamples. No image rebuild is required for these
-planner and catalog measurement changes. Published calibration observations
-identify their evidence by report SHA-256 and task ID; machine-local report
-locations are retained with the private measurement receipts.
-
-## Validated catalog baseline 0.2.0rc1
-
-The baseline uses Docker integration tags `1.1.0`. As of 2026-10-05,
-all 32 recalibrated `cost.json` files pass the strict release check, covering 126
-profiles. The local image IDs match those recorded during calibration. Keep
-using these measurements while their spec, build-input and profile fingerprints
-remain valid. This is a candidate, not a completed PyPI release.
-
-The following blocks reproduce image preparation and calibration when measured
-inputs change. For an unchanged, calibrated candidate, continue with the
-pre-release checks below. Run commands from the ANDREA repository with the
-development/release requirements installed, and retain their logs. Push images
-after builds and smoke tests succeed.
-
-```sh
-set -euo pipefail
-mkdir -p release-logs
-make build-tool-images 2>&1 | tee release-logs/build-tools.log
-make build-simulator-images 2>&1 | tee release-logs/build-simulators.log
-make run-tool-smoketests ARGS="--catalog-images --threads 2 --timeout 600" 2>&1 | tee release-logs/smoke-tools.log
-make run-simulator-smoketests ARGS="--skip-build" 2>&1 | tee release-logs/smoke-simulators.log
-
-docker login
-make push-tool-images ARGS="--fail-fast"
-make push-simulator-images ARGS="--fail-fast"
-```
-
-Calibrate these exact local images after publishing, so their repository digests
-are available for provenance. Each script is sequential; run the two campaigns
-sequentially on an otherwise idle machine. Inspect the resolved matrix first:
-
-```sh
-make benchmark-tool-costs ARGS="--catalog-images --plan-only --repeats 3 --threads 1,2,4,8 --ram-gb 8,32 --max-cpu 8 --max-ram-gb 32"
-make benchmark-simulator-costs ARGS="--catalog-images --plan-only --repeats 3 --threads 1,2,4,8 --ram-gb 8,32 --max-cpu 8 --max-ram-gb 32"
-```
-
-For the current catalog, these commands resolve to 3,108 inference runs and
-2,934 simulator runs (6,042 sequential runs in total). Recheck the plan if
-profiles change; the runtime depends on the selected method and configuration.
-
-The supplied matrices include small sizes and configuration-specific fixtures.
-They are a baseline calibration, not evidence of scalability to arbitrary gene
-or cell counts. Tools with explicit fast-training profiles must not be presented
-as calibrated at their full-training defaults. Add scientifically appropriate
-larger profiles before making larger-scale performance claims.
-
-```sh
-set -euo pipefail
-mkdir -p release-logs
-make benchmark-tool-costs ARGS="--catalog-images --repeats 3 --threads 1,2,4,8 --ram-gb 8,32 --max-cpu 8 --max-ram-gb 32 --timeout 1800 --results-dir ../andrea-cost-evidence/inference" 2>&1 | tee release-logs/cost-inference.log
-make benchmark-simulator-costs ARGS="--catalog-images --repeats 3 --threads 1,2,4,8 --ram-gb 8,32 --max-cpu 8 --max-ram-gb 32 --timeout 1800 --results-dir ../andrea-cost-evidence/simulation" 2>&1 | tee release-logs/cost-simulation.log
-make validate-release-costs
-```
-
-The strict validator requires every currently configured benchmark profile,
-checks its resolved parameters and fixture recipe, and rejects missing matrix
-points or fewer than three successful repetitions. It also compares the measured
-Docker build inputs (including shared templates) with the current sources.
-These checks run without Docker; the recorded immutable image ID identifies the
-image actually measured. Package-version and documentation-only changes do not
-invalidate calibration. Legacy cost files remain readable by the ordinary
-validators but cannot satisfy the release check.
-
-A failed campaign returns nonzero. Inspect the retained evidence, fix the cause,
-and rerun the affected tool or simulator. For individual profiles use
-`--profile ID --merge-existing`; this preserves other completed profiles. Do not
-increase a timeout or relabel a failed measurement as success without checking
-its log. Export the final figures after any further spec correction:
-
-```sh
-make render-doc-assets ARGS="--catalogs-only --output-dir release-logs/catalog-figures"
-```
-
-Keep the final image digests, cost evidence and workflow results with the local
-release evidence. Promote the package version to `0.2.0` only after the complete
-release checks pass; image integration versions are independent of the Python
-package version.
-
-The source audit and Docker fixture tests establish the integration contracts,
-not biological accuracy. When using outputs from updated integrations:
-
-- Repeat experiments affected by the TIGRESS scoring repair, signed scMTNI
-  coefficients or the corrected BoolODE reference-network signs.
-- Use the audited `method_family` field for the inference figure. It describes
-  the primary integrated algorithm; shared statistical components and workflow
-  stages remain documented in each tool's spec and `integration_decisions.md`.
-- Do not use GRouNdGAN's embedded, untrained toy checkpoints as evidence of
-  realistic biological data generation.
-- Distinguish reproducible environments and recorded inputs from deterministic
-  outputs. Some upstream implementations do not expose or consistently apply a
-  seed; the integration notes document these limits. Timing repetitions use the
-  same requested seed and do not replace independent scientific replicates.
-
-## 1. Pre-release checks
-
-1. Confirm that `andrea/config.py` contains the release version.
-2. Confirm that generated catalog files, especially `cost.json`, are complete.
-3. Confirm that no local benchmark outputs are staged for commit.
-4. Run the package and catalog checks:
+Run from the source checkout with development and release dependencies installed:
 
 ```sh
 make validate-generation-catalog
@@ -161,135 +29,98 @@ make validate-release-costs
 make test-all
 ```
 
-If a full catalog validation is too expensive for a release candidate, document
-which Docker smoketests were skipped and run the schema and cost validators at
-minimum.
+The strict cost validator checks the configured profile matrix, three successful
+repetitions per point, resolved parameters, fixture recipes, and measured Docker
+build inputs. Documentation and version-only changes do not invalidate a cost
+profile. Changing wrappers, method parameters or scientific inputs requires
+revalidation and, where affected, new calibration.
 
-The integrated validation must also exercise actual workflows beyond unit
-tests: generate a small dataset, infer with catalog and external Docker tools,
-evaluate against its truth, then compare the resulting networks. Include native
-group/column contexts and emulated/aggregated execution. Check analysis IDs,
-dataset fingerprints, applicable direction/sign levels and final artifacts.
+Integration checks must also cover actual generation, inference, evaluation
+and comparison, including native group/column, emulated and aggregated modes,
+and external tools. API tests do not replace browser checks of the four GUIs.
+When an unchanged component's earlier evidence is retained, record its source
+identity and the scope of that evidence.
 
-For GUI validation, open all four applications in a browser and exercise their
-forms and execution controls, including a user-selected output directory and an
-external tool. API tests alone do not execute JavaScript. Record browser errors,
-screenshots and the generated bundles with the release evidence.
-
-## Migration notes for the candidate
-
-- Catalog contributors must supply the reviewed `method_family` metadata used
-  by the inference figure and GUI. External tools continue to use their separate
-  `custom-tools.json` contract.
-- Docker integration versions (`1.1.0`) and the Python distribution version
-  (`0.2.0rc1`) are independent. Existing images are identified by their immutable
-  IDs in calibration records.
-- Historical cost files remain readable, but release validation requires the
-  current complete profiles and provenance. Consumer-side planning or GUI fixes
-  do not themselves change the measured wrappers or calibration recipes.
-- Recreate plans and derived comparison bundles to apply corrections to analysis
-  identity and applicable comparison levels. Existing result files are not
-  rewritten automatically.
-
-## 2. Build and inspect the package
+For the three seeded integrations, the reusable regression command is:
 
 ```sh
-make build-package
-make check-package
-make smoke-wheel
+python wrappers/inference_tools/scripts/validate_seed_reproducibility.py \
+  --results-dir release-logs/seed-regression-new
 ```
 
-`build-package` creates a fresh `dist/` directory. `check-package` runs Twine's
-metadata validation. `smoke-wheel` installs the wheel into a temporary virtual
-environment and verifies that `andrea --help` starts.
+This exercises repeated and changed seeds in fresh containers. Representative
+full-parameter runs and cost calibration are separate checks. Identical results
+on arbitrary hardware are not guaranteed.
 
-Inspect the wheel when package-data changes:
+## Images and calibration
+
+Build and smoke-test affected images only when integration sources change.
+Publish an already verified image by its intended tag and confirm that a pull by
+registry digest returns the same image ID. Preserve its calibration receipts.
+
+Inspect calibration workloads before running them:
 
 ```sh
-python - <<'PY'
-from pathlib import Path
-import zipfile
-
-wheel = next(Path("dist").glob("*.whl"))
-with zipfile.ZipFile(wheel) as zf:
-    names = set(zf.namelist())
-
-required = [
-    "andrea/gui/infer_network/static/index.html",
-    "andrea/gui/generate_data/static/index.html",
-    "andrea/gui/evaluate_inference/static/index.html",
-    "andrea/gui/compare_networks/static/index.html",
-    "andrea/catalog_inference_tools/schemas/toolspec.schema.json",
-    "andrea/catalog_inference_tools/schemas/tools-params.schema.json",
-    "andrea/catalog_inference_tools/schemas/custom-tools.schema.json",
-    "andrea/catalog_simulation_data_tools/schemas/simulatorspec.schema.json",
-    "andrea/catalog_simulation_data_tools/input_specs/regulatory_network.json",
-]
-missing = [name for name in required if name not in names]
-if missing:
-    raise SystemExit("Missing wheel files:\n" + "\n".join(missing))
-print(f"{wheel} contains the required GUI assets, schemas and catalogs.")
-PY
+make benchmark-tool-costs ARGS="--catalog-images --plan-only --repeats 3 --threads 1,2,4,8 --ram-gb 8,32 --max-cpu 8 --max-ram-gb 32"
+make benchmark-simulator-costs ARGS="--catalog-images --plan-only --repeats 3 --threads 1,2,4,8 --ram-gb 8,32 --max-cpu 8 --max-ram-gb 32"
 ```
 
-## 3. TestPyPI
+Baseline recipes include small fixtures and fast-training configurations. They
+are not evidence for arbitrary sizes or full-training defaults. Supplementary
+recipes under `wrappers/inference_tools/cost_profiles/representative/` cover
+29 profiles and 32 fixture sizes across all 24 tools. Supply their byte-pinned
+inputs to `benchmark_representative_costs.py` in a new results directory.
 
-Upload to TestPyPI first. The full target rebuilds the package, runs Twine's
-metadata check, installs the wheel locally, uploads to TestPyPI, then installs
-the published package from TestPyPI in a clean virtual environment:
+Keep calibration observations separate from independent timing validation.
+Unmeasured transfers use `cost_profile_extrapolated` or a fallback, and neither
+establishes a runtime upper bound or validated memory prediction.
+
+Regenerate catalog figures after a spec correction:
 
 ```sh
-make publish-testpypi-full \
-  PACKAGE_VERSION=0.2.0rc1 \
-  TWINE_USERNAME=__token__ \
-  TWINE_PASSWORD=pypi-...
+make render-doc-assets ARGS="--catalogs-only --output-dir release-logs/catalog-figures"
 ```
 
-`PACKAGE_VERSION` must match `andrea.config.__version__`. `TWINE_USERNAME` and
-`TWINE_PASSWORD` are passed directly to Twine and no `~/.pypirc` entry is
-required. The TestPyPI install uses PyPI as an extra index so runtime
-dependencies are resolved from the main package index.
+## Build from the final commit
 
-If the upload already happened and only the published artifact needs checking,
-run:
+Commit the intended source, tests, specifications, calibration files and generic
+documentation. Keep local logs and private materials outside version control.
+Build from a clean snapshot of that commit:
 
 ```sh
-make smoke-testpypi PACKAGE_VERSION=0.2.0rc1
+python -m build --outdir dist
+python -m twine check dist/*
 ```
 
-## 4. PyPI
+Install both the wheel and source distribution into fresh environments for
+Python 3.11, 3.12 and 3.13, outside the checkout. Check dependency consistency,
+CLI entry points, all four GUI resources, catalogs and package data. Run the
+installed core/CLI/GUI tests and compare packaged files with the frozen source.
 
-Publish to PyPI only after the TestPyPI installation works. The full target
-rebuilds, checks, installs locally and uploads to PyPI. The post-upload PyPI
-smoke test is kept separate because package propagation can lag briefly after
-upload.
+The final tag must identify the commit used for the checked artifacts. Preserve
+the artifact SHA-256 values, image digests and verification receipts locally.
+A version-only promotion must document equivalence to its tested candidate;
+it must not relabel historical executions as new-version measurements.
+
+## Deferred package-index publication
+
+Only publish when the intended release artifacts and accompanying materials
+are finalized. The following commands upload existing checked files; they do
+not rebuild. Supply credentials through the normal Twine authentication setup.
 
 ```sh
-make publish-pypi-full \
-  PACKAGE_VERSION=0.2.0rc1 \
-  TWINE_USERNAME=__token__ \
-  TWINE_PASSWORD=pypi-...
-make smoke-pypi PACKAGE_VERSION=0.2.0rc1
+python -m twine check dist/*
+python -m twine upload --non-interactive --repository-url https://test.pypi.org/legacy/ dist/*
 ```
 
-Commit the finalized code, specs and regenerated costs before building the
-release artifacts. Create the Git tag from that same commit:
+Check installation from TestPyPI in a clean environment before the final upload:
 
 ```sh
-git tag -a v$(python - <<'PY'
-from andrea.config import __version__
-print(__version__)
-PY
-) -m "ANDREA release"
-git push origin --tags
+make smoke-testpypi PACKAGE_VERSION=0.2.0
+python -m twine upload --non-interactive --repository-url https://upload.pypi.org/legacy/ dist/*
+make smoke-pypi PACKAGE_VERSION=0.2.0
 ```
 
-## Notes
-
-- The current package metadata targets Python `>=3.11,<3.14`. Keep this range
-  aligned with the Python versions covered by the release test matrix.
-- The Docker images used by wrappers are not bundled in the wheel. The package
-  ships catalogs, schemas, GUIs and orchestration code; Docker pulls/builds are
-  handled by the normal wrapper workflows.
-- Do not publish while long-running cost-generation jobs are still writing
-  catalog files.
+Do not regenerate profiles or overwrite checked artifacts during publication.
+The wheel contains the catalog, schemas, GUIs and orchestration code; Docker
+images are distributed separately through their recorded registry digests.

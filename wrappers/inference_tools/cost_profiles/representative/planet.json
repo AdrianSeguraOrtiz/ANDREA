@@ -39,7 +39,7 @@
           "output_density_class": "sparse",
           "aggregation_step": "none",
           "notes": [
-            "Supplementary full-parameter measurements; original pilot observations are calibration evidence, not held-out validation.",
+            "Supplementary full-parameter measurements with seeded CPU inference; calibration observations are separate from held-out validation.",
             "Scope is the registered input distribution, method parameters, dimensions and resource assignment.",
             "Container wall time excludes ANDREA host postprocessing. One first group child per repeat represents an emulated global task."
           ]
@@ -54,7 +54,8 @@
             "metacell_count": 100,
             "ensemble": 30,
             "diffusion_timesteps": 1000,
-            "sampling_timesteps": 1000
+            "sampling_timesteps": 1000,
+            "seed": 0
           },
           "cost_relevant_params": [
             "diffusion_timesteps",
@@ -84,7 +85,7 @@
           "input_sha256": {
             "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
             "expression.tsv": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
-            "params.json": "56b2ef088251d1e0d3ce540726e6db6e61b15277321c443b51ed2f83c5aca906"
+            "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
           },
           "source_result_sha256": "7cc3bdafb121dfc6f998f3331135c40da1a3607fd660ec5432745b05d2628dfd",
           "physical_index": 0

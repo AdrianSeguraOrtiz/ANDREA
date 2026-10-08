@@ -96,5 +96,6 @@ See [docs/workflows.md](docs/workflows.md) for the workflow contracts and
 - [CLI guide](docs/cli.md)
 - [Core Python guide](docs/core.md)
 - [Catalogs and coverage](docs/catalogs.md)
+- [Release notes and migration](docs/changelog.md)
 - [External Docker tools](docs/external-docker-tools.md)
 - [Full documentation index](docs/README.md)
