@@ -48,6 +48,14 @@ valid or would be wasteful:
   generator. `synthetic` emits `G1`, `G2`, ...; specialized tools such as DigNet
   and Planet can request `human_breast_cancer_pathway` so the benchmark genes
   overlap their bundled KEGG/RegNetwork resources.
+- top-level or per-profile `temporal`: the exact `bulk-temporal/1` runtime
+  contract copied into `execution.json`. `temporal_fixture` separately declares
+  positive `series_count`, at least three `timepoints_per_series`, optional
+  `steady_state_samples`, and `sampling: regular` or `irregular`. Temporal
+  profiles require `timepoints` and `replicates` inputs. Each `GENESxCOLUMNS`
+  point must satisfy `COLUMNS = series_count * timepoints_per_series`; the
+  separate steady-state matrix contributes no temporal transitions. These
+  fields are opt-in and preserve historical non-temporal fixture bytes.
 
 Profiles describe only executable container contracts: `global`,
 `group_native`, or `column_native`. Logical `group_emulated` runs select the
@@ -99,11 +107,19 @@ Three repetitions provide a basic variability check, not a precise tail estimate
 
 The recipes define three-by-three grids where both dimensions can vary, and
 three gene counts at a fixed cell count where the pretrained model requires it.
-The 24 tools have **57 baseline profiles and 29 representative profiles**:
+The 24 tools in the 0.2.1 catalog have **57 baseline profiles and 29 representative profiles**:
 **86 profiles and 750 planned size points** (501 baseline, 249 representative),
 before multiplying by repetitions and resource assignments. Each parameter/input
 profile has its own grid; timings from different parameter settings or resource
 assignments are not pooled.
+
+The Osaka generator extension preserves those measurements. Its finite
+`shared/recipe_compatibility.json` review records 57 matching resolved profile
+fingerprints and 171 byte-identical fixture comparisons against the preparation
+baseline. It applies only to the exact reviewed source hashes and profiles
+without temporal or steady-state inputs. Any further generator edit invalidates
+that bridge and requires another explicit compatibility review or new evidence;
+it never rewrites a measured `cost.json` or timing receipt.
 
 | Fixture family | Gene levels | Column levels |
 | --- | --- | --- |
@@ -320,7 +336,49 @@ retain their own stricter success checks.
 
 For bulk time series, `dimensions` must explicitly include timepoints per series,
 independent series/replicates and relevant dynamic settings. Inputs must contain
-the actual temporal metadata and matrices. Current calibration coverage readers
-still analyze genes versus total columns (simulators call columns `cells`);
-passing them alone does not certify independent coverage of temporal axes or
-the validity of a temporal fixture.
+the actual temporal metadata and matrices. Generic non-temporal coverage readers
+analyze genes versus total columns (simulators call columns `cells`); passing
+them alone does not certify temporal axes or fixture validity. The opt-in
+temporal inference gate below verifies the separately declared geometry.
+
+The initial [dynGENIE3 panel](dyngenie3.json) is **planned and unmeasured**. It
+contains 27 default points crossing 50/100/200 genes, 4/8/16 observed timepoints
+per series and 1/2/4 independent biological courses. Seven additional center
+points isolate ET, scalar/vector decay, steady-state data, TF restriction,
+quality scores and model serialization. Each branch is limited to its exact
+100-gene, 8-timepoint, 2-series center; it provides no branch size-growth claim.
+All profiles preserve upstream defaults except the named branch change.
+
+The declared four resource strata (1/2 threads crossed with 4/8 GiB), three
+repetitions and serial execution imply 408 calibration runs. Two separately
+reserved default holdouts vary only genes (75 and 250) at the exact 8-timepoint,
+2-series profile and add 24 runs. Their 3600-second per-run timeout sums
+are execution caps of 1,468,800 and 86,400 seconds respectively; measured ETA,
+startup overhead and validation overhead remain unknown. No automatic retries
+are planned. Holdout artifact hashes, estimator snapshot and predictions must
+be frozen before collecting validation timings. The config records these
+reservations and thresholds; it is not a valid frozen prediction manifest.
+
+These allocations do not close the integration even if all runs succeed.
+The temporal coverage gate assesses genes within each fixed timepoint/series
+shape, requires all four declared resource strata and three distinct captured
+execution receipts per point, and reports the combined 27-point default domain
+separately. It verifies temporal dimensions, input hashes, measurement context
+and image identity. The seven branch centers remain evidence only at their
+exact point. This finite coverage is separate from predictive accuracy.
+The ETA selector now requires an exact validated temporal shape, time unit,
+sampling design, regularity and steady-state sample count; unsupported shapes
+fall back with a warning instead of pooling profiles with equal total columns.
+That guard has no measured accuracy evidence. The autonomous continuation
+supervisor keeps calibration in a private staging catalog, then checks domain
+coverage and freezes the actual ANDREA planner, snapshot and eight predictions
+before collecting the 24 independent holdout timings. The planning budget is
+the core ETA itself; an operational reserve cannot help pass its coverage test.
+It registers costs only after those gates pass and requires a
+separate acceptance dossier. Predicting across timepoint/series shapes remains
+unsupported; 432 allocations are not an acceptance receipt.
+
+While the existing PM2 experimental validation is active, this integration
+stays at static planning: no Docker build, model fit, calibration or holdout
+measurement. After the experimental work finishes, inspect capacity and the
+saved resolved plan before executing. Absence of `cost.json` is intentional.

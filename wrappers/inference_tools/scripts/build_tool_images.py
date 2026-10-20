@@ -370,7 +370,8 @@ def render_entrypoint(runtime: str, native_threads: str | None = None) -> str:
             f"export VECLIB_MAXIMUM_THREADS={value}\n\n"
         )
     return ENTRYPOINT_TEMPLATE.format(
-        runtime_bin=runtime_bin, app_script=app_script,
+        runtime_bin=runtime_bin,
+        app_script=app_script,
         thread_environment=thread_environment,
     )
 
@@ -436,7 +437,9 @@ def prepare_context(
         )
 
     entrypoint_path = context_dir / "run_tool.sh"
-    entrypoint_path.write_text(render_entrypoint(runtime, native_threads), encoding="utf-8")
+    entrypoint_path.write_text(
+        render_entrypoint(runtime, native_threads), encoding="utf-8"
+    )
     mode = entrypoint_path.stat().st_mode
     entrypoint_path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
@@ -477,7 +480,18 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
 
     discovered_pairs = discover_tool_sources(args.tool_sources_root)
-    discovered = {tool_id: path for tool_id, path in discovered_pairs}
+    # Draft source directories may already have a Dockerfile. Their presence
+    # must not activate them or break builds of the established catalog.
+    discovered = {
+        tool_id: path
+        for tool_id, path in discovered_pairs
+        if (args.catalog_tools_root / tool_id / "toolspec.json").is_file()
+    }
+    inactive = sorted(set(args.tool).difference(discovered))
+    if inactive:
+        raise RuntimeError(
+            f"No active ToolSpec/source pair for {inactive}; use an explicit review catalog for drafts."
+        )
 
     template_map = load_json(args.template_map)
     mapped_tools = validate_template_map(template_map, discovered)

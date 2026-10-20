@@ -25,8 +25,9 @@ from andrea.core.commands.infer_network.commons.tools import (
 
 class CustomToolsContractTests(unittest.TestCase):
     def test_custom_tools_file_requires_at_least_one_definition(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(
-            ValueError, "non-empty tools array"
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            self.assertRaisesRegex(ValueError, "non-empty tools array"),
         ):
             normalize_custom_tools_payload(
                 payload={"tools": []},
@@ -89,6 +90,22 @@ class CustomToolsContractTests(unittest.TestCase):
             {"tools": [self._valid_tool()]},
         )
 
+    def test_temporal_requirements_round_trip_and_reject_invalid_design(self) -> None:
+        tool = self._valid_tool()
+        tool["temporal_requirements"] = {
+            "required": True,
+            "sampling_designs": ["longitudinal"],
+            "technical_replicates": "reject",
+            "min_timepoints_per_series": 2,
+        }
+        specs, blocked = self._normalize(tool)
+        self.assertEqual(blocked, [])
+        self.assertEqual(serialize_custom_tools(specs), {"tools": [tool]})
+        tool["temporal_requirements"]["sampling_designs"] = ["pseudotime"]
+        specs, blocked = self._normalize(tool)
+        self.assertEqual(specs, {})
+        self.assertIn("temporal_requirements", blocked[0]["issues"][0]["message"])
+
     def test_multithreaded_tool_can_declare_no_intrinsic_maximum(self) -> None:
         tool = self._valid_tool()
         tool["runtime_resources"]["threading"]["max_threads"] = None
@@ -97,9 +114,7 @@ class CustomToolsContractTests(unittest.TestCase):
 
         self.assertEqual(blocked, [])
         self.assertIsNone(
-            specs["custom_demo_01"]["runtime_resources"]["threading"][
-                "max_threads"
-            ]
+            specs["custom_demo_01"]["runtime_resources"]["threading"]["max_threads"]
         )
 
     def test_single_threaded_tool_cannot_use_null_maximum(self) -> None:
@@ -313,9 +328,12 @@ class CustomToolsContractTests(unittest.TestCase):
 
     def test_duplicate_run_ids_are_rejected_before_catalog_construction(self) -> None:
         tool = self._valid_tool()
-        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(
-            ValueError,
-            "duplicates derived tool_id: custom_demo_01",
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            self.assertRaisesRegex(
+                ValueError,
+                "duplicates derived tool_id: custom_demo_01",
+            ),
         ):
             normalize_custom_tools_payload(
                 payload={"tools": [tool, copy.deepcopy(tool)]},
@@ -636,7 +654,7 @@ class CustomToolsContractTests(unittest.TestCase):
                 self.assertIn(
                     "ANDREA manages groups.tsv as an orchestration-only input",
                     blocked[0]["issues"][0]["message"],
-                    )
+                )
 
     def test_catalog_scan_uses_fixed_custom_group_execution_mode(self) -> None:
         tool = self._valid_tool()

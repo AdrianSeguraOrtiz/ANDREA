@@ -204,7 +204,7 @@ def infer_network_preflight(
         ...,
         exists=True,
         file_okay=True,
-        help="Path to dataset-manifest.json (includes embedded dataset spec).",
+        help="Path to dataset-manifest.json (embedded dataset spec and optional versioned temporal metadata).",
     ),
     tools_params: Optional[Path] = typer.Option(
         None,
@@ -282,7 +282,7 @@ def infer_network_plan(
         ...,
         exists=True,
         file_okay=True,
-        help="Path to dataset-manifest.json (includes embedded dataset spec).",
+        help="Path to dataset-manifest.json (embedded dataset spec and optional versioned temporal metadata).",
     ),
     tools_params: Path = typer.Option(
         ...,
@@ -369,7 +369,7 @@ def infer_network_execute(
         ...,
         exists=True,
         file_okay=True,
-        help="Path to dataset-manifest.json (includes embedded dataset spec).",
+        help="Path to dataset-manifest.json (embedded dataset spec and optional versioned temporal metadata).",
     ),
     tools_params: Path = typer.Option(
         ...,

@@ -215,6 +215,17 @@ export function toolSpecInfoPayload(tool) {
           },
           { label: "Accepts", value: accepts.length ? accepts.join(", ") : "-" },
           {
+            label: "Observed bulk time",
+            value: tool?.temporal_requirements
+              ? [
+                  tool.temporal_requirements.required ? "Required" : "Optional",
+                  (tool.temporal_requirements.sampling_designs || []).join(", "),
+                  ...(tool.temporal_requirements.technical_replicates ? [`technical replicates: ${tool.temporal_requirements.technical_replicates}`] : []),
+                  ...(tool.temporal_requirements.min_timepoints_per_series ? [`minimum ${tool.temporal_requirements.min_timepoints_per_series} timepoints per series`] : []),
+                ].join("; ")
+              : "No temporal contract required",
+          },
+          {
             label: "Taxonomic groups",
             value: Array.isArray(taxonomicScope.allowed_groups) && taxonomicScope.allowed_groups.length
               ? taxonomicScope.allowed_groups.join(", ")

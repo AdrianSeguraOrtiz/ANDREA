@@ -1,0 +1,99 @@
+{
+  "status": "planned_unmeasured_all_continuation_helpers_ready",
+  "command": [
+    ".venv/bin/python",
+    "wrappers/inference_tools/scripts/benchmark_costs.py",
+    "--tool",
+    "dyngenie3",
+    "--catalog-tools-root",
+    "release-logs/dyngenie3/draft-catalog",
+    "--threads",
+    "1,2",
+    "--ram-gb",
+    "4,8",
+    "--repeats",
+    "3",
+    "--timeout",
+    "3600",
+    "--plan-only"
+  ],
+  "catalog_status": "Temporary exact review copy of toolspec.draft.json; the production catalog remains inactive.",
+  "draft_catalog_preparation": {
+    "source": "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json",
+    "destination": "release-logs/dyngenie3/draft-catalog/dyngenie3/toolspec.json",
+    "operation": "copy exact bytes"
+  },
+  "source_sha256": {
+    "wrappers/inference_tools/cost_profiles/dyngenie3.json": "9167bd0d290be0dd0e805c62709d160e109bfdd27f9bf086aa76a14ee102e079",
+    "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json": "24433977cbe8cb7a6e77a5a1afe500586f6b340af340e7b0bbed377034c7554b",
+    "release-logs/dyngenie3/draft-catalog/dyngenie3/toolspec.json": "24433977cbe8cb7a6e77a5a1afe500586f6b340af340e7b0bbed377034c7554b"
+  },
+  "resolved_stdout": "Benchmark plan: tools=1 profiles=16 planned_runs=408\n- dyngenie3/global_rf_from_data_ts_t4_s1_spec_defaults: sizes=50x4,100x4,200x4 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t4_s2_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t4_s4_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s1_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s4_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s1_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s2_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s4_spec_defaults: sizes=50x64,100x64,200x64 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_et_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_alpha_scalar_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_alpha_vector_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_steady_state_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_tf_list_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_quality_scores_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_saved_models_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n",
+  "planned_calibration_runs": 408,
+  "reserved_holdout_runs": 24,
+  "acceptance_state": {
+    "measurement": "pending",
+    "coverage": "temporal_resource_domain_gate_implemented_unmeasured",
+    "eta_profile_selection": "exact_temporal_shape_guard_implemented_unmeasured",
+    "temporal_shape_estimator": "unsupported",
+    "predictive_accuracy": "actual_core_planner_holdout_helper_ready_unmeasured",
+    "campaign_completion_implies_integration_acceptance": false
+  },
+  "required_extensions": [
+    {
+      "component": "wrappers/inference_tools/scripts/validate_tool_costs.py:calibration_coverage",
+      "requirement": "The implemented temporal gate requires all registered 34 points in every thread/RAM stratum, explicit temporal dimensions, unique captured run IDs, retained input hashes/context/image and three successful raw observations per point. It reports the combined default 27-coordinate temporal grid separately and bounds the seven branch centers to point-only support.",
+      "status": "implemented_unmeasured"
+    },
+    {
+      "component": "andrea/core/commands/infer_network/commons/planner.py:cost profile selection",
+      "requirement": "The implemented guard compares actual validated series/timepoint shape, regularity, time unit, sampling design and steady-state sample count before profile selection. Unknown or mismatched temporal shapes fall back with a warning/provenance instead of pooling equal-column profiles. It does not establish temporal size-growth estimation or prediction accuracy.",
+      "status": "implemented_unmeasured"
+    },
+    {
+      "component": "cost estimator and prediction-validation evidence",
+      "requirement": "The prediction helper freezes the actual ANDREA planner code, cost snapshot and eight exact-profile calls (genes75/250 across four resource strata) before collecting 24 observations. Validation uses the actual planning ETA; nearest-p50 times the same core size scale is retained as a typical-duration diagnostic. Any operational reserve is separate and cannot help pass the planning coverage threshold. Temporal-shape growth remains unsupported.",
+      "status": "implemented_unmeasured"
+    }
+  ],
+  "reserved_holdout_cases": [
+    {
+      "id": "default_gene_interpolation_t8_s2",
+      "kind": "interpolation",
+      "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
+      "genes": 75,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "seed": 765431
+    },
+    {
+      "id": "default_gene_extrapolation_t8_s2",
+      "kind": "extrapolation",
+      "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
+      "genes": 250,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "seed": 765439
+    }
+  ],
+  "eta_seconds": null,
+  "measurement_status": "Deferred while existing PM2 experimental validation remains active. No image build, model fit, calibration or holdout timing was run.",
+  "limitations": "Measurement, finite-domain coverage, actual-core-planner independent accuracy and the final acceptance dossier are separate gates. Calibration stays private until domain and 24-observation prediction checks pass. Predictions across temporal shapes remain unsupported; no image or package publication is performed.",
+  "continuation_budget": {
+    "functional_runs": 12,
+    "functional_timeout_cap_seconds": 43200,
+    "calibration_runs": 408,
+    "calibration_timeout_cap_seconds": 1468800,
+    "holdout_runs": 24,
+    "holdout_timeout_cap_seconds": 86400,
+    "core_cli_runs": 1,
+    "core_cli_timeout_cap_seconds": 3600,
+    "total_container_runs": 445,
+    "science_timeout_cap_seconds": 1602000,
+    "estimated_duration_seconds": null,
+    "build_and_validation_overhead_seconds": null,
+    "note": "Serial execution cap, about18.54days; not an ETA. No automatic retries; build/startup/validation overhead remains unknown."
+  }
+}

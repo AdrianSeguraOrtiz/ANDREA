@@ -7,12 +7,14 @@ import math
 from pathlib import Path
 from typing import Any
 
+from andrea.core.shared.bulk_temporal import validate_bulk_temporal_inputs
 from andrea.core.shared.input_validation import (
     read_tsv_column_values,
     validate_text_list_with_spec,
     validate_tsv_file_with_spec,
 )
 from andrea.core.commands.generate_data.semantic import (
+    expression_profile_for_axes,
     parse_truth_requirements,
     required_truth_context_prefixes,
 )
@@ -77,6 +79,20 @@ def validate_simulator_output_package(
         expression_columns=expression_columns,
         contexts=contexts,
     )
+    if "temporal" in simulator_manifest:
+        if expression_profile_for_axes(data_axes) != "bulk":
+            raise ValueError("temporal bulk-temporal/1 requires bulk expression")
+        extras = simulator_manifest.get("extras", {})
+        validate_bulk_temporal_inputs(
+            temporal=simulator_manifest["temporal"],
+            expression_path=expression_path,
+            timepoints_path=(
+                (stage_dir / extras["timepoints"]) if extras.get("timepoints") else None
+            ),
+            replicates_path=(
+                (stage_dir / extras["replicates"]) if extras.get("replicates") else None
+            ),
+        )
     return {
         "expression": {
             "path": expression_path.as_posix(),
@@ -97,10 +113,14 @@ def _validate_expression(
 ) -> tuple[Path, set[str], set[str]]:
     expression = simulator_manifest.get("expression")
     if not isinstance(expression, dict):
-        raise ValueError(f"simulator-output-manifest[{dataset_id}].expression must be an object")
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}].expression must be an object"
+        )
     expression_rel = expression.get("path")
     if not isinstance(expression_rel, str) or not expression_rel.strip():
-        raise ValueError(f"simulator-output-manifest[{dataset_id}] is missing expression.path")
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}] is missing expression.path"
+        )
     expression_path = stage_dir / expression_rel
     if not expression_path.exists() or not expression_path.is_file():
         raise ValueError(
@@ -168,13 +188,19 @@ def _validate_truth_outputs(
 ) -> tuple[dict[str, str], set[str]]:
     truth = simulator_manifest.get("truth", {})
     if not isinstance(truth, dict):
-        raise ValueError(f"simulator-output-manifest[{dataset_id}].truth must be an object")
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}].truth must be an object"
+        )
     gene_universe_rel = truth.get("gene_universe")
     networks_rel = truth.get("networks")
     if not isinstance(gene_universe_rel, str) or not gene_universe_rel.strip():
-        raise ValueError(f"simulator-output-manifest[{dataset_id}] is missing truth.gene_universe")
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}] is missing truth.gene_universe"
+        )
     if not isinstance(networks_rel, str) or not networks_rel.strip():
-        raise ValueError(f"simulator-output-manifest[{dataset_id}] is missing truth.networks")
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}] is missing truth.networks"
+        )
 
     gene_universe_path = stage_dir / gene_universe_rel
     if not gene_universe_path.exists() or not gene_universe_path.is_file():
@@ -187,9 +213,13 @@ def _validate_truth_outputs(
         if line.strip()
     ]
     if not gene_universe_values:
-        raise ValueError(f"truth gene_universe is empty for dataset {dataset_id}: {gene_universe_rel}")
+        raise ValueError(
+            f"truth gene_universe is empty for dataset {dataset_id}: {gene_universe_rel}"
+        )
     if len(set(gene_universe_values)) != len(gene_universe_values):
-        raise ValueError(f"truth gene_universe contains duplicate gene IDs for dataset {dataset_id}: {gene_universe_rel}")
+        raise ValueError(
+            f"truth gene_universe contains duplicate gene IDs for dataset {dataset_id}: {gene_universe_rel}"
+        )
     gene_universe = set(gene_universe_values)
     if gene_universe != expression_genes:
         missing = sorted(expression_genes.difference(gene_universe))[:8]
@@ -222,9 +252,13 @@ def _validate_truth_outputs(
             source = str(row.get("source", "")).strip()
             target = str(row.get("target", "")).strip()
             if not source or not target:
-                raise ValueError(f"truth networks for dataset {dataset_id} contain empty source/target at line {line_no}")
+                raise ValueError(
+                    f"truth networks for dataset {dataset_id} contain empty source/target at line {line_no}"
+                )
             if source == target:
-                raise ValueError(f"truth networks for dataset {dataset_id} contain a self-loop at line {line_no}: {source}")
+                raise ValueError(
+                    f"truth networks for dataset {dataset_id} contain a self-loop at line {line_no}: {source}"
+                )
             evidence = str(row.get("evidence", "")).strip()
             if evidence != "simulated_truth":
                 raise ValueError(
@@ -246,7 +280,10 @@ def _validate_truth_outputs(
                 raise ValueError(
                     f"truth networks for dataset {dataset_id} contain non-positive score at line {line_no}"
                 )
-            normalize_network_sign(row.get("sign", ""), source=f"truth networks for dataset {dataset_id} line {line_no}")
+            normalize_network_sign(
+                row.get("sign", ""),
+                source=f"truth networks for dataset {dataset_id} line {line_no}",
+            )
             context = normalize_network_context(
                 row.get("context", ""),
                 source=f"truth networks for dataset {dataset_id} line {line_no}",
@@ -255,12 +292,16 @@ def _validate_truth_outputs(
             if context.startswith(GROUP_CONTEXT_PREFIX):
                 group_id = context.removeprefix(GROUP_CONTEXT_PREFIX)
                 if not group_id:
-                    raise ValueError(f"truth networks for dataset {dataset_id} contain empty group context at line {line_no}")
+                    raise ValueError(
+                        f"truth networks for dataset {dataset_id} contain empty group context at line {line_no}"
+                    )
                 group_contexts.add(group_id)
             elif context.startswith(COLUMN_CONTEXT_PREFIX):
                 column_id = context.removeprefix(COLUMN_CONTEXT_PREFIX)
                 if not column_id:
-                    raise ValueError(f"truth networks for dataset {dataset_id} contain empty column context at line {line_no}")
+                    raise ValueError(
+                        f"truth networks for dataset {dataset_id} contain empty column context at line {line_no}"
+                    )
                 column_contexts.add(column_id)
     if row_count == 0:
         raise ValueError(f"truth networks for dataset {dataset_id} contain no edges")
@@ -291,7 +332,10 @@ def _validate_truth_outputs(
             f"truth networks for dataset {dataset_id} must include exactly one column context family covering expression columns; "
             f"missing={missing}, extra={extra}"
         )
-    return {"gene_universe": str(gene_universe_rel), "networks": str(networks_rel)}, contexts
+    return {
+        "gene_universe": str(gene_universe_rel),
+        "networks": str(networks_rel),
+    }, contexts
 
 
 def _required_truth_contexts(
@@ -322,7 +366,9 @@ def _validate_extras(
     if raw_extras is None:
         raw_extras = {}
     if not isinstance(raw_extras, dict):
-        raise ValueError(f"simulator-output-manifest[{dataset_id}].extras must be an object")
+        raise ValueError(
+            f"simulator-output-manifest[{dataset_id}].extras must be an object"
+        )
     if raw_extras.get("tf_list") != "extras/tf_list.txt":
         raise ValueError(
             f"simulator-output-manifest[{dataset_id}].extras.tf_list must be "
@@ -367,7 +413,9 @@ def _validate_extras(
     for key, path in sorted(extras.items()):
         spec = input_specs.get(key)
         if not isinstance(spec, dict):
-            raise ValueError(f"simulator-output-manifest[{dataset_id}] references unknown standardized extra '{key}'")
+            raise ValueError(
+                f"simulator-output-manifest[{dataset_id}] references unknown standardized extra '{key}'"
+            )
         file_kind = str(spec.get("file_kind", "tsv"))
         if file_kind == "txt_list":
             result = validate_text_list_with_spec(
@@ -397,7 +445,9 @@ def _validate_extras(
                         + ", ".join(sorted(duplicates)[:8])
                     )
             if key == "enrichment_background" and not result.line_values:
-                raise ValueError(f"extra enrichment_background is empty for dataset {dataset_id}")
+                raise ValueError(
+                    f"extra enrichment_background is empty for dataset {dataset_id}"
+                )
         else:
             result = validate_tsv_file_with_spec(
                 key=key,
@@ -417,8 +467,12 @@ def _validate_extras(
             summary[key] = result.summary
             if key == "groups":
                 if result.first_column_values != expression_columns:
-                    missing = sorted(expression_columns.difference(result.first_column_values))[:8]
-                    extra = sorted(result.first_column_values.difference(expression_columns))[:8]
+                    missing = sorted(
+                        expression_columns.difference(result.first_column_values)
+                    )[:8]
+                    extra = sorted(
+                        result.first_column_values.difference(expression_columns)
+                    )[:8]
                     raise ValueError(
                         f"extra groups must cover expression columns exactly for dataset {dataset_id}; "
                         f"missing={missing}, extra={extra}"

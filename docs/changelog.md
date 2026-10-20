@@ -2,6 +2,16 @@
 
 ## Unreleased — Osaka integration procedure
 
+- Implement the dynGENIE3 Python candidate from pinned official source, with
+  preserved scientific defaults, explicit target seeds, resource controls and
+  native provenance. Keep catalog activation conditional on physical image
+  verification; measured calibration and publication have separate gates.
+- Adopt optional `bulk-temporal/1` metadata through core, CLI, GUI, frozen
+  bundles and simulator handoff. Validate observed units, series boundaries,
+  biological/technical measurements and exact column joins; add a separate
+  gene-aligned steady-state expression input and genuine temporal cost fixtures.
+- Guard temporal cost selection by series geometry, rather than total matrix
+  columns. Unmatched temporal designs receive an explicit fallback ETA.
 - Replace phase prompts and mandatory PDFs with one autonomous evidence-to-catalog
   workflow accepting TXT, an upstream evidence clone and an installation preference.
 - Keep new inference and simulator scaffolds inactive, with a shared scientific
@@ -9,9 +19,8 @@
 - Separate structural cost validity, declared calibration-domain coverage,
   independent prediction checks and registry publication. Add simulator domain
   checks and an offline held-out prediction validator; preserve historical costs.
-- Audit observed bulk time contracts, document a compatible metadata extension
-  proposal and add temporal fixtures with an offline validator. This does not
-  activate a new runtime input or integrate a new inference method.
+- Preserve the historical bulk-contract audit and offline checker alongside
+  the compatible runtime extension and its stricter, opt-in validation.
 - Correct scaffold/extraction behavior and keep local scientific evidence out
   of image build contexts. No scientific calibrations or image publication are
   claimed by these procedural changes.

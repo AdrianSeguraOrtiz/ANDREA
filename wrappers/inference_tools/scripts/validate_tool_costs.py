@@ -35,8 +35,11 @@ from shared.catalog_tools import (
 )
 from shared.benchmark_profiles import (
     DEFAULT_COST_PROFILES_DIR,
+    load_profile_config,
     resolve_benchmark_profiles,
 )
+from shared.temporal_cost_coverage import temporal_calibration_coverage
+from shared.benchmark_inputs import validate_temporal_fixture
 from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR
 from shared.representative_profiles import (
     load_representative_profiles,
@@ -300,7 +303,10 @@ def calibration_coverage(
     planned: dict[str, list[dict]] | None = None,
     *,
     tool_id: str | None = None,
+    temporal_recipe: dict | None = None,
 ) -> dict:
+    if temporal_recipe is not None:
+        return temporal_calibration_coverage(instance, temporal_recipe)
     planned = planned or {}
     profiles = []
     for profile in instance.get("profiles", []):
@@ -818,6 +824,40 @@ def semantic_errors_for_cost(
             )
 
         extras_provided = _string_set(input_profile.get("extras_provided"))
+        temporal = input_profile.get("temporal")
+        geometry = input_profile.get("temporal_fixture")
+        valid_temporal_geometry = False
+        try:
+            validate_temporal_fixture(temporal, geometry)
+        except ValueError as exc:
+            errors.append(f"{profile_prefix}.benchmark_config.input_profile: {exc}")
+        else:
+            if temporal is not None:
+                valid_temporal_geometry = True
+                if not {"timepoints", "replicates"}.issubset(extras_provided):
+                    errors.append(
+                        f"{profile_prefix}: temporal profiles require timepoints and replicates inputs."
+                    )
+                if ("steady_state_expression" in extras_provided) != (
+                    geometry.get("steady_state_samples", 0) > 0
+                ):
+                    errors.append(
+                        f"{profile_prefix}: temporal steady_state_samples must match steady_state_expression presence."
+                    )
+                expected_columns = (
+                    geometry["series_count"] * geometry["timepoints_per_series"]
+                )
+                temporal_sizes = list(benchmark_config.get("sizes", []))
+                if isinstance(runtime_points, list):
+                    temporal_sizes.extend(runtime_points)
+                for point in temporal_sizes:
+                    if (
+                        isinstance(point, dict)
+                        and point.get("columns") != expected_columns
+                    ):
+                        errors.append(
+                            f"{profile_prefix}: temporal columns must equal series_count * timepoints_per_series ({expected_columns})."
+                        )
         required_satisfied = _string_set(input_profile.get("required_inputs_satisfied"))
         optional_provided = _string_set(input_profile.get("optional_inputs_provided"))
         conditional_satisfied = _string_set(
@@ -961,6 +1001,22 @@ def semantic_errors_for_cost(
                 feature_prefix = (
                     f"{profile_prefix}.runtime_points[{point_idx}].feature_vector"
                 )
+                if valid_temporal_geometry:
+                    expected_temporal_features = {
+                        "n_timepoints_per_series": geometry["timepoints_per_series"],
+                        "n_independent_series": geometry["series_count"],
+                        "n_steady_state_samples": geometry.get(
+                            "steady_state_samples", 0
+                        ),
+                        "n_temporal_transitions": geometry["series_count"]
+                        * (geometry["timepoints_per_series"] - 1),
+                        "temporal_sampling": geometry.get("sampling", "regular"),
+                    }
+                    for name, expected in expected_temporal_features.items():
+                        if feature_vector.get(name) != expected:
+                            errors.append(
+                                f"{feature_prefix}.{name} must match temporal_fixture ({expected!r})."
+                            )
                 if feature_vector.get("execution_mode") != mode:
                     errors.append(
                         f"{feature_prefix}.execution_mode must match the physical "
@@ -1094,7 +1150,22 @@ def run(
                             planned[recipe["profile_id"]] = recipe["benchmark_config"][
                                 "sizes"
                             ]
-                    coverage = calibration_coverage(instance, planned, tool_id=tool_id)
+                    recipe = load_profile_config(
+                        cost_profiles_dir=cost_profiles_dir, tool_id=tool_id
+                    )
+                    temporal_recipe = (
+                        recipe
+                        if isinstance(recipe, dict)
+                        and recipe.get("calibration_design", {}).get("kind")
+                        == "independent_temporal_default_grid_with_branch_centers"
+                        else None
+                    )
+                    coverage = calibration_coverage(
+                        instance,
+                        planned,
+                        tool_id=tool_id,
+                        temporal_recipe=temporal_recipe,
+                    )
                     coverage_results[tool_id] = coverage
                     adequate = sum(
                         p["calibration_adequate_for_planned_range"]

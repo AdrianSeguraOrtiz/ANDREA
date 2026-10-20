@@ -294,6 +294,8 @@ def _dataset_manifest_payload(
             payload["extras"][key] = value
     if request.notes:
         payload["notes"] = request.notes
+    if "temporal" in simulator_manifest:
+        payload["temporal"] = simulator_manifest["temporal"]
     return payload
 
 
@@ -806,6 +808,7 @@ def _execute_simulation_task(
             for key, value in raw_extras.items()
             if key in _NORMALIZED_EXTRA_FILENAMES and isinstance(value, str)
         },
+        temporal=simulator_manifest.get("temporal"),
     )
 
     dataset_manifest_payload = _dataset_manifest_payload(

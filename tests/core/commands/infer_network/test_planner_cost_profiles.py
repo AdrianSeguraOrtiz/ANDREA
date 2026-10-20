@@ -7,7 +7,10 @@ from typing import Any
 
 from andrea.core.commands.infer_network.commons.planner import (
     _estimate_tool_mode_options,
+    _select_cost_profile,
+    _temporal_cost_context,
 )
+from dataclasses import replace
 from andrea.core.commands.infer_network.commons.shared import DatasetContext
 
 
@@ -95,6 +98,196 @@ def _profile(
 
 
 class PlannerCostProfileSelectionTest(unittest.TestCase):
+    @staticmethod
+    def _temporal_context(
+        *, series_count: int = 4, points: int = 4, **overrides
+    ) -> dict[str, Any]:
+        return {
+            "schema_version": "bulk-temporal/1",
+            "time_basis": "observed",
+            "time_unit": "hour",
+            "sampling_design": "longitudinal",
+            "series_count": series_count,
+            "timepoints_per_series": points,
+            "steady_state_samples": 0,
+            "sampling": "regular",
+            **overrides,
+        }
+
+    def _temporal_profile(self, series_count: int, points: int) -> dict[str, Any]:
+        context = self._temporal_context(series_count=series_count, points=points)
+        profile = _profile(
+            f"s{series_count}_t{points}",
+            runtime_points=[{**_runtime_point(), "columns": 16}],
+        )
+        profile["benchmark_config"]["input_profile"].update(
+            {
+                "temporal": {
+                    key: context[key]
+                    for key in (
+                        "schema_version",
+                        "time_basis",
+                        "time_unit",
+                        "sampling_design",
+                    )
+                },
+                "temporal_fixture": {
+                    key: context[key]
+                    for key in (
+                        "series_count",
+                        "timepoints_per_series",
+                        "steady_state_samples",
+                        "sampling",
+                    )
+                },
+            }
+        )
+        return profile
+
+    def test_temporal_profiles_with_equal_total_columns_keep_series_geometry_separate(
+        self,
+    ) -> None:
+        toolspec = self._toolspec()
+        toolspec["temporal_requirements"] = {
+            "required": True,
+            "sampling_designs": ["longitudinal"],
+        }
+        profiles = [
+            self._temporal_profile(series, points)
+            for series, points in ((4, 4), (2, 8), (1, 16))
+        ]
+        for series, points in ((4, 4), (2, 8), (1, 16)):
+            with self.subTest(series=series, points=points):
+                selected, metadata, warnings = _select_cost_profile(
+                    tool_id="temporal",
+                    toolspec=toolspec,
+                    cost_payload={"profiles": profiles},
+                    execution_mode="global",
+                    extras_present=set(),
+                    resolved_params={"limit": 50},
+                    logical_group_count=0,
+                    genes=10,
+                    columns=16,
+                    temporal_cost_context=self._temporal_context(
+                        series_count=series, points=points
+                    ),
+                )
+                self.assertEqual(selected["profile_id"], f"s{series}_t{points}")
+                self.assertEqual(metadata["temporal_context"]["series_count"], series)
+                self.assertEqual(warnings, [])
+
+    def test_temporal_mismatch_or_unknown_shape_uses_explicit_fallback(self) -> None:
+        toolspec = self._toolspec()
+        toolspec["temporal_requirements"] = {
+            "required": True,
+            "sampling_designs": ["longitudinal"],
+        }
+        cases = [
+            None,
+            self._temporal_context(series_count=2, points=8),
+            self._temporal_context(time_unit="minute"),
+            self._temporal_context(sampling="irregular"),
+            self._temporal_context(steady_state_samples=4),
+            self._temporal_context(sampling_design="independent_samples"),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            for context in cases:
+                with self.subTest(context=context):
+                    modes, warnings = _estimate_tool_mode_options(
+                        tool_id="temporal",
+                        run_id="temporal",
+                        toolspec=toolspec,
+                        cost_profile={"profiles": [self._temporal_profile(4, 4)]},
+                        execution_mode="global",
+                        resolved_params={"limit": 50},
+                        extras_present=set(),
+                        logical_group_count=0,
+                        dataset=self._dataset(Path(tmp), extras={}, columns=16),
+                        max_cores=2,
+                        max_ram_gb=8,
+                        output_dir="tools/temporal",
+                        temporal_cost_context=context,
+                    )
+                    self.assertEqual(
+                        modes[0].eta_source, "fallback_no_matching_cost_profile"
+                    )
+                    self.assertTrue(
+                        any("temporal geometry" in warning for warning in warnings)
+                    )
+                    self.assertEqual(
+                        modes[0].eta_provenance["rejected_profile"][
+                            "rejected_temporal_profiles"
+                        ],
+                        ["s4_t4"],
+                    )
+
+    def test_temporal_context_declines_unsupported_replication_and_unequal_series(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            context = self._temporal_context(series_count=2, points=4)
+            dataset = replace(
+                self._dataset(Path(tmp), extras={}, columns=8), temporal=context
+            )
+            summary = {
+                "status": "ok",
+                "columns": 8,
+                "observations": 8,
+                "series": [
+                    {
+                        "series_id": str(index),
+                        "timepoints": [0, 1, 2, 3],
+                        "regular": True,
+                        "observations_per_timepoint": [1, 1, 1, 1],
+                    }
+                    for index in range(2)
+                ],
+            }
+            self.assertEqual(
+                _temporal_cost_context(dataset=dataset, temporal_summary=summary),
+                context,
+            )
+            self.assertEqual(
+                _temporal_cost_context(
+                    dataset=dataset, temporal_summary=summary, steady_state_samples=3
+                )["steady_state_samples"],
+                3,
+            )
+            self.assertIsNone(
+                _temporal_cost_context(
+                    dataset=dataset, temporal_summary={**summary, "observations": 4}
+                )
+            )
+            summary["series"][0]["timepoints"] = [0, 1, 2]
+            self.assertIsNone(
+                _temporal_cost_context(dataset=dataset, temporal_summary=summary)
+            )
+
+    def test_temporal_profile_cannot_claim_points_with_different_actual_columns(
+        self,
+    ) -> None:
+        toolspec = self._toolspec()
+        toolspec["temporal_requirements"] = {
+            "required": True,
+            "sampling_designs": ["longitudinal"],
+        }
+        profile = self._temporal_profile(4, 4)
+        profile["runtime_points"][0]["columns"] = 32
+        selected, _, warnings = _select_cost_profile(
+            tool_id="temporal",
+            toolspec=toolspec,
+            cost_payload={"profiles": [profile]},
+            execution_mode="global",
+            extras_present=set(),
+            resolved_params={"limit": 50},
+            logical_group_count=0,
+            genes=10,
+            columns=16,
+            temporal_cost_context=self._temporal_context(),
+        )
+        self.assertIsNone(selected)
+        self.assertTrue(any("temporal geometry" in warning for warning in warnings))
+
     def _dataset(
         self,
         tmp: Path,
@@ -210,9 +403,7 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                 resolved_params={"limit": 50},
                 extras_present=set(),
                 logical_group_count=0,
-                dataset=self._dataset(
-                    Path(tmp), extras={}, genes=3_000, columns=3_000
-                ),
+                dataset=self._dataset(Path(tmp), extras={}, genes=3_000, columns=3_000),
                 max_cores=120,
                 max_ram_gb=960.0,
                 output_dir="tools/genie3_01",
@@ -302,8 +493,9 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         self.assertEqual(modes[0].ram_gb, 48.0)
 
     def test_exact_ram_must_fit_global_planner_budget(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(
-            ValueError, "outside max_ram_gb"
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            self.assertRaisesRegex(ValueError, "outside max_ram_gb"),
         ):
             _estimate_tool_mode_options(
                 tool_id="custom_spathi_01",
@@ -586,7 +778,9 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         self.assertTrue(any("cost-relevant parameter" in w for w in warnings))
         self.assertEqual(modes[0].eta_source, "fallback_no_matching_cost_profile")
         self.assertFalse(modes[0].eta_provenance["calibrated"])
-        self.assertEqual(modes[0].eta_provenance["rejected_profile"]["profile_id"], "global_limit_10")
+        self.assertEqual(
+            modes[0].eta_provenance["rejected_profile"]["profile_id"], "global_limit_10"
+        )
 
     def test_only_cost_relevant_params_affect_profile_matching(self) -> None:
         cost_payload = {

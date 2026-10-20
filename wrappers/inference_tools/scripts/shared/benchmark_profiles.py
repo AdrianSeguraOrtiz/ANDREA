@@ -8,8 +8,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
-from .benchmark_inputs import GENERATED_EXTRA_INPUTS
-from .param_profiles import DEFAULT_PARAM_OVERRIDES_DIR, resolve_dev_params, _build_default_params
+from .benchmark_inputs import GENERATED_EXTRA_INPUTS, validate_temporal_fixture
+from .param_profiles import (
+    DEFAULT_PARAM_OVERRIDES_DIR,
+    resolve_dev_params,
+    _build_default_params,
+)
 
 INFERENCE_TOOLS_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_COST_PROFILES_DIR = INFERENCE_TOOLS_ROOT / "cost_profiles"
@@ -146,6 +150,8 @@ def _configured_profiles(
             "prior_density": profile_config.get("prior_density"),
             "prior_score_policy": profile_config.get("prior_score_policy"),
             "marker_count_per_group": profile_config.get("marker_count_per_group"),
+            "temporal": profile_config.get("temporal"),
+            "temporal_fixture": profile_config.get("temporal_fixture"),
         }
         inherited_sizes = inherited_profile_fields["sizes"]
         if inherited_sizes is not None and not isinstance(inherited_sizes, list):
@@ -259,10 +265,26 @@ def _resolve_one_profile(
         runtime_inputs=runtime_inputs,
         default_prior_density=default_prior_density,
     )
+    sizes = _profile_sizes(raw_profile=raw_profile, profile_id=profile_id)
+    if "temporal" in input_profile and sizes:
+        geometry = input_profile["temporal_fixture"]
+        expected_columns = geometry["series_count"] * geometry["timepoints_per_series"]
+        for size in sizes:
+            try:
+                genes, columns = (int(value) for value in size.lower().split("x"))
+            except ValueError as exc:
+                raise ValueError(
+                    f"profile {profile_id}: invalid temporal size {size!r}."
+                ) from exc
+            if genes < 1 or columns != expected_columns:
+                raise ValueError(
+                    f"profile {profile_id}: temporal size {size!r} must have "
+                    f"{expected_columns} columns (series_count * timepoints_per_series)."
+                )
     return BenchmarkProfile(
         tool_id=tool_id,
         profile_id=profile_id,
-        sizes=_profile_sizes(raw_profile=raw_profile, profile_id=profile_id),
+        sizes=sizes,
         execution=execution,
         execution_profile=execution_profile,
         params=params,
@@ -388,9 +410,7 @@ def _profile_group_count(
         group_count = raw_group_count
 
     if mode in {"global", "column_native"} and group_count != 0:
-        raise ValueError(
-            f"profile.group_count must be 0 for execution.mode={mode}."
-        )
+        raise ValueError(f"profile.group_count must be 0 for execution.mode={mode}.")
     if mode == "group_native" and group_count < 1:
         raise ValueError(f"profile.group_count must be >= 1 for execution.mode={mode}.")
     return group_count
@@ -407,11 +427,14 @@ def _resolve_profile_params(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     parameter_base = raw_profile.get("parameter_base", "development")
     if parameter_base not in {"development", "spec_defaults"}:
-        raise ValueError(f"profile {profile_id}: unknown parameter_base {parameter_base!r}")
+        raise ValueError(
+            f"profile {profile_id}: unknown parameter_base {parameter_base!r}"
+        )
     if parameter_base == "spec_defaults":
         base_params = _build_default_params(params_schema)
         base_params_profile = {
-            "source": "toolspec_defaults", "override_file": None,
+            "source": "toolspec_defaults",
+            "override_file": None,
             "resolved_params": copy.deepcopy(base_params),
         }
     params = copy.deepcopy(base_params)
@@ -750,16 +773,20 @@ def _build_input_profile(
         expression_profile = (
             "synthetic_single_cell_benchmark"
             if column_kind == "cells"
-            else "synthetic_spatial_benchmark"
-            if column_kind == "spots"
-            else "synthetic_benchmark"
+            else (
+                "synthetic_spatial_benchmark"
+                if column_kind == "spots"
+                else "synthetic_benchmark"
+            )
         )
     gene_id_source = raw_profile.get("gene_id_source", "synthetic")
     prior_density = raw_profile.get("prior_density")
     if prior_density is None and set(extras).intersection(PRIOR_LIKE_INPUTS):
         prior_density = default_prior_density
     marker_count_per_group = raw_profile.get("marker_count_per_group", 4)
-    if isinstance(marker_count_per_group, bool) or not isinstance(marker_count_per_group, int):
+    if isinstance(marker_count_per_group, bool) or not isinstance(
+        marker_count_per_group, int
+    ):
         raise ValueError("profile.marker_count_per_group must be an integer.")
     tf_count_policy = raw_profile.get("tf_count_policy")
     if tf_count_policy is None and "tf_list" in extras:
@@ -787,9 +814,7 @@ def _build_input_profile(
         "marker_count_per_group": marker_count_per_group,
         "group_count": group_count,
         "has_tf_list": "tf_list" in extras,
-        "output_density_class": (
-            "dense" if mode == "column_native" else "sparse"
-        ),
+        "output_density_class": ("dense" if mode == "column_native" else "sparse"),
         "aggregation_step": "none",
         "notes": [str(note) for note in notes]
         or ["Resolved by benchmark_profiles.py from ToolSpec defaults."],
@@ -797,8 +822,25 @@ def _build_input_profile(
     if "prior_score_policy" in raw_profile:
         policy = raw_profile["prior_score_policy"]
         if policy not in {"uniform_positive", "binary"}:
-            raise ValueError("profile.prior_score_policy must be uniform_positive or binary.")
+            raise ValueError(
+                "profile.prior_score_policy must be uniform_positive or binary."
+            )
         result["prior_score_policy"] = policy
+    temporal = raw_profile.get("temporal")
+    temporal_fixture = raw_profile.get("temporal_fixture")
+    validate_temporal_fixture(temporal, temporal_fixture)
+    if temporal is not None:
+        if not {"timepoints", "replicates"}.issubset(extras):
+            raise ValueError(
+                "Temporal benchmark profiles require timepoints and replicates inputs."
+            )
+        has_steady = "steady_state_expression" in extras
+        if has_steady != (temporal_fixture.get("steady_state_samples", 0) > 0):
+            raise ValueError(
+                "Temporal steady_state_samples must match steady_state_expression input presence."
+            )
+        result["temporal"] = copy.deepcopy(temporal)
+        result["temporal_fixture"] = copy.deepcopy(temporal_fixture)
     return result
 
 

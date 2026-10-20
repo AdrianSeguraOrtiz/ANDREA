@@ -24,7 +24,7 @@ from .shared import (
 
 
 def _serialize_dataset_context(dataset: DatasetContext) -> dict[str, Any]:
-    return {
+    payload = {
         "dataset_id": dataset.dataset_id,
         "column_kind": dataset.column_kind,
         "expression_profile": dataset.expression_profile,
@@ -40,9 +40,16 @@ def _serialize_dataset_context(dataset: DatasetContext) -> dict[str, Any]:
             for key, path in sorted(dataset.extras.items())
         },
     }
+    if dataset.temporal is not None:
+        payload["temporal"] = dataset.temporal
+    return payload
 
 
 def _deserialize_dataset_context(payload: dict[str, Any]) -> DatasetContext:
+    if "temporal" in payload:
+        from andrea.core.shared.bulk_temporal import validate_temporal_declaration
+
+        validate_temporal_declaration(payload["temporal"])
     organism = payload.get("organism")
     if not isinstance(organism, dict) or set(organism) != {
         "taxonomic_group",
@@ -77,6 +84,7 @@ def _deserialize_dataset_context(payload: dict[str, Any]) -> DatasetContext:
             str(payload.get("expression_matrix_path", ""))
         ).resolve(),
         extras=extras,
+        temporal=payload.get("temporal"),
     )
 
 

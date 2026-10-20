@@ -251,6 +251,7 @@ def _load_tools_bootstrap() -> dict[str, Any]:
                     x for x in toolspec.get("accepts", []) if isinstance(x, str)
                 ],
                 "required_extras": required_extras,
+                "temporal_requirements": toolspec.get("temporal_requirements"),
                 "optional_extras": optional_extras,
                 "conditional_required_extras": conditional_required_extras,
                 "publication": (
@@ -472,9 +473,7 @@ def _normalize_runs(
             )
         threads = resources.get("threads")
         if threads is not None and (
-            isinstance(threads, bool)
-            or not isinstance(threads, int)
-            or threads < 1
+            isinstance(threads, bool) or not isinstance(threads, int) or threads < 1
         ):
             raise ValueError(f"runs[{idx}].resources.threads must be an integer >= 1")
         normalized_resources: dict[str, Any] = {}
@@ -644,6 +643,13 @@ def _build_dataset_manifest_file(
     }
 
     dataset_manifest_path = request_dir / "dataset-manifest.json"
+
+    if "temporal" in dataset_cfg:
+        from andrea.core.shared.bulk_temporal import validate_temporal_declaration
+
+        dataset_manifest["temporal"] = validate_temporal_declaration(
+            dataset_cfg["temporal"]
+        )
 
     dataset_manifest_path.write_text(
         json.dumps(dataset_manifest, indent=2, ensure_ascii=True) + "\n",
@@ -1148,10 +1154,7 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
                             ):
                                 payload = child_results[task_id]
                                 child_status = str(payload.get("status", "pending"))
-                                if (
-                                    child_status.lower().strip()
-                                    in terminal_statuses
-                                ):
+                                if child_status.lower().strip() in terminal_statuses:
                                     child_percent = 100
 
                         child_status = child_status.lower().strip()
@@ -1281,7 +1284,9 @@ def _collect_runtime_progress(*, run_dir: Optional[Path]) -> dict[str, Any]:
     return {"tools": tool_entries, "summary": summary}
 
 
-def _read_execution_state_payload(*, run_dir: Optional[Path]) -> Optional[dict[str, Any]]:
+def _read_execution_state_payload(
+    *, run_dir: Optional[Path]
+) -> Optional[dict[str, Any]]:
     if run_dir is None or not run_dir.exists() or not run_dir.is_dir():
         return None
     return read_execution_state_if_exists(execution_state_path(run_dir))
@@ -1353,12 +1358,8 @@ def _runtime_progress_from_execution_state(
                 if item["status"] in {"completed", "completed_with_warnings"}
             ),
             "failed": sum(1 for item in tool_entries if item["status"] == "failed"),
-            "running": sum(
-                1 for item in tool_entries if item["status"] == "running"
-            ),
-            "pending": sum(
-                1 for item in tool_entries if item["status"] == "pending"
-            ),
+            "running": sum(1 for item in tool_entries if item["status"] == "running"),
+            "pending": sum(1 for item in tool_entries if item["status"] == "pending"),
             "warnings": sum(
                 len(item.get("warnings", []))
                 for item in tool_entries
@@ -1554,9 +1555,7 @@ def _infer_bundle_readiness(
     report_file_status = (
         "ready" if output_readiness.get("run_report_file_ready") else "pending"
     )
-    report_status = (
-        "ready" if output_readiness.get("final_report_ready") else "pending"
-    )
+    report_status = "ready" if output_readiness.get("final_report_ready") else "pending"
     if output_readiness.get("graph_exports_ready"):
         graphs_status = "ready"
     elif output_readiness.get("output_profile") == "canonical":
@@ -1971,6 +1970,7 @@ def _is_probably_text(source: Path, sample_bytes: int = 4096) -> bool:
         return False
     return True
 
+
 def _run_job(
     *,
     job_id: str,
@@ -2037,7 +2037,9 @@ def _run_job(
                 job.active_action = None
                 job.progress_percent = 100
                 job.progress_label = "Preflight completed"
-                job.progress_detail = "Dataset inputs and catalog compatibility were validated."
+                job.progress_detail = (
+                    "Dataset inputs and catalog compatibility were validated."
+                )
                 job.finished_at = _utc_now()
             return
 
@@ -2260,10 +2262,9 @@ def create_app() -> FastAPI:
             run_report = read_json_if_exists(str(run_dir / "run_report.json"))
         preflight_report = read_json_if_exists(payload.get("preflight_report_path"))
         execution_state = _read_execution_state_payload(run_dir=run_dir)
-        runtime_progress = (
-            _runtime_progress_from_execution_state(execution_state)
-            or _collect_runtime_progress(run_dir=run_dir)
-        )
+        runtime_progress = _runtime_progress_from_execution_state(
+            execution_state
+        ) or _collect_runtime_progress(run_dir=run_dir)
         output_readiness = _collect_output_readiness(
             run_dir=run_dir,
             run_report=run_report,
@@ -2351,7 +2352,9 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         sources = resolution.source_tuples
-        entries = build_bundle_entries(sources, viewer_for_path=_viewer_for_virtual_path)
+        entries = build_bundle_entries(
+            sources, viewer_for_path=_viewer_for_virtual_path
+        )
         return JSONResponse(
             {
                 "status": status,
@@ -2679,7 +2682,9 @@ def create_app() -> FastAPI:
                 "stage": "draft",
                 "request_dir": str(request_dir),
                 "dataset_manifest_path": str(dataset_manifest_path),
-                "custom_tools_path": str(custom_tools_path) if custom_tools_path else None,
+                "custom_tools_path": (
+                    str(custom_tools_path) if custom_tools_path else None
+                ),
             }
         )
 
@@ -2751,7 +2756,9 @@ def create_app() -> FastAPI:
             job.planner = str(options_cfg.get("planner", "auto") or "auto")
             job.planner_time_limit_seconds = planner_time_limit_seconds
             job.tools_params_path = str(tools_params_path)
-            job.custom_tools_path = str(custom_tools_path) if custom_tools_path else None
+            job.custom_tools_path = (
+                str(custom_tools_path) if custom_tools_path else None
+            )
             job.output_dir = str(output_dir)
             job.error = None
             job.traceback = None

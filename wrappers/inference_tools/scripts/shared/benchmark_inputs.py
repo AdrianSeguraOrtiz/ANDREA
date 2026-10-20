@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import csv
+import copy
 import hashlib
 import json
+import math
 import random
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +28,7 @@ GENERATED_EXTRA_INPUTS = {
     "pseudotime",
     "replicates",
     "spatial_coordinates",
+    "steady_state_expression",
     "terms_of_interest",
     "tf_list",
     "timepoints",
@@ -47,6 +50,7 @@ EXTRA_FILENAMES = {
     "pseudotime": "pseudotime.tsv",
     "replicates": "replicates.tsv",
     "spatial_coordinates": "spatial_coordinates.tsv",
+    "steady_state_expression": "steady_state_expression.tsv",
     "terms_of_interest": "terms_of_interest.txt",
     "tf_list": "tf_list.txt",
     "timepoints": "timepoints.tsv",
@@ -222,6 +226,8 @@ class BenchmarkInputProfile:
     prior_score_policy: str = "uniform_positive"
     marker_count_per_group: int = 4
     terms_of_interest: tuple[str, ...] = ("root", "development", "stress")
+    temporal: dict[str, Any] | None = None
+    temporal_fixture: dict[str, Any] | None = None
 
     @classmethod
     def from_cost_input_profile(
@@ -253,11 +259,15 @@ class BenchmarkInputProfile:
                 else None
             ),
             prior_density=_as_optional_density(payload.get("prior_density")),
-            prior_score_policy=str(payload.get("prior_score_policy", "uniform_positive")),
+            prior_score_policy=str(
+                payload.get("prior_score_policy", "uniform_positive")
+            ),
             marker_count_per_group=_as_int(
                 payload.get("marker_count_per_group", 4),
                 default=4,
             ),
+            temporal=copy.deepcopy(payload.get("temporal")),
+            temporal_fixture=copy.deepcopy(payload.get("temporal_fixture")),
         )
 
 
@@ -356,15 +366,17 @@ def write_benchmark_io_dir(
         elif input_key == "pseudotime":
             write_pseudotime(path, columns=columns, assignments=assignments)
         elif input_key == "replicates":
-            write_replicates(path, columns=columns)
+            write_replicates(path, columns=columns, profile=profile)
         elif input_key == "spatial_coordinates":
             write_spatial_coordinates(path, columns=columns)
+        elif input_key == "steady_state_expression":
+            write_steady_state_expression(path, genes=genes, size=size, profile=profile)
         elif input_key == "terms_of_interest":
             write_terms_of_interest(path, profile.terms_of_interest)
         elif input_key == "tf_list":
             write_tf_list(path, tfs)
         elif input_key == "timepoints":
-            write_timepoints(path, columns=columns)
+            write_timepoints(path, columns=columns, profile=profile)
         extras[input_key] = path
 
     return BenchmarkInputBundle(
@@ -394,6 +406,16 @@ def write_expression_matrix(
         for gene_idx, gene in enumerate(genes, start=1):
             row = []
             for col_idx in range(1, size.columns + 1):
+                if profile.temporal is not None:
+                    point_count = int(profile.temporal_fixture["timepoints_per_series"])
+                    series_idx, point_idx = divmod(col_idx - 1, point_count)
+                    time = temporal_timepoint(point_idx, profile)
+                    baseline = 1.0 + gene_idx * 0.03
+                    amplitude = 0.5 + (gene_idx % 11) * 0.07 + series_idx * 0.02
+                    decay = 0.03 + (gene_idx % 7) * 0.01
+                    value = baseline + amplitude * math.exp(-decay * time)
+                    row.append(f"{value + rng.uniform(0.0, 0.001):.6f}")
+                    continue
                 trend = (gene_idx * 0.17) + (col_idx * 0.031)
                 seasonal = ((gene_idx + col_idx) % 7) * 0.013
                 noise = rng.uniform(0.0, 0.02)
@@ -521,20 +543,98 @@ def write_column_descriptors(
             )
 
 
-def write_timepoints(path: Path, *, columns: Sequence[str]) -> None:
+def temporal_timepoint(index: int, profile: BenchmarkInputProfile) -> float:
+    """Return an increasing observed time within one independent series."""
+    sampling = (profile.temporal_fixture or {}).get("sampling", "regular")
+    return float(index) if sampling == "regular" else index + 0.25 * index * index
+
+
+def write_timepoints(
+    path: Path,
+    *,
+    columns: Sequence[str],
+    profile: BenchmarkInputProfile | None = None,
+) -> None:
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        if profile is not None and profile.temporal is not None:
+            writer.writerow(
+                [
+                    "column",
+                    "timepoint",
+                    "time_unit",
+                    "series_id",
+                    "condition",
+                    "observation_id",
+                ]
+            )
+            count = int(profile.temporal_fixture["timepoints_per_series"])
+            for idx, column in enumerate(columns):
+                series_idx, point_idx = divmod(idx, count)
+                writer.writerow(
+                    [
+                        column,
+                        f"{temporal_timepoint(point_idx, profile):g}",
+                        profile.temporal["time_unit"],
+                        f"series_{series_idx + 1}",
+                        "synthetic_baseline",
+                        f"observation_{idx + 1}",
+                    ]
+                )
+            return
         writer.writerow(["column", "timepoint"])
         for idx, column in enumerate(columns):
             writer.writerow([column, f"{float(idx % 4):.1f}"])
 
 
-def write_replicates(path: Path, *, columns: Sequence[str]) -> None:
+def write_replicates(
+    path: Path,
+    *,
+    columns: Sequence[str],
+    profile: BenchmarkInputProfile | None = None,
+) -> None:
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        if profile is not None and profile.temporal is not None:
+            writer.writerow(
+                ["column", "replicate", "replicate_kind", "technical_replicate"]
+            )
+            count = int(profile.temporal_fixture["timepoints_per_series"])
+            for idx, column in enumerate(columns):
+                writer.writerow(
+                    [column, f"bio_{idx // count + 1}", "biological", "tech1"]
+                )
+            return
         writer.writerow(["column", "replicate", "batch"])
         for idx, column in enumerate(columns):
             writer.writerow([column, f"r{(idx % 3) + 1}", f"batch_{(idx % 2) + 1}"])
+
+
+def write_steady_state_expression(
+    path: Path,
+    *,
+    genes: Sequence[str],
+    size: BenchmarkInputSize,
+    profile: BenchmarkInputProfile,
+) -> None:
+    """Write separate steady-state samples without inventing TS transitions."""
+    sample_count = int(
+        (profile.temporal_fixture or {}).get("steady_state_samples", size.columns)
+    )
+    rng = random.Random(
+        stable_seed(size=size, profile=profile, namespace="steady_state")
+    )
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        writer.writerow(["gene"] + [f"SS{idx + 1}" for idx in range(sample_count)])
+        for gene_idx, gene in enumerate(genes, start=1):
+            writer.writerow(
+                [gene]
+                + [
+                    f"{1.0 + gene_idx * 0.03 + rng.uniform(0.0, 0.1):.6f}"
+                    for _ in range(sample_count)
+                ]
+            )
 
 
 def write_perturbation_design(
@@ -561,7 +661,16 @@ def write_perturbation_design(
         for idx, column in enumerate(columns):
             if idx % 4 == 0:
                 writer.writerow(
-                    [column, "control", "none", "", "0", "0", f"r{(idx % 3) + 1}", "true"]
+                    [
+                        column,
+                        "control",
+                        "none",
+                        "",
+                        "0",
+                        "0",
+                        f"r{(idx % 3) + 1}",
+                        "true",
+                    ]
                 )
             else:
                 target = targets[idx % len(targets)]
@@ -828,6 +937,10 @@ def stable_seed(
         },
         "namespace": namespace,
     }
+    # Opt-in temporal fields leave every historical non-temporal seed unchanged.
+    if profile.temporal is not None:
+        payload["profile"]["temporal"] = profile.temporal
+        payload["profile"]["temporal_fixture"] = profile.temporal_fixture
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     digest = hashlib.sha256(raw).digest()
     return int.from_bytes(digest[:8], byteorder="big", signed=False)
@@ -884,6 +997,67 @@ def _validate_profile(
     if profile.marker_count_per_group < 1:
         raise ValueError("marker_count_per_group must be >= 1.")
     resolved_prior_density(profile)
+    validate_temporal_fixture(profile.temporal, profile.temporal_fixture)
+    if profile.temporal is not None:
+        geometry = profile.temporal_fixture
+        expected = geometry["series_count"] * geometry["timepoints_per_series"]
+        if size.columns != expected:
+            raise ValueError(
+                "Temporal fixture columns must equal series_count * timepoints_per_series "
+                f"({expected}), got {size.columns}."
+            )
+        required = {"timepoints", "replicates"}
+        if not required.issubset(profile.extras_provided):
+            raise ValueError(
+                "Temporal fixtures require timepoints and replicates extras."
+            )
+        has_steady = "steady_state_expression" in profile.extras_provided
+        if has_steady != (geometry.get("steady_state_samples", 0) > 0):
+            raise ValueError(
+                "Temporal steady_state_samples must be positive exactly when "
+                "steady_state_expression is provided."
+            )
+
+
+def validate_temporal_fixture(temporal: Any, geometry: Any) -> None:
+    """Reject ambiguous synthetic temporal geometry before any benchmark runs."""
+    if temporal is None and geometry is None:
+        return
+    if not isinstance(temporal, dict) or not isinstance(geometry, dict):
+        raise ValueError(
+            "Temporal benchmarks require temporal and temporal_fixture objects."
+        )
+    if temporal.get("schema_version") != "bulk-temporal/1":
+        raise ValueError("Temporal benchmarks require schema_version bulk-temporal/1.")
+    if temporal.get("time_basis") != "observed":
+        raise ValueError("Temporal benchmark time_basis must be observed.")
+    if temporal.get("sampling_design") != "longitudinal":
+        raise ValueError(
+            "Temporal benchmark generator supports longitudinal series only."
+        )
+    for key in ("time_unit", "time_origin", "provenance"):
+        if not isinstance(temporal.get(key), str) or not temporal[key].strip():
+            raise ValueError(f"Temporal benchmark {key} must be a nonempty string.")
+    if temporal.get("missing_values") != "reject":
+        raise ValueError("Temporal benchmark missing_values must be reject.")
+    preprocessing = temporal.get("preprocessing")
+    if not isinstance(preprocessing, dict) or any(
+        not isinstance(preprocessing.get(key), str) or not preprocessing[key].strip()
+        for key in ("normalization", "transformation")
+    ):
+        raise ValueError(
+            "Temporal benchmark preprocessing must declare normalization and transformation."
+        )
+    for key, minimum in (
+        ("series_count", 1),
+        ("timepoints_per_series", 3),
+        ("steady_state_samples", 0),
+    ):
+        value = geometry.get(key, 0 if key == "steady_state_samples" else None)
+        if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+            raise ValueError(f"Temporal fixture {key} must be an integer >= {minimum}.")
+    if geometry.get("sampling", "regular") not in {"regular", "irregular"}:
+        raise ValueError("Temporal fixture sampling must be regular or irregular.")
 
 
 def _as_int(value: Any, *, default: int) -> int:

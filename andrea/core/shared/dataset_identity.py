@@ -24,12 +24,19 @@ def fingerprint_dataset_content(
     *,
     expression_path: Path,
     extras: Mapping[str, Path | None],
+    temporal: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
     """Hash standardized dataset inputs independently of their host paths."""
     components = {"expression": _sha256_file(expression_path)}
     for key, path in sorted(extras.items()):
         if path is not None:
             components[f"extra:{key}"] = _sha256_file(path)
+    if temporal is not None:
+        components["temporal"] = hashlib.sha256(
+            json.dumps(
+                dict(temporal), ensure_ascii=True, sort_keys=True, separators=(",", ":")
+            ).encode("ascii")
+        ).hexdigest()
     canonical = json.dumps(
         components,
         ensure_ascii=True,

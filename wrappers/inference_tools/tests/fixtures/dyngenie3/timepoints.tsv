@@ -1,0 +1,16 @@
+column	timepoint	time_unit	series_id	condition	observation_id
+treated_1.t4	10	hour	treated_1	treated	treated_1.observation4
+treated_1.t3	6	hour	treated_1	treated	treated_1.observation3
+treated_1.t2	3	hour	treated_1	treated	treated_1.observation2
+treated_1.t1	1	hour	treated_1	treated	treated_1.observation1
+treated_1.t0	0	hour	treated_1	treated	treated_1.observation0
+control_2.t4	10	hour	control_2	control	control_2.observation4
+control_2.t3	6	hour	control_2	control	control_2.observation3
+control_2.t2	3	hour	control_2	control	control_2.observation2
+control_2.t1	1	hour	control_2	control	control_2.observation1
+control_2.t0	0	hour	control_2	control	control_2.observation0
+control_1.t4	10	hour	control_1	control	control_1.observation4
+control_1.t3	6	hour	control_1	control	control_1.observation3
+control_1.t2	3	hour	control_1	control	control_1.observation2
+control_1.t1	1	hour	control_1	control	control_1.observation1
+control_1.t0	0	hour	control_1	control	control_1.observation0

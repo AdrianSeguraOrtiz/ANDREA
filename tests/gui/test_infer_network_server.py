@@ -6,6 +6,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from tests.gui.helpers import start_immediate_background_thread
@@ -33,11 +34,61 @@ from andrea.core.commands.infer_network.commons.shared import PlanWave, ToolPlan
     "GUI test dependencies are not installed",
 )
 class InferNetworkGuiServerTests(unittest.TestCase):
+    def test_uploaded_bulk_temporal_declaration_reaches_manifest_and_core(self) -> None:
+        fixture = (
+            Path(__file__).resolve().parents[1]
+            / "fixtures/bulk_time_series/regular_longitudinal"
+        )
+        audit = json.loads((fixture / "temporal-contract.json").read_text())
+        temporal = {
+            key: value
+            for key, value in audit.items()
+            if key
+            not in {
+                "status",
+                "expression_matrix",
+                "timepoints",
+                "replicates",
+                "network_semantics",
+            }
+        }
+        temporal["schema_version"] = "bulk-temporal/1"
+        form = {
+            key: SimpleNamespace(
+                filename=filename, file=io.BytesIO((fixture / filename).read_bytes())
+            )
+            for key, filename in {
+                "expression_file": "expression.tsv",
+                "extra__timepoints": "timepoints.tsv",
+                "extra__replicates": "replicates.tsv",
+            }.items()
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, _, _ = gui_server._build_dataset_manifest_file(
+                config={
+                    "dataset": {
+                        "id": "bulk_time",
+                        "column_kind": "timepoints",
+                        "expression_profile": "bulk",
+                        "organism": {
+                            "taxonomic_group": "synthetic",
+                            "ncbi_taxon_id": None,
+                        },
+                        "temporal": temporal,
+                    }
+                },
+                form=form,
+                request_dir=Path(tmp),
+                bootstrap=gui_server._load_tools_bootstrap(),
+            )
+            self.assertEqual(json.loads(manifest.read_text())["temporal"], temporal)
+            report = gui_server.preflight_infer_network(dataset_manifest_path=manifest)
+            self.assertEqual(report["dataset"]["temporal"], temporal)
+            self.assertEqual(len(report["input_validation"]["temporal"]["series"]), 4)
+
     def test_bootstrap_exposes_scmtni_execution_default(self) -> None:
         payload = gui_server._load_tools_bootstrap()
-        scmtni = next(
-            tool for tool in payload["tools"] if tool["tool_id"] == "scmtni"
-        )
+        scmtni = next(tool for tool in payload["tools"] if tool["tool_id"] == "scmtni")
         self.assertEqual(scmtni["default_execution_mode"], "group_native")
         self.assertEqual(
             scmtni["execution_capabilities"],
@@ -211,9 +262,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             "queued": 0,
             "running": 1 if tool_status == "running" else 0,
             "completed": (
-                1
-                if tool_status in {"completed", "completed_with_warnings"}
-                else 0
+                1 if tool_status in {"completed", "completed_with_warnings"} else 0
             ),
             "failed": 1 if tool_status == "failed" else 0,
             "warnings": 1 if tool_status == "completed_with_warnings" else 0,
@@ -223,9 +272,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                 "status": (
                     "running"
                     if tool_status == "running"
-                    else "failed"
-                    if tool_status == "failed"
-                    else "completed"
+                    else "failed" if tool_status == "failed" else "completed"
                 ),
                 "percent": percent if tool_status == "running" else 100,
             }
@@ -476,9 +523,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                 payload = json.loads(report_path.read_text(encoding="utf-8"))
                 payload["status"] = "executed"
                 payload["execution"]["tools_completed"] = 1
-                payload["execution"]["measurement"] = {
-                    "wall_time_seconds": 0.7
-                }
+                payload["execution"]["measurement"] = {"wall_time_seconds": 0.7}
                 report_path.write_text(
                     json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
                     encoding="utf-8",
@@ -653,7 +698,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                 custom_tools_path=None,
             ):
                 self.assertIsNotNone(custom_tools_path)
-                payload = json.loads(Path(custom_tools_path).read_text(encoding="utf-8"))
+                payload = json.loads(
+                    Path(custom_tools_path).read_text(encoding="utf-8")
+                )
                 seen_custom_tools.update(payload)
                 return {
                     "schema_version": "1.0",
@@ -837,8 +884,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
 
     def test_gui_rejects_invalid_exact_run_ram(self) -> None:
         for value in (True, 0, -1, "16"):
-            with self.subTest(value=value), self.assertRaisesRegex(
-                ValueError, "ram_gb"
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(ValueError, "ram_gb"),
             ):
                 gui_server._normalize_runs(
                     [
@@ -905,9 +953,7 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             )
 
             client = TestClient(gui_server.create_app())
-            payload = client.get(
-                "/api/infer-network/jobs/job_running_state"
-            ).json()
+            payload = client.get("/api/infer-network/jobs/job_running_state").json()
 
         self.assertEqual(payload["execution_state"]["phase"], "merging_raw_networks")
         self.assertEqual(payload["runtime_progress"]["summary"]["running"], 1)
@@ -965,7 +1011,9 @@ class InferNetworkGuiServerTests(unittest.TestCase):
             payload = client.get(
                 "/api/infer-network/jobs/job_finalizing_bundles/bundles"
             ).json()
-            full_bundle = next(item for item in payload["bundles"] if item["id"] == "full")
+            full_bundle = next(
+                item for item in payload["bundles"] if item["id"] == "full"
+            )
             analysis_bundle = next(
                 item for item in payload["bundles"] if item["id"] == "analysis"
             )

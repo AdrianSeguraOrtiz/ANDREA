@@ -1,12 +1,13 @@
 # Bulk time-series contract audit and compatible extension proposal
 
-This audit targets ANDREA 0.2.1 (`75424b6cad5748ba3f818e133412d21388700e52`).
-The companion checker and fixtures implement an **offline integration quality
-check**. They do not add a temporal inference method, simulator capability,
-runtime manifest field, cost calibration, or GUI support. Existing manifests
-remain unchanged.
+The historical audit below targets ANDREA 0.2.1
+(`75424b6cad5748ba3f818e133412d21388700e52`). The Osaka branch now adopts the
+optional `bulk-temporal/1` runtime object described under runtime adoption.
+Legacy manifests without that object retain their behavior. The companion
+`bulk-temporal-audit/1` checker and fixtures remain an offline quality check;
+they do not establish simulator capabilities or measured cost coverage.
 
-## What the implementation currently guarantees
+## Historical base audit (0.2.1)
 
 | Contract or path | Implemented behavior | Remaining limitation |
 | --- | --- | --- |
@@ -145,23 +146,66 @@ coordinates/intervals, and descriptive within-series longitudinal adjacency.
 `runtime_support=false` is always explicit. A two-timepoint series has one
 interval; reporting it as regular makes no claim about an unobserved schedule.
 
-## Runtime adoption and output preservation still required
+## Runtime adoption: `bulk-temporal/1`
 
-The enriched TSV columns are backward compatible with the existing validators
-and file-copy paths. The JSON sidecar is **not a recognized runtime input**.
-Do not add it to `extras`, mount it by an undocumented workaround, hide it in
-`notes`, or claim core/CLI/GUI support because this offline check passes.
+The enriched TSV columns use the existing `timepoints` and `replicates` extra
+IDs. The audit JSON sidecar remains an offline input. Runtime manifests instead
+carry this optional top-level object:
 
-Before an integration requires these properties at runtime, implement and test
-one canonical optional versioned temporal object in the dataset and simulator
-output schemas; use it in parsing, generation-to-inference handoff, frozen
-bundles/fingerprints, custom tool validation, CLI and GUI. Existing v1 manifests
-must retain their current behavior when the object is absent. Older strict
-schema readers will reject new fields, so publish explicit compatibility/version
-requirements for newly enriched manifests. Add conditional semantic checks for
-enriched metadata only when the temporal object is present. Retain the existing
-extra IDs and canonical input-spec source rather than introducing parallel
-formats for each wrapper.
+```json
+{
+  "temporal": {
+    "schema_version": "bulk-temporal/1",
+    "time_basis": "observed",
+    "time_unit": "hour",
+    "time_origin": "Treatment start",
+    "sampling_design": "longitudinal",
+    "missing_values": "reject",
+    "preprocessing": {
+      "normalization": "Describe the actual normalization, or none",
+      "transformation": "Describe the actual transformation, or none"
+    },
+    "provenance": "Data source and preparation"
+  }
+}
+```
+
+The canonical declaration schema lives in `dataset-manifest.schema.json`;
+simulator-output and smoketest schema projections are checked for exact equality.
+`andrea/core/shared/bulk_temporal.py` supplies both the runtime and offline TSV
+semantics. Runtime activation requires a bulk expression profile and both
+enriched metadata tables. It validates exact column joins, observed units,
+biological observations, technical measurement labels and series boundaries.
+It rejects missing or nonfinite expression/time values. No normalization,
+aggregation, interpolation or transformation is performed.
+
+The optional object travels through inference preflight, planning, frozen
+manifests, dataset content fingerprints, run reports and downloadable bundles.
+The wrapper receives the same declaration as `temporal` in `/io/execution.json`,
+beside the existing `mode`, with the declared TSV extras in `/io/extra`.
+Simulator manifests may opt into the same object; generation validates it and
+preserves it in the inference manifest and dataset fingerprint. This does not
+assert that any current simulator emits the enriched profile.
+
+Catalog and custom tools can declare
+`temporal_requirements={"required":true,"sampling_designs":["longitudinal"]}`.
+Compatibility checks enforce the declaration and permitted sampling design.
+Optional `technical_replicates="reject"|"allow"` and
+`min_timepoints_per_series` (integer, at least two) refine a tool's accepted
+design. These checks reuse the validated temporal summary for both catalog
+eligibility and requested runs. A rejected technical design is blocked before
+execution; setting `reject` never averages measurements. Omitted restrictions
+preserve the earlier compatibility behavior.
+The inference GUI exposes the declaration fields, uploads the existing extras,
+displays series counts and units, and preserves the declaration in submitted
+manifests. CLI commands consume the same manifest without extra flags.
+
+Existing `schema_version=1.0` manifests without `temporal` keep their previous
+validation and content fingerprints. Enriched manifests require this Osaka
+runtime extension; older strict schema readers reject the new field. The audit
+sidecar is not mounted or hidden in `notes`, and it is not an extra input ID.
+
+## Output preservation for future lag-exporting methods
 
 An edge-lag method also needs a lossless output extension **before it can be
 declared functionally integrated**. A compatible design can retain the current
@@ -172,7 +216,9 @@ output, merge, export, bundle, CLI and GUI paths. Define whether evaluation
 compares lag-specific edges or an explicitly documented collapsed projection;
 never discard lags while presenting the result as the full method. Do not encode
 lags in identifiers, sign, score, evidence or ad hoc context strings. This branch
-documents the extension; it does not implement that runtime/output lifecycle.
+documents the extension; it does not implement that output lifecycle. dynGENIE3
+exports a global weighted network without edge lags, so its input finite
+differences do not require an edge-lag artifact.
 
 ## Temporal cost and acceptance requirements
 
@@ -186,12 +232,24 @@ Native/fixed model dimensions and requested versus exported dimensions remain
 explicit. Never infer biological replication from a simulation plan's run count.
 
 The existing estimators generally expose genes and total expression columns as
-size axes. Stratify supported temporal structures as separate justified finite
-cost profiles (or implement a reviewed estimator extension) before merging their
-observations. A profile identifier alone must not imply runtime enforcement of
-series shape. The benchmark input generator and coverage checker must actually
-construct and verify that profile's declared structure; an arbitrary relabeled
-matrix cannot close this gate.
+size axes. The Osaka inference planner now guards tools that declare
+`temporal_requirements`: it admits a benchmark profile only when the validated
+number of independent series, uniform timepoints per series, separate
+steady-state sample count, observed unit, sampling design and regular/irregular
+sampling class all match its declared temporal fixture. Unknown geometry,
+unequal series lengths, technical measurements or mismatches produce an
+explicit uncalibrated fallback ETA. The plan computes this geometry once from
+current inputs and records it in estimation provenance. Profiles with the same
+matrix-column count but different series boundaries cannot substitute for one
+another. This guard does not interpolate across temporal structures or claim
+coverage of exact elapsed-time grids, which current cost metadata does not
+standardize.
+
+Stratify supported temporal structures as separate justified finite cost
+profiles (or implement a reviewed estimator extension) before merging their
+observations. The benchmark input generator and coverage checker must actually
+construct and verify each profile's declared structure; an arbitrary relabeled
+matrix cannot close this gate. The guard supplies no timings or calibration.
 
 For each freely variable supported axis, start with three levels and
 independent crossings, such as genes, points per series and series count, then
@@ -209,6 +267,6 @@ input delivery; defaults and parameter traceability; tested identifier,
 direction/sign/score/context/lag preservation; meaningful functional and
 repeatability checks; calibrated cost coverage and independent prediction checks
 within its declared temporal/resource domain; and verified core/CLI/GUI/catalog
-paths. Image publication is a separate state. Until runtime adoption or a
-documented supported narrower contract is implemented, temporal-contract
-capabilities that depend on missing information remain pending.
+paths. Image publication is a separate state. Runtime adoption alone does not
+close scientific or cost-calibration requirements; unsupported designs and
+unmeasured temporal/resource domains remain pending.

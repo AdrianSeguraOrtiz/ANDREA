@@ -84,6 +84,16 @@ export function updatePreflightSummary(preflightReport = null) {
     { label: "Organism", value: taxonomicGroup, detail: `NCBI taxon ${taxonId}` },
   ]);
 
+  if (dataset.temporal) {
+    const temporal = dataset.temporal;
+    const summary = preflightReport?.input_validation?.temporal || {};
+    appendSummaryBand(viewEl, "Observed bulk time", [
+      { label: "Sampling", value: temporal.sampling_design, detail: temporal.time_origin },
+      { label: "Time unit", value: temporal.time_unit, detail: `${summary.series?.length ?? "-"} independent series` },
+      { label: "Biological observations", value: summary.observations ?? "-", detail: temporal.provenance },
+    ]);
+  }
+
   const inputCounts = countInputValidation(preflightReport);
   appendSummaryBand(viewEl, "Input Validation", [
     { label: "Valid", value: inputCounts.ok, tone: "ok" },

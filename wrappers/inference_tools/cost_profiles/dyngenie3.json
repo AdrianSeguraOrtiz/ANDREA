@@ -1,0 +1,600 @@
+{
+  "cost_relevant_params": [
+    "tree_method",
+    "K",
+    "ntrees",
+    "alpha",
+    "compute_quality_scores",
+    "save_models"
+  ],
+  "column_kind": "samples",
+  "expression_profile": "synthetic_bulk_time_series_benchmark",
+  "temporal": {
+    "schema_version": "bulk-temporal/1",
+    "time_basis": "observed",
+    "time_unit": "hour",
+    "time_origin": "Synthetic start of each independent biological course (t=0).",
+    "sampling_design": "longitudinal",
+    "missing_values": "reject",
+    "preprocessing": {
+      "normalization": "none; synthetic bulk population means in arbitrary abundance units",
+      "transformation": "none"
+    },
+    "provenance": "Deterministic synthetic bulk temporal fixtures for runtime calibration only; no measured biology or scientific ground truth."
+  },
+  "profiles": [
+    {
+      "id": "global_rf_from_data_ts_t4_s1_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x4",
+        "100x4",
+        "200x4"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_rf_from_data_ts_t4_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_rf_from_data_ts_t4_s4_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_rf_from_data_ts_t8_s1_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_rf_from_data_ts_t8_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_rf_from_data_ts_t8_s4_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_rf_from_data_ts_t16_s1_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_rf_from_data_ts_t16_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_rf_from_data_ts_t16_s4_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      ]
+    },
+    {
+      "id": "global_et_center_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "sizes": [
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+      ]
+    },
+    {
+      "id": "global_alpha_scalar_center_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": 0.1
+      },
+      "sizes": [
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+      ]
+    },
+    {
+      "id": "global_alpha_vector_center_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "sizes": [
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+      ]
+    },
+    {
+      "id": "global_steady_state_center_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "steady_state_expression"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 20,
+        "sampling": "regular"
+      },
+      "notes": [
+        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+      ]
+    },
+    {
+      "id": "global_tf_list_center_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+      ]
+    },
+    {
+      "id": "global_quality_scores_center_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "compute_quality_scores": true
+      },
+      "sizes": [
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions.",
+        "Quality stability compares pairs of 1000 trees per target, giving quadratic tree-count work; this point retains that real default and does not cover other tree counts."
+      ]
+    },
+    {
+      "id": "global_saved_models_center_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "save_models": true
+      },
+      "sizes": [
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+      ]
+    }
+  ],
+  "calibration_design": {
+    "version": 1,
+    "status": "pending_measurement",
+    "kind": "independent_temporal_default_grid_with_branch_centers",
+    "gene_levels": [
+      50,
+      100,
+      200
+    ],
+    "timepoints_per_series_levels": [
+      4,
+      8,
+      16
+    ],
+    "independent_series_levels": [
+      1,
+      2,
+      4
+    ],
+    "default_point_count": 27,
+    "branch_center_point_count": 7,
+    "total_points_per_resource_stratum": 34,
+    "resources": {
+      "threads": [
+        1,
+        2
+      ],
+      "ram_gb": [
+        4,
+        8
+      ],
+      "strata_count": 4,
+      "concurrency": 1
+    },
+    "repetitions": 3,
+    "planned_calibration_runs": 408,
+    "timeout_seconds_per_run": 3600,
+    "calibration_timeout_sum_seconds": 1468800,
+    "scope": "Initial finite panel only. RF/from_data/default K=sqrt and ntrees=1000 span the 3-axis grid. Seven single-factor branches have only their exact center dimension; no broad branch calibration or cross-factor coverage is claimed.",
+    "exclusions": [
+      "ET with alternative decay or steady-state data",
+      "quality scores combined with saved models",
+      "other K or ntrees settings",
+      "irregular sampling costs",
+      "seed-dependent runtime variability beyond retained repetitions"
+    ],
+    "geometry_limitation": "Temporal coverage is checked as a fixed-shape gene axis for each profile plus an aggregate 27-point default 3-axis grid in each of four resource strata, with at least three distinct retained execution receipts per point. Branch centers certify only their exact registered point. This measurement domain is not evidence of a temporal shape-growth estimator or predictive accuracy.",
+    "measurement_gate": "Do not build images, fit models, run calibration or collect holdout timings while the existing PM2 experimental validation remains active. Reinspect host/process status before executing the deferred plan.",
+    "eta_seconds": null,
+    "eta_status": "Unknown until the pinned image is built and an authorized measured campaign establishes runtimes.",
+    "overhead_and_retries": "Timeout sums are execution caps, not ETAs. Startup and validation overhead are unknown; no automatic retries. Failed attempts must be retained and reviewed before adding an explicitly budgeted retry.",
+    "training_observation_rule": "Upstream h=1: sum over independent series of (timepoints_per_series - 1), plus the separate steady-state sample count. No between-series derivative is constructed.",
+    "acceptance_state": {
+      "measurement": "pending",
+      "coverage": "temporal_resource_domain_gate_implemented_unmeasured",
+      "eta_profile_selection": "exact_temporal_shape_guard_implemented_unmeasured",
+      "temporal_shape_estimator": "unsupported",
+      "predictive_accuracy": "actual_core_planner_holdout_helper_ready_unmeasured",
+      "campaign_completion_implies_integration_acceptance": false
+    },
+    "required_extensions": [
+      {
+        "component": "wrappers/inference_tools/scripts/validate_tool_costs.py:calibration_coverage",
+        "requirement": "The implemented temporal gate requires all registered 34 points in every thread/RAM stratum, explicit temporal dimensions, unique captured run IDs, retained input hashes/context/image and three successful raw observations per point. It reports the combined default 27-coordinate temporal grid separately and bounds the seven branch centers to point-only support.",
+        "status": "implemented_unmeasured"
+      },
+      {
+        "component": "andrea/core/commands/infer_network/commons/planner.py:cost profile selection",
+        "requirement": "The implemented guard compares actual validated series/timepoint shape, regularity, time unit, sampling design and steady-state sample count before profile selection. Unknown or mismatched temporal shapes fall back with a warning/provenance instead of pooling equal-column profiles. It does not establish temporal size-growth estimation or prediction accuracy.",
+        "status": "implemented_unmeasured"
+      },
+      {
+        "component": "cost estimator and prediction-validation evidence",
+        "requirement": "The prediction helper freezes the actual ANDREA planner code, cost snapshot and eight exact-profile calls (genes75/250 across four resource strata) before collecting 24 observations. Validation uses the actual planning ETA; nearest-p50 times the same core size scale is retained as a typical-duration diagnostic. Any operational reserve is separate and cannot help pass the planning coverage threshold. Temporal-shape growth remains unsupported.",
+        "status": "implemented_unmeasured"
+      }
+    ]
+  },
+  "holdout_reservation": {
+    "status": "reserved_unmeasured_not_a_frozen_prediction_plan",
+    "cases": [
+      {
+        "id": "default_gene_interpolation_t8_s2",
+        "kind": "interpolation",
+        "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
+        "genes": 75,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "seed": 765431
+      },
+      {
+        "id": "default_gene_extrapolation_t8_s2",
+        "kind": "extrapolation",
+        "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
+        "genes": 250,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "seed": 765439
+      }
+    ],
+    "profile_scope": "Gene-axis interpolation/extrapolation within the exact default RF/from_data/TS t8/s2 profile, separately in every declared thread/RAM stratum. Other temporal shapes and all branch growth predictions remain unsupported.",
+    "repetitions": 3,
+    "planned_runs": 24,
+    "timeout_sum_seconds": 86400,
+    "max_relative_error": 0.35,
+    "min_planning_coverage": 1.0,
+    "required_before_measurement": "Pass structural/provenance and temporal domain checks on the private calibration snapshot; freeze actual core planner artifacts, the eight exact-profile predictions and execution identities before collecting 24 holdout timings. Register no cost in the active catalog until independent checks pass; finalize the acceptance dossier separately. Completing measurement allocations alone is not acceptance.",
+    "independence": "Never include these dimensions or their primary matrix bytes in calibration recipes, calibration fits, reuse directories or benchmark --size overrides. Distinct seeds alone do not establish dimensional independence.",
+    "temporal_shape_predictions": "Unsupported pending temporal shape matching, aggregate coverage and a reviewed temporal estimator. No temporal-shape interpolation/extrapolation timings are allocated by this reservation."
+  }
+}

@@ -99,7 +99,9 @@ def _nearest_runtime_point(
         and float(p.get("ram_gb", -1.0)) == float(ram_gb)
     ]
     if not same_resource:
-        same_resource = [p for p in points if int(p.get("threads", -1)) == threads] or points
+        same_resource = [
+            p for p in points if int(p.get("threads", -1)) == threads
+        ] or points
     if not same_resource:
         return None
 
@@ -113,8 +115,13 @@ def _nearest_runtime_point(
 
 
 def _measured_size_scale(
-    *, points: list[dict[str, Any]], nearest: dict[str, Any], genes: int,
-    columns: int, threads: int, ram_gb: float,
+    *,
+    points: list[dict[str, Any]],
+    nearest: dict[str, Any],
+    genes: int,
+    columns: int,
+    threads: int,
+    ram_gb: float,
 ) -> tuple[float, dict[str, Any]]:
     """Interpolate only along an axis (or aspect ratio) actually measured.
 
@@ -122,17 +129,27 @@ def _measured_size_scale(
     Unsupported geometry retains a scheduling heuristic, explicitly uncalibrated;
     it must never be presented as an empirical timeout feasibility decision.
     """
-    pg, pc = int(nearest['genes']), int(nearest['columns'])
-    base = max(float(nearest['seconds_p50']), float(nearest['seconds_p90']))
-    same_resources = [p for p in points if int(p['threads']) == threads
-                      and math.isclose(float(p['ram_gb']), ram_gb)]
+    pg, pc = int(nearest["genes"]), int(nearest["columns"])
+    base = max(float(nearest["seconds_p50"]), float(nearest["seconds_p90"]))
+    same_resources = [
+        p
+        for p in points
+        if int(p["threads"]) == threads and math.isclose(float(p["ram_gb"]), ram_gb)
+    ]
     if genes == pg and columns == pc and nearest in same_resources:
         return 1.0, {"method": "measured_point", "calibrated": True}
     paths = [
-        ("columns", columns, [p for p in same_resources if int(p['genes']) == genes]),
-        ("genes", genes, [p for p in same_resources if int(p['columns']) == columns]),
-        ("genes", genes, [p for p in same_resources
-                         if int(p['genes']) * columns == int(p['columns']) * genes]),
+        ("columns", columns, [p for p in same_resources if int(p["genes"]) == genes]),
+        ("genes", genes, [p for p in same_resources if int(p["columns"]) == columns]),
+        (
+            "genes",
+            genes,
+            [
+                p
+                for p in same_resources
+                if int(p["genes"]) * columns == int(p["columns"]) * genes
+            ],
+        ),
     ]
     for axis, target, candidates in paths:
         by_size = {int(p[axis]): p for p in candidates}
@@ -150,12 +167,13 @@ def _measured_size_scale(
             lo, hi = sizes[-2:]
         if lo == hi:
             point = by_size[lo]
-            return max(float(point['seconds_p90']), float(point['seconds_p50'])) / base, {
-                "method": "measured_point", "calibrated": True}
+            return max(
+                float(point["seconds_p90"]), float(point["seconds_p50"])
+            ) / base, {"method": "measured_point", "calibrated": True}
         if not interpolated and (target > 4 * hi or target < lo / 4):
             continue
-        t0 = max(float(by_size[lo]['seconds_p50']), float(by_size[lo]['seconds_p90']))
-        t1 = max(float(by_size[hi]['seconds_p50']), float(by_size[hi]['seconds_p90']))
+        t0 = max(float(by_size[lo]["seconds_p50"]), float(by_size[lo]["seconds_p90"]))
+        t1 = max(float(by_size[hi]["seconds_p50"]), float(by_size[hi]["seconds_p90"]))
         exponent = math.log(t1 / t0) / math.log(hi / lo)
         # Decline unstable/negative extrapolations; interpolation still stays
         # within the two measured positive durations.
@@ -163,13 +181,23 @@ def _measured_size_scale(
             continue
         predicted = t0 * (target / lo) ** exponent
         return predicted / base, {
-            "method": "measured_axis_interpolation" if interpolated else "measured_axis_extrapolation",
-            "axis": axis, "anchor_sizes": [lo, hi], "anchor_seconds": [t0, t1],
-            "exponent": exponent, "calibrated": interpolated,
+            "method": (
+                "measured_axis_interpolation"
+                if interpolated
+                else "measured_axis_extrapolation"
+            ),
+            "axis": axis,
+            "anchor_sizes": [lo, hi],
+            "anchor_seconds": [t0, t1],
+            "exponent": exponent,
+            "calibrated": interpolated,
         }
-    heuristic = max(MIN_EXACT_PROFILE_SIZE_SCALE, math.sqrt((genes / pg) * (columns / pc)))
+    heuristic = max(
+        MIN_EXACT_PROFILE_SIZE_SCALE, math.sqrt((genes / pg) * (columns / pc))
+    )
     return heuristic, {
-        "method": "uncalibrated_size_heuristic", "calibrated": False,
+        "method": "uncalibrated_size_heuristic",
+        "calibrated": False,
         "reason": "No measured axis supports these dimensions/resources; used for scheduling only.",
     }
 
@@ -202,6 +230,88 @@ def _profile_inputs(profile: dict[str, Any]) -> dict[str, Any]:
     return input_profile if isinstance(input_profile, dict) else {}
 
 
+def _temporal_cost_context(
+    *,
+    dataset: DatasetContext,
+    temporal_summary: dict[str, Any] | None,
+    steady_state_samples: int = 0,
+) -> dict[str, Any] | None:
+    """Describe the finite temporal geometry supported by current cost profiles.
+
+    The summary comes from canonical semantic validation, once per plan. This
+    deliberately declines technical replicas, unequal series lengths and mixed
+    sampling classes rather than treating total columns as a temporal axis.
+    """
+    temporal = dataset.temporal
+    if temporal is None or not isinstance(temporal_summary, dict):
+        return None
+    series = temporal_summary.get("series")
+    if (
+        temporal_summary.get("status") != "ok"
+        or not isinstance(series, list)
+        or not series
+        or temporal_summary.get("columns") != dataset.columns
+        or temporal_summary.get("observations") != dataset.columns
+        or type(steady_state_samples) is not int
+        or steady_state_samples < 0
+    ):
+        return None
+    lengths = {len(item["timepoints"]) for item in series}
+    sampling_classes = {item["regular"] for item in series}
+    if len(lengths) != 1 or len(sampling_classes) != 1:
+        return None
+    if any(
+        any(count != 1 for count in item["observations_per_timepoint"])
+        for item in series
+    ):
+        return None
+    return {
+        "schema_version": temporal["schema_version"],
+        "time_basis": temporal["time_basis"],
+        "time_unit": temporal["time_unit"],
+        "sampling_design": temporal["sampling_design"],
+        "series_count": len(series),
+        "timepoints_per_series": next(iter(lengths)),
+        "steady_state_samples": steady_state_samples,
+        "sampling": "regular" if next(iter(sampling_classes)) else "irregular",
+    }
+
+
+def _profile_temporal_cost_context(
+    input_profile: dict[str, Any]
+) -> dict[str, Any] | None:
+    temporal = input_profile.get("temporal")
+    geometry = input_profile.get("temporal_fixture")
+    if not isinstance(temporal, dict) or not isinstance(geometry, dict):
+        return None
+    dimensions = {
+        "series_count": geometry.get("series_count"),
+        "timepoints_per_series": geometry.get("timepoints_per_series"),
+        "steady_state_samples": geometry.get("steady_state_samples", 0),
+    }
+    if any(
+        type(value) is not int or value < (0 if key == "steady_state_samples" else 1)
+        for key, value in dimensions.items()
+    ):
+        return None
+    sampling = geometry.get("sampling", "regular")
+    if not isinstance(sampling, str) or sampling not in {"regular", "irregular"}:
+        return None
+    return {
+        **{
+            key: temporal.get(key)
+            for key in (
+                "schema_version",
+                "time_basis",
+                "time_unit",
+                "sampling_design",
+            )
+        },
+        **dimensions,
+        "sampling": sampling,
+    }
+
+
 def _profile_params_profile(profile: dict[str, Any]) -> dict[str, Any]:
     params_profile = _profile_config(profile).get("params_profile", {})
     return params_profile if isinstance(params_profile, dict) else {}
@@ -212,9 +322,11 @@ def _profile_cost_relevant_params(profile: dict[str, Any]) -> list[str]:
     if not isinstance(raw, list):
         return []
     return [
-        str(item).strip() for item in raw
-        if isinstance(item, str) and str(item).strip()
-        and str(item).rsplit('.', 1)[-1] not in {'seed', 'random_seed', 'random_state'}
+        str(item).strip()
+        for item in raw
+        if isinstance(item, str)
+        and str(item).strip()
+        and str(item).rsplit(".", 1)[-1] not in {"seed", "random_seed", "random_state"}
     ]
 
 
@@ -268,9 +380,7 @@ def _inference_cost_features(
         "expected_dense_edges": int(n_columns * n_genes * max(0, n_genes - 1)),
         "has_tf_list": "tf_list" in extras_present,
         "output_density_class": (
-            "dense"
-            if execution_mode == "column_native"
-            else "sparse"
+            "dense" if execution_mode == "column_native" else "sparse"
         ),
         "aggregation_step": aggregation_step,
     }
@@ -401,9 +511,7 @@ def _cost_profile_uncertainty_penalty(
     missing_input_count = len(missing_inputs) if isinstance(missing_inputs, list) else 0
     group_distance = int(profile_match.get("group_distance") or 0)
 
-    param_penalty, param_details = _cost_param_uncertainty(
-        profile_match=profile_match
-    )
+    param_penalty, param_details = _cost_param_uncertainty(profile_match=profile_match)
     components = {
         "extra_input_penalty": round(float(0.25 * missing_input_count), 6),
         "param_penalty": round(float(param_penalty), 6),
@@ -411,9 +519,7 @@ def _cost_profile_uncertainty_penalty(
         "group_penalty": round(float(min(1.40, 0.35 * group_distance)), 6),
         "nearest_size_penalty": 0.10 if not size_exact else 0.0,
         "nearest_resource_penalty": 0.05 if not resource_exact else 0.0,
-        "sample_count_penalty": round(
-            float(_runtime_point_sample_penalty(nearest)), 6
-        ),
+        "sample_count_penalty": round(float(_runtime_point_sample_penalty(nearest)), 6),
     }
     additive = (
         components["extra_input_penalty"]
@@ -463,6 +569,7 @@ def _select_cost_profile(
     max_cores: int = 1,
     requested_threads: Optional[int] = None,
     requested_ram_gb: Optional[float] = None,
+    temporal_cost_context: dict[str, Any] | None = None,
 ) -> tuple[Optional[dict[str, Any]], dict[str, Any], list[str]]:
     """Select the most compatible cost profile for a planned run."""
     profiles = cost_payload.get("profiles")
@@ -484,6 +591,7 @@ def _select_cost_profile(
     relevant_extras_present = extras_present.intersection(relevant_inputs)
     candidates = []
     mode_matches = 0
+    temporal_rejections: list[str] = []
     for profile_idx, profile in enumerate(profiles):
         if not isinstance(profile, dict):
             continue
@@ -494,6 +602,18 @@ def _select_cost_profile(
             continue
 
         input_profile = _profile_inputs(profile)
+        if "temporal_requirements" in toolspec:
+            profile_temporal = _profile_temporal_cost_context(input_profile)
+            if (
+                temporal_cost_context is None
+                or profile_temporal != temporal_cost_context
+                or any(
+                    int(point["columns"]) != columns
+                    for point in _valid_runtime_points(profile)
+                )
+            ):
+                temporal_rejections.append(str(profile.get("profile_id", "")))
+                continue
         profile_required = _string_set(input_profile.get("required_inputs_satisfied"))
         profile_conditional = _string_set(
             input_profile.get("conditional_inputs_satisfied")
@@ -529,15 +649,27 @@ def _select_cost_profile(
             profile_cost_relevant_values=cost_relevant_values,
             cost_relevant_params=cost_relevant_params,
         )
-        valid_points = [p for p in _valid_runtime_points(profile)
-                        if int(p['threads']) <= max_cores
-                        and (requested_threads is None or int(p['threads']) == requested_threads)]
+        valid_points = [
+            p
+            for p in _valid_runtime_points(profile)
+            if int(p["threads"]) <= max_cores
+            and (requested_threads is None or int(p["threads"]) == requested_threads)
+        ]
         no_runtime_penalty = 1 if not valid_points else 0
-        size_distance = min((abs(math.log(genes / int(p['genes'])))
-                             + abs(math.log(columns / int(p['columns'])))
-                             for p in valid_points), default=math.inf)
-        resource_penalty = int(requested_ram_gb is not None and not any(
-            math.isclose(float(p['ram_gb']), requested_ram_gb) for p in valid_points))
+        size_distance = min(
+            (
+                abs(math.log(genes / int(p["genes"])))
+                + abs(math.log(columns / int(p["columns"])))
+                for p in valid_points
+            ),
+            default=math.inf,
+        )
+        resource_penalty = int(
+            requested_ram_gb is not None
+            and not any(
+                math.isclose(float(p["ram_gb"]), requested_ram_gb) for p in valid_points
+            )
+        )
         profile_id = str(profile.get("profile_id", "")).strip()
         metadata = {
             "profile_id": profile_id,
@@ -557,9 +689,17 @@ def _select_cost_profile(
             "profile_execution_mode": execution_mode,
             "profile_group_count": profile_group_count,
             "ignored_randomness_params": [
-                k for k in _profile_params_profile(profile).get('cost_relevant_params', [])
+                k
+                for k in _profile_params_profile(profile).get(
+                    "cost_relevant_params", []
+                )
                 if k not in cost_relevant_params
             ],
+            **(
+                {"temporal_context": temporal_cost_context}
+                if temporal_cost_context is not None
+                else {}
+            ),
         }
         score = (
             no_runtime_penalty,
@@ -582,6 +722,19 @@ def _select_cost_profile(
         )
 
     if not candidates:
+        if temporal_rejections:
+            return (
+                None,
+                {
+                    "temporal_context": temporal_cost_context,
+                    "rejected_temporal_profiles": temporal_rejections,
+                },
+                [
+                    f"[{tool_id}] no usable cost profile matches the planned inputs and validated temporal geometry, "
+                    "observed units, sampling design and steady-state sample count; "
+                    "fallback estimation will be used. Temporal structures are not interpolated."
+                ],
+            )
         return (
             None,
             {},
@@ -667,7 +820,9 @@ def _fallback_plan_item(
     provenance = dict(eta_provenance or {})
     provenance["estimation_policy"] = ETA_ESTIMATION_POLICY_VERSION
     provenance["calibrated"] = False
-    provenance["interpretation"] = "Scheduling heuristic only; runtime accuracy and an upper bound are not established."
+    provenance["interpretation"] = (
+        "Scheduling heuristic only; runtime accuracy and an upper bound are not established."
+    )
     provenance["ram_allocation_source"] = (
         "explicit_request" if ram_gb is not None else "machine_relative_unprofiled_slot"
     )
@@ -767,6 +922,7 @@ def _estimate_tool_mode_options(
     requested_ram_gb: Optional[float] = None,
     requested_cpuset: Optional[tuple[int, ...]] = None,
     requested_timeout_seconds: Optional[float] = None,
+    temporal_cost_context: dict[str, Any] | None = None,
 ) -> tuple[list[ToolPlanItem], list[str]]:
     if execution_mode not in {"global", "group_native", "column_native"}:
         raise ValueError(
@@ -813,6 +969,8 @@ def _estimate_tool_mode_options(
         extras_present=extras_present,
         logical_group_count=logical_group_count,
     )
+    if temporal_cost_context is not None:
+        cost_features["temporal_context"] = temporal_cost_context
     if not isinstance(cost, dict):
         return (
             [
@@ -856,6 +1014,7 @@ def _estimate_tool_mode_options(
         max_cores=max_cores,
         requested_threads=requested_threads,
         requested_ram_gb=requested_ram_gb,
+        temporal_cost_context=temporal_cost_context,
     )
     warnings.extend(profile_warnings)
     if selected_profile is None:
@@ -931,10 +1090,7 @@ def _estimate_tool_mode_options(
         for p in valid_points
         if int(p["threads"]) <= max_cores
         and float(p["ram_gb"]) <= max_ram_gb
-        and (
-            requested_threads is None
-            or int(p["threads"]) == int(requested_threads)
-        )
+        and (requested_threads is None or int(p["threads"]) == int(requested_threads))
     ]
     candidate_resources = sorted(
         {
@@ -1012,8 +1168,12 @@ def _estimate_tool_mode_options(
             else MIN_EXACT_PROFILE_SIZE_SCALE
         )
         size_scale, size_model = _measured_size_scale(
-            points=valid_points, nearest=nearest, genes=dataset.genes,
-            columns=dataset.columns, threads=threads, ram_gb=ram,
+            points=valid_points,
+            nearest=nearest,
+            genes=dataset.genes,
+            columns=dataset.columns,
+            threads=threads,
+            ram_gb=ram,
         )
         robust_base = max(p90, (0.70 * p90 + 0.30 * p50))
         profile_id = str(selected_profile.get("profile_id", "")).strip()
@@ -1035,13 +1195,11 @@ def _estimate_tool_mode_options(
             "_exact_resources" if resource_exact else "_nearest_resources"
         )
         risk_penalty = _mode_risk_penalty(nearest)
-        uncertainty_penalty, uncertainty_components = (
-            _cost_profile_uncertainty_penalty(
-                profile_match=profile_match,
-                nearest=nearest,
-                size_exact=size_exact,
-                resource_exact=resource_exact,
-            )
+        uncertainty_penalty, uncertainty_components = _cost_profile_uncertainty_penalty(
+            profile_match=profile_match,
+            nearest=nearest,
+            size_exact=size_exact,
+            resource_exact=resource_exact,
         )
         eta = max(0.1, robust_base * size_scale * risk_penalty * uncertainty_penalty)
         provenance_warnings = [
@@ -1069,11 +1227,19 @@ def _estimate_tool_mode_options(
                 threads=int(threads),
                 ram_gb=float(ram),
                 eta_seconds=round(float(eta), 3),
-                eta_source="cost_profile" if size_model["calibrated"] else "cost_profile_extrapolated",
+                eta_source=(
+                    "cost_profile"
+                    if size_model["calibrated"]
+                    else "cost_profile_extrapolated"
+                ),
                 output_dir=output_dir,
                 group_label=group_label,
                 eta_provenance={
-                    "eta_source": "cost_profile" if size_model["calibrated"] else "cost_profile_extrapolated",
+                    "eta_source": (
+                        "cost_profile"
+                        if size_model["calibrated"]
+                        else "cost_profile_extrapolated"
+                    ),
                     "calibrated": size_model["calibrated"],
                     "cost_features": cost_features,
                     "cost_profile": {
@@ -1085,6 +1251,11 @@ def _estimate_tool_mode_options(
                         ),
                         "profile_execution_mode": execution_mode,
                         "profile_group_count": profile_match.get("profile_group_count"),
+                        **(
+                            {"temporal_context": profile_match["temporal_context"]}
+                            if "temporal_context" in profile_match
+                            else {}
+                        ),
                         "cost_relevant_params": profile_match.get(
                             "cost_relevant_params", []
                         ),
@@ -1110,9 +1281,7 @@ def _estimate_tool_mode_options(
                         "size_scale": round(float(size_scale), 6),
                         "size_scale_floor": round(float(size_scale_floor), 6),
                         "risk_penalty": round(float(risk_penalty), 6),
-                        "uncertainty_penalty": round(
-                            float(uncertainty_penalty), 6
-                        ),
+                        "uncertainty_penalty": round(float(uncertainty_penalty), 6),
                         "uncertainty_components": uncertainty_components,
                         "robust_base_seconds": round(float(robust_base), 6),
                         "cost_features": cost_features,

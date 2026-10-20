@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -39,6 +40,8 @@ from andrea.core.commands.infer_network.preflight import preflight_infer_network
 
 
 def _has_docker_runtime() -> bool:
+    if os.environ.get("ANDREA_RUN_DOCKER_SMOKETESTS", "0") != "1":
+        return False
     if shutil.which("docker") is None:
         return False
     result = subprocess.run(
@@ -66,7 +69,9 @@ def _issue_messages(entry: dict[str, object], severity: str | None = None) -> li
     return messages
 
 
-def _entry_by_id(entries: list[dict[str, object]], simulator_id: str) -> dict[str, object]:
+def _entry_by_id(
+    entries: list[dict[str, object]], simulator_id: str
+) -> dict[str, object]:
     for entry in entries:
         if entry.get("simulator_id") == simulator_id:
             return entry
@@ -223,7 +228,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
             simulator_id=simulator_id,
             simulator_params=simulator_params,
         )
-        resolved_truth_requirements = truth_requirements or _truth_for_level(truth_level)
+        resolved_truth_requirements = truth_requirements or _truth_for_level(
+            truth_level
+        )
         required_extras = set(
             required_extras_for_request(
                 resolved_data_axes,
@@ -568,11 +575,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                         "run_id": "dyngen_bad_kind",
                         "simulator_id": "dyngen",
                         "replicates": 1,
-                        "params": {
-                            "experiment_params": {
-                                "kind": "synchronised"
-                            }
-                        },
+                        "params": {"experiment_params": {"kind": "synchronised"}},
                     }
                 ],
             )
@@ -611,9 +614,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                         "simulator_id": "dyngen",
                         "replicates": 1,
                         "params": {
-                            "simulation_params": {
-                                "num_knockdown_simulations": 1
-                            }
+                            "simulation_params": {"num_knockdown_simulations": 1}
                         },
                     }
                 ],
@@ -672,7 +673,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             params = plan["runs"][0]["simulator_params"]
             self.assertEqual(params["experiment_params"]["kind"], "synchronised")
-            self.assertEqual(params["simulation_params"]["num_knockdown_simulations"], 0)
+            self.assertEqual(
+                params["simulation_params"]["num_knockdown_simulations"], 0
+            )
 
     def test_dyngen_perturbational_plan_adds_required_design_extras(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -712,7 +715,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             params = plan["runs"][0]["simulator_params"]
             self.assertEqual(params["experiment_params"]["kind"], "snapshot")
-            self.assertEqual(params["simulation_params"]["num_knockdown_simulations"], 4)
+            self.assertEqual(
+                params["simulation_params"]["num_knockdown_simulations"], 4
+            )
             self.assertEqual(params["knockdown_params"]["num_genes"], 1)
 
     def test_dyngen_perturbational_plan_rejects_multi_gene_knockdowns(self) -> None:
@@ -732,11 +737,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                         "run_id": "dyngen_bad_knockdown_genes",
                         "simulator_id": "dyngen",
                         "replicates": 1,
-                        "params": {
-                            "knockdown_params": {
-                                "num_genes": 2
-                            }
-                        },
+                        "params": {"knockdown_params": {"num_genes": 2}},
                     }
                 ],
             )
@@ -905,7 +906,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
 
         self.assertEqual(report["scenario"]["data_axes"], TRAJECTORY_AXES)
         self.assertEqual(report["scenario"]["truth_requirements"], COLUMN_TRUTH)
-        self.assertEqual(_entry_by_id(report["eligible"], "dyngen")["status"], "eligible")
+        self.assertEqual(
+            _entry_by_id(report["eligible"], "dyngen")["status"], "eligible"
+        )
 
     def test_preflight_missing_truth_issue_names_required_contexts(self) -> None:
         scenario = ResolvedScenarioRequest(
@@ -974,7 +977,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
             ):
                 report = preflight_generate_data_scenario(scenario_path)
 
-        self.assertEqual(_entry_by_id(report["eligible"], "dyngen")["status"], "eligible")
+        self.assertEqual(
+            _entry_by_id(report["eligible"], "dyngen")["status"], "eligible"
+        )
         self.assertTrue(
             any(
                 "requested data_axes/truth_requirements are not supported" in message
@@ -1021,6 +1026,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     max_parallel_tasks=1,
                 )
 
+    @patch(
+        "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+        new=lambda **_kwargs: None,
+    )
     def test_plan_rejects_scmultisim_column_truth_when_dynamic_grn_disabled(
         self,
     ) -> None:
@@ -1058,6 +1067,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     max_parallel_tasks=1,
                 )
 
+    @patch(
+        "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+        new=lambda **_kwargs: None,
+    )
     def test_plan_rejects_scmultisim_grouped_when_dynamic_grn_disabled(
         self,
     ) -> None:
@@ -1095,7 +1108,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     max_parallel_tasks=1,
                 )
 
-    def test_plan_accepts_scmultisim_input_grn_source_with_regulatory_network(self) -> None:
+    def test_plan_accepts_scmultisim_input_grn_source_with_regulatory_network(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             grn_path = base / "regulatory_network.tsv"
@@ -1407,7 +1422,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
             self.assertEqual(result, benchmark_root)
             self.assertEqual(plan_mock.call_args.kwargs["max_parallel_tasks"], 8)
             self.assertNotIn("max_parallel_tasks", run_mock.call_args.kwargs)
-            self.assertEqual(run_mock.call_args.kwargs["plan_path"].name, "simulation-plan.json")
+            self.assertEqual(
+                run_mock.call_args.kwargs["plan_path"].name, "simulation-plan.json"
+            )
             self.assertEqual(run_mock.call_args.kwargs["progress_poll_seconds"], 0.25)
             self.assertFalse(run_mock.call_args.kwargs["show_progress"])
 
@@ -1681,6 +1698,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(resolved.simulator_runs[1].replicate_seeds, [102, 103])
         self.assertEqual(resolved.execution["max_parallel_tasks"], 2)
 
+    @patch(
+        "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+        new=lambda **_kwargs: None,
+    )
     def test_plan_generates_valid_dyngen_simulation_plan_from_scenario(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -1775,25 +1796,22 @@ class GenerateDataDyngenTests(unittest.TestCase):
 
     def test_cost_loader_rejects_profiles_or_points_without_tf_list(self) -> None:
         for config_extras, point_extras in (([], ["tf_list"]), (["tf_list"], [])):
-            with self.subTest(
-                config_extras=config_extras,
-                point_extras=point_extras,
-            ), tempfile.TemporaryDirectory() as tmp:
+            with (
+                self.subTest(
+                    config_extras=config_extras,
+                    point_extras=point_extras,
+                ),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
                 payload = {
                     "profiles": [
                         {
                             "profile_id": "measured_without_tf_list",
                             "benchmark_config": {
-                                "input_profile": {
-                                    "effective_extras": config_extras
-                                }
+                                "input_profile": {"effective_extras": config_extras}
                             },
                             "runtime_points": [
-                                {
-                                    "feature_vector": {
-                                        "effective_extras": point_extras
-                                    }
-                                }
+                                {"feature_vector": {"effective_extras": point_extras}}
                             ],
                         }
                     ]
@@ -1813,6 +1831,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 self.assertEqual(len(warnings), 1)
                 self.assertIn("must contain tf_list", warnings[0])
 
+    @patch(
+        "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+        new=lambda **_kwargs: None,
+    )
     def test_plan_uses_simulator_cost_profile_when_available(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -1898,7 +1920,11 @@ class GenerateDataDyngenTests(unittest.TestCase):
                                 "repeats_ok": 1,
                                 "repeats_failed": 0,
                                 "ok_rate": 1.0,
-                                "failure_breakdown": {"oom": 0, "timeout": 0, "error": 0},
+                                "failure_breakdown": {
+                                    "oom": 0,
+                                    "timeout": 0,
+                                    "error": 0,
+                                },
                                 "seconds_p50": 5.0,
                                 "seconds_p90": 7.0,
                                 "output_bytes_p50": 1000,
@@ -1945,6 +1971,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(features["n_genes"], 10)
         self.assertFalse(features["column_truth_requested"])
 
+    @patch(
+        "andrea.core.commands.generate_data.selection.ensure_docker_cli",
+        new=lambda **_kwargs: None,
+    )
     def test_plan_uses_conservative_eta_fallback_without_cost_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -2158,9 +2188,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "cell\tcluster\nC1\tA\nC2\tA\n",
                 encoding="utf-8",
             )
-            (stage_dir / "extras" / "tf_list.txt").write_text(
-                "G1\n", encoding="utf-8"
-            )
+            (stage_dir / "extras" / "tf_list.txt").write_text("G1\n", encoding="utf-8")
             (stage_dir / "truth" / "gene_universe.txt").write_text(
                 "G1\nG2\n",
                 encoding="utf-8",
@@ -2208,9 +2236,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             stage_dir = Path(tmp)
             (stage_dir / "truth").mkdir(parents=True, exist_ok=True)
             (stage_dir / "extras").mkdir(parents=True, exist_ok=True)
-            (stage_dir / "extras" / "tf_list.txt").write_text(
-                "G1\n", encoding="utf-8"
-            )
+            (stage_dir / "extras" / "tf_list.txt").write_text("G1\n", encoding="utf-8")
             (stage_dir / "expression.tsv").write_text(
                 "gene\tC1\tC2\nG1\t1\t0\nG2\t2\t3\n",
                 encoding="utf-8",
@@ -2285,9 +2311,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 "B\tA\t0.2\t0.1\n",
                 encoding="utf-8",
             )
-            (stage_dir / "extras" / "tf_list.txt").write_text(
-                "G1\n", encoding="utf-8"
-            )
+            (stage_dir / "extras" / "tf_list.txt").write_text("G1\n", encoding="utf-8")
             (stage_dir / "truth" / "gene_universe.txt").write_text(
                 "G1\nG2\n",
                 encoding="utf-8",
@@ -2346,13 +2370,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (stage_dir / "extras" / "lineage_tree.tsv").write_text(
-                "child\tparent\tgain_rate\tloss_rate\n"
-                "B\tA\t0.2\t0.1\n",
+                "child\tparent\tgain_rate\tloss_rate\n" "B\tA\t0.2\t0.1\n",
                 encoding="utf-8",
             )
-            (stage_dir / "extras" / "tf_list.txt").write_text(
-                "G1\n", encoding="utf-8"
-            )
+            (stage_dir / "extras" / "tf_list.txt").write_text("G1\n", encoding="utf-8")
             (stage_dir / "truth" / "gene_universe.txt").write_text(
                 "G1\nG2\n",
                 encoding="utf-8",
@@ -2434,7 +2455,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 },
             }
 
-            with self.assertRaisesRegex(ValueError, "not present in expression columns"):
+            with self.assertRaisesRegex(
+                ValueError, "not present in expression columns"
+            ):
                 _validate_truth_outputs(
                     stage_dir=stage_dir,
                     dataset_id="cell_bad",
@@ -2672,7 +2695,9 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 benchmark_manifest["runs"][0]["runtime_resources"],
                 {"threads": 1},
             )
-            self.assertEqual(benchmark_manifest["runs"][0]["eta_source"], "test_fixture")
+            self.assertEqual(
+                benchmark_manifest["runs"][0]["eta_source"], "test_fixture"
+            )
             self.assertEqual(benchmark_manifest["tasks"][0]["eta_wave"], 1)
             self.assertEqual(
                 benchmark_manifest["execution"]["waves"][0]["tasks"][0]["task_id"],
@@ -2694,14 +2719,10 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
 
             dataset_dir = (
-                benchmark_root
-                / "datasets"
-                / "dyngen_repro__dyngen_small__r01"
+                benchmark_root / "datasets" / "dyngen_repro__dyngen_small__r01"
             )
             ground_truth_manifest = json.loads(
-                (dataset_dir / "ground-truth-manifest.json").read_text(
-                    encoding="utf-8"
-                )
+                (dataset_dir / "ground-truth-manifest.json").read_text(encoding="utf-8")
             )
             tools_params_path = self._write_tools_params(
                 base,
@@ -2823,17 +2844,12 @@ class GenerateDataDyngenTests(unittest.TestCase):
             benchmark_root = next((base / "out").glob("dyngen_fail_*"))
             self.assertTrue((benchmark_root / "simulation-plan.json").exists())
             failed_dir = (
-                benchmark_root
-                / "failed_runs"
-                / "dyngen_fail__dyngen_small__r01"
+                benchmark_root / "failed_runs" / "dyngen_fail__dyngen_small__r01"
             )
             self.assertTrue((failed_dir / "progress.json").exists())
             self.assertTrue(
                 (
-                    failed_dir
-                    / "provenance"
-                    / "raw"
-                    / "docker_wrapper.stderr.log"
+                    failed_dir / "provenance" / "raw" / "docker_wrapper.stderr.log"
                 ).exists()
             )
             failure = json.loads(
@@ -2952,8 +2968,12 @@ class GenerateDataDyngenTests(unittest.TestCase):
     def test_plan_memory_is_preserved_in_resolved_run_and_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             plan_path = self._write_plan(
-                Path(tmp), request_id="memory_limit", truth_level="global",
-                simulator_id="dyngen", requested_extras=[], simulator_params={},
+                Path(tmp),
+                request_id="memory_limit",
+                truth_level="global",
+                simulator_id="dyngen",
+                requested_extras=[],
+                simulator_params={},
             )
             resolved = validate_simulation_plan(plan_path)
             self.assertEqual(resolved.simulator_runs[0].ram_gb, 4.0)
@@ -3073,10 +3093,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             )
             frozen_request = json.loads(
                 (
-                    stage_dir
-                    / "provenance"
-                    / "raw"
-                    / "docker_wrapper.request.json"
+                    stage_dir / "provenance" / "raw" / "docker_wrapper.request.json"
                 ).read_text(encoding="utf-8")
             )
             self.assertEqual(

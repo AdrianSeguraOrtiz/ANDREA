@@ -74,6 +74,7 @@ def preflight_infer_network(
         constraints=constraints,
         custom_tools=custom_tools,
         custom_blocked_entries=custom_blocked_entries,
+        temporal_summary=input_validation.get("temporal"),
     )
 
     selected_tools: list[str] = []
@@ -191,9 +192,7 @@ def preflight_infer_network(
                     )
                     skipped_tools[run_id] = message
                     continue
-                required_execution = {
-                    "mode": toolspec.get("_andrea_execution_mode")
-                }
+                required_execution = {"mode": toolspec.get("_andrea_execution_mode")}
                 if user_execution != required_execution:
                     message = (
                         f"Custom tool {catalog_tool_id!r} requires tools_params "
@@ -254,6 +253,7 @@ def preflight_infer_network(
                 dataset=dataset,
                 constraints=constraints,
                 warnings=compatibility_warnings,
+                temporal_summary=input_validation.get("temporal"),
             )
             compatibility_warnings.extend(
                 custom_tool_warnings(catalog_tool_id, toolspec)

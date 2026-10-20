@@ -338,9 +338,7 @@ def _normalize_tool_request_identity(
         return tool_id_raw, run_id_raw
 
     tool_id = tool_id_candidate
-    if run_id_raw is None or (
-        isinstance(run_id_raw, str) and not run_id_raw.strip()
-    ):
+    if run_id_raw is None or (isinstance(run_id_raw, str) and not run_id_raw.strip()):
         run_id = f"{tool_id}__{request_index:02d}"
     else:
         run_id = run_id_raw.strip()
@@ -413,8 +411,7 @@ def _load_tools_params(
                 f"tools-params.runs[{idx}].resources must be an object when provided"
             )
         unexpected_resource_keys = sorted(
-            set(resources)
-            - {"threads", "ram_gb", "cpuset_cpus", "timeout_seconds"}
+            set(resources) - {"threads", "ram_gb", "cpuset_cpus", "timeout_seconds"}
         )
         if unexpected_resource_keys:
             raise ValueError(
@@ -522,9 +519,7 @@ def _parse_execution_capabilities(
     if "group_native" in capabilities:
         extra_inputs = toolspec.get("extra_inputs")
         required = (
-            extra_inputs.get("required", [])
-            if isinstance(extra_inputs, dict)
-            else []
+            extra_inputs.get("required", []) if isinstance(extra_inputs, dict) else []
         )
         conditional = (
             extra_inputs.get("conditional_required", [])
@@ -606,6 +601,11 @@ def _resolve_run_execution(
         errors.append(
             f"execution.mode={mode!r} is not supported by this tool; supported modes: {capabilities}"
         )
+    if mode == "group_emulated" and "temporal_requirements" in toolspec:
+        errors.append(
+            "execution.mode=group_emulated cannot preserve this tool's temporal metadata: "
+            "series-aware expression and metadata slicing is not implemented"
+        )
 
     if errors:
         warnings.append(
@@ -624,8 +624,60 @@ def _check_tool_compatibility(
     constraints: SchemaConstraints,
     warnings: list[str],
     warning_prefix: str | None = None,
+    temporal_summary: dict[str, Any] | None = None,
 ) -> tuple[bool, list[str]]:
     errors: list[str] = []
+
+    temporal_requirements = toolspec.get("temporal_requirements")
+    if "temporal_requirements" in toolspec:
+        from andrea.core.shared.bulk_temporal import validate_temporal_requirements
+
+        try:
+            validate_temporal_requirements(temporal_requirements)
+        except ValueError as exc:
+            errors.append(f"invalid toolspec.{exc}")
+        else:
+            if dataset.temporal is None and temporal_requirements["required"]:
+                errors.append("required dataset temporal metadata missing in manifest")
+            elif (
+                dataset.temporal is not None
+                and dataset.temporal.get("sampling_design")
+                not in temporal_requirements["sampling_designs"]
+            ):
+                errors.append(
+                    "dataset temporal sampling_design is not accepted by tool"
+                )
+            if dataset.temporal is not None and (
+                temporal_requirements.get("technical_replicates") == "reject"
+                or "min_timepoints_per_series" in temporal_requirements
+            ):
+                if (
+                    not isinstance(temporal_summary, dict)
+                    or temporal_summary.get("status") != "ok"
+                ):
+                    errors.append(
+                        "validated temporal input summary is required to check tool requirements"
+                    )
+                else:
+                    if (
+                        temporal_requirements.get("technical_replicates") == "reject"
+                        and temporal_summary["columns"]
+                        != temporal_summary["observations"]
+                    ):
+                        errors.append(
+                            "tool rejects technical replicates: each biological observation must have exactly one expression column"
+                        )
+                    minimum = temporal_requirements.get("min_timepoints_per_series")
+                    if minimum is not None:
+                        short_series = [
+                            series["series_id"]
+                            for series in temporal_summary["series"]
+                            if len(series["timepoints"]) < minimum
+                        ]
+                        if short_series:
+                            errors.append(
+                                f"tool requires at least {minimum} distinct timepoints per series: {', '.join(short_series)}"
+                            )
 
     try:
         _parse_execution_capabilities(tool_id=tool_id, toolspec=toolspec)
@@ -829,6 +881,8 @@ def _resolve_runtime_extra_input_keys(
 
 def _runtime_execution_for_logical_run(
     logical_execution: dict[str, Any],
+    *,
+    temporal: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return the execution contract seen by the physical child container."""
     runtime_execution = dict(logical_execution)
@@ -837,6 +891,8 @@ def _runtime_execution_for_logical_run(
         runtime_execution["mode"] = "global"
     elif logical_mode == "group_aggregated":
         runtime_execution["mode"] = "column_native"
+    if temporal is not None:
+        runtime_execution["temporal"] = temporal
     return runtime_execution
 
 
@@ -914,12 +970,19 @@ def _build_runtime_input_snapshot(
     logical_active.update(runtime_active)
     logical_active.intersection_update(available_extra_inputs)
     runtime_active.intersection_update(available_extra_inputs)
-    return {
+    snapshot = {
         "tool_id": catalog_tool_id,
         "tool_origin": tool_origin,
         "active_extra_inputs": sorted(logical_active),
         "mounted_extra_inputs": sorted(runtime_active),
     }
+    if "temporal_requirements" in toolspec:
+        from andrea.core.shared.bulk_temporal import validate_temporal_requirements
+
+        snapshot["temporal_requirements"] = copy.deepcopy(
+            validate_temporal_requirements(toolspec["temporal_requirements"])
+        )
+    return snapshot
 
 
 def _collect_conditional_input_issues(
@@ -972,6 +1035,7 @@ def _build_tool_compatibility_entry(
     warning_code: str,
     post_compatibility_warnings: list[str] | None = None,
     requested_execution: dict[str, Any] | None = None,
+    temporal_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     local_warnings: list[str] = []
     compatible, block_messages = _check_tool_compatibility(
@@ -980,6 +1044,7 @@ def _build_tool_compatibility_entry(
         dataset=dataset,
         constraints=constraints,
         warnings=local_warnings,
+        temporal_summary=temporal_summary,
     )
     local_warnings.extend(post_compatibility_warnings or [])
 
@@ -997,13 +1062,11 @@ def _build_tool_compatibility_entry(
                 warnings=local_warnings,
                 allow_missing_required=True,
             )
-            execution_ok, resolved_execution, execution_errors = (
-                _resolve_run_execution(
-                    run_id=tool_id,
-                    toolspec=toolspec,
-                    user_execution=requested_execution or {},
-                    warnings=local_warnings,
-                )
+            execution_ok, resolved_execution, execution_errors = _resolve_run_execution(
+                run_id=tool_id,
+                toolspec=toolspec,
+                user_execution=requested_execution or {},
+                warnings=local_warnings,
             )
             if not params_ok or not execution_ok:
                 compatible = False
@@ -1086,6 +1149,7 @@ def _scan_catalog_compatibility(
     constraints: SchemaConstraints,
     custom_tools: dict[str, dict[str, Any]] | None = None,
     custom_blocked_entries: list[dict[str, Any]] | None = None,
+    temporal_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     for toolspec_path in sorted(tools_root.glob("*/toolspec.json")):
@@ -1117,6 +1181,7 @@ def _scan_catalog_compatibility(
                 dataset=dataset,
                 constraints=constraints,
                 warning_code="catalog_warning",
+                temporal_summary=temporal_summary,
             )
         )
 
@@ -1135,9 +1200,8 @@ def _scan_catalog_compatibility(
                 constraints=constraints,
                 warning_code="custom_tool_warning",
                 post_compatibility_warnings=post_compatibility_warnings,
-                requested_execution={
-                    "mode": toolspec.get("_andrea_execution_mode")
-                },
+                requested_execution={"mode": toolspec.get("_andrea_execution_mode")},
+                temporal_summary=temporal_summary,
             )
         )
 

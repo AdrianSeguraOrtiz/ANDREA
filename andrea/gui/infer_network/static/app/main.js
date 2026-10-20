@@ -55,6 +55,24 @@ function buildDatasetConfig() {
     throw new Error("organism.ncbi_taxon_id is required for biological taxonomic groups.");
   }
 
+  const temporal = $("temporal-enabled").checked ? {
+    schema_version: "bulk-temporal/1",
+    time_basis: "observed",
+    time_unit: $("temporal-unit").value.trim(),
+    time_origin: $("temporal-origin").value.trim(),
+    sampling_design: $("temporal-design").value,
+    missing_values: "reject",
+    preprocessing: {
+      normalization: $("temporal-normalization").value.trim(),
+      transformation: $("temporal-transformation").value.trim(),
+    },
+    provenance: $("temporal-provenance").value.trim(),
+  } : null;
+  if (temporal && [temporal.time_unit, temporal.time_origin, temporal.provenance,
+      temporal.preprocessing.normalization, temporal.preprocessing.transformation].some((value) => !value)) {
+    throw new Error("Complete all observed bulk time series declarations.");
+  }
+
   return {
     dataset: {
       id: datasetId,
@@ -64,6 +82,7 @@ function buildDatasetConfig() {
         taxonomic_group: taxonomicGroup,
         ncbi_taxon_id: organismTaxId,
       },
+      ...(temporal ? { temporal } : {}),
     },
     options: buildOptions(),
   };

@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "id": "dyngenie3_fixture_manifest",
+  "dataset": {
+    "spec": {
+      "schema_version": "1.0",
+      "id": "dyngenie3_fixture",
+      "name": "Synthetic independent observed bulk courses",
+      "expression": {
+        "genes": 6,
+        "columns": 15,
+        "column_kind": "timepoints",
+        "expression_profile": "bulk"
+      },
+      "organism": {
+        "taxonomic_group": "synthetic",
+        "ncbi_taxon_id": null
+      }
+    },
+    "expression_matrix": "expression.tsv"
+  },
+  "extras": {
+    "timepoints": "timepoints.tsv",
+    "replicates": "replicates.tsv",
+    "tf_list": "tf_list.txt",
+    "steady_state_expression": "steady_state_expression.tsv"
+  },
+  "temporal": {
+    "schema_version": "bulk-temporal/1",
+    "time_basis": "observed",
+    "time_unit": "hour",
+    "time_origin": "Synthetic experiment start",
+    "sampling_design": "longitudinal",
+    "missing_values": "reject",
+    "preprocessing": {
+      "normalization": "none; arbitrary bulk abundance units",
+      "transformation": "none"
+    },
+    "provenance": "Deterministic synthetic bulk contract fixture, not scientific ground truth or calibrated timing data."
+  },
+  "notes": "Synthetic contract fixture; no scientific truth or measured performance claims."
+}

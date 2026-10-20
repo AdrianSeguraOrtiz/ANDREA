@@ -62,6 +62,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -81,8 +82,15 @@ from shared.benchmark_profiles import (
 )
 from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR
 from shared.cost_resume import (
-    complete_point, embedded_observations, find_evidence_profiles, input_manifest,
-    legacy_observations, measurement_context, point_key, read_json, successful_observation,
+    complete_point,
+    embedded_observations,
+    find_evidence_profiles,
+    input_manifest,
+    legacy_observations,
+    measurement_context,
+    point_key,
+    read_json,
+    successful_observation,
 )
 
 _BENCHMARK_ROOT = Path(__file__).resolve().parents[3]
@@ -90,7 +98,11 @@ if str(_BENCHMARK_ROOT) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from benchmark_support import (
-    atomic_json, collect_provenance, merge_profiles, persistent_workdir, write_process_logs,
+    atomic_json,
+    collect_provenance,
+    merge_profiles,
+    persistent_workdir,
+    write_process_logs,
     profile_fingerprint,
 )
 
@@ -99,7 +111,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CATALOG_ROOT = REPO_ROOT / "andrea" / "catalog_inference_tools"
 DEFAULT_CATALOG_TOOLS_ROOT = CATALOG_ROOT / "tools"
 DEFAULT_TOOL_SOURCES_ROOT = INFERENCE_TOOLS_ROOT / "tools"
-DEFAULT_SIZES = tuple(f"{genes}x{columns}" for genes in (50, 100, 200) for columns in (20, 40, 80))
+DEFAULT_SIZES = tuple(
+    f"{genes}x{columns}" for genes in (50, 100, 200) for columns in (20, 40, 80)
+)
 DEFAULT_THREADS = "1,2,4,8"
 DEFAULT_RAM_GB = "8,16,32,64"
 
@@ -288,31 +302,41 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Stop after first failed run.",
     )
     parser.add_argument(
-        "--catalog-images", action="store_true",
+        "--catalog-images",
+        action="store_true",
         help="Use the image referenced by each catalog spec without rebuilding; run its immutable local image ID.",
     )
     parser.add_argument(
-        "--results-dir", type=Path,
+        "--results-dir",
+        type=Path,
         help="Persist inputs, outputs, stdout/stderr, raw measurements and provenance below this directory.",
     )
     parser.add_argument(
-        "--merge-existing", action="store_true",
+        "--merge-existing",
+        action="store_true",
         help="Allow updating selected profiles while preserving unrelated profiles and compatible historical points.",
     )
     parser.add_argument(
-        "--reuse-results-dir", type=Path, action="append", default=[],
+        "--reuse-results-dir",
+        type=Path,
+        action="append",
+        default=[],
         help="Also search this previous campaign directory for verified raw observations (repeatable).",
     )
     parser.add_argument(
-        "--resume", action="store_true", default=True,
+        "--resume",
+        action="store_true",
+        default=True,
         help="Reuse compatible successful measurements and continue missing repetitions (default).",
     )
     parser.add_argument(
-        "--force-rerun", action="store_true",
+        "--force-rerun",
+        action="store_true",
         help="Explicitly rerun requested points; preserve unrelated profiles and historical evidence.",
     )
     parser.add_argument(
-        "--remeasure-incompatible-history", action="store_true",
+        "--remeasure-incompatible-history",
+        action="store_true",
         help="Remeasure historical size/resource points whose evidence is incompatible with the current image or inputs; retain compatible observations.",
     )
     return parser.parse_args(argv)
@@ -599,8 +623,10 @@ def prepare_io_dir(
         BenchmarkInputProfile.from_cost_input_profile(input_profile, seed=seed),
     )
     save_json(io_dir / "params.json", resolved_params)
-    save_json(io_dir / "execution.json", execution)
-
+    runtime_execution = dict(execution)
+    if input_profile.get("temporal") is not None:
+        runtime_execution["temporal"] = input_profile["temporal"]
+    save_json(io_dir / "execution.json", runtime_execution)
 
 
 def prepare_container_cidfile(cidfile: Path) -> None:
@@ -610,17 +636,31 @@ def prepare_container_cidfile(cidfile: Path) -> None:
     container_id = cidfile.read_text(encoding="utf-8").strip()
     if container_id:
         result = run_cmd(
-            ["docker", "inspect", "--type", "container", "--format", "{{.State.Running}}", container_id],
-            cwd=REPO_ROOT, timeout_s=30, capture_output=True,
+            [
+                "docker",
+                "inspect",
+                "--type",
+                "container",
+                "--format",
+                "{{.State.Running}}",
+                container_id,
+            ],
+            cwd=REPO_ROOT,
+            timeout_s=30,
+            capture_output=True,
         )
         state = (result.stdout or "").strip().lower()
         if result.returncode == 0 and state == "true":
             raise RuntimeError(
                 f"Refusing to restart benchmark: container {container_id} recorded in {cidfile} is still running."
             )
-        missing = any(token in (result.stderr or "").lower()
-                      for token in ("no such container", "no such object"))
-        if not (result.returncode == 0 and state == "false") and not (result.returncode != 0 and missing):
+        missing = any(
+            token in (result.stderr or "").lower()
+            for token in ("no such container", "no such object")
+        )
+        if not (result.returncode == 0 and state == "false") and not (
+            result.returncode != 0 and missing
+        ):
             raise RuntimeError(
                 f"Cannot verify whether container {container_id} is stopped; preserving {cidfile}. "
                 f"Docker inspect: {(result.stderr or result.stdout or '').strip()}"
@@ -858,13 +898,15 @@ def build_feature_vector(
         or input_profile.get("aggregation_step")
         or "none"
     )
-    return {
+    result = {
         "execution_mode": mode,
         "n_cells": n_cells,
         "n_genes": int(genes),
         "n_groups": group_count,
         "expected_contexts": int(expected_contexts),
-        "expected_dense_edges": int(max(0, n_cells) * max(0, genes) * max(0, genes - 1)),
+        "expected_dense_edges": int(
+            max(0, n_cells) * max(0, genes) * max(0, genes - 1)
+        ),
         "has_tf_list": "tf_list" in set(input_profile.get("extras_provided", [])),
         "output_density_class": str(
             input_profile.get("output_density_class")
@@ -874,6 +916,20 @@ def build_feature_vector(
         "threads": int(threads),
         "ram_gb": float(ram_gb),
     }
+    geometry = input_profile.get("temporal_fixture")
+    if isinstance(geometry, dict):
+        series = int(geometry["series_count"])
+        points = int(geometry["timepoints_per_series"])
+        result.update(
+            {
+                "n_timepoints_per_series": points,
+                "n_independent_series": series,
+                "n_steady_state_samples": int(geometry.get("steady_state_samples", 0)),
+                "n_temporal_transitions": series * (points - 1),
+                "temporal_sampling": geometry.get("sampling", "regular"),
+            }
+        )
+    return result
 
 
 def write_tool_cost_profile(
@@ -885,8 +941,15 @@ def write_tool_cost_profile(
 
 
 def validate_runtime_args(args: argparse.Namespace) -> None:
-    if args.profile and not args.merge_existing and not args.no_write_cost and not args.plan_only:
-        raise RuntimeError("Filtered cost writes require --merge-existing; use --no-write-cost for experiments.")
+    if (
+        args.profile
+        and not args.merge_existing
+        and not args.no_write_cost
+        and not args.plan_only
+    ):
+        raise RuntimeError(
+            "Filtered cost writes require --merge-existing; use --no-write-cost for experiments."
+        )
     if args.merge_existing and not args.profile:
         raise RuntimeError("--merge-existing requires at least one --profile.")
     """Validate global CLI limits before running any benchmark."""
@@ -989,9 +1052,7 @@ def print_benchmark_plan_summary(rows: Sequence[dict[str, Any]]) -> None:
         f"Benchmark plan: tools={len(tools)} profiles={len(rows)} planned_runs={total_runs}"
     )
     for row in rows:
-        size_tokens = [
-            f"{size.genes}x{size.columns}" for size in row["sizes"]
-        ]
+        size_tokens = [f"{size.genes}x{size.columns}" for size in row["sizes"]]
         print(
             f"- {row['tool_id']}/{row['profile_id']}: "
             f"sizes={','.join(size_tokens)} "
@@ -1185,18 +1246,27 @@ def execute_tool_benchmarks(
     """Execute all planned runs for one tool; returns runs, updated index, and fail-fast flag."""
     tool_runs: list[dict[str, Any]] = list(initial_runs or [])
     recovered = {
-        (*point_key(row), row["repeat"]): row for row in tool_runs
+        (*point_key(row), row["repeat"]): row
+        for row in tool_runs
         if successful_observation(row)
     }
     if tool_runs:
         save_json(workdir / "measurements.json", tool_runs)
 
-    plans = (iter_run_plan(sizes=sizes, threads=threads, ram_gb=ram_gb, repeats=repeats)
-             if point_plan is None else
-             (RunPlanItem(SizePoint(g, c), t, m, repeat)
-              for g, c, t, m in sorted(point_plan) for repeat in range(1, repeats + 1)))
-    profile_total = (len(point_plan) if point_plan is not None else
-                     len(sizes) * len(threads) * len(ram_gb)) * repeats
+    plans = (
+        iter_run_plan(sizes=sizes, threads=threads, ram_gb=ram_gb, repeats=repeats)
+        if point_plan is None
+        else (
+            RunPlanItem(SizePoint(g, c), t, m, repeat)
+            for g, c, t, m in sorted(point_plan)
+            for repeat in range(1, repeats + 1)
+        )
+    )
+    profile_total = (
+        len(point_plan)
+        if point_plan is not None
+        else len(sizes) * len(threads) * len(ram_gb)
+    ) * repeats
     for profile_index, plan in enumerate(plans, start=1):
         run_index += 1
         print(
@@ -1205,7 +1275,13 @@ def execute_tool_benchmarks(
             f"threads={plan.threads} ram={plan.ram_gb}GB repeat={plan.repeat}"
         )
 
-        observation_key = (plan.size.genes, plan.size.columns, plan.threads, float(plan.ram_gb), plan.repeat)
+        observation_key = (
+            plan.size.genes,
+            plan.size.columns,
+            plan.threads,
+            float(plan.ram_gb),
+            plan.repeat,
+        )
         if observation_key in recovered:
             print("  -> reused verified successful observation")
             continue
@@ -1224,6 +1300,8 @@ def execute_tool_benchmarks(
             input_profile=input_profile,
         )
 
+        observed_run_id = uuid.uuid4().hex
+        observed_inputs = input_manifest(io_dir)
         status, elapsed, error_or_empty = run_container_once(
             image_tag=image_tag,
             io_dir=io_dir,
@@ -1233,6 +1311,7 @@ def execute_tool_benchmarks(
         )
 
         run_payload: dict[str, Any] = {
+            "run_id": observed_run_id,
             "genes": plan.size.genes,
             "columns": plan.size.columns,
             "threads": plan.threads,
@@ -1241,7 +1320,17 @@ def execute_tool_benchmarks(
             "seconds": round(elapsed, 6),
             "status": status,
             "io_dir": str(io_dir.resolve()),
+            "input_sha256": observed_inputs,
         }
+        geometry = input_profile.get("temporal_fixture")
+        if isinstance(geometry, dict):
+            run_payload["dimensions"] = {
+                "genes": plan.size.genes,
+                "columns": plan.size.columns,
+                "timepoints_per_series": geometry["timepoints_per_series"],
+                "independent_series": geometry["series_count"],
+                "steady_state_samples": geometry.get("steady_state_samples", 0),
+            }
         if error_or_empty:
             run_payload["error"] = error_or_empty
         tool_runs.append(run_payload)
@@ -1259,13 +1348,25 @@ def execute_tool_benchmarks(
     return tool_runs, run_index, False
 
 
-
 def prepare_incremental_measurements(
-    *, profile: BenchmarkProfile, config: dict[str, Any], existing: dict[str, Any] | None,
-    evidence_roots: list[Path], workdir: Path, sizes: list[SizePoint], threads: list[int],
-    ram_gb: list[int], repeats: int, seed: int, force_rerun: bool,
+    *,
+    profile: BenchmarkProfile,
+    config: dict[str, Any],
+    existing: dict[str, Any] | None,
+    evidence_roots: list[Path],
+    workdir: Path,
+    sizes: list[SizePoint],
+    threads: list[int],
+    ram_gb: list[int],
+    repeats: int,
+    seed: int,
+    force_rerun: bool,
     remeasure_historical: bool = False,
-) -> tuple[list[dict[str, Any]], dict[tuple[int, int, int, float], dict[str, str]], set[tuple[int, int, int, float]]]:
+) -> tuple[
+    list[dict[str, Any]],
+    dict[tuple[int, int, int, float], dict[str, str]],
+    set[tuple[int, int, int, float]],
+]:
     """Resolve the requested plus historical point matrix without executing Docker.
 
     Historical aggregates are never expanded into invented raw timings. They are
@@ -1277,14 +1378,18 @@ def prepare_incremental_measurements(
     }
     old_points = {point_key(p): p for p in (existing or {}).get("runtime_points", [])}
     intended = requested | set(old_points)
-    old_config = (existing or {}).get('benchmark_config', {})
+    old_config = (existing or {}).get("benchmark_config", {})
     # A partial checkpoint can contain historical points still awaiting their
     # new-image measurement. Keep that frozen plan across interruptions, while
     # allowing genuinely superseded recipes to retire incompatible dimensions.
-    if (config.get('profile_sha256') and
-            old_config.get('profile_sha256') == config['profile_sha256']):
-        intended.update(point_key(p) for p in old_config.get('planned_points', []))
-    directories = find_evidence_profiles(evidence_roots, profile.tool_id, profile.profile_id)
+    if (
+        config.get("profile_sha256")
+        and old_config.get("profile_sha256") == config["profile_sha256"]
+    ):
+        intended.update(point_key(p) for p in old_config.get("planned_points", []))
+    directories = find_evidence_profiles(
+        evidence_roots, profile.tool_id, profile.profile_id
+    )
     initial: list[dict[str, Any]] = []
     hashes_by_key: dict[tuple[int, int, int, float], dict[str, str]] = {}
     manifests: dict[tuple[int, int], dict[str, str]] = {}
@@ -1293,26 +1398,45 @@ def prepare_incremental_measurements(
         shape = key[:2]
         if shape not in manifests:
             io_dir = workdir / "input-verification" / f"g{key[0]}_c{key[1]}" / "io"
-            prepare_io_dir(io_dir, SizePoint(*shape), resolved_params=profile.params,
-                           execution=profile.execution, seed=seed, input_profile=profile.input_profile)
+            prepare_io_dir(
+                io_dir,
+                SizePoint(*shape),
+                resolved_params=profile.params,
+                execution=profile.execution,
+                seed=seed,
+                input_profile=profile.input_profile,
+            )
             manifests[shape] = input_manifest(io_dir)
         hashes = manifests[shape]
         hashes_by_key[key] = hashes
         if force_rerun and key in requested:
             continue
         old_point = old_points.get(key, {})
-        rows = embedded_observations(point=old_point, config=config, hashes=hashes, repeats=repeats)
+        rows = embedded_observations(
+            point=old_point, config=config, hashes=hashes, repeats=repeats
+        )
         if len(rows) < repeats:
-            recovered = legacy_observations(directories=directories, config=config, key=key,
-                                            hashes=hashes, repeats=repeats)
+            recovered = legacy_observations(
+                directories=directories,
+                config=config,
+                key=key,
+                hashes=hashes,
+                repeats=repeats,
+            )
             by_repeat = {row["repeat"]: row for row in rows}
             for row in recovered:
                 by_repeat.setdefault(row["repeat"], row)
             rows = [by_repeat[k] for k in sorted(by_repeat)]
         if old_point and complete_point(old_point, repeats) and len(rows) == repeats:
-            recomputed = aggregate_runtime_points(rows, execution_profile=profile.execution_profile,
-                                                   input_profile=profile.input_profile)[0]
-            if any(recomputed[field] != old_point[field] for field in ("seconds_p50", "seconds_p90")):
+            recomputed = aggregate_runtime_points(
+                rows,
+                execution_profile=profile.execution_profile,
+                input_profile=profile.input_profile,
+            )[0]
+            if any(
+                recomputed[field] != old_point[field]
+                for field in ("seconds_p50", "seconds_p90")
+            ):
                 # A changed/corrupted aggregate cannot authorize skipping work.
                 rows = []
         if key not in requested and len(rows) < repeats:
@@ -1329,34 +1453,47 @@ def prepare_incremental_measurements(
         {"genes": g, "columns": c, "threads": t, "ram_gb": m}
         for g, c, t, m in sorted(intended)
     ]
-    config["sizes"] = [{"genes": g, "columns": c} for g, c in sorted({k[:2] for k in intended})]
+    config["sizes"] = [
+        {"genes": g, "columns": c} for g, c in sorted({k[:2] for k in intended})
+    ]
     config["threads_tested"] = sorted({k[2] for k in intended})
     config["ram_gb_tested"] = sorted({k[3] for k in intended})
     requested_reused = sum(point_key(row) in requested for row in initial)
     report = {
-        "profile_id": profile.profile_id, "requested_points": len(requested),
+        "profile_id": profile.profile_id,
+        "requested_points": len(requested),
         "historical_points_retained": len(intended - requested),
         "requested_repetitions": len(requested) * repeats,
         "reused_requested_repetitions": requested_reused,
         "pending_repetitions": len(requested) * repeats - requested_reused,
         "historical_points_requiring_remeasurement": [
-            dict(zip(('genes', 'columns', 'threads', 'ram_gb'), key)) for key in blocked],
+            dict(zip(("genes", "columns", "threads", "ram_gb"), key)) for key in blocked
+        ],
         "total_pending_repetitions": len(intended) * repeats - len(initial),
         "evidence_profiles_checked": [str(p) for p in directories],
     }
     save_json(workdir / "reuse-report.json", report)
-    print(f"[{profile.tool_id}/{profile.profile_id}] reuse: "
-          f"{requested_reused}/{len(requested) * repeats} requested repetitions; "
-          f"{len(intended - requested)} historical resource points retained")
+    print(
+        f"[{profile.tool_id}/{profile.profile_id}] reuse: "
+        f"{requested_reused}/{len(requested) * repeats} requested repetitions; "
+        f"{len(intended - requested)} historical resource points retained"
+    )
     return initial, hashes_by_key, intended
 
 
 def completed_incremental_points(
-    runs: list[dict[str, Any]], *, profile: BenchmarkProfile, config: dict[str, Any],
-    hashes: dict[tuple[int, int, int, float], dict[str, str]], repeats: int,
+    runs: list[dict[str, Any]],
+    *,
+    profile: BenchmarkProfile,
+    config: dict[str, Any],
+    hashes: dict[tuple[int, int, int, float], dict[str, str]],
+    repeats: int,
 ) -> list[dict[str, Any]]:
-    points = aggregate_runtime_points(runs, execution_profile=profile.execution_profile,
-                                      input_profile=profile.input_profile)
+    points = aggregate_runtime_points(
+        runs,
+        execution_profile=profile.execution_profile,
+        input_profile=profile.input_profile,
+    )
     completed = []
     for point in points:
         if not complete_point(point, repeats):
@@ -1367,13 +1504,18 @@ def completed_incremental_points(
             "input_sha256": hashes[key],
             "measurement_context": measurement_context(config),
             "observations": [
-                {**row, "measurement_provenance": row.get("measurement_provenance", config.get("provenance", {}))}
-                for row in runs if point_key(row) == key
+                {
+                    **row,
+                    "measurement_provenance": row.get(
+                        "measurement_provenance", config.get("provenance", {})
+                    ),
+                }
+                for row in runs
+                if point_key(row) == key
             ],
         }
         completed.append(point)
     return completed
-
 
 
 def acquire_cost_lock(cost_path: Path):
@@ -1386,7 +1528,9 @@ def acquire_cost_lock(cost_path: Path):
         fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError as exc:
         stream.close()
-        raise RuntimeError(f"Another benchmark is already updating {cost_path}") from exc
+        raise RuntimeError(
+            f"Another benchmark is already updating {cost_path}"
+        ) from exc
     return stream
 
 
@@ -1444,7 +1588,11 @@ def run(argv: Sequence[str] | None = None) -> int:
     for target in targets:
         tool_id = target.tool_id
         tool_threads = threads_by_tool[tool_id]
-        image_tag = target.toolspec["docker_image"] if args.catalog_images else docker_image_tag(tool_id)
+        image_tag = (
+            target.toolspec["docker_image"]
+            if args.catalog_images
+            else docker_image_tag(tool_id)
+        )
         tool_source_dir = args.tool_sources_root / tool_id
         if not tool_source_dir.exists() or not tool_source_dir.is_dir():
             print(
@@ -1473,8 +1621,11 @@ def run(argv: Sequence[str] | None = None) -> int:
                 )
 
             provenance = collect_provenance(
-                root=REPO_ROOT, spec_path=target.catalog_tool_dir / "toolspec.json",
-                image=image_tag, seed=args.seed, source_dir=tool_source_dir,
+                root=REPO_ROOT,
+                spec_path=target.catalog_tool_dir / "toolspec.json",
+                image=image_tag,
+                seed=args.seed,
+                source_dir=tool_source_dir,
             )
             image_tag = provenance["image_id"]
             if args.results_dir:
@@ -1482,13 +1633,15 @@ def run(argv: Sequence[str] | None = None) -> int:
                 print(f"[{tool_id}] evidence: {workdir}")
             else:
                 workdir, workdir_context = allocate_tool_workdir(
-                    tool_id=tool_id, keep_workdir=args.keep_workdir,
+                    tool_id=tool_id,
+                    keep_workdir=args.keep_workdir,
                 )
             save_json(workdir / "provenance.json", provenance)
             previous_payload = read_json(cost_path, {})
             save_json(workdir / "cost-before.json", previous_payload)
             old_profiles = {
-                p["profile_id"]: p for p in previous_payload.get("profiles", [])
+                p["profile_id"]: p
+                for p in previous_payload.get("profiles", [])
                 if isinstance(p, dict) and "profile_id" in p
             }
             cost_profile_entries: list[dict[str, Any]] = []
@@ -1513,35 +1666,54 @@ def run(argv: Sequence[str] | None = None) -> int:
                     args=args,
                 )
                 benchmark_config["provenance"] = provenance
-                benchmark_config["profile_sha256"] = profile_fingerprint(profile, root=REPO_ROOT, kind="inference")
+                benchmark_config["profile_sha256"] = profile_fingerprint(
+                    profile, root=REPO_ROOT, kind="inference"
+                )
                 profile_workdir = workdir / safe_path_token(profile.profile_id)
                 evidence_roots = list(args.reuse_results_dir)
                 if args.results_dir:
                     evidence_roots.append(args.results_dir)
-                initial_runs, input_hashes, intended_points = prepare_incremental_measurements(
-                    profile=profile, config=benchmark_config, existing=old_profiles.get(profile.profile_id),
-                    evidence_roots=evidence_roots, workdir=profile_workdir, sizes=profile_sizes,
-                    threads=tool_threads, ram_gb=ram_gb, repeats=args.repeats, seed=args.seed,
-                    force_rerun=args.force_rerun,
-                    remeasure_historical=args.remeasure_incompatible_history,
+                initial_runs, input_hashes, intended_points = (
+                    prepare_incremental_measurements(
+                        profile=profile,
+                        config=benchmark_config,
+                        existing=old_profiles.get(profile.profile_id),
+                        evidence_roots=evidence_roots,
+                        workdir=profile_workdir,
+                        sizes=profile_sizes,
+                        threads=tool_threads,
+                        ram_gb=ram_gb,
+                        repeats=args.repeats,
+                        seed=args.seed,
+                        force_rerun=args.force_rerun,
+                        remeasure_historical=args.remeasure_incompatible_history,
+                    )
                 )
                 save_json(profile_workdir / "benchmark_config.json", benchmark_config)
 
                 def checkpoint(rows: list[dict[str, Any]]) -> None:
                     nonlocal wrote_cost
                     points = completed_incremental_points(
-                        rows, profile=profile, config=benchmark_config,
-                        hashes=input_hashes, repeats=args.repeats,
+                        rows,
+                        profile=profile,
+                        config=benchmark_config,
+                        hashes=input_hashes,
+                        repeats=args.repeats,
                     )
                     save_json(profile_workdir / "completed-points.json", points)
                     if points and not args.no_write_cost:
-                        entry = make_cost_profile_entry(profile_id=profile.profile_id,
-                            runtime_points=points, benchmark_config=benchmark_config)
+                        entry = make_cost_profile_entry(
+                            profile_id=profile.profile_id,
+                            runtime_points=points,
+                            benchmark_config=benchmark_config,
+                        )
                         payload = make_cost_payload(profile_entries=[entry])
                         # Preserve every unrelated profile, even for a full-catalog run.
                         if read_json(cost_path, {}).get("profiles"):
                             payload = merge_profiles(cost_path, payload)
-                        write_tool_cost_profile(cost_path=cost_path, cost_payload=payload)
+                        write_tool_cost_profile(
+                            cost_path=cost_path, cost_payload=payload
+                        )
                         wrote_cost = True
 
                 if initial_runs:
@@ -1578,14 +1750,21 @@ def run(argv: Sequence[str] | None = None) -> int:
                 global_fail += profile_summary["failed_runs"]
 
                 runtime_points = completed_incremental_points(
-                    profile_runs, profile=profile, config=benchmark_config,
-                    hashes=input_hashes, repeats=args.repeats,
+                    profile_runs,
+                    profile=profile,
+                    config=benchmark_config,
+                    hashes=input_hashes,
+                    repeats=args.repeats,
                 )
-                profile_complete = {point_key(point) for point in runtime_points} == intended_points
+                profile_complete = {
+                    point_key(point) for point in runtime_points
+                } == intended_points
                 if not profile_complete:
                     had_error = True
                     unpersistable_profile = True
-                    print(f"[{tool_id}/{profile.profile_id}] incomplete matrix; completed points checkpointed, failures retained in evidence.")
+                    print(
+                        f"[{tool_id}/{profile.profile_id}] incomplete matrix; completed points checkpointed, failures retained in evidence."
+                    )
                 if runtime_points and profile_complete:
                     cost_profile_entries.append(
                         make_cost_profile_entry(
@@ -1605,7 +1784,9 @@ def run(argv: Sequence[str] | None = None) -> int:
                 if fail_fast_triggered:
                     break
 
-            can_write = bool(cost_profile_entries) and (args.merge_existing or not unpersistable_profile)
+            can_write = bool(cost_profile_entries) and (
+                args.merge_existing or not unpersistable_profile
+            )
             if can_write and not args.no_write_cost:
                 payload = make_cost_payload(profile_entries=cost_profile_entries)
                 if read_json(cost_path, {}).get("profiles"):

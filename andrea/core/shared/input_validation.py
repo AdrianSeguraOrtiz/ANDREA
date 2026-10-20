@@ -129,7 +129,9 @@ def validate_tsv_file_with_spec(
         reader_raw = csv.reader(handle, delimiter=delimiter)
         if has_header:
             header_row = next(reader_raw, None)
-            fieldnames = [str(value).strip() for value in header_row] if header_row else []
+            fieldnames = (
+                [str(value).strip() for value in header_row] if header_row else []
+            )
             columns_count = len(fieldnames)
             if not fieldnames:
                 errors.append(f"{path}: expected header row with column names")
@@ -139,6 +141,10 @@ def validate_tsv_file_with_spec(
                 )
             if any(not name for name in fieldnames):
                 errors.append(f"{path}: header contains empty column names")
+            if spec.get("unique_header", False) and len(set(fieldnames)) != len(
+                fieldnames
+            ):
+                errors.append(f"{path}: header contains duplicate column names")
             if columns_count > 1:
                 data_column_names = {
                     str(name).strip() for name in fieldnames[1:] if str(name).strip()
@@ -404,18 +410,24 @@ def _track_float_data_columns(
         data_cells_total += 1
         if value == "":
             if len(data_non_numeric_samples) < 5:
-                data_non_numeric_samples.append(f"line {line_idx}, col {col_idx}: <empty>")
+                data_non_numeric_samples.append(
+                    f"line {line_idx}, col {col_idx}: <empty>"
+                )
             continue
         try:
             number = float(value)
         except Exception:  # noqa: BLE001
             if len(data_non_numeric_samples) < 5:
-                data_non_numeric_samples.append(f"line {line_idx}, col {col_idx}: {value!r}")
+                data_non_numeric_samples.append(
+                    f"line {line_idx}, col {col_idx}: {value!r}"
+                )
         else:
             if math.isfinite(number):
                 data_cells_numeric += 1
             elif len(data_non_numeric_samples) < 5:
-                data_non_numeric_samples.append(f"line {line_idx}, col {col_idx}: {value!r}")
+                data_non_numeric_samples.append(
+                    f"line {line_idx}, col {col_idx}: {value!r}"
+                )
     return data_cells_total, data_cells_numeric
 
 
@@ -535,6 +547,14 @@ def _apply_cross_checks(
                 allowed=expression_genes,
                 target="expression genes",
             )
+        elif kind == "first_column_matches_expression_genes":
+            missing = sorted(expression_genes.difference(first_column_values))[:5]
+            extra = sorted(first_column_values.difference(expression_genes))[:5]
+            if missing or extra:
+                errors.append(
+                    f"{path}: first-column genes must match expression genes; "
+                    f"missing={missing}, extra={extra}"
+                )
         elif kind == "column_subset_expression_columns":
             _append_unknown_subset_error(
                 errors=errors,
@@ -586,7 +606,9 @@ def _apply_cross_checks(
                 continue
             if reference_values is None:
                 continue
-            unknown = sorted(values_by_column.get(column, set()).difference(reference_values))
+            unknown = sorted(
+                values_by_column.get(column, set()).difference(reference_values)
+            )
             if unknown:
                 errors.append(
                     f"{path}: column '{column}' contains identifiers not present in "

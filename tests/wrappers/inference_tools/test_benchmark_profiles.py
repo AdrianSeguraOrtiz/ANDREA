@@ -23,6 +23,30 @@ PARAM_OVERRIDES_DIR = REPO_ROOT / "wrappers" / "inference_tools" / "param_overri
 COST_PROFILES_DIR = REPO_ROOT / "wrappers" / "inference_tools" / "cost_profiles"
 
 
+def _resolve_profile_config(tool_id: str):
+    """Resolve reviewable draft profiles without activating the tool catalog."""
+    if (CATALOG_TOOLS_ROOT / tool_id / "toolspec.json").is_file():
+        return resolve_benchmark_profiles(
+            tool_id=tool_id,
+            catalog_tools_root=CATALOG_TOOLS_ROOT,
+            param_overrides_dir=PARAM_OVERRIDES_DIR,
+            cost_profiles_dir=COST_PROFILES_DIR,
+        )
+    draft = (
+        REPO_ROOT / "wrappers/inference_tools/tools" / tool_id / "toolspec.draft.json"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        tool_dir = Path(tmp) / tool_id
+        tool_dir.mkdir()
+        (tool_dir / "toolspec.json").write_bytes(draft.read_bytes())
+        return resolve_benchmark_profiles(
+            tool_id=tool_id,
+            catalog_tools_root=Path(tmp),
+            param_overrides_dir=PARAM_OVERRIDES_DIR,
+            cost_profiles_dir=COST_PROFILES_DIR,
+        )
+
+
 def _load_toolspec(tool_id: str) -> dict[str, object]:
     return json.loads((CATALOG_TOOLS_ROOT / tool_id / "toolspec.json").read_text())
 
@@ -56,11 +80,53 @@ def _extra_input_ids(
 
 
 class BenchmarkProfileResolverTest(unittest.TestCase):
+    def test_dyngenie3_plan_keeps_temporal_axes_and_branch_scope_explicit(self) -> None:
+        profiles = _resolve_profile_config("dyngenie3")
+        defaults = [
+            p for p in profiles if p.profile_id.startswith("global_rf_from_data_ts_")
+        ]
+        branches = [p for p in profiles if p not in defaults]
+        self.assertEqual(len(defaults), 9)
+        self.assertEqual(len(branches), 7)
+        dimensions = set()
+        for profile in defaults:
+            geometry = profile.input_profile["temporal_fixture"]
+            for size in profile.sizes:
+                genes, columns = map(int, size.split("x"))
+                dimensions.add(
+                    (genes, geometry["timepoints_per_series"], geometry["series_count"])
+                )
+                self.assertEqual(
+                    columns,
+                    geometry["timepoints_per_series"] * geometry["series_count"],
+                )
+            self.assertEqual(profile.params["ntrees"], 1000)
+            self.assertEqual(profile.params["tree_method"], "RF")
+            self.assertEqual(profile.params["alpha"], "from_data")
+            self.assertEqual(profile.params_profile["source"], "toolspec_defaults")
+        self.assertEqual(
+            dimensions,
+            {(g, t, s) for g in (50, 100, 200) for t in (4, 8, 16) for s in (1, 2, 4)},
+        )
+        self.assertTrue(all(profile.sizes == ("100x16",) for profile in branches))
+        steady = next(p for p in branches if "steady_state_center" in p.profile_id)
+        self.assertIn(
+            "steady_state_expression", steady.input_profile["extras_provided"]
+        )
+        self.assertEqual(
+            steady.input_profile["temporal_fixture"]["steady_state_samples"], 20
+        )
+
     def test_tigress_default_calibration_does_not_inherit_smoke_overrides(self) -> None:
-        profiles = {p.profile_id: p for p in resolve_benchmark_profiles(
-            tool_id="tigress", catalog_tools_root=CATALOG_TOOLS_ROOT,
-            param_overrides_dir=PARAM_OVERRIDES_DIR, cost_profiles_dir=COST_PROFILES_DIR,
-        )}
+        profiles = {
+            p.profile_id: p
+            for p in resolve_benchmark_profiles(
+                tool_id="tigress",
+                catalog_tools_root=CATALOG_TOOLS_ROOT,
+                param_overrides_dir=PARAM_OVERRIDES_DIR,
+                cost_profiles_dir=COST_PROFILES_DIR,
+            )
+        }
         self.assertEqual(profiles["global_default"].params["nsplit"], 20)
         full = profiles["global_default_spec_defaults"]
         self.assertEqual(full.params["nsplit"], 100)
@@ -109,6 +175,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             set(q0_profile.input_profile["extras_provided"]),
             {"tf_list"},
         )
+
     def test_repository_profiles_capture_tool_specific_input_contracts(self) -> None:
         expected = {
             ("genie3", "global_default"): {
@@ -209,18 +276,15 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                 self.assertTrue(config_path.is_file(), f"missing {config_path}")
 
                 toolspec = _load_toolspec(tool_id)
-                profiles = resolve_benchmark_profiles(
-                    tool_id=tool_id,
-                    catalog_tools_root=CATALOG_TOOLS_ROOT,
-                    param_overrides_dir=PARAM_OVERRIDES_DIR,
-                    cost_profiles_dir=COST_PROFILES_DIR,
-                )
+                profiles = _resolve_profile_config(tool_id)
                 self.assertGreater(len(profiles), 0)
 
-                declared_modes = set(toolspec.get("execution_capabilities", [])).intersection(
-                    {"global", "group_native", "column_native"}
-                )
-                resolved_modes = {profile.execution_profile["mode"] for profile in profiles}
+                declared_modes = set(
+                    toolspec.get("execution_capabilities", [])
+                ).intersection({"global", "group_native", "column_native"})
+                resolved_modes = {
+                    profile.execution_profile["mode"] for profile in profiles
+                }
                 self.assertTrue(
                     declared_modes.issubset(resolved_modes),
                     f"{tool_id}: missing modes {declared_modes - resolved_modes}",
@@ -282,7 +346,9 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
 
         for profile in profiles:
             columns = (200, 400, 800) if profile.params["metacell"] else (100,)
-            self.assertEqual(set(profile.sizes), {f"{g}x{c}" for g in (50, 80, 100) for c in columns})
+            self.assertEqual(
+                set(profile.sizes), {f"{g}x{c}" for g in (50, 80, 100) for c in columns}
+            )
             self.assertEqual(
                 profile.input_profile["gene_id_source"],
                 "human_breast_cancer_pathway",
@@ -299,7 +365,10 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         by_id = {profile.profile_id: profile for profile in profiles}
 
         builtin = by_id["global_builtin_tf_sig_fast"]
-        self.assertEqual(set(builtin.sizes), {f"{g}x{c}" for g in (50, 80, 100) for c in (20, 40, 80)})
+        self.assertEqual(
+            set(builtin.sizes),
+            {f"{g}x{c}" for g in (50, 80, 100) for c in (20, 40, 80)},
+        )
         self.assertEqual(
             builtin.input_profile["gene_id_source"],
             "human_breast_cancer_pathway",
@@ -368,9 +437,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         )
         tf_profile = profiles[1]
         self.assertEqual(tf_profile.execution, {"mode": "global"})
-        self.assertEqual(
-            tf_profile.execution_profile["physical_task_policy"], "single"
-        )
+        self.assertEqual(tf_profile.execution_profile["physical_task_policy"], "single")
         self.assertEqual(tf_profile.execution_profile["group_count"], 0)
         self.assertEqual(tf_profile.params["limit"], 25)
         self.assertEqual(tf_profile.params_profile["cost_relevant_params"], ["limit"])
@@ -488,16 +555,13 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                 config_path = Path(tmp) / f"{tool_id}.json"
                 config_path.write_text(
                     json.dumps(
-                        {
-                            "profiles": [
-                                {"id": "logical", "execution": {"mode": mode}}
-                            ]
-                        }
+                        {"profiles": [{"id": "logical", "execution": {"mode": mode}}]}
                     ),
                     encoding="utf-8",
                 )
-                with self.subTest(tool_id=tool_id, mode=mode), self.assertRaisesRegex(
-                    ValueError, "physical execution only"
+                with (
+                    self.subTest(tool_id=tool_id, mode=mode),
+                    self.assertRaisesRegex(ValueError, "physical execution only"),
                 ):
                     resolve_benchmark_profiles(
                         tool_id=tool_id,
@@ -544,7 +608,9 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                         (io_dir / "execution.json").read_text(encoding="utf-8")
                     )
 
-                self.assertEqual(profile.execution_profile["mode"], expected_physical_mode)
+                self.assertEqual(
+                    profile.execution_profile["mode"], expected_physical_mode
+                )
                 self.assertEqual(
                     physical_execution["mode"],
                     expected_physical_mode,
@@ -585,12 +651,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
 
         for tool_id in configured_tool_ids:
             with self.subTest(tool_id=tool_id):
-                profiles = resolve_benchmark_profiles(
-                    tool_id=tool_id,
-                    catalog_tools_root=CATALOG_TOOLS_ROOT,
-                    param_overrides_dir=PARAM_OVERRIDES_DIR,
-                    cost_profiles_dir=COST_PROFILES_DIR,
-                )
+                profiles = _resolve_profile_config(tool_id)
                 self.assertTrue(profiles)
                 for profile in profiles:
                     with self.subTest(tool_id=tool_id, profile=profile.profile_id):
@@ -599,9 +660,12 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
                                 profile.input_profile.get("group_count") or 0
                             )
                             columns = max(16, group_count * 4)
+                            genes = 24
+                            if "temporal_fixture" in profile.input_profile:
+                                genes, columns = map(int, profile.sizes[0].split("x"))
                             bundle = write_benchmark_io_dir(
                                 Path(tmp),
-                                BenchmarkInputSize(genes=24, columns=columns),
+                                BenchmarkInputSize(genes=genes, columns=columns),
                                 BenchmarkInputProfile.from_cost_input_profile(
                                     profile.input_profile,
                                     seed=123,

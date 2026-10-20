@@ -79,12 +79,29 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["genes", "columns", "threads", "ram_gb"],
+            "required": [
+              "genes",
+              "columns",
+              "threads",
+              "ram_gb"
+            ],
             "properties": {
-              "genes": {"type": "integer", "minimum": 1},
-              "columns": {"type": "integer", "minimum": 1},
-              "threads": {"type": "integer", "minimum": 1},
-              "ram_gb": {"type": "number", "exclusiveMinimum": 0}
+              "genes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "columns": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "threads": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ram_gb": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
             }
           }
         },
@@ -402,7 +419,10 @@
         },
         "prior_score_policy": {
           "type": "string",
-          "enum": ["uniform_positive", "binary"],
+          "enum": [
+            "uniform_positive",
+            "binary"
+          ],
           "description": "Optional generated prior weighting policy. Omitted historical profiles use uniform positive weights; binary priors assign unit weights."
         },
         "marker_count_per_group": {
@@ -441,7 +461,111 @@
             "type": "string"
           },
           "description": "Short notes about profile limitations or fixture generation choices."
+        },
+        "temporal": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional bulk observed-time contract. Requires enriched canonical timepoints and replicates TSVs. Supported by the Osaka runtime extension; older strict readers reject this field.",
+          "required": [
+            "schema_version",
+            "time_basis",
+            "time_unit",
+            "time_origin",
+            "sampling_design",
+            "missing_values",
+            "preprocessing",
+            "provenance"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": "bulk-temporal/1"
+            },
+            "time_basis": {
+              "const": "observed"
+            },
+            "time_unit": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": ".*\\S.*"
+            },
+            "time_origin": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": ".*\\S.*"
+            },
+            "sampling_design": {
+              "enum": [
+                "longitudinal",
+                "independent_samples"
+              ]
+            },
+            "missing_values": {
+              "const": "reject"
+            },
+            "preprocessing": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "normalization",
+                "transformation"
+              ],
+              "properties": {
+                "normalization": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": ".*\\S.*"
+                },
+                "transformation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": ".*\\S.*"
+                }
+              }
+            },
+            "provenance": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": ".*\\S.*"
+            }
+          }
+        },
+        "temporal_fixture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "series_count",
+            "timepoints_per_series"
+          ],
+          "properties": {
+            "series_count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timepoints_per_series": {
+              "type": "integer",
+              "minimum": 3
+            },
+            "steady_state_samples": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sampling": {
+              "enum": [
+                "regular",
+                "irregular"
+              ]
+            }
+          },
+          "description": "Synthetic temporal geometry; genes and TS total columns remain point coordinates. Steady-state samples are a separate matrix."
         }
+      },
+      "dependentRequired": {
+        "temporal": [
+          "temporal_fixture"
+        ],
+        "temporal_fixture": [
+          "temporal"
+        ]
       }
     },
     "input_key_array": {

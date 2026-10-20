@@ -148,8 +148,7 @@ def _load_logical_runs_from_plan(
             or "resources" not in raw_run
             or not isinstance(resources, dict)
             or bool(
-                set(resources)
-                - {"threads", "ram_gb", "cpuset_cpus", "timeout_seconds"}
+                set(resources) - {"threads", "ram_gb", "cpuset_cpus", "timeout_seconds"}
             )
         ):
             raise ValueError(f"plan.json.runs[{idx}] is invalid")
@@ -205,9 +204,10 @@ def _validate_physical_task_plan(
     for run_id, logical_spec in logical_runs.items():
         mode = str(logical_spec["execution"]["mode"])
         physical_tasks = logical_spec["physical_tasks"]
-        if mode in {"global", "group_native", "column_native"} and len(
-            physical_tasks
-        ) != 1:
+        if (
+            mode in {"global", "group_native", "column_native"}
+            and len(physical_tasks) != 1
+        ):
             raise ValueError(
                 f"[{run_id}] execution.mode={mode} requires exactly one physical task"
             )
@@ -230,9 +230,7 @@ def _validate_physical_task_plan(
             timeout_seconds = physical.get("timeout_seconds")
             group_label_raw = physical.get("group_label")
             group_label = (
-                str(group_label_raw).strip()
-                if group_label_raw is not None
-                else None
+                str(group_label_raw).strip() if group_label_raw is not None else None
             )
             if (
                 not task_id
@@ -257,7 +255,9 @@ def _validate_physical_task_plan(
                     source=f"[{run_id}] physical_tasks[{index}].timeout_seconds",
                 )
             if task_id in expected:
-                raise ValueError(f"plan.json contains duplicate physical task: {task_id}")
+                raise ValueError(
+                    f"plan.json contains duplicate physical task: {task_id}"
+                )
 
             if mode in {"global", "group_native", "column_native"}:
                 if task_id != run_id or group_label is not None:
@@ -351,10 +351,7 @@ def _validate_wave_resource_schedule(
     for wave in waves:
         threads_used = sum(task.threads for task in wave.tasks)
         ram_gb_used = sum(task.ram_gb for task in wave.tasks)
-        if (
-            wave.threads_used != threads_used
-            or wave.ram_gb_used != ram_gb_used
-        ):
+        if wave.threads_used != threads_used or wave.ram_gb_used != ram_gb_used:
             raise ValueError(
                 f"plan.json wave {wave.index} resource totals do not match its tasks"
             )
@@ -589,8 +586,7 @@ def _prepare_group_expression_sources(
                 if group_label not in required_group_labels:
                     continue
                 relpath = (
-                    Path(f"{idx:02d}_{_slugify_token(group_label)}")
-                    / "expression.tsv"
+                    Path(f"{idx:02d}_{_slugify_token(group_label)}") / "expression.tsv"
                 )
                 output_path = staging_dir / relpath
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -603,8 +599,7 @@ def _prepare_group_expression_sources(
                     lineterminator="\n",
                 )
                 keep_indices = [0] + [
-                    column_indices[column]
-                    for column in group_to_columns[group_label]
+                    column_indices[column] for column in group_to_columns[group_label]
                 ]
                 writer.writerow([header[index] for index in keep_indices])
                 outputs[group_label] = (writer, keep_indices)
@@ -768,9 +763,7 @@ def _logical_measurement(
         for value in cpu_values
     )
     cpu_time = (
-        round(sum(float(value) for value in cpu_values), 6)
-        if cpu_complete
-        else None
+        round(sum(float(value) for value in cpu_values), 6) if cpu_complete else None
     )
     child_wall_sum = round(
         sum(
@@ -844,24 +837,16 @@ def _logical_measurement(
         {
             tuple(cpuset)
             for measurement in measurements
-            if isinstance(
-                (resources := measurement.get("assigned_resources")), dict
-            )
-            and isinstance(
-                (cpuset := resources.get("cpuset_cpus_requested")), list
-            )
+            if isinstance((resources := measurement.get("assigned_resources")), dict)
+            and isinstance((cpuset := resources.get("cpuset_cpus_requested")), list)
         }
     )
     effective_cpusets = sorted(
         {
             tuple(cpuset)
             for measurement in measurements
-            if isinstance(
-                (resources := measurement.get("assigned_resources")), dict
-            )
-            and isinstance(
-                (cpuset := resources.get("cpuset_cpus_effective")), list
-            )
+            if isinstance((resources := measurement.get("assigned_resources")), dict)
+            and isinstance((cpuset := resources.get("cpuset_cpus_effective")), list)
         }
     )
     return {
@@ -986,6 +971,7 @@ def _finalize_group_aggregated_logical_run(
         column_network_path = out_dir / "network.column_native.csv"
         parent_network = out_dir / "network.csv"
         try:
+
             def count_column_rows() -> Iterable[dict[str, Any]]:
                 nonlocal column_row_count
                 for row in _iter_network_rows(
@@ -1179,11 +1165,7 @@ def _finalize_grouped_logical_run(
                 child_payload[task_id]["error"] = str(exc)
                 continue
             unexpected_contexts = sorted(
-                {
-                    str(row["context"])
-                    for row in rows
-                    if str(row["context"]) != "global"
-                }
+                {str(row["context"]) for row in rows if str(row["context"]) != "global"}
             )
             if unexpected_contexts:
                 error = (
@@ -1363,13 +1345,9 @@ def run_infer_network_plan(
         for decision in planned_resource_decisions.values()
     ):
         raise ValueError("plan.json contains invalid run resource decisions")
-    reported_resource_decisions = run_report.get("tools", {}).get(
-        "resource_decisions"
-    )
+    reported_resource_decisions = run_report.get("tools", {}).get("resource_decisions")
     if reported_resource_decisions != planned_resource_decisions:
-        raise ValueError(
-            "run_report resource decisions do not match the frozen plan"
-        )
+        raise ValueError("run_report resource decisions do not match the frozen plan")
     planned_tasks_by_id = _validate_physical_task_plan(
         logical_runs=logical_runs,
         waves=waves,
@@ -1477,6 +1455,7 @@ def run_infer_network_plan(
     observed_dataset_fingerprint = fingerprint_dataset_content(
         expression_path=dataset.expression_matrix_path,
         extras=dataset.extras,
+        temporal=dataset.temporal,
     )
     if reported_dataset_fingerprint != observed_dataset_fingerprint:
         raise ValueError(
@@ -1625,18 +1604,17 @@ def run_infer_network_plan(
                     f"supported={threading.supported}, max_threads={threading.max_threads}."
                 )
             requested_threads = resolved_resources.get("threads")
-            if (
-                requested_threads is not None
-                and int(planned_task.threads) != int(requested_threads)
+            if requested_threads is not None and int(planned_task.threads) != int(
+                requested_threads
             ):
                 compatibility_blocks.setdefault(run_id, []).append(
                     f"task '{task_id}' has threads={planned_task.threads}, but the "
                     f"frozen per-run request requires threads={requested_threads}."
                 )
             requested_ram_gb = resolved_resources.get("ram_gb")
-            if requested_ram_gb is not None and float(
-                planned_task.ram_gb
-            ) != float(requested_ram_gb):
+            if requested_ram_gb is not None and float(planned_task.ram_gb) != float(
+                requested_ram_gb
+            ):
                 compatibility_blocks.setdefault(run_id, []).append(
                     f"task '{task_id}' has ram_gb={planned_task.ram_gb}, but the "
                     f"frozen per-run request requires ram_gb={requested_ram_gb}."
@@ -1827,7 +1805,8 @@ def run_infer_network_plan(
                     str(physical.get("group_label", "")).strip()
                 ]
             physical_execution = _runtime_execution_for_logical_run(
-                logical_spec["execution"]
+                logical_spec["execution"],
+                temporal=dataset.temporal,
             )
             runtime_io_by_tool[task_id] = _prepare_tool_runtime_io(
                 run_dir=run_dir,
@@ -2167,16 +2146,16 @@ def run_infer_network_plan(
             "task_started_monotonic_ns": run_started_monotonic_ns,
         }
     )
-    execution_measurement["telemetry"]["cpu_semantics"] = (
-        "sum_of_physical_container_cpu_excludes_andrea_host_process"
-    )
+    execution_measurement["telemetry"][
+        "cpu_semantics"
+    ] = "sum_of_physical_container_cpu_excludes_andrea_host_process"
     execution_measurement["telemetry"]["wall_semantics"] = (
         "andrea_execution_end_to_end_including_input_verification_preparation_"
         "scheduling_merging_and_requested_output_materialization"
     )
-    execution_measurement["telemetry"]["memory_semantics"] = (
-        "overlap_upper_bound_from_physical_container_peaks_excludes_andrea_host_process"
-    )
+    execution_measurement["telemetry"][
+        "memory_semantics"
+    ] = "overlap_upper_bound_from_physical_container_peaks_excludes_andrea_host_process"
     run_report["status"] = "executed"
     run_report["tools"] = {
         "selected": selected_tools,
@@ -2270,8 +2249,7 @@ def run_infer_network_plan(
     print(f"  completed tools: {len(completed_tools)}")
     print(f"  failed tools: {len(failed_tools)}")
     print(
-        "  elapsed time: "
-        f"{float(execution_measurement['wall_time_seconds']):.2f}s"
+        "  elapsed time: " f"{float(execution_measurement['wall_time_seconds']):.2f}s"
     )
     print(f"  waves: {len(waves)}")
     if merged_raw_path:

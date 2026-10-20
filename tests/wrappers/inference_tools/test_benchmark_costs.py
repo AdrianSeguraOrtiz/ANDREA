@@ -153,15 +153,27 @@ class BenchmarkCostsContractTest(unittest.TestCase):
         def evidence(**kwargs):
             return {
                 "recorded_at_utc": "2026-09-29T00:00:00+00:00",
-                "git_commit": "f" * 40, "git_dirty": False,
+                "git_commit": "f" * 40,
+                "git_dirty": False,
                 "source_sha256": "a" * 64,
-                "spec_sha256": hashlib.sha256(kwargs["spec_path"].read_bytes()).hexdigest(),
-                "image_reference": kwargs["image"], "image_id": "sha256:" + "b" * 64,
-                "image_repo_digests": [], "platform": "test", "cpu_model": "test",
-                "logical_cpus": 1, "host_memory_bytes": 1024, "docker_server": "test",
-                "seed": kwargs["seed"], "timing_scope": "test",
+                "spec_sha256": hashlib.sha256(
+                    kwargs["spec_path"].read_bytes()
+                ).hexdigest(),
+                "image_reference": kwargs["image"],
+                "image_id": "sha256:" + "b" * 64,
+                "image_repo_digests": [],
+                "platform": "test",
+                "cpu_model": "test",
+                "logical_cpus": 1,
+                "host_memory_bytes": 1024,
+                "docker_server": "test",
+                "seed": kwargs["seed"],
+                "timing_scope": "test",
             }
-        evidence_patch = patch.object(benchmark_costs, "collect_provenance", side_effect=evidence)
+
+        evidence_patch = patch.object(
+            benchmark_costs, "collect_provenance", side_effect=evidence
+        )
         evidence_patch.start()
         self.addCleanup(evidence_patch.stop)
 
@@ -209,7 +221,10 @@ class BenchmarkCostsContractTest(unittest.TestCase):
         errors = _semantic_errors(payload, tool_id="infercsn")
 
         self.assertTrue(
-            any("column_kind must be accepted by the ToolSpec" in error for error in errors),
+            any(
+                "column_kind must be accepted by the ToolSpec" in error
+                for error in errors
+            ),
             errors,
         )
 
@@ -267,6 +282,53 @@ class BenchmarkCostsContractTest(unittest.TestCase):
                 self.assertEqual(execution, {"mode": expected_mode})
                 self.assertNotIn("groups.tsv", extras)
 
+    def test_temporal_benchmark_runtime_receives_declared_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as catalog_tmp:
+            catalog_root = Path(catalog_tmp)
+            tool_dir = catalog_root / "dyngenie3"
+            tool_dir.mkdir()
+            draft = (
+                REPO_ROOT
+                / "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json"
+            )
+            (tool_dir / "toolspec.json").write_bytes(draft.read_bytes())
+            target = resolve_tool_targets(
+                selected_tools=[("dyngenie3", tool_dir)],
+                catalog_tools_root=catalog_root,
+                param_overrides_dir=PARAM_OVERRIDES_DIR,
+                cost_profiles_dir=COST_PROFILES_DIR,
+                default_group_count=2,
+                default_prior_density=0.05,
+                default_optional_inputs=None,
+                profile_filters=["global_rf_from_data_ts_t4_s1_spec_defaults"],
+            )[0]
+        profile = target.profiles[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            benchmark_costs.prepare_io_dir(
+                Path(tmp),
+                benchmark_costs.SizePoint(genes=50, columns=4),
+                resolved_params=profile.params,
+                execution=profile.execution,
+                seed=123,
+                input_profile=profile.input_profile,
+            )
+            execution = json.loads((Path(tmp) / "execution.json").read_text())
+        self.assertEqual(execution["temporal"], profile.input_profile["temporal"])
+        self.assertNotIn("temporal_fixture", execution)
+        self.assertEqual(profile.execution, {"mode": "global"})
+        features = benchmark_costs.build_feature_vector(
+            execution_profile=profile.execution_profile,
+            input_profile=profile.input_profile,
+            genes=50,
+            columns=4,
+            threads=1,
+            ram_gb=4,
+        )
+        self.assertEqual(features["n_timepoints_per_series"], 4)
+        self.assertEqual(features["n_independent_series"], 1)
+        self.assertEqual(features["n_temporal_transitions"], 3)
+        self.assertEqual(features["n_steady_state_samples"], 0)
+
     def test_toolcost_semantics_reject_threads_incompatible_with_toolspec(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             catalog_root = Path(tmp) / "tools"
@@ -292,7 +354,9 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             )
 
         self.assertTrue(any("threads_tested" in error for error in errors), errors)
-        self.assertTrue(any("runtime_points[1].threads" in error for error in errors), errors)
+        self.assertTrue(
+            any("runtime_points[1].threads" in error for error in errors), errors
+        )
 
     def test_benchmark_thread_filter_respects_toolspec_threading(self) -> None:
         supported = _catalog_toolspec("genie3", supported=True)
@@ -448,17 +512,38 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             cost_path = catalog / "genie3/cost.json"
             original = '{"sentinel": true}\n'
             cost_path.write_text(original)
-            with patch.object(benchmark_costs, "run_container_once", return_value=("error", 1.0, "failed")):
-                result = benchmark_costs.run([
-                    "--catalog-tools-root", str(catalog), "--tool-sources-root", str(sources),
-                    "--tool", "genie3", "--size", "8x4", "--threads", "1", "--ram-gb", "1",
-                    "--skip-build", "--fail-fast", "--results-dir", str(root / "evidence"),
-                ])
+            with patch.object(
+                benchmark_costs,
+                "run_container_once",
+                return_value=("error", 1.0, "failed"),
+            ):
+                result = benchmark_costs.run(
+                    [
+                        "--catalog-tools-root",
+                        str(catalog),
+                        "--tool-sources-root",
+                        str(sources),
+                        "--tool",
+                        "genie3",
+                        "--size",
+                        "8x4",
+                        "--threads",
+                        "1",
+                        "--ram-gb",
+                        "1",
+                        "--skip-build",
+                        "--fail-fast",
+                        "--results-dir",
+                        str(root / "evidence"),
+                    ]
+                )
             self.assertEqual(result, 1)
             self.assertEqual(cost_path.read_text(), original)
             measurements = list((root / "evidence").glob("**/measurements.json"))
             self.assertEqual(len(measurements), 1)
-            self.assertEqual(json.loads(measurements[0].read_text())[0]["status"], "error")
+            self.assertEqual(
+                json.loads(measurements[0].read_text())[0]["status"], "error"
+            )
 
     def test_missing_source_and_failed_build_return_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -466,11 +551,25 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             catalog = root / "catalog"
             (catalog / "genie3").mkdir(parents=True)
             _write_catalog_toolspec(catalog / "genie3/toolspec.json", "genie3")
-            argv = ["--catalog-tools-root", str(catalog), "--tool-sources-root", str(root / "sources"),
-                    "--tool", "genie3", "--size", "8x4", "--threads", "1", "--ram-gb", "1"]
+            argv = [
+                "--catalog-tools-root",
+                str(catalog),
+                "--tool-sources-root",
+                str(root / "sources"),
+                "--tool",
+                "genie3",
+                "--size",
+                "8x4",
+                "--threads",
+                "1",
+                "--ram-gb",
+                "1",
+            ]
             self.assertEqual(benchmark_costs.run(argv), 1)
             (root / "sources/genie3").mkdir(parents=True)
-            with patch.object(benchmark_costs, "build_image", side_effect=RuntimeError("build failed")):
+            with patch.object(
+                benchmark_costs, "build_image", side_effect=RuntimeError("build failed")
+            ):
                 self.assertEqual(benchmark_costs.run(argv), 1)
             self.assertFalse((catalog / "genie3/cost.json").exists())
 
@@ -490,16 +589,36 @@ class BenchmarkCostsContractTest(unittest.TestCase):
         (catalog / "genie3").mkdir(parents=True)
         (sources / "genie3").mkdir(parents=True)
         _write_catalog_toolspec(catalog / "genie3/toolspec.json", "genie3")
-        argv = ["--catalog-tools-root", str(catalog), "--tool-sources-root", str(sources),
-                "--tool", "genie3", "--profile", "global_default", "--merge-existing",
-                "--size", "8x4", "--threads", "1", "--ram-gb", "1", "--repeats", "3",
-                "--skip-build", "--results-dir", str(root / "evidence")]
+        argv = [
+            "--catalog-tools-root",
+            str(catalog),
+            "--tool-sources-root",
+            str(sources),
+            "--tool",
+            "genie3",
+            "--profile",
+            "global_default",
+            "--merge-existing",
+            "--size",
+            "8x4",
+            "--threads",
+            "1",
+            "--ram-gb",
+            "1",
+            "--repeats",
+            "3",
+            "--skip-build",
+            "--results-dir",
+            str(root / "evidence"),
+        ]
         return argv, catalog / "genie3/cost.json"
 
     def test_resume_skips_valid_points_and_preserves_unrelated_profiles(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             argv, path = self._resume_fixture(Path(tmp))
-            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")) as run:
+            with patch.object(
+                benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")
+            ) as run:
                 self.assertEqual(benchmark_costs.run(argv), 0)
                 self.assertEqual(run.call_count, 3)
                 first = json.loads(path.read_text())
@@ -512,14 +631,22 @@ class BenchmarkCostsContractTest(unittest.TestCase):
                 self.assertEqual(run.call_count, 3)
             second = json.loads(path.read_text())
             self.assertEqual(second["profiles"][1], unrelated)
-            self.assertEqual(second["profiles"][0]["runtime_points"][0]["seconds_p50"], 1.25)
+            self.assertEqual(
+                second["profiles"][0]["runtime_points"][0]["seconds_p50"], 1.25
+            )
             self.assertEqual(len(second["profiles"][0]["runtime_points"]), 2)
-            self.assertFalse(_schema_error_messages(second), _schema_error_messages(second))
+            self.assertFalse(
+                _schema_error_messages(second), _schema_error_messages(second)
+            )
 
-    def test_resume_uses_old_raw_input_evidence_after_recipe_script_change(self) -> None:
+    def test_resume_uses_old_raw_input_evidence_after_recipe_script_change(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             argv, path = self._resume_fixture(Path(tmp))
-            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")) as run:
+            with patch.object(
+                benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")
+            ) as run:
                 self.assertEqual(benchmark_costs.run(argv), 0)
                 payload = json.loads(path.read_text())
                 old_profile = payload["profiles"][0]
@@ -530,32 +657,57 @@ class BenchmarkCostsContractTest(unittest.TestCase):
                 self.assertEqual(benchmark_costs.run(argv), 0)
                 self.assertEqual(run.call_count, 0)
 
-    def test_resume_rejects_changed_image_seed_parameters_and_actual_input_bytes(self) -> None:
+    def test_resume_rejects_changed_image_seed_parameters_and_actual_input_bytes(
+        self,
+    ) -> None:
         for mutation in ("image", "seed", "params", "input_bytes"):
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
                 argv, path = self._resume_fixture(Path(tmp))
-                with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")) as run:
+                with patch.object(
+                    benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")
+                ) as run:
                     self.assertEqual(benchmark_costs.run(argv), 0)
                     run.reset_mock()
                     if mutation == "image":
-                        provenance = json.loads(path.read_text())["profiles"][0]["benchmark_config"]["provenance"]
+                        provenance = json.loads(path.read_text())["profiles"][0][
+                            "benchmark_config"
+                        ]["provenance"]
                         provenance["image_id"] = "sha256:" + "c" * 64
-                        with patch.object(benchmark_costs, "collect_provenance", return_value=provenance):
+                        with patch.object(
+                            benchmark_costs,
+                            "collect_provenance",
+                            return_value=provenance,
+                        ):
                             self.assertEqual(benchmark_costs.run(argv), 0)
                     elif mutation == "seed":
-                        self.assertEqual(benchmark_costs.run(argv + ["--seed", "5678"]), 0)
+                        self.assertEqual(
+                            benchmark_costs.run(argv + ["--seed", "5678"]), 0
+                        )
                     elif mutation == "params":
                         overrides = Path(tmp) / "overrides"
                         overrides.mkdir()
-                        (overrides / "genie3.json").write_text(json.dumps({"limit": 99}))
-                        self.assertEqual(benchmark_costs.run(argv + ["--param-overrides-dir", str(overrides)]), 0)
+                        (overrides / "genie3.json").write_text(
+                            json.dumps({"limit": 99})
+                        )
+                        self.assertEqual(
+                            benchmark_costs.run(
+                                argv + ["--param-overrides-dir", str(overrides)]
+                            ),
+                            0,
+                        )
                     else:
                         prepare = benchmark_costs.prepare_io_dir
+
                         def changed_inputs(io_dir, *args, **kwargs):
                             prepare(io_dir, *args, **kwargs)
                             with (io_dir / "expression.tsv").open("a") as output:
                                 output.write("\n")
-                        with patch.object(benchmark_costs, "prepare_io_dir", side_effect=changed_inputs):
+
+                        with patch.object(
+                            benchmark_costs,
+                            "prepare_io_dir",
+                            side_effect=changed_inputs,
+                        ):
                             self.assertEqual(benchmark_costs.run(argv), 0)
                     self.assertEqual(run.call_count, 3)
 
@@ -563,40 +715,65 @@ class BenchmarkCostsContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             argv, path = self._resume_fixture(root)
-            with patch.object(benchmark_costs, "run_container_once", side_effect=[("ok", 1.25, ""), ("error", 2.0, "failure")]):
+            with patch.object(
+                benchmark_costs,
+                "run_container_once",
+                side_effect=[("ok", 1.25, ""), ("error", 2.0, "failure")],
+            ):
                 self.assertEqual(benchmark_costs.run(argv + ["--fail-fast"]), 1)
-            failed = next((root / "evidence").glob("*/global_default/measurements.json"))
+            failed = next(
+                (root / "evidence").glob("*/global_default/measurements.json")
+            )
             failed_bytes = failed.read_bytes()
             self.assertFalse(path.exists())
-            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")) as run:
+            with patch.object(
+                benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")
+            ) as run:
                 self.assertEqual(benchmark_costs.run(argv), 0)
                 self.assertEqual(run.call_count, 2)
             self.assertEqual(failed.read_bytes(), failed_bytes)
             point = json.loads(path.read_text())["profiles"][0]["runtime_points"][0]
             self.assertEqual(point["repeats_ok"], 3)
-            self.assertEqual([r["seconds"] for r in point["measurement_evidence"]["observations"]], [1.25, 1.5, 1.5])
+            self.assertEqual(
+                [r["seconds"] for r in point["measurement_evidence"]["observations"]],
+                [1.25, 1.5, 1.5],
+            )
 
     def test_partial_matrix_checkpoints_completed_points_then_continues(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             argv, path = self._resume_fixture(Path(tmp))
             argv += ["--size", "12x4"]
-            with patch.object(benchmark_costs, "run_container_once", side_effect=[("ok", 1.25, "")] * 3 + [("timeout", 2.0, "timeout")]):
+            with patch.object(
+                benchmark_costs,
+                "run_container_once",
+                side_effect=[("ok", 1.25, "")] * 3 + [("timeout", 2.0, "timeout")],
+            ):
                 self.assertEqual(benchmark_costs.run(argv + ["--fail-fast"]), 1)
             payload = json.loads(path.read_text())["profiles"][0]
             self.assertEqual(len(payload["runtime_points"]), 1)
             self.assertEqual(len(payload["benchmark_config"]["planned_points"]), 2)
-            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")) as run:
+            with patch.object(
+                benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")
+            ) as run:
                 self.assertEqual(benchmark_costs.run(argv), 0)
                 self.assertEqual(run.call_count, 3)
-            self.assertEqual(len(json.loads(path.read_text())["profiles"][0]["runtime_points"]), 2)
+            self.assertEqual(
+                len(json.loads(path.read_text())["profiles"][0]["runtime_points"]), 2
+            )
 
-    def test_resume_retains_historical_resources_without_expanding_cartesian_matrix(self) -> None:
+    def test_resume_retains_historical_resources_without_expanding_cartesian_matrix(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             argv, path = self._resume_fixture(Path(tmp))
-            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")):
+            with patch.object(
+                benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")
+            ):
                 self.assertEqual(benchmark_costs.run(argv + ["--threads", "1,2"]), 0)
             argv[argv.index("8x4")] = "12x4"
-            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")) as run:
+            with patch.object(
+                benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")
+            ) as run:
                 self.assertEqual(benchmark_costs.run(argv), 0)
                 self.assertEqual(run.call_count, 3)
             profile = json.loads(path.read_text())["profiles"][0]
@@ -609,49 +786,92 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             catalog = Path(tmp)
             (catalog / "genie3").mkdir()
             _write_catalog_toolspec(catalog / "genie3/toolspec.json", "genie3")
-            with self.assertRaisesRegex(RuntimeError, "Missing tool cost.json for: genie3"):
-                validate_tool_costs.run(TOOL_COST_SCHEMA, catalog, [], False, require=True)
+            with self.assertRaisesRegex(
+                RuntimeError, "Missing tool cost.json for: genie3"
+            ):
+                validate_tool_costs.run(
+                    TOOL_COST_SCHEMA, catalog, [], False, require=True
+                )
 
     def test_changed_image_remeasures_only_explicit_and_historical_points(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             argv, path = self._resume_fixture(Path(tmp))
-            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")):
+            with patch.object(
+                benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")
+            ):
                 self.assertEqual(benchmark_costs.run(argv + ["--threads", "1,2"]), 0)
             before = json.loads(path.read_text())
-            provenance = copy.deepcopy(before['profiles'][0]['benchmark_config']['provenance'])
-            provenance['image_id'] = 'sha256:' + 'e' * 64
-            argv[argv.index('8x4')] = '12x4'
-            with patch.object(benchmark_costs, 'collect_provenance', return_value=provenance):
-                with patch.object(benchmark_costs, 'run_container_once', return_value=('ok', 2., '')) as run:
+            provenance = copy.deepcopy(
+                before["profiles"][0]["benchmark_config"]["provenance"]
+            )
+            provenance["image_id"] = "sha256:" + "e" * 64
+            argv[argv.index("8x4")] = "12x4"
+            with patch.object(
+                benchmark_costs, "collect_provenance", return_value=provenance
+            ):
+                with patch.object(
+                    benchmark_costs, "run_container_once", return_value=("ok", 2.0, "")
+                ) as run:
                     self.assertEqual(benchmark_costs.run(argv), 1)
                     self.assertEqual(run.call_count, 0)
-                    self.assertEqual(benchmark_costs.run(argv + ['--remeasure-incompatible-history']), 0)
+                    self.assertEqual(
+                        benchmark_costs.run(
+                            argv + ["--remeasure-incompatible-history"]
+                        ),
+                        0,
+                    )
                     self.assertEqual(run.call_count, 9)
-            profile = json.loads(path.read_text())['profiles'][0]
-            self.assertEqual({(p['genes'],p['columns'],p['threads']) for p in profile['runtime_points']},
-                             {(8,4,1),(8,4,2),(12,4,1)})
-            self.assertTrue(all(p['seconds_p50']==2. for p in profile['runtime_points']))
+            profile = json.loads(path.read_text())["profiles"][0]
+            self.assertEqual(
+                {
+                    (p["genes"], p["columns"], p["threads"])
+                    for p in profile["runtime_points"]
+                },
+                {(8, 4, 1), (8, 4, 2), (12, 4, 1)},
+            )
+            self.assertTrue(
+                all(p["seconds_p50"] == 2.0 for p in profile["runtime_points"])
+            )
 
-    def test_interrupted_image_recalibration_retains_pending_historical_plan(self) -> None:
+    def test_interrupted_image_recalibration_retains_pending_historical_plan(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             argv, path = self._resume_fixture(Path(tmp))
-            with patch.object(benchmark_costs, 'run_container_once', return_value=('ok',1.,'')):
-                self.assertEqual(benchmark_costs.run(argv+['--threads','1,2']),0)
-            provenance=copy.deepcopy(json.loads(path.read_text())['profiles'][0]['benchmark_config']['provenance'])
-            provenance['image_id']='sha256:'+'f'*64
-            argv[argv.index('8x4')]='12x4'
-            argv+=['--remeasure-incompatible-history']
-            with patch.object(benchmark_costs, 'collect_provenance', return_value=provenance):
-                with patch.object(benchmark_costs, 'run_container_once', side_effect=[('ok',2.,'')]*3+[KeyboardInterrupt()]):
-                    with self.assertRaises(KeyboardInterrupt):benchmark_costs.run(argv)
-                partial=json.loads(path.read_text())['profiles'][0]
-                self.assertEqual(len(partial['runtime_points']),1)
-                self.assertEqual(len(partial['benchmark_config']['planned_points']),3)
-                with patch.object(benchmark_costs, 'run_container_once',return_value=('ok',2.,'')) as run:
-                    self.assertEqual(benchmark_costs.run(argv),0)
-                    self.assertEqual(run.call_count,6)
-            points=json.loads(path.read_text())['profiles'][0]['runtime_points']
-            self.assertEqual({(p['genes'],p['threads']) for p in points},{(8,1),(8,2),(12,1)})
+            with patch.object(
+                benchmark_costs, "run_container_once", return_value=("ok", 1.0, "")
+            ):
+                self.assertEqual(benchmark_costs.run(argv + ["--threads", "1,2"]), 0)
+            provenance = copy.deepcopy(
+                json.loads(path.read_text())["profiles"][0]["benchmark_config"][
+                    "provenance"
+                ]
+            )
+            provenance["image_id"] = "sha256:" + "f" * 64
+            argv[argv.index("8x4")] = "12x4"
+            argv += ["--remeasure-incompatible-history"]
+            with patch.object(
+                benchmark_costs, "collect_provenance", return_value=provenance
+            ):
+                with patch.object(
+                    benchmark_costs,
+                    "run_container_once",
+                    side_effect=[("ok", 2.0, "")] * 3 + [KeyboardInterrupt()],
+                ):
+                    with self.assertRaises(KeyboardInterrupt):
+                        benchmark_costs.run(argv)
+                partial = json.loads(path.read_text())["profiles"][0]
+                self.assertEqual(len(partial["runtime_points"]), 1)
+                self.assertEqual(len(partial["benchmark_config"]["planned_points"]), 3)
+                with patch.object(
+                    benchmark_costs, "run_container_once", return_value=("ok", 2.0, "")
+                ) as run:
+                    self.assertEqual(benchmark_costs.run(argv), 0)
+                    self.assertEqual(run.call_count, 6)
+            points = json.loads(path.read_text())["profiles"][0]["runtime_points"]
+            self.assertEqual(
+                {(p["genes"], p["threads"]) for p in points}, {(8, 1), (8, 2), (12, 1)}
+            )
 
     def test_run_writes_selected_profiles_without_pooling_runtime_points(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -913,35 +1133,72 @@ class BenchmarkCostsContractTest(unittest.TestCase):
                 cidfile.write_text("a" * 64)
                 (io_dir / "out").mkdir()
                 calls = []
+
                 def fake_run_cmd(cmd, **_kwargs):
                     calls.append(list(cmd))
                     if cmd[:2] == ["docker", "inspect"]:
-                        return subprocess.CompletedProcess(cmd, 1 if state == "missing" else 0,
+                        return subprocess.CompletedProcess(
+                            cmd,
+                            1 if state == "missing" else 0,
                             stdout="" if state == "missing" else "false\n",
-                            stderr="Error: No such object: " + "a" * 64 if state == "missing" else "")
+                            stderr=(
+                                "Error: No such object: " + "a" * 64
+                                if state == "missing"
+                                else ""
+                            ),
+                        )
                     self.assertEqual(cmd[:2], ["docker", "run"])
                     self.assertFalse(cidfile.exists())
-                    (io_dir / "out/network.csv").write_text("source,target,score\nG1,G2,1\n")
+                    (io_dir / "out/network.csv").write_text(
+                        "source,target,score\nG1,G2,1\n"
+                    )
                     return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
-                with patch.object(benchmark_costs, "run_cmd", side_effect=fake_run_cmd):
-                    result = benchmark_costs.run_container_once(image_tag="test-image", io_dir=io_dir,
-                                                               threads=1, ram_gb=1, timeout_s=5)
-                self.assertEqual(result[0], "ok")
-                self.assertEqual([cmd[:2] for cmd in calls], [["docker", "inspect"], ["docker", "run"]])
 
-    def test_run_container_retry_preserves_active_or_unverifiable_cidfiles(self) -> None:
+                with patch.object(benchmark_costs, "run_cmd", side_effect=fake_run_cmd):
+                    result = benchmark_costs.run_container_once(
+                        image_tag="test-image",
+                        io_dir=io_dir,
+                        threads=1,
+                        ram_gb=1,
+                        timeout_s=5,
+                    )
+                self.assertEqual(result[0], "ok")
+                self.assertEqual(
+                    [cmd[:2] for cmd in calls],
+                    [["docker", "inspect"], ["docker", "run"]],
+                )
+
+    def test_run_container_retry_preserves_active_or_unverifiable_cidfiles(
+        self,
+    ) -> None:
         for state in ("active", "daemon_error"):
             with self.subTest(state=state), tempfile.TemporaryDirectory() as tmp:
                 io_dir = Path(tmp)
                 cidfile = io_dir / ".docker-container.cid"
                 cidfile.write_text("b" * 64)
-                response = subprocess.CompletedProcess(["docker", "inspect"], 0 if state == "active" else 1,
+                response = subprocess.CompletedProcess(
+                    ["docker", "inspect"],
+                    0 if state == "active" else 1,
                     stdout="true\n" if state == "active" else "",
-                    stderr="" if state == "active" else "Cannot connect to the Docker daemon")
-                with patch.object(benchmark_costs, "run_cmd", return_value=response) as run_cmd:
-                    with self.assertRaisesRegex(RuntimeError, "still running|Cannot verify"):
-                        benchmark_costs.run_container_once(image_tag="test-image", io_dir=io_dir,
-                                                          threads=1, ram_gb=1, timeout_s=5)
+                    stderr=(
+                        ""
+                        if state == "active"
+                        else "Cannot connect to the Docker daemon"
+                    ),
+                )
+                with patch.object(
+                    benchmark_costs, "run_cmd", return_value=response
+                ) as run_cmd:
+                    with self.assertRaisesRegex(
+                        RuntimeError, "still running|Cannot verify"
+                    ):
+                        benchmark_costs.run_container_once(
+                            image_tag="test-image",
+                            io_dir=io_dir,
+                            threads=1,
+                            ram_gb=1,
+                            timeout_s=5,
+                        )
                 self.assertEqual(cidfile.read_text(), "b" * 64)
                 self.assertEqual(run_cmd.call_count, 1)
                 self.assertEqual(run_cmd.call_args.args[0][:2], ["docker", "inspect"])
@@ -987,7 +1244,10 @@ class BenchmarkCostsContractTest(unittest.TestCase):
         self.assertIn(f"{io_dir.resolve()}:/io:ro", docker_run)
         self.assertIn(f"{(io_dir / 'out').resolve()}:/io/out:rw", docker_run)
         self.assertTrue(
-            any(command[:4] == ["docker", "rm", "-f", "andrea_timeout_test"] for command in calls),
+            any(
+                command[:4] == ["docker", "rm", "-f", "andrea_timeout_test"]
+                for command in calls
+            ),
             calls,
         )
 

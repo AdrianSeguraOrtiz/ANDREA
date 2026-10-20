@@ -81,6 +81,7 @@ ALLOWED_CONFIG_CHECK_KEYS = {
     "require_group_context",
     "require_unique_unordered_pairs",
     "forbid_self_loops",
+    "allow_empty_network",
 }
 PHYSICAL_EXECUTION_MODES = {"global", "group_native", "column_native"}
 
@@ -95,6 +96,7 @@ class SmokeConfig:
     require_group_context: bool
     require_unique_unordered_pairs: bool
     forbid_self_loops: bool
+    allow_empty_network: bool = False
 
 
 @dataclass(frozen=True)
@@ -216,7 +218,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Maximum lines to print per output file when --show-output is enabled (<=0 = full file).",
     )
     parser.add_argument(
-        "--catalog-images", action="store_true",
+        "--catalog-images",
+        action="store_true",
         help="Test the images referenced by the catalog without rebuilding them.",
     )
     return parser.parse_args(argv)
@@ -474,7 +477,7 @@ def _parse_smoke_config_payload(
         raise ValueError(
             f"Invalid config in {config_path}: 'execution' must be an object."
         )
-    unknown_execution = sorted(set(execution.keys()).difference({"mode"}))
+    unknown_execution = sorted(set(execution.keys()).difference({"mode", "temporal"}))
     if unknown_execution:
         raise ValueError(
             f"Invalid config in {config_path}: unknown execution keys {unknown_execution}."
@@ -484,6 +487,10 @@ def _parse_smoke_config_payload(
             f"Invalid config in {config_path}: physical execution.mode must be "
             "global, group_native, or column_native."
         )
+    if "temporal" in execution:
+        from andrea.core.shared.bulk_temporal import validate_temporal_declaration
+
+        validate_temporal_declaration(execution["temporal"])
 
     param_overrides = raw.get("param_overrides", {})
     if param_overrides is None:
@@ -511,6 +518,7 @@ def _parse_smoke_config_payload(
         require_group_context=require_group_context,
         require_unique_unordered_pairs=require_unique_unordered_pairs,
         forbid_self_loops=forbid_self_loops,
+        allow_empty_network=bool(checks.get("allow_empty_network", False)),
     )
 
 
@@ -820,7 +828,7 @@ def validate_network(path: Path, config: SmokeConfig) -> int:
             raise RuntimeError(f"Missing columns in network.csv: {missing}")
 
         rows = list(reader)
-        if not rows:
+        if not rows and not config.allow_empty_network:
             raise RuntimeError("network.csv has header but no rows.")
 
     if config.require_group_context:
@@ -1056,7 +1064,9 @@ def run_tool_smoketest(
                 )
 
             if config.require_progress and not saw_progress:
-                raise RuntimeError("Smoke test failed: progress.json was never observed.")
+                raise RuntimeError(
+                    "Smoke test failed: progress.json was never observed."
+                )
 
             if io_paths.progress_file.exists():
                 validate_progress(io_paths.progress_file)
@@ -1118,7 +1128,11 @@ def run(argv: Sequence[str] | None = None) -> int:
 
         print()
         print(f"[{tool_id}] running smoketest")
-        default_tag = str(load_toolspec(catalog_tool_dir)["docker_image"]) if args.catalog_images else default_image_tag(tool_id)
+        default_tag = (
+            str(load_toolspec(catalog_tool_dir)["docker_image"])
+            if args.catalog_images
+            else default_image_tag(tool_id)
+        )
         image_tag = image_tags.get(tool_id, default_tag)
         effective_threads = resolve_smoketest_threads(
             tool_id=tool_id,

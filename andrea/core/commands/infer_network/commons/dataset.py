@@ -6,6 +6,10 @@ import csv
 from pathlib import Path
 from typing import Any, Optional
 
+from andrea.core.shared.bulk_temporal import (
+    validate_bulk_temporal_inputs,
+    validate_temporal_declaration,
+)
 from andrea.core.shared.input_specs import load_input_specs
 from andrea.core.shared.input_validation import (
     read_tsv_column_values as _shared_read_tsv_column_values,
@@ -180,6 +184,14 @@ def _parse_dataset_context(
             )
         extras[key] = extra_path
 
+    temporal = manifest.get("temporal")
+    if "temporal" in manifest:
+        validate_temporal_declaration(temporal)
+        if expression_profile != "bulk":
+            raise ValueError(
+                "temporal bulk-temporal/1 requires expression_profile=bulk"
+            )
+
     return DatasetContext(
         dataset_id=dataset_id,
         column_kind=column_kind,
@@ -190,6 +202,7 @@ def _parse_dataset_context(
         columns=cols_observed,
         expression_matrix_path=expression_path,
         extras=extras,
+        temporal=temporal,
     )
 
 
@@ -494,4 +507,15 @@ def _validate_dataset_inputs_by_specs(
         warnings.extend(res["warnings"])
 
     results["extras"] = extras_results
+    if dataset.temporal is not None:
+        try:
+            results["temporal"] = validate_bulk_temporal_inputs(
+                temporal=dataset.temporal,
+                expression_path=dataset.expression_matrix_path,
+                timepoints_path=dataset.extras.get("timepoints"),
+                replicates_path=dataset.extras.get("replicates"),
+            )
+        except (ValueError, OSError) as exc:
+            errors.append(f"temporal: {exc}")
+            results["temporal"] = {"status": "error", "errors": [str(exc)]}
     return results, errors, warnings

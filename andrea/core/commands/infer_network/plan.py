@@ -43,6 +43,7 @@ from .commons.planner import (
     _load_tool_cost_profile,
     _optimize_mode_selection,
     _optimize_mode_selection_cp_sat,
+    _temporal_cost_context,
 )
 from .commons.resource_decisions import planned_logical_resource_decision
 from .commons.resources import (
@@ -409,9 +410,7 @@ def plan_infer_network(
                     f"Custom tool {catalog_tool_id!r} is bound to run_id "
                     f"{toolspec.get('_andrea_run_id')!r}; planning run_id must match"
                 )
-            required_execution = {
-                "mode": toolspec.get("_andrea_execution_mode")
-            }
+            required_execution = {"mode": toolspec.get("_andrea_execution_mode")}
             if resolved_execution_by_tool.get(run_id) != required_execution:
                 raise ValueError(
                     f"Custom tool {catalog_tool_id!r} requires execution "
@@ -478,6 +477,26 @@ def plan_infer_network(
         )
 
     mode_options_by_tool: dict[str, list[Any]] = {}
+    temporal_cost_context = None
+    if dataset.temporal is not None:
+        from andrea.core.shared.bulk_temporal import validate_bulk_temporal_inputs
+
+        temporal_summary = validate_bulk_temporal_inputs(
+            temporal=dataset.temporal,
+            expression_path=dataset.expression_matrix_path,
+            timepoints_path=dataset.extras.get("timepoints"),
+            replicates_path=dataset.extras.get("replicates"),
+        )
+        steady_state_path = dataset.extras.get("steady_state_expression")
+        temporal_cost_context = _temporal_cost_context(
+            dataset=dataset,
+            temporal_summary=temporal_summary,
+            steady_state_samples=(
+                len(_read_expression_columns(steady_state_path))
+                if steady_state_path is not None
+                else 0
+            ),
+        )
     logical_run_specs: dict[str, dict[str, Any]] = {}
     runtime_input_contract_by_run: dict[str, dict[str, Any]] = {}
     phenotype_labels: list[str] | None = None
@@ -570,9 +589,7 @@ def plan_infer_network(
                     max_ram_gb=effective_ram,
                     output_dir=task_output_dir,
                     group_label=group_label,
-                    requested_threads=resolved_resources_by_tool[run_id].get(
-                        "threads"
-                    ),
+                    requested_threads=resolved_resources_by_tool[run_id].get("threads"),
                     requested_ram_gb=resolved_resources_by_tool[run_id].get("ram_gb"),
                     requested_cpuset=(
                         tuple(resolved_resources_by_tool[run_id]["cpuset_cpus"])
@@ -609,7 +626,9 @@ def plan_infer_network(
                 else f"tools/{run_id}"
             )
             cost_execution_mode = (
-                "column_native" if execution_mode == "group_aggregated" else execution_mode
+                "column_native"
+                if execution_mode == "group_aggregated"
+                else execution_mode
             )
             mode_options, plan_warnings = _estimate_tool_mode_options(
                 tool_id=physical_task_id,
@@ -623,6 +642,7 @@ def plan_infer_network(
                     native_group_count if execution_mode == "group_native" else 0
                 ),
                 dataset=dataset,
+                temporal_cost_context=temporal_cost_context,
                 max_cores=max_cores,
                 max_ram_gb=effective_ram,
                 output_dir=task_output_dir,
@@ -724,16 +744,22 @@ def plan_infer_network(
             resolved_resources_by_tool.get(tool_id, {}),
         )
 
-    custom_tools_payload = serialize_custom_tools(custom_tools) if custom_tools else None
-    frozen_manifest, frozen_tools_params, frozen_custom_tools, frozen_expression, frozen_extras = (
-        _materialize_frozen_inputs(
-            run_dir=run_dir,
-            dataset_manifest_path=dataset_manifest_path,
-            tools_params_path=tools_params_path,
-            custom_tools_payload=custom_tools_payload,
-            dataset=dataset,
-            constraints=constraints,
-        )
+    custom_tools_payload = (
+        serialize_custom_tools(custom_tools) if custom_tools else None
+    )
+    (
+        frozen_manifest,
+        frozen_tools_params,
+        frozen_custom_tools,
+        frozen_expression,
+        frozen_extras,
+    ) = _materialize_frozen_inputs(
+        run_dir=run_dir,
+        dataset_manifest_path=dataset_manifest_path,
+        tools_params_path=tools_params_path,
+        custom_tools_payload=custom_tools_payload,
+        dataset=dataset,
+        constraints=constraints,
     )
     frozen_runtime_input_contract = run_dir / "input" / "runtime-input-contract.json"
     _write_json(
@@ -755,6 +781,7 @@ def plan_infer_network(
     dataset_fingerprint = fingerprint_dataset_content(
         expression_path=frozen_expression,
         extras=frozen_extras,
+        temporal=dataset.temporal,
     )
 
     plan_generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -888,15 +915,12 @@ def plan_infer_network(
             "tasks_total": int(sum(len(w.tasks) for w in waves)),
             "waves_total": int(len(waves)),
             "threads_peak": int(max((w.threads_used for w in waves), default=0)),
-            "ram_peak_gb": float(
-                max((w.ram_gb_used for w in waves), default=0.0)
-            ),
+            "ram_peak_gb": float(max((w.ram_gb_used for w in waves), default=0.0)),
             "estimated_infeasible_runs": int(
                 sum(
                     1
                     for run in logical_runs_payload
-                    if run["resource_decision"]["status"]
-                    == "estimated_infeasible_time"
+                    if run["resource_decision"]["status"] == "estimated_infeasible_time"
                 )
             ),
         },
@@ -938,6 +962,7 @@ def plan_infer_network(
         },
         "dataset": {
             "id": dataset.dataset_id,
+            **({"temporal": dataset.temporal} if dataset.temporal is not None else {}),
             "fingerprint": dataset_fingerprint,
             "column_kind": dataset.column_kind,
             "expression_profile": dataset.expression_profile,
@@ -992,9 +1017,7 @@ def plan_infer_network(
     print(f"  skipped tools: {len(skipped_tools)}")
     print(f"  waves: {len(waves)}")
     print(f"  estimated total time: {total_eta:.2f}s")
-    estimated_infeasible_runs = plan_payload["totals"][
-        "estimated_infeasible_runs"
-    ]
+    estimated_infeasible_runs = plan_payload["totals"]["estimated_infeasible_runs"]
     if estimated_infeasible_runs:
         print(
             "  estimated infeasible runs: "
