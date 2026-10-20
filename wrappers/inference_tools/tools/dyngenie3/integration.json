@@ -61,17 +61,17 @@
     {
       "role": "fixture_expression_tsv",
       "path": "../../tests/fixtures/dyngenie3/expression.tsv",
-      "sha256": "5cd764a70244b01f21eb7ae6adcebac52b529ca3fd593676ad7c3115d16720d8"
+      "sha256": "99c56a2023f9eed71365a424779230e711d0bae5ec2067f3a365cc34baf0ed29"
     },
     {
       "role": "fixture_timepoints_tsv",
       "path": "../../tests/fixtures/dyngenie3/timepoints.tsv",
-      "sha256": "f5834ab403dae81a7f9ffb2aba3fae7e3b617bac9c0fa8855d362f1272e95204"
+      "sha256": "b3c34b0fedef3121ca91a76ad6109846df9bc14197ec3d418e258b1458fbb3b3"
     },
     {
       "role": "fixture_replicates_tsv",
       "path": "../../tests/fixtures/dyngenie3/replicates.tsv",
-      "sha256": "8e2289e617728e4d19eff717682baafaf2d8f594b400a70969b2f158da4a52e0"
+      "sha256": "beaad32685860af722f675e7065922e1c616a04a00fac69e270c530ac0d12ee9"
     },
     {
       "role": "fixture_tf_list_txt",
@@ -81,7 +81,7 @@
     {
       "role": "fixture_steady_state_expression_tsv",
       "path": "../../tests/fixtures/dyngenie3/steady_state_expression.tsv",
-      "sha256": "d39074864a22548c5a2b8317eb56f1d6b586340553b54b60d59099b0b2ff08c0"
+      "sha256": "d1de3f2648817399089aee3948aa1282c570e15a919d02efe2f4de6cc671aeb8"
     },
     {
       "role": "fixture_temporal_json",
