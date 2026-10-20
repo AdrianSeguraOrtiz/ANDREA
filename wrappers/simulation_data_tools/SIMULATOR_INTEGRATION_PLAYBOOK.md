@@ -18,7 +18,7 @@ Runtime behavior must be reproducible from:
 - the wrapper under `wrappers/simulation_data_tools/simulators/<simulator_id>/`
 - the `Dockerfile` under `wrappers/simulation_data_tools/simulators/<simulator_id>/`
 
-The catalog must contain only simulators that are fully integrated, dockerized and smoketested. Do not add placeholder specs for simulators that are still under review.
+The active catalog must contain only functionally integrated, dockerized and smoketested simulators. Calibration and image publication have separate acceptance states. Do not add placeholder specs for simulators that are still under review.
 
 ## Scope
 
@@ -41,7 +41,7 @@ The goal is not to reproduce a local vertical slice, bundled example export or c
 5. Installation preference:
    - official package manager / library first
    - upstream public repo pinned to tag/commit if no package exists
-   - never depend on unpinned floating source if avoidable
+   - require immutable pinned public sources; leave the reproducibility gate pending when they are inaccessible
 6. Docker image names must follow:
 
 ```text
@@ -286,253 +286,34 @@ Current GUI handoff convention:
 - `full` bundles contain the complete generated benchmark archive for storage
   and debugging.
 
-## Official End-To-End Procedure
+## End-to-end execution
 
-Follow these steps in order. A simulator is not considered integrated until the Docker image and smoke-test matrix pass.
+Follow [INTEGRATION_WORKFLOW.md](../../docs/INTEGRATION_WORKFLOW.md) for the
+single-request autonomous sequence, minimal evidence files, traceability matrix,
+calibration, independent validation and acceptance receipts. Phase reviews are
+internal quality gates. Ask only about unresolved scientific ambiguity,
+inaccessible requirements or decisions evidence cannot settle.
 
-### Step 0. Choose `<simulator_id>` And Target Scope
-
-Manual action:
-- choose a stable lowercase id using letters, digits and `_`
-- confirm the canonical upstream project name and implementation URL
-- decide which public package, repo tag or commit will be installed
-- decide which upstream public API/CLI entrypoint the wrapper mirrors
-- list which semantic axis combinations are realistically supported
-- list which extras are native or derivable
-- for every derived extra or truth output, write the exact derivation explanation before implementing the wrapper
-
-This id will be reused in:
-- simulator spec: `andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json`
-- Phase 1 draft spec, when the wrapper is not implemented yet:
-  `wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json`
-- wrapper dir: `wrappers/simulation_data_tools/simulators/<simulator_id>/`
-- smoke configs: `wrappers/simulation_data_tools/tests/smoketest_configs/<simulator_id>*.json`
-- Docker image: `adriansegura99/simulator_<simulator_id>:<version>`
-
-### Step 1. Place And Prepare Upstream Evidence
-
-Manual action:
-- clone or copy the upstream implementation into:
-
-```text
-wrappers/simulation_data_tools/simulators/<simulator_id>/repo/
-```
-
-- copy one or more local papers into:
-
-```text
-wrappers/simulation_data_tools/simulators/<simulator_id>/papers/
-```
-
-- convert PDFs to text if needed, keeping both PDF and `.txt` files as evidence.
-- collect public docs such as CRAN pages, vignettes or HTML manuals when useful.
-
-Minimum evidence expected in `repo/`:
-- README or package docs
-- examples/vignettes
-- config files or CLI help
-- relevant exported functions/scripts
-- output examples if available
-
-Minimum evidence expected in `papers/`:
-- primary simulator paper
-- implementation/package paper if different
-- any additional paper needed to justify lineage, perturbation, multi-omics or ground-truth semantics
-
-### Step 2. Execute Phase 1: Evidence And Contract
-
-Goal:
-- produce/update `integration_decisions.md`
-- draft `simulatorspec.json`; keep it as
-  `wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json`
-  until the wrapper and Docker image are executable
-- decide the public installation route
-- decide the wrapper entrypoint and output mapping
-- decide the smoke-test matrix
-
-Prompt to paste in chat:
-
-```text
-Please integrate the simulator `<simulator_id>` following [SIMULATOR_INTEGRATION_PLAYBOOK.md](wrappers/simulation_data_tools/SIMULATOR_INTEGRATION_PLAYBOOK.md), but only execute Phase 1 for now.
-
-Context:
-- Upstream repo is under [repo/](wrappers/simulation_data_tools/simulators/<simulator_id>/repo/)
-- Local papers are under [papers/](wrappers/simulation_data_tools/simulators/<simulator_id>/papers/)
-- Optional docs are under [wrappers/simulation_data_tools/simulators/<simulator_id>/](wrappers/simulation_data_tools/simulators/<simulator_id>/)
-- The final executable SimulatorSpec target is [simulatorspec.json](andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json)
-- During Phase 1, draft the spec at [draft_simulatorspec.json](wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json) unless an executable wrapper already exists
-- The wrapper target directory is [wrappers/simulation_data_tools/simulators/<simulator_id>/](wrappers/simulation_data_tools/simulators/<simulator_id>/)
-- Optional manual clarifications from the integrator:
-  - preferred installation route: `<optional>`
-  - preferred version/tag/commit: `<optional>`
-  - target function/CLI/API entrypoint: `<optional>`
-  - semantic capabilities/extras that must be prioritized: `<optional>`
-
-Requirements:
-- Review the upstream repo, local paper text/PDFs and available docs
-- Produce or update [integration_decisions.md](wrappers/simulation_data_tools/simulators/<simulator_id>/integration_decisions.md)
-- Draft [draft_simulatorspec.json](wrappers/simulation_data_tools/simulators/<simulator_id>/draft_simulatorspec.json), or update the catalog [simulatorspec.json](andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json) only if the executable wrapper already exists
-- Do not implement the wrapper yet
-- Store publication references as a list of full canonical URLs
-- Store `first_author` as the full first-author name
-- Set `docker_image` to `adriansegura99/simulator_<simulator_id>:<version>`
-- Identify every semantic capability the simulator can support
-- Identify every extra that is native or derivable
-- Audit every claimed capability independently; for each capability, identify
-  public `truth_contexts` for `global`, `group` and `column`, including whether
-  each is native, derivable or unavailable
-- Document the upstream parameter switches required to produce each claimed
-  truth context
-- Identify required, optional and conditional simulator input files
-- Reuse existing simulation input specs when the file semantics match; otherwise
-  draft a new spec under `andrea/catalog_simulation_data_tools/input_specs/`
-- Identify the full public serializable parameter surface
-- Identify runtime resource support, especially whether upstream exposes
-  thread/worker controls and how ANDREA will map assigned threads to them
-- Explicitly document parameters that are intentionally represented as presets because upstream expects function-valued callbacks
-- Document any capability that exists scientifically but will not be claimed because the wrapper cannot support it yet
-- For every non-trivial `simulatorspec.json` field, record:
-  - chosen value
-  - evidence path(s)
-  - rationale
-  - uncertainty if any
-- Do not add placeholder specs for other simulators
-
-Focus especially on:
-1. semantic axis and truth-requirement support
-2. optional and conditional input files
-3. extras and truth-output derivation
-4. parameter mapping and defaults
-5. output normalization into `expression.tsv`, `extras/`, `truth/` and provenance
-6. public installation source and version pinning
-7. smoke-test matrix needed to cover the declared contract
-8. capability-specific truth context evidence, including score/sign semantics and
-   limitations
-9. public id consistency across expression, truth, gene universe and extras
-10. which normalized outputs are needed to build `dataset-manifest.json` for
-    `infer-network` and `ground-truth-manifest.json` for `evaluate-inference`
-```
-
-### Step 3. Review Phase 1
-
-Manual action:
-- inspect `integration_decisions.md`
-- inspect `simulatorspec.json`
-- confirm that the catalog only claims what the wrapper will actually implement
-- confirm that the selected installation route is public and reproducible
-- confirm that no local repo path is part of runtime behavior
-
-Do not continue to Phase 2 until the contract looks correct.
-
-### Step 4. Execute Phase 2: Wrapper And Docker Implementation
-
-Goal:
-- implement the wrapper
-- implement the Dockerfile
-- keep `simulatorspec.json` aligned with actual behavior
-- add smoke-test configs covering all declared semantic capabilities/extras
-- make the wrapper produce `progress.json`
-
-Prompt to paste in chat:
-
-```text
-Please continue the integration of `<simulator_id>` following [SIMULATOR_INTEGRATION_PLAYBOOK.md](wrappers/simulation_data_tools/SIMULATOR_INTEGRATION_PLAYBOOK.md), executing Phase 2.
-
-Requirements:
-- Use [integration_decisions.md](wrappers/simulation_data_tools/simulators/<simulator_id>/integration_decisions.md) as the working contract
-- Implement the wrapper under [wrappers/simulation_data_tools/simulators/<simulator_id>/](wrappers/simulation_data_tools/simulators/<simulator_id>/)
-- Implement [Dockerfile](wrappers/simulation_data_tools/simulators/<simulator_id>/Dockerfile)
-- Do not depend on local [repo/](wrappers/simulation_data_tools/simulators/<simulator_id>/repo/) at runtime
-- Install the simulator from an official package when possible, otherwise from a pinned upstream tag/commit
-- The container must read `/work/request/simulator-run-request.json`
-- The container must write the normalized output tree directly under `/work/out/`
-- The wrapper must execute the public simulator package/API/CLI, not a ANDREA-side reimplementation
-- The wrapper must write `progress.json`
-- Preserve raw upstream outputs, config snapshots, logs and session info under `provenance/raw/`
-- Map `runtime_resources.threads` to the upstream thread/worker option declared
-  in `simulatorspec.json`; do not reintroduce thread controls as simulator params
-- Implement public truth rows exactly as documented in the selected simulator
-  capability `truth_contexts`; if wrapper behavior differs, fix the wrapper
-  first and then update the spec from verified behavior
-- Produce:
-  - `expression.tsv`
-  - `truth/networks.csv`
-  - `truth/gene_universe.txt`
-  - optional `extras/`
-  - `simulator-output-manifest.json`
-- Add smoke-test configs under [wrappers/simulation_data_tools/tests/smoketest_configs/](wrappers/simulation_data_tools/tests/smoketest_configs/)
-- The smoke-test matrix must cover every declared semantic capability and every
-  declared extra path
-- The smoke-test matrix must prove every required truth context family:
-  - `global`: `context=global`
-  - `group`: at least one `context=group:<group_id>`
-  - `column`: at least one `context=column:<column_id>`
-- The smoke-test matrix must prove public id consistency across expression,
-  truth, gene universe and generated extras
-- Build the image and run the smoke tests during this phase
-- If implementation constraints require changing the spec, update `simulatorspec.json` and document why in `integration_decisions.md`
-```
-
-### Step 5. Execute Phase 3: Verification And Final Alignment
-
-Goal:
-- validate schemas
-- run smoke tests again
-- run `generate-data` compatibility tests
-- leave the decision log complete and concise
-
-Prompt to paste in chat:
-
-```text
-Please finish the integration of `<simulator_id>` following [SIMULATOR_INTEGRATION_PLAYBOOK.md](wrappers/simulation_data_tools/SIMULATOR_INTEGRATION_PLAYBOOK.md), executing Phase 3.
-
-Requirements:
-- Validate [simulatorspec.json](andrea/catalog_simulation_data_tools/simulators/<simulator_id>/simulatorspec.json)
-- Run the simulator smoke-test matrix
-- Run the relevant `generate-data` tests
-- Confirm generated `dataset-manifest.json` files pass `infer-network preflight`
-- Fix any mismatch between wrapper behavior, `simulatorspec.json`, smoke configs and output schemas
-- Leave [integration_decisions.md](wrappers/simulation_data_tools/simulators/<simulator_id>/integration_decisions.md) complete and concise
-```
-
-### Step 6. Build, Verify And Optionally Publish The Image
-
-Validate the catalog and smoke-test config first:
-
-```bash
+```sh
+make scaffold-simulator SIMULATOR=<simulator_id> WRAPPER=python
+make prepare-simulator-papers SIMULATOR=<simulator_id>
+make validate-simulation-input-specs
 make validate-simulatorspecs ARGS="--simulator <simulator_id>"
 make validate-simulator-smoketest-configs ARGS="--simulator <simulator_id>"
-```
-
-Build or rebuild the simulator image:
-
-```bash
-make build-simulator-images ARGS="--simulator <simulator_id>"
-```
-
-Run the smoke-test matrix:
-
-```bash
-make run-simulator-smoketests ARGS="--simulator <simulator_id> --skip-build"
-```
-
-Or run the complete per-simulator verification:
-
-```bash
 make verify-simulator SIMULATOR=<simulator_id>
+make benchmark-simulator-costs ARGS="--simulator <simulator_id> --plan-only --repeats 3"
+python wrappers/simulation_data_tools/scripts/validate_simulator_costs.py \
+  --simulator <simulator_id> --require --require-provenance --require-coverage
+python wrappers/integration/validate_integration.py \
+  wrappers/simulation_data_tools/simulators/<simulator_id>/integration.json --stage functional
 ```
 
-If image publication is part of the task, push:
-
-```bash
-make push-simulator-images ARGS="--simulator <simulator_id>"
-```
-
-If another machine or CI needs the image explicitly:
-
-```bash
-make pull-simulator-images ARGS="--simulator <simulator_id>"
-```
+TXT articles are accepted directly; PDF extraction is optional. Scaffolds stay
+in drafts until implemented and explicitly activated. `verify-simulator` builds
+and runs images; it is a late functional check, not proof of calibration or
+publication. Read [cost_profiles/README.md](cost_profiles/README.md) for planning,
+coverage, verified resume and independent prediction controls. Publication of
+the exact validated image is a separate authorized gate.
 
 ## Runtime Contract
 
@@ -928,6 +709,11 @@ Rules:
 
 ### `timepoints.tsv`
 
+For observed bulk time, first read the [temporal contract audit and compatible
+extension proposal](../../docs/bulk-time-series-contract.md). The legacy file
+alone does not establish units, series boundaries or longitudinal identity.
+
+
 Use:
 
 ```text
@@ -1119,49 +905,20 @@ Run:
 make verify-simulator SIMULATOR=<simulator_id>
 ```
 
-## Cost Benchmark Requirements
+## Cost benchmark requirements
 
-Planner-facing simulator cost profiles are generated by:
+The [shared calibration procedure](../../docs/INTEGRATION_WORKFLOW.md#3-plan-calibration-before-measuring)
+and [simulator cost README](cost_profiles/README.md) define the domain, finite
+profile panel, independent axes, resource strata, repeats, receipts, resume and
+holdout validation. The filename is `cost.json`. Profiles must cover semantic
+capabilities, extras and conditional native inputs with methodologically valid
+fixtures. For time series, vary genes, timepoints per independent series,
+series/replicates and dynamic parameters; do not relabel single-cell matrices.
+Native fixed dimensions and requested/exported differences need explicit bounds.
 
-```bash
-make benchmark-simulator-costs ARGS="--simulator <simulator_id>"
-make validate-simulator-costs ARGS="--simulator <simulator_id> --require"
-```
-
-Each benchmarked Docker run has a timeout guard. The default is 1800 seconds
-per run; override it with `--timeout <seconds>` or use `--timeout 0` only when
-you intentionally want no timeout.
-
-```bash
-make benchmark-simulator-costs ARGS="--simulator <simulator_id> --timeout 3600"
-```
-
-Timeouts are stored in `cost.json` as `status=timeout` when no repeat succeeds,
-or inside `failure_breakdown.timeout` when a benchmark point is only partially
-successful. The generate-data planner does not use fully timed-out points as
-runtime evidence. Partially successful points remain usable, but their ETA
-receives a conservative risk penalty and carries a provenance warning.
-
-Each integrated simulator should have a bounded cost benchmark config under:
-
-```text
-wrappers/simulation_data_tools/cost_profiles/<simulator_id>.json
-```
-
-The cost profile matrix should vary the dimensions and settings that materially
-change runtime:
-
-- semantic capability
-- genes and cells
-- group/population count where applicable
-- requested extras
-- conditional simulator input source modes
-- runtime-affecting parameter presets
-- assigned `runtime_resources.threads`
-
-Do not benchmark impossible combinations. If a semantic capability activates an
-`extra_inputs.conditional_required` rule, the cost profile config must provide
-that simulator-side input file.
+A timeout or partial-success point remains failure evidence; it does not satisfy
+three successful repetitions. Valid JSON, a covered configuration list or a full
+grid alone does not establish independent predictive accuracy.
 
 ## Generate-Data Resource And ETA Contract
 
@@ -1205,86 +962,12 @@ andrea generate-data execute \
   --max-ram-gb 32
 ```
 
-## Required Structure Of `integration_decisions.md`
+## Evidence and acceptance records
 
-The decision log must include:
-- upstream evidence reviewed
-- selected installation route and version/tag/commit
-- selected public API/CLI entrypoint
-- supported semantic capabilities and why
-- unsupported semantic capabilities and why
-- native and derivable extras
-- per-capability `truth_contexts`, including native upstream outputs,
-  wrapper-derived outputs, upstream parameter switches, score/sign semantics and
-  limitations
-- simulator-side input specs and `extra_inputs` usage rules
-- parameter mapping and unsupported function-valued hooks
-- output mapping
-- progress strategy
-- smoke-test matrix and outcome
-- cost profile status and whether ETA uses catalog costs or fallback estimates
-- resource mapping from request `runtime_resources.threads` through the spec
-  `runtime_resources.threading` contract to the upstream API
-
-For every non-trivial decision, record:
-- chosen value
-- evidence path(s)
-- rationale
-- uncertainty if any
-
-If a value is unclear:
-- say that it is unclear
-- list conflicting evidence
-- explain the chosen temporary resolution
-
-## Quick Command Summary
-
-From repository root:
-
-```bash
-make validate-generation-catalog
-make validate-simulatorspecs ARGS="--simulator <simulator_id>"
-make validate-simulator-smoketest-configs ARGS="--simulator <simulator_id>"
-make build-simulator-images ARGS="--simulator <simulator_id>"
-make run-simulator-smoketests ARGS="--simulator <simulator_id> --skip-build"
-make verify-simulator SIMULATOR=<simulator_id>
-make benchmark-simulator-costs ARGS="--simulator <simulator_id>"
-make validate-simulator-costs ARGS="--simulator <simulator_id> --require"
-make list-simulator-images
-make scaffold-simulator SIMULATOR=<simulator_id> WRAPPER=python
-make prepare-simulator-papers SIMULATOR=<simulator_id>
-python -m pytest tests/wrappers/simulation_data_tools/test_simulatorspecs.py -q
-python -m pytest tests/core/commands/generate_data/test_generate_data.py -q
-python -m pytest tests/gui/test_generate_data_server.py tests/cli/test_generate_data_cli.py -q
-```
-
-For R wrappers:
-
-```bash
-Rscript -e "invisible(parse(file='wrappers/simulation_data_tools/simulators/<simulator_id>/run_simulator.R'))"
-```
-
-## Review Checklist
-
-Before considering a simulator integrated, confirm:
-- local paper text/PDFs and repo/docs were reviewed
-- `simulatorspec.json` validates
-- `publication` is a list of full URLs
-- `first_author` is a full name
-- `docker_image` follows `adriansegura99/simulator_<simulator_id>:<version>`
-- the Dockerfile installs from a stable public source
-- runtime does not depend on the local evidence repo
-- every declared semantic capability is covered by smoke tests
-- every declared extra is covered by smoke tests
-- every declared capability has audited `truth_contexts`
-- column-specific truth, when claimed, emits `global`, requested
-  `group:<group_id>` and `column:<column_id>` truth rows
-- every declared parameter is accepted by the wrapper
-- `progress.json` is written
-- `simulator-output-manifest.json` validates
-- generated `dataset-manifest.json` passes `infer-network preflight`
-- generated `ground-truth-manifest.json` is sufficient for an
-  `evaluate-inference` analysis handoff bundle
-- truth outputs are consistent
-- provenance contains enough raw simulator state to debug or audit the run
-- no incomplete simulator appears in `andrea/catalog_simulation_data_tools/simulators/`
+Use the [shared decisions template](../integration/decisions.template.md) and
+[acceptance procedure](../../docs/INTEGRATION_WORKFLOW.md#5-acceptance-image-publication-and-handoff).
+Record per-capability native/derived truth and extras, simulator-side inputs,
+parameter bindings, all public parameters/defaults, actual upstream arguments,
+resource mapping, output semantics, patches and remaining uncertainty.
+`integration.json` links the artifact identities and check receipts. Separate
+functional, calibrated-within-domain and published states.

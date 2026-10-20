@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — Osaka integration procedure
+
+- Replace phase prompts and mandatory PDFs with one autonomous evidence-to-catalog
+  workflow accepting TXT, an upstream evidence clone and an installation preference.
+- Keep new inference and simulator scaffolds inactive, with a shared scientific
+  decision template, parameter traceability matrix and hashed acceptance dossier.
+- Separate structural cost validity, declared calibration-domain coverage,
+  independent prediction checks and registry publication. Add simulator domain
+  checks and an offline held-out prediction validator; preserve historical costs.
+- Audit observed bulk time contracts, document a compatible metadata extension
+  proposal and add temporal fixtures with an offline validator. This does not
+  activate a new runtime input or integrate a new inference method.
+- Correct scaffold/extraction behavior and keep local scientific evidence out
+  of image build contexts. No scientific calibrations or image publication are
+  claimed by these procedural changes.
+
 ## 0.2.1
 
 ### Integration reliability and reproducibility

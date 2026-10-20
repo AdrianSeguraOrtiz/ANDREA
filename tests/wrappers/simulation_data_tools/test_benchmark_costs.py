@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -25,7 +26,9 @@ for module_name in list(sys.modules):
 CATALOG_SIMULATORS_ROOT = (
     REPO_ROOT / "andrea" / "catalog_simulation_data_tools" / "simulators"
 )
-PARAM_OVERRIDES_DIR = REPO_ROOT / "wrappers" / "simulation_data_tools" / "param_overrides"
+PARAM_OVERRIDES_DIR = (
+    REPO_ROOT / "wrappers" / "simulation_data_tools" / "param_overrides"
+)
 COST_PROFILES_DIR = REPO_ROOT / "wrappers" / "simulation_data_tools" / "cost_profiles"
 SIMULATOR_COST_SCHEMA = (
     REPO_ROOT
@@ -174,72 +177,110 @@ def _valid_cost_payload() -> dict[str, object]:
 
 class SimulatorBenchmarkCostsTests(unittest.TestCase):
     def test_cell_budgets_require_native_proof_and_explicit_shortfall_warning(self):
-        profile = _valid_cost_payload()['profiles'][0]
-        config = profile['benchmark_config']
-        config['dimension_semantics'] = {'genes': 'exported_genes', 'cells': 'requested_cell_budget'}
-        config['params_profile']['resolved_base_params'] = {'experiment_params': {'kind': 'snapshot'}}
-        point = profile['runtime_points'][0]
-        features = point['feature_vector']
-        features['dimension_semantics'] = config['dimension_semantics']
-        features['observed_dimensions'] = [{'genes': point['genes'], 'columns': 7}]
-        features['native_sampling'] = [dict(kind='snapshot', requested_cells=8, expected_cells=7,
-                                           observed_cells=7, dropped_cells=1, expression_matches_native=True)]
-        features['validation_warnings'] = ['Native snapshot returned 7 of 8 cells.']
+        profile = _valid_cost_payload()["profiles"][0]
+        config = profile["benchmark_config"]
+        config["dimension_semantics"] = {
+            "genes": "exported_genes",
+            "cells": "requested_cell_budget",
+        }
+        config["params_profile"]["resolved_base_params"] = {
+            "experiment_params": {"kind": "snapshot"}
+        }
+        point = profile["runtime_points"][0]
+        features = point["feature_vector"]
+        features["dimension_semantics"] = config["dimension_semantics"]
+        features["observed_dimensions"] = [{"genes": point["genes"], "columns": 7}]
+        features["native_sampling"] = [
+            dict(
+                kind="snapshot",
+                requested_cells=8,
+                expected_cells=7,
+                observed_cells=7,
+                dropped_cells=1,
+                expression_matches_native=True,
+            )
+        ]
+        features["validation_warnings"] = ["Native snapshot returned 7 of 8 cells."]
 
         def errors():
             return validate_simulator_costs.semantic_feature_vector_errors(
-                profile=profile, config=config, input_profile=config['input_profile'], prefix='profiles[1]')
+                profile=profile,
+                config=config,
+                input_profile=config["input_profile"],
+                prefix="profiles[1]",
+            )
 
         self.assertEqual(errors(), [])
-        features['validation_warnings'] = []
-        self.assertTrue(any('coverage warning' in e for e in errors()))
-        features['validation_warnings'] = ['shortfall']
-        features['native_sampling'][0]['expected_cells'] = 8
-        self.assertTrue(any('native cell allocation' in e for e in errors()))
-        features['native_sampling'] = []
-        self.assertTrue(any('every repeat' in e for e in errors()))
-        config['params_profile']['resolved_base_params']['experiment_params']['kind'] = 'synchronised'
-        self.assertTrue(any('only supported' in e for e in errors()))
+        features["validation_warnings"] = []
+        self.assertTrue(any("coverage warning" in e for e in errors()))
+        features["validation_warnings"] = ["shortfall"]
+        features["native_sampling"][0]["expected_cells"] = 8
+        self.assertTrue(any("native cell allocation" in e for e in errors()))
+        features["native_sampling"] = []
+        self.assertTrue(any("every repeat" in e for e in errors()))
+        config["params_profile"]["resolved_base_params"]["experiment_params"][
+            "kind"
+        ] = "synchronised"
+        self.assertTrue(any("only supported" in e for e in errors()))
 
     def test_dimension_semantics_require_verified_output_dimensions(self):
-        profile = _valid_cost_payload()['profiles'][0]
-        config = profile['benchmark_config']
-        semantics = {'genes': 'requested_gene_budget', 'cells': 'exported_columns'}
-        config['dimension_semantics'] = semantics
-        point = profile['runtime_points'][0]
-        features = point['feature_vector']
-        features['dimension_semantics'] = semantics
-        features['observed_dimensions'] = [{'genes': 16, 'columns': 8}]
+        profile = _valid_cost_payload()["profiles"][0]
+        config = profile["benchmark_config"]
+        semantics = {"genes": "requested_gene_budget", "cells": "exported_columns"}
+        config["dimension_semantics"] = semantics
+        point = profile["runtime_points"][0]
+        features = point["feature_vector"]
+        features["dimension_semantics"] = semantics
+        features["observed_dimensions"] = [{"genes": 16, "columns": 8}]
 
         def errors():
             return validate_simulator_costs.semantic_feature_vector_errors(
-                profile=profile, config=config, input_profile=config['input_profile'], prefix='profiles[1]')
+                profile=profile,
+                config=config,
+                input_profile=config["input_profile"],
+                prefix="profiles[1]",
+            )
 
         self.assertEqual(errors(), [])
-        features['observed_dimensions'][0]['genes'] = 9
-        self.assertTrue(any('exported genes' in e for e in errors()))
-        features['observed_dimensions'][0] = {'genes': 16, 'columns': 7}
-        self.assertTrue(any('exported columns' in e for e in errors()))
-        features['observed_dimensions'] = []
-        self.assertTrue(any('every successful repeat' in e for e in errors()))
-        features['observed_dimensions'] = [{'genes': 16, 'columns': 8}]
-        config['dimension_semantics'] = {'genes': 'exported_genes', 'cells': 'exported_columns'}
-        features['dimension_semantics'] = config['dimension_semantics']
-        self.assertTrue(any('exported genes' in e for e in errors()))
+        features["observed_dimensions"][0]["genes"] = 9
+        self.assertTrue(any("exported genes" in e for e in errors()))
+        features["observed_dimensions"][0] = {"genes": 16, "columns": 7}
+        self.assertTrue(any("exported columns" in e for e in errors()))
+        features["observed_dimensions"] = []
+        self.assertTrue(any("every successful repeat" in e for e in errors()))
+        features["observed_dimensions"] = [{"genes": 16, "columns": 8}]
+        config["dimension_semantics"] = {
+            "genes": "exported_genes",
+            "cells": "exported_columns",
+        }
+        features["dimension_semantics"] = config["dimension_semantics"]
+        self.assertTrue(any("exported genes" in e for e in errors()))
 
     def setUp(self) -> None:
         def evidence(**kwargs):
             return {
                 "recorded_at_utc": "2026-09-29T00:00:00+00:00",
-                "git_commit": "f" * 40, "git_dirty": False,
+                "git_commit": "f" * 40,
+                "git_dirty": False,
                 "source_sha256": "a" * 64,
-                "spec_sha256": hashlib.sha256(kwargs["spec_path"].read_bytes()).hexdigest(),
-                "image_reference": kwargs["image"], "image_id": "sha256:" + "b" * 64,
-                "image_repo_digests": [], "platform": "test", "cpu_model": "test",
-                "logical_cpus": 1, "host_memory_bytes": 1024, "docker_server": "test",
-                "seed": kwargs["seed"], "timing_scope": "test",
+                "spec_sha256": hashlib.sha256(
+                    kwargs["spec_path"].read_bytes()
+                ).hexdigest(),
+                "image_reference": kwargs["image"],
+                "image_id": "sha256:" + "b" * 64,
+                "image_repo_digests": [],
+                "platform": "test",
+                "cpu_model": "test",
+                "logical_cpus": 1,
+                "host_memory_bytes": 1024,
+                "docker_server": "test",
+                "seed": kwargs["seed"],
+                "timing_scope": "test",
             }
-        evidence_patch = patch.object(benchmark_costs, "collect_provenance", side_effect=evidence)
+
+        evidence_patch = patch.object(
+            benchmark_costs, "collect_provenance", side_effect=evidence
+        )
         evidence_patch.start()
         self.addCleanup(evidence_patch.stop)
 
@@ -283,7 +324,9 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
 
         messages = [error.message for error in validator.iter_errors(payload)]
 
-        self.assertTrue(any("'feature_vector' is a required property" in m for m in messages))
+        self.assertTrue(
+            any("'feature_vector' is a required property" in m for m in messages)
+        )
 
     def test_resolver_preserves_conditional_input_profile(self) -> None:
         targets = benchmark_costs.resolve_simulator_targets(
@@ -294,12 +337,17 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             cost_profiles_dir=COST_PROFILES_DIR,
             param_overrides_dir=PARAM_OVERRIDES_DIR,
             default_group_count=2,
-            profile_filters=["single_cell_cells_differentiation_global_group_custom_grn_tree"],
+            profile_filters=[
+                "single_cell_cells_differentiation_global_group_custom_grn_tree"
+            ],
         )
 
         self.assertEqual(len(targets), 1)
         profile = targets[0].profiles[0]
-        self.assertEqual(profile.profile_id, "single_cell_cells_differentiation_global_group_custom_grn_tree")
+        self.assertEqual(
+            profile.profile_id,
+            "single_cell_cells_differentiation_global_group_custom_grn_tree",
+        )
         self.assertEqual(
             [(size.genes, size.cells) for size in profile.sizes],
             [(50, 20), (100, 40), (200, 80)],
@@ -311,7 +359,9 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             profile.input_profile["conditional_inputs_satisfied"],
             ["regulatory_network", "tree_newick"],
         )
-        self.assertEqual(profile.input_profile["input_source_modes"]["grn_source"], "input_tsv")
+        self.assertEqual(
+            profile.input_profile["input_source_modes"]["grn_source"], "input_tsv"
+        )
         self.assertEqual(
             profile.input_profile["input_source_modes"]["tree_preset"],
             "input_newick",
@@ -320,12 +370,17 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
     def test_resolver_rejects_conditional_profile_without_required_input(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             config_dir = Path(tmp)
-            shutil.copy2(COST_PROFILES_DIR / "scmultisim.json", config_dir / "scmultisim.json")
-            payload = json.loads((config_dir / "scmultisim.json").read_text(encoding="utf-8"))
+            shutil.copy2(
+                COST_PROFILES_DIR / "scmultisim.json", config_dir / "scmultisim.json"
+            )
+            payload = json.loads(
+                (config_dir / "scmultisim.json").read_text(encoding="utf-8")
+            )
             custom = next(
                 profile
                 for profile in payload["profiles"]
-                if profile["id"] == "single_cell_cells_differentiation_global_group_custom_grn_tree"
+                if profile["id"]
+                == "single_cell_cells_differentiation_global_group_custom_grn_tree"
             )
             custom["inputs"] = {}
             (config_dir / "scmultisim.json").write_text(
@@ -342,7 +397,9 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                     cost_profiles_dir=config_dir,
                     param_overrides_dir=PARAM_OVERRIDES_DIR,
                     default_group_count=2,
-                    profile_filters=["single_cell_cells_differentiation_global_group_custom_grn_tree"],
+                    profile_filters=[
+                        "single_cell_cells_differentiation_global_group_custom_grn_tree"
+                    ],
                 )
 
     def test_cost_profile_configs_cover_supported_profiles(self) -> None:
@@ -375,9 +432,7 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             with self.subTest(simulator_id=simulator_id):
                 spec = json.loads(
                     (
-                        CATALOG_SIMULATORS_ROOT
-                        / simulator_id
-                        / "simulatorspec.json"
+                        CATALOG_SIMULATORS_ROOT / simulator_id / "simulatorspec.json"
                     ).read_text(encoding="utf-8")
                 )
                 profiles = json.loads(
@@ -450,8 +505,12 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                 # sampled cells. Zero explicitly means an unspecified count;
                 # the validating runner records the actual output groups.
                 minimum = 0 if simulator_id == "dyngen" else 1
-                self.assertTrue(all(profile.dimension_profile["group_count"] >= minimum
-                                    for profile in column_truth_profiles))
+                self.assertTrue(
+                    all(
+                        profile.dimension_profile["group_count"] >= minimum
+                        for profile in column_truth_profiles
+                    )
+                )
                 self.assertTrue(
                     all(
                         profile.dimension_profile["population_count"] >= minimum
@@ -477,7 +536,10 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         )
 
         self.assertEqual(profile.dimension_profile["genes_param"], {"fixed": 3})
-        self.assertEqual(profile.dimension_profile["cells_param"], {"param": "num_cells", "multiplier": 7})
+        self.assertEqual(
+            profile.dimension_profile["cells_param"],
+            {"param": "num_cells", "multiplier": 7},
+        )
         self.assertEqual(params["num_cells"], 5)
 
     def test_sergio_cost_profile_maps_total_columns_to_cells_per_bin(self) -> None:
@@ -498,7 +560,9 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         )
 
         self.assertEqual(profile.dimension_profile["cells_param"]["param"], "number_sc")
-        self.assertEqual(profile.dimension_profile["cells_param"]["multiplier_param"], "number_bins")
+        self.assertEqual(
+            profile.dimension_profile["cells_param"]["multiplier_param"], "number_bins"
+        )
         self.assertEqual(params["number_sc"], 2)
         self.assertEqual(params["number_genes"], 3)
 
@@ -666,16 +730,18 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                 "run_cmd",
                 side_effect=[docker_run_timeout, cleanup_ok],
             ) as run_cmd:
-                status, _elapsed, _bytes, _memory, error = benchmark_costs.run_container_once(
-                    image_tag="image",
-                    workdir=workdir,
-                    simulator_id="boolode",
-                    profile=profile,
-                    params={},
-                    threads=1,
-                    ram_gb=1,
-                    seed=1,
-                    timeout_s=1,
+                status, _elapsed, _bytes, _memory, error = (
+                    benchmark_costs.run_container_once(
+                        image_tag="image",
+                        workdir=workdir,
+                        simulator_id="boolode",
+                        profile=profile,
+                        params={},
+                        threads=1,
+                        ram_gb=1,
+                        seed=1,
+                        timeout_s=1,
+                    )
                 )
 
             self.assertEqual(status, "timeout")
@@ -789,7 +855,9 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                 )
 
             self.assertEqual(exit_code, 0)
-            payload = json.loads((catalog_root / "dyngen" / "cost.json").read_text(encoding="utf-8"))
+            payload = json.loads(
+                (catalog_root / "dyngen" / "cost.json").read_text(encoding="utf-8")
+            )
             self.assertEqual(payload["schema_version"], "1.0")
             self.assertEqual(
                 [profile["profile_id"] for profile in payload["profiles"]],
@@ -807,10 +875,16 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                 point["feature_vector"]["benchmark_profile_id"],
                 "single_cell_cells_trajectory_global_linear_default",
             )
-            self.assertEqual(point["feature_vector"]["expression_profile"], "single_cell")
+            self.assertEqual(
+                point["feature_vector"]["expression_profile"], "single_cell"
+            )
             self.assertEqual(point["feature_vector"]["column_kind"], "cells")
-            self.assertEqual(point["feature_vector"]["experimental_design"], "trajectory")
-            self.assertEqual(point["feature_vector"]["truth_context_families"], ["global"])
+            self.assertEqual(
+                point["feature_vector"]["experimental_design"], "trajectory"
+            )
+            self.assertEqual(
+                point["feature_vector"]["truth_context_families"], ["global"]
+            )
             self.assertEqual(point["feature_vector"]["extras"], ["tf_list"])
             self.assertFalse(point["feature_vector"]["column_truth_requested"])
 
@@ -847,7 +921,9 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             self.assertEqual(merged["profiles"][0]["marker"], "old-kept")
             self.assertEqual(merged["profiles"][1]["marker"], "new-replaced")
 
-    def test_unsuccessful_profile_preserves_existing_cost_and_exits_nonzero(self) -> None:
+    def test_unsuccessful_profile_preserves_existing_cost_and_exits_nonzero(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_root = Path(tmp)
             catalog_root = tmp_root / "catalog_simulators"
@@ -974,7 +1050,9 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
 
             self.assertEqual(cost_path.read_bytes(), original_cost)
 
-    def test_profile_sizes_override_default_sizes_unless_cli_size_is_explicit(self) -> None:
+    def test_profile_sizes_override_default_sizes_unless_cli_size_is_explicit(
+        self,
+    ) -> None:
         profile = benchmark_costs.SimulatorBenchmarkProfile(
             simulator_id="scmultisim",
             profile_id="profile",
@@ -1015,7 +1093,9 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             cli_sizes_were_explicit=True,
         )
 
-        self.assertEqual([(item.genes, item.cells) for item in implicit], [(50, 20), (101, 40)])
+        self.assertEqual(
+            [(item.genes, item.cells) for item in implicit], [(50, 20), (101, 40)]
+        )
         self.assertEqual([(item.genes, item.cells) for item in explicit], [(100, 40)])
 
     def test_validator_accepts_generated_payload_semantics(self) -> None:
@@ -1062,7 +1142,10 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         )
 
         self.assertTrue(
-            any("feature_vector.expression_profile does not match" in item for item in errors),
+            any(
+                "feature_vector.expression_profile does not match" in item
+                for item in errors
+            ),
             errors,
         )
 
@@ -1075,9 +1158,13 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
             catalog_simulators_root=CATALOG_SIMULATORS_ROOT,
         )
 
-        self.assertTrue(any("missing profile for capability" in item for item in errors))
+        self.assertTrue(
+            any("missing profile for capability" in item for item in errors)
+        )
 
-    def test_validator_rejects_threads_tested_incompatible_with_simulatorspec(self) -> None:
+    def test_validator_rejects_threads_tested_incompatible_with_simulatorspec(
+        self,
+    ) -> None:
         boolode_spec = json.loads(
             (CATALOG_SIMULATORS_ROOT / "boolode" / "simulatorspec.json").read_text(
                 encoding="utf-8"
@@ -1104,7 +1191,115 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         )
 
         self.assertTrue(any("threads_tested" in item for item in errors), errors)
-        self.assertTrue(any("runtime_points[2].threads" in item for item in errors), errors)
+        self.assertTrue(
+            any("runtime_points[2].threads" in item for item in errors), errors
+        )
+
+
+def _geometry_profile(sizes, fixed=None, resources=(1,)):
+    return {
+        "profile_id": "geometry",
+        "benchmark_config": {
+            "sizes": [{"genes": g, "cells": c} for g, c in sizes],
+            "threads_tested": list(resources),
+            "ram_gb_tested": [8],
+            "repeats": 3,
+            "dimension_profile": {
+                f"{axis}_param": {"fixed": value}
+                for axis, value in (fixed or {}).items()
+            },
+        },
+        "runtime_points": [
+            {
+                "genes": g,
+                "cells": c,
+                "threads": thread,
+                "ram_gb": 8,
+                "status": "ok",
+                "repeats_ok": 3,
+                "repeats_total": 3,
+                "repeats_failed": 0,
+                "failure_breakdown": {},
+                "seconds_p50": 1,
+                "seconds_p90": 2,
+            }
+            for thread in resources
+            for g, c in sizes
+        ],
+    }
+
+
+def test_simulator_geometry_rejects_confounded_diagonal_despite_complete_matrix():
+    profile = _geometry_profile([(10, 10), (20, 20), (30, 30)])
+    result = validate_simulator_costs.calibration_coverage({"profiles": [profile]})
+    assert result["profiles"][0]["declared_matrix_complete"]
+    assert not result["calibration_adequate_for_planned_range"]
+
+
+def test_simulator_geometry_accepts_crossed_grid_and_keeps_resource_strata():
+    profile = _geometry_profile(
+        [(g, c) for g in [10, 20, 30] for c in [10, 20, 30]], resources=(1, 2)
+    )
+    profile["runtime_points"] = [
+        point
+        for point in profile["runtime_points"]
+        if point["threads"] == 1 or point["genes"] == point["cells"]
+    ]
+    result = validate_simulator_costs.calibration_coverage({"profiles": [profile]})
+    resources = result["profiles"][0]["resources"]
+    assert resources[0]["calibration_adequate_for_planned_range"]
+    assert not resources[1]["calibration_adequate_for_planned_range"]
+    assert not result[
+        "calibration_adequate_for_planned_range"
+    ]  # missing declared thread=2 crosses
+
+
+def test_simulator_geometry_honors_declared_native_fixed_dimensions():
+    profile = _geometry_profile([(10, c) for c in [10, 20, 30]], fixed={"genes": 10})
+    result = validate_simulator_costs.calibration_coverage({"profiles": [profile]})
+    assert result["calibration_adequate_for_planned_range"]
+    profile["benchmark_config"]["dimension_profile"] = {}
+    assert not validate_simulator_costs.calibration_coverage({"profiles": [profile]})[
+        "calibration_adequate_for_planned_range"
+    ]
+
+
+def test_simulator_geometry_requires_three_successful_repeats_and_registered_profiles():
+    profile = _geometry_profile([(10, 10)], fixed={"genes": 10, "cells": 10})
+    assert validate_simulator_costs.calibration_coverage({"profiles": [profile]})[
+        "calibration_adequate_for_planned_range"
+    ]
+    profile["runtime_points"][0]["repeats_ok"] = 2
+    assert not validate_simulator_costs.calibration_coverage({"profiles": [profile]})[
+        "calibration_adequate_for_planned_range"
+    ]
+    result = validate_simulator_costs.calibration_coverage(
+        {"profiles": [profile]}, {"missing": object()}
+    )
+    assert result["missing_profiles"] == ["missing"]
+
+
+def test_simulator_geometry_preserves_failures_separately_from_successful_support():
+    profile = _geometry_profile([(10, 10)], fixed={"genes": 10, "cells": 10})
+    profile["runtime_points"][0].update(
+        status="partial",
+        repeats_failed=1,
+        repeats_total=4,
+        failure_breakdown={"error": 1},
+    )
+    result = validate_simulator_costs.calibration_coverage({"profiles": [profile]})
+    assert result["calibration_adequate_for_planned_range"]
+    assert result["profiles"][0]["resources"][0]["failed_repetitions"] == 1
+
+
+def test_simulator_geometry_uses_declared_domain_when_recipe_defers_sizes_to_cli():
+    profile = _geometry_profile([(10, c) for c in [10, 20, 30]], fixed={"genes": 10})
+    recipe = SimpleNamespace(
+        sizes=None, dimension_profile=profile["benchmark_config"]["dimension_profile"]
+    )
+    assert validate_simulator_costs.calibration_coverage(
+        {"profiles": [profile]}, {"geometry": recipe}
+    )["calibration_adequate_for_planned_range"]
 
 
 if __name__ == "__main__":

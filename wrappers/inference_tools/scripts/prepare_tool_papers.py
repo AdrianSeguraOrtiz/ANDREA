@@ -1,4 +1,4 @@
-"""Extract local PDF papers for one or more tools into plain-text sidecars.
+"""Accept local TXT evidence and optionally extract PDF papers to sidecars.
 
 Usage examples:
 1) Extract local paper PDFs for one tool:
@@ -7,7 +7,7 @@ Usage examples:
 2) Re-extract every local PDF under tools/*/papers:
    python prepare_tool_papers.py --force
 
-The script only operates on PDFs under:
+The script validates TXT and optionally extracts PDFs under:
   wrappers/inference_tools/tools/<tool_id>/papers/
 
 For each PDF it writes a text file next to it:
@@ -28,17 +28,18 @@ from shared.catalog_tools import (
     select_tools,
 )
 from shared.paper_text import (
+    discover_paper_files,
     extract_pdf_to_text,
     output_path_for_pdf,
-    resolve_pdftotext_bin,
+    validate_paper_text,
 )
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Extract local paper PDFs under wrappers/inference_tools/tools/<tool_id>/papers "
-            "into plain-text sidecar files."
+            "Accept local paper TXT directly; extract optional PDFs under "
+            "wrappers/inference_tools/tools/<tool_id>/papers into text sidecars."
         )
     )
     parser.add_argument(
@@ -75,10 +76,11 @@ def extract_pdf(
     output_path: Path,
     *,
     force: bool,
-    pdftotext: str,
+    pdftotext: str | None = None,
 ) -> str:
     existed_before = output_path.exists()
     if existed_before and not force:
+        validate_paper_text(output_path)
         return "skipped"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,16 +99,27 @@ def run_for_tool(
     tool_id: str,
     tool_dir: Path,
     force: bool,
-    pdftotext: str,
+    pdftotext: str | None = None,
 ) -> tuple[int, int]:
     papers_root = papers_root_for(tool_dir)
     if not papers_root.exists() or not papers_root.is_dir():
         print(f"[{tool_id}] no papers directory: {papers_root}")
         return 0, 0
 
-    pdf_paths = sorted(path for path in papers_root.rglob("*.pdf") if path.is_file())
+    text_paths, pdf_paths = discover_paper_files(papers_root)
+    regenerated_paths = (
+        {output_path_for_pdf(path) for path in pdf_paths} if force else set()
+    )
+    for text_path in text_paths:
+        if text_path in regenerated_paths:
+            continue
+        validate_paper_text(text_path)
+        print(f"  TXT     {text_path}")
     if not pdf_paths:
-        print(f"[{tool_id}] no PDF files found under {papers_root}")
+        print(
+            f"[{tool_id}] usable TXT files={len(text_paths)}; PDF not required. "
+            "Bibliography, extraction quality and scientific scope still require review."
+        )
         return 0, 0
 
     converted = 0
@@ -131,7 +144,6 @@ def run_for_tool(
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        pdftotext = resolve_pdftotext_bin()
         discovered = discover_tool_source_dirs(args.tool_sources_root)
         selected = select_tools(discovered, args.tool)
     except RuntimeError as exc:
@@ -147,7 +159,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 tool_id=tool_id,
                 tool_dir=tool_dir,
                 force=args.force,
-                pdftotext=pdftotext,
             )
         except RuntimeError as exc:
             failed += 1

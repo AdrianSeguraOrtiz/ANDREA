@@ -1,0 +1,13 @@
+column	timepoint	time_unit	series_id	condition	observation_id
+treated_t5_sample2_tech1	5	hour	treated_experiment	treated	treated_t5_sample2
+treated_t5_sample1_tech1	5	hour	treated_experiment	treated	treated_t5_sample1
+treated_t2_sample2_tech1	2	hour	treated_experiment	treated	treated_t2_sample2
+treated_t2_sample1_tech1	2	hour	treated_experiment	treated	treated_t2_sample1
+treated_t0_sample2_tech1	0	hour	treated_experiment	treated	treated_t0_sample2
+treated_t0_sample1_tech1	0	hour	treated_experiment	treated	treated_t0_sample1
+control_t4_sample2_tech1	4	hour	control_experiment	control	control_t4_sample2
+control_t4_sample1_tech1	4	hour	control_experiment	control	control_t4_sample1
+control_t1_sample2_tech1	1	hour	control_experiment	control	control_t1_sample2
+control_t1_sample1_tech1	1	hour	control_experiment	control	control_t1_sample1
+control_t0_sample2_tech1	0	hour	control_experiment	control	control_t0_sample2
+control_t0_sample1_tech1	0	hour	control_experiment	control	control_t0_sample1

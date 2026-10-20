@@ -225,3 +225,102 @@ python wrappers/inference_tools/scripts/validate_tool_costs.py \
 Costs updated incrementally during an unfinished campaign are working artifacts,
 not a completed release calibration. The final validation must pass before
 publishing them as such. Keep campaign evidence in ignored storage.
+
+## Acceptance of new integrations
+
+Use the shared [integration workflow](../../../docs/INTEGRATION_WORKFLOW.md)
+for the scientific and functional gates. For costs, record three separate
+outcomes: schema/semantic validity, coverage of the declared calibration domain,
+and observed accuracy on independent predictions. Neither coverage nor the
+release provenance gate establishes the third outcome.
+
+For a new tool without `cost.json`, bootstrap with its existing per-tool
+`benchmark_costs.py --tool TOOL_ID --plan-only` and then the planned benchmark
+after resource availability is confirmed. `run_cost_coverage.py` is the existing
+catalog campaign coordinator: its execution ordering reads prior costs and
+expects registered representative recipes/fixtures. It is not the bootstrap
+path for an unmeasured integration.
+
+The campaign's `--plan-only` is a CPU-only static inspection: it does not need
+Docker, resolve image IDs, verify fixtures, create evidence directories or run
+measurements. Its JSON lists profiles, sizes, actual resource assignments,
+repetitions, retained historical points, total run allocations and a sequential
+timeout budget. This budget counts all planned repetitions before verified
+reuse; it is not a measured ETA and excludes setup and validation. Inspect
+fixture provenance and host capacity before executing. Real execution freezes
+this plan in `execution-plan.json`, then immutable images and commands in
+`campaign.json`. A changed plan requires a new evidence directory.
+
+Reserve hold-out dimensions and datasets before measurement. Freeze the exact
+`cost.json` snapshot, estimator source/model, predictions, scope and thresholds
+before collecting those timings. Keep the hold-outs outside calibration recipes
+and `--reuse-results-dir`; if subsequently fitted, retire their independent
+validation claim and reserve fresh observations. Test interpolation inside the
+supported geometry and extrapolation separately when that behavior is claimed.
+Include every resource/profile stratum claimed by the new integration.
+
+The shared checker reads retained evidence and never runs containers or updates
+costs:
+
+```bash
+python wrappers/validate_cost_predictions.py \
+  --plan /path/to/frozen-prediction-plan.json \
+  --observations /path/to/validation-observations.json \
+  --report /path/to/prediction-validation.json
+```
+
+Its authoritative input contract is in
+[`validate_cost_predictions.py`](../../validate_cost_predictions.py) and
+`python wrappers/validate_cost_predictions.py --help`. Prepare the two JSON
+manifests autonomously from the retained benchmark evidence:
+
+| Manifest | Required evidence |
+| --- | --- |
+| Plan | `schema_version: 1`; `cost` and `estimator` artifact references; `training_observations`; `cases` |
+| Each planned case | Unique `id`; `kind: interpolation` or `extrapolation`; `identity`; positive numeric `dimensions`; `inputs`; `predicted_typical_seconds`; `predicted_planning_seconds`; explicit finite `max_relative_error` and `min_planning_coverage` |
+| Observations | Exact `plan_sha256`; `cases` with identical case IDs, each holding `observations` with at least three successful distinct raw receipts |
+| Each training/validation observation | Unique `id`; `receipt`; `identity`; `dimensions`; nonempty `inputs` and `outputs` artifact inventories |
+| Artifact reference | `path` and SHA256 `sha256`, relative to its enclosing manifest; a receipt can add RFC6901 `pointer`, e.g. `/0`, to select a raw JSON measurement row. Each input additionally needs `role: primary` (workload matrix/configuration) or `role: shared` (annotation/native resource); at least one primary input is required |
+| Identity | `profile_id`, immutable `image_id`, `params_sha256`, `source_sha256`, `hardware_id`, `threads`, `ram_gb` |
+
+`params_sha256` identifies the resolved recipe with its dimensional mappings;
+point coordinates are recorded separately. Include resolved parameter files and
+scientific metadata in the retained input inventory. Receipt rows must retain
+`status`, individual `seconds`, a stable unique `run_id`, all observed identity
+fields and dimensions (flat or nested), and `input_sha256` matching the verified
+inventory (hash list or name-to-hash mapping). Every representation of a field
+must agree with the manifest. An adapted receipt can retain `raw_evidence`
+artifact references (relative to the receipt, with optional pointers) to original
+timing rows and configuration/provenance. The checker verifies those references
+and rejects contradictory original fields or reused source execution rows.
+Review and retain the mapping; do not invent missing execution identities or
+measurements. Historical timings lacking sufficient evidence remain pending.
+Preserve failed attempts separately and report
+them; an unsuccessful receipt fails this gate. Calibration-labelled receipts
+cannot be relabelled as validation.
+
+The checker verifies file hashes, copied-receipt/ID disjointness, distinct
+calibration and held-out dimensions/primary inputs, matching profile/resource
+identities, median relative error and the observed fraction of repetitions under
+the planning budget. These fractions from three repeats are not calibrated
+prediction intervals. Its interpolation/extrapolation label checks axis ranges;
+the separate coverage gate and scientific review must establish geometric
+support. Shared annotations may recur; reusing a primary training input is
+rejected even if another annotation is appended or the input is labelled shared.
+Hashes and manifests cannot authenticate measurements, prove that the training
+list or validation attempt/failure inventory is complete, establish chronology
+or prove experimental independence. The checker also does not execute the
+hashed estimator or prove predictions came from it. Retain review evidence for
+those links, input roles and any receipt adaptation alongside the report.
+
+Coverage counts at least the declared number of successful repeats (minimum
+three) even when a point also retains failures; `failed_repetitions` is reported
+separately for reliability review. Campaign publication and raw-receipt reuse
+retain their own stricter success checks.
+
+For bulk time series, `dimensions` must explicitly include timepoints per series,
+independent series/replicates and relevant dynamic settings. Inputs must contain
+the actual temporal metadata and matrices. Current calibration coverage readers
+still analyze genes versus total columns (simulators call columns `cells`);
+passing them alone does not certify independent coverage of temporal axes or
+the validity of a temporal fixture.

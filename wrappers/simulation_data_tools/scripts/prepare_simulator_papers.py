@@ -1,4 +1,4 @@
-"""Extract local simulator paper PDFs into plain-text sidecars.
+"""Accept local simulator TXT and optionally extract PDF papers to sidecars.
 
 This script operates on local evidence directories under:
 
@@ -18,15 +18,16 @@ from shared.catalog_simulators import (
     select_simulators,
 )
 from shared.paper_text import (
+    discover_paper_files,
     extract_pdf_to_text,
     output_path_for_pdf,
-    resolve_pdftotext_bin,
+    validate_paper_text,
 )
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Extract local simulator paper PDFs into .txt sidecars."
+        description="Accept simulator paper TXT directly and extract optional PDF sidecars."
     )
     parser.add_argument(
         "--simulator-evidence-root",
@@ -62,10 +63,11 @@ def extract_pdf(
     pdf_path: Path,
     output_path: Path,
     force: bool,
-    pdftotext: str,
+    pdftotext: str | None = None,
 ) -> str:
     existed_before = output_path.exists()
     if existed_before and not force:
+        validate_paper_text(output_path)
         return "skipped"
 
     ok, error = extract_pdf_to_text(
@@ -81,7 +83,6 @@ def extract_pdf(
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        pdftotext = resolve_pdftotext_bin()
         discovered = discover_evidence_dirs(args.simulator_evidence_root)
         selected = select_simulators(discovered, args.simulator)
     except RuntimeError as exc:
@@ -98,9 +99,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"[{simulator_id}] no papers directory: {papers_root}")
             continue
 
-        pdf_paths = sorted(papers_root.rglob("*.pdf"))
+        try:
+            text_paths, pdf_paths = discover_paper_files(papers_root)
+            regenerated_paths = (
+                {output_path_for_pdf(path) for path in pdf_paths}
+                if args.force
+                else set()
+            )
+            for text_path in text_paths:
+                if text_path in regenerated_paths:
+                    continue
+                validate_paper_text(text_path)
+                print(f"[{simulator_id}] TXT: {text_path}")
+        except RuntimeError as exc:
+            failures.append(f"{papers_root}: {exc}")
+            print(f"[{simulator_id}] FAILED: {exc}", file=sys.stderr)
+            if args.fail_fast:
+                break
+            continue
         if not pdf_paths:
-            print(f"[{simulator_id}] no PDFs found under {papers_root}")
+            print(
+                f"[{simulator_id}] usable TXT files={len(text_paths)}; PDF not required. "
+                "Bibliography, extraction quality and scientific scope still require review."
+            )
             continue
 
         for pdf_path in pdf_paths:
@@ -110,7 +131,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                     pdf_path=pdf_path,
                     output_path=output_path,
                     force=args.force,
-                    pdftotext=pdftotext,
                 )
                 counts[status] += 1
                 print(f"[{simulator_id}] {status}: {output_path}")

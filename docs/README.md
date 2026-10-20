@@ -13,6 +13,9 @@ GUI screens and catalogs.
 - [Catalogs and coverage](catalogs.md)
 - [External Docker tools](external-docker-tools.md)
 - [Developer notes](development.md)
+- [Autonomous integration procedure and reusable prompts](INTEGRATION_WORKFLOW.md)
+- [Bulk observed-time contract audit](bulk-time-series-contract.md)
+- [Osaka procedure audit and pending gates](osaka-integration-audit.md)
 - [Release notes and migration](changelog.md)
 - [Release checklist](release.md)
 

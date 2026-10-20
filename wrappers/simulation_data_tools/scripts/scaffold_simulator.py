@@ -13,8 +13,12 @@ from shared.catalog_simulators import (
     DEFAULT_CATALOG_SIMULATORS_ROOT,
     DEFAULT_SMOKETEST_CONFIGS_ROOT,
     DEFAULT_WRAPPERS_ROOT,
+    REPO_ROOT,
     expected_docker_image,
 )
+
+sys.path.insert(0, str(REPO_ROOT / "wrappers/integration"))
+from scaffold_support import reviewed_draft
 
 SIMULATOR_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 WRAPPER_RE = re.compile(r"^[a-z0-9][a-z0-9_.+-]*$")
@@ -29,7 +33,7 @@ WRAPPER_EXTENSION_MAP = {
 }
 
 RUNTIME_ENTRYPOINTS = {
-    "python": ("python", "/app/run_simulator.py"),
+    "python": ("python3", "/app/run_simulator.py"),
     "r": ("Rscript", "/app/run_simulator.R"),
     "bash": ("bash", "/app/run_simulator.sh"),
     "sh": ("bash", "/app/run_simulator.sh"),
@@ -77,12 +81,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--activate-catalog",
         action="store_true",
-        help="Write an active catalog simulatorspec.json. By default only a draft is created in the wrapper dir.",
+        help="Promote an existing reviewed SimulatorSpec draft after schema and identity checks.",
     )
     parser.add_argument(
         "--activate-smoketest",
         action="store_true",
-        help="Write an active smoketest config. By default only a draft is created in the wrapper dir.",
+        help="Promote an existing reviewed smoketest draft after schema and identity checks.",
     )
     parser.add_argument(
         "--force",
@@ -109,10 +113,11 @@ def write_json(path: Path, payload: dict[str, object], *, force: bool) -> str:
 
 
 def dockerfile_template(wrapper: str, script_name: str) -> str:
-    runtime_bin, app_script = RUNTIME_ENTRYPOINTS.get(
+    runtime_bin, _app_script = RUNTIME_ENTRYPOINTS.get(
         wrapper,
         ("bash", f"/app/{script_name}"),
     )
+    app_script = f"/app/{script_name}"
     return f"""FROM ubuntu:24.04
 
 RUN apt-get update \\
@@ -120,6 +125,8 @@ RUN apt-get update \\
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+# TODO: verify preferred installation; pin base digest, public upstream and dependencies.
+# The local repo/ and papers/ are evidence only and must not be copied or mounted.
 COPY wrappers/simulation_data_tools/simulators/{{simulator_id}}/{script_name} /app/{script_name}
 
 ENTRYPOINT ["{runtime_bin}", "{app_script}", "--request", "/work/request/simulator-run-request.json", "--output-dir", "/work/out"]
@@ -179,7 +186,7 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
         "name": simulator_id,
         "publication": ["TODO_PUBLICATION_URL"],
         "first_author": "TODO",
-        "year": 2026,
+        "year": None,
         "simulation_summary": "TODO: describe simulator scope and assumptions.",
         "simulation_keywords": ["todo"],
         "implementation_url": "TODO_IMPLEMENTATION_URL",
@@ -189,6 +196,7 @@ def spec_payload(simulator_id: str) -> dict[str, object]:
             "optional": [],
             "conditional_required": [],
         },
+        "compatibility_rules": [],
         "runtime_resources": {
             "threading": {
                 "supported": False,
@@ -321,42 +329,45 @@ inline in `extra_inputs`; create or reuse an input spec instead.
 
 ## Cost Profiles
 
-After smoke tests pass, add a bounded benchmark matrix under
-`wrappers/simulation_data_tools/cost_profiles/{simulator_id}.json` and generate
-the catalog `cost.json` with:
-
-```bash
-make benchmark-simulator-costs ARGS="--simulator {simulator_id}"
-make validate-simulator-costs ARGS="--simulator {simulator_id} --require"
-```
+Status: pending. Design and estimate the bounded campaign before measuring,
+following [the common integration workflow](../../../../docs/INTEGRATION_WORKFLOW.md)
+and the simulator cost-profile guide. Track structural/semantic validity of
+`cost.json`, declared-domain coverage and independent predictive accuracy
+separately in `integration.json`. Respect active resource reservations.
 """
 
 
 def integration_decisions_template(simulator_id: str) -> str:
-    return f"""# {simulator_id} Integration Decisions
+    template = (REPO_ROOT / "wrappers/integration/decisions.template.md").read_text(
+        encoding="utf-8"
+    )
+    values = {
+        "id": simulator_id,
+        "kind": "simulation",
+        "evidence_path": f"wrappers/simulation_data_tools/simulators/{simulator_id}",
+        "contract_name": "simulatorspec.json",
+        "specific_decisions": """Audit supported `data_axes` / `truth_requirements`
+combinations and excluded combinations with evidence. Record native versus
+derivable extras and truth, derivation assumptions, simulator-side input specs
+and conditional rules, parameter bindings and progress strategy. Every accepted
+request/capability must support `tf_list` and always emit `extras/tf_list.txt`.
+Preserve gene, expression-column and group identifiers; export truth through
+`truth/networks.csv` with `global`, `group:<id>` and `column:<id>` contexts only
+when justified. `column` follows `data_axes.column_kind`, not necessarily cells.
+Document native source artifacts, upstream configurations, score/direction/sign
+semantics and limitations for every truth context. Record the actual mapping
+of request `runtime_resources.threads` to public upstream controls.""",
+    }
+    for key, value in values.items():
+        template = template.replace("{{" + key + "}}", value)
+    return template
 
-TODO: record paper/repo review and wrapper decisions.
 
-## Required Decisions
-
-- upstream evidence reviewed
-- selected installation route and version/tag/commit
-- selected public API/CLI entrypoint
-- supported semantic capabilities and intentionally unsupported
-  `data_axes` / `truth_requirements` combinations
-- native and derivable extras
-- mandatory `tf_list` support in every capability and unconditional generation
-  of `extras/tf_list.txt`
-- simulator-side input specs and `extra_inputs` usage/conditional rules
-- parameter mapping and unsupported function-valued hooks
-- `runtime_resources.threading` contract and request `runtime_resources.threads`
-  mapping to upstream controls
-- output mapping, including `global`, `group:<id>` and `column:<id>` truth
-  contexts when supported
-- progress strategy
-- smoke-test matrix by data axes, truth contexts, extras and outcome
-- cost profile status and ETA fallback/cost behavior
-"""
+def integration_payload(simulator_id: str) -> dict[str, object]:
+    template_path = REPO_ROOT / "wrappers/integration/integration.template.json"
+    payload = json.loads(template_path.read_text(encoding="utf-8"))
+    payload.update(kind="simulation", id=simulator_id)
+    return payload
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -365,20 +376,79 @@ def main(argv: Sequence[str] | None = None) -> int:
     wrapper = args.wrapper.strip().lower()
     wrapper_ext = args.wrapper_ext or WRAPPER_EXTENSION_MAP.get(wrapper, wrapper)
 
-    if not SIMULATOR_ID_RE.match(simulator_id):
+    if not SIMULATOR_ID_RE.fullmatch(simulator_id):
         print(f"ERROR: invalid simulator id: {simulator_id}", file=sys.stderr)
         return 2
-    if not WRAPPER_RE.match(wrapper):
+    if not WRAPPER_RE.fullmatch(wrapper):
         print(f"ERROR: invalid wrapper name: {wrapper}", file=sys.stderr)
         return 2
-    if not WRAPPER_EXT_RE.match(wrapper_ext):
+    if not WRAPPER_EXT_RE.fullmatch(wrapper_ext):
         print(f"ERROR: invalid wrapper extension: {wrapper_ext}", file=sys.stderr)
         return 2
 
     wrapper_dir = args.wrappers_root / simulator_id
     script_name = f"run_simulator.{wrapper_ext}"
+    if args.activate_catalog or args.activate_smoketest:
+        promotions = []
+        try:
+            if args.activate_catalog:
+                promotions.append(
+                    (
+                        args.catalog_simulators_root
+                        / simulator_id
+                        / "simulatorspec.json",
+                        reviewed_draft(
+                            wrapper_dir / "simulatorspec.draft.json",
+                            schema_path=REPO_ROOT
+                            / "andrea/catalog_simulation_data_tools/schemas/simulatorspec.schema.json",
+                            expected_id=simulator_id,
+                        ),
+                    )
+                )
+            if args.activate_smoketest:
+                promotions.append(
+                    (
+                        args.smoketest_configs_root / f"{simulator_id}_basic.json",
+                        reviewed_draft(
+                            wrapper_dir / "smoketest.config.draft.json",
+                            schema_path=REPO_ROOT
+                            / "wrappers/simulation_data_tools/tests/schemas/smoketest.config.schema.json",
+                            expected_id=simulator_id,
+                            id_field="simulator_id",
+                        ),
+                    )
+                )
+        except (RuntimeError, OSError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+        for path, content in promotions:
+            print(f"[{write_file(path, content, force=args.force)}] {path}")
+        print(
+            "Reviewed drafts promoted; functional verification, calibration and publication remain separate gates."
+        )
+        return 0
+    # Evidence directories are never installation/runtime dependencies.
+    (wrapper_dir / "papers").mkdir(parents=True, exist_ok=True)
+    (wrapper_dir / "repo").mkdir(parents=True, exist_ok=True)
 
     outputs: list[tuple[Path, str]] = []
+    for filename, content in (
+        (
+            "integration.json",
+            json.dumps(integration_payload(simulator_id), indent=2, ensure_ascii=True)
+            + "\n",
+        ),
+        (
+            "Dockerfile.dockerignore",
+            "**/repo\n**/papers\n**/.git\n**/.venv\n**/__pycache__\n",
+        ),
+    ):
+        outputs.append(
+            (
+                wrapper_dir / filename,
+                write_file(wrapper_dir / filename, content, force=args.force),
+            )
+        )
     dockerfile = dockerfile_template(wrapper, script_name).replace(
         "{simulator_id}", simulator_id
     )
@@ -418,12 +488,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     draft_spec = wrapper_dir / "simulatorspec.draft.json"
-    active_spec = args.catalog_simulators_root / simulator_id / "simulatorspec.json"
     outputs.append(
         (
-            active_spec if args.activate_catalog else draft_spec,
+            draft_spec,
             write_json(
-                active_spec if args.activate_catalog else draft_spec,
+                draft_spec,
                 spec_payload(simulator_id),
                 force=args.force,
             ),
@@ -431,12 +500,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     draft_smoke = wrapper_dir / "smoketest.config.draft.json"
-    active_smoke = args.smoketest_configs_root / f"{simulator_id}_basic.json"
     outputs.append(
         (
-            active_smoke if args.activate_smoketest else draft_smoke,
+            draft_smoke,
             write_json(
-                active_smoke if args.activate_smoketest else draft_smoke,
+                draft_smoke,
                 smoketest_payload(simulator_id),
                 force=args.force,
             ),

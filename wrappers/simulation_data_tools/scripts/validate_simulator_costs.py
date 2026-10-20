@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+from itertools import combinations
 import sys
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -16,7 +18,12 @@ if str(_REPO_ROOT_FOR_IMPORTS) not in sys.path:
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from benchmark_support import (
-    build_context_fingerprint, load_script, profile_fingerprint, provenance_errors, release_profile_errors,
+    atomic_json,
+    build_context_fingerprint,
+    load_script,
+    profile_fingerprint,
+    provenance_errors,
+    release_profile_errors,
 )
 
 from andrea.core.commands.generate_data.catalog import get_semantic_capability
@@ -32,7 +39,9 @@ from shared.catalog_simulators import (
 )
 
 DEFAULT_SCHEMA_PATH = CATALOG_ROOT / "schemas" / "simulatorcost.schema.json"
-_BENCHMARK = load_script(Path(__file__).with_name("benchmark_costs.py"), "andrea_simulator_cost_benchmark")
+_BENCHMARK = load_script(
+    Path(__file__).with_name("benchmark_costs.py"), "andrea_simulator_cost_benchmark"
+)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -67,19 +76,186 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Stop at the first invalid cost profile.",
     )
-    parser.add_argument("--require-provenance", action="store_true", help="Require current catalog image/spec provenance and at least three timing repeats.")
-    parser.add_argument("--cost-profiles-dir", type=Path, default=_BENCHMARK.DEFAULT_COST_PROFILES_DIR)
-    parser.add_argument("--param-overrides-dir", type=Path, default=_BENCHMARK.DEFAULT_PARAM_OVERRIDES_DIR)
+    parser.add_argument(
+        "--require-provenance",
+        action="store_true",
+        help="Require current catalog image/spec provenance and at least three timing repeats.",
+    )
+    parser.add_argument(
+        "--cost-profiles-dir", type=Path, default=_BENCHMARK.DEFAULT_COST_PROFILES_DIR
+    )
+    parser.add_argument(
+        "--param-overrides-dir",
+        type=Path,
+        default=_BENCHMARK.DEFAULT_PARAM_OVERRIDES_DIR,
+    )
+    parser.add_argument(
+        "--coverage-report",
+        type=Path,
+        help="Write measured geometry by profile and resource assignment, separately from prediction accuracy.",
+    )
+    parser.add_argument(
+        "--require-coverage",
+        action="store_true",
+        help="Require complete declared matrices and three levels on each free axis with independent crosses; honor explicitly fixed native dimensions.",
+    )
     return parser.parse_args(argv)
+
+
+def calibration_coverage(instance: dict, planned: dict | None = None) -> dict:
+    """Assess geometry without assigning scientific validity to a bounding box.
+
+    Native fixed dimensions come from the resolved recipe, never from the mere
+    fact that only one coordinate happened to be measured. Historical recipes
+    with sparse free axes remain incomplete under this opt-in release check.
+    """
+    planned = planned or {}
+    reports = []
+    for profile in instance.get("profiles", []):
+        config = profile.get("benchmark_config", {})
+        recipe = planned.get(profile.get("profile_id"))
+        # A recipe can deliberately defer sizes to the benchmark CLI. In that
+        # case assess the measured campaign's declared domain, rather than
+        # inventing a current default grid for a historical measurement.
+        sizes = (
+            [vars(size) for size in recipe.sizes]
+            if recipe is not None and recipe.sizes is not None
+            else config.get("sizes", [])
+        )
+        dimensions = (
+            recipe.dimension_profile if recipe else config.get("dimension_profile", {})
+        )
+        fixed = {
+            axis: mapping["fixed"]
+            for axis in ("genes", "cells")
+            if isinstance((mapping := dimensions.get(f"{axis}_param")), dict)
+            and "fixed" in mapping
+        }
+        geometry = {(size["genes"], size["cells"]) for size in sizes}
+        expected = {
+            (size["genes"], size["cells"], thread, float(ram))
+            for size in config.get("sizes", [])
+            for thread in config.get("threads_tested", [])
+            for ram in config.get("ram_gb_tested", [])
+        }
+        measured = {
+            (point["genes"], point["cells"], point["threads"], float(point["ram_gb"]))
+            for point in profile.get("runtime_points", [])
+            if point.get("status") in {"ok", "partial"}
+            and point.get("repeats_ok", 0) >= max(3, config.get("repeats", 3))
+            and all(
+                isinstance(point.get(key), (int, float))
+                and not isinstance(point[key], bool)
+                and math.isfinite(point[key])
+                and point[key] > 0
+                for key in ("seconds_p50", "seconds_p90")
+            )
+        }
+        resources = []
+        for thread, ram in sorted(
+            {(point[2], point[3]) for point in expected | measured}
+        ):
+            points = {(g, c) for g, c, t, r in measured if (t, r) == (thread, ram)}
+            genes, cells = sorted({g for g, _ in points}), sorted(
+                {c for _, c in points}
+            )
+            rectangles = sum(
+                1
+                for g1, g2 in combinations(genes, 2)
+                for c1, c2 in combinations(cells, 2)
+                if {(g1, c1), (g1, c2), (g2, c1), (g2, c2)} <= points
+            )
+            # Independent slices: gene variation at fixed columns and column
+            # variation at fixed genes. A diagonal never satisfies both.
+            genes_ok = (
+                genes == [fixed["genes"]]
+                if "genes" in fixed
+                else max(
+                    (sum(c == cell for _, c in points) for cell in cells), default=0
+                )
+                >= 3
+            )
+            cells_ok = (
+                cells == [fixed["cells"]]
+                if "cells" in fixed
+                else max(
+                    (sum(g == gene for g, _ in points) for gene in genes), default=0
+                )
+                >= 3
+            )
+            missing = geometry - points
+            resources.append(
+                {
+                    "threads": thread,
+                    "ram_gb": ram,
+                    "failed_repetitions": sum(
+                        point.get("repeats_failed", 0)
+                        for point in profile.get("runtime_points", [])
+                        if (point.get("threads"), point.get("ram_gb")) == (thread, ram)
+                    ),
+                    "measured_sizes": [
+                        {"genes": g, "cells": c} for g, c in sorted(points)
+                    ],
+                    "planned_sizes_missing": [
+                        {"genes": g, "cells": c} for g, c in sorted(missing)
+                    ],
+                    "fixed_axes": fixed,
+                    "gene_levels": genes,
+                    "cell_levels": cells,
+                    "measured_rectangles": rectangles,
+                    "calibration_adequate_for_planned_range": bool(
+                        geometry
+                        and not missing
+                        and genes_ok
+                        and cells_ok
+                        and (fixed or rectangles)
+                    ),
+                }
+            )
+        reports.append(
+            {
+                "profile_id": profile.get("profile_id"),
+                "resources": resources,
+                "declared_matrix_complete": bool(expected and expected <= measured),
+                "declared_points_missing": [
+                    dict(zip(("genes", "cells", "threads", "ram_gb"), p))
+                    for p in sorted(expected - measured)
+                ],
+                "dimension_semantics": config.get(
+                    "dimension_semantics",
+                    {"genes": "exported_genes", "cells": "exported_columns"},
+                ),
+                "calibration_adequate_for_planned_range": bool(
+                    expected
+                    and expected <= measured
+                    and any(
+                        resource["calibration_adequate_for_planned_range"]
+                        for resource in resources
+                    )
+                ),
+            }
+        )
+    present = {profile["profile_id"] for profile in reports}
+    missing = sorted(set(planned) - present)
+    return {
+        "profiles": reports,
+        "missing_profiles": missing,
+        "calibration_adequate_for_planned_range": bool(
+            reports
+            and not missing
+            and all(
+                profile["calibration_adequate_for_planned_range"] for profile in reports
+            )
+        ),
+        "coverage_is_prediction_validation": False,
+    }
 
 
 def build_validator(schema: dict[str, Any]) -> Draft202012Validator:
     return Draft202012Validator(schema)
 
 
-def validate_instance(
-    validator: Draft202012Validator, instance: object
-) -> list[str]:
+def validate_instance(validator: Draft202012Validator, instance: object) -> list[str]:
     errors = sorted(validator.iter_errors(instance), key=lambda err: list(err.path))
     messages: list[str] = []
     for error in errors:
@@ -219,7 +395,9 @@ def coverage_errors_for_cost(
     for capability in spec.get("capabilities", []):
         if not isinstance(capability, dict):
             continue
-        supported_extras.update(str(item) for item in capability.get("native_extras", []))
+        supported_extras.update(
+            str(item) for item in capability.get("native_extras", [])
+        )
         supported_extras.update(
             str(item) for item in capability.get("derivable_extras", [])
         )
@@ -229,7 +407,9 @@ def coverage_errors_for_cost(
             )
     missing_extras = sorted(supported_extras.difference(covered_extras))
     if missing_extras:
-        errors.append(f"cost.json missing cost coverage for supported extras: {missing_extras}")
+        errors.append(
+            f"cost.json missing cost coverage for supported extras: {missing_extras}"
+        )
     return errors
 
 
@@ -237,10 +417,16 @@ def _capability_key(payload: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
     data_axes = payload.get("data_axes", {})
     truth_requirements = payload.get("truth_requirements", {})
     return (
-        repr(sorted(data_axes.items())) if isinstance(data_axes, dict) else repr(data_axes),
-        tuple(truth_requirements.get("contexts", []))
-        if isinstance(truth_requirements, dict)
-        else (),
+        (
+            repr(sorted(data_axes.items()))
+            if isinstance(data_axes, dict)
+            else repr(data_axes)
+        ),
+        (
+            tuple(truth_requirements.get("contexts", []))
+            if isinstance(truth_requirements, dict)
+            else ()
+        ),
     )
 
 
@@ -282,7 +468,9 @@ def semantic_input_errors(
     supported.update(capability.get("derivable_extras", []))
     unsupported = sorted(effective.difference(supported))
     if unsupported:
-        errors.append(f"{prefix}.input_profile.effective_extras unsupported: {unsupported}")
+        errors.append(
+            f"{prefix}.input_profile.effective_extras unsupported: {unsupported}"
+        )
 
     requested = list(input_profile.get("requested_extras", []))
     resolved_params = (
@@ -406,7 +594,9 @@ def semantic_runtime_errors(
     threading = spec.get("runtime_resources", {}).get("threading", {})
     errors: list[str] = []
     if runtime_profile.get("threading_supported") != bool(threading.get("supported")):
-        errors.append(f"{prefix}.runtime_resources_profile.threading_supported mismatch.")
+        errors.append(
+            f"{prefix}.runtime_resources_profile.threading_supported mismatch."
+        )
     if runtime_profile.get("max_threads") != int(threading.get("max_threads", 1)):
         errors.append(f"{prefix}.runtime_resources_profile.max_threads mismatch.")
     max_threads = int(threading.get("max_threads", 1))
@@ -471,36 +661,52 @@ def semantic_feature_vector_errors(
         "data_axes": data_axes,
         "truth_requirements": truth_requirements,
         "benchmark_profile_id": profile.get("profile_id"),
-        "expression_profile": data_axes.get("resolution")
-        if isinstance(data_axes, dict)
-        else None,
-        "column_kind": data_axes.get("column_kind")
-        if isinstance(data_axes, dict)
-        else None,
-        "experimental_design": data_axes.get("experimental_design")
-        if isinstance(data_axes, dict)
-        else None,
+        "expression_profile": (
+            data_axes.get("resolution") if isinstance(data_axes, dict) else None
+        ),
+        "column_kind": (
+            data_axes.get("column_kind") if isinstance(data_axes, dict) else None
+        ),
+        "experimental_design": (
+            data_axes.get("experimental_design")
+            if isinstance(data_axes, dict)
+            else None
+        ),
         "truth_context_families": contexts,
         "truth_context_count": len(contexts) if isinstance(contexts, list) else None,
         "extras": effective_extras,
         "requested_extras": requested_extras,
         "effective_extras": effective_extras,
-        "column_truth_requested": "column" in contexts
-        if isinstance(contexts, list)
-        else None,
+        "column_truth_requested": (
+            "column" in contexts if isinstance(contexts, list) else None
+        ),
     }
     point_fields = ("genes", "cells", "groups", "population_count", "threads", "ram_gb")
     errors: list[str] = []
     dimension_semantics = config.get("dimension_semantics")
-    if (isinstance(dimension_semantics, dict)
-            and dimension_semantics.get("genes") == "requested_gene_budget"
-            and config.get("simulator_id") != "dyngen"):
-        errors.append(f"{prefix}: requested gene budgets are only supported for dyngen.")
-    cell_budget = isinstance(dimension_semantics, dict) and dimension_semantics.get("cells") == "requested_cell_budget"
-    if cell_budget and (config.get("simulator_id") != "dyngen"
-                        or config.get("params_profile", {}).get("resolved_base_params", {}).get(
-                            "experiment_params", {}).get("kind") != "snapshot"):
-        errors.append(f"{prefix}: requested cell budgets are only supported for dyngen snapshot sampling.")
+    if (
+        isinstance(dimension_semantics, dict)
+        and dimension_semantics.get("genes") == "requested_gene_budget"
+        and config.get("simulator_id") != "dyngen"
+    ):
+        errors.append(
+            f"{prefix}: requested gene budgets are only supported for dyngen."
+        )
+    cell_budget = (
+        isinstance(dimension_semantics, dict)
+        and dimension_semantics.get("cells") == "requested_cell_budget"
+    )
+    if cell_budget and (
+        config.get("simulator_id") != "dyngen"
+        or config.get("params_profile", {})
+        .get("resolved_base_params", {})
+        .get("experiment_params", {})
+        .get("kind")
+        != "snapshot"
+    ):
+        errors.append(
+            f"{prefix}: requested cell budgets are only supported for dyngen snapshot sampling."
+        )
     for point_idx, point in enumerate(profile.get("runtime_points", []), start=1):
         if not isinstance(point, dict):
             continue
@@ -517,37 +723,70 @@ def semantic_feature_vector_errors(
         if dimension_semantics is not None:
             observed = feature_vector.get("observed_dimensions")
             if feature_vector.get("dimension_semantics") != dimension_semantics:
-                errors.append(f"{point_prefix}.dimension_semantics does not match benchmark_config.")
-            if not isinstance(observed, list) or len(observed) != point.get("repeats_ok"):
-                errors.append(f"{point_prefix}: verified dimensions are required for every successful repeat.")
+                errors.append(
+                    f"{point_prefix}.dimension_semantics does not match benchmark_config."
+                )
+            if not isinstance(observed, list) or len(observed) != point.get(
+                "repeats_ok"
+            ):
+                errors.append(
+                    f"{point_prefix}: verified dimensions are required for every successful repeat."
+                )
                 continue
             native = feature_vector.get("native_sampling", [])
-            if cell_budget and (not isinstance(native, list) or len(native) != len(observed)):
-                errors.append(f"{point_prefix}: native sampling verification is required for every repeat.")
+            if cell_budget and (
+                not isinstance(native, list) or len(native) != len(observed)
+            ):
+                errors.append(
+                    f"{point_prefix}: native sampling verification is required for every repeat."
+                )
                 continue
             for index, dimensions in enumerate(observed):
-                if (not isinstance(dimensions, dict)
-                        or any(not isinstance(dimensions.get(k), int) or isinstance(dimensions.get(k), bool)
-                               or dimensions[k] < 1 for k in ("genes", "columns"))):
-                    errors.append(f"{point_prefix}: invalid verified output dimensions.")
+                if not isinstance(dimensions, dict) or any(
+                    not isinstance(dimensions.get(k), int)
+                    or isinstance(dimensions.get(k), bool)
+                    or dimensions[k] < 1
+                    for k in ("genes", "columns")
+                ):
+                    errors.append(
+                        f"{point_prefix}: invalid verified output dimensions."
+                    )
                     continue
                 if not cell_budget and dimensions["columns"] != point["cells"]:
-                    errors.append(f"{point_prefix}: exported columns differ from the calibration coordinate.")
+                    errors.append(
+                        f"{point_prefix}: exported columns differ from the calibration coordinate."
+                    )
                 if cell_budget:
                     proof = native[index]
-                    if (not isinstance(proof, dict) or proof.get("kind") != "snapshot"
-                            or proof.get("requested_cells") != point["cells"]
-                            or proof.get("observed_cells") != dimensions["columns"]
-                            or proof.get("expected_cells") != dimensions["columns"]
-                            or proof.get("expression_matches_native") is not True
-                            or proof.get("dropped_cells") != point["cells"] - dimensions["columns"]
-                            or dimensions["columns"] > point["cells"]):
-                        errors.append(f"{point_prefix}: exported columns violate the native cell allocation.")
-                    if dimensions["columns"] < point["cells"] and not feature_vector.get("validation_warnings"):
-                        errors.append(f"{point_prefix}: fewer exported cells require an explicit coverage warning.")
-                if (dimension_semantics.get("genes") == "exported_genes" and dimensions["genes"] != point["genes"]
-                        or dimension_semantics.get("genes") == "requested_gene_budget" and dimensions["genes"] < point["genes"]):
-                    errors.append(f"{point_prefix}: exported genes violate the declared dimension semantics.")
+                    if (
+                        not isinstance(proof, dict)
+                        or proof.get("kind") != "snapshot"
+                        or proof.get("requested_cells") != point["cells"]
+                        or proof.get("observed_cells") != dimensions["columns"]
+                        or proof.get("expected_cells") != dimensions["columns"]
+                        or proof.get("expression_matches_native") is not True
+                        or proof.get("dropped_cells")
+                        != point["cells"] - dimensions["columns"]
+                        or dimensions["columns"] > point["cells"]
+                    ):
+                        errors.append(
+                            f"{point_prefix}: exported columns violate the native cell allocation."
+                        )
+                    if dimensions["columns"] < point[
+                        "cells"
+                    ] and not feature_vector.get("validation_warnings"):
+                        errors.append(
+                            f"{point_prefix}: fewer exported cells require an explicit coverage warning."
+                        )
+                if (
+                    dimension_semantics.get("genes") == "exported_genes"
+                    and dimensions["genes"] != point["genes"]
+                    or dimension_semantics.get("genes") == "requested_gene_budget"
+                    and dimensions["genes"] < point["genes"]
+                ):
+                    errors.append(
+                        f"{point_prefix}: exported genes violate the declared dimension semantics."
+                    )
     return errors
 
 
@@ -560,7 +799,9 @@ def validate_param_path(
     for idx, part in enumerate(path.split(".")):
         if part not in current:
             location = ".".join(consumed) if consumed else "(root)"
-            errors.append(f"{prefix} references unknown parameter path '{path}' at {location}/{part}.")
+            errors.append(
+                f"{prefix} references unknown parameter path '{path}' at {location}/{part}."
+            )
             return errors
         param_def = current[part]
         consumed.append(part)
@@ -599,13 +840,14 @@ def run(argv: Sequence[str] | None = None) -> int:
     cost_files = discover_cost_files(
         args.catalog_simulators_root,
         simulator_filters=args.simulator,
-        require=args.require or args.require_provenance,
+        require=args.require or args.require_provenance or args.require_coverage,
     )
     if not cost_files:
         print("No simulator cost.json files found; nothing to validate.")
         return 0
 
     invalid = 0
+    coverage_results = {}
     for simulator_id, cost_path in cost_files:
         print(f"[{simulator_id}] validating {cost_path}")
         try:
@@ -632,22 +874,69 @@ def run(argv: Sequence[str] | None = None) -> int:
             evidence_errors = []
             if isinstance(payload, dict):
                 context_hash = None
-                if args.require_provenance:
-                    context_hash = build_context_fingerprint(root=_REPO_ROOT_FOR_IMPORTS, kind="simulation", identifier=simulator_id)
-                    expected = {
-                        profile.profile_id: profile_fingerprint(profile, root=_REPO_ROOT_FOR_IMPORTS, kind="simulation")
+                if args.coverage_report is not None or args.require_coverage:
+                    planned = {
+                        profile.profile_id: profile
                         for profile in _BENCHMARK.resolve_benchmark_profiles(
-                            simulator_id=simulator_id, spec=load_simulatorspec(args.catalog_simulators_root, simulator_id),
-                            cost_profiles_dir=args.cost_profiles_dir, param_overrides_dir=args.param_overrides_dir,
+                            simulator_id=simulator_id,
+                            spec=load_simulatorspec(
+                                args.catalog_simulators_root, simulator_id
+                            ),
+                            cost_profiles_dir=args.cost_profiles_dir,
+                            param_overrides_dir=args.param_overrides_dir,
+                            default_group_count=_BENCHMARK.DEFAULT_GROUP_COUNT,
+                        )
+                    }
+                    measured_coverage = calibration_coverage(payload, planned)
+                    coverage_results[simulator_id] = measured_coverage
+                    if (
+                        args.require_coverage
+                        and not measured_coverage[
+                            "calibration_adequate_for_planned_range"
+                        ]
+                    ):
+                        evidence_errors.append(
+                            "Calibration geometry is incomplete; inspect --coverage-report. Capability/extras coverage and prediction accuracy are separate checks."
+                        )
+                if args.require_provenance:
+                    context_hash = build_context_fingerprint(
+                        root=_REPO_ROOT_FOR_IMPORTS,
+                        kind="simulation",
+                        identifier=simulator_id,
+                    )
+                    expected = {
+                        profile.profile_id: profile_fingerprint(
+                            profile, root=_REPO_ROOT_FOR_IMPORTS, kind="simulation"
+                        )
+                        for profile in _BENCHMARK.resolve_benchmark_profiles(
+                            simulator_id=simulator_id,
+                            spec=load_simulatorspec(
+                                args.catalog_simulators_root, simulator_id
+                            ),
+                            cost_profiles_dir=args.cost_profiles_dir,
+                            param_overrides_dir=args.param_overrides_dir,
                             default_group_count=_BENCHMARK.DEFAULT_GROUP_COUNT,
                         )
                     }
                     evidence_errors.extend(release_profile_errors(payload, expected))
-                evidence_errors.extend(provenance_errors(
-                    payload, args.catalog_simulators_root / simulator_id / "simulatorspec.json",
-                    required=args.require_provenance, build_context_sha256=context_hash,
-                ))
-            errors = [*schema_errors, *semantic_errors, *coverage_errors, *evidence_errors]
+                evidence_errors.extend(
+                    provenance_errors(
+                        payload,
+                        args.catalog_simulators_root
+                        / simulator_id
+                        / "simulatorspec.json",
+                        required=args.require_provenance,
+                        build_context_sha256=context_hash,
+                    )
+                )
+            errors = [
+                *schema_errors,
+                *semantic_errors,
+                *coverage_errors,
+                *evidence_errors,
+            ]
+            if simulator_id in coverage_results:
+                coverage_results[simulator_id]["file_valid"] = not errors
             if errors:
                 invalid += 1
                 print(f"[{simulator_id}] invalid:")
@@ -659,10 +948,24 @@ def run(argv: Sequence[str] | None = None) -> int:
                 print(f"[{simulator_id}] valid")
         except Exception as exc:  # noqa: BLE001
             invalid += 1
+            coverage_results[simulator_id] = {
+                "error": str(exc),
+                "file_valid": False,
+                "calibration_adequate_for_planned_range": False,
+            }
             print(f"[{simulator_id}] invalid: {exc}")
             if args.fail_fast:
                 break
 
+    if args.coverage_report is not None:
+        atomic_json(
+            args.coverage_report,
+            {
+                "simulators": coverage_results,
+                "coverage_is_prediction_validation": False,
+                "note": "Native fixed dimensions constrain the measured domain. Requested budgets do not certify actual exported dimensions or biological adequacy. Independent held-out prediction validation remains separate.",
+            },
+        )
     if invalid:
         print(f"Invalid simulator cost files: {invalid}", file=sys.stderr)
         return 1

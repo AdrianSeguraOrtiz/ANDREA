@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "kind": "inference",
+  "id": "pending",
+  "artifacts": [],
+  "evidence": [],
+  "installation": {
+    "preference": "pending",
+    "public_source": "pending",
+    "pin": "pending",
+    "image": "pending",
+    "registry_digest": "pending",
+    "evidence": []
+  },
+  "entrypoints": [],
+  "parameters": [],
+  "checks": [],
+  "limitations": ["Scaffold only: no scientific, functional, calibration or publication evidence yet."]
+}

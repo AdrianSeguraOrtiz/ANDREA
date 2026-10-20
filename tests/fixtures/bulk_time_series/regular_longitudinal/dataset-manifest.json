@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "id": "regular_longitudinal_manifest",
+  "dataset": {
+    "spec": {
+      "schema_version": "1.0",
+      "id": "regular_longitudinal",
+      "name": "regular_longitudinal",
+      "expression": {
+        "genes": 3,
+        "columns": 24,
+        "column_kind": "timepoints",
+        "expression_profile": "bulk"
+      },
+      "organism": {
+        "taxonomic_group": "synthetic",
+        "ncbi_taxon_id": null
+      }
+    },
+    "expression_matrix": "expression.tsv"
+  },
+  "extras": {
+    "timepoints": "timepoints.tsv",
+    "replicates": "replicates.tsv"
+  },
+  "notes": "Companion temporal-contract.json is an offline proposal; core does not discover or apply it."
+}

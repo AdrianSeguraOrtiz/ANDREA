@@ -1,6 +1,6 @@
 # Tool Integration Playbook
 
-This playbook defines the recommended hybrid workflow for integrating a new inference tool into `andrea infer-network`.
+This playbook defines the inference-specific contract for the [shared autonomous integration workflow](../../docs/INTEGRATION_WORKFLOW.md). Execute that workflow end to end after one request; the checks below are internal gates, not prompts for user approval.
 
 Use it when you have local evidence under:
 
@@ -11,7 +11,7 @@ wrappers/inference_tools/tools/<tool_id>/
 ```
 
 `repo/` and `papers/` are evidence sources for analysis only. They must not become runtime dependencies.
-For new integrations, assume `papers/` contains one or more PDF files. Convert them to text before semantic analysis.
+Accept articles directly as TXT. PDFs and extraction are optional. Record bibliographic identity, hashes and evidence limitations; a sufficient TXT does not require a PDF.
 Runtime behavior must be reproducible from:
 - `andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json`
 - the wrapper under `wrappers/inference_tools/tools/<tool_id>/`
@@ -38,7 +38,7 @@ The goal of an integration is to produce:
 6. Installation preference:
    - package manager / official library first
    - upstream public repo pinned to tag/commit if no package exists
-   - never depend on an unpinned floating source if avoidable
+   - require immutable pinned public sources; leave the reproducibility gate pending when they are inaccessible
 7. Audit all relevant upstream public modes before choosing the wrapper contract.
 8. Treat execution capabilities as dataset-routing semantics, not as algorithm-variant names.
 9. Preserve public identifiers exactly in public outputs. Expression gene ids,
@@ -63,329 +63,42 @@ The goal of an integration is to produce:
     per-shard raw outputs, logs and configs, then merge deterministically into
     the single public `network.csv` contract.
 
-## Official End-to-End Procedure
+## End-to-end execution
 
-Follow these steps in order. A tool is not considered fully integrated until you reach the final image/cost steps.
+Follow [INTEGRATION_WORKFLOW.md](../../docs/INTEGRATION_WORKFLOW.md) for the
+single-request sequence, minimal files, traceability matrix, calibration design,
+independent validation, receipts, acceptance states and reusable prompt. Keep
+this document for the inference-specific field rules below.
 
-### Step 0. Choose `<tool_id>` and wrapper language
+Commands from the repository root (run only the current gate):
 
-Manual action:
-- choose a stable lowercase id using letters, digits, `_` or `-`
-- choose the initial wrapper language label (`python`, `r`, `matlab`, `julia`, `java`, ...)
-- if the upstream repo is a multi-tool library, decide which method/package/function/CLI entrypoint is the actual target
-- if installation details are unclear in the repo, decide what clarification you will provide later in the prompt
-
-This id will be reused in:
-- [tool source dir](tools/<tool_id>/)
-- [toolspec.json](../../andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
-- [smoketest config](tests/smoketest_configs/<tool_id>.json)
-
-### Step 1. Create the scaffold
-
-Command:
-
-```bash
+```sh
 make scaffold-tool TOOL=<tool_id> WRAPPER=python
-```
-
-Variants:
-- use `WRAPPER=r` if the wrapper should be R-based
-- use another label such as `WRAPPER=matlab`, `WRAPPER=julia` or `WRAPPER=java` for a generic scaffold
-- if the wrapper file extension differs from the language label, pass it through `ARGS`, for example:
-
-```bash
-make scaffold-tool TOOL=<tool_id> WRAPPER=matlab ARGS="--wrapper-ext m"
-```
-
-Expected files after this step:
-- [tool source dir](tools/<tool_id>/)
-- [integration_decisions.md](tools/<tool_id>/integration_decisions.md)
-- [Dockerfile](tools/<tool_id>/Dockerfile)
-- [wrapper stub](tools/<tool_id>/run_tool.py)
-- [toolspec.json](../../andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
-- [smoketest config](tests/smoketest_configs/<tool_id>.json)
-
-### Step 2. Place the upstream evidence
-
-Manual action:
-- copy or clone the upstream implementation into [repo/](tools/<tool_id>/repo/)
-- copy one or more local PDF papers into [papers/](tools/<tool_id>/papers/)
-
-Minimum evidence expected in [repo/](tools/<tool_id>/repo/):
-- README or package docs
-- examples
-- config files or CLI help
-- the relevant function/module/script if the repo contains multiple tools
-- output examples if available
-
-Minimum evidence expected in [papers/](tools/<tool_id>/papers/):
-- primary method paper PDF
-- implementation/package paper PDF if different
-- any additional paper needed to justify special inputs, assumptions or outputs
-
-### Step 3. Extract local PDFs
-
-Command:
-
-```bash
 make prepare-tool-papers TOOL=<tool_id>
-```
-
-Rules:
-- the generated `.txt` files are analysis helpers only
-- the PDFs remain the primary evidence source
-- if extraction quality is poor, record that in [integration_decisions.md](tools/<tool_id>/integration_decisions.md)
-
-### Step 4. Sanity-check the local layout
-
-Manual action:
-- confirm that these paths exist before starting Phase 1:
-  - [repo/](tools/<tool_id>/repo/)
-  - [papers/](tools/<tool_id>/papers/)
-  - [integration_decisions.md](tools/<tool_id>/integration_decisions.md)
-  - [toolspec.json](../../andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
-- confirm that at least one extracted paper text file exists if PDFs were provided
-
-### Step 5. Execute Phase 1: evidence and contract
-
-Goal:
-- produce/update [integration_decisions.md](tools/<tool_id>/integration_decisions.md)
-- draft [toolspec.json](../../andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
-- propose a new normalized input only if the current catalog cannot express the same semantic content
-
-Prompt to paste in chat:
-
-```text
-Please integrate the new tool `<tool_id>` following [TOOL_INTEGRATION_PLAYBOOK.md](wrappers/inference_tools/TOOL_INTEGRATION_PLAYBOOK.md), but only execute Phase 1 for now.
-
-Context:
-- Upstream repo is under [repo/](wrappers/inference_tools/tools/<tool_id>/repo/)
-- Local papers are under [papers/](wrappers/inference_tools/tools/<tool_id>/papers/)
-- Existing scaffold files already exist
-- The working decision log is [integration_decisions.md](wrappers/inference_tools/tools/<tool_id>/integration_decisions.md)
-- The ToolSpec draft location is [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
-- Optional manual clarifications from the integrator:
-  - target method inside a multi-tool library/repo: `<optional>`
-  - relevant module / package / script / function / CLI entrypoint: `<optional>`
-  - preferred installation source if upstream docs are unclear: `<optional>`
-  - preferred version / tag / commit if needed: `<optional>`
-
-Requirements:
-- Review the upstream repo and the local papers
-- Audit all relevant upstream public execution modes/entrypoints before choosing the wrapper contract
-- Produce or update [integration_decisions.md](wrappers/inference_tools/tools/<tool_id>/integration_decisions.md)
-- Draft [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
-- Reuse existing normalized inputs when their semantic content matches
-- If current normalized inputs do not fit semantically, propose and implement a new input spec under [andrea/catalog_inference_tools/input_specs/](andrea/catalog_inference_tools/input_specs/)
-- Do not implement the wrapper yet
-- In [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json), store publication DOIs as full canonical URLs (`https://doi.org/...`) and store `first_author` as the full author name
-- Populate `year`, `method_summary` and `method_keywords` with explicit evidence from the primary paper/repo, not with wrapper-level wording
-- Explicitly decide and document which upstream public entrypoint the integration mirrors
-- Explicitly document any upstream public modes/entrypoints that are not exposed by the wrapper and why
-- Identify runtime resource support. Do not stop at searching for a literal
-  `threads` argument: inspect docs, examples, CLI help and source for worker,
-  process, scheduler, OpenMP/BLAS/MKL/Torch, foreach/joblib/Dask, environment
-  variable, and documented independent-work-unit sharding controls. Document
-  how ANDREA will map assigned `--threads` to the selected mechanism, or why no
-  safe mapping exists.
-- If any upstream default is data-dependent or runtime-dependent, document the exact rule and how the ToolSpec preserves it
-- Determine whether the wrapper should preserve raw method score magnitudes directly or whether the chosen upstream public interface already defines the score scale; if the upstream score is a signed coefficient, document how the wrapper separates `abs(coefficient)` into `score` and coefficient direction into `sign`
-- For every non-trivial field in [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json), record:
-  - chosen value
-  - evidence path(s)
-  - rationale
-  - uncertainty if any
-- Use the field-by-field evidence policy from [TOOL_INTEGRATION_PLAYBOOK.md](wrappers/inference_tools/TOOL_INTEGRATION_PLAYBOOK.md)
-- If optional manual clarifications are provided, treat them as authoritative context for locating the target implementation and installation route unless stronger primary evidence clearly disproves them
-
-Focus especially on:
-1. upstream execution modes/entrypoints and whether each maps to `global`, `group_native`, `group_emulated`, `column_native`, `group_aggregated`, a parameter choice, or is intentionally excluded
-2. input semantics and conditional required inputs by execution mode and by parameter value
-3. parameter mapping and defaults
-4. runtime parallelism support and whether `runtime_resources.threading` should
-   be `supported=true` or `supported=false`, including whether parallelism is
-   native in-process, backend/environment-controlled, or documented
-   process-level sharding over independent work units
-5. output semantics and how they should map to raw `network.csv` with positive `score` magnitudes and direction stored only in `sign`
-6. installation source preference: package first, pinned upstream source second; inspect the installable package/version when it differs from the local repo snapshot
-7. preserving public expression/cell/group ids in wrapper outputs, including any
-   upstream alias map needed to round-trip internal ids back to ANDREA ids
-8. whether any apparent parameter is actually a fixed implementation choice
-   that should be documented instead of exposed as a single-value user param
-9. explicit evidence for `accepts`, `assumes`, `extra_inputs`, `outputs`,
-   `progress`, `runtime_resources`, `params` and `artifacts_aux`
-```
-
-### Step 6. Review the Phase 1 outputs
-
-Manual action:
-- inspect [integration_decisions.md](tools/<tool_id>/integration_decisions.md)
-- inspect [toolspec.json](../../andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json)
-- check that all relevant upstream public modes/entrypoints were audited, including excluded ones
-- check that proposed normalized inputs are semantically correct, not just file-shape compatible
-- check that execution capabilities and conditional input rules are represented in the ToolSpec rather than only in GUI/core behavior
-- decide whether the proposed contract is acceptable before any wrapper code is written
-
-Do not continue to Phase 2 until the contract looks correct.
-
-### Step 7. Execute Phase 2: implementation
-
-Goal:
-- implement the wrapper and Dockerfile
-- keep [toolspec.json](../../andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json) aligned with the real implementation
-- add or update smoketest fixtures/config
-
-Prompt to paste in chat:
-
-```text
-Please continue the integration of `<tool_id>` following [TOOL_INTEGRATION_PLAYBOOK.md](wrappers/inference_tools/TOOL_INTEGRATION_PLAYBOOK.md), executing Phase 2.
-
-Requirements:
-- Use [integration_decisions.md](wrappers/inference_tools/tools/<tool_id>/integration_decisions.md) as the working contract
-- Implement the wrapper under [tools/<tool_id>/](wrappers/inference_tools/tools/<tool_id>/) and the corresponding [Dockerfile](wrappers/inference_tools/tools/<tool_id>/Dockerfile)
-- Do not depend on the local [repo/](wrappers/inference_tools/tools/<tool_id>/repo/) folder at runtime
-- Install the method from an official package when possible, otherwise from a pinned upstream repo/tag/commit
-- Install runtime dependencies with the package manager of the same interpreter/runtime that will execute the wrapper
-- If the runtime build pipeline requires [template_map.json](wrappers/inference_tools/scripts/template_map.json), register `<tool_id>` there with the correct runtime and template bundles
-- Preserve data-dependent or runtime-dependent upstream defaults; if the ToolSpec uses a sentinel such as `null` to mean "defer to upstream default", implement that by omitting the argument rather than hard-coding a replacement value
-- Map the wrapper `--threads` runtime argument to the upstream thread/worker/process/runtime control or documented execution pattern declared in `toolspec.runtime_resources.threading.upstream_mapping`; if the mapping is process-level sharding over independent work units, split work into at most `--threads` public upstream invocations, preserve per-shard raw outputs/configs/logs, and merge deterministically; do not reintroduce thread controls as user-facing tool params
-- Make the wrapper produce raw positive `network.csv` score magnitudes for the chosen upstream interface and `progress.json`
-- If the wrapper completes with a valid `network.csv` but has method-level caveats, degraded fallbacks, or best-effort behavior, write them as a `warnings` list in the final `progress.json`; ANDREA will surface the run as `completed_with_warnings`.
-- Do not apply ANDREA-specific score normalization in the wrapper; downstream normalization is handled later by [merge.py](andrea/core/commands/infer_network/commons/merge.py)
-- Do not write rows with `score <= 0` to `network.csv`; if the upstream method produces a dense matrix, filter zero-magnitude edges in the wrapper before export
-- Preserve expression gene ids, expression column ids and group ids exactly in `network.csv`.
-  If the upstream runtime requires internal aliases, write an auxiliary alias
-  map and convert all public wrapper outputs back to the original ANDREA ids.
-- For undirected methods, export one row per unordered pair and exclude self-loops unless stronger primary evidence clearly requires another edge convention
-- Add or update [smoketest config](wrappers/inference_tools/tests/smoketest_configs/<tool_id>.json) and any needed fixtures under [tests/fixtures/](wrappers/inference_tools/tests/fixtures/)
-- Cover every declared execution capability in smoketests when feasible,
-  including small representative checks for `column_native` and
-  `group_aggregated` contracts.
-- Build the image and run the smoketest during this phase; if it fails, fix the implementation and repeat until it passes
-- Keep [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json) aligned with the implemented behavior
-- Update [integration_decisions.md](wrappers/inference_tools/tools/<tool_id>/integration_decisions.md) so it reflects implemented behavior and records the smoketest outcome
-- If the integrator provided optional clarifications about the target method or installation source, keep respecting them during implementation unless stronger primary evidence clearly disproves them
-```
-
-### Step 8. Execute Phase 3: verification and final alignment
-
-Goal:
-- validate schemas
-- run the smoketest again as final confirmation
-- leave [integration_decisions.md](tools/<tool_id>/integration_decisions.md) concise and complete
-
-Prompt to paste in chat:
-
-```text
-Please finish the integration of `<tool_id>` following [TOOL_INTEGRATION_PLAYBOOK.md](wrappers/inference_tools/TOOL_INTEGRATION_PLAYBOOK.md), executing Phase 3.
-
-Requirements:
-- Validate [toolspec.json](andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json) and all relevant input specs under [andrea/catalog_inference_tools/input_specs/](andrea/catalog_inference_tools/input_specs/)
-- Run the smoketest for `<tool_id>`
-- Fix any remaining inconsistency between the wrapper, the ToolSpec, the normalized inputs and the smoketest
-- Leave [integration_decisions.md](wrappers/inference_tools/tools/<tool_id>/integration_decisions.md) complete and concise
-```
-
-### Step 9. Generate the planning cost profile
-
-Command:
-
-```bash
-make benchmark-tool-costs ARGS="--tool <tool_id>"
-```
-
-If you need a smaller or custom benchmark matrix, customize `ARGS`, for example:
-
-```bash
-make benchmark-tool-costs ARGS="--tool <tool_id> --size 50x20 --size 100x40 --threads 1,2 --ram-gb 8,16 --repeats 1"
-```
-
-Before launching a long run, inspect the resolved matrix:
-
-```bash
-make benchmark-tool-costs ARGS="--tool <tool_id> --plan-only"
-```
-
-The script combines the CLI matrix with
-[cost_profiles](cost_profiles/README.md). Profile configs must cover every
-declared `execution_capabilities` mode and every required/optional/conditional
-input path that materially changes runtime. Use profile-local `sizes`,
-`column_kind`, `expression_profile` or `gene_id_source` when the generic
-synthetic matrix is invalid for the tool, for example tools whose bundled public
-resources require human gene symbols.
-
-Each benchmarked Docker run has a timeout guard. The default is 1800 seconds
-per run; override it with `--timeout <seconds>` or use `--timeout 0` only when
-you intentionally want no timeout.
-
-```bash
-make benchmark-tool-costs ARGS="--tool <tool_id> --timeout 3600"
-```
-
-Timeouts are stored in `cost.json` as `status=timeout` when no repeat succeeds,
-or inside `failure_breakdown.timeout` when a benchmark point is only partially
-successful. The planner does not use fully timed-out points as runtime evidence.
-Partially successful points remain usable, but their ETA receives a conservative
-risk penalty and carries a provenance warning. The benchmarker also names each
-container and performs a best-effort `docker rm -f` when Docker itself times out,
-so interrupted points should not leave orphaned containers.
-
-The requested `--threads` matrix must be compatible with
-`toolspec.runtime_resources.threading`. Tools with `supported=false` may only
-benchmark `threads=1`; tools with `supported=true` may benchmark values up to
-`max_threads`. If `supported=true` is implemented by wrapper-owned upstream
-sharding, include benchmark points for the declared shard counts so the planner
-does not rely on single-thread measurements for multi-thread runs.
-
-Then validate the resulting [cost.json](../../andrea/catalog_inference_tools/tools/<tool_id>/cost.json):
-
-```bash
-make validate-tool-costs ARGS="--tool <tool_id>"
-```
-
-Note:
-- [benchmark_costs.py](scripts/benchmark_costs.py) uses its own local image tag `inference-tools-<tool_id>:benchmark-local`
-- do not pass `--skip-build` unless that benchmark-local image already exists
-
-### Step 10. Validate the full catalog state
-
-Command:
-
-```bash
-make validate-inference-catalog
-```
-
-Optional focused verification:
-
-```bash
-make verify-tool TOOL=<tool_id>
-```
-
-Optional focused smoketest-config validation:
-
-```bash
+make validate-toolspecs ARGS="--tool <tool_id>"
+make validate-input-specs
 make validate-smoketest-configs ARGS="--tool <tool_id>"
+make verify-tool TOOL=<tool_id>
+make benchmark-tool-costs ARGS="--tool <tool_id> --plan-only --repeats 3"
+python wrappers/inference_tools/scripts/validate_tool_costs.py \
+  --tool <tool_id> --require --require-provenance --require-coverage
+python wrappers/integration/validate_integration.py \
+  wrappers/inference_tools/tools/<tool_id>/integration.json --stage functional
 ```
 
-### Step 11. Build and optionally publish the final image
+`prepare-tool-papers` accepts existing TXT without an extractor. Scaffolds remain
+outside the active catalog until explicitly activated with the scaffold option
+or moved after implementation; inspect `--help`. `verify-tool` builds and runs
+containers and is a late functional check. It does not establish complete
+calibration, independent accuracy or image publication. The inference smoke
+runner supports a `variants` array in its per-tool config; use variants for
+physical mode/input cases and test logical core orchestration separately.
 
-Build the final packaged image:
-
-```bash
-make build-tool-images ARGS="--tool <tool_id>"
-```
-
-Optionally push it:
-
-```bash
-make push-tool-images ARGS="--tool <tool_id>"
-```
-
-If another machine or CI needs to pull it explicitly:
-
-```bash
-make pull-tool-images ARGS="--tool <tool_id>"
-```
+See [cost_profiles/README.md](cost_profiles/README.md) for measured matrix,
+coverage/resume controls and independent prediction validation. Respect
+`runtime_resources.threading` when choosing the resource panel. Use distinct
+image tags for changed implementations; retain measured immutable image IDs.
+Publishing is a separate authorized gate, never a phase prerequisite.
 
 ## ToolSpec Field Evidence Guide
 
@@ -425,12 +138,12 @@ When drafting `toolspec.json`, use the following field-by-field evidence policy.
     - primary method paper should appear first
 - `first_author`
   - look in:
-    - primary paper PDF
+    - primary paper TXT (or optional PDF)
   - search for:
     - full name of the first author of `publication[0]`
 - `year`
   - look in:
-    - primary paper PDF
+    - primary paper TXT (or optional PDF)
     - repo citation section
     - package metadata when it cites the primary paper
   - search for:
@@ -739,11 +452,10 @@ If an upstream default depends on the dataset or runtime state, do not silently 
   - rule:
     - prefer upstream parameter names unless there is a strong normalization reason not to
     - if defaults conflict across sources, document the conflict and justify the chosen value
-    - do not expose a parameter just to encode a fixed wrapper decision or a
-      single allowed implementation preset; use `params: {}` when the wrapper
-      intentionally mirrors one upstream public preset, and document the fixed
-      choice in `method_summary`, `method_keywords` and
-      `integration_decisions.md`
+    - expose the full compatible serializable upstream public surface; a chosen
+      preset does not justify hiding other supported options. Fixed internal
+      implementation constants need no user param, but public exclusions require
+      individual evidence and rationale in the traceability matrix
     - do not add params for ANDREA-owned behavior such as
       `group_aggregated` aggregation, merge normalization or bundle creation
 
@@ -757,68 +469,16 @@ If an upstream default depends on the dataset or runtime state, do not silently 
   - search for:
     - non-trivial files/dirs worth validating in smoketests
 
-## Required Structure of `integration_decisions.md`
+## Evidence and acceptance records
 
-The decision log must include:
-- what value was chosen
-- where the evidence came from
-- why that evidence supports the chosen value
-- whether the value is certain or uncertain
-
-If a value is unclear:
-- say that it is unclear
-- list the conflicting evidence
-- explain the chosen temporary resolution
-
-## Quick Command Summary
-
-From repository root:
-
-```bash
-make scaffold-tool TOOL=<tool_id> WRAPPER=python
-make prepare-tool-papers TOOL=<tool_id>
-make verify-tool TOOL=<tool_id>
-make validate-smoketest-configs ARGS="--tool <tool_id>"
-make benchmark-tool-costs ARGS="--tool <tool_id>"
-make validate-tool-costs ARGS="--tool <tool_id>"
-make build-tool-images ARGS="--tool <tool_id>"
-make push-tool-images ARGS="--tool <tool_id>"
-```
-
-Notes:
-- `WRAPPER` can be `python`, `r`, or another implementation language label such as `matlab`, `julia`, `java`
-- only `python` and `r` currently get language-specific scaffold templates
-- use `ARGS="--wrapper-ext <ext>"` when the desired file extension is not the obvious default
-- `verify-tool` is intended for late-phase verification, not for an empty scaffold
-- `run_smoketests.py` already builds the tool image unless explicitly skipped
-
-## Review Checklist
-
-Before considering a tool integrated, confirm:
-- local paper PDFs were extracted to text and reviewed
-- all relevant upstream public modes/entrypoints were audited before the wrapper contract was chosen
-- exposed and excluded upstream modes/entrypoints are documented with rationale
-- `toolspec.json` matches the real upstream interface
-- every non-trivial `toolspec` field has explicit evidence in `integration_decisions.md`
-- conditional inputs are modeled in the catalog when needed
-- required inputs are modeled by always-required, execution-mode-required, or parameter-required rules as appropriate
-- no normalized input is being reused with the wrong semantics
-- no fixed single-value implementation choice is exposed as a user parameter
-- runtime resource controls are declared in `runtime_resources.threading`, not
-  as user-facing params, and wrapper `--threads` maps to the documented upstream
-  control or is constrained to one thread
-- the wrapper does not rely on the local `repo/`
-- the `Dockerfile` uses a stable public source
-- the output mapping to raw `network.csv` is documented in `integration_decisions.md`
-- public ids in `network.csv` match normalized input ids, or an explicit
-  auxiliary alias map proves how upstream aliases were mapped back
-- any per-tool normalization is left to downstream runtime merge, not silently added by the wrapper unless the chosen upstream public interface itself defines that scale
-- `group_emulated`, `group_aggregated`, merge normalization and ZIP bundle
-  availability are treated as ANDREA core behavior, not wrapper-specific logic
-- smoketest passes
-- `cost.json` exists and validates if planner support is expected for the tool,
-  and its thread matrix respects `runtime_resources.threading`
-- the packaged image can be built, and pushed if publication is part of the integration task
+Use the [shared decisions template](../integration/decisions.template.md) and
+[acceptance procedure](../../docs/INTEGRATION_WORKFLOW.md#5-acceptance-image-publication-and-handoff).
+Keep the selected interface, excluded modes, all public parameters and their
+actual arguments, dynamic default rules, input delivery, output semantics,
+resource mapping, patches and evidence limitations in the decision log.
+`integration.json` links the hashed artifacts and retained check receipts.
+Do not equate a passing smoke test or valid `cost.json` with a fully calibrated
+integration. Every declared mode and conditional branch needs evidence.
 
 ## Reviewed method family
 

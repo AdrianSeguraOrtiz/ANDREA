@@ -24,7 +24,7 @@ any existing entry for that profile is preserved, and the command exits
 non-zero.
 
 For resumable measurements with normalized-output and actual-dimension checks,
-use the companion runner. For example:
+use the companion runner to extend an existing `cost.json`. For example:
 
 ```bash
 python wrappers/simulation_data_tools/scripts/extend_cost_profiles.py \
@@ -40,6 +40,21 @@ inspection and are not silently retried. A selected profile is published only
 after its complete matrix succeeds; unrelated profiles remain unchanged. To
 retain an older resource matrix, add a distinct profile rather than replacing
 its identity with a different matrix.
+
+The extension plan is JSON with semantic modes, resolved base parameters,
+dimension mappings, profile hashes, resources, total run allocations and a
+sequential timeout budget. `--plan-only` requires no Docker and performs no
+measurement or evidence write. Execution freezes `plan.json` before measuring;
+changed plans require a new results directory. The timeout allocation counts all
+repetitions before verified reuse and excludes setup/output/native validation;
+it is not an observed ETA. Complete aggregate profiles are reused only after
+their retained individual receipts and output inventories are verified again.
+Missing evidence does not authorize reuse of an aggregate timing.
+
+For a new simulator with no `cost.json`, bootstrap with
+`benchmark_costs.py --simulator SIMULATOR_ID --plan-only`, inspect the matrix,
+then execute that bounded benchmark when resources are available. The extension
+runner reads and merges an existing cost file; it does not create a first one.
 
 The `representative_size_grid` profiles hold out an intermediate sample count
 for independent validation. Model or input networks with a fixed gene universe
@@ -173,8 +188,59 @@ This measures the current catalog image by immutable local ID without rebuilding
 Per-simulator evidence directories retain inputs, outputs, stdout/stderr, raw
 measurements, resolved configuration and hardware/source/image provenance.
 Filtered cost writes require `--merge-existing`; unselected profiles are preserved.
-Existing historical costs remain usable for inspection, but cannot pass
-`make validate-release-costs` until regenerated against the current specs/images.
+The provenance validator determines whether retained historical measurements
+match the current specs/images; do not assume they all require remeasurement.
 Timings from tiny or demonstration input bundles characterize those bundles only;
 particularly, GRouNdGAN toy bundles are untrained smoke fixtures, not biological
 validation or a calibrated model of training on real expression data.
+
+## Separate coverage and prediction acceptance
+
+Follow the shared [integration workflow](../../../docs/INTEGRATION_WORKFLOW.md).
+The simulator validator's original capability/extras coverage check does not
+test size geometry. The additional opt-in check reports every profile and
+resource assignment separately:
+
+```bash
+python wrappers/simulation_data_tools/scripts/validate_simulator_costs.py \
+  --simulator SIMULATOR_ID --require --require-provenance --require-coverage \
+  --coverage-report /path/to/simulator-coverage.json
+```
+
+It requires at least three successful repetitions, complete declared point
+matrices, three levels on each free size axis with independent crosses, and the
+registered recipe sizes. Explicitly fixed dimensions in native model/network
+mappings remain fixed. A recipe that delegates its sizes to the benchmark CLI
+is assessed against the historical campaign's declared sizes. The report retains
+requested-budget semantics; this gate does not claim actual exported dimensions
+equal budgets or certify biological adequacy. Current readers cover genes and
+total columns only; bulk time series also require evidence for timepoints per
+series, independent series/replicates and dynamic parameters.
+
+Geometric support can retain partial points with at least the declared number
+of successful repetitions (minimum three); failures remain counted separately
+as `failed_repetitions` per resource for reliability review. The benchmark and
+extension runners retain their own conservative publication/reuse policies.
+
+Legacy single-size and diagonal profiles can pass schema, semantics and
+provenance while failing this stricter geometric acceptance. At the audited
+0.2.1 baseline, all eight simulator files retain at least one such incomplete
+profile; this is a calibration coverage pending state, not a finding that their
+stored measurements or JSON are invalid. Some custom-network profiles also
+need explicit fixed-axis metadata review. Do not relabel or overwrite them to
+make the check pass. A justified exception needs scientific evidence and a
+reviewed contract, followed by a suitable domain-specific coverage check.
+
+Independent prediction validation is a third outcome. Reserve new dimensions
+and workloads, freeze predictions/thresholds and the exact estimator/cost
+snapshot, retain at least three validation-only timings and do not import them
+into calibration. Use the shared
+[`validate_cost_predictions.py`](../../validate_cost_predictions.py); its
+authoritative manifest contract is available through `--help`, and the
+[inference cost guide](../../inference_tools/cost_profiles/README.md#acceptance-of-new-integrations)
+describes evidence preparation and limits. The checker verifies artifacts,
+disjoint declared receipts/inputs and observed error/budget thresholds by
+profile/resource stratum. Provenance review must still establish independence,
+complete training membership and the chronology of freezing. Neither a full
+grid nor three repeats establishes an extrapolation guarantee or a calibrated
+prediction interval.

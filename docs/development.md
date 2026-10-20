@@ -13,6 +13,12 @@ make install-dev-deps
 Docker is required for wrapper builds, wrapper smoketests and full workflow
 executions that launch simulator or inference containers.
 
+## Integration Procedure
+
+For new inferencers and simulators use [INTEGRATION_WORKFLOW.md](INTEGRATION_WORKFLOW.md).
+It defines minimum TXT/clone input, one-request execution, evidence/parameter
+matrices and distinct functional, calibration and publication gates.
+
 ## Catalog Validation
 
 Run schema and catalog checks before publishing catalog changes:

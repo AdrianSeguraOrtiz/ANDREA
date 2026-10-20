@@ -27,6 +27,9 @@ from pathlib import Path
 from typing import Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT / "wrappers/integration"))
+from scaffold_support import reviewed_draft
+
 INFERENCE_TOOLS_ROOT = REPO_ROOT / "wrappers" / "inference_tools"
 TOOLS_ROOT = INFERENCE_TOOLS_ROOT / "tools"
 CATALOG_TOOLS_ROOT = REPO_ROOT / "andrea" / "catalog_inference_tools" / "tools"
@@ -85,6 +88,34 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "Optional file extension override for generic wrapper languages. "
             "Example: --wrapper matlab --wrapper-ext m"
         ),
+    )
+    parser.add_argument(
+        "--tool-sources-root",
+        type=Path,
+        default=TOOLS_ROOT,
+        help="Path to local wrapper/evidence directories.",
+    )
+    parser.add_argument(
+        "--catalog-tools-root",
+        type=Path,
+        default=CATALOG_TOOLS_ROOT,
+        help="Path to active ToolSpec catalog directories.",
+    )
+    parser.add_argument(
+        "--smoketest-configs-root",
+        type=Path,
+        default=SMOKETEST_CONFIGS_ROOT,
+        help="Path to active inference smoketest configurations.",
+    )
+    parser.add_argument(
+        "--activate-catalog",
+        action="store_true",
+        help="Promote an existing reviewed ToolSpec draft after schema and identity checks.",
+    )
+    parser.add_argument(
+        "--activate-smoketest",
+        action="store_true",
+        help="Promote an existing reviewed smoketest draft after schema checks.",
     )
     parser.add_argument(
         "--force",
@@ -146,12 +177,12 @@ def toolspec_template(tool_id: str) -> str:
         "name": tool_id,
         "publication": ["https://doi.org/TODO"],
         "first_author": "TODO",
-        "year": 2000,
+        "year": None,
         "method_summary": "TODO: replace with a short 1-2 sentence summary of the method core.",
         "method_family": "TODO",
         "method_keywords": ["todo_keyword"],
         "implementation_url": "https://example.org/TODO",
-        "docker_image": f"TODO/{tool_id}:latest",
+        "docker_image": f"TODO/{tool_id}:TODO_PINNED_VERSION",
         "execution_capabilities": ["global"],
         "runtime_resources": {
             "threading": {
@@ -199,215 +230,43 @@ def toolspec_template(tool_id: str) -> str:
 
 
 def integration_decisions_template(tool_id: str) -> str:
-    return f"""# {tool_id} Integration Decisions
-
-## Sources Reviewed
-
-- Upstream repo: `wrappers/inference_tools/tools/{tool_id}/repo/`
-- Local papers: `wrappers/inference_tools/tools/{tool_id}/papers/`
-
-## Paper Preparation
-
-- PDF inputs found:
-  - TODO
-- Extracted text files used for analysis:
-  - TODO
-- Extraction quality / problems:
-  - TODO
-
-## Method Summary
-
-TODO
-
-## ToolSpec Evidence Ledger
-
-For each field below record:
-- chosen value
-- evidence
-- rationale
-- confidence / ambiguity
-
-### `schema_version`
-
-TODO
-
-### `id`
-
-TODO
-
-### `name`
-
-TODO
-
-### `publication`
-
-TODO
-
-### `first_author`
-
-TODO
-
-### `year`
-
-TODO
-
-### `method_summary`
-
-TODO
-
-### `method_keywords`
-
-TODO
-
-### `implementation_url`
-
-TODO
-
-### `docker_image`
-
-TODO
-
-### `execution_capabilities`
-
-TODO
-
-Record which public modes are claimed (`global`, `group_native`,
-`group_emulated`, `column_native`, `group_aggregated`), which upstream
-entrypoints support them, and which scientifically possible modes are not
-claimed by the wrapper.
-
-### `runtime_resources`
-
-TODO
-
-Document whether ANDREA `--threads` maps to a real upstream CPU control or a
-documented wrapper-owned sharding pattern. Do not expose threads, cores,
-workers, pools or equivalent resource controls as normal params.
-
-### `accepts`
-
-TODO
-
-### `taxonomic_scope`
-
-TODO
-
-### `compatibility_rules`
-
-TODO
-
-### `assumes`
-
-TODO
-
-### `extra_inputs`
-
-TODO
-
-### `outputs`
-
-TODO
-
-### `progress`
-
-TODO
-
-### `params`
-
-TODO
-
-### `artifacts_aux`
-
-TODO
-
-## Upstream Interface
-
-### Public execution modes / entrypoints
-
-TODO
-
-Audit whole-dataset, grouped/task, per-column, time-aware and
-condition-specific upstream modes before finalizing `execution_capabilities`.
-Do not infer `column_native` by rerunning a global/group method per expression
-column unless the public upstream interface explicitly defines that as a valid
-column-specific workflow.
-
-### Required inputs
-
-TODO
-
-### Optional or conditional inputs
-
-TODO
-
-- `optional`: inputs that are not required by the selected configuration but
-  enrich or modify inference when provided.
-- `conditional_required`: inputs required only by a parameter value or
-  `execution.mode`. Do not duplicate an input here in `optional` unless it is
-  genuinely optional in another valid configuration.
-
-### Parameters and defaults
-
-TODO
-
-### Primary outputs
-
-TODO
-
-## Normalized Input Mapping
-
-### Reused input specs
-
-TODO
-
-### New input specs required
-
-TODO
-
-## Output Mapping to `network.csv`
-
-TODO
-
-Preserve public expression gene ids, expression column ids and group ids in all
-public outputs. `context` must be `global`, `group:<id>`, `column:<id>` or a
-documented non-empty family. `column:<id>` follows the dataset column semantics,
-not necessarily cells.
-
-## Runtime Resource Mapping
-
-TODO
-
-Record the exact wrapper behavior for `--threads`, including environment
-variables, upstream API/CLI arguments, process-level sharding or the explicit
-reason `supported=false` is required.
-
-## Installation Strategy
-
-Preferred public installation source:
-
-TODO
-
-Fallback pinned source if needed:
-
-TODO
-
-## Wrapper Notes
-
-TODO
-
-## Smoketest Plan
-
-TODO
-
-## Known Limitations / Open Questions
-
-TODO
-"""
+    template = (REPO_ROOT / "wrappers/integration/decisions.template.md").read_text(
+        encoding="utf-8"
+    )
+    values = {
+        "id": tool_id,
+        "kind": "inference",
+        "evidence_path": f"wrappers/inference_tools/tools/{tool_id}",
+        "contract_name": "toolspec.json",
+        "specific_decisions": """Audit `execution_capabilities` (`global`, `group_native`,
+`group_emulated`, `column_native`, `group_aggregated`) against the actual
+upstream entrypoints. Do not claim column-specific inference by rerunning a
+global method per column unless upstream defines it as scientifically valid.
+Record `accepts`, `assumes`, taxonomic restrictions, compatibility rules,
+required/optional/conditional inputs, output semantics and progress evidence.
+Reuse normalized input specs. Preserve public gene, expression-column and group
+identifiers in `network.csv`. Document `global`, `group:<id>`, `column:<id>` or
+other documented non-empty context families and their scientific meaning.
+Record exact `--threads` behavior including native libraries or documented
+wrapper sharding; unsupported threading remains explicitly unsupported.""",
+    }
+    for key, value in values.items():
+        template = template.replace("{{" + key + "}}", value)
+    return template
+
+
+def integration_payload(tool_id: str) -> dict[str, object]:
+    template_path = REPO_ROOT / "wrappers/integration/integration.template.json"
+    payload = json.loads(template_path.read_text(encoding="utf-8"))
+    payload.update(kind="inference", id=tool_id)
+    return payload
 
 
 def smoketest_config_template() -> str:
     payload = {
+        "execution": {"mode": "global"},
         "extra_files": [],
+        "require_progress": True,
         "checks": {},
     }
     return json.dumps(payload, indent=2, ensure_ascii=True) + "\n"
@@ -489,7 +348,8 @@ def dockerfile_template(tool_id: str, wrapper: str, wrapper_name: str) -> str:
 
 WORKDIR /app
 
-# TODO: install public runtime dependencies for {tool_id}
+# TODO: verify installation preference, pin base digest and public upstream/dependencies.
+# Install {tool_id} from a public immutable source, never COPY repo/ or papers/.
 COPY {wrapper_name} /app/{wrapper_name}
 
 ENTRYPOINT ["Rscript", "/app/{wrapper_name}"]
@@ -500,7 +360,8 @@ ENTRYPOINT ["Rscript", "/app/{wrapper_name}"]
 
 WORKDIR /app
 
-# TODO: install public runtime dependencies for {tool_id}
+# TODO: verify installation preference, pin base digest and public upstream/dependencies.
+# Install {tool_id} from a public immutable source, never COPY repo/ or papers/.
 COPY {wrapper_name} /app/{wrapper_name}
 
 ENTRYPOINT ["python", "/app/{wrapper_name}"]
@@ -510,7 +371,8 @@ ENTRYPOINT ["python", "/app/{wrapper_name}"]
 
 WORKDIR /app
 
-# TODO: install public runtime dependencies for {tool_id} ({wrapper})
+# TODO: verify installation preference, pin base digest and public upstream/dependencies.
+# Install {tool_id} ({wrapper}) publicly; never COPY repo/ or papers/.
 COPY {wrapper_name} /app/{wrapper_name}
 
 CMD ["/bin/sh", "-lc", "echo 'TODO: replace the generic scaffold ENTRYPOINT for {tool_id} ({wrapper})' >&2; exit 1"]
@@ -523,10 +385,47 @@ def scaffold(
     wrapper_ext: str,
     *,
     force: bool,
+    tool_sources_root: Path = TOOLS_ROOT,
+    catalog_tools_root: Path = CATALOG_TOOLS_ROOT,
+    smoketest_configs_root: Path = SMOKETEST_CONFIGS_ROOT,
+    activate_catalog: bool = False,
+    activate_smoketest: bool = False,
 ) -> list[tuple[Path, str]]:
-    tool_root = TOOLS_ROOT / tool_id
-    catalog_root = CATALOG_TOOLS_ROOT / tool_id
-    smoketest_path = SMOKETEST_CONFIGS_ROOT / f"{tool_id}.json"
+    tool_root = tool_sources_root / tool_id
+    catalog_root = catalog_tools_root / tool_id
+    if activate_catalog or activate_smoketest:
+        # Validate every selected draft before writing anything. Activation
+        # never regenerates wrappers or overwrites evidence, even with --force.
+        promotions = []
+        if activate_catalog:
+            promotions.append(
+                (
+                    catalog_root / "toolspec.json",
+                    reviewed_draft(
+                        tool_root / "toolspec.draft.json",
+                        schema_path=REPO_ROOT
+                        / "andrea/catalog_inference_tools/schemas/toolspec.schema.json",
+                        expected_id=tool_id,
+                    ),
+                )
+            )
+        if activate_smoketest:
+            promotions.append(
+                (
+                    smoketest_configs_root / f"{tool_id}.json",
+                    reviewed_draft(
+                        tool_root / "smoketest.config.draft.json",
+                        schema_path=INFERENCE_TOOLS_ROOT
+                        / "tests/schemas/smoketest.config.schema.json",
+                    ),
+                )
+            )
+        return [
+            (path, _write_text_file(path, content, force=force))
+            for path, content in promotions
+        ]
+    spec_path = tool_root / "toolspec.draft.json"
+    smoketest_path = tool_root / "smoketest.config.draft.json"
     wrapper_name = f"run_tool.{wrapper_ext}"
     if wrapper == "r":
         wrapper_content = run_tool_r_template(tool_id)
@@ -540,18 +439,26 @@ def scaffold(
         tool_root,
         tool_root / "repo",
         tool_root / "papers",
-        catalog_root,
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
     file_specs = [
         (
-            catalog_root / "toolspec.json",
+            spec_path,
             toolspec_template(tool_id),
         ),
         (
             tool_root / "integration_decisions.md",
             integration_decisions_template(tool_id),
+        ),
+        (
+            tool_root / "integration.json",
+            json.dumps(integration_payload(tool_id), indent=2, ensure_ascii=True)
+            + "\n",
+        ),
+        (
+            tool_root / ".dockerignore",
+            "**/repo\n**/papers\n**/.git\n**/.venv\n**/__pycache__\n",
         ),
         (
             tool_root / "Dockerfile",
@@ -580,23 +487,42 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool_id = ensure_tool_id(args.tool)
         wrapper = ensure_wrapper(args.wrapper)
         wrapper_ext = resolve_wrapper_extension(wrapper, args.wrapper_ext)
-        created = scaffold(tool_id, wrapper, wrapper_ext, force=args.force)
-    except RuntimeError as exc:
+        created = scaffold(
+            tool_id,
+            wrapper,
+            wrapper_ext,
+            force=args.force,
+            tool_sources_root=args.tool_sources_root,
+            catalog_tools_root=args.catalog_tools_root,
+            smoketest_configs_root=args.smoketest_configs_root,
+            activate_catalog=args.activate_catalog,
+            activate_smoketest=args.activate_smoketest,
+        )
+    except (RuntimeError, OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
-    print(f"[{tool_id}] scaffold ready")
+    print(
+        f"[{tool_id}] scaffold ready; scientific contract, implementation and verification pending"
+    )
     for path, status in created:
         print(f"  {status.upper():7s} {path}")
+    if args.activate_catalog or args.activate_smoketest:
+        print(
+            "Reviewed draft promotion only; complete the remaining evidence gates independently."
+        )
+        return 0
     print()
     print("Next steps:")
     print(
-        f"  1. Place upstream evidence in {TOOLS_ROOT / tool_id / 'repo'} and {TOOLS_ROOT / tool_id / 'papers'}"
+        f"  1. Supply article TXT in {args.tool_sources_root / tool_id / 'papers'} and cloned evidence in {args.tool_sources_root / tool_id / 'repo'}"
     )
     print(
-        f"  2. Extract local PDFs when available: make prepare-tool-papers TOOL={tool_id}"
+        "  2. Record installation preference in integration_decisions.md; PDF is optional."
     )
-    print(f"  3. Follow {INFERENCE_TOOLS_ROOT / 'TOOL_INTEGRATION_PLAYBOOK.md'}")
+    print(
+        f"  3. Continue autonomously through {REPO_ROOT / 'docs/INTEGRATION_WORKFLOW.md'} and the inference playbook"
+    )
     print(
         f"  4. When implementation is ready, verify with: make verify-tool TOOL={tool_id}"
     )

@@ -11,7 +11,7 @@ Use this area for:
 - benchmarking simulator runtime cost profiles
 - scaffolding new simulator integrations
 - validating shared simulator input specs
-- extracting local simulator paper PDFs
+- accepting TXT articles and optionally extracting local PDFs
 - keeping smoketest parameter overrides for small, fast runs
 
 Runtime catalog assets consumed by `andrea generate-data` live in `andrea/catalog_simulation_data_tools/`.
@@ -126,7 +126,7 @@ make validate-simulator-costs
 make build-simulator-images ARGS="--list"
 make run-simulator-smoketests ARGS="--list"
 make benchmark-simulator-costs ARGS="--simulator dyngen"
-make verify-simulator SIMULATOR=dyngen ARGS="--skip-build"
+make verify-simulator SIMULATOR=dyngen
 ```
 
 ## Generate-Data Planning And ETA
@@ -181,9 +181,16 @@ none of these estimates is a runtime guarantee.
 
 ## Adding A Simulator
 
-1. Run `make scaffold-simulator SIMULATOR=<simulator_id>`.
-2. Place upstream evidence under `wrappers/simulation_data_tools/simulators/<simulator_id>/repo/` and local papers under `papers/`.
-3. Follow `wrappers/simulation_data_tools/SIMULATOR_INTEGRATION_PLAYBOOK.md`.
-4. Model supported datasets with `data_axes`, `truth_requirements` and
-   `capabilities`; do not reintroduce combined profile names.
-5. Keep expensive smoketest defaults in `param_overrides/<simulator_id>.json`; keep scenario-specific deltas in `tests/smoketest_configs/`.
+Use the [simulator playbook](SIMULATOR_INTEGRATION_PLAYBOOK.md) and
+[shared autonomous workflow](../../docs/INTEGRATION_WORKFLOW.md). Supply a TXT
+article in `simulators/<id>/papers/`, the upstream clone in
+`simulators/<id>/repo/`, and an installation preference. No PDF or prompt per
+phase is required. Scaffolds remain drafts until implemented and activated.
+The decision log uses the common evidence/parameter matrix; `integration.json`
+links immutable artifacts and check receipts. Report functional, calibrated
+within the declared domain and published states separately.
+
+Model datasets with `data_axes`, `truth_requirements` and `capabilities`.
+Keep reduced smoke parameters separate from actual public defaults. For bulk
+observed time, review the [temporal contract audit](../../docs/bulk-time-series-contract.md)
+before claiming representable series boundaries, units or longitudinal identity.

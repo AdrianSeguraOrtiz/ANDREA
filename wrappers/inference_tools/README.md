@@ -134,17 +134,22 @@ python wrappers/inference_tools/scripts/validate_tool_costs.py
 
 ### `scaffold_tool.py`
 
-Creates a minimal scaffold for a new tool integration without introducing any new manifest file.
+Creates an inactive draft scaffold and a shared evidence dossier for a new integration.
 The generated `toolspec.json` and decision log start from the current contract:
 `execution_capabilities`, `runtime_resources.threading`, column-kind-aware
 `accepts`, structured `extra_inputs` and raw `network.csv` output semantics.
 It creates:
-- `andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json`
+- `wrappers/inference_tools/tools/<tool_id>/toolspec.draft.json`
+- `wrappers/inference_tools/tools/<tool_id>/integration.json`
 - `wrappers/inference_tools/tools/<tool_id>/integration_decisions.md`
 - `wrappers/inference_tools/tools/<tool_id>/Dockerfile`
 - `wrappers/inference_tools/tools/<tool_id>/run_tool.py`, `run_tool.R`, or a generic `run_tool.<ext>`
-- `wrappers/inference_tools/tests/smoketest_configs/<tool_id>.json`
+- `wrappers/inference_tools/tools/<tool_id>/smoketest.config.draft.json`
 
+Use `--activate-catalog` and `--activate-smoketest` only after implementing and
+reviewing the draft. Promotion validates its schema, identity and unresolved
+placeholders and copies the reviewed draft. Existing files are preserved unless
+`--force` is explicitly supplied; activation never regenerates wrappers or evidence.
 It also ensures that `repo/` and `papers/` folders exist under the tool root.
 Today only `python` and `r` have tailored wrapper templates. Any other wrapper language
 produces a generic placeholder scaffold that should be specialized during integration.
@@ -158,8 +163,8 @@ python wrappers/inference_tools/scripts/scaffold_tool.py --tool mytool --wrapper
 
 ### `prepare_tool_papers.py`
 
-Extracts local PDF papers under `wrappers/inference_tools/tools/<tool_id>/papers/`
-into plain-text sidecar files for analysis.
+Accepts existing nonempty TXT papers under `wrappers/inference_tools/tools/<tool_id>/papers/`.
+Optionally extracts PDFs into text; an extractor is required only for actual PDF extraction.
 
 ```bash
 python wrappers/inference_tools/scripts/prepare_tool_papers.py --tool mytool
@@ -167,8 +172,8 @@ python wrappers/inference_tools/scripts/prepare_tool_papers.py --tool mytool --f
 ```
 
 Notes:
-- this is for manually placed local PDFs
-- the extracted text files are analysis helpers only
+- TXT is a sufficient primary input when the method can be reviewed from it
+- retain bibliography and limitations in the decision log
 - runtime must not depend on them
 
 ### `run_smoketests.py`
@@ -255,7 +260,7 @@ make build-tool-images ARGS="--tool genie3"
 make push-tool-images ARGS="--tool genie3"
 make pull-tool-images ARGS="--tool genie3"
 make run-tool-smoketests ARGS="--tool genie3 --show-output"
-make benchmark-tool-costs ARGS="--tool genie3 --repeats 2"
+make benchmark-tool-costs ARGS="--tool genie3 --plan-only --repeats 3"
 make validate-toolspecs
 make validate-input-specs
 make validate-smoketest-configs
@@ -279,33 +284,17 @@ Environment note:
 
 ## Adding or updating a tool
 
-1. Create the initial scaffold:
-   - `make scaffold-tool TOOL=<tool_id> WRAPPER=python`
-   - or use another language label such as `WRAPPER=matlab`, `WRAPPER=julia`, `WRAPPER=java`
-   - if the desired source file extension differs from the wrapper label, pass it via `ARGS`, for example:
-     `make scaffold-tool TOOL=<tool_id> WRAPPER=matlab ARGS="--wrapper-ext m"`
-2. Place evidence under:
-   - `wrappers/inference_tools/tools/<tool_id>/repo/`
-   - `wrappers/inference_tools/tools/<tool_id>/papers/`
-3. If papers are PDFs, extract them first:
-   - `make prepare-tool-papers TOOL=<tool_id>`
-4. Follow the official end-to-end sequence in `wrappers/inference_tools/TOOL_INTEGRATION_PLAYBOOK.md`.
-   It covers:
-   - manual preparation
-   - Phase 1 prompt
-   - Phase 2 prompt
-   - Phase 3 prompt
-   - cost profile generation
-   - final image build / push
-5. Use `wrappers/inference_tools/tools/<tool_id>/integration_decisions.md` as the only per-tool decision log.
-6. Keep the final runtime contract in `andrea/catalog_inference_tools/tools/<tool_id>/toolspec.json`.
-7. Add/update `wrappers/inference_tools/param_overrides/<tool_id>.json` only if smoke/benchmark runs should differ from ToolSpec defaults.
-8. Verify the integration:
-   - `make verify-tool TOOL=<tool_id>`
-9. Validate the per-tool smoketest config if it was changed:
-   - `make validate-smoketest-configs ARGS="--tool <tool_id>"`
-10. Generate `cost.json` if planner support is expected, then validate it.
-11. Build and optionally push the final image.
+Use the [inference playbook](TOOL_INTEGRATION_PLAYBOOK.md) and its
+[shared autonomous workflow](../../docs/INTEGRATION_WORKFLOW.md). Supply a TXT
+article in `tools/<id>/papers/`, the upstream clone in `tools/<id>/repo/`, and an
+installation preference. The agent audits evidence, prepares the scientific and
+parameter matrices, implements, tests, plans calibration, validates independent
+predictions and checks core/CLI/GUI/catalog alignment without a prompt per phase.
+
+Drafts stay outside the active catalog. `integration_decisions.md` records
+rationale; `integration.json` links hashed artifacts and check receipts. Report
+functional, calibrated-within-domain and published states separately. Local
+paper/clone caches never become build or execution dependencies.
 
 ## Runtime docs
 

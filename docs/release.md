@@ -34,10 +34,26 @@ python wrappers/inference_tools/scripts/validate_tool_costs.py \
 make test-all
 ```
 
-The strict cost validator checks the configured profile matrix, three successful
-repetitions per point, resolved parameters, fixture recipes, and measured Docker
-build inputs. Documentation and version-only changes do not invalidate a cost
-profile. Changing wrappers, method parameters or scientific inputs requires
+The strict validators check schema and provenance, configured profiles, successful
+repetitions, resolved parameters, fixture recipes and measured Docker build
+inputs, with different coverage checks for inference and simulation. Run the
+simulator domain gate explicitly too:
+
+```sh
+python wrappers/simulation_data_tools/scripts/validate_simulator_costs.py \
+  --require --require-provenance --require-coverage
+```
+
+These checks do not establish independent predictive accuracy. New integrations
+follow [the shared acceptance workflow](INTEGRATION_WORKFLOW.md), retain a
+predeclared independent-validation plan and receipts, and pass the
+`cost_structure`, `cost_domain` and `cost_predictions` gates separately.
+Historical 0.2.1 measurements retain their recorded scope; the new procedure
+does not retroactively certify their predictive accuracy. The new simulator
+geometry gate currently reports incomplete domains for all eight legacy
+simulators; see [the Osaka audit](osaka-integration-audit.md) for profile counts
+and pending work. This does not invalidate their structural/provenance results.
+Documentation and version-only changes do not invalidate a cost profile. Changing wrappers, method parameters or scientific inputs requires
 revalidation and, where affected, new calibration.
 
 Integration checks must also cover actual generation, inference, evaluation
@@ -132,3 +148,11 @@ make smoke-pypi PACKAGE_VERSION=0.2.1
 Do not regenerate profiles or overwrite checked artifacts during publication.
 The wheel contains the catalog, schemas, GUIs and orchestration code; Docker
 images are distributed separately through their recorded registry digests.
+
+## Integration work without a release
+
+Use [INTEGRATION_WORKFLOW.md](INTEGRATION_WORKFLOW.md) for new wrappers and
+scientific/parameter evidence. Functional integration, calibration within a
+declared domain, registry publication, source release and package-index upload
+are separate states. An integration task does not authorize merging to main or
+PyPI publication. Never replace a measured image tag during another experiment.
