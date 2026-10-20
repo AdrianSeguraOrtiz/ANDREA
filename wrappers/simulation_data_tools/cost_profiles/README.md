@@ -23,6 +23,79 @@ requires at least one explicit profile. An incomplete matrix is not persisted,
 any existing entry for that profile is preserved, and the command exits
 non-zero.
 
+For resumable measurements with normalized-output and actual-dimension checks,
+use the companion runner. For example:
+
+```bash
+python wrappers/simulation_data_tools/scripts/extend_cost_profiles.py \
+  --profile boolode:representative_size_grid \
+  --threads 1 --ram-gb 8 --repeats 3 \
+  --results-dir release-logs/simulator-size-calibration
+```
+
+Add `--plan-only` to inspect the matrix first. Repeating the command reuses
+successful observations only when their recipes, images, inputs, resources and
+output hashes still match. Failed or interrupted attempts remain available for
+inspection and are not silently retried. A selected profile is published only
+after its complete matrix succeeds; unrelated profiles remain unchanged. To
+retain an older resource matrix, add a distinct profile rather than replacing
+its identity with a different matrix.
+
+The `representative_size_grid` profiles hold out an intermediate sample count
+for independent validation. Model or input networks with a fixed gene universe
+vary only their supported column dimension. Unless explicitly declared as a
+requested budget (see dyngen below), `cells` means actual exported expression
+columns, including samples, perturbations or timepoints. In the
+short BoolODE recipes, one unsampled trajectory produces seven columns; its
+mapping therefore uses a multiplier of seven. Checkpoint demonstrations in
+GRouNdGAN measure generation from the embedded model, not model training or
+biological realism.
+
+The additional mode-specific `*_size_grid` profiles cover dropout, technical
+noise, differentiation, perturbations and spatial outputs independently. Their
+gene and column axes vary independently where the native simulator permits it;
+a fixed network or perturbation table retains its actual supported dimensions.
+These grids supplement existing measurements instead of relabelling them.
+
+The extension runner records `benchmark_config.dimension_semantics` and the
+verified output dimensions of each repeat in the runtime point's feature vector.
+For dyngen, the gene coordinate is the **requested gene budget**: the native
+simulator may allocate additional TFs to populate its backbone modules. The
+runner checks the actual TF count plus the requested targets and housekeeping
+genes against the exported expression matrix. It never asserts that a budget
+of 50 produced exactly 50 genes. A group count of zero in these dynamic profiles
+means unspecified; observed groups are retained in each observation's validation.
+
+Dyngen snapshot profiles also declare `cells: requested_cell_budget`. In native
+dyngen 1.1.1, a branch with only one available simulation step contributes no
+sampled cells, without reallocating its share. The runner reconstructs this
+allocation from the saved native model in the measured immutable image and
+checks the exported expression against `dataset.rds`, outside the timed run.
+Every repeat records the requested, expected and observed cell counts, omitted
+cells and uncovered branches. Undersampling warnings are retained in costs and
+plans. A valid cost measurement of that request does **not** establish full
+requested cell coverage or biological adequacy. No cells are fabricated, no
+seed is retried until a preferred result appears, and unexplained dimension
+mismatches still fail validation. Synchronised dyngen experiments and all other
+simulators retain exact exported-column validation.
+
+After a reviewed validation-only change to the extension runner, explicit
+`--revalidate-from-runner SHA256` can preserve successful observations. It
+requires unchanged execution identities and output inventories, reruns current
+validation and archives each original receipt. Failed measurements cannot be
+reused through this option. The runner fingerprint includes its native R
+validation script.
+
+Simulator ETA remains a conservative scheduling budget based on measured p90
+durations. Plans additionally expose `eta_provenance.runtime_estimates` with
+`typical_seconds` (measured medians) and `planning_seconds`. Three repetitions
+do not establish a calibrated 90% prediction interval. Mandatory extras count
+as the same workload whether requested explicitly or supplied automatically.
+Interpolation requires matching recipes/resources and measured geometric
+support. Bounded affine extrapolation may use two nearby points on a measured
+axis when startup and marginal costs are nonnegative; it remains explicitly
+uncalibrated. Otherwise the planner reports a scheduling heuristic.
+
 By default the benchmarker requests sizes `50x20`, `100x40`, `200x80`, threads
 `1,2,4,8`, RAM limits `8,16,32,64` GB, one repeat and a per-run timeout of
 1800 seconds. Thread values are filtered against each simulator's

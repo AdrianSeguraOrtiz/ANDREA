@@ -196,8 +196,9 @@ usually exports unsigned `un` tokens. The parser preserves actual `ac`/`re`
 tokens if present but never invents signs for `un`. Perturbation metadata uses
 the first external-input column as baseline; reported dose is absolute delta,
 not a calibrated biological intervention. Source-gene TF lists and prior networks
-are truth-derived oracle inputs. `randomSeed` is passed to the native ini; no
-bounded threading or context-specific regulatory rewiring is claimed.
+are truth-derived oracle inputs. `randomSeed` controls the native RNG and, from
+wrapper image 1.1.1, the auxiliary maximum-expression RNG through the ANDREA
+launcher. No bounded threading or context-specific regulatory rewiring is claimed.
 
 ### Executed validation for the audited wrapper
 
@@ -209,3 +210,28 @@ configurations passed on this final image, using the repository smoke runner
 with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
 These checks cover executable contracts and fixture outputs; they do not
 calibrate costs or independently validate biological realism.
+
+### Seed control correction (2026-10-19, image 1.1.1)
+
+The SynTReN 1.2 method `GeneNetwork.setRandomMaxExpressionValues` accepts a
+seeded `RandomEngine` but ignores it: it constructs an unseeded Commons Math
+`RandomDataImpl` and draws `nextExponential(5000.0)` for every node. Three
+same-seed runs had identical native XML except for these maximum-expression
+values, causing large differences in the public expression matrix.
+
+`SyntrenSeededCLI.java` uses the original generation API, reloads the generated
+model, and replaces only these auxiliary draws using `RandomDataImpl.reSeed`
+with the requested run seed. It then invokes the original expression simulation
+API. The exponential distribution, mean 5000, topology, kinetics, node order and
+serialized native RNG states are preserved. The auxiliary stream is independent
+of the topology/kinetics stream. Supplied XML models are not altered when native
+network creation is disabled. The upstream JAR and its license are unchanged.
+
+The real-container regression test covers observational, built-in perturbational
+and custom-input perturbational modes. For each mode it checks three same-seed
+runs for exact scientific output identity, a different seed for changed expression,
+and the original image for model identity after excluding maximum-expression
+values. All three cases passed (15 container runs). Image 1.1.0 measurements and
+scientific references must be regenerated for 1.1.1; they are not relabelled.
+The legacy 30-node observational cost recipes also now declare the actual 35
+output genes, including five background nodes, without changing their inputs.

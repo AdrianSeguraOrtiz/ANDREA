@@ -33,7 +33,7 @@ WIDTH = 1280
 HEIGHT = 735
 
 TOOL_X = 570
-TOOL_W = 166
+TOOL_W = 220
 TOOL_H = 13.5
 TOOL_LEFT = TOOL_X - TOOL_W / 2
 TOOL_RIGHT = TOOL_X + TOOL_W / 2
@@ -505,7 +505,7 @@ def draw_title(canvas: Canvas) -> None:
     canvas.text(
         40,
         65,
-        "Method families, required inputs, output-network contexts and runtime parallelism generated from ANDREA tool specifications.",
+        "Method families, auxiliary inputs, output-network contexts and runtime parallelism generated from ANDREA tool specifications.",
         size=11.4,
         fill=MUTED,
     )
@@ -536,6 +536,9 @@ def draw_panel(canvas: Canvas) -> None:
         fill=INK,
         bold=True,
         anchor="middle",
+    )
+    canvas.text(
+        CONTEXT_X, 158, "counts: execution routes", size=8.3, fill=MUTED, anchor="middle"
     )
     canvas.text(
         ACCEPT_X,
@@ -1097,12 +1100,12 @@ def draw_tools(canvas: Canvas, tools: list[Tool], tool_y: dict[str, float]) -> N
         )
         canvas.circle(TOOL_LEFT + 9, y, 2.8, fill=tool.family_color, stroke="none")
         label_x = TOOL_LEFT + 18
-        label_width = text_width(tool.label, 8.8, bold=True)
+        label_width = text_width(tool.label, 10.0, bold=True)
         available_width = TOOL_RIGHT - 82 - label_x
         label_size = (
-            min(8.8, 8.8 * available_width / label_width) if label_width else 8.8
+            min(10.0, 10.0 * available_width / label_width) if label_width else 10.0
         )
-        canvas.text(label_x, y + 2.9, tool.label, size=label_size, fill=INK, bold=True)
+        canvas.text(label_x, y + 3.3, tool.label, size=label_size, fill=INK, bold=True)
         draw_tool_badges(canvas, tool, y)
 
 

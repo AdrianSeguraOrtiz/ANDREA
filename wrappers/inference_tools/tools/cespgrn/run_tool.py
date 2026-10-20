@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
+import json
 import math
 import os
 import traceback
@@ -359,6 +360,67 @@ def patch_torch_eig(torch_module: Any) -> None:
     torch_module.eig = _eig_compat
 
 
+def orthogonal_psd_projection(matrix: np.ndarray, *, floor_small_positive: bool = False) -> np.ndarray:
+    """Use an orthonormal symmetric eigensystem for upstream's PSD projection.
+
+    CeSpGRN replaces nonpositive eigenvalues with 1e-3. Its general eigensolver
+    may produce nonorthogonal eigenvectors for repeated eigenvalues, making the
+    reconstructed matrix fail its own PSD check. Calculate that same projection
+    in float64; floor tiny positive eigenvalues only if casting back still fails
+    the upstream check.
+    """
+    values = np.asarray(matrix, dtype=np.float64)
+    if values.ndim != 2 or values.shape[0] != values.shape[1] or not np.isfinite(values).all():
+        raise ValueError("PSD projection requires a finite square covariance matrix.")
+    symmetric = (values + values.T) * 0.5
+    eigenvalues, eigenvectors = np.linalg.eigh(symmetric)
+    if floor_small_positive:
+        eigenvalues = np.maximum(eigenvalues, 1e-3)
+    else:
+        eigenvalues = np.where(eigenvalues <= 0, 1e-3, eigenvalues)
+    projected = (eigenvectors * eigenvalues) @ eigenvectors.T
+    return (projected + projected.T) * 0.5
+
+
+def estimate_covariance_with_psd_fallback(
+    cespgrn_module: Any, torch_module: Any, *, counts: np.ndarray, kernel_truncated: np.ndarray,
+) -> tuple[np.ndarray, list[dict[str, Any]]]:
+    """Repair only upstream PSD projections that fail its existing PSD check."""
+    original_projection = cespgrn_module.find_clostest_PSD
+    repairs: list[dict[str, Any]] = []
+
+    def checked_projection(matrix: Any) -> Any:
+        original_result = original_projection(matrix)
+        valid, original_minimum = cespgrn_module.isPSD(original_result)
+        if bool(valid):
+            return original_result
+
+        input_array = matrix.detach().cpu().numpy()
+        for floor_small_positive in (False, True):
+            corrected = torch_module.as_tensor(
+                orthogonal_psd_projection(input_array, floor_small_positive=floor_small_positive),
+                dtype=matrix.dtype, device=matrix.device,
+            )
+            valid, corrected_minimum = cespgrn_module.isPSD(corrected)
+            if bool(valid):
+                repairs.append({
+                    "method": "float64_symmetric_eigh",
+                    "nonpositive_eigenvalue_floor": 1e-3,
+                    "small_positive_eigenvalues_floored": floor_small_positive,
+                    "upstream_projection_minimum_eigenvalue": float(original_minimum),
+                    "corrected_minimum_eigenvalue": float(corrected_minimum),
+                })
+                return corrected
+        raise RuntimeError("CeSpGRN covariance projection remains non-PSD after the numerical fallback.")
+
+    cespgrn_module.find_clostest_PSD = checked_projection
+    try:
+        covariance = cespgrn_module.est_cov(X=counts, K_trun=kernel_truncated, weighted_kt=True)
+    finally:
+        cespgrn_module.find_clostest_PSD = original_projection
+    return covariance, repairs
+
+
 def run_cespgrn(
     *,
     expression: ExpressionInput,
@@ -397,7 +459,15 @@ def run_cespgrn(
             np.save(raw_dir / "kernel.npy", K)
             np.save(raw_dir / "kernel_truncated.npy", K_trun)
 
-            empir_cov = CeSpGRN.est_cov(X=counts, K_trun=K_trun, weighted_kt=True)
+            empir_cov, numerical_repairs = estimate_covariance_with_psd_fallback(
+                CeSpGRN, torch, counts=counts, kernel_truncated=K_trun,
+            )
+            (raw_dir / "covariance_numerical_repairs.json").write_text(
+                json.dumps({"repaired_projections": len(numerical_repairs), "repairs": numerical_repairs}, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            if numerical_repairs:
+                print(f"Numerical PSD fallback repaired {len(numerical_repairs)} covariance projections.")
             if not np.isfinite(empir_cov).all():
                 raise RuntimeError("CeSpGRN covariance estimation produced non-finite values.")
 

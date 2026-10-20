@@ -35,7 +35,7 @@
     {
       "id": "bulk_samples_observational_global_builtin_subnetwork_default",
       "sizes": [
-        "30x4"
+        "35x4"
       ],
       "requested_extras": [],
       "group_count": 0,
@@ -83,12 +83,21 @@
         "contexts": [
           "global"
         ]
+      },
+      "dimension_params": {
+        "genes": {
+          "fixed": 35
+        },
+        "cells": {
+          "param": "sampling.num_experiments",
+          "multiplier_param": "sampling.samples_per_experiment"
+        }
       }
     },
     {
       "id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
       "sizes": [
-        "30x4"
+        "35x4"
       ],
       "requested_extras": [
         "enrichment_background",
@@ -140,6 +149,15 @@
         "contexts": [
           "global"
         ]
+      },
+      "dimension_params": {
+        "genes": {
+          "fixed": 35
+        },
+        "cells": {
+          "param": "sampling.num_experiments",
+          "multiplier_param": "sampling.samples_per_experiment"
+        }
       }
     },
     {
@@ -269,6 +287,147 @@
           "global"
         ]
       }
+    },
+    {
+      "id": "representative_size_grid",
+      "sizes": [
+        "35x20",
+        "35x40",
+        "35x80"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "samples",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "source_network": {
+          "preset": "ecoli_full"
+        },
+        "subnetwork": {
+          "enabled": true,
+          "method": "neighbor_addition",
+          "num_nodes": 30,
+          "num_background_nodes": 5
+        },
+        "interactions": {
+          "use_edge_types_from_sif": true,
+          "percent_activators": 0.5,
+          "interaction_category": "DEFAULT"
+        },
+        "external_inputs": {
+          "mode": "randomized",
+          "num_externals": 5,
+          "num_correlated_externals": 0,
+          "correlation_noise": 0.0
+        },
+        "sampling": {
+          "burn_in": 10,
+          "num_experiments": 20,
+          "samples_per_experiment": 1
+        },
+        "noise": {
+          "biological": 0.01,
+          "input": 0.01,
+          "experimental": 0.01
+        },
+        "expression_variant": "unnormalized"
+      },
+      "dimension_params": {
+        "genes": {
+          "fixed": 35
+        },
+        "cells": {
+          "param": "sampling.num_experiments",
+          "multiplier_param": "sampling.samples_per_experiment"
+        }
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "custom_inputs_perturbational_global_size_grid",
+      "sizes": [
+        "5x4"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "perturbations",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "prior_grn",
+        "tf_list"
+      ],
+      "inputs": {
+        "syntren_source_network_sif": "../tests/fixtures/syntren/source_network.sif",
+        "syntren_externals_table": "../tests/fixtures/syntren/externals.tsv"
+      },
+      "param_overrides": {
+        "source_network": {
+          "preset": "custom_sif"
+        },
+        "subnetwork": {
+          "enabled": false,
+          "method": "cluster_addition",
+          "num_nodes": 100,
+          "num_background_nodes": 100
+        },
+        "interactions": {
+          "use_edge_types_from_sif": true,
+          "percent_activators": 0.2,
+          "interaction_category": "SIGMOIDAL",
+          "higher_order_probability": 0.0
+        },
+        "external_inputs": {
+          "mode": "from_file",
+          "fixed_source": "custom_table",
+          "num_externals": -1,
+          "num_correlated_externals": 0,
+          "correlation_noise": 0.1
+        },
+        "sampling": {
+          "burn_in": 0,
+          "num_experiments": 4,
+          "samples_per_experiment": 1
+        },
+        "noise": {
+          "biological": 0.0001,
+          "input": 0.0001,
+          "experimental": 0.0001
+        },
+        "expression_variant": "unnormalized"
+      },
+      "dimension_params": {
+        "genes": {
+          "fixed": 5
+        },
+        "cells": {
+          "fixed": 4
+        }
+      },
+      "group_count": 0,
+      "population_count": 0
     }
   ]
 }

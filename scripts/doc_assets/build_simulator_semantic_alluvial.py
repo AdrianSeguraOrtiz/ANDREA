@@ -9,6 +9,7 @@ PDF that pdflatex can include directly.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -566,6 +567,26 @@ def _short_label(label: str, fallback: str) -> str:
     return text or fallback[:3].upper()
 
 
+def _unique_short_labels(labels: dict[str, str], order: tuple[str, ...]) -> dict[str, str]:
+    """Keep compact matrix headings unambiguous, including similar names."""
+    candidates = {sim: _short_label(labels[sim], sim) for sim in order}
+    result: dict[str, str] = {}
+    used: set[str] = set()
+    for sim in order:
+        short = candidates[sim]
+        if list(candidates.values()).count(short) > 1:
+            words = re.findall(r"[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+", labels[sim])
+            short = "".join(word[0] for word in words).upper()[:3] or short
+        base = short
+        suffix = 2
+        while short in used:
+            short = f"{base[:2]}{suffix}"
+            suffix += 1
+        result[sim] = short
+        used.add(short)
+    return result
+
+
 def _spec_entries() -> list[tuple[Path, dict]]:
     specs = sorted(SPEC_ROOT.glob("*/simulatorspec.json"))
     if not specs:
@@ -589,10 +610,7 @@ def configure_from_specs(spec_entries: list[tuple[Path, dict]]) -> None:
         sim: SIMULATOR_COLOR_PALETTE[index % len(SIMULATOR_COLOR_PALETTE)]
         for index, sim in enumerate(SIMULATOR_ORDER)
     }
-    SIMULATOR_SHORT_LABELS = {
-        sim: _short_label(SIMULATOR_LABELS[sim], sim)
-        for sim in SIMULATOR_ORDER
-    }
+    SIMULATOR_SHORT_LABELS = _unique_short_labels(SIMULATOR_LABELS, SIMULATOR_ORDER)
 
     extras: set[str] = set()
     for _path, spec in spec_entries:

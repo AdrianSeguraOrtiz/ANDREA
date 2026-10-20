@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import math
 from pathlib import Path
 from typing import Any
 
@@ -1027,6 +1028,10 @@ def _resolve_simulator_run(
         simulator_spec=simulator_spec,
         raw_resources=run_payload.get("runtime_resources"),
     )
+    ram_gb = run_payload.get("ram_gb")
+    if (not isinstance(ram_gb, (int, float)) or isinstance(ram_gb, bool)
+            or not math.isfinite(ram_gb) or ram_gb <= 0):
+        raise ValueError(f"simulation-plan.runs[{run_id}].ram_gb must be a finite positive number")
     native_outputs = _resolve_native_outputs(
         simulator_id=simulator_id,
         data_axes=data_axes,
@@ -1124,6 +1129,7 @@ def _resolve_simulator_run(
         replicate_seeds=[int(seed) for seed in replicate_seeds],
         notes=run_payload.get("notes") or notes,
         simulator_spec=simulator_spec,
+        ram_gb=float(ram_gb),
     )
 
 
@@ -1228,6 +1234,11 @@ def validate_simulation_plan_payload(
             raise ValueError(
                 f"simulation-plan.tasks[{task.get('task_id')}].runtime_resources "
                 f"must match runs[{run_id}].runtime_resources"
+            )
+        if task.get("ram_gb") != run.ram_gb:
+            raise ValueError(
+                f"simulation-plan.tasks[{task.get('task_id')}].ram_gb "
+                f"must match runs[{run_id}].ram_gb"
             )
         seen_replicates_by_run[run_id].add(replicate_index)
     missing_replicates = {

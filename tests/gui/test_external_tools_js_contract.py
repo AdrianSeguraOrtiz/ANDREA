@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXTERNAL_TOOLS_PATH = (
@@ -335,6 +337,12 @@ class ExternalToolsJavaScriptContractTests(unittest.TestCase):
         self.assertIn("(managed by ANDREA)", source)
 
     def test_external_tool_contract_and_form_normalization(self) -> None:
+        # Supervisors such as PM2 give their direct child an IPC descriptor.
+        # This standalone Node subprocess has only standard pipes; forwarding
+        # the descriptor's environment metadata can make libuv poll an unrelated
+        # descriptor and abort before reporting the JavaScript assertions.
+        env = {key: value for key, value in os.environ.items()
+               if key not in {"NODE_CHANNEL_FD", "NODE_CHANNEL_SERIALIZATION_MODE"}}
         result = subprocess.run(
             [
                 shutil.which("node") or "node",
@@ -347,10 +355,18 @@ class ExternalToolsJavaScriptContractTests(unittest.TestCase):
             text=True,
             capture_output=True,
             check=False,
+            env=env,
         )
 
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertEqual(result.stdout, "ok\n")
+
+    def test_external_tool_contract_ignores_parent_ipc_channel(self) -> None:
+        with patch.dict(os.environ, {
+            "NODE_CHANNEL_FD": "3",
+            "NODE_CHANNEL_SERIALIZATION_MODE": "json",
+        }):
+            self.test_external_tool_contract_and_form_normalization()
 
 
 if __name__ == "__main__":

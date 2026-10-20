@@ -6,6 +6,14 @@
       "benchmark_config": {
         "sizes": [
           {
+            "genes": 50,
+            "columns": 100
+          },
+          {
+            "genes": 80,
+            "columns": 100
+          },
+          {
             "genes": 99,
             "columns": 100
           }
@@ -21,7 +29,7 @@
           32.0
         ],
         "repeats": 3,
-        "timeout_seconds": 1800,
+        "timeout_seconds": 10800,
         "execution_profile": {
           "mode": "global",
           "physical_task_policy": "single",
@@ -80,15 +88,17 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
-          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+          "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
           "git_dirty": true,
-          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
           "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
           "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
           "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
           "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
-          "image_repo_digests": [],
+          "image_repo_digests": [
+            "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+          ],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
@@ -97,9 +107,417 @@
           "seed": 12345,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "feddd2960fe4ede8c3feec889c415ffe4a9a739f952e19dbbae939f047f5d078"
+        "profile_sha256": "888d3a894c7439333113b8340401510be8b60e5085b934baac17e7ed7d445060",
+        "planned_points": [
+          {
+            "genes": 50,
+            "columns": 100,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 80,
+            "columns": 100,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 99,
+            "columns": 100,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 99,
+            "columns": 100,
+            "threads": 1,
+            "ram_gb": 32.0
+          },
+          {
+            "genes": 99,
+            "columns": 100,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 99,
+            "columns": 100,
+            "threads": 2,
+            "ram_gb": 32.0
+          },
+          {
+            "genes": 99,
+            "columns": 100,
+            "threads": 4,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 99,
+            "columns": 100,
+            "threads": 4,
+            "ram_gb": 32.0
+          },
+          {
+            "genes": 99,
+            "columns": 100,
+            "threads": 8,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 99,
+            "columns": 100,
+            "threads": 8,
+            "ram_gb": 32.0
+          }
+        ]
       },
       "runtime_points": [
+        {
+          "genes": 50,
+          "columns": 100,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.323208,
+          "seconds_p90": 8.306924,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 100,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 245000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "2ece698156a2d217dbcf043e0b8c1e9204969a127f3cb6976a91ba51b19ea673",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 8.552853,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/planet/planet-z_vaxzt6/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g50_c100_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:03:15.017989+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 7.144919,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/planet/planet-z_vaxzt6/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g50_c100_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:03:15.017989+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 7.323208,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/planet/planet-z_vaxzt6/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g50_c100_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:03:15.017989+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 80,
+          "columns": 100,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 9.036202,
+          "seconds_p90": 9.063174,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 100,
+            "n_genes": 80,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 632000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "368b720a984e222409c1253584ad62c7d51b016123b56f70313aec6abba0359d",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 80,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 9.069917,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/planet/planet-z_vaxzt6/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g80_c100_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:03:15.017989+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 9.012325,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/planet/planet-z_vaxzt6/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g80_c100_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:03:15.017989+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 9.036202,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/planet/planet-z_vaxzt6/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g80_c100_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:03:15.017989+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
         {
           "genes": 99,
           "columns": 100,
@@ -129,6 +547,145 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "ce60099e76a22a57ca61facc92044b010fb9f4e0f02f51b56d0cc5fc8eaff714",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 10.796424,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t1_m8_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 11.045611,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t1_m8_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 10.946378,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t1_m8_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -160,6 +717,145 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "ce60099e76a22a57ca61facc92044b010fb9f4e0f02f51b56d0cc5fc8eaff714",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 32,
+                "repeat": 1,
+                "seconds": 10.944865,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t1_m32_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 32,
+                "repeat": 2,
+                "seconds": 10.972243,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t1_m32_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 32,
+                "repeat": 3,
+                "seconds": 10.917277,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t1_m32_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -191,6 +887,145 @@
             "aggregation_step": "none",
             "threads": 2,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "ce60099e76a22a57ca61facc92044b010fb9f4e0f02f51b56d0cc5fc8eaff714",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 10.614249,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t2_m8_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 10.620635,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t2_m8_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 10.764247,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t2_m8_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -222,6 +1057,145 @@
             "aggregation_step": "none",
             "threads": 2,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "ce60099e76a22a57ca61facc92044b010fb9f4e0f02f51b56d0cc5fc8eaff714",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 32,
+                "repeat": 1,
+                "seconds": 10.700137,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t2_m32_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 32,
+                "repeat": 2,
+                "seconds": 10.77037,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t2_m32_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 32,
+                "repeat": 3,
+                "seconds": 10.613674,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t2_m32_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -253,6 +1227,145 @@
             "aggregation_step": "none",
             "threads": 4,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "ce60099e76a22a57ca61facc92044b010fb9f4e0f02f51b56d0cc5fc8eaff714",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 10.72511,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t4_m8_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 10.644243,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t4_m8_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 10.633373,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t4_m8_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -284,6 +1397,145 @@
             "aggregation_step": "none",
             "threads": 4,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "ce60099e76a22a57ca61facc92044b010fb9f4e0f02f51b56d0cc5fc8eaff714",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 32,
+                "repeat": 1,
+                "seconds": 10.783519,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t4_m32_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 32,
+                "repeat": 2,
+                "seconds": 10.91768,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t4_m32_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 32,
+                "repeat": 3,
+                "seconds": 10.642809,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t4_m32_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -315,6 +1567,145 @@
             "aggregation_step": "none",
             "threads": 8,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "ce60099e76a22a57ca61facc92044b010fb9f4e0f02f51b56d0cc5fc8eaff714",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 10.842581,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t8_m8_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 10.673149,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t8_m8_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 10.658505,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t8_m8_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -346,6 +1737,145 @@
             "aggregation_step": "none",
             "threads": 8,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "ce60099e76a22a57ca61facc92044b010fb9f4e0f02f51b56d0cc5fc8eaff714",
+              "params.json": "23444352a579277f7827cc52ea67f1c506d8a8ec3f54d05e91c19c8017a7062a",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 32,
+                "repeat": 1,
+                "seconds": 10.588953,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t8_m32_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 32,
+                "repeat": 2,
+                "seconds": 10.818156,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t8_m32_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 32,
+                "repeat": 3,
+                "seconds": 10.933331,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/global_hsa05224_fast_sampling_g99_c100_t8_m32_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/planet/planet-dmywnih8/global_hsa05224_fast_sampling/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:50:01.406640+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         }
       ]
@@ -356,6 +1886,14 @@
         "sizes": [
           {
             "genes": 80,
+            "columns": 100
+          },
+          {
+            "genes": 40,
+            "columns": 100
+          },
+          {
+            "genes": 60,
             "columns": 100
           }
         ],
@@ -426,24 +1964,26 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-10-07T05:53:44.472810+00:00",
-          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+          "recorded_at_utc": "2026-10-13T11:11:58.377899+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
           "git_dirty": true,
-          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
           "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
           "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
           "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
           "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
-          "image_repo_digests": [],
+          "image_repo_digests": [
+            "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+          ],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
           "host_memory_bytes": 67432239104,
           "docker_server": "24.0.2",
-          "seed": 0,
+          "seed": 1729,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "2cd72e892bf8f4d1ee980fa6a9edf738caa9bfc932a11199eba99cd93f2156ce",
+        "profile_sha256": "a9c093e0e5ff9bf8ba94f6d9842c6a1936fd64f64e5f9d34c52a0bdf99632fdb",
         "calibration_evidence": [
           {
             "fixture_key": "run00035",
@@ -483,6 +2023,90 @@
               "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
             },
             "report_sha256": "85a78973dc4e3725b446d89d581f8a144bf9df41eeb238fc10f97cbb32f6fa9b"
+          },
+          {
+            "fixture_key": "coverage_v1_planet_representative_global_82e50e2393_g40_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/planet/representative_global_82e50e2393/coverage_v1_planet_representative_global_82e50e2393_g40_c100/aaa8a2125f2c05030052551e9be394f72a88ea35cf08846476818bdfc5b42b35/repeat1/measurement.json",
+            "report_sha256": "2f13693cd9459297cfabd441e65c680c89772a766d33974a93c20a5f478ec6d5",
+            "task_id": "aaa8a2125f2c05030052551e9be394f72a88ea35cf08846476818bdfc5b42b35/repeat1",
+            "seconds": 955.7771498337388,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a94aa79fdf68b551b6fbb84513b53aae3cae0f42b2cdfbbe7c131ec1acf4db3d",
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_planet_representative_global_82e50e2393_g40_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/planet/representative_global_82e50e2393/coverage_v1_planet_representative_global_82e50e2393_g40_c100/aaa8a2125f2c05030052551e9be394f72a88ea35cf08846476818bdfc5b42b35/repeat2/measurement.json",
+            "report_sha256": "f072bbb75dc0fcb21a8fb2ce6980aff3962e8b97ac5f5d32d85712f01b75a20e",
+            "task_id": "aaa8a2125f2c05030052551e9be394f72a88ea35cf08846476818bdfc5b42b35/repeat2",
+            "seconds": 944.273504011333,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a94aa79fdf68b551b6fbb84513b53aae3cae0f42b2cdfbbe7c131ec1acf4db3d",
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_planet_representative_global_82e50e2393_g40_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/planet/representative_global_82e50e2393/coverage_v1_planet_representative_global_82e50e2393_g40_c100/aaa8a2125f2c05030052551e9be394f72a88ea35cf08846476818bdfc5b42b35/repeat3/measurement.json",
+            "report_sha256": "730ac7606891ceb689a721f356a8d93bf58a4306e71e211be5ab76878ecc8235",
+            "task_id": "aaa8a2125f2c05030052551e9be394f72a88ea35cf08846476818bdfc5b42b35/repeat3",
+            "seconds": 939.2198384702206,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a94aa79fdf68b551b6fbb84513b53aae3cae0f42b2cdfbbe7c131ec1acf4db3d",
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_planet_representative_global_82e50e2393_g60_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/planet/representative_global_82e50e2393/coverage_v1_planet_representative_global_82e50e2393_g60_c100/b36c5c98bd74a9aabc529720957be597fccda887e08679b6c32ad73d44c5d3ad/repeat1/measurement.json",
+            "report_sha256": "63f742e8cc9e57370eafb007ad950c7ea8ab29599abcd29590893363a062ea7a",
+            "task_id": "b36c5c98bd74a9aabc529720957be597fccda887e08679b6c32ad73d44c5d3ad/repeat1",
+            "seconds": 953.9781297296286,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "cddd76dcc95e64212ec15fcc00a7a5e15312e49ecdd4d270cd3f0df42f57750e",
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_planet_representative_global_82e50e2393_g60_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/planet/representative_global_82e50e2393/coverage_v1_planet_representative_global_82e50e2393_g60_c100/b36c5c98bd74a9aabc529720957be597fccda887e08679b6c32ad73d44c5d3ad/repeat2/measurement.json",
+            "report_sha256": "3084b0a01ca1562be81af255cc1657c9e27aa62f784d60f1d59040118ce5ecb0",
+            "task_id": "b36c5c98bd74a9aabc529720957be597fccda887e08679b6c32ad73d44c5d3ad/repeat2",
+            "seconds": 1037.9199486672878,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "cddd76dcc95e64212ec15fcc00a7a5e15312e49ecdd4d270cd3f0df42f57750e",
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_planet_representative_global_82e50e2393_g60_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/planet/representative_global_82e50e2393/coverage_v1_planet_representative_global_82e50e2393_g60_c100/b36c5c98bd74a9aabc529720957be597fccda887e08679b6c32ad73d44c5d3ad/repeat3/measurement.json",
+            "report_sha256": "d91e2ecfddbdec9e8796f56dfe1e6f74ad88061f490654cfc7e32d97f23ff353",
+            "task_id": "b36c5c98bd74a9aabc529720957be597fccda887e08679b6c32ad73d44c5d3ad/repeat3",
+            "seconds": 1052.543065533042,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "cddd76dcc95e64212ec15fcc00a7a5e15312e49ecdd4d270cd3f0df42f57750e",
+              "params.json": "8f74606ac3601966cf9b1369e68fcb9c9296f6aba6381dce09eba12356dbd0ee"
+            }
           }
         ]
       },
@@ -504,6 +2128,1786 @@
           },
           "seconds_p50": 1194.974248200655,
           "seconds_p90": 1195.2210179686547
+        },
+        {
+          "genes": 40,
+          "columns": 100,
+          "threads": 2,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 944.273504011333,
+          "seconds_p90": 953.4764206692575
+        },
+        {
+          "genes": 60,
+          "columns": 100,
+          "threads": 2,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1037.9199486672878,
+          "seconds_p90": 1049.6184421598912
+        }
+      ]
+    },
+    {
+      "profile_id": "global_hsa05224_fast_sampling_metacell100",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 50,
+            "columns": 200
+          },
+          {
+            "genes": 50,
+            "columns": 400
+          },
+          {
+            "genes": 50,
+            "columns": 800
+          },
+          {
+            "genes": 80,
+            "columns": 200
+          },
+          {
+            "genes": 80,
+            "columns": 400
+          },
+          {
+            "genes": 80,
+            "columns": 800
+          },
+          {
+            "genes": 99,
+            "columns": 200
+          },
+          {
+            "genes": 99,
+            "columns": 400
+          },
+          {
+            "genes": 99,
+            "columns": 800
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 10800,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "human_single_cell_benchmark",
+          "gene_id_source": "human_breast_cancer_pathway",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "marker_count_per_group": 4,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Resolved by benchmark_profiles.py from ToolSpec defaults."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "planet.json:global_hsa05224_fast_sampling_metacell100:inline",
+          "resolved_params": {
+            "gene_set": "hsa05224",
+            "metacell": true,
+            "knn": 20,
+            "metacell_count": 100,
+            "ensemble": 1,
+            "diffusion_timesteps": 20,
+            "sampling_timesteps": 20,
+            "seed": 0
+          },
+          "cost_relevant_params": [
+            "gene_set",
+            "metacell",
+            "knn",
+            "metacell_count",
+            "ensemble",
+            "diffusion_timesteps",
+            "sampling_timesteps"
+          ],
+          "cost_relevant_values": {
+            "gene_set": "hsa05224",
+            "metacell": true,
+            "knn": 20,
+            "metacell_count": 100,
+            "ensemble": 1,
+            "diffusion_timesteps": 20,
+            "sampling_timesteps": 20
+          }
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+          "git_dirty": true,
+          "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+          "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+          "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+          "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+          "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+          "image_repo_digests": [
+            "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "e0ed5cf13bfd9b5a0f742f478dff249723417e63417e2cb8f831cb84d1211bec",
+        "planned_points": [
+          {
+            "genes": 50,
+            "columns": 200,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 50,
+            "columns": 400,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 50,
+            "columns": 800,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 80,
+            "columns": 200,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 80,
+            "columns": 400,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 80,
+            "columns": 800,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 99,
+            "columns": 200,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 99,
+            "columns": 400,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 99,
+            "columns": 800,
+            "threads": 2,
+            "ram_gb": 8.0
+          }
+        ]
+      },
+      "runtime_points": [
+        {
+          "genes": 50,
+          "columns": 200,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.806383,
+          "seconds_p90": 8.504378,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 200,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 490000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "87c2a1e93709ce835938ecaa4fe37de36eead3ee58760fa8bf3fcdf1d6da188b",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 8.678877,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c200_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 7.776101,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c200_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 7.806383,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c200_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 50,
+          "columns": 400,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.824895,
+          "seconds_p90": 7.968062,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 400,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 980000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "3f6c94e28bd0528cb33412f1d15160808cd3e8775d268621b29fe105ca904c38",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 7.666806,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c400_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 8.003854,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c400_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 7.824895,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c400_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 50,
+          "columns": 800,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 7.950968,
+          "seconds_p90": 8.022663,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 800,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 1960000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "cd6a2e6feeaf33c1b5271857f2799d2cc98f64f1547430f8c0268c5719975fec",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 8.040587,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c800_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 7.950968,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c800_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 7.916714,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g50_c800_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 80,
+          "columns": 200,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 9.40457,
+          "seconds_p90": 9.571968,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 200,
+            "n_genes": 80,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 1264000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "327ee6c8819702deaa0f0a3125e6eda82dfb717d60b2ab5fc71e9f65432b12aa",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 80,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 9.40457,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c200_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 9.613818,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c200_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 9.352828,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c200_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 80,
+          "columns": 400,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 9.818402,
+          "seconds_p90": 9.872549,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 400,
+            "n_genes": 80,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 2528000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "f186d2d57765ab426c544c19c08272949c0ef39292ecea204bec91d63419841b",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 80,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 9.818402,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c400_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 9.886086,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c400_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 9.587785,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c400_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 80,
+          "columns": 800,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 9.824713,
+          "seconds_p90": 109.551167,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 800,
+            "n_genes": 80,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 5056000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "7dac54c5ca1a381b0b5f13a7ff8c31602860ee6df3ea821afda789b41fc46ad8",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 80,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 134.482781,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c800_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 9.824713,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c800_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 9.732964,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g80_c800_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 99,
+          "columns": 200,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.978072,
+          "seconds_p90": 11.033478,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 200,
+            "n_genes": 99,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 1940400,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "97a1eea2525db8b959b0e83d9c052caeb8b19938200074d59a10186fc855b9e8",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 10.978072,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c200_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 11.04733,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c200_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 10.977286,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c200_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 99,
+          "columns": 400,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.141156,
+          "seconds_p90": 10.188474,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 400,
+            "n_genes": 99,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 3880800,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "54007e8151497a097d252f5fbc2260de89571428a3895ac7b5b98cad52b6d529",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 10.141156,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c400_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 10.105979,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c400_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 10.200304,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c400_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 99,
+          "columns": 800,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 11.044895,
+          "seconds_p90": 11.120977,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 800,
+            "n_genes": 99,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 7761600,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "a3759f704257810d9b2998fd95a1dd82102fe7d9768e5d9bfd382bb8995afca9",
+              "params.json": "86fb986f31c218c1f390fda7e7ac3caefd64beb1d040a0e5ca5996422b363628",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 1,
+                "diffusion_timesteps": 20,
+                "sampling_timesteps": 20,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 99,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 11.139998,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c800_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 10.997068,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c800_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 99,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 11.044895,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/planet/planet-bl6dk52n/global_hsa05224_fast_sampling_metacell100/global_hsa05224_fast_sampling_metacell100_g99_c800_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T04:09:49.010864+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "4f7391a6aab490033b92394e197e3ca997edc4298cecf27eb7dcff5389fc6ceb",
+                  "spec_sha256": "d29c4ac1f992b3c12052d12b97cb23a351e501885b213e099d1d3e00ec5ba1a9",
+                  "build_context_sha256": "bfdb9f034120ec89dbd4c0d9044ad943ef58354400ae3e19f4cb236858ef2f3e",
+                  "image_reference": "adriansegura99/inference-tools_planet:1.1.1",
+                  "image_id": "sha256:6653471ed8ead64b0b473a51f16dbad76501f2f035042142181d3211d336d39c",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_planet@sha256:42808978e4748a4e128f3837eaf4668ed8361cff7220daca29347ffe0187adfb"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
         }
       ]
     }

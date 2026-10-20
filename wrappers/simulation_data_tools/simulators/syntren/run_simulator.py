@@ -424,7 +424,7 @@ def run_syntren(ini_path: Path, raw_dir: Path) -> None:
         "-Xmx1024m",
         "-cp",
         classpath(),
-        "islab.bayesian.genenetwork.generation.NetworkGeneratorCLI",
+        "SyntrenSeededCLI",
         str(ini_path),
     ]
     write_json(raw_dir / "syntren_command.json", cmd)

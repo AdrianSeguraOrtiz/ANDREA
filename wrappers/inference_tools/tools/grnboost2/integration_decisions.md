@@ -50,3 +50,7 @@
 Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
 
 - Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/grnboost2:audit-local`; image ID `sha256:bfd18fe96018379c452ada4b8ccf7ccb3c849860c1e3b8fd525a1a3f256fc8ac`. The repository smoke runner passed `default` (21 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.
+
+## Native thread initialization (image 1.1.2)
+
+The generated container entrypoint now sets BLAS/OpenMP/NumExpr limits to one thread per process, preserving the existing outer worker mapping before starting the interpreter. This prevents already-loaded libraries from retaining host-derived or earlier default thread counts. Wrapper-level setters remain useful for runtime APIs such as PyTorch, but environment-variable assignment after imports is not sufficient. The runtime audit checks effective native pools with unrestricted and pinned affinity, including Dask/foreach workers where applicable. Changed images require fresh cost measurements; earlier observations retain their original image identity.

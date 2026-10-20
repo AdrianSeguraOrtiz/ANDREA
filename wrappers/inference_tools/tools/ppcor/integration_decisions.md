@@ -1,5 +1,25 @@
 # ppcor Integration Decisions
 
+## Numerical singularity recovery (image 1.1.1)
+
+PPCOR 1.1 chooses `MASS::ginv` or `solve` using an absolute determinant
+threshold. A singular or severely ill-conditioned covariance can nevertheless
+have a numerically nonzero determinant. This occurred for both Kendall and
+Pearson configurations when broadening the calibration sizes.
+
+The wrapper first calls the unchanged upstream `ppcor::pcor`. Only if its
+inversion raises an explicitly singular-system error does it retry the same
+function with a local `solve` binding to `MASS::ginv`, using the latter's default
+`sqrt(.Machine$double.eps)` tolerance. The covariance calculation, partial
+correlation, significance formulas, parameters, inputs and seeds are unchanged.
+The package namespace is not modified. Other upstream errors still fail.
+
+Successful calls retain their original numerical path. A recovered call records
+the original error and generalized inverse in `ppcor.log`, the progress warnings
+and `raw/ppcor_config.json` under `numerical_inverse_fallback`. This deliberately
+uses the same generalized inverse that PPCOR already uses for singular matrices;
+it does not introduce a ridge penalty or a different inference method.
+
 ## Sources Reviewed
 
 - Upstream/package mirror: `wrappers/inference_tools/tools/ppcor/repo/ppcor/`
@@ -466,3 +486,7 @@ The primary paper (https://doi.org/10.5351/CSAM.2015.22.6.665), CRAN ppcor 1.1 i
 Scope: this is a fresh source/contract review; older smoke/cost results elsewhere in this log are historical and are not re-certified by this audit. Upstream sources were fetched at the pinned revisions or package versions; local repo/papers caches were absent. No cost campaign or publication was performed.
 
 Fresh bounded verification: the complete current Dockerfile was built with the standard `build_tool_images.py` helper as `andrea-audit/ppcor:local` (image ID `sha256:0ef33bf59f81f3c5ab8907eb96d42260e85b7576d6ed1ef779656e1e78736e9f`; no wrapper overlay). The official smoketest runner passed `global_pearson` (28 rows), with `--threads 1`, a 180-second per-tool timeout, and Docker limits of 2 CPUs / 8 GiB. These runs resolve ToolSpec defaults plus the committed dev/smoke overrides; they verify execution, network/progress contracts and declared auxiliary artifacts, not accuracy or default-parameter cost calibration.
+
+## Native thread initialization (image 1.1.2)
+
+The generated container entrypoint now sets BLAS/OpenMP/NumExpr limits to one thread per process, preserving the existing outer worker mapping before starting the interpreter. This prevents already-loaded libraries from retaining host-derived or earlier default thread counts. Wrapper-level setters remain useful for runtime APIs such as PyTorch, but environment-variable assignment after imports is not sufficient. The runtime audit checks effective native pools with unrestricted and pinned affinity, including Dask/foreach workers where applicable. Changed images require fresh cost measurements; earlier observations retain their original image identity.

@@ -30,6 +30,9 @@ RUN git init /opt/MINI-EX \
     && test "$(git -C /opt/MINI-EX rev-parse HEAD)" = "${MINIEX_REF}" \
     && chmod -R a+rX /opt/MINI-EX
 
+COPY patch_singleton_clustermap.py /app/patch_singleton_clustermap.py
+RUN python3 /app/patch_singleton_clustermap.py /opt/MINI-EX/bin/MINIEX_makeRegulonClustermap.py
+
 # MINI-EX's Nextflow graph uses root-level dummy paths for nullable inputs.
 RUN touch \
         /.dummy_path_terms_of_interest \

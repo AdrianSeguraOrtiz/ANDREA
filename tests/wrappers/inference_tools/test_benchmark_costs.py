@@ -474,6 +474,136 @@ class BenchmarkCostsContractTest(unittest.TestCase):
                 self.assertEqual(benchmark_costs.run(argv), 1)
             self.assertFalse((catalog / "genie3/cost.json").exists())
 
+    def test_resume_discovers_nested_tool_campaign_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            directory = root / "dignet" / "dignet-verified" / "global_default"
+            directory.mkdir(parents=True)
+            (directory / "benchmark_config.json").write_text("{}")
+            found = benchmark_costs.find_evidence_profiles(
+                [root], "dignet", "global_default"
+            )
+            self.assertEqual(found, [directory.resolve()])
+
+    def _resume_fixture(self, root: Path) -> tuple[list[str], Path]:
+        catalog, sources = root / "catalog", root / "sources"
+        (catalog / "genie3").mkdir(parents=True)
+        (sources / "genie3").mkdir(parents=True)
+        _write_catalog_toolspec(catalog / "genie3/toolspec.json", "genie3")
+        argv = ["--catalog-tools-root", str(catalog), "--tool-sources-root", str(sources),
+                "--tool", "genie3", "--profile", "global_default", "--merge-existing",
+                "--size", "8x4", "--threads", "1", "--ram-gb", "1", "--repeats", "3",
+                "--skip-build", "--results-dir", str(root / "evidence")]
+        return argv, catalog / "genie3/cost.json"
+
+    def test_resume_skips_valid_points_and_preserves_unrelated_profiles(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            argv, path = self._resume_fixture(Path(tmp))
+            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")) as run:
+                self.assertEqual(benchmark_costs.run(argv), 0)
+                self.assertEqual(run.call_count, 3)
+                first = json.loads(path.read_text())
+                unrelated = copy.deepcopy(first["profiles"][0])
+                unrelated["profile_id"] = "unrelated_historical_profile"
+                first["profiles"].append(unrelated)
+                path.write_text(json.dumps(first))
+                run.reset_mock()
+                self.assertEqual(benchmark_costs.run(argv + ["--size", "12x4"]), 0)
+                self.assertEqual(run.call_count, 3)
+            second = json.loads(path.read_text())
+            self.assertEqual(second["profiles"][1], unrelated)
+            self.assertEqual(second["profiles"][0]["runtime_points"][0]["seconds_p50"], 1.25)
+            self.assertEqual(len(second["profiles"][0]["runtime_points"]), 2)
+            self.assertFalse(_schema_error_messages(second), _schema_error_messages(second))
+
+    def test_resume_uses_old_raw_input_evidence_after_recipe_script_change(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            argv, path = self._resume_fixture(Path(tmp))
+            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")) as run:
+                self.assertEqual(benchmark_costs.run(argv), 0)
+                payload = json.loads(path.read_text())
+                old_profile = payload["profiles"][0]
+                old_profile["benchmark_config"]["profile_sha256"] = "1" * 64
+                del old_profile["runtime_points"][0]["measurement_evidence"]
+                path.write_text(json.dumps(payload))
+                run.reset_mock()
+                self.assertEqual(benchmark_costs.run(argv), 0)
+                self.assertEqual(run.call_count, 0)
+
+    def test_resume_rejects_changed_image_seed_parameters_and_actual_input_bytes(self) -> None:
+        for mutation in ("image", "seed", "params", "input_bytes"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
+                argv, path = self._resume_fixture(Path(tmp))
+                with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")) as run:
+                    self.assertEqual(benchmark_costs.run(argv), 0)
+                    run.reset_mock()
+                    if mutation == "image":
+                        provenance = json.loads(path.read_text())["profiles"][0]["benchmark_config"]["provenance"]
+                        provenance["image_id"] = "sha256:" + "c" * 64
+                        with patch.object(benchmark_costs, "collect_provenance", return_value=provenance):
+                            self.assertEqual(benchmark_costs.run(argv), 0)
+                    elif mutation == "seed":
+                        self.assertEqual(benchmark_costs.run(argv + ["--seed", "5678"]), 0)
+                    elif mutation == "params":
+                        overrides = Path(tmp) / "overrides"
+                        overrides.mkdir()
+                        (overrides / "genie3.json").write_text(json.dumps({"limit": 99}))
+                        self.assertEqual(benchmark_costs.run(argv + ["--param-overrides-dir", str(overrides)]), 0)
+                    else:
+                        prepare = benchmark_costs.prepare_io_dir
+                        def changed_inputs(io_dir, *args, **kwargs):
+                            prepare(io_dir, *args, **kwargs)
+                            with (io_dir / "expression.tsv").open("a") as output:
+                                output.write("\n")
+                        with patch.object(benchmark_costs, "prepare_io_dir", side_effect=changed_inputs):
+                            self.assertEqual(benchmark_costs.run(argv), 0)
+                    self.assertEqual(run.call_count, 3)
+
+    def test_resume_retries_failed_repeat_without_repeating_successes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            argv, path = self._resume_fixture(root)
+            with patch.object(benchmark_costs, "run_container_once", side_effect=[("ok", 1.25, ""), ("error", 2.0, "failure")]):
+                self.assertEqual(benchmark_costs.run(argv + ["--fail-fast"]), 1)
+            failed = next((root / "evidence").glob("*/global_default/measurements.json"))
+            failed_bytes = failed.read_bytes()
+            self.assertFalse(path.exists())
+            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")) as run:
+                self.assertEqual(benchmark_costs.run(argv), 0)
+                self.assertEqual(run.call_count, 2)
+            self.assertEqual(failed.read_bytes(), failed_bytes)
+            point = json.loads(path.read_text())["profiles"][0]["runtime_points"][0]
+            self.assertEqual(point["repeats_ok"], 3)
+            self.assertEqual([r["seconds"] for r in point["measurement_evidence"]["observations"]], [1.25, 1.5, 1.5])
+
+    def test_partial_matrix_checkpoints_completed_points_then_continues(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            argv, path = self._resume_fixture(Path(tmp))
+            argv += ["--size", "12x4"]
+            with patch.object(benchmark_costs, "run_container_once", side_effect=[("ok", 1.25, "")] * 3 + [("timeout", 2.0, "timeout")]):
+                self.assertEqual(benchmark_costs.run(argv + ["--fail-fast"]), 1)
+            payload = json.loads(path.read_text())["profiles"][0]
+            self.assertEqual(len(payload["runtime_points"]), 1)
+            self.assertEqual(len(payload["benchmark_config"]["planned_points"]), 2)
+            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")) as run:
+                self.assertEqual(benchmark_costs.run(argv), 0)
+                self.assertEqual(run.call_count, 3)
+            self.assertEqual(len(json.loads(path.read_text())["profiles"][0]["runtime_points"]), 2)
+
+    def test_resume_retains_historical_resources_without_expanding_cartesian_matrix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            argv, path = self._resume_fixture(Path(tmp))
+            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")):
+                self.assertEqual(benchmark_costs.run(argv + ["--threads", "1,2"]), 0)
+            argv[argv.index("8x4")] = "12x4"
+            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.5, "")) as run:
+                self.assertEqual(benchmark_costs.run(argv), 0)
+                self.assertEqual(run.call_count, 3)
+            profile = json.loads(path.read_text())["profiles"][0]
+            self.assertEqual(len(profile["runtime_points"]), 3)
+            self.assertEqual(len(profile["benchmark_config"]["planned_points"]), 3)
+            self.assertEqual(profile["benchmark_config"]["threads_tested"], [1, 2])
+
     def test_required_cost_coverage_rejects_missing_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             catalog = Path(tmp)
@@ -481,6 +611,47 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             _write_catalog_toolspec(catalog / "genie3/toolspec.json", "genie3")
             with self.assertRaisesRegex(RuntimeError, "Missing tool cost.json for: genie3"):
                 validate_tool_costs.run(TOOL_COST_SCHEMA, catalog, [], False, require=True)
+
+    def test_changed_image_remeasures_only_explicit_and_historical_points(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            argv, path = self._resume_fixture(Path(tmp))
+            with patch.object(benchmark_costs, "run_container_once", return_value=("ok", 1.25, "")):
+                self.assertEqual(benchmark_costs.run(argv + ["--threads", "1,2"]), 0)
+            before = json.loads(path.read_text())
+            provenance = copy.deepcopy(before['profiles'][0]['benchmark_config']['provenance'])
+            provenance['image_id'] = 'sha256:' + 'e' * 64
+            argv[argv.index('8x4')] = '12x4'
+            with patch.object(benchmark_costs, 'collect_provenance', return_value=provenance):
+                with patch.object(benchmark_costs, 'run_container_once', return_value=('ok', 2., '')) as run:
+                    self.assertEqual(benchmark_costs.run(argv), 1)
+                    self.assertEqual(run.call_count, 0)
+                    self.assertEqual(benchmark_costs.run(argv + ['--remeasure-incompatible-history']), 0)
+                    self.assertEqual(run.call_count, 9)
+            profile = json.loads(path.read_text())['profiles'][0]
+            self.assertEqual({(p['genes'],p['columns'],p['threads']) for p in profile['runtime_points']},
+                             {(8,4,1),(8,4,2),(12,4,1)})
+            self.assertTrue(all(p['seconds_p50']==2. for p in profile['runtime_points']))
+
+    def test_interrupted_image_recalibration_retains_pending_historical_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            argv, path = self._resume_fixture(Path(tmp))
+            with patch.object(benchmark_costs, 'run_container_once', return_value=('ok',1.,'')):
+                self.assertEqual(benchmark_costs.run(argv+['--threads','1,2']),0)
+            provenance=copy.deepcopy(json.loads(path.read_text())['profiles'][0]['benchmark_config']['provenance'])
+            provenance['image_id']='sha256:'+'f'*64
+            argv[argv.index('8x4')]='12x4'
+            argv+=['--remeasure-incompatible-history']
+            with patch.object(benchmark_costs, 'collect_provenance', return_value=provenance):
+                with patch.object(benchmark_costs, 'run_container_once', side_effect=[('ok',2.,'')]*3+[KeyboardInterrupt()]):
+                    with self.assertRaises(KeyboardInterrupt):benchmark_costs.run(argv)
+                partial=json.loads(path.read_text())['profiles'][0]
+                self.assertEqual(len(partial['runtime_points']),1)
+                self.assertEqual(len(partial['benchmark_config']['planned_points']),3)
+                with patch.object(benchmark_costs, 'run_container_once',return_value=('ok',2.,'')) as run:
+                    self.assertEqual(benchmark_costs.run(argv),0)
+                    self.assertEqual(run.call_count,6)
+            points=json.loads(path.read_text())['profiles'][0]['runtime_points']
+            self.assertEqual({(p['genes'],p['threads']) for p in points},{(8,1),(8,2),(12,1)})
 
     def test_run_writes_selected_profiles_without_pooling_runtime_points(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -733,6 +904,47 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             build_image.assert_not_called()
             run_container.assert_not_called()
             self.assertFalse((catalog_root / "genie3" / "cost.json").exists())
+
+    def test_run_container_retry_removes_only_stale_cidfiles(self) -> None:
+        for state in ("missing", "stopped"):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as tmp:
+                io_dir = Path(tmp)
+                cidfile = io_dir / ".docker-container.cid"
+                cidfile.write_text("a" * 64)
+                (io_dir / "out").mkdir()
+                calls = []
+                def fake_run_cmd(cmd, **_kwargs):
+                    calls.append(list(cmd))
+                    if cmd[:2] == ["docker", "inspect"]:
+                        return subprocess.CompletedProcess(cmd, 1 if state == "missing" else 0,
+                            stdout="" if state == "missing" else "false\n",
+                            stderr="Error: No such object: " + "a" * 64 if state == "missing" else "")
+                    self.assertEqual(cmd[:2], ["docker", "run"])
+                    self.assertFalse(cidfile.exists())
+                    (io_dir / "out/network.csv").write_text("source,target,score\nG1,G2,1\n")
+                    return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+                with patch.object(benchmark_costs, "run_cmd", side_effect=fake_run_cmd):
+                    result = benchmark_costs.run_container_once(image_tag="test-image", io_dir=io_dir,
+                                                               threads=1, ram_gb=1, timeout_s=5)
+                self.assertEqual(result[0], "ok")
+                self.assertEqual([cmd[:2] for cmd in calls], [["docker", "inspect"], ["docker", "run"]])
+
+    def test_run_container_retry_preserves_active_or_unverifiable_cidfiles(self) -> None:
+        for state in ("active", "daemon_error"):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as tmp:
+                io_dir = Path(tmp)
+                cidfile = io_dir / ".docker-container.cid"
+                cidfile.write_text("b" * 64)
+                response = subprocess.CompletedProcess(["docker", "inspect"], 0 if state == "active" else 1,
+                    stdout="true\n" if state == "active" else "",
+                    stderr="" if state == "active" else "Cannot connect to the Docker daemon")
+                with patch.object(benchmark_costs, "run_cmd", return_value=response) as run_cmd:
+                    with self.assertRaisesRegex(RuntimeError, "still running|Cannot verify"):
+                        benchmark_costs.run_container_once(image_tag="test-image", io_dir=io_dir,
+                                                          threads=1, ram_gb=1, timeout_s=5)
+                self.assertEqual(cidfile.read_text(), "b" * 64)
+                self.assertEqual(run_cmd.call_count, 1)
+                self.assertEqual(run_cmd.call_args.args[0][:2], ["docker", "inspect"])
 
     def test_run_container_timeout_cleans_up_named_container(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

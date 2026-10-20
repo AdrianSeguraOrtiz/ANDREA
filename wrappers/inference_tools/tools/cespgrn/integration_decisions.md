@@ -1,5 +1,27 @@
 # cespgrn Integration Decisions
 
+## Covariance projection recovery (image 1.1.1)
+
+The pinned upstream implementation estimates symmetric covariance matrices in
+float32 and, when necessary, projects them using a general eigendecomposition.
+For some 200-gene inputs the reconstructed matrix still fails upstream's own
+positive-semidefinite check, causing an assertion before ADMM starts.
+
+The wrapper preserves the original covariance estimator and first attempts the
+unchanged upstream projection. If that projection fails the existing check, it
+reconstructs the symmetric matrix using an orthonormal `numpy.linalg.eigh`
+decomposition in float64, replacing nonpositive eigenvalues with upstream's
+existing value `1e-3`. It casts back to the original tensor dtype and checks the
+result using the unchanged upstream checker. Only if this cast still fails does
+it also floor very small positive eigenvalues to `1e-3`; continued failure raises
+an error. This is a conditional numerical repair of an existing projection, not
+a change to the covariance formula, kernel, ADMM settings, data or random seed.
+
+Successful original projections are returned unchanged. The temporary binding
+is restored even if estimation fails. Every recovered projection records the
+original and corrected minimum eigenvalues and whether the additional floor
+was needed in `raw/covariance_numerical_repairs.json`; the log reports the count.
+
 ## Phase 3 Status
 
 - Scope: Phase 3 completed. Wrapper, Dockerfile, ToolSpec, input specs,
@@ -326,3 +348,7 @@ Fixed implementation choices, not exposed:
 Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
 
 - Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/cespgrn:audit-local`; image ID `sha256:b461221fb9b331e11418734c0953bc2267e3fc19d0f6eb986ae35587d8a2bc14`. The repository smoke runner passed `column_native` (831 rows), `column_native_spatial` (820 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.
+
+## Native thread initialization (image 1.1.2)
+
+The generated container entrypoint now sets BLAS/OpenMP/NumExpr limits to the assigned `--threads` value before starting the interpreter. This prevents already-loaded libraries from retaining host-derived or earlier default thread counts. Wrapper-level setters remain useful for runtime APIs such as PyTorch, but environment-variable assignment after imports is not sufficient. The runtime audit checks effective native pools with unrestricted and pinned affinity, including Dask/foreach workers where applicable. Changed images require fresh cost measurements; earlier observations retain their original image identity.

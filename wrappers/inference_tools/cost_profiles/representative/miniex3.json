@@ -8,6 +8,38 @@
           {
             "genes": 12179,
             "columns": 100
+          },
+          {
+            "genes": 4000,
+            "columns": 40
+          },
+          {
+            "genes": 4000,
+            "columns": 70
+          },
+          {
+            "genes": 4000,
+            "columns": 100
+          },
+          {
+            "genes": 8000,
+            "columns": 40
+          },
+          {
+            "genes": 8000,
+            "columns": 70
+          },
+          {
+            "genes": 8000,
+            "columns": 100
+          },
+          {
+            "genes": 12179,
+            "columns": 40
+          },
+          {
+            "genes": 12179,
+            "columns": 70
           }
         ],
         "threads_tested": [
@@ -99,8 +131,196 @@
           },
           "source_result_sha256": "53c34b77e50ea314d59bc1f687455f3bcf6fa10a2032a1b816fe4dde146ad357",
           "physical_index": 0
+        },
+        {
+          "fixture_key": "coverage_v1_miniex3_representative_group_native_5f4b81f3ac_g4000_c40",
+          "genes": 4000,
+          "columns": 40,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "455d3399360250223e6f51645552fb3ece3c5a4abb621c7551415c974c78014d",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "3c12d6dc7a640b2088341b99736db5d283acf2bff95c7cc3d0bbf955ff49accb",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "record_sha256": "5fd2b259ed205ce397510a2fe02ddc8da7ab5a69795f9ead548e46417d539845",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_miniex3_representative_group_native_5f4b81f3ac_g4000_c70",
+          "genes": 4000,
+          "columns": 70,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "0d219ebc33e5db3bf2bed3526c27d8df050b672458ae1db92690b757254db008",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "cd3be6f5a615f2a6dc8c2799d210b3c32d01036dadf71fe7950d2cf3896ee0d3",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "record_sha256": "161423eae735d81f9eea93f60be4384d401cc66c660f9f99affe21b76f08b30b",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_miniex3_representative_group_native_5f4b81f3ac_g4000_c100",
+          "genes": 4000,
+          "columns": 100,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "b63b6eec52f8db922a635f9e0ab828c08988ec23fd78f58c1e9df4734b0581c1",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "ce744e5f79200df7aef3f2494a5ec15dc8f420d46f3d05da8e8640847b28a6aa",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "record_sha256": "2520f4c840cfa1653895451d947d48681c31c2f73d2e578c47216e8daf3ef288",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_miniex3_representative_group_native_5f4b81f3ac_g8000_c40",
+          "genes": 8000,
+          "columns": 40,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "fe0de7361f2f2a1261935be83fd2994e720bceb72b97d7b800838d831ffe91dc",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "3c12d6dc7a640b2088341b99736db5d283acf2bff95c7cc3d0bbf955ff49accb",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "record_sha256": "5981b738767afb4b8a79eb5dbbcf1a833e6aa7d8f3d74652d48dfec45a467f94",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_miniex3_representative_group_native_5f4b81f3ac_g8000_c70",
+          "genes": 8000,
+          "columns": 70,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "6b80f5477ae838cb5e3f9791bc438f5e63089945326a5ef21d108e1c1b01bd3c",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "cd3be6f5a615f2a6dc8c2799d210b3c32d01036dadf71fe7950d2cf3896ee0d3",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "record_sha256": "7ebe9d592784c6053c248eab6f55415035153d94c895fdcda4b19028dc62adfa",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_miniex3_representative_group_native_5f4b81f3ac_g8000_c100",
+          "genes": 8000,
+          "columns": 100,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "bdf75116e0d92370542b2bf9fe463764dd986ecaf517e73beeea2e749fa52c06",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "ce744e5f79200df7aef3f2494a5ec15dc8f420d46f3d05da8e8640847b28a6aa",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "record_sha256": "923c993d1b6f4ca105b5b7ad05a4bccf8b7250a7e57f32a6fb51df92af83ccf5",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_miniex3_representative_group_native_5f4b81f3ac_g12179_c40",
+          "genes": 12179,
+          "columns": 40,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "8b8d12ce20cc333e2a043138e602737db42af12262b79e562b5929449c1325ad",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "3c12d6dc7a640b2088341b99736db5d283acf2bff95c7cc3d0bbf955ff49accb",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "record_sha256": "413974a130be4b6d5ca0ad044b8944e757808d0fa053c9763b549f027f2d2383",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_miniex3_representative_group_native_5f4b81f3ac_g12179_c70",
+          "genes": 12179,
+          "columns": 70,
+          "input_sha256": {
+            "execution.json": "024a2325cb2d866eb12087e7b54c52099b4532d99073a24c25a3d53cb1f4960e",
+            "expression.tsv": "a5ac6210ea1a3ee422d027b5398c4af9bb67fed2d75775139fac19840538a6c3",
+            "extra/cluster_identities.tsv": "1ba72789b187cc042d1bcb7342d9e8b4815f0758019741e3480536f52efe258b",
+            "extra/cluster_markers.tsv": "2f7ccd6a714c31951047777c2307349b5d19662fe6163d2c49413f04f9d040a6",
+            "extra/groups.tsv": "cd3be6f5a615f2a6dc8c2799d210b3c32d01036dadf71fe7950d2cf3896ee0d3",
+            "extra/tf_list.txt": "fe43740471b22cacc633de84276b4f787c5863185ce0781e8325989cbe9e5399",
+            "params.json": "c03f9763d611e3c6192efe3c03487257f4b4e0014a0769ded17105526cff5cac"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "947cbbaaea2d1b9a7ab85c976aea6c04045db7bf2ab861b0b938e635146e3a75",
+            "record_sha256": "5423cfc82c3a1316e4c8d250adf83714e26df95aceda54a2a9712d87d640d01c",
+            "role": "calibration"
+          }
         }
-      ]
+      ],
+      "calibration_design": {
+        "version": 1,
+        "kind": "independent_gene_column_grid",
+        "gene_levels": [
+          4000,
+          8000,
+          12179
+        ],
+        "column_levels": [
+          40,
+          70,
+          100
+        ],
+        "scope": "Registered data family, method parameters, extras and resource assignment; no claim beyond measured dimensions.",
+        "historical_fixtures_preserved": [
+          "run00036"
+        ],
+        "source_selection": "Published observed matrix; fixed complete marker/TF universe",
+        "validation_policy": "Intermediate sizes are reserved for separate validation, not imported here."
+      }
     }
   ]
 }

@@ -12,10 +12,10 @@
 <text x="1031.43" y="173.00" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#33415c" opacity="1.000">DYN</text>
 <line x1="1031.43" y1="181.00" x2="1031.43" y2="576.00" stroke="#ece4d8" stroke-width="0.70" opacity="1.000"/>
 <circle cx="1052.86" cy="158.00" r="3.80" fill="#008c86" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="1052.86" y="173.00" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">GEN</text>
+<text x="1052.86" y="173.00" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#008c86" opacity="1.000">GNW</text>
 <line x1="1052.86" y1="181.00" x2="1052.86" y2="576.00" stroke="#ece4d8" stroke-width="0.70" opacity="1.000"/>
 <circle cx="1074.29" cy="158.00" r="3.80" fill="#25894d" stroke="none" stroke-width="1.00" opacity="1.000"/>
-<text x="1074.29" y="173.00" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#25894d" opacity="1.000">GEN</text>
+<text x="1074.29" y="173.00" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#25894d" opacity="1.000">GS2</text>
 <line x1="1074.29" y1="181.00" x2="1074.29" y2="576.00" stroke="#ece4d8" stroke-width="0.70" opacity="1.000"/>
 <circle cx="1095.71" cy="158.00" r="3.80" fill="#0077a8" stroke="none" stroke-width="1.00" opacity="1.000"/>
 <text x="1095.71" y="173.00" font-family="Helvetica" font-size="7.00" font-weight="700" text-anchor="middle" fill="#0077a8" opacity="1.000">GRO</text>

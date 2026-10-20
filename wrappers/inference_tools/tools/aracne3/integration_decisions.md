@@ -44,3 +44,21 @@ Runtime verification for this audit is recorded below separately from the histor
 
 - Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `adriansegura99/inference-tools_aracne3:1.1.0`; image ID `sha256:67d96118e8f52b97a0f5458da7a7bfea36aaa32cca5b466dd64326aad05754f1`. The repository smoke runner passed `default` (4 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.
 - The first full build attempt exceeded 180 seconds while fetching recursive source dependencies. A temporary current-wrapper overlay was tested for diagnosis, then superseded by the successful full Dockerfile build and repeat smoke against the release tag recorded above.
+
+## Sparse MaxEnt pruning repair (2026-10-13)
+
+- A 200-gene, 100-cell calibration fixture exposed an upstream exception in
+  `pruneMaxEnt`: threshold pruning may retain a TF-to-TF association without a
+  reverse regulator entry, while removal of the redundant reverse edge used
+  `unordered_map::at` unconditionally. The process aborted before exporting a
+  network.
+- `patch_sparse_pruning.py` checks the pinned upstream source checksum and
+  replaces that removal with `find` followed by `erase` only when the reverse
+  regulator exists. Removing an absent edge is a no-op. No edge, threshold,
+  input, random seed or method parameter is added or changed.
+- Local image `adriansegura99/inference-tools_aracne3:1.1.1` completed the exact
+  previously failing input, producing 245 edges. A previously successful
+  100-gene, 100-cell input retained all 80 edges and scores exactly after
+  canonical row comparison. These are regression checks, not calibration
+  observations. The compiled regression also covers a symmetric network and an
+  empty network, and reproduces the exception with the original statement.

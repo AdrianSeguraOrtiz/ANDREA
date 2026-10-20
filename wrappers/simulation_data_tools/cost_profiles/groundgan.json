@@ -359,6 +359,49 @@
           "global"
         ]
       }
+    },
+    {
+      "id": "representative_size_grid",
+      "sizes": [
+        "20x32",
+        "20x64",
+        "20x128"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "observational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "input_bundle": "toy_20gene",
+        "run_command": "generate",
+        "generation": {
+          "num_cells": 32
+        },
+        "preprocessing": {
+          "library_size": 100
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "fixed": 20
+        },
+        "cells": "generation.num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
     }
   ]
 }

@@ -167,6 +167,18 @@ RAM/ETA and execution waves. If no cost profile exists, the plan remains valid
 and records a conservative fallback `eta_source` plus warnings in
 `execution.warnings`.
 
+The Docker backend enforces the selected CPU and RAM allocations. Each dataset
+retains `provenance/raw/docker_wrapper.timing.json`, which records Docker wall
+time separately from validation and dataset packaging.
+
+`eta_provenance.estimation_method` distinguishes measured geometries (`exact`),
+interpolation within measured segments or triangles (`interpolated`), size
+heuristics outside that support (`extrapolated`), and fallback estimates. A
+diagonal size grid does not establish independent coverage of genes and columns.
+Interpolation never combines measurements with different thread, RAM or group
+allocations. The provenance records the supporting points and their weights;
+none of these estimates is a runtime guarantee.
+
 ## Adding A Simulator
 
 1. Run `make scaffold-simulator SIMULATOR=<simulator_id>`.

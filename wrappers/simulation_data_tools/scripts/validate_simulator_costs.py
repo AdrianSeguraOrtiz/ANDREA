@@ -491,6 +491,16 @@ def semantic_feature_vector_errors(
     }
     point_fields = ("genes", "cells", "groups", "population_count", "threads", "ram_gb")
     errors: list[str] = []
+    dimension_semantics = config.get("dimension_semantics")
+    if (isinstance(dimension_semantics, dict)
+            and dimension_semantics.get("genes") == "requested_gene_budget"
+            and config.get("simulator_id") != "dyngen"):
+        errors.append(f"{prefix}: requested gene budgets are only supported for dyngen.")
+    cell_budget = isinstance(dimension_semantics, dict) and dimension_semantics.get("cells") == "requested_cell_budget"
+    if cell_budget and (config.get("simulator_id") != "dyngen"
+                        or config.get("params_profile", {}).get("resolved_base_params", {}).get(
+                            "experiment_params", {}).get("kind") != "snapshot"):
+        errors.append(f"{prefix}: requested cell budgets are only supported for dyngen snapshot sampling.")
     for point_idx, point in enumerate(profile.get("runtime_points", []), start=1):
         if not isinstance(point, dict):
             continue
@@ -504,6 +514,40 @@ def semantic_feature_vector_errors(
         for key in point_fields:
             if feature_vector.get(key) != point.get(key):
                 errors.append(f"{point_prefix}.{key} does not match runtime point.")
+        if dimension_semantics is not None:
+            observed = feature_vector.get("observed_dimensions")
+            if feature_vector.get("dimension_semantics") != dimension_semantics:
+                errors.append(f"{point_prefix}.dimension_semantics does not match benchmark_config.")
+            if not isinstance(observed, list) or len(observed) != point.get("repeats_ok"):
+                errors.append(f"{point_prefix}: verified dimensions are required for every successful repeat.")
+                continue
+            native = feature_vector.get("native_sampling", [])
+            if cell_budget and (not isinstance(native, list) or len(native) != len(observed)):
+                errors.append(f"{point_prefix}: native sampling verification is required for every repeat.")
+                continue
+            for index, dimensions in enumerate(observed):
+                if (not isinstance(dimensions, dict)
+                        or any(not isinstance(dimensions.get(k), int) or isinstance(dimensions.get(k), bool)
+                               or dimensions[k] < 1 for k in ("genes", "columns"))):
+                    errors.append(f"{point_prefix}: invalid verified output dimensions.")
+                    continue
+                if not cell_budget and dimensions["columns"] != point["cells"]:
+                    errors.append(f"{point_prefix}: exported columns differ from the calibration coordinate.")
+                if cell_budget:
+                    proof = native[index]
+                    if (not isinstance(proof, dict) or proof.get("kind") != "snapshot"
+                            or proof.get("requested_cells") != point["cells"]
+                            or proof.get("observed_cells") != dimensions["columns"]
+                            or proof.get("expected_cells") != dimensions["columns"]
+                            or proof.get("expression_matches_native") is not True
+                            or proof.get("dropped_cells") != point["cells"] - dimensions["columns"]
+                            or dimensions["columns"] > point["cells"]):
+                        errors.append(f"{point_prefix}: exported columns violate the native cell allocation.")
+                    if dimensions["columns"] < point["cells"] and not feature_vector.get("validation_warnings"):
+                        errors.append(f"{point_prefix}: fewer exported cells require an explicit coverage warning.")
+                if (dimension_semantics.get("genes") == "exported_genes" and dimensions["genes"] != point["genes"]
+                        or dimension_semantics.get("genes") == "requested_gene_budget" and dimensions["genes"] < point["genes"]):
+                    errors.append(f"{point_prefix}: exported genes violate the declared dimension semantics.")
     return errors
 
 

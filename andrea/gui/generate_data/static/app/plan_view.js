@@ -15,7 +15,7 @@ export function createPlanView({ $, scenarioSemanticLabel }) {
       `max_parallel_tasks: ${plan.execution?.max_parallel_tasks ?? "-"}`,
       `max_cores: ${plan.execution?.max_cores ?? "-"}`,
       `max_ram_gb: ${plan.execution?.max_ram_gb ?? "-"}`,
-      `estimated_total_time_s: ${plan.execution?.eta_total_seconds ?? "-"}`,
+      `planning_budget_s: ${plan.execution?.eta_total_seconds ?? "-"}`,
       `waves: ${(plan.execution?.waves || []).length}`,
     ].join("\n");
 
@@ -41,7 +41,7 @@ export function createPlanView({ $, scenarioSemanticLabel }) {
     runsCard.innerHTML = "<h3>Simulator Runs</h3>";
     const runsTable = document.createElement("table");
     runsTable.className = "wave-table";
-    runsTable.innerHTML = "<thead><tr><th>run_id</th><th>simulator</th><th>replicates</th><th>threads</th><th>RAM GB</th><th>ETA s</th><th>ETA source</th><th>native_outputs</th><th>base_seed</th><th>replicate_seeds</th></tr></thead>";
+    runsTable.innerHTML = "<thead><tr><th>run_id</th><th>simulator</th><th>replicates</th><th>threads</th><th>RAM GB</th><th>Typical time per task (s)</th><th>Planning window (s)</th><th>ETA source</th><th>native_outputs</th><th>base_seed</th><th>replicate_seeds</th></tr></thead>";
     const runsBody = document.createElement("tbody");
     for (const run of plan.runs || []) {
       const tr = document.createElement("tr");
@@ -50,6 +50,7 @@ export function createPlanView({ $, scenarioSemanticLabel }) {
       appendPlanCell(tr, run.replicates);
       appendPlanCell(tr, run.runtime_resources?.threads ?? "-");
       appendPlanCell(tr, run.ram_gb ?? "-");
+      appendPlanCell(tr, run.eta_provenance?.runtime_estimates?.typical_seconds ?? "-");
       appendPlanCell(tr, run.eta_seconds ?? "-");
       appendPlanCell(tr, run.eta_source ?? "-");
       appendPlanCell(
@@ -70,7 +71,7 @@ export function createPlanView({ $, scenarioSemanticLabel }) {
     wavesCard.innerHTML = "<h3>Execution Waves</h3>";
     const wavesTable = document.createElement("table");
     wavesTable.className = "wave-table";
-    wavesTable.innerHTML = "<thead><tr><th>wave</th><th>tasks</th><th>threads_used</th><th>RAM GB</th><th>ETA s</th><th>window</th></tr></thead>";
+    wavesTable.innerHTML = "<thead><tr><th>wave</th><th>tasks</th><th>threads_used</th><th>RAM GB</th><th>Planning budget (s)</th><th>window</th></tr></thead>";
     const wavesBody = document.createElement("tbody");
     for (const wave of plan.execution?.waves || []) {
       const tr = document.createElement("tr");
@@ -95,7 +96,7 @@ export function createPlanView({ $, scenarioSemanticLabel }) {
     tasksCard.innerHTML = "<h3>Planned Tasks</h3>";
     const tasksTable = document.createElement("table");
     tasksTable.className = "wave-table";
-    tasksTable.innerHTML = "<thead><tr><th>task_id</th><th>run_id</th><th>replicate</th><th>seed</th><th>threads</th><th>RAM GB</th><th>ETA s</th><th>wave</th><th>dataset_id</th></tr></thead>";
+    tasksTable.innerHTML = "<thead><tr><th>task_id</th><th>run_id</th><th>replicate</th><th>seed</th><th>threads</th><th>RAM GB</th><th>Typical time (s)</th><th>Planning budget (s)</th><th>wave</th><th>dataset_id</th></tr></thead>";
     const tasksBody = document.createElement("tbody");
     for (const task of plan.tasks || []) {
       const tr = document.createElement("tr");
@@ -105,6 +106,7 @@ export function createPlanView({ $, scenarioSemanticLabel }) {
       appendPlanCell(tr, task.seed);
       appendPlanCell(tr, task.runtime_resources?.threads ?? "-");
       appendPlanCell(tr, task.ram_gb ?? "-");
+      appendPlanCell(tr, task.eta_provenance?.runtime_estimates?.typical_seconds ?? "-");
       appendPlanCell(tr, task.eta_seconds ?? "-");
       appendPlanCell(tr, task.eta_wave ?? "-");
       appendPlanCell(tr, task.dataset_id, "wrap-cell");

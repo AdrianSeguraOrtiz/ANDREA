@@ -35,9 +35,10 @@ RUN mkdir -p /opt/syntren-patched-lib \
 WORKDIR /app
 
 COPY wrappers/simulation_data_tools/simulators/syntren/SyntrenExportSif.java /app/SyntrenExportSif.java
+COPY wrappers/simulation_data_tools/simulators/syntren/SyntrenSeededCLI.java /app/SyntrenSeededCLI.java
 COPY wrappers/simulation_data_tools/simulators/syntren/run_simulator.py /app/run_simulator.py
 
-RUN javac -cp "/opt/syntren-patched-lib/xstream-1.4.7.jar:/opt/syntren-patched-lib/xmlpull-1.1.3.1.jar:/opt/syntren-patched-lib/xpp3_min-1.1.4c.jar:/opt/syntren/SynTReN.jar:/opt/syntren/lib/cglib-nodep-2.1_3.jar:/opt/syntren/lib/colt.jar:/opt/syntren/lib/commons-math-1.1.jar:/opt/syntren/lib/xercesImpl.jar:/opt/syntren/lib/xom-1.0a5.jar" /app/SyntrenExportSif.java \
+RUN javac -cp "/opt/syntren-patched-lib/xstream-1.4.7.jar:/opt/syntren-patched-lib/xmlpull-1.1.3.1.jar:/opt/syntren-patched-lib/xpp3_min-1.1.4c.jar:/opt/syntren/SynTReN.jar:/opt/syntren/lib/cglib-nodep-2.1_3.jar:/opt/syntren/lib/colt.jar:/opt/syntren/lib/commons-math-1.1.jar:/opt/syntren/lib/xercesImpl.jar:/opt/syntren/lib/xom-1.0a5.jar" /app/SyntrenExportSif.java /app/SyntrenSeededCLI.java \
     && chmod +x /app/run_simulator.py \
     && python3 -m py_compile /app/run_simulator.py
 

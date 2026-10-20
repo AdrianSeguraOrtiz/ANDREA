@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 import threading
 import time
+import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable
 
@@ -22,6 +26,35 @@ from ..shared import ResolvedSimulatorRun, _write_json
 
 _PULLED_IMAGES: set[str] = set()
 _IMAGE_LOCK = threading.Lock()
+
+
+@contextmanager
+def _cleanup_container_on_error(*, cidfile: Path, container_name: str, raw_dir: Path):
+    """An interrupted caller must not leave its simulator consuming resources."""
+    try:
+        yield
+    except BaseException:
+        # The cidfile lives in this invocation's fresh temporary directory. A
+        # unique name also covers interruption before Docker writes its ID.
+        try:
+            container_id = cidfile.read_text(encoding="utf-8").strip()
+        except OSError:
+            container_id = ""
+        owned_identifier = container_id if re.fullmatch(r"[0-9a-f]{64}", container_id) else container_name
+        cleanup: dict[str, Any] = {"container": owned_identifier, "cancelled": True}
+        try:
+            result = subprocess.run(
+                ["docker", "rm", "--force", owned_identifier],
+                capture_output=True, text=True, timeout=30, check=False,
+            )
+            cleanup.update(returncode=result.returncode, stderr=result.stderr.strip())
+        except Exception as exc:
+            cleanup["error"] = str(exc)
+        try:
+            _write_json(raw_dir / "docker_wrapper.cleanup.json", cleanup)
+        except OSError:
+            pass  # Preserve the original cancellation/error.
+        raise
 
 
 def _ensure_docker_cli() -> None:
@@ -117,6 +150,8 @@ def run_docker_simulator(
     ) as tmp:
         request_dir = Path(tmp) / "request"
         inputs_dir = Path(tmp) / "inputs"
+        cidfile = Path(tmp) / "container.cid"
+        container_name = f"andrea_simulator_{uuid.uuid4().hex}"
         request_dir.mkdir(parents=True, exist_ok=True)
         inputs_dir.mkdir(parents=True, exist_ok=True)
         mounted_inputs: dict[str, str] = {}
@@ -146,7 +181,20 @@ def run_docker_simulator(
         request_path = request_dir / "simulator-run-request.json"
         _write_json(request_path, request_payload)
 
-        cmd = ["docker", "run", "--rm"]
+        threads = request.runtime_resources.get("threads", 1)
+        if not isinstance(threads, int) or isinstance(threads, bool) or threads < 1:
+            raise ValueError("Simulator runtime_resources.threads must be a positive integer")
+        ram_gb = getattr(request, "ram_gb", None)
+        if ram_gb is not None and (
+            not isinstance(ram_gb, (int, float)) or isinstance(ram_gb, bool)
+            or not math.isfinite(ram_gb) or ram_gb <= 0
+        ):
+            raise ValueError("Simulator ram_gb must be a finite positive number")
+        memory_limit_bytes = round(float(ram_gb) * 1024**3) if ram_gb is not None else None
+        cmd = ["docker", "run", "--rm", "--name", container_name,
+               "--cidfile", str(cidfile), "--cpus", str(threads)]
+        if memory_limit_bytes is not None:
+            cmd.extend(["--memory", str(memory_limit_bytes)])
         runtime_environment = {}
         if request.simulator_id == "boolode":
             # Pinned BoolODE constructs model terms from Python sets. Fix their
@@ -174,13 +222,34 @@ def run_docker_simulator(
         with (
             stdout_path.open("w", encoding="utf-8") as stdout_fh,
             stderr_path.open("w", encoding="utf-8") as stderr_fh,
+            _cleanup_container_on_error(
+                cidfile=cidfile, container_name=container_name, raw_dir=raw_dir,
+            ),
         ):
+            started = time.perf_counter()
             proc = subprocess.Popen(
                 cmd,
                 text=True,
                 stdout=stdout_fh,
                 stderr=stderr_fh,
             )
+            # Waiting in a separate thread lets progress callbacks remain on the
+            # calling thread without adding their work or polling sleep to the
+            # measured container wall time.
+            completed = threading.Event()
+            result: dict[str, Any] = {}
+
+            def wait_for_container() -> None:
+                try:
+                    result["returncode"] = proc.wait()
+                except BaseException as exc:
+                    result["error"] = exc
+                finally:
+                    result["seconds"] = time.perf_counter() - started
+                    completed.set()
+
+            waiter = threading.Thread(target=wait_for_container, daemon=True)
+            waiter.start()
             last_progress: str | None = None
             if progress_callback is not None:
                 progress_callback(
@@ -190,7 +259,7 @@ def run_docker_simulator(
                         "message": f"Container started for {task_label}",
                     }
                 )
-            while proc.poll() is None:
+            while not completed.wait(max(0.05, float(progress_poll_seconds))):
                 if progress_callback is not None:
                     progress_payload = _read_progress(progress_path)
                     if progress_payload is not None:
@@ -198,8 +267,20 @@ def run_docker_simulator(
                         if rendered != last_progress:
                             progress_callback(progress_payload)
                             last_progress = rendered
-                time.sleep(max(0.05, float(progress_poll_seconds)))
-            returncode = proc.wait()
+            waiter.join()
+            if "error" in result:
+                raise result["error"]
+            returncode = result["returncode"]
+            _write_json(raw_dir / "docker_wrapper.timing.json", {
+                "schema_version": "1.0",
+                "timing_scope": "docker run wall time including container startup and output writing",
+                "seconds": round(result["seconds"], 6),
+                "returncode": returncode,
+                "threads": threads,
+                "ram_gb": ram_gb,
+                "memory_limit_bytes": memory_limit_bytes,
+                "image_reference": image,
+            })
             if progress_callback is not None:
                 progress_payload = _read_progress(progress_path)
                 if progress_payload is not None:

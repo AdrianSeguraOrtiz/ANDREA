@@ -11,5 +11,32 @@
         "mode": "global"
       }
     }
-  ]
+  ],
+  "sizes": [
+    "50x20",
+    "100x40",
+    "200x80",
+    "50x40",
+    "50x80",
+    "100x20",
+    "100x80",
+    "200x20",
+    "200x40"
+  ],
+  "calibration_design": {
+    "version": 1,
+    "kind": "independent_gene_column_grid",
+    "gene_levels": [
+      50,
+      100,
+      200
+    ],
+    "column_levels": [
+      20,
+      40,
+      80
+    ],
+    "scope": "Synthetic fixture family, registered parameters and separately measured thread/RAM strata. Unmeasured parameters and sizes outside the grid remain unvalidated.",
+    "validation_policy": "Reserve intermediate sizes separately; calibration timings are never held-out validation."
+  }
 }

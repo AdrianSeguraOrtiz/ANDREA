@@ -144,6 +144,7 @@ def _configured_profiles(
             "gene_id_source": profile_config.get("gene_id_source"),
             "tf_count_policy": profile_config.get("tf_count_policy"),
             "prior_density": profile_config.get("prior_density"),
+            "prior_score_policy": profile_config.get("prior_score_policy"),
             "marker_count_per_group": profile_config.get("marker_count_per_group"),
         }
         inherited_sizes = inherited_profile_fields["sizes"]
@@ -769,7 +770,7 @@ def _build_input_profile(
     if not isinstance(notes, list):
         raise ValueError("profile.notes must be an array when provided.")
 
-    return {
+    result = {
         "column_kind": str(column_kind),
         "expression_profile": str(expression_profile),
         "gene_id_source": str(gene_id_source),
@@ -793,6 +794,12 @@ def _build_input_profile(
         "notes": [str(note) for note in notes]
         or ["Resolved by benchmark_profiles.py from ToolSpec defaults."],
     }
+    if "prior_score_policy" in raw_profile:
+        policy = raw_profile["prior_score_policy"]
+        if policy not in {"uniform_positive", "binary"}:
+            raise ValueError("profile.prior_score_policy must be uniform_positive or binary.")
+        result["prior_score_policy"] = policy
+    return result
 
 
 def _accepted_column_kinds(toolspec: dict[str, Any]) -> tuple[str, ...]:

@@ -6,6 +6,14 @@
       "benchmark_config": {
         "sizes": [
           {
+            "genes": 50,
+            "columns": 100
+          },
+          {
+            "genes": 80,
+            "columns": 100
+          },
+          {
             "genes": 100,
             "columns": 100
           }
@@ -21,7 +29,7 @@
           32.0
         ],
         "repeats": 3,
-        "timeout_seconds": 1800,
+        "timeout_seconds": 10800,
         "execution_profile": {
           "mode": "global",
           "physical_task_policy": "single",
@@ -77,15 +85,17 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
-          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+          "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
           "git_dirty": true,
-          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
           "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
           "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
           "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
           "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
-          "image_repo_digests": [],
+          "image_repo_digests": [
+            "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+          ],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
@@ -94,9 +104,415 @@
           "seed": 12345,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "ec71b54c81321296a5f58fbecb987542f71018e1a1b03977109bf16fe915e2a0"
+        "profile_sha256": "f0367fa36a1ae60d4b95f57349ef116256358a1ab37def7c2a315bb5e4ce0cc0",
+        "planned_points": [
+          {
+            "genes": 50,
+            "columns": 100,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 80,
+            "columns": 100,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 100,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 100,
+            "threads": 1,
+            "ram_gb": 32.0
+          },
+          {
+            "genes": 100,
+            "columns": 100,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 100,
+            "threads": 2,
+            "ram_gb": 32.0
+          },
+          {
+            "genes": 100,
+            "columns": 100,
+            "threads": 4,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 100,
+            "threads": 4,
+            "ram_gb": 32.0
+          },
+          {
+            "genes": 100,
+            "columns": 100,
+            "threads": 8,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 100,
+            "threads": 8,
+            "ram_gb": 32.0
+          }
+        ]
       },
       "runtime_points": [
+        {
+          "genes": 50,
+          "columns": 100,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 32.9615,
+          "seconds_p90": 34.192157,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 100,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 245000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "2ece698156a2d217dbcf043e0b8c1e9204969a127f3cb6976a91ba51b19ea673",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 34.499821,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/dignet/dignet-ey2s925j/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g50_c100_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:04:49.407190+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 31.688181,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/dignet/dignet-ey2s925j/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g50_c100_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:04:49.407190+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 32.9615,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/dignet/dignet-ey2s925j/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g50_c100_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:04:49.407190+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 80,
+          "columns": 100,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 42.405128,
+          "seconds_p90": 42.4481,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 100,
+            "n_genes": 80,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 632000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "368b720a984e222409c1253584ad62c7d51b016123b56f70313aec6abba0359d",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 80,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 42.405128,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/dignet/dignet-ey2s925j/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g80_c100_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:04:49.407190+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 42.458843,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/dignet/dignet-ey2s925j/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g80_c100_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:04:49.407190+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 42.367649,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-20261009/run/measurements/baseline/dignet/dignet-ey2s925j/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g80_c100_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-09T13:04:49.407190+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "7bcebdc359e0a72e8e0531a32663c9e6e3ccd734212681fbce4b1399a9598d03",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
         {
           "genes": 100,
           "columns": 100,
@@ -126,6 +542,144 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "c0bcf1d74b7bc1b5bc37cb2afd9bbb64cb99008b2bb905d41250c2bc7f6a91de",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 58.837929,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t1_m8_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 63.371215,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t1_m8_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 61.438896,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t1_m8_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -157,6 +711,144 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "c0bcf1d74b7bc1b5bc37cb2afd9bbb64cb99008b2bb905d41250c2bc7f6a91de",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 32,
+                "repeat": 1,
+                "seconds": 57.657304,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t1_m32_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 32,
+                "repeat": 2,
+                "seconds": 59.436422,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t1_m32_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 1,
+                "ram_gb": 32,
+                "repeat": 3,
+                "seconds": 60.903983,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t1_m32_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -188,6 +880,144 @@
             "aggregation_step": "none",
             "threads": 2,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "c0bcf1d74b7bc1b5bc37cb2afd9bbb64cb99008b2bb905d41250c2bc7f6a91de",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 53.129389,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t2_m8_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 52.889953,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t2_m8_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 53.658803,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t2_m8_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -219,6 +1049,144 @@
             "aggregation_step": "none",
             "threads": 2,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "c0bcf1d74b7bc1b5bc37cb2afd9bbb64cb99008b2bb905d41250c2bc7f6a91de",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 32,
+                "repeat": 1,
+                "seconds": 53.898786,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t2_m32_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 32,
+                "repeat": 2,
+                "seconds": 52.844953,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t2_m32_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 2,
+                "ram_gb": 32,
+                "repeat": 3,
+                "seconds": 53.25488,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t2_m32_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -250,6 +1218,144 @@
             "aggregation_step": "none",
             "threads": 4,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "c0bcf1d74b7bc1b5bc37cb2afd9bbb64cb99008b2bb905d41250c2bc7f6a91de",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 44.420915,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t4_m8_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 44.706479,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t4_m8_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 44.083418,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t4_m8_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -281,6 +1387,144 @@
             "aggregation_step": "none",
             "threads": 4,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "c0bcf1d74b7bc1b5bc37cb2afd9bbb64cb99008b2bb905d41250c2bc7f6a91de",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 32,
+                "repeat": 1,
+                "seconds": 44.911573,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t4_m32_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 32,
+                "repeat": 2,
+                "seconds": 46.04057,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t4_m32_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 4,
+                "ram_gb": 32,
+                "repeat": 3,
+                "seconds": 45.289559,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t4_m32_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -312,6 +1556,144 @@
             "aggregation_step": "none",
             "threads": 8,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "c0bcf1d74b7bc1b5bc37cb2afd9bbb64cb99008b2bb905d41250c2bc7f6a91de",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 8,
+                "repeat": 1,
+                "seconds": 45.787295,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t8_m8_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 8,
+                "repeat": 2,
+                "seconds": 44.408192,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t8_m8_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 8,
+                "repeat": 3,
+                "seconds": 45.543131,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t8_m8_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -343,6 +1725,144 @@
             "aggregation_step": "none",
             "threads": 8,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "c0bcf1d74b7bc1b5bc37cb2afd9bbb64cb99008b2bb905d41250c2bc7f6a91de",
+              "params.json": "92421ede10264331f554d9573779fb9902574fb20077e34920a7dd746d485fa4",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": false,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 32,
+                "repeat": 1,
+                "seconds": 44.758107,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t8_m32_r1/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 32,
+                "repeat": 2,
+                "seconds": 45.439673,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t8_m32_r2/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 100,
+                "threads": 8,
+                "ram_gb": 32,
+                "repeat": 3,
+                "seconds": 44.88871,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/global_hsa05224_fast_diffusion_g100_c100_t8_m32_r3/io",
+                "reused_from": "/home/adrian/Salonica/ANDREA/release-logs/seed-reproducibility-20261007/baseline/dignet/dignet-ftok3kvy/global_hsa05224_fast_diffusion/measurements.json",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-07T07:29:39.341293+00:00",
+                  "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+                  "git_dirty": true,
+                  "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         }
       ]
@@ -353,6 +1873,14 @@
         "sizes": [
           {
             "genes": 80,
+            "columns": 100
+          },
+          {
+            "genes": 40,
+            "columns": 100
+          },
+          {
+            "genes": 60,
             "columns": 100
           }
         ],
@@ -420,24 +1948,26 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-10-07T05:53:44.391150+00:00",
-          "git_commit": "e5c78637220fc301a5763ff7068af2b23bcab85a",
+          "recorded_at_utc": "2026-10-13T21:06:27.061693+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
           "git_dirty": true,
-          "source_sha256": "4d5773b8c1c34b921f338c3b3e219f66380f11ae6d2091689f159b13cc9dccd2",
+          "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
           "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
           "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
           "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
           "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
-          "image_repo_digests": [],
+          "image_repo_digests": [
+            "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+          ],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
           "host_memory_bytes": 67432239104,
           "docker_server": "24.0.2",
-          "seed": 0,
+          "seed": 1729,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "bf622c6621d8a046ed96a214a5128b9f27a6463222805f3e116cef6192a612c7",
+        "profile_sha256": "049696640287cbac61b81021703f6786872ffa5c4bed1400f4914528d37b9123",
         "calibration_evidence": [
           {
             "fixture_key": "run00034",
@@ -477,6 +2007,90 @@
               "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
             },
             "report_sha256": "8007e3fbede4afc504540365c58b3179e837a97655cac5150705bb9b02a6c170"
+          },
+          {
+            "fixture_key": "coverage_v1_dignet_representative_global_cef63321c3_g40_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/dignet/representative_global_cef63321c3/coverage_v1_dignet_representative_global_cef63321c3_g40_c100/3048d9d28c1ec0702fc20c71aad578998be5d77f22125b6ba27e14a389d7a33d/repeat1/measurement.json",
+            "report_sha256": "4fb9038579e2e3e8655a542ae001cd188e79ed67049f184fca270868ba983e30",
+            "task_id": "3048d9d28c1ec0702fc20c71aad578998be5d77f22125b6ba27e14a389d7a33d/repeat1",
+            "seconds": 4975.232010640204,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a94aa79fdf68b551b6fbb84513b53aae3cae0f42b2cdfbbe7c131ec1acf4db3d",
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_dignet_representative_global_cef63321c3_g40_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/dignet/representative_global_cef63321c3/coverage_v1_dignet_representative_global_cef63321c3_g40_c100/3048d9d28c1ec0702fc20c71aad578998be5d77f22125b6ba27e14a389d7a33d/repeat2/measurement.json",
+            "report_sha256": "62e79bea4e8bead1c8256d97be52bd85cdb06edce2a95e22ca44414111d65004",
+            "task_id": "3048d9d28c1ec0702fc20c71aad578998be5d77f22125b6ba27e14a389d7a33d/repeat2",
+            "seconds": 4986.366425067186,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a94aa79fdf68b551b6fbb84513b53aae3cae0f42b2cdfbbe7c131ec1acf4db3d",
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_dignet_representative_global_cef63321c3_g40_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/dignet/representative_global_cef63321c3/coverage_v1_dignet_representative_global_cef63321c3_g40_c100/3048d9d28c1ec0702fc20c71aad578998be5d77f22125b6ba27e14a389d7a33d/repeat3/measurement.json",
+            "report_sha256": "b64eb57b42f76898a1fcd17112ebb3cf72c2258ba195aefbe0c7e0cd67644064",
+            "task_id": "3048d9d28c1ec0702fc20c71aad578998be5d77f22125b6ba27e14a389d7a33d/repeat3",
+            "seconds": 4993.2927556708455,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a94aa79fdf68b551b6fbb84513b53aae3cae0f42b2cdfbbe7c131ec1acf4db3d",
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_dignet_representative_global_cef63321c3_g60_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/dignet/representative_global_cef63321c3/coverage_v1_dignet_representative_global_cef63321c3_g60_c100/aee8ea20b56e7ea97401b912ce7e351188e46f2e95edc9bb486aade374698709/repeat1/measurement.json",
+            "report_sha256": "3606e844ca11e742142db9e6252c35b0de766601d912e649237849182180612d",
+            "task_id": "aee8ea20b56e7ea97401b912ce7e351188e46f2e95edc9bb486aade374698709/repeat1",
+            "seconds": 4992.026242464781,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "cddd76dcc95e64212ec15fcc00a7a5e15312e49ecdd4d270cd3f0df42f57750e",
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_dignet_representative_global_cef63321c3_g60_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/dignet/representative_global_cef63321c3/coverage_v1_dignet_representative_global_cef63321c3_g60_c100/aee8ea20b56e7ea97401b912ce7e351188e46f2e95edc9bb486aade374698709/repeat2/measurement.json",
+            "report_sha256": "3721bd2fbca4b7ae5eb4c5bf541b7544accbea67d1624d9777e6e3504a7432c5",
+            "task_id": "aee8ea20b56e7ea97401b912ce7e351188e46f2e95edc9bb486aade374698709/repeat2",
+            "seconds": 4902.74142178148,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "cddd76dcc95e64212ec15fcc00a7a5e15312e49ecdd4d270cd3f0df42f57750e",
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_dignet_representative_global_cef63321c3_g60_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/representative/dignet/representative_global_cef63321c3/coverage_v1_dignet_representative_global_cef63321c3_g60_c100/aee8ea20b56e7ea97401b912ce7e351188e46f2e95edc9bb486aade374698709/repeat3/measurement.json",
+            "report_sha256": "243fb1224392c6d0d55ca8e3f7c435bcf00b4527fce53b99004452079ec25a08",
+            "task_id": "aee8ea20b56e7ea97401b912ce7e351188e46f2e95edc9bb486aade374698709/repeat3",
+            "seconds": 4897.147845089436,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "cddd76dcc95e64212ec15fcc00a7a5e15312e49ecdd4d270cd3f0df42f57750e",
+              "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
+            }
           }
         ]
       },
@@ -498,6 +2112,1774 @@
           },
           "seconds_p50": 5703.587319999933,
           "seconds_p90": 5736.911185538769
+        },
+        {
+          "genes": 40,
+          "columns": 100,
+          "threads": 2,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 4986.366425067186,
+          "seconds_p90": 4991.9074895501135
+        },
+        {
+          "genes": 60,
+          "columns": 100,
+          "threads": 2,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 4902.74142178148,
+          "seconds_p90": 4974.1692783281205
+        }
+      ]
+    },
+    {
+      "profile_id": "global_hsa05224_fast_diffusion_metacell100",
+      "benchmark_config": {
+        "sizes": [
+          {
+            "genes": 50,
+            "columns": 200
+          },
+          {
+            "genes": 50,
+            "columns": 400
+          },
+          {
+            "genes": 50,
+            "columns": 800
+          },
+          {
+            "genes": 80,
+            "columns": 200
+          },
+          {
+            "genes": 80,
+            "columns": 400
+          },
+          {
+            "genes": 80,
+            "columns": 800
+          },
+          {
+            "genes": 100,
+            "columns": 200
+          },
+          {
+            "genes": 100,
+            "columns": 400
+          },
+          {
+            "genes": 100,
+            "columns": 800
+          }
+        ],
+        "threads_tested": [
+          2
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 10800,
+        "execution_profile": {
+          "mode": "global",
+          "physical_task_policy": "single",
+          "group_count": 0,
+          "aggregation_step": "none"
+        },
+        "input_profile": {
+          "column_kind": "cells",
+          "expression_profile": "human_single_cell_benchmark",
+          "gene_id_source": "human_breast_cancer_pathway",
+          "extras_provided": [],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "tf_count_policy": null,
+          "prior_density": null,
+          "marker_count_per_group": 4,
+          "group_count": 0,
+          "has_tf_list": false,
+          "output_density_class": "sparse",
+          "aggregation_step": "none",
+          "notes": [
+            "Resolved by benchmark_profiles.py from ToolSpec defaults."
+          ]
+        },
+        "params_profile": {
+          "source": "toolspec_defaults_plus_override",
+          "override_file": "dignet.json:global_hsa05224_fast_diffusion_metacell100:inline",
+          "resolved_params": {
+            "gene_set": "hsa05224",
+            "metacell": true,
+            "knn": 20,
+            "metacell_count": 100,
+            "ensemble": 3,
+            "diffusion_timesteps": 25,
+            "seed": 0
+          },
+          "cost_relevant_params": [
+            "gene_set",
+            "metacell",
+            "knn",
+            "metacell_count",
+            "ensemble",
+            "diffusion_timesteps"
+          ],
+          "cost_relevant_values": {
+            "gene_set": "hsa05224",
+            "metacell": true,
+            "knn": 20,
+            "metacell_count": 100,
+            "ensemble": 3,
+            "diffusion_timesteps": 25
+          }
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+          "git_dirty": true,
+          "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+          "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+          "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+          "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+          "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+          "image_repo_digests": [
+            "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "10379912b6dc86a84f0ba9c7996c0185abf0185767755d185013e4b0f1674691",
+        "planned_points": [
+          {
+            "genes": 50,
+            "columns": 200,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 50,
+            "columns": 400,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 50,
+            "columns": 800,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 80,
+            "columns": 200,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 80,
+            "columns": 400,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 80,
+            "columns": 800,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 200,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 400,
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 800,
+            "threads": 2,
+            "ram_gb": 8.0
+          }
+        ]
+      },
+      "runtime_points": [
+        {
+          "genes": 50,
+          "columns": 200,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 33.526811,
+          "seconds_p90": 35.696815,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 200,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 490000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "87c2a1e93709ce835938ecaa4fe37de36eead3ee58760fa8bf3fcdf1d6da188b",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 36.239316,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c200_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 33.046729,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c200_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 33.526811,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c200_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 50,
+          "columns": 400,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 33.976631,
+          "seconds_p90": 34.002497,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 400,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 980000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "3f6c94e28bd0528cb33412f1d15160808cd3e8775d268621b29fe105ca904c38",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 34.008964,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c400_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 32.706317,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c400_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 33.976631,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c400_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 50,
+          "columns": 800,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 33.940793,
+          "seconds_p90": 35.608725,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 800,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 1960000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "cd6a2e6feeaf33c1b5271857f2799d2cc98f64f1547430f8c0268c5719975fec",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 36.025708,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c800_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 31.932949,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c800_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 33.940793,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g50_c800_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 80,
+          "columns": 200,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 42.656759,
+          "seconds_p90": 43.977646,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 200,
+            "n_genes": 80,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 1264000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "327ee6c8819702deaa0f0a3125e6eda82dfb717d60b2ab5fc71e9f65432b12aa",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 80,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 42.656038,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c200_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 42.656759,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c200_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 44.307868,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c200_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 80,
+          "columns": 400,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 43.918218,
+          "seconds_p90": 44.039152,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 400,
+            "n_genes": 80,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 2528000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "f186d2d57765ab426c544c19c08272949c0ef39292ecea204bec91d63419841b",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 80,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 43.918218,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c400_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 44.069385,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c400_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 41.980833,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c400_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 80,
+          "columns": 800,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 43.780053,
+          "seconds_p90": 44.091673,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 800,
+            "n_genes": 80,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 5056000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "7dac54c5ca1a381b0b5f13a7ff8c31602860ee6df3ea821afda789b41fc46ad8",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 80,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 41.882828,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c800_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 44.169578,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c800_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 80,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 43.780053,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g80_c800_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 100,
+          "columns": 200,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 54.576149,
+          "seconds_p90": 54.653473,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 200,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 1980000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "117a37ec05bcdb979152353890e0517a264156c60436291e077e901483fad405",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 53.363382,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c200_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 54.576149,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c200_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 200,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 54.672804,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c200_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 100,
+          "columns": 400,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 54.112885,
+          "seconds_p90": 54.177314,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 400,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 3960000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "3c6d5a03a78e5960a58d16380c74fd2c46befdcca44b912d5fe0d0cfd5e598e1",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 54.112885,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c400_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 54.001353,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c400_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 400,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 54.193421,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c400_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 100,
+          "columns": 800,
+          "threads": 2,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 55.127655,
+          "seconds_p90": 55.5355,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 800,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 7920000,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 2,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "0ea58b73e94b0e44429831004c59aed42ccc6f678063af2241638cbd29d4ce2d",
+              "params.json": "9ef9609891f89fab5a5f7017404eeea54945a6caa4f6ff21fc532b88b973005c",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "gene_set": "hsa05224",
+                "metacell": true,
+                "knn": 20,
+                "metacell_count": 100,
+                "ensemble": 3,
+                "diffusion_timesteps": 25,
+                "seed": 0
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "cells",
+                "expression_profile": "human_single_cell_benchmark",
+                "gene_id_source": "human_breast_cancer_pathway",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 55.127655,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c800_t2_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 55.637461,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c800_t2_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 800,
+                "threads": 2,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 54.400107,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/cost-coverage-recovery-20261013/run/measurements/baseline/dignet/dignet-ltd1km38/global_hsa05224_fast_diffusion_metacell100/global_hsa05224_fast_diffusion_metacell100_g100_c800_t2_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-13T06:53:38.441773+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "c839cc6c8b4e733dc7923f9ce0e79719e917f61e2aef16cc487779a1e8bd1c86",
+                  "spec_sha256": "c302aeaaef4ccacd9e429af2be6204390773573bf127c07c6ba4bcb6ac9cbbee",
+                  "build_context_sha256": "0fe6a910fed37f7aa4c1f4cb374119d5e28cca4dd3077a8f11797dcf42d1c682",
+                  "image_reference": "adriansegura99/inference-tools_dignet:1.1.1",
+                  "image_id": "sha256:68f476765c889e60dc8b130155bb725463a7036af92768dd29cf89fcde8476e5",
+                  "image_repo_digests": [
+                    "adriansegura99/inference-tools_dignet@sha256:d4573c0b08ee37bc11b987dc3f5eb264f24478bc83a97751998aac100ffdd92e"
+                  ],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
         }
       ]
     }

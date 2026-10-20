@@ -168,7 +168,9 @@ def build_context_fingerprint(
         builder = load_script(scripts / "build_tool_images.py", "andrea_cost_build_tools")
         mapping = json.loads((scripts / "template_map.json").read_text())
         config = builder.validate_template_map(mapping, {key: Path(key) for key in mapping["tools"]})[identifier]
-        virtual["run_tool.sh"] = (builder.render_entrypoint(config.runtime).encode(), 0o755)
+        virtual["run_tool.sh"] = (
+            builder.render_entrypoint(config.runtime, config.native_threads).encode(), 0o755
+        )
         for relative in config.templates:
             path = scripts / "templates" / relative
             virtual[path.name] = (path.read_bytes(), stat.S_IMODE(path.stat().st_mode))
@@ -279,10 +281,16 @@ def release_profile_errors(payload: dict, expected: dict[str, str]) -> list[str]
         sizes = config.get("sizes", [])
         column = "cells" if sizes and isinstance(sizes[0], dict) and "cells" in sizes[0] else "columns"
         try:
-            expected_points = {
-                (size["genes"], size[column], thread, ram)
-                for size in sizes for thread in config["threads_tested"] for ram in config["ram_gb_tested"]
-            }
+            declared_points = config.get("planned_points")
+            expected_points = (
+                {(p["genes"], p[column], p["threads"], p["ram_gb"]) for p in declared_points}
+                if declared_points is not None else {
+                    (size["genes"], size[column], thread, ram)
+                    for size in sizes for thread in config["threads_tested"] for ram in config["ram_gb_tested"]
+                }
+            )
+            if declared_points is not None and len(expected_points) != len(declared_points):
+                errors.append(f"{label}: duplicate planned points.")
             points = profile.get("runtime_points", [])
             actual_points = [(p["genes"], p[column], p["threads"], p["ram_gb"]) for p in points]
         except (KeyError, TypeError):

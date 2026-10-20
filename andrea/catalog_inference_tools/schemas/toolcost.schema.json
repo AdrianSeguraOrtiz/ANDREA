@@ -71,6 +71,23 @@
           },
           "description": "Input size points used in the benchmark."
         },
+        "planned_points": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Explicit intended size/resource combinations. When present, replaces the Cartesian product of sizes, threads and RAM for matrix completeness; permits wider size coverage at selected resources while retaining historical points.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["genes", "columns", "threads", "ram_gb"],
+            "properties": {
+              "genes": {"type": "integer", "minimum": 1},
+              "columns": {"type": "integer", "minimum": 1},
+              "threads": {"type": "integer", "minimum": 1},
+              "ram_gb": {"type": "number", "exclusiveMinimum": 0}
+            }
+          }
+        },
         "threads_tested": {
           "type": "array",
           "minItems": 1,
@@ -383,6 +400,11 @@
           ],
           "description": "Prior GRN density used by the benchmark input generator, when relevant."
         },
+        "prior_score_policy": {
+          "type": "string",
+          "enum": ["uniform_positive", "binary"],
+          "description": "Optional generated prior weighting policy. Omitted historical profiles use uniform positive weights; binary priors assign unit weights."
+        },
         "marker_count_per_group": {
           "type": "integer",
           "minimum": 1,
@@ -602,6 +624,11 @@
               "type": "null"
             }
           ]
+        },
+        "measurement_evidence": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Point-level scientific identity and retained timing evidence used to resume compatible calibration measurements without rerunning them."
         },
         "feature_vector": {
           "type": "object",

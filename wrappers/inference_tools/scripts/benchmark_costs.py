@@ -9,11 +9,12 @@ Usage examples:
    python benchmark_costs.py
 
 2) Benchmark selected tools:
-   python benchmark_costs.py --tool genie3 --tool grnboost2
+   python benchmark_costs.py --tool genie3 --tool grnboost2 --results-dir cost-evidence
 
 3) Customize matrix:
    python benchmark_costs.py \
-     --size 50x20 --size 100x40 --size 200x80 \
+     --size 50x40 --size 100x40 --size 200x40 \
+     --size 100x20 --size 100x80 \
      --threads 1,2,4,8 \
      --ram-gb 8,16,32,64
 
@@ -21,11 +22,18 @@ Usage examples:
    python benchmark_costs.py \
      --tool genie3 \
      --profile global_tf_list \
-     --profile global_default
+     --profile global_default --merge-existing --results-dir cost-evidence
+
+The default fallback matrix independently varies three gene counts and three
+column counts. Tool-local recipes can constrain these to compatible ranges.
+Existing successful points are reused only after scientific input/image identity
+verification. --results-dir preserves partial repetitions across restarts;
+--reuse-results-dir imports legacy retained evidence, and --force-rerun explicitly
+disables reuse for the requested points.
 
 Exit codes:
 - 0: all selected benchmark points completed successfully
-- 1: a build or measurement failed; incomplete profiles are not saved
+- 1: a build or measurement failed; successful points are checkpointed for resume
 - 2: usage/runtime error (invalid args, missing paths, etc.)
 
 Cost model written to cost.json:
@@ -45,6 +53,7 @@ task graph; it does not apply an implicit grouped multiplier.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import math
@@ -56,7 +65,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator, Sequence
+from typing import Any, Callable, Iterator, Sequence
 
 from shared.benchmark_inputs import (
     BenchmarkInputProfile,
@@ -71,6 +80,10 @@ from shared.benchmark_profiles import (
     resolve_benchmark_profiles,
 )
 from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR
+from shared.cost_resume import (
+    complete_point, embedded_observations, find_evidence_profiles, input_manifest,
+    legacy_observations, measurement_context, point_key, read_json, successful_observation,
+)
 
 _BENCHMARK_ROOT = Path(__file__).resolve().parents[3]
 if str(_BENCHMARK_ROOT) not in sys.path:
@@ -86,7 +99,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CATALOG_ROOT = REPO_ROOT / "andrea" / "catalog_inference_tools"
 DEFAULT_CATALOG_TOOLS_ROOT = CATALOG_ROOT / "tools"
 DEFAULT_TOOL_SOURCES_ROOT = INFERENCE_TOOLS_ROOT / "tools"
-DEFAULT_SIZES = ("50x20", "100x40", "200x80")
+DEFAULT_SIZES = tuple(f"{genes}x{columns}" for genes in (50, 100, 200) for columns in (20, 40, 80))
 DEFAULT_THREADS = "1,2,4,8"
 DEFAULT_RAM_GB = "8,16,32,64"
 
@@ -234,8 +247,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--repeats",
         type=int,
-        default=1,
-        help="Number of repeats per (size, threads, ram) run. Default: 1",
+        default=3,
+        help="Number of repeats per (size, threads, ram) run. Default: 3",
     )
     parser.add_argument(
         "--timeout",
@@ -284,7 +297,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--merge-existing", action="store_true",
-        help="Replace selected --profile entries while preserving other existing profiles.",
+        help="Allow updating selected profiles while preserving unrelated profiles and compatible historical points.",
+    )
+    parser.add_argument(
+        "--reuse-results-dir", type=Path, action="append", default=[],
+        help="Also search this previous campaign directory for verified raw observations (repeatable).",
+    )
+    parser.add_argument(
+        "--resume", action="store_true", default=True,
+        help="Reuse compatible successful measurements and continue missing repetitions (default).",
+    )
+    parser.add_argument(
+        "--force-rerun", action="store_true",
+        help="Explicitly rerun requested points; preserve unrelated profiles and historical evidence.",
+    )
+    parser.add_argument(
+        "--remeasure-incompatible-history", action="store_true",
+        help="Remeasure historical size/resource points whose evidence is incompatible with the current image or inputs; retain compatible observations.",
     )
     return parser.parse_args(argv)
 
@@ -573,6 +602,32 @@ def prepare_io_dir(
     save_json(io_dir / "execution.json", execution)
 
 
+
+def prepare_container_cidfile(cidfile: Path) -> None:
+    """Remove a stale Docker receipt without disrupting a still-running task."""
+    if not cidfile.exists():
+        return
+    container_id = cidfile.read_text(encoding="utf-8").strip()
+    if container_id:
+        result = run_cmd(
+            ["docker", "inspect", "--type", "container", "--format", "{{.State.Running}}", container_id],
+            cwd=REPO_ROOT, timeout_s=30, capture_output=True,
+        )
+        state = (result.stdout or "").strip().lower()
+        if result.returncode == 0 and state == "true":
+            raise RuntimeError(
+                f"Refusing to restart benchmark: container {container_id} recorded in {cidfile} is still running."
+            )
+        missing = any(token in (result.stderr or "").lower()
+                      for token in ("no such container", "no such object"))
+        if not (result.returncode == 0 and state == "false") and not (result.returncode != 0 and missing):
+            raise RuntimeError(
+                f"Cannot verify whether container {container_id} is stopped; preserving {cidfile}. "
+                f"Docker inspect: {(result.stderr or result.stdout or '').strip()}"
+            )
+    cidfile.unlink()
+
+
 def run_container_once(
     *,
     image_tag: str,
@@ -591,6 +646,7 @@ def run_container_once(
         ram_gb=ram_gb,
     )
     cidfile = io_dir / ".docker-container.cid"
+    prepare_container_cidfile(cidfile)
     cmd = [
         "docker",
         "run",
@@ -1122,23 +1178,41 @@ def execute_tool_benchmarks(
     fail_fast: bool,
     run_index: int,
     total_runs: int,
+    initial_runs: list[dict[str, Any]] | None = None,
+    on_progress: Callable[[list[dict[str, Any]]], None] | None = None,
+    point_plan: set[tuple[int, int, int, float]] | None = None,
 ) -> tuple[list[dict[str, Any]], int, bool]:
     """Execute all planned runs for one tool; returns runs, updated index, and fail-fast flag."""
-    tool_runs: list[dict[str, Any]] = []
+    tool_runs: list[dict[str, Any]] = list(initial_runs or [])
+    recovered = {
+        (*point_key(row), row["repeat"]): row for row in tool_runs
+        if successful_observation(row)
+    }
+    if tool_runs:
+        save_json(workdir / "measurements.json", tool_runs)
 
-    for plan in iter_run_plan(
-        sizes=sizes, threads=threads, ram_gb=ram_gb, repeats=repeats
-    ):
+    plans = (iter_run_plan(sizes=sizes, threads=threads, ram_gb=ram_gb, repeats=repeats)
+             if point_plan is None else
+             (RunPlanItem(SizePoint(g, c), t, m, repeat)
+              for g, c, t, m in sorted(point_plan) for repeat in range(1, repeats + 1)))
+    profile_total = (len(point_plan) if point_plan is not None else
+                     len(sizes) * len(threads) * len(ram_gb)) * repeats
+    for profile_index, plan in enumerate(plans, start=1):
         run_index += 1
         print(
-            f"[{run_index}/{total_runs}] {tool_id}/{profile_id} "
+            f"[{profile_index}/{profile_total}] {tool_id}/{profile_id} "
             f"{plan.size.genes}x{plan.size.columns} "
             f"threads={plan.threads} ram={plan.ram_gb}GB repeat={plan.repeat}"
         )
 
+        observation_key = (plan.size.genes, plan.size.columns, plan.threads, float(plan.ram_gb), plan.repeat)
+        if observation_key in recovered:
+            print("  -> reused verified successful observation")
+            continue
+
         run_key = (
             f"{safe_path_token(profile_id)}_g{plan.size.genes}_c{plan.size.columns}_t{plan.threads}"
-            f"_m{plan.ram_gb}_r{plan.repeat}"
+            f"_m{plan.ram_gb:g}_r{plan.repeat}"
         )
         io_dir = workdir / run_key / "io"
         prepare_io_dir(
@@ -1166,11 +1240,14 @@ def execute_tool_benchmarks(
             "repeat": plan.repeat,
             "seconds": round(elapsed, 6),
             "status": status,
+            "io_dir": str(io_dir.resolve()),
         }
         if error_or_empty:
             run_payload["error"] = error_or_empty
         tool_runs.append(run_payload)
         save_json(workdir / "measurements.json", tool_runs)
+        if on_progress is not None:
+            on_progress(tool_runs)
 
         if status != "ok":
             print(f"  -> {status} ({elapsed:.3f}s)")
@@ -1180,6 +1257,137 @@ def execute_tool_benchmarks(
             print(f"  -> ok ({elapsed:.3f}s)")
 
     return tool_runs, run_index, False
+
+
+
+def prepare_incremental_measurements(
+    *, profile: BenchmarkProfile, config: dict[str, Any], existing: dict[str, Any] | None,
+    evidence_roots: list[Path], workdir: Path, sizes: list[SizePoint], threads: list[int],
+    ram_gb: list[int], repeats: int, seed: int, force_rerun: bool,
+    remeasure_historical: bool = False,
+) -> tuple[list[dict[str, Any]], dict[tuple[int, int, int, float], dict[str, str]], set[tuple[int, int, int, float]]]:
+    """Resolve the requested plus historical point matrix without executing Docker.
+
+    Historical aggregates are never expanded into invented raw timings. They are
+    reusable only when their original observations and input identity survive.
+    """
+    requested = {
+        (p.size.genes, p.size.columns, p.threads, float(p.ram_gb))
+        for p in iter_run_plan(sizes=sizes, threads=threads, ram_gb=ram_gb, repeats=1)
+    }
+    old_points = {point_key(p): p for p in (existing or {}).get("runtime_points", [])}
+    intended = requested | set(old_points)
+    old_config = (existing or {}).get('benchmark_config', {})
+    # A partial checkpoint can contain historical points still awaiting their
+    # new-image measurement. Keep that frozen plan across interruptions, while
+    # allowing genuinely superseded recipes to retire incompatible dimensions.
+    if (config.get('profile_sha256') and
+            old_config.get('profile_sha256') == config['profile_sha256']):
+        intended.update(point_key(p) for p in old_config.get('planned_points', []))
+    directories = find_evidence_profiles(evidence_roots, profile.tool_id, profile.profile_id)
+    initial: list[dict[str, Any]] = []
+    hashes_by_key: dict[tuple[int, int, int, float], dict[str, str]] = {}
+    manifests: dict[tuple[int, int], dict[str, str]] = {}
+    blocked: list[tuple[int, int, int, float]] = []
+    for key in sorted(intended):
+        shape = key[:2]
+        if shape not in manifests:
+            io_dir = workdir / "input-verification" / f"g{key[0]}_c{key[1]}" / "io"
+            prepare_io_dir(io_dir, SizePoint(*shape), resolved_params=profile.params,
+                           execution=profile.execution, seed=seed, input_profile=profile.input_profile)
+            manifests[shape] = input_manifest(io_dir)
+        hashes = manifests[shape]
+        hashes_by_key[key] = hashes
+        if force_rerun and key in requested:
+            continue
+        old_point = old_points.get(key, {})
+        rows = embedded_observations(point=old_point, config=config, hashes=hashes, repeats=repeats)
+        if len(rows) < repeats:
+            recovered = legacy_observations(directories=directories, config=config, key=key,
+                                            hashes=hashes, repeats=repeats)
+            by_repeat = {row["repeat"]: row for row in rows}
+            for row in recovered:
+                by_repeat.setdefault(row["repeat"], row)
+            rows = [by_repeat[k] for k in sorted(by_repeat)]
+        if old_point and complete_point(old_point, repeats) and len(rows) == repeats:
+            recomputed = aggregate_runtime_points(rows, execution_profile=profile.execution_profile,
+                                                   input_profile=profile.input_profile)[0]
+            if any(recomputed[field] != old_point[field] for field in ("seconds_p50", "seconds_p90")):
+                # A changed/corrupted aggregate cannot authorize skipping work.
+                rows = []
+        if key not in requested and len(rows) < repeats:
+            blocked.append(key)
+        initial.extend(rows)
+    if blocked and not remeasure_historical:
+        raise RuntimeError(
+            f"Cannot safely retain {len(blocked)} historical points outside the requested matrix: "
+            "their matching raw input/measurement evidence is missing or incompatible. "
+            "Supply --reuse-results-dir or explicitly include those points for remeasurement. "
+            f"First points: {blocked[:3]}"
+        )
+    config["planned_points"] = [
+        {"genes": g, "columns": c, "threads": t, "ram_gb": m}
+        for g, c, t, m in sorted(intended)
+    ]
+    config["sizes"] = [{"genes": g, "columns": c} for g, c in sorted({k[:2] for k in intended})]
+    config["threads_tested"] = sorted({k[2] for k in intended})
+    config["ram_gb_tested"] = sorted({k[3] for k in intended})
+    requested_reused = sum(point_key(row) in requested for row in initial)
+    report = {
+        "profile_id": profile.profile_id, "requested_points": len(requested),
+        "historical_points_retained": len(intended - requested),
+        "requested_repetitions": len(requested) * repeats,
+        "reused_requested_repetitions": requested_reused,
+        "pending_repetitions": len(requested) * repeats - requested_reused,
+        "historical_points_requiring_remeasurement": [
+            dict(zip(('genes', 'columns', 'threads', 'ram_gb'), key)) for key in blocked],
+        "total_pending_repetitions": len(intended) * repeats - len(initial),
+        "evidence_profiles_checked": [str(p) for p in directories],
+    }
+    save_json(workdir / "reuse-report.json", report)
+    print(f"[{profile.tool_id}/{profile.profile_id}] reuse: "
+          f"{requested_reused}/{len(requested) * repeats} requested repetitions; "
+          f"{len(intended - requested)} historical resource points retained")
+    return initial, hashes_by_key, intended
+
+
+def completed_incremental_points(
+    runs: list[dict[str, Any]], *, profile: BenchmarkProfile, config: dict[str, Any],
+    hashes: dict[tuple[int, int, int, float], dict[str, str]], repeats: int,
+) -> list[dict[str, Any]]:
+    points = aggregate_runtime_points(runs, execution_profile=profile.execution_profile,
+                                      input_profile=profile.input_profile)
+    completed = []
+    for point in points:
+        if not complete_point(point, repeats):
+            continue
+        key = point_key(point)
+        point["measurement_evidence"] = {
+            "version": 1,
+            "input_sha256": hashes[key],
+            "measurement_context": measurement_context(config),
+            "observations": [
+                {**row, "measurement_provenance": row.get("measurement_provenance", config.get("provenance", {}))}
+                for row in runs if point_key(row) == key
+            ],
+        }
+        completed.append(point)
+    return completed
+
+
+
+def acquire_cost_lock(cost_path: Path):
+    """Prevent simultaneous writers even when they use different evidence roots."""
+    directory = Path(tempfile.gettempdir()) / "andrea-inference-cost-locks"
+    directory.mkdir(exist_ok=True)
+    key = hashlib.sha256(str(cost_path.resolve()).encode()).hexdigest()
+    stream = (directory / f"{key}.lock").open("a")
+    try:
+        fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        stream.close()
+        raise RuntimeError(f"Another benchmark is already updating {cost_path}") from exc
+    return stream
 
 
 def run(argv: Sequence[str] | None = None) -> int:
@@ -1252,8 +1460,10 @@ def run(argv: Sequence[str] | None = None) -> int:
         wrote_cost = False
         unpersistable_profile = False
         workdir_context: tempfile.TemporaryDirectory[str] | None = None
+        cost_lock = None
 
         try:
+            cost_lock = acquire_cost_lock(cost_path)
             if not args.skip_build and not args.catalog_images:
                 build_image(
                     tool_id,
@@ -1275,6 +1485,12 @@ def run(argv: Sequence[str] | None = None) -> int:
                     tool_id=tool_id, keep_workdir=args.keep_workdir,
                 )
             save_json(workdir / "provenance.json", provenance)
+            previous_payload = read_json(cost_path, {})
+            save_json(workdir / "cost-before.json", previous_payload)
+            old_profiles = {
+                p["profile_id"]: p for p in previous_payload.get("profiles", [])
+                if isinstance(p, dict) and "profile_id" in p
+            }
             cost_profile_entries: list[dict[str, Any]] = []
             tool_total_runs = 0
             tool_success_runs = 0
@@ -1299,7 +1515,37 @@ def run(argv: Sequence[str] | None = None) -> int:
                 benchmark_config["provenance"] = provenance
                 benchmark_config["profile_sha256"] = profile_fingerprint(profile, root=REPO_ROOT, kind="inference")
                 profile_workdir = workdir / safe_path_token(profile.profile_id)
+                evidence_roots = list(args.reuse_results_dir)
+                if args.results_dir:
+                    evidence_roots.append(args.results_dir)
+                initial_runs, input_hashes, intended_points = prepare_incremental_measurements(
+                    profile=profile, config=benchmark_config, existing=old_profiles.get(profile.profile_id),
+                    evidence_roots=evidence_roots, workdir=profile_workdir, sizes=profile_sizes,
+                    threads=tool_threads, ram_gb=ram_gb, repeats=args.repeats, seed=args.seed,
+                    force_rerun=args.force_rerun,
+                    remeasure_historical=args.remeasure_incompatible_history,
+                )
                 save_json(profile_workdir / "benchmark_config.json", benchmark_config)
+
+                def checkpoint(rows: list[dict[str, Any]]) -> None:
+                    nonlocal wrote_cost
+                    points = completed_incremental_points(
+                        rows, profile=profile, config=benchmark_config,
+                        hashes=input_hashes, repeats=args.repeats,
+                    )
+                    save_json(profile_workdir / "completed-points.json", points)
+                    if points and not args.no_write_cost:
+                        entry = make_cost_profile_entry(profile_id=profile.profile_id,
+                            runtime_points=points, benchmark_config=benchmark_config)
+                        payload = make_cost_payload(profile_entries=[entry])
+                        # Preserve every unrelated profile, even for a full-catalog run.
+                        if read_json(cost_path, {}).get("profiles"):
+                            payload = merge_profiles(cost_path, payload)
+                        write_tool_cost_profile(cost_path=cost_path, cost_payload=payload)
+                        wrote_cost = True
+
+                if initial_runs:
+                    checkpoint(initial_runs)
                 profile_runs, run_index, fail_fast_triggered = execute_tool_benchmarks(
                     tool_id=tool_id,
                     profile_id=profile.profile_id,
@@ -1317,6 +1563,9 @@ def run(argv: Sequence[str] | None = None) -> int:
                     fail_fast=args.fail_fast,
                     run_index=run_index,
                     total_runs=total_runs,
+                    initial_runs=initial_runs,
+                    on_progress=checkpoint,
+                    point_plan=intended_points,
                 )
 
                 profile_summary = summarize_tool_runs(profile_runs)
@@ -1328,17 +1577,15 @@ def run(argv: Sequence[str] | None = None) -> int:
                 global_timeout += profile_summary["timeout_runs"]
                 global_fail += profile_summary["failed_runs"]
 
-                runtime_points = aggregate_runtime_points(
-                    profile_runs,
-                    execution_profile=profile.execution_profile,
-                    input_profile=profile.input_profile,
+                runtime_points = completed_incremental_points(
+                    profile_runs, profile=profile, config=benchmark_config,
+                    hashes=input_hashes, repeats=args.repeats,
                 )
-                expected_runs = len(profile_sizes) * len(tool_threads) * len(ram_gb) * args.repeats
-                profile_complete = len(profile_runs) == expected_runs and all(r["status"] == "ok" for r in profile_runs)
+                profile_complete = {point_key(point) for point in runtime_points} == intended_points
                 if not profile_complete:
                     had_error = True
                     unpersistable_profile = True
-                    print(f"[{tool_id}/{profile.profile_id}] incomplete or unsuccessful matrix; preserving existing costs.")
+                    print(f"[{tool_id}/{profile.profile_id}] incomplete matrix; completed points checkpointed, failures retained in evidence.")
                 if runtime_points and profile_complete:
                     cost_profile_entries.append(
                         make_cost_profile_entry(
@@ -1361,7 +1608,7 @@ def run(argv: Sequence[str] | None = None) -> int:
             can_write = bool(cost_profile_entries) and (args.merge_existing or not unpersistable_profile)
             if can_write and not args.no_write_cost:
                 payload = make_cost_payload(profile_entries=cost_profile_entries)
-                if args.merge_existing:
+                if read_json(cost_path, {}).get("profiles"):
                     payload = merge_profiles(cost_path, payload)
                 write_tool_cost_profile(cost_path=cost_path, cost_payload=payload)
                 wrote_cost = True
@@ -1384,6 +1631,8 @@ def run(argv: Sequence[str] | None = None) -> int:
         finally:
             if workdir_context is not None:
                 workdir_context.cleanup()
+            if cost_lock is not None:
+                cost_lock.close()
 
         if fail_fast_triggered:
             break

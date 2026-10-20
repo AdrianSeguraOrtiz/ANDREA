@@ -19,7 +19,7 @@
     "undirected"
   ],
   "implementation_url": "https://www.bioconductor.org/packages/release/bioc/html/lionessR.html",
-  "docker_image": "adriansegura99/inference-tools_lioness:1.1.0",
+  "docker_image": "adriansegura99/inference-tools_lioness:1.1.2",
   "execution_capabilities": [
     "column_native",
     "group_aggregated"
@@ -29,7 +29,7 @@
       "supported": false,
       "default_threads": 1,
       "max_threads": 1,
-      "upstream_mapping": "The selected public entrypoint lionessR::lioness(expression_data, lionessR::netFun) exposes no documented thread, worker or core-count argument. The wrapper pins common BLAS/OpenMP environment variables to 1 and requires ANDREA --threads=1."
+      "upstream_mapping": "The selected public entrypoint lionessR::lioness(expression_data, lionessR::netFun) exposes no documented thread, worker or core-count argument. The wrapper pins common BLAS/OpenMP environment variables to 1 and requires ANDREA --threads=1. The container entrypoint pins native BLAS/OpenMP libraries to one thread before starting the interpreter; outer worker counts retain their existing mapping."
     }
   },
   "taxonomic_scope": {

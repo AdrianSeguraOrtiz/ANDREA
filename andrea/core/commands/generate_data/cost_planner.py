@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,8 @@ from typing import Any
 from .request import resolve_simulator_runtime_resources
 from .semantic import parse_truth_requirements
 from .shared import CATALOG_ROOT, _load_json_object
+
+ETA_ESTIMATION_POLICY_VERSION = "simulator_cost_v2"
 
 
 @dataclass(frozen=True)
@@ -381,6 +384,45 @@ def _simulation_cost_features(
     }
 
 
+def _dimension_parameter_paths(profile: dict[str, Any]) -> set[str]:
+    """Parameters varied by the declared size mapping, not its fixed modifiers.
+
+    For example, SERGIO varies number_sc at fixed number_bins. The latter still
+    changes the scientific configuration and must not disappear from matching.
+    """
+    dimensions = _profile_config(profile).get("dimension_profile", {})
+    if not isinstance(dimensions, dict):
+        return set()
+    paths: set[str] = set()
+    genes = dimensions.get("genes_param")
+    if isinstance(genes, str):
+        paths.add(genes)
+    elif isinstance(genes, dict) and "fixed" not in genes:
+        paths.update(path for path, rule in genes.items() if isinstance(rule, dict))
+    cells = dimensions.get("cells_param")
+    if isinstance(cells, str):
+        paths.add(cells)
+    elif isinstance(cells, dict) and isinstance(cells.get("param"), str):
+        paths.add(cells["param"])
+    return paths
+
+
+def _dimensions_are_resolved(params: dict[str, Any], dimensions: dict[str, Any]) -> bool:
+    genes_rule = dimensions.get("genes_param")
+    genes = _dimension_from_rule(params, genes_rule)
+    if isinstance(genes_rule, dict) and "fixed" not in genes_rule:
+        values = [_value_at_path(params, path) for path in genes_rule]
+        genes = sum(values) if values and all(
+            isinstance(value, (int, float)) and not isinstance(value, bool)
+            and math.isfinite(value) and value >= 0 for value in values
+        ) else None
+    cells = _dimension_from_rule(params, dimensions.get("cells_param"))
+    return all(
+        isinstance(value, (int, float)) and not isinstance(value, bool)
+        and math.isfinite(value) and value > 0 for value in (genes, cells)
+    )
+
+
 def _select_cost_profile(
     *,
     simulator_id: str,
@@ -391,6 +433,8 @@ def _select_cost_profile(
     effective_extras: list[str],
     input_ids: set[str],
     params: dict[str, Any],
+    max_cores: int,
+    max_ram_gb: float,
 ) -> tuple[dict[str, Any] | None, dict[str, Any], list[str]]:
     profiles = cost_payload.get("profiles")
     if not isinstance(profiles, list) or not profiles:
@@ -399,7 +443,7 @@ def _select_cost_profile(
     requested = set(requested_extras)
     effective = set(effective_extras)
     params_flat = _flatten_values(params)
-    candidates: list[tuple[tuple[int, int, int, int, int], dict[str, Any], dict[str, Any]]] = []
+    candidates: list[tuple[tuple[int, ...], dict[str, Any], dict[str, Any]]] = []
     profile_matches = 0
     for idx, profile in enumerate(profiles):
         if not isinstance(profile, dict):
@@ -418,8 +462,11 @@ def _select_cost_profile(
         profile_conditional = _string_set(input_profile.get("conditional_inputs_satisfied"))
         profile_inputs = profile_required | profile_optional | profile_conditional
 
-        extra_over = profile_requested.difference(requested)
-        extra_under = requested.difference(profile_requested)
+        # The wrapper receives effective extras. Explicitly requesting an
+        # already mandatory artifact (e.g. tf_list) adds no work. Retain the
+        # request difference for auditing, but compare the actual workload.
+        extra_over = profile_requested.difference(requested).difference(effective)
+        extra_under = requested.difference(profile_requested).difference(profile_effective)
         effective_delta = profile_effective.symmetric_difference(effective)
         input_over = profile_inputs.difference(input_ids)
         input_under = input_ids.difference(profile_inputs)
@@ -433,9 +480,19 @@ def _select_cost_profile(
         cost_values = params_profile.get("cost_relevant_values", {})
         if not isinstance(cost_values, dict):
             cost_values = {}
-        param_diffs = sum(
-            1 for path in cost_params if params_flat.get(path) != cost_values.get(path)
-        )
+        # Older profiles list only some cost-relevant parameters, but retain the
+        # complete resolved recipe. A change to an omitted simulation control
+        # (for example Dyngen num_simulations) is not an exact configuration.
+        base_values = _flatten_values(params_profile.get("resolved_base_params", {}))
+        compared_values = {**base_values, **cost_values}
+        compared_paths = set(base_values).union(cost_params)
+        dimensional_paths = _dimension_parameter_paths(profile)
+        parameter_differences = {
+            path: {"calibrated": compared_values.get(path), "requested": params_flat.get(path)}
+            for path in sorted(compared_paths)
+            if path not in dimensional_paths and params_flat.get(path) != compared_values.get(path)
+        }
+        param_diffs = len(parameter_differences)
 
         source_modes = input_profile.get("input_source_modes", {})
         if not isinstance(source_modes, dict):
@@ -446,19 +503,53 @@ def _select_cost_profile(
             if _value_at_path(params, str(path)) != value
         )
 
-        valid_points = _runtime_points(profile)
+        valid_points = [
+            point for point in _runtime_points(profile)
+            if int(point["threads"]) <= max_cores and float(point["ram_gb"]) <= max_ram_gb
+        ]
+        genes, cells, groups, populations, dimensions = _estimate_dimensions(
+            params=params, selected_profile=profile
+        )
+        geometry_rank = 3
+        for threads, ram in sorted({(int(p["threads"]), float(p["ram_gb"])) for p in valid_points}):
+            nearest = _nearest_point(points=valid_points, genes=genes, cells=cells,
+                                     groups=groups, threads=threads, ram_gb=ram)
+            if nearest is not None:
+                _, model = _estimate_supported_runtime(
+                    points=valid_points, nearest=nearest, genes=genes, cells=cells,
+                    groups=groups, population_count=populations, threads=threads, ram_gb=ram,
+                    configuration_matches=True,
+                    dimensions_resolved=_dimensions_are_resolved(params, dimensions),
+                )
+                geometry_rank = min(geometry_rank, {
+                    "exact": 0, "interpolated": 1, "extrapolated": 2, "fallback": 3,
+                }[model["estimation_method"]])
+        extension_identity = config.get("extension_identity")
+        # A recorded validating runner breaks otherwise equivalent ties. This
+        # is provenance, not a claim that the planner revalidated its outputs.
+        output_validation_recorded = isinstance(extension_identity, dict) and all(
+            isinstance(extension_identity.get(key), str)
+            and re.fullmatch(r"[0-9a-fA-F]{64}", extension_identity[key]) is not None
+            for key in ("validation_sha256", "runner_sha256")
+        )
         metadata = {
             "profile_id": str(profile.get("profile_id") or ""),
             "extra_over": sorted(extra_over),
             "extra_under": sorted(extra_under),
+            "requested_extra_differences": sorted(profile_requested.symmetric_difference(requested)),
             "effective_delta": sorted(effective_delta),
             "input_over": sorted(input_over),
             "input_under": sorted(input_under),
             "param_difference_count": int(param_diffs),
             "source_mode_difference_count": int(source_diffs),
             "cost_relevant_params": cost_params,
+            "dimension_parameters": sorted(dimensional_paths),
+            "compared_parameter_paths": sorted(compared_paths.difference(dimensional_paths)),
+            "parameter_differences": parameter_differences,
             "cost_relevant_values": cost_values,
             "input_source_modes": source_modes,
+            "geometry_rank": geometry_rank,
+            "output_validation_recorded": output_validation_recorded,
         }
         score = (
             1 if not valid_points else 0,
@@ -466,6 +557,9 @@ def _select_cost_profile(
             len(input_over) * 3 + len(input_under),
             len(effective_delta),
             param_diffs + source_diffs,
+            geometry_rank,
+            -len({(point["genes"], point["cells"]) for point in valid_points}),
+            0 if output_validation_recorded else 1,
             idx,
         )
         candidates.append((score, profile, metadata))
@@ -518,6 +612,163 @@ def _nearest_point(
     return min(candidates, key=score)
 
 
+def _estimate_supported_runtime(
+    *, points: list[dict[str, Any]], nearest: dict[str, Any], genes: int,
+    cells: int, groups: int, population_count: int, threads: int, ram_gb: float,
+    configuration_matches: bool, dimensions_resolved: bool,
+    statistic: str = "p90",
+) -> tuple[float, dict[str, Any]]:
+    """Interpolate measured durations only inside their actual convex support.
+
+    Linear interpolation preserves startup overhead and stays within observed
+    endpoint durations. Segments also support a fixed-gene profile or a measured
+    diagonal, without claiming that a diagonal covers a two-dimensional region.
+    Outside that support, nearby axis measurements may support a bounded
+    affine extrapolation with nonnegative startup and marginal costs. Otherwise
+    the square-root rule remains an explicitly uncalibrated heuristic.
+    """
+    if statistic not in {"p50", "p90"}:
+        raise ValueError("Runtime statistic must be p50 or p90")
+    same_resources = [
+        point for point in points
+        if int(point["threads"]) == threads
+        and math.isclose(float(point["ram_gb"]), ram_gb, rel_tol=0, abs_tol=1e-6)
+        and int(point.get("groups", 0)) == groups
+        and int(point.get("population_count", point.get("groups", 0))) == population_count
+        and point.get("status") == "ok"
+    ]
+
+    def seconds(point: dict[str, Any]) -> float:
+        if statistic == "p50":
+            return float(point["seconds_p50"])
+        return max(float(point["seconds_p50"]), float(point["seconds_p90"])) * _runtime_penalty(point)
+
+    # Duplicate coordinates cannot increase geometric support. Prefer the more
+    # conservative duration, independently of input ordering.
+    by_coordinate: dict[tuple[int, int], dict[str, Any]] = {}
+    for point in same_resources:
+        coordinate = (int(point["genes"]), int(point["cells"]))
+        if coordinate not in by_coordinate or seconds(point) > seconds(by_coordinate[coordinate]):
+            by_coordinate[coordinate] = point
+    support = [by_coordinate[key] for key in sorted(by_coordinate)]
+    valid_configuration = configuration_matches and dimensions_resolved
+    nearest_genes = max(1, int(nearest["genes"]))
+    nearest_cells = max(1, int(nearest["cells"]))
+    group_scale = 1.0 if groups <= 0 else math.sqrt(groups / max(1, int(nearest.get("groups", 0))))
+    heuristic_scale = math.sqrt((genes / nearest_genes) * (cells / nearest_cells)) * group_scale
+
+    def measured_result(anchors: list[dict[str, Any]], weights: list[float], geometry: str):
+        weights = [max(0.0, weight) for weight in weights]
+        total = sum(weights)
+        weights = [weight / total for weight in weights]
+        estimate = sum(weight * seconds(point) for point, weight in zip(anchors, weights))
+        return estimate, {
+            "estimation_method": "exact" if len(anchors) == 1 else "interpolated",
+            "calibrated": True,
+            "geometry": geometry,
+            "statistic": statistic,
+            "same_resource_points": len(support),
+            "anchors": [
+                {"genes": int(point["genes"]), "cells": int(point["cells"]),
+                 "seconds": round(seconds(point), 6), "weight": round(weight, 12)}
+                for point, weight in zip(anchors, weights)
+            ],
+        }
+
+    if valid_configuration and (genes, cells) in by_coordinate:
+        return measured_result([by_coordinate[(genes, cells)]], [1.0], "point")
+
+    if valid_configuration and len(support) >= 2:
+        gene_span = max(1, max(int(p["genes"]) for p in support) - min(int(p["genes"]) for p in support))
+        cell_span = max(1, max(int(p["cells"]) for p in support) - min(int(p["cells"]) for p in support))
+        # Center on the query and normalize units before geometric comparisons.
+        coordinates = [((int(p["genes"]) - genes) / gene_span,
+                        (int(p["cells"]) - cells) / cell_span) for p in support]
+        segments = []
+        for i, j in itertools.combinations(range(len(support)), 2):
+            ax, ay = coordinates[i]
+            bx, by = coordinates[j]
+            dx, dy = bx - ax, by - ay
+            length_squared = dx * dx + dy * dy
+            weight = -(ax * dx + ay * dy) / length_squared
+            if (-1e-10 <= weight <= 1 + 1e-10
+                    and math.hypot(ax + weight * dx, ay + weight * dy) <= 1e-10):
+                segments.append((length_squared, i, j, weight))
+        if segments:
+            _, i, j, weight = min(segments)
+            return measured_result([support[i], support[j]], [1 - weight, weight], "segment")
+
+        triangles = []
+        for i, j, k in itertools.combinations(range(len(support)), 3):
+            ax, ay = coordinates[i]
+            bx, by = coordinates[j]
+            cx, cy = coordinates[k]
+            determinant = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+            if abs(determinant) <= 1e-12:
+                continue
+            wa = ((by - cy) * -cx + (cx - bx) * -cy) / determinant
+            wb = ((cy - ay) * -cx + (ax - cx) * -cy) / determinant
+            wc = 1 - wa - wb
+            if min(wa, wb, wc) >= -1e-10:
+                distance = sum(x * x + y * y for x, y in (coordinates[i], coordinates[j], coordinates[k]))
+                triangles.append((distance, i, j, k, wa, wb, wc))
+        if triangles:
+            _, i, j, k, wa, wb, wc = min(triangles)
+            return measured_result([support[i], support[j], support[k]], [wa, wb, wc], "triangle")
+
+    if valid_configuration:
+        # Only extrapolate along a measured axis (or constant aspect ratio).
+        # Two diagonal points cannot identify separate gene/column effects.
+        paths = [
+            ("cells", cells, [p for p in support if int(p["genes"]) == genes]),
+            ("genes", genes, [p for p in support if int(p["cells"]) == cells]),
+            ("genes", genes, [p for p in support
+                              if int(p["genes"]) * cells == int(p["cells"]) * genes]),
+        ]
+        for axis, target, candidates in paths:
+            by_size = {int(p[axis]): p for p in candidates}
+            sizes = sorted(by_size)
+            if len(sizes) < 2 or sizes[0] <= target <= sizes[-1]:
+                continue
+            lo, hi = sizes[:2] if target < sizes[0] else sizes[-2:]
+            if target < lo / 2 or target > hi * 2:
+                continue
+            t0, t1 = seconds(by_size[lo]), seconds(by_size[hi])
+            slope = (t1 - t0) / (hi - lo)
+            intercept = t0 - slope * lo
+            if slope < 0 or intercept < 0:
+                continue
+            return intercept + slope * target, {
+                "estimation_method": "extrapolated", "calibrated": False,
+                "geometry": "measured_axis_affine_extrapolation", "statistic": statistic,
+                "axis": axis, "same_resource_points": len(support),
+                "startup_seconds": intercept, "seconds_per_unit": slope,
+                "reason": "Nearby measurements support axis extrapolation; the requested size is unvalidated.",
+                "anchors": [{"genes": int(by_size[s]["genes"]), "cells": int(by_size[s]["cells"]),
+                             "seconds": seconds(by_size[s])} for s in (lo, hi)],
+            }
+
+    reason = (
+        "The selected profile differs from the requested scientific configuration."
+        if not configuration_matches else
+        "The size mapping is not fully resolved from declared dimension rules."
+        if not dimensions_resolved else
+        "No successful points match the requested resources and group counts."
+        if not support else
+        "The requested size lies outside the measured convex support; a diagonal does not cover independent size changes."
+    )
+    return seconds(nearest) * heuristic_scale, {
+        "estimation_method": "extrapolated" if valid_configuration and support else "fallback",
+        "calibrated": False,
+        "geometry": "square_root_size_heuristic",
+        "statistic": statistic,
+        "same_resource_points": len(support),
+        "reason": reason,
+        "anchors": [{"genes": nearest_genes, "cells": nearest_cells,
+                     "seconds": round(seconds(nearest), 6)}],
+    }
+
+
 def _fallback_mode(
     *,
     simulator_id: str,
@@ -555,6 +806,8 @@ def _fallback_mode(
         eta_source=eta_source,
         eta_provenance={
             "eta_source": "fallback",
+            "estimation_method": "fallback",
+            "calibrated": False,
             "warnings": warnings,
             "features": _simulation_cost_features(
                 params=params,
@@ -616,6 +869,8 @@ def _estimate_run_modes(
         effective_extras=effective_extras,
         input_ids=input_ids,
         params=params,
+        max_cores=max_cores,
+        max_ram_gb=max_ram_gb,
     )
     warnings = [*load_warnings, *profile_warnings]
     if selected_profile is None:
@@ -681,15 +936,50 @@ def _estimate_run_modes(
             continue
         nearest_genes = max(1, int(nearest.get("genes", genes) or genes))
         nearest_cells = max(1, int(nearest.get("cells", cells) or cells))
-        nearest_groups = max(1, int(nearest.get("groups", groups or 1) or 1))
-        group_scale = 1.0 if groups <= 0 else math.sqrt(max(1, groups) / nearest_groups)
-        size_scale = math.sqrt((genes / nearest_genes) * (cells / nearest_cells)) * group_scale
         p50 = float(nearest["seconds_p50"])
         p90 = float(nearest["seconds_p90"])
-        robust_base = max(p90, 0.7 * p90 + 0.3 * p50)
-        eta = max(0.1, robust_base * size_scale * _runtime_penalty(nearest))
+        robust_base = max(p90, p50)
+        configuration_matches = not any(profile_match.get(key) for key in (
+            "extra_over", "extra_under", "input_over", "input_under", "effective_delta",
+            "param_difference_count", "source_mode_difference_count",
+        ))
+        estimated_seconds, size_model = _estimate_supported_runtime(
+            points=points, nearest=nearest, genes=genes, cells=cells, groups=groups,
+            population_count=population_count, threads=threads, ram_gb=ram_gb,
+            configuration_matches=configuration_matches,
+            dimensions_resolved=_dimensions_are_resolved(params, dimension_profile),
+        )
+        typical_seconds, typical_model = _estimate_supported_runtime(
+            points=points, nearest=nearest, genes=genes, cells=cells, groups=groups,
+            population_count=population_count, threads=threads, ram_gb=ram_gb,
+            configuration_matches=configuration_matches,
+            dimensions_resolved=_dimensions_are_resolved(params, dimension_profile),
+            statistic="p50",
+        )
+        # Keep ETA as a conservative planning budget for existing consumers.
+        # Report the central prediction separately; a p90 based on three
+        # repeats is not a calibrated 90% prediction interval.
+        estimated_seconds = max(estimated_seconds, typical_seconds)
+        eta = max(0.1, estimated_seconds)
+        size_scale = estimated_seconds / max(1e-12, robust_base * _runtime_penalty(nearest))
         profile_id = str(selected_profile.get("profile_id") or "")
         provenance_warnings = list(warnings)
+        dimension_semantics = _profile_config(selected_profile).get("dimension_semantics", {})
+        if dimension_semantics.get("cells") == "requested_cell_budget":
+            warning = (f"[{simulator_id}] Cost coordinates describe requested cell budgets; native snapshot "
+                       "sampling can return fewer cells when backbone branches are undersampled.")
+            provenance_warnings.append(warning)
+            if warning not in warnings:
+                warnings.append(warning)
+        provenance_warnings.extend(nearest.get("feature_vector", {}).get("validation_warnings", []))
+        if not size_model["calibrated"]:
+            warning = (
+                f"[{simulator_id}] ETA uses an uncalibrated scheduling heuristic: "
+                + size_model["reason"]
+            )
+            provenance_warnings.append(warning)
+            if warning not in warnings:
+                warnings.append(warning)
         if nearest.get("status") == "partial":
             provenance_warnings.append(
                 "nearest benchmark point has partial success; ETA includes risk penalty"
@@ -703,12 +993,24 @@ def _estimate_run_modes(
                 eta_seconds=round(float(eta), 3),
                 eta_source="cost_profile",
                 eta_provenance={
+                    "policy_version": ETA_ESTIMATION_POLICY_VERSION,
                     "eta_source": "cost_profile",
+                    "estimation_method": size_model["estimation_method"],
+                    "calibrated": size_model["calibrated"],
+                    "runtime_estimates": {
+                        "typical_seconds": round(max(0.1, typical_seconds), 6),
+                        "planning_seconds": round(eta, 6),
+                        "typical_statistic": "measured_p50",
+                        "planning_statistic": "measured_p90_with_failure_penalty",
+                        "typical_size_model": typical_model,
+                        "prediction_interval_calibrated": False,
+                    },
                     "cost_profile": {
                         "simulator_id": simulator_id,
                         "profile_id": profile_id,
                         "match": profile_match,
                         "dimension_profile": dimension_profile,
+                        "dimension_semantics": dimension_semantics,
                         "features": cost_features,
                         "nearest_runtime_point": {
                             "genes": nearest_genes,
@@ -721,8 +1023,11 @@ def _estimate_run_modes(
                             "seconds_p50": round(float(p50), 6),
                             "seconds_p90": round(float(p90), 6),
                             "ok_rate": nearest.get("ok_rate"),
+                            "observed_dimensions": nearest.get("feature_vector", {}).get("observed_dimensions", []),
                         },
                         "size_scale": round(float(size_scale), 6),
+                        "estimation_method": size_model["estimation_method"],
+                        "size_model": size_model,
                         "risk_penalty": round(float(_runtime_penalty(nearest)), 6),
                         "warnings": provenance_warnings,
                     },

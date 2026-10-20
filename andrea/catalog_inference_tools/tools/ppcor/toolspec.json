@@ -19,7 +19,7 @@
     "undirected"
   ],
   "implementation_url": "https://CRAN.R-project.org/package=ppcor",
-  "docker_image": "adriansegura99/inference-tools_ppcor:1.1.0",
+  "docker_image": "adriansegura99/inference-tools_ppcor:1.1.2",
   "execution_capabilities": [
     "global",
     "group_emulated"
@@ -29,7 +29,7 @@
       "supported": false,
       "default_threads": 1,
       "max_threads": 1,
-      "upstream_mapping": "The selected ppcor::pcor() entrypoint exposes no documented thread, worker, core, scheduler or process-level sharding control. The wrapper requires ANDREA --threads=1 and pins common BLAS/OpenMP environment variables to 1; any BLAS-level parallelism is not a safe user-mapped upstream control."
+      "upstream_mapping": "The selected ppcor::pcor() entrypoint exposes no documented thread, worker, core, scheduler or process-level sharding control. The wrapper requires ANDREA --threads=1 and pins common BLAS/OpenMP environment variables to 1; any BLAS-level parallelism is not a safe user-mapped upstream control. The container entrypoint pins native BLAS/OpenMP libraries to one thread before starting the interpreter; outer worker counts retain their existing mapping."
     }
   },
   "taxonomic_scope": {

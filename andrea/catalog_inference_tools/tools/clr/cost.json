@@ -10,7 +10,31 @@
             "columns": 20
           },
           {
+            "genes": 50,
+            "columns": 40
+          },
+          {
+            "genes": 50,
+            "columns": 80
+          },
+          {
             "genes": 100,
+            "columns": 20
+          },
+          {
+            "genes": 100,
+            "columns": 40
+          },
+          {
+            "genes": 100,
+            "columns": 80
+          },
+          {
+            "genes": 200,
+            "columns": 20
+          },
+          {
+            "genes": 200,
             "columns": 40
           },
           {
@@ -26,7 +50,7 @@
           32.0
         ],
         "repeats": 3,
-        "timeout_seconds": 1800,
+        "timeout_seconds": 10800,
         "execution_profile": {
           "mode": "global",
           "physical_task_policy": "single",
@@ -72,17 +96,15 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-09-29T12:25:10.468140+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
           "git_dirty": true,
-          "source_sha256": "b0fa843afa67f8becd018ba62ab49fec1dbc88036189984e2c99eb8cd4839558",
-          "spec_sha256": "17723259c9f03a77130bdba310dc9a41470185628c314d57f8484f30176c7077",
-          "build_context_sha256": "bf68b6e20deb12c544ad8a60e45fb5a4a4517a7196e174ce9d243209b74c8e9c",
-          "image_reference": "adriansegura99/inference-tools_clr:1.1.0",
-          "image_id": "sha256:4ef534d5c8bebbf0dc4b8567388f3870c058492d22c60b470dbce49cc6366357",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_clr@sha256:33e9b7c2c0a0cb763ee3091ce682af3d8da14d71e9dc5e3dd76807d464a2174b"
-          ],
+          "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+          "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+          "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+          "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+          "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
@@ -91,7 +113,81 @@
           "seed": 12345,
           "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "26d8cddaf6eea54efb65a20ab8adeee71ed72d613350322d432b63684a484684"
+        "profile_sha256": "542d0b7290ed8c354f85afafe9101b65f54e0b463afbaf4eb4f18816a07aaf58",
+        "planned_points": [
+          {
+            "genes": 50,
+            "columns": 20,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 50,
+            "columns": 20,
+            "threads": 1,
+            "ram_gb": 32.0
+          },
+          {
+            "genes": 50,
+            "columns": 40,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 50,
+            "columns": 80,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 20,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 40,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 100,
+            "columns": 40,
+            "threads": 1,
+            "ram_gb": 32.0
+          },
+          {
+            "genes": 100,
+            "columns": 80,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 200,
+            "columns": 20,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 200,
+            "columns": 40,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 200,
+            "columns": 80,
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          {
+            "genes": 200,
+            "columns": 80,
+            "threads": 1,
+            "ram_gb": 32.0
+          }
+        ]
       },
       "runtime_points": [
         {
@@ -109,8 +205,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.937104,
-          "seconds_p90": 1.159538,
+          "seconds_p50": 0.829758,
+          "seconds_p90": 0.881696,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 0,
@@ -123,6 +219,137 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "57c072a05af97b2fd247d9b67ef2518710bf43b0a6bab67840a2aa3f0b1f5ebd",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 0.829758,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c20_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 0.89468,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c20_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 0.790124,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c20_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -140,8 +367,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 0.900602,
-          "seconds_p90": 0.916404,
+          "seconds_p50": 0.828348,
+          "seconds_p90": 0.830891,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 0,
@@ -154,6 +381,623 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "57c072a05af97b2fd247d9b67ef2518710bf43b0a6bab67840a2aa3f0b1f5ebd",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 1,
+                "seconds": 0.831527,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c20_t1_m32_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 2,
+                "seconds": 0.786353,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c20_t1_m32_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 3,
+                "seconds": 0.828348,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c20_t1_m32_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 50,
+          "columns": 40,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 0.790222,
+          "seconds_p90": 0.795891,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "9a43b48d57dcc1fa5bd7c466b4ff34bd3f5e421c36faeedb3ba07e26f798833d",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 0.790222,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c40_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 0.797308,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c40_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 0.765096,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c40_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 50,
+          "columns": 80,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 0.805059,
+          "seconds_p90": 0.832689,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 50,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "b993dbfa57d42bf65361cf112e140302085d2b5aa47b4d5d32b1c90127fe33e9",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 50,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 0.839596,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c80_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 0.805059,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c80_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 50,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 0.782229,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g50_c80_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 100,
+          "columns": 20,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.097434,
+          "seconds_p90": 1.128719,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "e51e3f863296ebe217901baf6b01486bd1605f98a9fc8f4029fa305f1ebe1d05",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 1.097434,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c20_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 1.13654,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c20_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 1.08479,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c20_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -171,8 +1015,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.179975,
-          "seconds_p90": 1.234397,
+          "seconds_p50": 1.061472,
+          "seconds_p90": 1.063404,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 0,
@@ -185,6 +1029,137 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "d331a84dd10b4c58ff36ccc4a99ded96fb699cd86d1caf8e21b49a819d39719e",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 1.055493,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c40_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 1.061472,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c40_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 1.063887,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c40_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -202,8 +1177,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.148511,
-          "seconds_p90": 1.184817,
+          "seconds_p50": 1.08114,
+          "seconds_p90": 1.088436,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 0,
@@ -216,6 +1191,623 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "d331a84dd10b4c58ff36ccc4a99ded96fb699cd86d1caf8e21b49a819d39719e",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 1,
+                "seconds": 1.03684,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c40_t1_m32_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 2,
+                "seconds": 1.08114,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c40_t1_m32_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 3,
+                "seconds": 1.09026,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c40_t1_m32_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 100,
+          "columns": 80,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 0.998799,
+          "seconds_p90": 1.023147,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 100,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "15f35c6dafc9cee33e387e601970751d10b947a460f4eda62464000dbf874d27",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 100,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 1.029234,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c80_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 0.998799,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c80_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 100,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 0.96926,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g100_c80_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 200,
+          "columns": 20,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 2.233137,
+          "seconds_p90": 2.291044,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "9821bb3323b0a2eff1621ba2cbf18bc20609ba9de651fc296d57c1ccc71d8fdf",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 200,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 2.211596,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c20_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 200,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 2.233137,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c20_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 200,
+                "columns": 20,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 2.305521,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c20_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "genes": 200,
+          "columns": 40,
+          "threads": 1,
+          "ram_gb": 8,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 2.076546,
+          "seconds_p90": 2.120124,
+          "feature_vector": {
+            "execution_mode": "global",
+            "n_cells": 0,
+            "n_genes": 200,
+            "n_groups": 0,
+            "expected_contexts": 1,
+            "expected_dense_edges": 0,
+            "has_tf_list": false,
+            "output_density_class": "sparse",
+            "aggregation_step": "none",
+            "threads": 1,
+            "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "e63eaf71930d2e045a93ca8b2bddc9f4423779f13ab4adc0602fb55e758f4d3b",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 200,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 2.131018,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c40_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 200,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 2.054637,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c40_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 200,
+                "columns": 40,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 2.076546,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c40_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -233,8 +1825,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.888187,
-          "seconds_p90": 1.922851,
+          "seconds_p50": 1.831713,
+          "seconds_p90": 1.857533,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 0,
@@ -247,6 +1839,137 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 8.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "148d7524242b05e509470150c20dfa33b777e713b6595b31e25807d78ce6293a",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 200,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 1,
+                "seconds": 1.831713,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c80_t1_m8_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 200,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 2,
+                "seconds": 1.786429,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c80_t1_m8_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 200,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 8.0,
+                "repeat": 3,
+                "seconds": 1.863988,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c80_t1_m8_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         },
         {
@@ -264,8 +1987,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.932135,
-          "seconds_p90": 1.934581,
+          "seconds_p50": 1.791527,
+          "seconds_p90": 1.79763,
           "feature_vector": {
             "execution_mode": "global",
             "n_cells": 0,
@@ -278,6 +2001,137 @@
             "aggregation_step": "none",
             "threads": 1,
             "ram_gb": 32.0
+          },
+          "measurement_evidence": {
+            "version": 1,
+            "input_sha256": {
+              "expression.tsv": "148d7524242b05e509470150c20dfa33b777e713b6595b31e25807d78ce6293a",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3",
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743"
+            },
+            "measurement_context": {
+              "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+              "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+              "logical_cpus": 8,
+              "host_memory_bytes": 67432239104,
+              "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+              "docker_server": "24.0.2",
+              "timing_scope": "docker run wall time including container startup and output writing",
+              "seed": 12345,
+              "params": {
+                "estimator": "spearman",
+                "disc": "none",
+                "nbins": null
+              },
+              "execution": {
+                "mode": "global",
+                "physical_task_policy": "single",
+                "group_count": 0,
+                "aggregation_step": "none"
+              },
+              "input": {
+                "column_kind": "samples",
+                "expression_profile": "synthetic_benchmark",
+                "gene_id_source": "synthetic",
+                "extras_provided": [],
+                "required_inputs_satisfied": [],
+                "optional_inputs_provided": [],
+                "conditional_inputs_satisfied": [],
+                "tf_count_policy": null,
+                "prior_density": null,
+                "marker_count_per_group": 4,
+                "group_count": 0,
+                "has_tf_list": false,
+                "output_density_class": "sparse",
+                "aggregation_step": "none"
+              }
+            },
+            "observations": [
+              {
+                "genes": 200,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 1,
+                "seconds": 1.757771,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c80_t1_m32_r1/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 200,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 2,
+                "seconds": 1.799156,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c80_t1_m32_r2/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              },
+              {
+                "genes": 200,
+                "columns": 80,
+                "threads": 1,
+                "ram_gb": 32.0,
+                "repeat": 3,
+                "seconds": 1.791527,
+                "status": "ok",
+                "io_dir": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/baseline/clr/clr-ax9rxmo3/global_default/global_default_g200_c80_t1_m32_r3/io",
+                "measurement_provenance": {
+                  "recorded_at_utc": "2026-10-15T02:32:50.595905+00:00",
+                  "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+                  "git_dirty": true,
+                  "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+                  "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+                  "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+                  "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+                  "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+                  "image_repo_digests": [],
+                  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+                  "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+                  "logical_cpus": 8,
+                  "host_memory_bytes": 67432239104,
+                  "docker_server": "24.0.2",
+                  "seed": 12345,
+                  "timing_scope": "docker run wall time including container startup and output writing"
+                }
+              }
+            ]
           }
         }
       ]
@@ -293,6 +2147,34 @@
           {
             "genes": 100,
             "columns": 100
+          },
+          {
+            "genes": 50,
+            "columns": 100
+          },
+          {
+            "genes": 50,
+            "columns": 200
+          },
+          {
+            "genes": 50,
+            "columns": 400
+          },
+          {
+            "genes": 100,
+            "columns": 400
+          },
+          {
+            "genes": 200,
+            "columns": 100
+          },
+          {
+            "genes": 200,
+            "columns": 200
+          },
+          {
+            "genes": 200,
+            "columns": 400
           }
         ],
         "threads_tested": [
@@ -349,116 +2231,402 @@
           }
         },
         "provenance": {
-          "recorded_at_utc": "2026-10-06T03:38:22.897428+00:00",
-          "git_commit": "fbc309d94e226f68f4d68cfab022a2619758cc6e",
+          "recorded_at_utc": "2026-10-15T15:00:35.636874+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
           "git_dirty": true,
-          "source_sha256": "1a4e4f55f87dc2bb2be63e20a829be6adfc3ec98e6d9a5ab555c9cbc26ebceb9",
-          "spec_sha256": "17723259c9f03a77130bdba310dc9a41470185628c314d57f8484f30176c7077",
-          "build_context_sha256": "bf68b6e20deb12c544ad8a60e45fb5a4a4517a7196e174ce9d243209b74c8e9c",
-          "image_reference": "adriansegura99/inference-tools_clr:1.1.0",
-          "image_id": "sha256:4ef534d5c8bebbf0dc4b8567388f3870c058492d22c60b470dbce49cc6366357",
-          "image_repo_digests": [
-            "adriansegura99/inference-tools_clr@sha256:33e9b7c2c0a0cb763ee3091ce682af3d8da14d71e9dc5e3dd76807d464a2174b"
-          ],
+          "source_sha256": "726421fcb436b3eaebe84c0b2734c49e0fb8811540e966eb9649afc341465120",
+          "spec_sha256": "c6bfa69da20a308a5694ed1d421cc5ca3019c9dfdf2befdb944a779ea1dc03bf",
+          "build_context_sha256": "ad35062fdd0f1eb6f49d5f5d8d5071e537d2b9e1d296a1b4c3d7c400115d0a45",
+          "image_reference": "adriansegura99/inference-tools_clr:1.1.2",
+          "image_id": "sha256:12616f6abf3fa0c2fd55e854acc54b519ddf478c8846e36593f215c0f6a458b7",
+          "image_repo_digests": [],
           "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
           "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
           "logical_cpus": 8,
           "host_memory_bytes": 67432239104,
           "docker_server": "24.0.2",
           "seed": 1729,
-          "timing_scope": "Physical container launch through exit collection; measurements made with frozen ANDREA 0.2.0rc1 runtime and unchanged Docker image. Imported by the current source snapshot; host evaluation/postprocessing excluded."
+          "timing_scope": "docker run wall time including container startup and output writing"
         },
-        "profile_sha256": "b6008ef0972ff650de7fc734e8132abe8d942f04c0b6516e2968260dd4b64934",
+        "profile_sha256": "d03a3f7d6f5173feb62d0403ef40761fb46cf5234f983f86102f96c95cd5f671",
         "calibration_evidence": [
           {
             "fixture_key": "run00001",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "a19d4df66d3595d9fd45556af3f3fa2f5402f5bd1b91c769b6befc7ec49cea0e",
-            "task_id": "run00001",
-            "seconds": 1.856194,
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/run00001/cd0fe886f3e348a31710df2626e28dd0cdc32a8695bb3bf31e1fd9c8826788ea/repeat1/measurement.json",
+            "report_sha256": "85a2e8f802a08450f087e729fb209697841df17c6f1cd29c0aeb4b0bed45758e",
+            "task_id": "cd0fe886f3e348a31710df2626e28dd0cdc32a8695bb3bf31e1fd9c8826788ea/repeat1",
+            "seconds": 1.6411352157592773,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
               "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
-            },
-            "peak_container_memory_bytes": 82669568,
-            "cpu_seconds": 0.96515
+            }
           },
           {
             "fixture_key": "run00001",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "9a337b36920c8ef14ca023bbb6548ec3face737275d6b52462f022601eed21d2",
-            "task_id": "correction_check",
-            "seconds": 1.983086,
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/run00001/cd0fe886f3e348a31710df2626e28dd0cdc32a8695bb3bf31e1fd9c8826788ea/repeat2/measurement.json",
+            "report_sha256": "fd9a32c03e961dcdf4fa24420afac9ee42e275e84e20c51d41fecce2a1faff2e",
+            "task_id": "cd0fe886f3e348a31710df2626e28dd0cdc32a8695bb3bf31e1fd9c8826788ea/repeat2",
+            "seconds": 1.5921093374490738,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
               "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
-            },
-            "peak_container_memory_bytes": 62296064,
-            "cpu_seconds": 1.164342
+            }
           },
           {
             "fixture_key": "run00001",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "54168d4adc7dfef5a2e284dcd3c56e9e6eb0c3a8f2c67e4d6cc417aafa530e20",
-            "task_id": "correction_check",
-            "seconds": 1.883352,
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/run00001/cd0fe886f3e348a31710df2626e28dd0cdc32a8695bb3bf31e1fd9c8826788ea/repeat3/measurement.json",
+            "report_sha256": "919a1c60a0b8866786aab18efd74b5e5305dcaf34681defa7101fe62ae90781d",
+            "task_id": "cd0fe886f3e348a31710df2626e28dd0cdc32a8695bb3bf31e1fd9c8826788ea/repeat3",
+            "seconds": 1.578542284667492,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "44d3075d7f96be52caf3eccb689842511b2d12ce0287db2ab99a3a4df667e5a5",
               "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
-            },
-            "peak_container_memory_bytes": 62345216,
-            "cpu_seconds": 1.053547
+            }
           },
           {
             "fixture_key": "run00023",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "facfe3574200721fb94a68d8c8d11a7b543d5602133fb336bd56c228788507ec",
-            "task_id": "run00023__group_01_pop_2_3",
-            "seconds": 1.831969,
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/run00023/63d116bac6d59e961b84b992fa323521a7af977aa4ef30729b96046623f12542/repeat1/measurement.json",
+            "report_sha256": "e6a7ce216690f1a550b1e9405f97bb5744de879c9eee1e7ab21cb1862119492b",
+            "task_id": "63d116bac6d59e961b84b992fa323521a7af977aa4ef30729b96046623f12542/repeat1",
+            "seconds": 1.4116770923137665,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "9eee42adb7d91924de1492922ca6c3f994632f8a2aa72976d36aa09e532441cd",
               "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
-            },
-            "peak_container_memory_bytes": 62320640,
-            "cpu_seconds": 1.057645
+            }
           },
           {
             "fixture_key": "run00023",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "45314fbbd53cd4285c5c8bfa763b049641320e946b922a63e60fca93a4b1a2b7",
-            "task_id": "correction_check__group_01_pop_2_3",
-            "seconds": 1.973751,
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/run00023/63d116bac6d59e961b84b992fa323521a7af977aa4ef30729b96046623f12542/repeat2/measurement.json",
+            "report_sha256": "910b336aa8715be49b15d59d358077445d969473552bc89d1607c7a4ed033198",
+            "task_id": "63d116bac6d59e961b84b992fa323521a7af977aa4ef30729b96046623f12542/repeat2",
+            "seconds": 1.4797822833061218,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "9eee42adb7d91924de1492922ca6c3f994632f8a2aa72976d36aa09e532441cd",
               "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
-            },
-            "peak_container_memory_bytes": 63172608,
-            "cpu_seconds": 1.086705
+            }
           },
           {
             "fixture_key": "run00023",
             "role": "calibration",
             "status": "completed",
-            "report_sha256": "bfd8cbc4ec9bee7715157a07544189505ddf442349d020d3724cf335d1f33100",
-            "task_id": "correction_check__group_01_pop_2_3",
-            "seconds": 2.05918,
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/run00023/63d116bac6d59e961b84b992fa323521a7af977aa4ef30729b96046623f12542/repeat3/measurement.json",
+            "report_sha256": "4c562cdad6073aa7e16994e6aca5870b239ef2350b2572d459b31113dcd2af48",
+            "task_id": "63d116bac6d59e961b84b992fa323521a7af977aa4ef30729b96046623f12542/repeat3",
+            "seconds": 1.440911814570427,
             "input_sha256": {
               "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
               "expression.tsv": "9eee42adb7d91924de1492922ca6c3f994632f8a2aa72976d36aa09e532441cd",
               "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
-            },
-            "peak_container_memory_bytes": 62304256,
-            "cpu_seconds": 1.094316
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c100/ace486764057ad94400ea4b0bdf33ddaa8b403cba7e8aef85632b50e53f27edb/repeat1/measurement.json",
+            "report_sha256": "449957d6486d9937145b651fad69fa65e4abdc3e3d745e42ec0ac91a85b5b6a2",
+            "task_id": "ace486764057ad94400ea4b0bdf33ddaa8b403cba7e8aef85632b50e53f27edb/repeat1",
+            "seconds": 0.9447546228766441,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "62e4600402c0f5cfcab030a750040075e14187ed803486a7ef40369b75e65d19",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c100/ace486764057ad94400ea4b0bdf33ddaa8b403cba7e8aef85632b50e53f27edb/repeat2/measurement.json",
+            "report_sha256": "34043d5e609d157596e295be2ac7b37d6c88ac0a0f206352a4ec66fbe1fba799",
+            "task_id": "ace486764057ad94400ea4b0bdf33ddaa8b403cba7e8aef85632b50e53f27edb/repeat2",
+            "seconds": 0.9403086230158806,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "62e4600402c0f5cfcab030a750040075e14187ed803486a7ef40369b75e65d19",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c100/ace486764057ad94400ea4b0bdf33ddaa8b403cba7e8aef85632b50e53f27edb/repeat3/measurement.json",
+            "report_sha256": "3b1529e33c147557c49d1da4cef1502b892800532342a151f2e8438d6bd5ed2a",
+            "task_id": "ace486764057ad94400ea4b0bdf33ddaa8b403cba7e8aef85632b50e53f27edb/repeat3",
+            "seconds": 0.9522709921002388,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "62e4600402c0f5cfcab030a750040075e14187ed803486a7ef40369b75e65d19",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c200",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c200/53518f4ca907dce76cea5f7d2b10619601389d4c5d6c2d2b91acdf02cbe03d39/repeat1/measurement.json",
+            "report_sha256": "ee24467038cd3ef80abf8d135bb2783366b49e5173670a504bb2db4a21d43d8d",
+            "task_id": "53518f4ca907dce76cea5f7d2b10619601389d4c5d6c2d2b91acdf02cbe03d39/repeat1",
+            "seconds": 0.9444383457303047,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "e07404af9a070521de8c083dace27392a98a077e49abdc90b7d8edab77020306",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c200",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c200/53518f4ca907dce76cea5f7d2b10619601389d4c5d6c2d2b91acdf02cbe03d39/repeat2/measurement.json",
+            "report_sha256": "3c80468a49948a91d6a689335641f686353f68023da5a3ad1a92a477584b1e45",
+            "task_id": "53518f4ca907dce76cea5f7d2b10619601389d4c5d6c2d2b91acdf02cbe03d39/repeat2",
+            "seconds": 0.9262290075421333,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "e07404af9a070521de8c083dace27392a98a077e49abdc90b7d8edab77020306",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c200",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c200/53518f4ca907dce76cea5f7d2b10619601389d4c5d6c2d2b91acdf02cbe03d39/repeat3/measurement.json",
+            "report_sha256": "12682e2f31d10c78a2346032455f958b26244e211556a223961b28a507f04baf",
+            "task_id": "53518f4ca907dce76cea5f7d2b10619601389d4c5d6c2d2b91acdf02cbe03d39/repeat3",
+            "seconds": 0.9352802559733391,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "e07404af9a070521de8c083dace27392a98a077e49abdc90b7d8edab77020306",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c400/c3b6acc94d4d4dfdb37729907f47b78ece7b66e4c2b24c94d544fb3a2d969ba8/repeat1/measurement.json",
+            "report_sha256": "fbbc91a7864aa4c681e65a306f65540a95010f2312f0b0c5514f99b8f8a9d98c",
+            "task_id": "c3b6acc94d4d4dfdb37729907f47b78ece7b66e4c2b24c94d544fb3a2d969ba8/repeat1",
+            "seconds": 0.9762893915176392,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "d2ddcf5071594a3a871faf7aef2a1762714fd1a4ecad897be6e168bdcff21ec7",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c400/c3b6acc94d4d4dfdb37729907f47b78ece7b66e4c2b24c94d544fb3a2d969ba8/repeat2/measurement.json",
+            "report_sha256": "91527148c2bd727c1c8171e9bab6c4290c4c5fb5bad5c4e070b56401442559e3",
+            "task_id": "c3b6acc94d4d4dfdb37729907f47b78ece7b66e4c2b24c94d544fb3a2d969ba8/repeat2",
+            "seconds": 0.9726903438568115,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "d2ddcf5071594a3a871faf7aef2a1762714fd1a4ecad897be6e168bdcff21ec7",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g50_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g50_c400/c3b6acc94d4d4dfdb37729907f47b78ece7b66e4c2b24c94d544fb3a2d969ba8/repeat3/measurement.json",
+            "report_sha256": "2b9e6804c0cae58eb16a1fe1b670a6905fb94b6f5799b5de47cefeafdee78abd",
+            "task_id": "c3b6acc94d4d4dfdb37729907f47b78ece7b66e4c2b24c94d544fb3a2d969ba8/repeat3",
+            "seconds": 0.9413739070296288,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "d2ddcf5071594a3a871faf7aef2a1762714fd1a4ecad897be6e168bdcff21ec7",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g100_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g100_c400/7b80d38a17f06e6c9ca1a526ac83496673df569b9a194f9680c6697383465e76/repeat1/measurement.json",
+            "report_sha256": "7522cd7e62f7ce29ddcff9809f18761a536cb2f81e001bd54f44dd1d0345a540",
+            "task_id": "7b80d38a17f06e6c9ca1a526ac83496673df569b9a194f9680c6697383465e76/repeat1",
+            "seconds": 1.6502445042133331,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "df696886eccb47a1ee046758ae50e717bfaa72b3e8793b26f13c34323f51fb33",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g100_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g100_c400/7b80d38a17f06e6c9ca1a526ac83496673df569b9a194f9680c6697383465e76/repeat2/measurement.json",
+            "report_sha256": "fd9269ffa6579ae3e0a487916823083f624540293eaf2ca3da29b37f6f652e8a",
+            "task_id": "7b80d38a17f06e6c9ca1a526ac83496673df569b9a194f9680c6697383465e76/repeat2",
+            "seconds": 1.605018898844719,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "df696886eccb47a1ee046758ae50e717bfaa72b3e8793b26f13c34323f51fb33",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g100_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g100_c400/7b80d38a17f06e6c9ca1a526ac83496673df569b9a194f9680c6697383465e76/repeat3/measurement.json",
+            "report_sha256": "c10205fff9babca822f4bf000ab3923e93f3897223e1d7de0cbe6dc960786803",
+            "task_id": "7b80d38a17f06e6c9ca1a526ac83496673df569b9a194f9680c6697383465e76/repeat3",
+            "seconds": 1.6061565726995468,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "df696886eccb47a1ee046758ae50e717bfaa72b3e8793b26f13c34323f51fb33",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c100/6205e889dbd56dc4e2e85bb5f9e502a0fd04c9e43dba47e98c9d97ad6acc09b1/repeat1/measurement.json",
+            "report_sha256": "49c21cb7b0f0be840cdd23c98aa3f26ba80fe613bdb21d350421de45fc4bb540",
+            "task_id": "6205e889dbd56dc4e2e85bb5f9e502a0fd04c9e43dba47e98c9d97ad6acc09b1/repeat1",
+            "seconds": 4.383724346756935,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "b4f1f0fd3d003dd92e7e43e54d5e5d7bc2c1bdfcb4458ab4cc0901b600981713",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c100/6205e889dbd56dc4e2e85bb5f9e502a0fd04c9e43dba47e98c9d97ad6acc09b1/repeat2/measurement.json",
+            "report_sha256": "ca7fc0ad6c1340eb980c9cbf8912a7658d1145cffb2d96f317fe7ad8ca17e482",
+            "task_id": "6205e889dbd56dc4e2e85bb5f9e502a0fd04c9e43dba47e98c9d97ad6acc09b1/repeat2",
+            "seconds": 4.306059263646603,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "b4f1f0fd3d003dd92e7e43e54d5e5d7bc2c1bdfcb4458ab4cc0901b600981713",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c100",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c100/6205e889dbd56dc4e2e85bb5f9e502a0fd04c9e43dba47e98c9d97ad6acc09b1/repeat3/measurement.json",
+            "report_sha256": "575a77a767a31313af488a5d67435b501f1bee81893b779ad7d2b6dce0ee3855",
+            "task_id": "6205e889dbd56dc4e2e85bb5f9e502a0fd04c9e43dba47e98c9d97ad6acc09b1/repeat3",
+            "seconds": 4.371951259672642,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "b4f1f0fd3d003dd92e7e43e54d5e5d7bc2c1bdfcb4458ab4cc0901b600981713",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c200",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c200/952c3db176b05ab1f04a32aed8c2b1600166c5e717bba57aefd3d88217dfacc0/repeat1/measurement.json",
+            "report_sha256": "ca576f061759606bb74ba17ba93848b6147306900ed44763d24cb486fe887b9c",
+            "task_id": "952c3db176b05ab1f04a32aed8c2b1600166c5e717bba57aefd3d88217dfacc0/repeat1",
+            "seconds": 4.350590653717518,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "93ed90b339d145db0e66950e56e198ddc7a9d2dd7b0c531675f72157d3cddb7b",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c200",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c200/952c3db176b05ab1f04a32aed8c2b1600166c5e717bba57aefd3d88217dfacc0/repeat2/measurement.json",
+            "report_sha256": "20a5eb4b8fd1351a5e8c78049fd9b890dc93ba657b777848e1b9371e3981c418",
+            "task_id": "952c3db176b05ab1f04a32aed8c2b1600166c5e717bba57aefd3d88217dfacc0/repeat2",
+            "seconds": 4.414553217589855,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "93ed90b339d145db0e66950e56e198ddc7a9d2dd7b0c531675f72157d3cddb7b",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c200",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c200/952c3db176b05ab1f04a32aed8c2b1600166c5e717bba57aefd3d88217dfacc0/repeat3/measurement.json",
+            "report_sha256": "0ec513ad202e8d9fc820ed1237fd2f62e3cbff4be63426b3bb8f4e9bb28e16d8",
+            "task_id": "952c3db176b05ab1f04a32aed8c2b1600166c5e717bba57aefd3d88217dfacc0/repeat3",
+            "seconds": 4.37969608604908,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "93ed90b339d145db0e66950e56e198ddc7a9d2dd7b0c531675f72157d3cddb7b",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c400/38470c41820b1749ca0bfadeacb7da4f2426b575508a5ae83624c7c880cb88bc/repeat1/measurement.json",
+            "report_sha256": "1a9d7fa691b3ea9165de808e7eac9471d9616a6517150c76e2a73781eeb9520e",
+            "task_id": "38470c41820b1749ca0bfadeacb7da4f2426b575508a5ae83624c7c880cb88bc/repeat1",
+            "seconds": 4.471373938024044,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c400/38470c41820b1749ca0bfadeacb7da4f2426b575508a5ae83624c7c880cb88bc/repeat2/measurement.json",
+            "report_sha256": "2f317418d36494ffa2987a1f174fcc57d7f40b34b5eb18251ed5c1373936dcd0",
+            "task_id": "38470c41820b1749ca0bfadeacb7da4f2426b575508a5ae83624c7c880cb88bc/repeat2",
+            "seconds": 4.247719720005989,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
+          },
+          {
+            "fixture_key": "coverage_v1_clr_representative_global_cdde91a6ae_g200_c400",
+            "role": "calibration",
+            "status": "completed",
+            "report_path": "/home/adrian/Salonica/ANDREA/release-logs/thread-controls-20261015/run/measurements/representative/clr/representative_global_cdde91a6ae/coverage_v1_clr_representative_global_cdde91a6ae_g200_c400/38470c41820b1749ca0bfadeacb7da4f2426b575508a5ae83624c7c880cb88bc/repeat3/measurement.json",
+            "report_sha256": "0cec2b6f0c280ddd305d6e15c613c0c5c5f273e3c16e58c604eb10afd179ea72",
+            "task_id": "38470c41820b1749ca0bfadeacb7da4f2426b575508a5ae83624c7c880cb88bc/repeat3",
+            "seconds": 4.342680409550667,
+            "input_sha256": {
+              "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+              "expression.tsv": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+              "params.json": "3373a40702c1122dd6ee047ca86de98e19ff4776be0fd7cf91a395d1df31a4b3"
+            }
           }
         ]
       },
@@ -478,8 +2646,8 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.883352,
-          "seconds_p90": 1.9631391999999999
+          "seconds_p50": 1.5921093374490738,
+          "seconds_p90": 1.6313300400972366
         },
         {
           "genes": 100,
@@ -496,8 +2664,134 @@
             "timeout": 0,
             "error": 0
           },
-          "seconds_p50": 1.973751,
-          "seconds_p90": 2.0420942
+          "seconds_p50": 1.440911814570427,
+          "seconds_p90": 1.472008189558983
+        },
+        {
+          "genes": 50,
+          "columns": 100,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 0.9447546228766441,
+          "seconds_p90": 0.9507677182555199
+        },
+        {
+          "genes": 50,
+          "columns": 200,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 0.9352802559733391,
+          "seconds_p90": 0.9426067277789116
+        },
+        {
+          "genes": 50,
+          "columns": 400,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 0.9726903438568115,
+          "seconds_p90": 0.9755695819854736
+        },
+        {
+          "genes": 100,
+          "columns": 400,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 1.6061565726995468,
+          "seconds_p90": 1.6414269179105758
+        },
+        {
+          "genes": 200,
+          "columns": 100,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 4.371951259672642,
+          "seconds_p90": 4.381369729340077
+        },
+        {
+          "genes": 200,
+          "columns": 200,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 4.37969608604908,
+          "seconds_p90": 4.4075817912817
+        },
+        {
+          "genes": 200,
+          "columns": 400,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 4.342680409550667,
+          "seconds_p90": 4.445635232329368
         }
       ]
     }

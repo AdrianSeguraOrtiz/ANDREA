@@ -41,6 +41,8 @@ class ResolvedSimulatorRun:
     replicate_seeds: list[int]
     notes: Optional[str]
     simulator_spec: dict[str, Any]
+    # Legacy direct backend callers may omit this; validated plans always supply it.
+    ram_gb: float | None = None
 
 
 @dataclass(frozen=True)

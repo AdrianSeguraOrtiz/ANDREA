@@ -281,7 +281,8 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         )
 
         for profile in profiles:
-            self.assertEqual(profile.sizes, ("100x100",))
+            columns = (200, 400, 800) if profile.params["metacell"] else (100,)
+            self.assertEqual(set(profile.sizes), {f"{g}x{c}" for g in (50, 80, 100) for c in columns})
             self.assertEqual(
                 profile.input_profile["gene_id_source"],
                 "human_breast_cancer_pathway",
@@ -298,7 +299,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         by_id = {profile.profile_id: profile for profile in profiles}
 
         builtin = by_id["global_builtin_tf_sig_fast"]
-        self.assertEqual(builtin.sizes, ("50x20", "100x40"))
+        self.assertEqual(set(builtin.sizes), {f"{g}x{c}" for g in (50, 80, 100) for c in (20, 40, 80)})
         self.assertEqual(
             builtin.input_profile["gene_id_source"],
             "human_breast_cancer_pathway",

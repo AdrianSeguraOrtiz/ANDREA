@@ -2949,6 +2949,20 @@ class GenerateDataDyngenTests(unittest.TestCase):
         self.assertEqual(origin, "pulled")
         pull_mock.assert_called_once_with("example/dyngen:1.0.0")
 
+    def test_plan_memory_is_preserved_in_resolved_run_and_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            plan_path = self._write_plan(
+                Path(tmp), request_id="memory_limit", truth_level="global",
+                simulator_id="dyngen", requested_extras=[], simulator_params={},
+            )
+            resolved = validate_simulation_plan(plan_path)
+            self.assertEqual(resolved.simulator_runs[0].ram_gb, 4.0)
+            payload = json.loads(plan_path.read_text())
+            payload["tasks"][0]["ram_gb"] = 8.0
+            plan_path.write_text(json.dumps(payload))
+            with self.assertRaisesRegex(ValueError, "ram_gb.*must match"):
+                validate_simulation_plan(plan_path)
+
     def test_docker_runner_stages_declared_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

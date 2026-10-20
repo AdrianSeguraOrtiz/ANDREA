@@ -17,7 +17,7 @@
     "signed_grn"
   ],
   "implementation_url": "https://pypi.org/project/scRegulate/1.0.1/",
-  "docker_image": "adriansegura99/inference-tools_scregulate:1.1.0",
+  "docker_image": "adriansegura99/inference-tools_scregulate:1.1.2",
   "execution_capabilities": [
     "global",
     "group_native",
@@ -28,7 +28,7 @@
       "supported": true,
       "default_threads": 1,
       "max_threads": 8,
-      "upstream_mapping": "scRegulate exposes no public n_jobs, worker or DataLoader num_workers argument through train_model() or fine_tune_clusters(); create_dataloader() hard-codes num_workers=0 unless called directly. The selected runtime is PyTorch/NumPy based, so the wrapper should map ANDREA --threads to torch.set_num_threads(threads), keep torch inter-op threads at 1, and set OMP_NUM_THREADS, MKL_NUM_THREADS, OPENBLAS_NUM_THREADS, NUMEXPR_NUM_THREADS, BLIS_NUM_THREADS and VECLIB_MAXIMUM_THREADS before invoking scRegulate."
+      "upstream_mapping": "scRegulate exposes no public n_jobs, worker or DataLoader num_workers argument through train_model() or fine_tune_clusters(); create_dataloader() hard-codes num_workers=0 unless called directly. The selected runtime is PyTorch/NumPy based, so the wrapper should map ANDREA --threads to torch.set_num_threads(threads), keep torch inter-op threads at 1, and set OMP_NUM_THREADS, MKL_NUM_THREADS, OPENBLAS_NUM_THREADS, NUMEXPR_NUM_THREADS, BLIS_NUM_THREADS and VECLIB_MAXIMUM_THREADS before invoking scRegulate. The container entrypoint sets native BLAS/OpenMP limits to the assigned thread count before starting the interpreter."
     }
   },
   "taxonomic_scope": {

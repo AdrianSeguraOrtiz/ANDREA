@@ -8,6 +8,14 @@
           {
             "genes": 80,
             "columns": 100
+          },
+          {
+            "genes": 40,
+            "columns": 100
+          },
+          {
+            "genes": 60,
+            "columns": 100
           }
         ],
         "threads_tested": [
@@ -86,8 +94,64 @@
           },
           "source_result_sha256": "add70acf63eb13d7e621bbc91aa9a6c8a0aac7c8393ddb55bf0ff9982da91abf",
           "physical_index": 0
+        },
+        {
+          "fixture_key": "coverage_v1_dignet_representative_global_cef63321c3_g40_c100",
+          "genes": 40,
+          "columns": 100,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "a94aa79fdf68b551b6fbb84513b53aae3cae0f42b2cdfbbe7c131ec1acf4db3d",
+            "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
+            "record_sha256": "76ac3856b87353def7000201aeba477aea0255e0f483e81dd6ddd9414ad721fa",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_dignet_representative_global_cef63321c3_g60_c100",
+          "genes": 60,
+          "columns": 100,
+          "input_sha256": {
+            "execution.json": "74af04334950b0982607664bcbf8b767a77b69751c9f039a05cc9d5e52e0c743",
+            "expression.tsv": "cddd76dcc95e64212ec15fcc00a7a5e15312e49ecdd4d270cd3f0df42f57750e",
+            "params.json": "de68510a1a93032c2bf08ce8cde60627b5a36f545f333ff7110d3cd506be9c9c"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "90d5769265b6d1f18a4a585019008aa92b31836f10f8fa8d763596f2207c39ca",
+            "record_sha256": "7711ba0ce4accf40c59a5f7556effdfb8130bf44b7501462693c2e2a51e114e3",
+            "role": "calibration"
+          }
         }
-      ]
+      ],
+      "calibration_design": {
+        "version": 2,
+        "kind": "fixed_column_gene_grid",
+        "gene_levels": [
+          40,
+          60,
+          80
+        ],
+        "column_levels": [
+          100
+        ],
+        "scope": "Observed human data; gene-size calibration at the fixed compatible cell count. No extrapolation over input cell count.",
+        "historical_fixtures_preserved": [
+          "run00034"
+        ],
+        "source_selection": "Published observed matrix; no values synthesized",
+        "validation_policy": "Intermediate sizes are reserved for separate validation, not imported here.",
+        "fixed_axes": {
+          "columns": 100
+        },
+        "constraint_reason": "Selected pretrained checkpoint requires exactly 100 expression features with metacell=false."
+      }
     }
   ]
 }

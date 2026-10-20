@@ -219,6 +219,7 @@ class BenchmarkInputProfile:
     group_count: int = 0
     tf_count_policy: str | None = "max(3, genes/5)"
     prior_density: float | None = 0.05
+    prior_score_policy: str = "uniform_positive"
     marker_count_per_group: int = 4
     terms_of_interest: tuple[str, ...] = ("root", "development", "stress")
 
@@ -252,6 +253,7 @@ class BenchmarkInputProfile:
                 else None
             ),
             prior_density=_as_optional_density(payload.get("prior_density")),
+            prior_score_policy=str(payload.get("prior_score_policy", "uniform_positive")),
             marker_count_per_group=_as_int(
                 payload.get("marker_count_per_group", 4),
                 default=4,
@@ -340,6 +342,7 @@ def write_benchmark_io_dir(
                 density=resolved_prior_density(profile),
                 marker_count_per_group=profile.marker_count_per_group,
                 seed=stable_seed(size=size, profile=profile, namespace=input_key),
+                score_policy=profile.prior_score_policy,
             )
         elif input_key == "prior_grn_by_group":
             write_prior_grn_by_group(
@@ -435,7 +438,10 @@ def write_network_edges(
     density: float,
     marker_count_per_group: int = 4,
     seed: int,
+    score_policy: str = "uniform_positive",
 ) -> None:
+    if score_policy not in {"uniform_positive", "binary"}:
+        raise ValueError(f"Unsupported prior score policy: {score_policy}")
     edges = select_directed_edges(
         genes=genes,
         groups=groups,
@@ -448,6 +454,8 @@ def write_network_edges(
         writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
         writer.writerow(["source", "target", "score"])
         for source, target, score in edges:
+            if score_policy == "binary":
+                score = 1.0
             writer.writerow([source, target, f"{score:.6f}"])
 
 

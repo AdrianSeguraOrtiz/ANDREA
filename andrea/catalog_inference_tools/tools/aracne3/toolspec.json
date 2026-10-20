@@ -18,7 +18,7 @@
     "undirected"
   ],
   "implementation_url": "https://github.com/califano-lab/ARACNe3",
-  "docker_image": "adriansegura99/inference-tools_aracne3:1.1.0",
+  "docker_image": "adriansegura99/inference-tools_aracne3:1.1.1",
   "execution_capabilities": [
     "global",
     "group_emulated"

@@ -700,6 +700,19 @@ If an upstream default depends on the dataset or runtime state, do not silently 
       upper bound; ANDREA still validates allocations against the effective run
       resource budget
     - do not expose thread/resource controls as normal `params`
+    - native BLAS/OpenMP limits must be effective before the interpreter or
+      library initializes. Setting environment variables after importing NumPy,
+      or using `Sys.setenv()` after R has already loaded OpenBLAS, is insufficient.
+      In `scripts/template_map.json`, `native_threads="assigned"` makes the
+      generated container entrypoint apply the assigned native thread count;
+      `native_threads="single"` keeps one native thread per outer worker (or
+      for a serial tool). An omitted policy is reserved for existing integrations
+      whose image/wrapper already enforces its limits before initialization.
+    - verify effective pools, not only environment strings, for every supported
+      thread stratum, with unrestricted and pinned CPU affinity. Check child
+      workers too. `scripts/validate_thread_controls.py` exercises these
+      entrypoint policies in the actual catalog images without scientific fits.
+      A Docker CPU quota alone does not bound the number of native threads.
     - if using process-level sharding, each shard must call the public upstream
       entrypoint, preserve shard raw outputs/configs/logs, and merge only after
       upstream completes

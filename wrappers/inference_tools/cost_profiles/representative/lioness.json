@@ -8,6 +8,38 @@
           {
             "genes": 100,
             "columns": 200
+          },
+          {
+            "genes": 50,
+            "columns": 100
+          },
+          {
+            "genes": 50,
+            "columns": 200
+          },
+          {
+            "genes": 50,
+            "columns": 400
+          },
+          {
+            "genes": 100,
+            "columns": 100
+          },
+          {
+            "genes": 100,
+            "columns": 400
+          },
+          {
+            "genes": 200,
+            "columns": 100
+          },
+          {
+            "genes": 200,
+            "columns": 200
+          },
+          {
+            "genes": 200,
+            "columns": 400
           }
         ],
         "threads_tested": [
@@ -64,8 +96,164 @@
           },
           "source_result_sha256": "b3020c151e8bee53bd9cff818ca9c706412cc3391453450f23acd8344bebdd8d",
           "physical_index": 0
+        },
+        {
+          "fixture_key": "coverage_v1_lioness_representative_column_native_dfe9549cd3_g50_c100",
+          "genes": 50,
+          "columns": 100,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "62e4600402c0f5cfcab030a750040075e14187ed803486a7ef40369b75e65d19",
+            "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "record_sha256": "2377986858aec8c7aac8dca7fd25872dbe3df8186a736c02e90f0ad0c30ea022",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_lioness_representative_column_native_dfe9549cd3_g50_c200",
+          "genes": 50,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "e07404af9a070521de8c083dace27392a98a077e49abdc90b7d8edab77020306",
+            "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "record_sha256": "e1d14981a0a80b91ec5365e36304cb0a9b20386414daabf8c3b3a00cca60564a",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_lioness_representative_column_native_dfe9549cd3_g50_c400",
+          "genes": 50,
+          "columns": 400,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "d2ddcf5071594a3a871faf7aef2a1762714fd1a4ecad897be6e168bdcff21ec7",
+            "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "record_sha256": "2f756f422c4a1567847aa4f41d0e0e9f5942d35c813540d18669aa61e316f4be",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_lioness_representative_column_native_dfe9549cd3_g100_c100",
+          "genes": 100,
+          "columns": 100,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "c97f2766b93724594d4d0c6020abc0c4ecd5602734c8c605990b4c95c9e33a20",
+            "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "record_sha256": "956cb57ff6b29ce0828af46f27934e93cea83c29ac3e4fccf90a9b9bdedd6d18",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_lioness_representative_column_native_dfe9549cd3_g100_c400",
+          "genes": 100,
+          "columns": 400,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "df696886eccb47a1ee046758ae50e717bfaa72b3e8793b26f13c34323f51fb33",
+            "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "record_sha256": "d994bcf4dbfaf8726e56307f1fbd5d014c1aa430863177acdf864f38c75f8860",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_lioness_representative_column_native_dfe9549cd3_g200_c100",
+          "genes": 200,
+          "columns": 100,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "b4f1f0fd3d003dd92e7e43e54d5e5d7bc2c1bdfcb4458ab4cc0901b600981713",
+            "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "record_sha256": "a3499cf0b9e33185dce0669912e6796a88097e2e6895bfcb8c3c3511c7f08206",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_lioness_representative_column_native_dfe9549cd3_g200_c200",
+          "genes": 200,
+          "columns": 200,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "93ed90b339d145db0e66950e56e198ddc7a9d2dd7b0c531675f72157d3cddb7b",
+            "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "record_sha256": "f1d0b210e4ba91c25243097c0d6e68ae2e44bfc12e1ec378b5835f8d955c12aa",
+            "role": "calibration"
+          }
+        },
+        {
+          "fixture_key": "coverage_v1_lioness_representative_column_native_dfe9549cd3_g200_c400",
+          "genes": 200,
+          "columns": 400,
+          "input_sha256": {
+            "execution.json": "7d523998b612012a6de994ab7d88fe3c9c9297b7dbc619aac005f7eeaca1587b",
+            "expression.tsv": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "params.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          },
+          "physical_index": 0,
+          "derivation": {
+            "version": 1,
+            "source_expression_sha256": "a946a4bda219816c4809f5b7e05951f298e5552307ac76bff238bdc947045123",
+            "record_sha256": "eb0ad11952e76915e0b749166cff244038fc291a31d1e9b963da006527807ae2",
+            "role": "calibration"
+          }
         }
-      ]
+      ],
+      "calibration_design": {
+        "version": 1,
+        "kind": "independent_gene_column_grid",
+        "gene_levels": [
+          50,
+          100,
+          200
+        ],
+        "column_levels": [
+          100,
+          200,
+          400
+        ],
+        "scope": "Registered data family, method parameters, extras and resource assignment; no claim beyond measured dimensions.",
+        "historical_fixtures_preserved": [
+          "run00029"
+        ],
+        "source_selection": "Independent scMultiSim calibration seed; group-balanced submatrices",
+        "validation_policy": "Intermediate sizes are reserved for separate validation, not imported here."
+      }
     }
   ]
 }

@@ -609,11 +609,28 @@ export function addRunCard(initial = {}) {
   } else {
     runtimeThreadsInput.max = String(threading.max_threads);
   }
-  runtimeThreadsInput.placeholder = `default ${threading.default_threads}`;
-  runtimeThreadsInput.title = "Operational thread allocation; this does not change scientific parameters.";
-  runtimeRamInput.title = "Exact operational container RAM limit in GiB; this does not change scientific parameters.";
-  runtimeCpusetInput.title = "Optional allowed logical CPU affinity domain; Docker still limits CPU use to the thread quota.";
-  runtimeTimeoutInput.title = "Optional wall-clock deadline for each physical task of this run.";
+  const singleThreadOnly = !threading.supported || threading.max_threads === 1;
+  runtimeThreadsInput.placeholder = singleThreadOnly ? "1 (tool limit)" : "Automatic";
+  runtimeThreadsInput.title = singleThreadOnly
+    ? "This tool only supports one thread. Leave blank to use that limit."
+    : "Leave blank for the planner to choose. Enter a value to fix the thread allocation and container CPU quota.";
+  node.querySelector(".runtime-threads-help").textContent = singleThreadOnly
+    ? "This tool only supports one thread."
+    : "Planner chooses; a value fixes the CPU allocation.";
+  runtimeRamInput.title = "Leave blank for the planner to choose. Enter a value to fix the container memory limit in GiB.";
+  runtimeCpusetInput.title = "Leave blank to allow any CPU available to ANDREA. Enter allowed logical CPU IDs, such as 0,1,2,3; this does not reserve those CPUs. Requires an explicit Threads value.";
+  runtimeTimeoutInput.title = "Leave blank for no time limit. A value stops each physical task after that many seconds, independently of the planner's search time limit.";
+  const resourceInputs = [runtimeThreadsInput, runtimeRamInput, runtimeCpusetInput, runtimeTimeoutInput];
+  const resourcesPanel = node.querySelector(".run-resources");
+  const resourcesSummary = node.querySelector(".run-resources-summary");
+  function updateResourcesSummary() {
+    const customCount = resourceInputs.filter((input) => input.value.trim() !== "").length;
+    resourcesSummary.textContent = customCount
+      ? `Custom settings (${customCount})`
+      : "Automatic allocation";
+    return customCount;
+  }
+  resourcesPanel.open = updateResourcesSummary() > 0;
 
   runIdInput.addEventListener("input", () => {
     refreshRunCardsValidation();
@@ -623,8 +640,9 @@ export function addRunCard(initial = {}) {
     refreshRunCardsValidation();
     notifyRunsChanged();
   });
-  for (const resourceInput of [runtimeThreadsInput, runtimeRamInput, runtimeCpusetInput, runtimeTimeoutInput]) {
+  for (const resourceInput of resourceInputs) {
     resourceInput.addEventListener("input", () => {
+      updateResourcesSummary();
       refreshRunCardsValidation();
       notifyRunsChanged();
     });

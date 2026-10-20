@@ -174,6 +174,294 @@
           "group"
         ]
       }
+    },
+    {
+      "id": "representative_size_grid",
+      "sizes": [
+        "12x48",
+        "12x96",
+        "12x192"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "perturbation_design",
+        "interventions",
+        "replicates",
+        "enrichment_background",
+        "prior_grn",
+        "prior_grn_by_group",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "num_genes": 12,
+        "average_degree": 2.0,
+        "perturbation": {
+          "replicates_per_gene": 4
+        },
+        "single_cell": {
+          "n_clusts": 2,
+          "raw_counts": false,
+          "snr": 1.0,
+          "control_snr": 1.0
+        }
+      },
+      "dimension_params": {
+        "cells": {
+          "param": "perturbation.replicates_per_gene",
+          "multiplier_param": "num_genes"
+        },
+        "genes": "num_genes"
+      },
+      "group_count": 2,
+      "population_count": 2
+    },
+    {
+      "id": "bulk_perturbational_global_size_grid",
+      "sizes": [
+        "6x6",
+        "12x12",
+        "24x24",
+        "12x24",
+        "12x48"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "perturbations",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "replicates",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "network_source": "scalefree2",
+        "num_genes": 12,
+        "average_degree": 2.0,
+        "network": {
+          "scalefree2_alpha": 1.2,
+          "activation_probability": 0.62
+        },
+        "perturbation": {
+          "replicates_per_gene": 1,
+          "strength": 1.0
+        },
+        "bulk": {
+          "snr": 1.0,
+          "snr_model": "SNR_L"
+        },
+        "single_cell": {
+          "snr": 0.1,
+          "control_snr": 0.1,
+          "snr_model": "SNR_L",
+          "raw_counts": true,
+          "right_tail": 2.0,
+          "negbin_prob": 0.5,
+          "dispersion": 1.0,
+          "n_clusts": 5,
+          "logbase": 10.0,
+          "ds_min": 0.3,
+          "ds_max": 0.6
+        },
+        "grouping": {
+          "method": "kmeans_expression"
+        },
+        "time_series": {
+          "time_points": 20,
+          "perturbed_gene_index": 1,
+          "perturbation_strength": -1.0,
+          "input_noise_std": 0.0
+        }
+      },
+      "dimension_params": {
+        "genes": "num_genes",
+        "cells": {
+          "param": "perturbation.replicates_per_gene",
+          "multiplier_param": "num_genes"
+        }
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "bulk_time_series_global_size_grid",
+      "sizes": [
+        "6x5",
+        "12x5",
+        "24x5",
+        "12x9"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "bulk",
+        "column_kind": "timepoints",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "timepoints",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "network_source": "scalefree2",
+        "num_genes": 12,
+        "average_degree": 2.0,
+        "network": {
+          "scalefree2_alpha": 1.2,
+          "activation_probability": 0.62
+        },
+        "perturbation": {
+          "replicates_per_gene": 2,
+          "strength": 1.0
+        },
+        "bulk": {
+          "snr": 0.1,
+          "snr_model": "SNR_L"
+        },
+        "single_cell": {
+          "snr": 0.1,
+          "control_snr": 0.1,
+          "snr_model": "SNR_L",
+          "raw_counts": true,
+          "right_tail": 2.0,
+          "negbin_prob": 0.5,
+          "dispersion": 1.0,
+          "n_clusts": 5,
+          "logbase": 10.0,
+          "ds_min": 0.3,
+          "ds_max": 0.6
+        },
+        "grouping": {
+          "method": "kmeans_expression"
+        },
+        "time_series": {
+          "time_points": 4,
+          "perturbed_gene_index": 1,
+          "perturbation_strength": -1.0,
+          "input_noise_std": 0.0
+        }
+      },
+      "dimension_params": {
+        "genes": "num_genes",
+        "cells": {
+          "param": "time_series.time_points",
+          "offset": 1
+        }
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "single_cell_perturbational_global_size_grid",
+      "sizes": [
+        "6x6",
+        "12x12",
+        "24x24",
+        "12x24",
+        "12x48"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "replicates",
+        "enrichment_background",
+        "prior_grn",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "network_source": "scalefree2",
+        "num_genes": 12,
+        "average_degree": 2.0,
+        "network": {
+          "scalefree2_alpha": 1.2,
+          "activation_probability": 0.62
+        },
+        "perturbation": {
+          "replicates_per_gene": 1,
+          "strength": 1.0
+        },
+        "bulk": {
+          "snr": 0.1,
+          "snr_model": "SNR_L"
+        },
+        "single_cell": {
+          "snr": 1.0,
+          "control_snr": 1.0,
+          "snr_model": "SNR_L",
+          "raw_counts": false,
+          "right_tail": 2.0,
+          "negbin_prob": 0.5,
+          "dispersion": 1.0,
+          "n_clusts": 2,
+          "logbase": 10.0,
+          "ds_min": 0.3,
+          "ds_max": 0.6
+        },
+        "grouping": {
+          "method": "kmeans_expression"
+        },
+        "time_series": {
+          "time_points": 20,
+          "perturbed_gene_index": 1,
+          "perturbation_strength": -1.0,
+          "input_noise_std": 0.0
+        }
+      },
+      "dimension_params": {
+        "genes": "num_genes",
+        "cells": {
+          "param": "perturbation.replicates_per_gene",
+          "multiplier_param": "num_genes"
+        }
+      },
+      "group_count": 0,
+      "population_count": 0
     }
   ]
 }

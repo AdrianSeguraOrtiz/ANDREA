@@ -13,14 +13,16 @@
       "bundles": [
         "python_runtime_contract",
         "python_arboreto"
-      ]
+      ],
+      "native_threads": "single"
     },
     "grnboost2": {
       "runtime": "python",
       "bundles": [
         "python_runtime_contract",
         "python_arboreto"
-      ]
+      ],
+      "native_threads": "single"
     },
     "aracne3": {
       "runtime": "python",
@@ -38,13 +40,15 @@
       "runtime": "python",
       "bundles": [
         "python_runtime_contract"
-      ]
+      ],
+      "native_threads": "assigned"
     },
     "cespgrn": {
       "runtime": "python",
       "bundles": [
         "python_runtime_contract"
-      ]
+      ],
+      "native_threads": "assigned"
     },
     "inferelator3": {
       "runtime": "python",
@@ -60,23 +64,28 @@
     },
     "tigress": {
       "runtime": "r",
-      "bundles": []
+      "bundles": [],
+      "native_threads": "single"
     },
     "clr": {
       "runtime": "r",
-      "bundles": []
+      "bundles": [],
+      "native_threads": "single"
     },
     "ppcor": {
       "runtime": "r",
-      "bundles": []
+      "bundles": [],
+      "native_threads": "single"
     },
     "infercsn": {
       "runtime": "r",
-      "bundles": []
+      "bundles": [],
+      "native_threads": "single"
     },
     "lioness": {
       "runtime": "r",
-      "bundles": []
+      "bundles": [],
+      "native_threads": "single"
     },
     "kscreni": {
       "runtime": "r",
@@ -98,7 +107,8 @@
       "runtime": "python",
       "bundles": [
         "python_runtime_contract"
-      ]
+      ],
+      "native_threads": "assigned"
     },
     "pidc": {
       "runtime": "julia",
@@ -124,7 +134,8 @@
       "runtime": "python",
       "bundles": [
         "python_runtime_contract"
-      ]
+      ],
+      "native_threads": "assigned"
     },
     "scsgl": {
       "runtime": "python",

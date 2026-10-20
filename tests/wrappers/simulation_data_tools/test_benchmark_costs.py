@@ -173,6 +173,60 @@ def _valid_cost_payload() -> dict[str, object]:
 
 
 class SimulatorBenchmarkCostsTests(unittest.TestCase):
+    def test_cell_budgets_require_native_proof_and_explicit_shortfall_warning(self):
+        profile = _valid_cost_payload()['profiles'][0]
+        config = profile['benchmark_config']
+        config['dimension_semantics'] = {'genes': 'exported_genes', 'cells': 'requested_cell_budget'}
+        config['params_profile']['resolved_base_params'] = {'experiment_params': {'kind': 'snapshot'}}
+        point = profile['runtime_points'][0]
+        features = point['feature_vector']
+        features['dimension_semantics'] = config['dimension_semantics']
+        features['observed_dimensions'] = [{'genes': point['genes'], 'columns': 7}]
+        features['native_sampling'] = [dict(kind='snapshot', requested_cells=8, expected_cells=7,
+                                           observed_cells=7, dropped_cells=1, expression_matches_native=True)]
+        features['validation_warnings'] = ['Native snapshot returned 7 of 8 cells.']
+
+        def errors():
+            return validate_simulator_costs.semantic_feature_vector_errors(
+                profile=profile, config=config, input_profile=config['input_profile'], prefix='profiles[1]')
+
+        self.assertEqual(errors(), [])
+        features['validation_warnings'] = []
+        self.assertTrue(any('coverage warning' in e for e in errors()))
+        features['validation_warnings'] = ['shortfall']
+        features['native_sampling'][0]['expected_cells'] = 8
+        self.assertTrue(any('native cell allocation' in e for e in errors()))
+        features['native_sampling'] = []
+        self.assertTrue(any('every repeat' in e for e in errors()))
+        config['params_profile']['resolved_base_params']['experiment_params']['kind'] = 'synchronised'
+        self.assertTrue(any('only supported' in e for e in errors()))
+
+    def test_dimension_semantics_require_verified_output_dimensions(self):
+        profile = _valid_cost_payload()['profiles'][0]
+        config = profile['benchmark_config']
+        semantics = {'genes': 'requested_gene_budget', 'cells': 'exported_columns'}
+        config['dimension_semantics'] = semantics
+        point = profile['runtime_points'][0]
+        features = point['feature_vector']
+        features['dimension_semantics'] = semantics
+        features['observed_dimensions'] = [{'genes': 16, 'columns': 8}]
+
+        def errors():
+            return validate_simulator_costs.semantic_feature_vector_errors(
+                profile=profile, config=config, input_profile=config['input_profile'], prefix='profiles[1]')
+
+        self.assertEqual(errors(), [])
+        features['observed_dimensions'][0]['genes'] = 9
+        self.assertTrue(any('exported genes' in e for e in errors()))
+        features['observed_dimensions'][0] = {'genes': 16, 'columns': 7}
+        self.assertTrue(any('exported columns' in e for e in errors()))
+        features['observed_dimensions'] = []
+        self.assertTrue(any('every successful repeat' in e for e in errors()))
+        features['observed_dimensions'] = [{'genes': 16, 'columns': 8}]
+        config['dimension_semantics'] = {'genes': 'exported_genes', 'cells': 'exported_columns'}
+        features['dimension_semantics'] = config['dimension_semantics']
+        self.assertTrue(any('exported genes' in e for e in errors()))
+
     def setUp(self) -> None:
         def evidence(**kwargs):
             return {
@@ -392,15 +446,15 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
                     self.assertEqual(column_truth_profiles, [])
                     continue
                 self.assertTrue(column_truth_profiles)
+                # Dyngen's exported trajectory states depend on the seed and
+                # sampled cells. Zero explicitly means an unspecified count;
+                # the validating runner records the actual output groups.
+                minimum = 0 if simulator_id == "dyngen" else 1
+                self.assertTrue(all(profile.dimension_profile["group_count"] >= minimum
+                                    for profile in column_truth_profiles))
                 self.assertTrue(
                     all(
-                        profile.dimension_profile["group_count"] > 0
-                        for profile in column_truth_profiles
-                    )
-                )
-                self.assertTrue(
-                    all(
-                        profile.dimension_profile["population_count"] > 0
+                        profile.dimension_profile["population_count"] >= minimum
                         for profile in column_truth_profiles
                     )
                 )
@@ -419,10 +473,11 @@ class SimulatorBenchmarkCostsTests(unittest.TestCase):
         params = benchmark_costs.apply_dimensions_to_params(
             base_params=profile.params,
             dimension_profile=profile.dimension_profile,
-            size=benchmark_costs.SizePoint(genes=3, cells=5),
+            size=benchmark_costs.SizePoint(genes=3, cells=35),
         )
 
         self.assertEqual(profile.dimension_profile["genes_param"], {"fixed": 3})
+        self.assertEqual(profile.dimension_profile["cells_param"], {"param": "num_cells", "multiplier": 7})
         self.assertEqual(params["num_cells"], 5)
 
     def test_sergio_cost_profile_maps_total_columns_to_cells_per_bin(self) -> None:

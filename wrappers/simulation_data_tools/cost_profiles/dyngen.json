@@ -721,6 +721,857 @@
           "column"
         ]
       }
+    },
+    {
+      "id": "representative_size_grid",
+      "sizes": [
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "enrichment_background",
+        "pseudotime",
+        "prior_grn",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "cycle_simple",
+        "distance_metric": "spearman",
+        "feature_network_params": {
+          "damping": 0.05,
+          "target_resampling": 2,
+          "max_in_degree": 4
+        },
+        "gold_standard_params": {
+          "tau": 0.02,
+          "census_interval": 0.25,
+          "simulate_targets": true
+        },
+        "simulation_params": {
+          "num_simulations": 2,
+          "census_interval": 2.0,
+          "num_knockdown_simulations": 0
+        },
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10
+      },
+      "dimension_params": {
+        "cells": "num_cells",
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        }
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "grouped_lineage_size_grid",
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "column_phenotypes",
+        "cluster_identities",
+        "enrichment_background",
+        "lineage_tree",
+        "pseudotime",
+        "prior_grn",
+        "tf_list",
+        "prior_grn_by_group"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10,
+        "distance_metric": "pearson",
+        "tf_network_params": {
+          "min_tfs_per_module": 1,
+          "weighted_sampling": false
+        },
+        "feature_network_params": {
+          "realnet": null,
+          "damping": 0.01,
+          "target_resampling": null,
+          "max_in_degree": 5
+        },
+        "gold_standard_params": {
+          "tau": 0.008333333333333333,
+          "census_interval": 0.16666666666666666,
+          "simulate_targets": false
+        },
+        "simulation_params": {
+          "burn_time": null,
+          "total_time": null,
+          "ssa_etl_tau": 0.008333333333333333,
+          "census_interval": 2.0,
+          "num_simulations": 2,
+          "num_knockdown_simulations": 0,
+          "store_reaction_firings": false,
+          "store_reaction_propensities": false,
+          "compute_dimred": false,
+          "compute_rna_velocity": false,
+          "kinetics_noise_kind": "simple",
+          "kinetics_noise_mean": 1.0,
+          "kinetics_noise_sd": 0.005
+        },
+        "experiment_params": {
+          "kind": "snapshot",
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "weight_bw": 0.1,
+          "num_timepoints": 8,
+          "pct_between": 0.75
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        },
+        "cells": "num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "column_truth_size_grid",
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "trajectory"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10,
+        "distance_metric": "pearson",
+        "tf_network_params": {
+          "min_tfs_per_module": 1,
+          "weighted_sampling": false
+        },
+        "feature_network_params": {
+          "realnet": null,
+          "damping": 0.01,
+          "target_resampling": null,
+          "max_in_degree": 5
+        },
+        "gold_standard_params": {
+          "tau": 0.008333333333333333,
+          "census_interval": 0.16666666666666666,
+          "simulate_targets": false
+        },
+        "simulation_params": {
+          "burn_time": null,
+          "total_time": null,
+          "ssa_etl_tau": 0.008333333333333333,
+          "census_interval": 2.0,
+          "num_simulations": 2,
+          "num_knockdown_simulations": 0,
+          "store_reaction_firings": false,
+          "store_reaction_propensities": false,
+          "compute_dimred": false,
+          "compute_rna_velocity": false,
+          "kinetics_noise_kind": "simple",
+          "kinetics_noise_mean": 1.0,
+          "kinetics_noise_sd": 0.005
+        },
+        "experiment_params": {
+          "kind": "snapshot",
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "weight_bw": 0.1,
+          "num_timepoints": 8,
+          "pct_between": 0.75
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        },
+        "cells": "num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "time_series_global_size_grid",
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "timepoints",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "linear",
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10,
+        "distance_metric": "pearson",
+        "tf_network_params": {
+          "min_tfs_per_module": 1,
+          "weighted_sampling": false
+        },
+        "feature_network_params": {
+          "realnet": null,
+          "damping": 0.01,
+          "target_resampling": null,
+          "max_in_degree": 5
+        },
+        "gold_standard_params": {
+          "tau": 0.008333333333333333,
+          "census_interval": 0.16666666666666666,
+          "simulate_targets": false
+        },
+        "simulation_params": {
+          "burn_time": null,
+          "total_time": null,
+          "ssa_etl_tau": 0.008333333333333333,
+          "census_interval": 4.0,
+          "num_simulations": 2,
+          "num_knockdown_simulations": 0,
+          "store_reaction_firings": false,
+          "store_reaction_propensities": false,
+          "compute_dimred": false,
+          "compute_rna_velocity": false,
+          "kinetics_noise_kind": "simple",
+          "kinetics_noise_mean": 1.0,
+          "kinetics_noise_sd": 0.005
+        },
+        "experiment_params": {
+          "kind": "synchronised",
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "weight_bw": 0.1,
+          "num_timepoints": 3,
+          "pct_between": 0.75
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        },
+        "cells": "num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "time_series_grouped_size_grid",
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "timepoints",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10,
+        "distance_metric": "pearson",
+        "tf_network_params": {
+          "min_tfs_per_module": 1,
+          "weighted_sampling": false
+        },
+        "feature_network_params": {
+          "realnet": null,
+          "damping": 0.01,
+          "target_resampling": null,
+          "max_in_degree": 5
+        },
+        "gold_standard_params": {
+          "tau": 0.008333333333333333,
+          "census_interval": 0.16666666666666666,
+          "simulate_targets": false
+        },
+        "simulation_params": {
+          "burn_time": null,
+          "total_time": null,
+          "ssa_etl_tau": 0.008333333333333333,
+          "census_interval": 4.0,
+          "num_simulations": 2,
+          "num_knockdown_simulations": 0,
+          "store_reaction_firings": false,
+          "store_reaction_propensities": false,
+          "compute_dimred": false,
+          "compute_rna_velocity": false,
+          "kinetics_noise_kind": "simple",
+          "kinetics_noise_mean": 1.0,
+          "kinetics_noise_sd": 0.005
+        },
+        "experiment_params": {
+          "kind": "synchronised",
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "weight_bw": 0.1,
+          "num_timepoints": 3,
+          "pct_between": 0.75
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        },
+        "cells": "num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "time_series_column_truth_size_grid",
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "time_series"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "timepoints",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10,
+        "distance_metric": "pearson",
+        "tf_network_params": {
+          "min_tfs_per_module": 1,
+          "weighted_sampling": false
+        },
+        "feature_network_params": {
+          "realnet": null,
+          "damping": 0.01,
+          "target_resampling": null,
+          "max_in_degree": 5
+        },
+        "gold_standard_params": {
+          "tau": 0.008333333333333333,
+          "census_interval": 0.16666666666666666,
+          "simulate_targets": false
+        },
+        "simulation_params": {
+          "burn_time": null,
+          "total_time": null,
+          "ssa_etl_tau": 0.008333333333333333,
+          "census_interval": 4.0,
+          "num_simulations": 2,
+          "num_knockdown_simulations": 0,
+          "store_reaction_firings": false,
+          "store_reaction_propensities": false,
+          "compute_dimred": false,
+          "compute_rna_velocity": false,
+          "kinetics_noise_kind": "simple",
+          "kinetics_noise_mean": 1.0,
+          "kinetics_noise_sd": 0.005
+        },
+        "experiment_params": {
+          "kind": "synchronised",
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "weight_bw": 0.1,
+          "num_timepoints": 3,
+          "pct_between": 0.75
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        },
+        "cells": "num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "perturbational_global_size_grid",
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global"
+        ]
+      },
+      "requested_extras": [
+        "perturbation_design",
+        "interventions",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "linear",
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10,
+        "distance_metric": "pearson",
+        "tf_network_params": {
+          "min_tfs_per_module": 1,
+          "weighted_sampling": false
+        },
+        "feature_network_params": {
+          "realnet": null,
+          "damping": 0.01,
+          "target_resampling": null,
+          "max_in_degree": 5
+        },
+        "gold_standard_params": {
+          "tau": 0.008333333333333333,
+          "census_interval": 0.16666666666666666,
+          "simulate_targets": false
+        },
+        "simulation_params": {
+          "burn_time": null,
+          "total_time": null,
+          "ssa_etl_tau": 0.008333333333333333,
+          "census_interval": 4.0,
+          "num_simulations": 2,
+          "num_knockdown_simulations": 4,
+          "store_reaction_firings": false,
+          "store_reaction_propensities": false,
+          "compute_dimred": false,
+          "compute_rna_velocity": false,
+          "kinetics_noise_kind": "simple",
+          "kinetics_noise_mean": 1.0,
+          "kinetics_noise_sd": 0.005
+        },
+        "experiment_params": {
+          "kind": "snapshot",
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "weight_bw": 0.1,
+          "num_timepoints": 8,
+          "pct_between": 0.75
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        },
+        "cells": "num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "perturbational_grouped_size_grid",
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "perturbation_design",
+        "interventions",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10,
+        "distance_metric": "pearson",
+        "tf_network_params": {
+          "min_tfs_per_module": 1,
+          "weighted_sampling": false
+        },
+        "feature_network_params": {
+          "realnet": null,
+          "damping": 0.01,
+          "target_resampling": null,
+          "max_in_degree": 5
+        },
+        "gold_standard_params": {
+          "tau": 0.008333333333333333,
+          "census_interval": 0.16666666666666666,
+          "simulate_targets": false
+        },
+        "simulation_params": {
+          "burn_time": null,
+          "total_time": null,
+          "ssa_etl_tau": 0.008333333333333333,
+          "census_interval": 4.0,
+          "num_simulations": 2,
+          "num_knockdown_simulations": 4,
+          "store_reaction_firings": false,
+          "store_reaction_propensities": false,
+          "compute_dimred": false,
+          "compute_rna_velocity": false,
+          "kinetics_noise_kind": "simple",
+          "kinetics_noise_mean": 1.0,
+          "kinetics_noise_sd": 0.005
+        },
+        "experiment_params": {
+          "kind": "snapshot",
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "weight_bw": 0.1,
+          "num_timepoints": 8,
+          "pct_between": 0.75
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        },
+        "cells": "num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
+    },
+    {
+      "id": "perturbational_column_truth_size_grid",
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x40"
+      ],
+      "data_axes": {
+        "measurement": "rna_expression",
+        "resolution": "single_cell",
+        "column_kind": "cells",
+        "experimental_design": "perturbational"
+      },
+      "truth_requirements": {
+        "contexts": [
+          "global",
+          "group",
+          "column"
+        ]
+      },
+      "requested_extras": [
+        "groups",
+        "perturbation_design",
+        "interventions",
+        "tf_list"
+      ],
+      "inputs": {},
+      "param_overrides": {
+        "backbone_template": "bifurcating",
+        "num_cells": 40,
+        "num_tfs": 10,
+        "num_targets": 30,
+        "num_hks": 10,
+        "distance_metric": "pearson",
+        "tf_network_params": {
+          "min_tfs_per_module": 1,
+          "weighted_sampling": false
+        },
+        "feature_network_params": {
+          "realnet": null,
+          "damping": 0.01,
+          "target_resampling": null,
+          "max_in_degree": 5
+        },
+        "gold_standard_params": {
+          "tau": 0.008333333333333333,
+          "census_interval": 0.16666666666666666,
+          "simulate_targets": false
+        },
+        "simulation_params": {
+          "burn_time": null,
+          "total_time": null,
+          "ssa_etl_tau": 0.008333333333333333,
+          "census_interval": 4.0,
+          "num_simulations": 2,
+          "num_knockdown_simulations": 4,
+          "store_reaction_firings": false,
+          "store_reaction_propensities": false,
+          "compute_dimred": false,
+          "compute_rna_velocity": false,
+          "kinetics_noise_kind": "simple",
+          "kinetics_noise_mean": 1.0,
+          "kinetics_noise_sd": 0.005
+        },
+        "experiment_params": {
+          "kind": "snapshot",
+          "map_reference_cpm": false,
+          "map_reference_ls": false,
+          "weight_bw": 0.1,
+          "num_timepoints": 8,
+          "pct_between": 0.75
+        },
+        "knockdown_params": {
+          "num_genes": 1,
+          "multiplier": 0.0,
+          "timepoint": 0.5
+        }
+      },
+      "dimension_params": {
+        "genes": {
+          "num_tfs": {
+            "fraction": 0.2,
+            "min": 0
+          },
+          "num_targets": {
+            "fraction": 0.6,
+            "min": 0
+          },
+          "num_hks": {
+            "fraction": 0.2,
+            "min": 0
+          }
+        },
+        "cells": "num_cells"
+      },
+      "group_count": 0,
+      "population_count": 0
     }
   ]
 }

@@ -79,14 +79,149 @@ Use `--catalog-images` to measure the already built/published catalog images.
 The benchmark resolves each image to its immutable local ID before running it;
 it does not rebuild or pull a potentially different image during the campaign.
 Use `--results-dir PATH` to retain raw measurements, configs, inputs, outputs,
-stdout/stderr and hardware/source/image provenance. Each invocation creates new
-per-tool evidence directories. Full inference costs are written atomically only
-for complete successful matrices. Failures return nonzero and retain evidence;
-existing costs for failed profiles remain unchanged.
+stdout/stderr and hardware/source/image provenance in per-tool evidence
+directories. Compatible raw observations are reused from the current results
+directory and any `--reuse-results-dir` directories.
+Input hashes, immutable images, parameters, execution modes and resource
+assignments must match before a timing can be reused. Missing repetitions are
+executed; completed successful points are checkpointed atomically into costs.
+Failures return nonzero and retain evidence without discarding completed points
+or unrelated historical profiles.
 
-Filtered writes require `--profile ... --merge-existing`; this replaces only
-completed profiles and preserves unselected entries. Use `--no-write-cost` for
-exploratory runs. A full successful unfiltered campaign replaces the tool's
-complete cost file. `make validate-release-costs` requires every cost file,
+Filtered writes require `--profile ... --merge-existing`; unselected profiles
+and compatible historical points are preserved. Use `--no-write-cost` for
+exploratory runs. Unfiltered campaigns also preserve unrelated profiles.
+`make validate-release-costs` requires every cost file,
 current catalog-image/spec provenance and at least three timing repetitions.
 Three repetitions provide a basic variability check, not a precise tail estimate.
+
+## Independent gene and cell calibration
+
+The recipes define three-by-three grids where both dimensions can vary, and
+three gene counts at a fixed cell count where the pretrained model requires it.
+The 24 tools have **57 baseline profiles and 29 representative profiles**:
+**86 profiles and 750 planned size points** (501 baseline, 249 representative),
+before multiplying by repetitions and resource assignments. Each parameter/input
+profile has its own grid; timings from different parameter settings or resource
+assignments are not pooled.
+
+| Fixture family | Gene levels | Column levels |
+| --- | --- | --- |
+| Standard synthetic baseline | 50, 100, 200 | 20, 40, 80 |
+| DigNet synthetic human pathway, direct input | 50, 80, 100 | 100, fixed by checkpoint |
+| DigNet synthetic human pathway, 100 metacells | 50, 80, 100 | 200, 400, 800 |
+| PLaNet synthetic human pathway, direct input | 50, 80, 99 | 100, fixed by checkpoint |
+| PLaNet synthetic human pathway, 100 metacells | 50, 80, 99 | 200, 400, 800 |
+| SCMiner built-in human regulators | 50, 80, 100 | 20, 40, 80 |
+| Representative independent scMultiSim | 50, 100, 200 | 100, 200, 400 |
+| Representative observed human pathway, direct input | 40, 60, 80 | 100, fixed by checkpoint |
+| Representative observed Arabidopsis | 4000, 8000, 12179 | 40, 70, 100 |
+
+These are bounded calibration ranges, not a claim that all possible sizes,
+parameters, group counts, prior densities, or training settings are covered.
+Three points on each independently variable axis support inspecting curvature;
+extrapolation beyond it still requires independent validation. The representative
+scMultiSim grid deliberately leaves intermediate dimensions, such as 75 genes
+and 150 cells, available for subsequent held-out checks.
+
+DigNet and PLaNet's selected pretrained checkpoints require 100 expression
+features. With `metacell=false`, 50, 75 or 200 input cells are incompatible, so
+the direct-input profiles measure only gene-size variation at 100 cells. The
+separate `metacell=true`, `metacell_count=100` profiles measure the preprocessing
+and inference cost for larger inputs; they do not justify cell-count
+extrapolation for the direct-input profiles. The coverage validator recognizes
+this fixed axis only for these integrations with metacell explicitly disabled.
+
+scRegulate's `global_provided_prior_fast_binary_prior_v2` uses the explicit
+`prior_score_policy: "binary"` input policy. Unit prior weights satisfy the
+upstream weighted-sum filters for the configured minimum target/TF counts.
+The historical sparse weighted-prior profile is archived separately, rather
+than relabeling its timings as binary-prior measurements. Omitting the policy
+preserves the previous random positive weights and deterministic input bytes;
+the grouped, dense-prior and representative profiles retain their inputs.
+Similarly, PIDC's two baseline discretization profiles retain four bins: their
+size coverage does not establish calibration for arbitrary bin counts.
+
+`prepare_cost_calibration_source.py` creates an independently seeded scMultiSim
+source for cost calibration. `prepare_cost_coverage.py` checks its provenance and
+file hashes, retains every registered historical fixture unchanged, and expands
+the representative recipes using deterministic submatrices. It preserves the
+source regulator fraction, balances cell groups, filters TF lists and prior
+edges to retained genes, and preserves ordered phenotype labels. Observed human
+inputs are only subsetted; additional expression values are not invented.
+Arabidopsis subsets retain the complete published marker/TF universe while
+varying background genes and cells. Derived inputs and complete selection
+receipts belong in ignored evidence storage, not the source repository.
+
+For example, after creating an independent source:
+
+```bash
+python wrappers/inference_tools/scripts/prepare_cost_coverage.py \
+  --fixture-root /path/to/original-fixtures \
+  --fixture-root /path/to/corrected-seed-fixtures \
+  --scmultisim-source /path/to/calibration-source \
+  --output-root /path/to/expanded-fixtures
+```
+
+The preparation command updates the registered representative recipe hashes
+only after all fixture derivations succeed. Repeating it with the same inputs
+produces the same derived files and recipes. It performs no inference and never
+imports validation timings as calibration evidence. Existing dimensions keep
+their historical fixtures, rather than replacing their measurements with a new
+input matrix of the same dimensions.
+
+Structural validity and calibration coverage are distinct checks. A well-formed
+single-size cost profile can support that size, but does not establish a growth
+model. Coverage must be evaluated separately for every parameter/input profile
+and every thread/RAM assignment, and a measured grid is not automatically a
+validated predictive model. Three repetitions are the minimum for each newly
+measured point; intermediate sizes remain separate validation data.
+
+## Incremental campaign and monitoring
+
+`run_cost_coverage.py` coordinates the baseline and representative recipes for
+all 24 inference tools. It measures one container at a time, using two threads
+(one for single-thread tools), 8 GiB, and three repetitions. Other historical
+thread/RAM measurements remain in the cost files; expanding the size grid at
+one resource assignment does not imply equivalent coverage at every resource.
+
+```bash
+python wrappers/inference_tools/scripts/run_cost_coverage.py \
+  --evidence /path/to/campaign \
+  --fixture-root /path/to/expanded-fixtures \
+  --reuse-results-dir /path/to/old-baseline-evidence \
+  --reuse-results-dir /path/to/corrected-image-evidence \
+  --reuse-representative-results-dir /path/to/old-representative-evidence \
+  --plan-only
+```
+
+Remove `--plan-only` to execute. The campaign freezes source hashes, tool specs,
+immutable Docker image IDs and commands before measurement. `status.json`
+records the active job and terminal outcomes; `logs/` retains each worker log.
+Reusing the same command and evidence directory resumes verified observations.
+Changed sources or images require a new campaign directory, which can still
+reuse scientifically compatible point receipts from `cost.json`.
+When a corrected image invalidates historical measurements, explicitly use
+`--remeasure-incompatible-history` to retain and remeasure those original
+size/resource points. This preserves their explicit point list; it does not
+expand every historical size across every historical resource combination.
+
+For PM2, use `autorestart: false`, one instance, and `kill_timeout: 60000`.
+Successful completion must not restart the entire campaign. On an intentional
+restart, the supervisor cleans only its verified old worker process group and
+containers mounting its own evidence directory before continuing. Worker output
+is also streamed to PM2 logs. It preserves failed receipts and reports failures
+explicitly; a job failure does not prevent the other tools from being measured.
+
+The campaign finishes with both provenance and coverage validation. The manual
+equivalent is:
+
+```bash
+python wrappers/inference_tools/scripts/validate_tool_costs.py \
+  --require --require-provenance --require-coverage \
+  --coverage-report /path/to/coverage.json
+```
+
+Costs updated incrementally during an unfinished campaign are working artifacts,
+not a completed release calibration. The final validation must pass before
+publishing them as such. Keep campaign evidence in ignored storage.

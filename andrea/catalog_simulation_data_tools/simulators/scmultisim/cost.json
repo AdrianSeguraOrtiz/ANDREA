@@ -55010,6 +55010,3748 @@
           }
         }
       ]
+    },
+    {
+      "profile_id": "representative_size_grid",
+      "benchmark_config": {
+        "simulator_id": "scmultisim",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "single_cell",
+          "column_kind": "cells",
+          "experimental_design": "differentiation"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global",
+            "group"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 101,
+            "cells": 40
+          },
+          {
+            "genes": 101,
+            "cells": 80
+          },
+          {
+            "genes": 151,
+            "cells": 40
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": "num_cells",
+          "genes_param": "num_genes",
+          "group_count": 4,
+          "population_count": 4
+        },
+        "input_profile": {
+          "requested_extras": [
+            "cluster_identities",
+            "column_phenotypes",
+            "enrichment_background",
+            "groups",
+            "lineage_tree",
+            "prior_grn",
+            "prior_grn_by_group",
+            "pseudotime",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "cluster_identities",
+            "column_phenotypes",
+            "enrichment_background",
+            "groups",
+            "lineage_tree",
+            "prior_grn",
+            "prior_grn_by_group",
+            "pseudotime",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "scmultisim.json:representative_size_grid:inline",
+          "resolved_base_params": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "population_mode": "auto",
+            "num_cells": 40,
+            "speed_up": false,
+            "num_genes": 101,
+            "unregulated_gene_ratio": 0.1,
+            "grn_effect": 1.0,
+            "num_cifs": 20,
+            "diff_cif_fraction": 0.9,
+            "cif_center": 1.0,
+            "cif_sigma": 0.1,
+            "use_impulse": false,
+            "discrete_population": {
+              "pop_size": [],
+              "min_pop_size": 70,
+              "min_pop_index": 1
+            },
+            "giv": {
+              "mean": 0.0,
+              "prob": 0.3,
+              "sd": 1.0
+            },
+            "high_expression": {
+              "range": 1,
+              "proportion": 0.0,
+              "mean": 5.0,
+              "sd": 1.0,
+              "max_var": 500.0
+            },
+            "atac": {
+              "effect": 0.5,
+              "region_distrib": [
+                0.1,
+                0.5,
+                0.4
+              ],
+              "p_zero": 0.8,
+              "riv_mean": 0.0,
+              "riv_prob": 0.3,
+              "riv_sd": 1.0
+            },
+            "rna_model": {
+              "vary": "s",
+              "bimod": 0.0,
+              "scale_s": 1.0,
+              "intrinsic_noise": 1.0
+            },
+            "velocity": {
+              "enabled": false,
+              "beta": 0.4,
+              "d": 1.0,
+              "num_cycles": 3,
+              "cycle_len": 1.0
+            },
+            "dynamic_grn": {
+              "enabled": true,
+              "num_steps": 3,
+              "cell_per_step": 1,
+              "involved_genes": [],
+              "num_changing_edges": 2.0,
+              "create_tf_edges": false,
+              "weight_mean": 0.0,
+              "weight_sd": 1.0
+            },
+            "technical_noise": {
+              "enabled": false,
+              "protocol": "nonUMI",
+              "alpha_mean": 0.1,
+              "alpha_sd": 0.02,
+              "depth_mean": 100000.0,
+              "depth_sd": 3000.0,
+              "n_pcr1": 16,
+              "n_pcr2": 10,
+              "atac_obs_prob": 0.3,
+              "atac_sd_frac": 0.5
+            },
+            "batch_effect": {
+              "enabled": false,
+              "num_batches": 2,
+              "effect": 3.0
+            },
+            "mod_cif_giv_preset": "none",
+            "ext_cif_giv_preset": "none",
+            "spatial": {
+              "enabled": false,
+              "grid_size": 13,
+              "max_neighbors": 4,
+              "step_size": 0.5,
+              "layout": "enhanced",
+              "same_type_prob": 0.8,
+              "cell_type_lr_pairs": [
+                1,
+                2
+              ],
+              "ligand_receptor_effects": [
+                5.2,
+                -5.9
+              ],
+              "single_cell_gt": true
+            }
+          },
+          "cost_relevant_params": [
+            "grn_source",
+            "tree_preset",
+            "num_cifs",
+            "speed_up",
+            "velocity.enabled",
+            "dynamic_grn.enabled",
+            "dynamic_grn.num_steps",
+            "dynamic_grn.cell_per_step",
+            "technical_noise.enabled",
+            "batch_effect.enabled",
+            "spatial.enabled",
+            "spatial.single_cell_gt",
+            "spatial.grid_size",
+            "spatial.max_neighbors",
+            "spatial.step_size"
+          ],
+          "cost_relevant_values": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "num_cifs": 20,
+            "speed_up": false,
+            "velocity.enabled": false,
+            "dynamic_grn.enabled": true,
+            "dynamic_grn.num_steps": 3,
+            "dynamic_grn.cell_per_step": 1,
+            "technical_noise.enabled": false,
+            "batch_effect.enabled": false,
+            "spatial.enabled": false,
+            "spatial.single_cell_gt": true,
+            "spatial.grid_size": 13,
+            "spatial.max_neighbors": 4,
+            "spatial.step_size": 0.5
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 4096,
+          "upstream_mapping": "Mapped by the wrapper to scMultiSim::sim_true_counts(threads=threads)."
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-10-18T11:59:09.845455+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+          "git_dirty": true,
+          "source_sha256": "0d590a817dacb5b926da87b58f7351bed83e997f563e3a88165bab1f69dfe2c4",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3",
+          "image_reference": "adriansegura99/simulator_scmultisim:1.1.0",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "image_repo_digests": [
+            "adriansegura99/simulator_scmultisim@sha256:5655a8a833d3e6f54739f4b319fbc66882f8be3c972350ff787a02c05bfe10c2"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "a50809a3bf5fd925e14190d8d008ab247778cd2e192614d6ce9cce52bc1c1cbb",
+        "extension_identity": {
+          "profile_sha256": "a50809a3bf5fd925e14190d8d008ab247778cd2e192614d6ce9cce52bc1c1cbb",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "seed": 12345,
+          "threads": 1,
+          "ram_gb": 8,
+          "repeats": 3,
+          "timeout": 1800,
+          "runner_sha256": "1ad37b4e7de980bdb2754b25194a8f74080aa1cc9c0159ba7a51ff4cd463b658",
+          "support_sha256": "9f08d503f00530ab65e50d06bee42b90b2c317e648803a7bb3c0fc24db2df60a",
+          "validation_sha256": "b1d44ed60446c4b44592dd6d44d56ad14f46c7a0943647ec46a2ec9a893c4310",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3"
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 101,
+          "cells": 40,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.162637,
+          "seconds_p90": 8.248506,
+          "output_bytes_p50": 2560549,
+          "output_bytes_p90": 2560549,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "representative_size_grid",
+            "profile_id": "representative_size_grid",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "genes": 101,
+            "cells": 40,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 101,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 9,
+            "effective_extras_count": 9,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            }
+          }
+        },
+        {
+          "genes": 101,
+          "cells": 80,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.261207,
+          "seconds_p90": 8.279464,
+          "output_bytes_p50": 3924957,
+          "output_bytes_p90": 3924958,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "representative_size_grid",
+            "profile_id": "representative_size_grid",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "genes": 101,
+            "cells": 80,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 101,
+            "n_cells": 80,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 9,
+            "effective_extras_count": 9,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            }
+          }
+        },
+        {
+          "genes": 151,
+          "cells": 40,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.057211,
+          "seconds_p90": 8.120438,
+          "output_bytes_p50": 3230520,
+          "output_bytes_p90": 3230520,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "representative_size_grid",
+            "profile_id": "representative_size_grid",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "cluster_identities",
+              "column_phenotypes",
+              "enrichment_background",
+              "groups",
+              "lineage_tree",
+              "prior_grn",
+              "prior_grn_by_group",
+              "pseudotime",
+              "tf_list"
+            ],
+            "genes": 151,
+            "cells": 40,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 151,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 9,
+            "effective_extras_count": 9,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "column_truth_size_grid",
+      "benchmark_config": {
+        "simulator_id": "scmultisim",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "single_cell",
+          "column_kind": "cells",
+          "experimental_design": "differentiation"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global",
+            "group",
+            "column"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 101,
+            "cells": 20
+          },
+          {
+            "genes": 101,
+            "cells": 40
+          },
+          {
+            "genes": 101,
+            "cells": 80
+          },
+          {
+            "genes": 151,
+            "cells": 40
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": "num_cells",
+          "genes_param": "num_genes",
+          "group_count": 4,
+          "population_count": 4
+        },
+        "input_profile": {
+          "requested_extras": [
+            "groups",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "groups",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "scmultisim.json:column_truth_size_grid:inline",
+          "resolved_base_params": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "population_mode": "auto",
+            "num_cells": 40,
+            "speed_up": false,
+            "num_genes": 101,
+            "unregulated_gene_ratio": 0.1,
+            "grn_effect": 1.0,
+            "num_cifs": 20,
+            "diff_cif_fraction": 0.9,
+            "cif_center": 1.0,
+            "cif_sigma": 0.1,
+            "use_impulse": false,
+            "discrete_population": {
+              "pop_size": [],
+              "min_pop_size": 70,
+              "min_pop_index": 1
+            },
+            "giv": {
+              "mean": 0.0,
+              "prob": 0.3,
+              "sd": 1.0
+            },
+            "high_expression": {
+              "range": 1,
+              "proportion": 0.0,
+              "mean": 5.0,
+              "sd": 1.0,
+              "max_var": 500.0
+            },
+            "atac": {
+              "effect": 0.5,
+              "region_distrib": [
+                0.1,
+                0.5,
+                0.4
+              ],
+              "p_zero": 0.8,
+              "riv_mean": 0.0,
+              "riv_prob": 0.3,
+              "riv_sd": 1.0
+            },
+            "rna_model": {
+              "vary": "s",
+              "bimod": 0.0,
+              "scale_s": 1.0,
+              "intrinsic_noise": 1.0
+            },
+            "velocity": {
+              "enabled": false,
+              "beta": 0.4,
+              "d": 1.0,
+              "num_cycles": 3,
+              "cycle_len": 1.0
+            },
+            "dynamic_grn": {
+              "enabled": true,
+              "num_steps": 3,
+              "cell_per_step": 1,
+              "involved_genes": [],
+              "num_changing_edges": 2.0,
+              "create_tf_edges": false,
+              "weight_mean": 0.0,
+              "weight_sd": 1.0
+            },
+            "technical_noise": {
+              "enabled": true,
+              "protocol": "nonUMI",
+              "alpha_mean": 0.1,
+              "alpha_sd": 0.02,
+              "depth_mean": 100000.0,
+              "depth_sd": 3000.0,
+              "n_pcr1": 16,
+              "n_pcr2": 10,
+              "atac_obs_prob": 0.3,
+              "atac_sd_frac": 0.5
+            },
+            "batch_effect": {
+              "enabled": false,
+              "num_batches": 2,
+              "effect": 3.0
+            },
+            "mod_cif_giv_preset": "none",
+            "ext_cif_giv_preset": "none",
+            "spatial": {
+              "enabled": false,
+              "grid_size": 13,
+              "max_neighbors": 4,
+              "step_size": 0.5,
+              "layout": "enhanced",
+              "same_type_prob": 0.8,
+              "cell_type_lr_pairs": [
+                1,
+                2
+              ],
+              "ligand_receptor_effects": [
+                5.2,
+                -5.9
+              ],
+              "single_cell_gt": true
+            }
+          },
+          "cost_relevant_params": [
+            "grn_source",
+            "tree_preset",
+            "num_cifs",
+            "speed_up",
+            "velocity.enabled",
+            "dynamic_grn.enabled",
+            "dynamic_grn.num_steps",
+            "dynamic_grn.cell_per_step",
+            "technical_noise.enabled",
+            "batch_effect.enabled",
+            "spatial.enabled",
+            "spatial.single_cell_gt",
+            "spatial.grid_size",
+            "spatial.max_neighbors",
+            "spatial.step_size"
+          ],
+          "cost_relevant_values": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "num_cifs": 20,
+            "speed_up": false,
+            "velocity.enabled": false,
+            "dynamic_grn.enabled": true,
+            "dynamic_grn.num_steps": 3,
+            "dynamic_grn.cell_per_step": 1,
+            "technical_noise.enabled": true,
+            "batch_effect.enabled": false,
+            "spatial.enabled": false,
+            "spatial.single_cell_gt": true,
+            "spatial.grid_size": 13,
+            "spatial.max_neighbors": 4,
+            "spatial.step_size": 0.5
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 4096,
+          "upstream_mapping": "Mapped by the wrapper to scMultiSim::sim_true_counts(threads=threads)."
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-10-19T09:41:02.696193+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+          "git_dirty": true,
+          "source_sha256": "4de7d0cfddb7e4128d6ec71bcfc90ceb529f269a2f16041c65af77b8fc92cca3",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3",
+          "image_reference": "adriansegura99/simulator_scmultisim:1.1.0",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "image_repo_digests": [
+            "adriansegura99/simulator_scmultisim@sha256:5655a8a833d3e6f54739f4b319fbc66882f8be3c972350ff787a02c05bfe10c2"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "58a49e10f5ce731102c4f55a24f9206b4b66892acf17b7630254d1a8389533df",
+        "extension_identity": {
+          "profile_sha256": "58a49e10f5ce731102c4f55a24f9206b4b66892acf17b7630254d1a8389533df",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "seed": 12345,
+          "threads": 1,
+          "ram_gb": 8,
+          "repeats": 3,
+          "timeout": 1800,
+          "runner_sha256": "650f337926a1491d15d5beff5d2c666ff0d91d50846b4792edb6a5087ef86431",
+          "support_sha256": "9f08d503f00530ab65e50d06bee42b90b2c317e648803a7bb3c0fc24db2df60a",
+          "validation_sha256": "b1d44ed60446c4b44592dd6d44d56ad14f46c7a0943647ec46a2ec9a893c4310",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3"
+        },
+        "dimension_semantics": {
+          "genes": "exported_genes",
+          "cells": "exported_columns"
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 101,
+          "cells": 20,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 9.574231,
+          "seconds_p90": 9.740892,
+          "output_bytes_p50": 2074770,
+          "output_bytes_p90": 2074770,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group",
+                "column"
+              ]
+            },
+            "benchmark_profile_id": "column_truth_size_grid",
+            "profile_id": "column_truth_size_grid",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group",
+              "column"
+            ],
+            "truth_context_count": 3,
+            "extras": [
+              "groups",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "tf_list"
+            ],
+            "genes": 101,
+            "cells": 20,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 101,
+            "n_cells": 20,
+            "n_tfs": null,
+            "column_truth_requested": true,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 2,
+            "effective_extras_count": 2,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": true,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 101,
+                "columns": 20
+              },
+              {
+                "genes": 101,
+                "columns": 20
+              },
+              {
+                "genes": 101,
+                "columns": 20
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 101,
+          "cells": 40,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 9.985617,
+          "seconds_p90": 10.057811,
+          "output_bytes_p50": 2967494,
+          "output_bytes_p90": 2967494,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group",
+                "column"
+              ]
+            },
+            "benchmark_profile_id": "column_truth_size_grid",
+            "profile_id": "column_truth_size_grid",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group",
+              "column"
+            ],
+            "truth_context_count": 3,
+            "extras": [
+              "groups",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "tf_list"
+            ],
+            "genes": 101,
+            "cells": 40,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 101,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": true,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 2,
+            "effective_extras_count": 2,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": true,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 101,
+                "columns": 40
+              },
+              {
+                "genes": 101,
+                "columns": 40
+              },
+              {
+                "genes": 101,
+                "columns": 40
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 101,
+          "cells": 80,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.888659,
+          "seconds_p90": 11.13743,
+          "output_bytes_p50": 4751884,
+          "output_bytes_p90": 4751884,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group",
+                "column"
+              ]
+            },
+            "benchmark_profile_id": "column_truth_size_grid",
+            "profile_id": "column_truth_size_grid",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group",
+              "column"
+            ],
+            "truth_context_count": 3,
+            "extras": [
+              "groups",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "tf_list"
+            ],
+            "genes": 101,
+            "cells": 80,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 101,
+            "n_cells": 80,
+            "n_tfs": null,
+            "column_truth_requested": true,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 2,
+            "effective_extras_count": 2,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": true,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 101,
+                "columns": 80
+              },
+              {
+                "genes": 101,
+                "columns": 80
+              },
+              {
+                "genes": 101,
+                "columns": 80
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 151,
+          "cells": 40,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.258233,
+          "seconds_p90": 10.30329,
+          "output_bytes_p50": 3677184,
+          "output_bytes_p90": 3677186,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "single_cell",
+              "column_kind": "cells",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group",
+                "column"
+              ]
+            },
+            "benchmark_profile_id": "column_truth_size_grid",
+            "profile_id": "column_truth_size_grid",
+            "expression_profile": "single_cell",
+            "column_kind": "cells",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group",
+              "column"
+            ],
+            "truth_context_count": 3,
+            "extras": [
+              "groups",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "tf_list"
+            ],
+            "genes": 151,
+            "cells": 40,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 151,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": true,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 2,
+            "effective_extras_count": 2,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": false,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": true,
+              "batch_effect.enabled": false,
+              "spatial.enabled": false,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 151,
+                "columns": 40
+              },
+              {
+                "genes": 151,
+                "columns": 40
+              },
+              {
+                "genes": 151,
+                "columns": 40
+              }
+            ],
+            "validation_warnings": []
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "spatial_global_size_grid",
+      "benchmark_config": {
+        "simulator_id": "scmultisim",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "spatial",
+          "column_kind": "spots",
+          "experimental_design": "differentiation"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 120,
+            "cells": 20
+          },
+          {
+            "genes": 120,
+            "cells": 40
+          },
+          {
+            "genes": 120,
+            "cells": 80
+          },
+          {
+            "genes": 170,
+            "cells": 40
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": "num_cells",
+          "genes_param": "num_genes",
+          "group_count": 0,
+          "population_count": 0
+        },
+        "input_profile": {
+          "requested_extras": [
+            "spatial_coordinates",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "spatial_coordinates",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "scmultisim.json:spatial_global_size_grid:inline",
+          "resolved_base_params": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "population_mode": "auto",
+            "num_cells": 40,
+            "speed_up": true,
+            "num_genes": 120,
+            "unregulated_gene_ratio": 0.1,
+            "grn_effect": 1.0,
+            "num_cifs": 20,
+            "diff_cif_fraction": 0.9,
+            "cif_center": 1.0,
+            "cif_sigma": 0.1,
+            "use_impulse": false,
+            "discrete_population": {
+              "pop_size": [],
+              "min_pop_size": 70,
+              "min_pop_index": 1
+            },
+            "giv": {
+              "mean": 0.0,
+              "prob": 0.3,
+              "sd": 1.0
+            },
+            "high_expression": {
+              "range": 1,
+              "proportion": 0.0,
+              "mean": 5.0,
+              "sd": 1.0,
+              "max_var": 500.0
+            },
+            "atac": {
+              "effect": 0.5,
+              "region_distrib": [
+                0.1,
+                0.5,
+                0.4
+              ],
+              "p_zero": 0.8,
+              "riv_mean": 0.0,
+              "riv_prob": 0.3,
+              "riv_sd": 1.0
+            },
+            "rna_model": {
+              "vary": "s",
+              "bimod": 0.0,
+              "scale_s": 1.0,
+              "intrinsic_noise": 1.0
+            },
+            "velocity": {
+              "enabled": false,
+              "beta": 0.4,
+              "d": 1.0,
+              "num_cycles": 3,
+              "cycle_len": 1.0
+            },
+            "dynamic_grn": {
+              "enabled": false,
+              "num_steps": 200,
+              "cell_per_step": 1,
+              "involved_genes": [],
+              "num_changing_edges": 2.0,
+              "create_tf_edges": false,
+              "weight_mean": null,
+              "weight_sd": 1.0
+            },
+            "technical_noise": {
+              "enabled": false,
+              "protocol": "nonUMI",
+              "alpha_mean": 0.1,
+              "alpha_sd": 0.02,
+              "depth_mean": 100000.0,
+              "depth_sd": 3000.0,
+              "n_pcr1": 16,
+              "n_pcr2": 10,
+              "atac_obs_prob": 0.3,
+              "atac_sd_frac": 0.5
+            },
+            "batch_effect": {
+              "enabled": false,
+              "num_batches": 2,
+              "effect": 3.0
+            },
+            "mod_cif_giv_preset": "none",
+            "ext_cif_giv_preset": "none",
+            "spatial": {
+              "enabled": true,
+              "grid_size": 13,
+              "max_neighbors": 4,
+              "step_size": 0.5,
+              "layout": "enhanced",
+              "same_type_prob": 0.8,
+              "cell_type_lr_pairs": [
+                1,
+                2
+              ],
+              "ligand_receptor_effects": [
+                5.2,
+                -5.9
+              ],
+              "single_cell_gt": true
+            }
+          },
+          "cost_relevant_params": [
+            "grn_source",
+            "tree_preset",
+            "num_cifs",
+            "speed_up",
+            "velocity.enabled",
+            "dynamic_grn.enabled",
+            "dynamic_grn.num_steps",
+            "dynamic_grn.cell_per_step",
+            "technical_noise.enabled",
+            "batch_effect.enabled",
+            "spatial.enabled",
+            "spatial.single_cell_gt",
+            "spatial.grid_size",
+            "spatial.max_neighbors",
+            "spatial.step_size"
+          ],
+          "cost_relevant_values": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "num_cifs": 20,
+            "speed_up": true,
+            "velocity.enabled": false,
+            "dynamic_grn.enabled": false,
+            "dynamic_grn.num_steps": 200,
+            "dynamic_grn.cell_per_step": 1,
+            "technical_noise.enabled": false,
+            "batch_effect.enabled": false,
+            "spatial.enabled": true,
+            "spatial.single_cell_gt": true,
+            "spatial.grid_size": 13,
+            "spatial.max_neighbors": 4,
+            "spatial.step_size": 0.5
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 4096,
+          "upstream_mapping": "Mapped by the wrapper to scMultiSim::sim_true_counts(threads=threads)."
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-10-19T09:41:02.696193+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+          "git_dirty": true,
+          "source_sha256": "4de7d0cfddb7e4128d6ec71bcfc90ceb529f269a2f16041c65af77b8fc92cca3",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3",
+          "image_reference": "adriansegura99/simulator_scmultisim:1.1.0",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "image_repo_digests": [
+            "adriansegura99/simulator_scmultisim@sha256:5655a8a833d3e6f54739f4b319fbc66882f8be3c972350ff787a02c05bfe10c2"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "e5417e3c2fbf718ccc9d4bac3285ce8ef544faa5747cd4bf1be14dd79f31660a",
+        "extension_identity": {
+          "profile_sha256": "e5417e3c2fbf718ccc9d4bac3285ce8ef544faa5747cd4bf1be14dd79f31660a",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "seed": 12345,
+          "threads": 1,
+          "ram_gb": 8,
+          "repeats": 3,
+          "timeout": 1800,
+          "runner_sha256": "650f337926a1491d15d5beff5d2c666ff0d91d50846b4792edb6a5087ef86431",
+          "support_sha256": "9f08d503f00530ab65e50d06bee42b90b2c317e648803a7bb3c0fc24db2df60a",
+          "validation_sha256": "b1d44ed60446c4b44592dd6d44d56ad14f46c7a0943647ec46a2ec9a893c4310",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3"
+        },
+        "dimension_semantics": {
+          "genes": "exported_genes",
+          "cells": "exported_columns"
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 120,
+          "cells": 20,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.511786,
+          "seconds_p90": 8.608936,
+          "output_bytes_p50": 3476172,
+          "output_bytes_p90": 3476172,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "spatial_global_size_grid",
+            "profile_id": "spatial_global_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 20,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 120,
+            "n_cells": 20,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": false,
+              "dynamic_grn.num_steps": 200,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": null,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 2,
+            "effective_extras_count": 2,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": false,
+              "dynamic_grn.num_steps": 200,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 20
+              },
+              {
+                "genes": 120,
+                "columns": 20
+              },
+              {
+                "genes": 120,
+                "columns": 20
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 120,
+          "cells": 40,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 10.835813,
+          "seconds_p90": 10.884035,
+          "output_bytes_p50": 8953557,
+          "output_bytes_p90": 8953557,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "spatial_global_size_grid",
+            "profile_id": "spatial_global_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 40,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 120,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": false,
+              "dynamic_grn.num_steps": 200,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": null,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 2,
+            "effective_extras_count": 2,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": false,
+              "dynamic_grn.num_steps": 200,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 40
+              },
+              {
+                "genes": 120,
+                "columns": 40
+              },
+              {
+                "genes": 120,
+                "columns": 40
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 120,
+          "cells": 80,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 15.921403,
+          "seconds_p90": 15.961199,
+          "output_bytes_p50": 29953296,
+          "output_bytes_p90": 29953296,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "spatial_global_size_grid",
+            "profile_id": "spatial_global_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 80,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 120,
+            "n_cells": 80,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": false,
+              "dynamic_grn.num_steps": 200,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": null,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 2,
+            "effective_extras_count": 2,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": false,
+              "dynamic_grn.num_steps": 200,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 80
+              },
+              {
+                "genes": 120,
+                "columns": 80
+              },
+              {
+                "genes": 120,
+                "columns": 80
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 170,
+          "cells": 40,
+          "groups": 0,
+          "population_count": 0,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 11.669928,
+          "seconds_p90": 11.836219,
+          "output_bytes_p50": 9398654,
+          "output_bytes_p90": 9398654,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global"
+              ]
+            },
+            "benchmark_profile_id": "spatial_global_size_grid",
+            "profile_id": "spatial_global_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global"
+            ],
+            "truth_context_count": 1,
+            "extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 170,
+            "cells": 40,
+            "groups": 0,
+            "population_count": 0,
+            "n_genes": 170,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": false,
+              "dynamic_grn.num_steps": 200,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": null,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 2,
+            "effective_extras_count": 2,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": false,
+              "dynamic_grn.num_steps": 200,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 170,
+                "columns": 40
+              },
+              {
+                "genes": 170,
+                "columns": 40
+              },
+              {
+                "genes": 170,
+                "columns": 40
+              }
+            ],
+            "validation_warnings": []
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "spatial_grouped_size_grid",
+      "benchmark_config": {
+        "simulator_id": "scmultisim",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "spatial",
+          "column_kind": "spots",
+          "experimental_design": "differentiation"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global",
+            "group"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 120,
+            "cells": 20
+          },
+          {
+            "genes": 120,
+            "cells": 40
+          },
+          {
+            "genes": 120,
+            "cells": 80
+          },
+          {
+            "genes": 170,
+            "cells": 40
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": "num_cells",
+          "genes_param": "num_genes",
+          "group_count": 4,
+          "population_count": 4
+        },
+        "input_profile": {
+          "requested_extras": [
+            "groups",
+            "spatial_coordinates",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "groups",
+            "spatial_coordinates",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "scmultisim.json:spatial_grouped_size_grid:inline",
+          "resolved_base_params": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "population_mode": "auto",
+            "num_cells": 40,
+            "speed_up": true,
+            "num_genes": 120,
+            "unregulated_gene_ratio": 0.1,
+            "grn_effect": 1.0,
+            "num_cifs": 20,
+            "diff_cif_fraction": 0.9,
+            "cif_center": 1.0,
+            "cif_sigma": 0.1,
+            "use_impulse": false,
+            "discrete_population": {
+              "pop_size": [],
+              "min_pop_size": 70,
+              "min_pop_index": 1
+            },
+            "giv": {
+              "mean": 0.0,
+              "prob": 0.3,
+              "sd": 1.0
+            },
+            "high_expression": {
+              "range": 1,
+              "proportion": 0.0,
+              "mean": 5.0,
+              "sd": 1.0,
+              "max_var": 500.0
+            },
+            "atac": {
+              "effect": 0.5,
+              "region_distrib": [
+                0.1,
+                0.5,
+                0.4
+              ],
+              "p_zero": 0.8,
+              "riv_mean": 0.0,
+              "riv_prob": 0.3,
+              "riv_sd": 1.0
+            },
+            "rna_model": {
+              "vary": "s",
+              "bimod": 0.0,
+              "scale_s": 1.0,
+              "intrinsic_noise": 1.0
+            },
+            "velocity": {
+              "enabled": false,
+              "beta": 0.4,
+              "d": 1.0,
+              "num_cycles": 3,
+              "cycle_len": 1.0
+            },
+            "dynamic_grn": {
+              "enabled": true,
+              "num_steps": 3,
+              "cell_per_step": 1,
+              "involved_genes": [],
+              "num_changing_edges": 2.0,
+              "create_tf_edges": false,
+              "weight_mean": 0.0,
+              "weight_sd": 1.0
+            },
+            "technical_noise": {
+              "enabled": false,
+              "protocol": "nonUMI",
+              "alpha_mean": 0.1,
+              "alpha_sd": 0.02,
+              "depth_mean": 100000.0,
+              "depth_sd": 3000.0,
+              "n_pcr1": 16,
+              "n_pcr2": 10,
+              "atac_obs_prob": 0.3,
+              "atac_sd_frac": 0.5
+            },
+            "batch_effect": {
+              "enabled": false,
+              "num_batches": 2,
+              "effect": 3.0
+            },
+            "mod_cif_giv_preset": "none",
+            "ext_cif_giv_preset": "none",
+            "spatial": {
+              "enabled": true,
+              "grid_size": 13,
+              "max_neighbors": 4,
+              "step_size": 0.5,
+              "layout": "enhanced",
+              "same_type_prob": 0.8,
+              "cell_type_lr_pairs": [
+                1,
+                2
+              ],
+              "ligand_receptor_effects": [
+                5.2,
+                -5.9
+              ],
+              "single_cell_gt": true
+            }
+          },
+          "cost_relevant_params": [
+            "grn_source",
+            "tree_preset",
+            "num_cifs",
+            "speed_up",
+            "velocity.enabled",
+            "dynamic_grn.enabled",
+            "dynamic_grn.num_steps",
+            "dynamic_grn.cell_per_step",
+            "technical_noise.enabled",
+            "batch_effect.enabled",
+            "spatial.enabled",
+            "spatial.single_cell_gt",
+            "spatial.grid_size",
+            "spatial.max_neighbors",
+            "spatial.step_size"
+          ],
+          "cost_relevant_values": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "num_cifs": 20,
+            "speed_up": true,
+            "velocity.enabled": false,
+            "dynamic_grn.enabled": true,
+            "dynamic_grn.num_steps": 3,
+            "dynamic_grn.cell_per_step": 1,
+            "technical_noise.enabled": false,
+            "batch_effect.enabled": false,
+            "spatial.enabled": true,
+            "spatial.single_cell_gt": true,
+            "spatial.grid_size": 13,
+            "spatial.max_neighbors": 4,
+            "spatial.step_size": 0.5
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 4096,
+          "upstream_mapping": "Mapped by the wrapper to scMultiSim::sim_true_counts(threads=threads)."
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-10-19T09:41:02.696193+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+          "git_dirty": true,
+          "source_sha256": "4de7d0cfddb7e4128d6ec71bcfc90ceb529f269a2f16041c65af77b8fc92cca3",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3",
+          "image_reference": "adriansegura99/simulator_scmultisim:1.1.0",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "image_repo_digests": [
+            "adriansegura99/simulator_scmultisim@sha256:5655a8a833d3e6f54739f4b319fbc66882f8be3c972350ff787a02c05bfe10c2"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "1c6702d19393dc4027d1480eb58076b72f078cd5ac9436b780d69d1d6f95b1dd",
+        "extension_identity": {
+          "profile_sha256": "1c6702d19393dc4027d1480eb58076b72f078cd5ac9436b780d69d1d6f95b1dd",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "seed": 12345,
+          "threads": 1,
+          "ram_gb": 8,
+          "repeats": 3,
+          "timeout": 1800,
+          "runner_sha256": "650f337926a1491d15d5beff5d2c666ff0d91d50846b4792edb6a5087ef86431",
+          "support_sha256": "9f08d503f00530ab65e50d06bee42b90b2c317e648803a7bb3c0fc24db2df60a",
+          "validation_sha256": "b1d44ed60446c4b44592dd6d44d56ad14f46c7a0943647ec46a2ec9a893c4310",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3"
+        },
+        "dimension_semantics": {
+          "genes": "exported_genes",
+          "cells": "exported_columns"
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 120,
+          "cells": 20,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.591609,
+          "seconds_p90": 8.708656,
+          "output_bytes_p50": 3587621,
+          "output_bytes_p90": 3587621,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "spatial_grouped_size_grid",
+            "profile_id": "spatial_grouped_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 20,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 120,
+            "n_cells": 20,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 3,
+            "effective_extras_count": 3,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 20
+              },
+              {
+                "genes": 120,
+                "columns": 20
+              },
+              {
+                "genes": 120,
+                "columns": 20
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 120,
+          "cells": 40,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 11.406276,
+          "seconds_p90": 11.407715,
+          "output_bytes_p50": 9053041,
+          "output_bytes_p90": 9053041,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "spatial_grouped_size_grid",
+            "profile_id": "spatial_grouped_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 40,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 120,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 3,
+            "effective_extras_count": 3,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 40
+              },
+              {
+                "genes": 120,
+                "columns": 40
+              },
+              {
+                "genes": 120,
+                "columns": 40
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 120,
+          "cells": 80,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 16.136951,
+          "seconds_p90": 16.163531,
+          "output_bytes_p50": 30113629,
+          "output_bytes_p90": 30113629,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "spatial_grouped_size_grid",
+            "profile_id": "spatial_grouped_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 80,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 120,
+            "n_cells": 80,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 3,
+            "effective_extras_count": 3,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 80
+              },
+              {
+                "genes": 120,
+                "columns": 80
+              },
+              {
+                "genes": 120,
+                "columns": 80
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 170,
+          "cells": 40,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 11.940981,
+          "seconds_p90": 12.097861,
+          "output_bytes_p50": 9521640,
+          "output_bytes_p90": 9521640,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group"
+              ]
+            },
+            "benchmark_profile_id": "spatial_grouped_size_grid",
+            "profile_id": "spatial_grouped_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group"
+            ],
+            "truth_context_count": 2,
+            "extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 170,
+            "cells": 40,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 170,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": false,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 3,
+            "effective_extras_count": 3,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 170,
+                "columns": 40
+              },
+              {
+                "genes": 170,
+                "columns": 40
+              },
+              {
+                "genes": 170,
+                "columns": 40
+              }
+            ],
+            "validation_warnings": []
+          }
+        }
+      ]
+    },
+    {
+      "profile_id": "spatial_column_truth_size_grid",
+      "benchmark_config": {
+        "simulator_id": "scmultisim",
+        "data_axes": {
+          "measurement": "rna_expression",
+          "resolution": "spatial",
+          "column_kind": "spots",
+          "experimental_design": "differentiation"
+        },
+        "truth_requirements": {
+          "contexts": [
+            "global",
+            "group",
+            "column"
+          ]
+        },
+        "sizes": [
+          {
+            "genes": 120,
+            "cells": 20
+          },
+          {
+            "genes": 120,
+            "cells": 40
+          },
+          {
+            "genes": 120,
+            "cells": 80
+          },
+          {
+            "genes": 170,
+            "cells": 40
+          }
+        ],
+        "threads_tested": [
+          1
+        ],
+        "ram_gb_tested": [
+          8.0
+        ],
+        "repeats": 3,
+        "timeout_seconds": 1800,
+        "dimension_profile": {
+          "cells_param": "num_cells",
+          "genes_param": "num_genes",
+          "group_count": 4,
+          "population_count": 4
+        },
+        "input_profile": {
+          "requested_extras": [
+            "groups",
+            "spatial_coordinates",
+            "tf_list"
+          ],
+          "effective_extras": [
+            "groups",
+            "spatial_coordinates",
+            "tf_list"
+          ],
+          "required_inputs_satisfied": [],
+          "optional_inputs_provided": [],
+          "conditional_inputs_satisfied": [],
+          "input_source_modes": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3"
+          },
+          "notes": []
+        },
+        "params_profile": {
+          "source": "simulatorspec_defaults_plus_override",
+          "override_file": "scmultisim.json:spatial_column_truth_size_grid:inline",
+          "resolved_base_params": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "population_mode": "auto",
+            "num_cells": 40,
+            "speed_up": true,
+            "num_genes": 120,
+            "unregulated_gene_ratio": 0.1,
+            "grn_effect": 1.0,
+            "num_cifs": 20,
+            "diff_cif_fraction": 0.9,
+            "cif_center": 1.0,
+            "cif_sigma": 0.1,
+            "use_impulse": false,
+            "discrete_population": {
+              "pop_size": [],
+              "min_pop_size": 70,
+              "min_pop_index": 1
+            },
+            "giv": {
+              "mean": 0.0,
+              "prob": 0.3,
+              "sd": 1.0
+            },
+            "high_expression": {
+              "range": 1,
+              "proportion": 0.0,
+              "mean": 5.0,
+              "sd": 1.0,
+              "max_var": 500.0
+            },
+            "atac": {
+              "effect": 0.5,
+              "region_distrib": [
+                0.1,
+                0.5,
+                0.4
+              ],
+              "p_zero": 0.8,
+              "riv_mean": 0.0,
+              "riv_prob": 0.3,
+              "riv_sd": 1.0
+            },
+            "rna_model": {
+              "vary": "s",
+              "bimod": 0.0,
+              "scale_s": 1.0,
+              "intrinsic_noise": 1.0
+            },
+            "velocity": {
+              "enabled": false,
+              "beta": 0.4,
+              "d": 1.0,
+              "num_cycles": 3,
+              "cycle_len": 1.0
+            },
+            "dynamic_grn": {
+              "enabled": true,
+              "num_steps": 3,
+              "cell_per_step": 1,
+              "involved_genes": [],
+              "num_changing_edges": 2.0,
+              "create_tf_edges": false,
+              "weight_mean": 0.0,
+              "weight_sd": 1.0
+            },
+            "technical_noise": {
+              "enabled": false,
+              "protocol": "nonUMI",
+              "alpha_mean": 0.1,
+              "alpha_sd": 0.02,
+              "depth_mean": 100000.0,
+              "depth_sd": 3000.0,
+              "n_pcr1": 16,
+              "n_pcr2": 10,
+              "atac_obs_prob": 0.3,
+              "atac_sd_frac": 0.5
+            },
+            "batch_effect": {
+              "enabled": false,
+              "num_batches": 2,
+              "effect": 3.0
+            },
+            "mod_cif_giv_preset": "none",
+            "ext_cif_giv_preset": "none",
+            "spatial": {
+              "enabled": true,
+              "grid_size": 13,
+              "max_neighbors": 4,
+              "step_size": 0.5,
+              "layout": "enhanced",
+              "same_type_prob": 0.8,
+              "cell_type_lr_pairs": [
+                1,
+                2
+              ],
+              "ligand_receptor_effects": [
+                5.2,
+                -5.9
+              ],
+              "single_cell_gt": true
+            }
+          },
+          "cost_relevant_params": [
+            "grn_source",
+            "tree_preset",
+            "num_cifs",
+            "speed_up",
+            "velocity.enabled",
+            "dynamic_grn.enabled",
+            "dynamic_grn.num_steps",
+            "dynamic_grn.cell_per_step",
+            "technical_noise.enabled",
+            "batch_effect.enabled",
+            "spatial.enabled",
+            "spatial.single_cell_gt",
+            "spatial.grid_size",
+            "spatial.max_neighbors",
+            "spatial.step_size"
+          ],
+          "cost_relevant_values": {
+            "grn_source": "builtin_100",
+            "tree_preset": "phyla3",
+            "num_cifs": 20,
+            "speed_up": true,
+            "velocity.enabled": false,
+            "dynamic_grn.enabled": true,
+            "dynamic_grn.num_steps": 3,
+            "dynamic_grn.cell_per_step": 1,
+            "technical_noise.enabled": false,
+            "batch_effect.enabled": false,
+            "spatial.enabled": true,
+            "spatial.single_cell_gt": true,
+            "spatial.grid_size": 13,
+            "spatial.max_neighbors": 4,
+            "spatial.step_size": 0.5
+          }
+        },
+        "runtime_resources_profile": {
+          "threading_supported": true,
+          "default_threads": 1,
+          "max_threads": 4096,
+          "upstream_mapping": "Mapped by the wrapper to scMultiSim::sim_true_counts(threads=threads)."
+        },
+        "provenance": {
+          "recorded_at_utc": "2026-10-19T09:41:02.696193+00:00",
+          "git_commit": "732cb04be1ca2d3732002966b0066c00aac7c35b",
+          "git_dirty": true,
+          "source_sha256": "4de7d0cfddb7e4128d6ec71bcfc90ceb529f269a2f16041c65af77b8fc92cca3",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3",
+          "image_reference": "adriansegura99/simulator_scmultisim:1.1.0",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "image_repo_digests": [
+            "adriansegura99/simulator_scmultisim@sha256:5655a8a833d3e6f54739f4b319fbc66882f8be3c972350ff787a02c05bfe10c2"
+          ],
+          "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz",
+          "logical_cpus": 8,
+          "host_memory_bytes": 67432239104,
+          "docker_server": "24.0.2",
+          "seed": 12345,
+          "timing_scope": "docker run wall time including container startup and output writing"
+        },
+        "profile_sha256": "36ab2ddc7c32c73a6adf9748055e3869e02efe62b254af13b29bcb47500e6ac5",
+        "extension_identity": {
+          "profile_sha256": "36ab2ddc7c32c73a6adf9748055e3869e02efe62b254af13b29bcb47500e6ac5",
+          "image_id": "sha256:42461ccb61c9bd7d24cd4af79201487419666e5db2c344e1027c806cb082fc4e",
+          "spec_sha256": "9f6351c726118d62907a1e75d88615323dc59faa753b5f133393f2a3d83c9f4b",
+          "seed": 12345,
+          "threads": 1,
+          "ram_gb": 8,
+          "repeats": 3,
+          "timeout": 1800,
+          "runner_sha256": "650f337926a1491d15d5beff5d2c666ff0d91d50846b4792edb6a5087ef86431",
+          "support_sha256": "9f08d503f00530ab65e50d06bee42b90b2c317e648803a7bb3c0fc24db2df60a",
+          "validation_sha256": "b1d44ed60446c4b44592dd6d44d56ad14f46c7a0943647ec46a2ec9a893c4310",
+          "build_context_sha256": "410e9dace4a217e08a40071b096d835363d5035bbb3e925c8b6f80fbc35634c3"
+        },
+        "dimension_semantics": {
+          "genes": "exported_genes",
+          "cells": "exported_columns"
+        }
+      },
+      "runtime_points": [
+        {
+          "genes": 120,
+          "cells": 20,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 8.753615,
+          "seconds_p90": 8.782346,
+          "output_bytes_p50": 3759178,
+          "output_bytes_p90": 3759178,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group",
+                "column"
+              ]
+            },
+            "benchmark_profile_id": "spatial_column_truth_size_grid",
+            "profile_id": "spatial_column_truth_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group",
+              "column"
+            ],
+            "truth_context_count": 3,
+            "extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 20,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 120,
+            "n_cells": 20,
+            "n_tfs": null,
+            "column_truth_requested": true,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 3,
+            "effective_extras_count": 3,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 20
+              },
+              {
+                "genes": 120,
+                "columns": 20
+              },
+              {
+                "genes": 120,
+                "columns": 20
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 120,
+          "cells": 40,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 11.62097,
+          "seconds_p90": 11.633702,
+          "output_bytes_p50": 9397606,
+          "output_bytes_p90": 9397606,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group",
+                "column"
+              ]
+            },
+            "benchmark_profile_id": "spatial_column_truth_size_grid",
+            "profile_id": "spatial_column_truth_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group",
+              "column"
+            ],
+            "truth_context_count": 3,
+            "extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 40,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 120,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": true,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 3,
+            "effective_extras_count": 3,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 40
+              },
+              {
+                "genes": 120,
+                "columns": 40
+              },
+              {
+                "genes": 120,
+                "columns": 40
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 120,
+          "cells": 80,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 16.17173,
+          "seconds_p90": 16.311798,
+          "output_bytes_p50": 30796178,
+          "output_bytes_p90": 30796178,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group",
+                "column"
+              ]
+            },
+            "benchmark_profile_id": "spatial_column_truth_size_grid",
+            "profile_id": "spatial_column_truth_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group",
+              "column"
+            ],
+            "truth_context_count": 3,
+            "extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 120,
+            "cells": 80,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 120,
+            "n_cells": 80,
+            "n_tfs": null,
+            "column_truth_requested": true,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 3,
+            "effective_extras_count": 3,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 120,
+                "columns": 80
+              },
+              {
+                "genes": 120,
+                "columns": 80
+              },
+              {
+                "genes": 120,
+                "columns": 80
+              }
+            ],
+            "validation_warnings": []
+          }
+        },
+        {
+          "genes": 170,
+          "cells": 40,
+          "groups": 4,
+          "population_count": 4,
+          "threads": 1,
+          "ram_gb": 8.0,
+          "status": "ok",
+          "repeats_total": 3,
+          "repeats_ok": 3,
+          "repeats_failed": 0,
+          "ok_rate": 1.0,
+          "failure_breakdown": {
+            "oom": 0,
+            "timeout": 0,
+            "error": 0
+          },
+          "seconds_p50": 12.015608,
+          "seconds_p90": 12.032656,
+          "output_bytes_p50": 9866223,
+          "output_bytes_p90": 9866223,
+          "peak_memory_mb_p50": null,
+          "peak_memory_mb_p90": null,
+          "feature_vector": {
+            "simulator_id": "scmultisim",
+            "data_axes": {
+              "measurement": "rna_expression",
+              "resolution": "spatial",
+              "column_kind": "spots",
+              "experimental_design": "differentiation"
+            },
+            "truth_requirements": {
+              "contexts": [
+                "global",
+                "group",
+                "column"
+              ]
+            },
+            "benchmark_profile_id": "spatial_column_truth_size_grid",
+            "profile_id": "spatial_column_truth_size_grid",
+            "expression_profile": "spatial",
+            "column_kind": "spots",
+            "experimental_design": "differentiation",
+            "truth_context_families": [
+              "global",
+              "group",
+              "column"
+            ],
+            "truth_context_count": 3,
+            "extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "requested_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "effective_extras": [
+              "groups",
+              "spatial_coordinates",
+              "tf_list"
+            ],
+            "genes": 170,
+            "cells": 40,
+            "groups": 4,
+            "population_count": 4,
+            "n_genes": 170,
+            "n_cells": 40,
+            "n_tfs": null,
+            "column_truth_requested": true,
+            "dynamic_grn_flags": {
+              "grn_source": "builtin_100",
+              "grn_effect": 1.0,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "dynamic_grn.num_changing_edges": 2.0,
+              "dynamic_grn.create_tf_edges": false,
+              "dynamic_grn.weight_mean": 0.0,
+              "dynamic_grn.weight_sd": 1.0
+            },
+            "requested_extras_count": 3,
+            "effective_extras_count": 3,
+            "required_inputs_count": 0,
+            "optional_inputs_count": 0,
+            "conditional_inputs_count": 0,
+            "threads": 1,
+            "ram_gb": 8.0,
+            "cost_relevant_values": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3",
+              "num_cifs": 20,
+              "speed_up": true,
+              "velocity.enabled": false,
+              "dynamic_grn.enabled": true,
+              "dynamic_grn.num_steps": 3,
+              "dynamic_grn.cell_per_step": 1,
+              "technical_noise.enabled": false,
+              "batch_effect.enabled": false,
+              "spatial.enabled": true,
+              "spatial.single_cell_gt": true,
+              "spatial.grid_size": 13,
+              "spatial.max_neighbors": 4,
+              "spatial.step_size": 0.5
+            },
+            "input_source_modes": {
+              "grn_source": "builtin_100",
+              "tree_preset": "phyla3"
+            },
+            "dimension_semantics": {
+              "genes": "exported_genes",
+              "cells": "exported_columns"
+            },
+            "observed_dimensions": [
+              {
+                "genes": 170,
+                "columns": 40
+              },
+              {
+                "genes": 170,
+                "columns": 40
+              },
+              {
+                "genes": 170,
+                "columns": 40
+              }
+            ],
+            "validation_warnings": []
+          }
+        }
+      ]
     }
   ]
 }

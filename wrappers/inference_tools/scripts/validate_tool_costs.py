@@ -16,6 +16,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+from itertools import combinations
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,7 +43,7 @@ if str(_BENCHMARK_ROOT) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from benchmark_support import (
-    build_context_fingerprint, profile_fingerprint, provenance_errors, release_profile_errors,
+    atomic_json, build_context_fingerprint, profile_fingerprint, provenance_errors, release_profile_errors,
 )
 
 DEFAULT_SCHEMA_PATH = CATALOG_ROOT / "schemas" / "toolcost.schema.json"
@@ -111,7 +112,98 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--require-provenance", action="store_true", help="Require current catalog image/spec provenance and at least three timing repeats.")
     parser.add_argument("--cost-profiles-dir", type=Path, default=DEFAULT_COST_PROFILES_DIR)
     parser.add_argument("--param-overrides-dir", type=Path, default=DEFAULT_PARAM_OVERRIDES_DIR)
+    parser.add_argument("--coverage-report", type=Path, help="Write measured versus planned dimension coverage separately from schema validity.")
+    parser.add_argument("--require-coverage", action="store_true", help="Require complete planned coverage across independently variable axes; honor the fixed feature count of supported pretrained models.")
     return parser.parse_args(argv)
+
+
+def coverage_for_profile(profile: dict, planned_sizes: list[dict] | None = None,
+                         *, fixed_columns: int | None = None) -> dict:
+    """Describe measured support without treating its bounding box as calibrated."""
+    config = profile.get('benchmark_config', {})
+    declared = config.get('planned_points')
+    expected = (
+        {(p['genes'], p['columns'], p['threads'], float(p['ram_gb'])) for p in declared}
+        if declared is not None else {
+            (s['genes'], s['columns'], t, float(r)) for s in config.get('sizes', [])
+            for t in config.get('threads_tested', []) for r in config.get('ram_gb_tested', [])
+        }
+    )
+    measured = {
+        (p['genes'], p['columns'], p['threads'], float(p['ram_gb']))
+        for p in profile.get('runtime_points', [])
+        if p.get('status') == 'ok' and p.get('repeats_ok', 0) >= max(3, config.get('repeats', 3))
+        and p.get('repeats_failed') == 0 and p.get('seconds_p50', 0) > 0
+    }
+    planned_geometry = {(s['genes'], s['columns']) for s in (planned_sizes or config.get('sizes', []))}
+    resources = sorted({(p[2], p[3]) for p in measured | expected})
+    resource_reports = []
+    for threads, ram in resources:
+        points = {(g, c) for g, c, t, r in measured if (t, r) == (threads, ram)}
+        genes, columns = sorted({g for g, _ in points}), sorted({c for _, c in points})
+        gene_slices = [{'columns': c, 'genes': sorted(g for g, col in points if col == c)} for c in columns]
+        column_slices = [{'genes': g, 'columns': sorted(c for gen, c in points if gen == g)} for g in genes]
+        rectangles = [
+            {'genes': [g1, g2], 'columns': [c1, c2]}
+            for g1, g2 in combinations(genes, 2) for c1, c2 in combinations(columns, 2)
+            if {(g1, c1), (g1, c2), (g2, c1), (g2, c2)} <= points
+        ]
+        independent = (max((len(s['genes']) for s in gene_slices), default=0) >= 3
+                       and max((len(s['columns']) for s in column_slices), default=0) >= 3)
+        constrained = (fixed_columns is not None and len(genes) >= 3
+                       and columns == [fixed_columns]
+                       and bool(planned_geometry)
+                       and all(c == fixed_columns for _, c in planned_geometry))
+        holes = sorted({(g, c) for g in genes for c in columns} - points)
+        missing = sorted(planned_geometry - points)
+        resource_reports.append({
+            'threads': threads, 'ram_gb': ram, 'measured_size_count': len(points),
+            'measured_sizes': [{'genes': g, 'columns': c} for g, c in sorted(points)],
+            'gene_levels': genes, 'column_levels': columns,
+            'genes_at_fixed_columns': gene_slices, 'columns_at_fixed_genes': column_slices,
+            'bounding_box': {'genes': [min(genes), max(genes)], 'columns': [min(columns), max(columns)]} if points else None,
+            'unmeasured_cross_combinations': [{'genes': g, 'columns': c} for g, c in holes],
+            'measured_rectangles': rectangles,
+            'planned_sizes_missing': [{'genes': g, 'columns': c} for g, c in missing],
+            'independent_axis_coverage': independent,
+            'fixed_columns_contract': fixed_columns,
+            'model_constrained_axis_coverage': constrained,
+            'calibration_adequate_for_planned_range': bool(
+                ((independent and rectangles) or constrained) and not missing),
+            'status': ('single_size' if len(points) == 1 else 'no_successful_measurements' if not points
+                       else 'model_constrained_axis' if constrained
+                       else 'independent_axes' if independent else 'confounded_or_sparse_axes'),
+        })
+    return {
+        'profile_id': profile.get('profile_id'),
+        'declared_matrix_complete': bool(expected and expected <= measured),
+        'declared_points': len(expected), 'successful_points': len(measured),
+        'declared_points_missing': [dict(zip(('genes', 'columns', 'threads', 'ram_gb'), p)) for p in sorted(expected - measured)],
+        'planned_sizes': [{'genes': g, 'columns': c} for g, c in sorted(planned_geometry)],
+        'resources': resource_reports,
+        'calibration_adequate_for_planned_range': bool(expected and expected <= measured and
+            any(r['calibration_adequate_for_planned_range'] for r in resource_reports)),
+        'interpretation': 'Measured rectangles and independent axis slices describe support. A bounding box alone is not evidence of interpolation accuracy; extrapolation and held-out prediction accuracy require separate validation.',
+    }
+
+
+def calibration_coverage(instance: dict, planned: dict[str, list[dict]] | None = None,
+                         *, tool_id: str | None = None) -> dict:
+    planned = planned or {}
+    profiles = []
+    for profile in instance.get('profiles', []):
+        params = profile.get('benchmark_config', {}).get('params_profile', {}).get('resolved_params', {})
+        # The bundled DigNet/PLaNet CSV checkpoints require 100 expression
+        # features. With metacell disabled, input columns cannot be varied.
+        # This exception is deliberately tied to known integrations and actual
+        # resolved parameters, never an arbitrary "complete" recipe annotation.
+        fixed_columns = 100 if tool_id in {'dignet', 'planet'} and params.get('metacell') is False else None
+        profiles.append(coverage_for_profile(profile, planned.get(profile.get('profile_id')),
+                                            fixed_columns=fixed_columns))
+    present = {p['profile_id'] for p in profiles}
+    missing = sorted(set(planned) - present)
+    return {'profiles': profiles, 'missing_profiles': missing,
+            'calibration_adequate_for_planned_range': bool(profiles and not missing and all(p['calibration_adequate_for_planned_range'] for p in profiles))}
 
 
 def discover_cost_files(catalog_tools_root: Path) -> list[tuple[str, Path]]:
@@ -431,6 +523,18 @@ def semantic_errors_for_cost(
                     )
 
         runtime_points = profile.get("runtime_points")
+        planned_points = benchmark_config.get("planned_points")
+        if isinstance(planned_points, list):
+            declared_sizes = {(s.get('genes'), s.get('columns')) for s in benchmark_config.get('sizes', []) if isinstance(s, dict)}
+            declared_threads = benchmark_config.get('threads_tested', [])
+            declared_ram = benchmark_config.get('ram_gb_tested', [])
+            for point_idx, point in enumerate(planned_points, start=1):
+                if not isinstance(point, dict):
+                    continue
+                if ((point.get('genes'), point.get('columns')) not in declared_sizes
+                        or point.get('threads') not in declared_threads
+                        or point.get('ram_gb') not in declared_ram):
+                    errors.append(f'{profile_prefix}.benchmark_config.planned_points[{point_idx}] must use dimensions and resources declared by the profile.')
         if threading is not None and isinstance(runtime_points, list):
             for point_idx, point in enumerate(runtime_points, start=1):
                 if not isinstance(point, dict):
@@ -786,6 +890,8 @@ def run(
     require_provenance: bool = False,
     cost_profiles_dir: Path = DEFAULT_COST_PROFILES_DIR,
     param_overrides_dir: Path = DEFAULT_PARAM_OVERRIDES_DIR,
+    coverage_report: Path | None = None,
+    require_coverage: bool = False,
 ) -> int:
     selected_tools = select_tools(discover_catalog_tool_dirs(catalog_tools_root), tool_filters)
     missing = [tool_id for tool_id, directory in selected_tools if not (directory / "cost.json").exists()]
@@ -799,6 +905,7 @@ def run(
     known_input_keys = discover_input_keys(catalog_tools_root.parent / "input_specs")
 
     counters = ValidationCounters()
+    coverage_results = {}
 
     for tool_id, cost_path in selected:
         print(f"[{tool_id}] validating {cost_path}")
@@ -812,6 +919,26 @@ def run(
                 known_input_keys=known_input_keys,
             )
             if isinstance(instance, dict):
+                if not schema_errors:
+                    planned = {}
+                    if coverage_report is not None or require_coverage:
+                        for profile in resolve_benchmark_profiles(
+                            tool_id=tool_id, catalog_tools_root=catalog_tools_root,
+                            cost_profiles_dir=cost_profiles_dir, param_overrides_dir=param_overrides_dir,
+                        ):
+                            if profile.sizes:
+                                planned[profile.profile_id] = [
+                                    dict(zip(('genes', 'columns'), map(int, size.lower().split('x'))))
+                                    for size in profile.sizes
+                                ]
+                        for recipe in load_representative_profiles(tool_id, cost_profiles_dir / 'representative'):
+                            planned[recipe['profile_id']] = recipe['benchmark_config']['sizes']
+                    coverage = calibration_coverage(instance, planned, tool_id=tool_id)
+                    coverage_results[tool_id] = coverage
+                    adequate = sum(p['calibration_adequate_for_planned_range'] for p in coverage['profiles'])
+                    print(f"  CALIBRATION COVERAGE: {adequate}/{len(coverage['profiles'])} profiles cover the planned compatible range (separate from prediction accuracy).")
+                    if require_coverage and not coverage['calibration_adequate_for_planned_range']:
+                        semantic_errors.append('Calibration coverage is incomplete: inspect --coverage-report for missing sizes, sparse/confounded axes and resource-specific ranges.')
                 context_hash = None
                 if require_provenance:
                     context_hash = build_context_fingerprint(root=_BENCHMARK_ROOT, kind="inference", identifier=tool_id)
@@ -834,6 +961,7 @@ def run(
                     build_context_sha256=context_hash,
                 ))
         except (RuntimeError, ValueError, OSError, KeyError) as exc:
+            coverage_results[tool_id] = {'error': str(exc), 'calibration_adequate_for_planned_range': False}
             counters = ValidationCounters(
                 valid=counters.valid, invalid=counters.invalid + 1
             )
@@ -843,6 +971,8 @@ def run(
             continue
 
         if not schema_errors and not semantic_errors:
+            if tool_id in coverage_results:
+                coverage_results[tool_id]['file_valid'] = True
             counters = ValidationCounters(
                 valid=counters.valid + 1, invalid=counters.invalid
             )
@@ -852,6 +982,8 @@ def run(
         counters = ValidationCounters(
             valid=counters.valid, invalid=counters.invalid + 1
         )
+        if tool_id in coverage_results:
+            coverage_results[tool_id]['file_valid'] = False
         print(
             "  INVALID: {count} issue(s)".format(
                 count=len(schema_errors) + len(semantic_errors)
@@ -869,6 +1001,13 @@ def run(
     print(
         f"Summary: checked={counters.checked} valid={counters.valid} invalid={counters.invalid}"
     )
+    if coverage_report is not None:
+        atomic_json(coverage_report, {
+            'schema_version': '1.0', 'file_validity': {'valid': counters.valid, 'invalid': counters.invalid},
+            'missing_cost_files': missing, 'tools': coverage_results,
+            'coverage_is_prediction_validation': False,
+            'note': 'Coverage is assessed within each profile and resource assignment; independent held-out measurements are still required to establish prediction accuracy.',
+        })
     return 0 if counters.invalid == 0 else 1
 
 
@@ -884,6 +1023,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             require_provenance=args.require_provenance,
             cost_profiles_dir=args.cost_profiles_dir,
             param_overrides_dir=args.param_overrides_dir,
+            coverage_report=args.coverage_report,
+            require_coverage=args.require_coverage,
         )
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

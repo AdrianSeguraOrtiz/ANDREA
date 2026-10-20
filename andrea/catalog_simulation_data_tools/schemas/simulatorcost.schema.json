@@ -113,6 +113,16 @@
         "dimension_profile": {
           "$ref": "#/$defs/dimension_profile"
         },
+        "dimension_semantics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["genes", "cells"],
+          "properties": {
+            "genes": {"enum": ["exported_genes", "requested_gene_budget"]},
+            "cells": {"enum": ["exported_columns", "requested_cell_budget"]}
+          },
+          "description": "Meaning of measured request coordinates. Dyngen may expand a TF budget and snapshot sampling may omit singleton branches, returning fewer cells. Actual dimensions and native sampling checks are recorded per repeat; requested budgets must not be reported as actual output sizes."
+        },
         "input_profile": {
           "$ref": "#/$defs/input_profile"
         },
@@ -215,6 +225,74 @@
           "type": "string",
           "pattern": "^[0-9a-f]{64}$",
           "description": "Fingerprint of the resolved current benchmark profile and fixture/timing recipe."
+        },
+        "extension_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "profile_sha256",
+            "spec_sha256",
+            "runner_sha256",
+            "support_sha256",
+            "validation_sha256",
+            "build_context_sha256",
+            "image_id",
+            "threads",
+            "ram_gb",
+            "repeats",
+            "timeout",
+            "seed"
+          ],
+          "properties": {
+            "profile_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "spec_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "runner_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "support_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "validation_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "build_context_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "image_id": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "threads": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "ram_gb": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "repeats": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeout": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "seed": {
+              "type": "integer"
+            }
+          },
+          "description": "Identity of the resumable measurement runner and its frozen execution settings; historical profiles may omit it."
         }
       }
     },

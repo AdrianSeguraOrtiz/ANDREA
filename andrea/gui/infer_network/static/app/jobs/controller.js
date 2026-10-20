@@ -17,7 +17,7 @@ import {
 } from "../runtime/view.js";
 import { setStepState, setActiveStep } from "../ui/steps.js";
 import { pushToast } from "../ui/toasts.js";
-import { refreshRunCardsValidation } from "../runs/cards.js?v=20260623b";
+import { refreshRunCardsValidation } from "../runs/cards.js?v=20261013b";
 
 const EXPLORER_FILES_MODE = "available_outputs";
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ANDREA GUI · infer-network</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260616a" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261013b" />
     <link rel="stylesheet" href="/static-common/app/bundles/styles.css?v=20260522a" />
     <link rel="stylesheet" href="/static-common/app/buttons/styles.css?v=20260612c" />
     <link rel="stylesheet" href="/static-common/app/params/styles.css?v=20260612a" />
@@ -631,32 +631,49 @@
             <div class="run-tool-name"></div>
             <input class="tool-id" type="hidden" />
           </div>
-          <label>
-            Execution Mode
-            <select class="execution-group-mode"></select>
-          </label>
-          <label>
-            Run ID
-            <input class="run-id" type="text" />
-          </label>
-          <label>
-            Threads
-            <input class="runtime-threads" type="number" min="1" step="1" placeholder="Tool default" />
-          </label>
-          <label>
-            RAM (GiB)
-            <input class="runtime-ram-gb" type="number" min="0.001" step="any" placeholder="Planner selected" />
-          </label>
-          <label>
-            CPU Affinity
-            <input class="runtime-cpuset" type="text" placeholder="e.g. 0,1,2,3" />
-          </label>
-          <label>
-            Timeout (seconds)
-            <input class="runtime-timeout" type="number" min="0.001" step="any" placeholder="No deadline" />
-          </label>
           <button class="remove-run icon-btn" type="button" aria-label="Remove run">×</button>
+          <div class="run-fields">
+            <label>
+              Execution Mode
+              <select class="execution-group-mode"></select>
+            </label>
+            <label>
+              Run ID
+              <input class="run-id" type="text" />
+            </label>
+          </div>
         </div>
+        <details class="run-resources">
+          <summary>
+            Advanced resources <span class="run-resources-optional">(optional)</span>
+            <span class="run-resources-summary">Automatic allocation</span>
+          </summary>
+          <div class="run-resources-body">
+            <p class="run-resources-help">Leave blank to let ANDREA choose CPU and RAM within the planning budget. Enter values only to constrain this run.</p>
+            <div class="run-resource-fields">
+              <label>
+                Threads
+                <input class="runtime-threads" type="number" min="1" step="1" placeholder="Automatic" />
+                <span class="run-field-help runtime-threads-help">Planner chooses; a value fixes the CPU allocation.</span>
+              </label>
+              <label>
+                RAM limit (GiB)
+                <input class="runtime-ram-gb" type="number" min="0.001" step="any" placeholder="Automatic" />
+                <span class="run-field-help">Planner chooses; a value fixes the memory limit.</span>
+              </label>
+              <label>
+                CPU affinity
+                <input class="runtime-cpuset" type="text" placeholder="Unrestricted" />
+                <span class="run-field-help">Allowed CPU IDs, e.g. 0,1,2,3. Requires an explicit Threads value; does not reserve CPUs.</span>
+              </label>
+              <label>
+                Task timeout (s)
+                <input class="runtime-timeout" type="number" min="0.001" step="any" placeholder="No time limit" />
+                <span class="run-field-help">Stops each physical task after this time. Separate from the planner's search time limit.</span>
+              </label>
+            </div>
+          </div>
+        </details>
         <div class="run-section-head">
           <strong>Parameters</strong>
           <div class="actions-inline">
@@ -711,6 +728,6 @@
       </article>
     </template>
 
-    <script type="module" src="/static/app/main.js?v=20260623b"></script>
+    <script type="module" src="/static/app/main.js?v=20261013b"></script>
   </body>
 </html>

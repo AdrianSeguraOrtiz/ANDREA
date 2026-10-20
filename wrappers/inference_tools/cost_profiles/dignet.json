@@ -1,5 +1,7 @@
 {
   "sizes": [
+    "50x100",
+    "80x100",
     "100x100"
   ],
   "gene_id_source": "human_breast_cancer_pathway",
@@ -25,6 +27,64 @@
         "ensemble": 3,
         "diffusion_timesteps": 25
       }
+    },
+    {
+      "id": "global_hsa05224_fast_diffusion_metacell100",
+      "execution": {
+        "mode": "global"
+      },
+      "param_overrides": {
+        "gene_set": "hsa05224",
+        "metacell": true,
+        "ensemble": 3,
+        "diffusion_timesteps": 25,
+        "metacell_count": 100
+      },
+      "sizes": [
+        "50x200",
+        "50x400",
+        "50x800",
+        "80x200",
+        "80x400",
+        "80x800",
+        "100x200",
+        "100x400",
+        "100x800"
+      ],
+      "calibration_design": {
+        "version": 2,
+        "kind": "independent_gene_column_grid",
+        "gene_levels": [
+          50,
+          80,
+          100
+        ],
+        "column_levels": [
+          200,
+          400,
+          800
+        ],
+        "scope": "Input-cell scaling includes metacell preprocessing to100 features. Separate parameter profile; never pooled with metacell=false timings.",
+        "validation_policy": "Reserve intermediate sizes for separate validation."
+      }
     }
-  ]
+  ],
+  "calibration_design": {
+    "version": 2,
+    "kind": "fixed_column_gene_grid",
+    "gene_levels": [
+      50,
+      80,
+      100
+    ],
+    "column_levels": [
+      100
+    ],
+    "fixed_axes": {
+      "columns": 100
+    },
+    "constraint_reason": "Selected pretrained checkpoint requires exactly100 expression features when metacell=false. Cell count is a compatibility constraint, not an unmeasured variable.",
+    "scope": "Gene-size calibration only within the direct-input pretrained contract; no extrapolation over input cell count.",
+    "validation_policy": "Independent intermediate gene counts may validate interpolation; other cell counts are incompatible with this profile."
+  }
 }

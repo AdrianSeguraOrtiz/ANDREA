@@ -698,14 +698,81 @@ textarea {
   gap: 0.55rem;
   min-width: 0;
   max-width: 100%;
-  width: min(1080px, calc(100vw - 2rem));
+  width: 100%;
 }
 
 .run-top {
   display: grid;
   gap: 0.42rem;
-  grid-template-columns: minmax(140px, 1fr) minmax(110px, 0.8fr) minmax(110px, 0.8fr) minmax(80px, 0.55fr) minmax(90px, 0.65fr) minmax(130px, 0.85fr) 1.85rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+}
+
+.run-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.6rem 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
   align-items: end;
+  min-width: 0;
+}
+
+.run-resources {
+  min-width: 0;
+  padding: 0.6rem;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.run-resources > summary {
+  cursor: pointer;
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.run-resources > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.run-resources-optional {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.run-resources-summary {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.run-resources-body {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.65rem;
+}
+
+.run-resources-help,
+.run-field-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.run-resource-fields {
+  display: grid;
+  gap: 0.8rem 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  align-items: start;
   min-width: 0;
 }
 
@@ -3139,9 +3206,6 @@ textarea {
   .runtime-pool-history,
   .runtime-pool-queued {
     max-height: none;
-  }
-  .run-top {
-    grid-template-columns: 1fr;
   }
   .extra-row {
     grid-template-columns: 1fr;

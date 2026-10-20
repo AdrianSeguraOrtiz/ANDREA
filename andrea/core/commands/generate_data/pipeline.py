@@ -372,6 +372,7 @@ def _simulator_run_payload(
         "inputs": request.inputs,
         "simulator_params": request.simulator_params,
         "runtime_resources": request.runtime_resources,
+        "ram_gb": request.ram_gb,
         "native_outputs": request.native_outputs,
         "requested_extras": request.requested_extras,
         "effective_extras": request.effective_extras,
@@ -592,15 +593,7 @@ def validate_generate_data_plan(plan_path: Path) -> dict[str, Any]:
                 "simulator_id": run.simulator_id,
                 "simulator_params": run.simulator_params,
                 "runtime_resources": run.runtime_resources,
-                "ram_gb": next(
-                    (
-                        raw_run.get("ram_gb")
-                        for raw_run in resolved.plan_payload.get("runs", [])
-                        if isinstance(raw_run, dict)
-                        and raw_run.get("run_id") == run.run_id
-                    ),
-                    None,
-                ),
+                "ram_gb": run.ram_gb,
                 "eta_seconds": next(
                     (
                         raw_run.get("eta_seconds")
@@ -1076,7 +1069,7 @@ def run_generate_data(
                 "replicate_seeds": run.replicate_seeds,
                 "resolved_simulator_params": run.simulator_params,
                 "runtime_resources": run.runtime_resources,
-                "ram_gb": raw_run.get("ram_gb"),
+                "ram_gb": run.ram_gb,
                 "eta_seconds": raw_run.get("eta_seconds"),
                 "eta_source": raw_run.get("eta_source"),
                 "eta_start_seconds": raw_run.get("eta_start_seconds"),

@@ -1,16 +1,19 @@
 # ANDREA release procedure
 
-## 0.2.0 source release
+## 0.2.1 source release
 
-The release contains the audited catalogs, corrected resource planning and
-seed-controlled DigNet, PLaNet and scGeneRAI integrations. Read
+The release contains expanded calibration, corrected simulation planning and
+resource enforcement, numerical integration fixes, seed-controlled SynTReN and
+responsive inference run cards. Read
 [changelog.md](changelog.md) for changes and migration notes. Registry image
-identities are frozen in [releases/0.2.0-images.json](releases/0.2.0-images.json).
+identities are frozen in [releases/0.2.1-images.json](releases/0.2.1-images.json).
 The Python package version and Docker integration versions are independent.
 
-The validated rc3 calibration is complete: all 32 `cost.json` files pass strict
-provenance checks and contain 155 profiles. The three new `1.1.1` images have
-fresh baseline and representative measurements. Other images remain `1.1.0`.
+All 32 `cost.json` files pass strict provenance checks and contain 186 profiles:
+86 inference profiles and 100 simulator profiles. Coverage follows the declared
+compatible configuration and dimension grids; it does not establish prediction
+accuracy for arbitrary inputs or hardware. Image tags vary by integration; use
+the image lock rather than inferring a container version from the package version.
 Do not rebuild an image merely to publish an already validated local image.
 Keep the original measurement versions, image IDs and receipt hashes intact.
 
@@ -26,6 +29,8 @@ Run from the source checkout with development and release dependencies installed
 make validate-generation-catalog
 make validate-inference-catalog
 make validate-release-costs
+python wrappers/inference_tools/scripts/validate_tool_costs.py \
+  --require --require-provenance --require-coverage
 make test-all
 ```
 
@@ -66,10 +71,13 @@ make benchmark-simulator-costs ARGS="--catalog-images --plan-only --repeats 3 --
 ```
 
 Baseline recipes include small fixtures and fast-training configurations. They
-are not evidence for arbitrary sizes or full-training defaults. Supplementary
-recipes under `wrappers/inference_tools/cost_profiles/representative/` cover
-29 profiles and 32 fixture sizes across all 24 tools. Supply their byte-pinned
-inputs to `benchmark_representative_costs.py` in a new results directory.
+are not evidence for arbitrary sizes or full-training defaults. Baseline and
+representative recipes cover independent size and resource axes where supported.
+Use the coverage workflow in
+[the inference calibration guide](../wrappers/inference_tools/cost_profiles/README.md)
+to prepare pinned inputs and resume compatible successful points. Simulator
+extensions and native dimension checks are documented in
+[the simulator calibration guide](../wrappers/simulation_data_tools/cost_profiles/README.md).
 
 Keep calibration observations separate from independent timing validation.
 Unmeasured transfers use `cost_profile_extrapolated` or a fallback, and neither
@@ -116,9 +124,9 @@ python -m twine upload --non-interactive --repository-url https://test.pypi.org/
 Check installation from TestPyPI in a clean environment before the final upload:
 
 ```sh
-make smoke-testpypi PACKAGE_VERSION=0.2.0
+make smoke-testpypi PACKAGE_VERSION=0.2.1
 python -m twine upload --non-interactive --repository-url https://upload.pypi.org/legacy/ dist/*
-make smoke-pypi PACKAGE_VERSION=0.2.0
+make smoke-pypi PACKAGE_VERSION=0.2.1
 ```
 
 Do not regenerate profiles or overwrite checked artifacts during publication.

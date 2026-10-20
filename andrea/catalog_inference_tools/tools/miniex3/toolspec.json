@@ -19,7 +19,7 @@
     "plant"
   ],
   "implementation_url": "https://github.com/VIB-PSB/MINI-EX/tree/3f220a68e8057fe4d33665e956a3f3bbe41ff4c8",
-  "docker_image": "adriansegura99/inference-tools_miniex3:1.1.0",
+  "docker_image": "adriansegura99/inference-tools_miniex3:1.1.1",
   "runtime_resources": {
     "threading": {
       "supported": true,

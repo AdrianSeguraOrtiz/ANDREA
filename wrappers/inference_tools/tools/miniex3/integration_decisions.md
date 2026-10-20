@@ -364,3 +364,20 @@ Schema changes made:
 Runtime verification for this audit is recorded below separately from the historical smoke results above. Source inspection does not establish coverage of all parameter combinations or published biological results.
 
 - Fresh runtime check (2026-09-29): built the current repository Dockerfile and wrapper, using cached dependency layers, as `andrea-audit/miniex3:audit-local`; image ID `sha256:189f85817bf964e00274a25eb0b25f409be0c4fd72309a1a216cd3db50cdc733`. The repository smoke runner passed `default` (24 rows), including network schema, progress and declared auxiliary-artifact validation. Runs used `--threads 1`, a 1-CPU/8-GiB container limit and a 120-second per-variant timeout. These fixture runs are functional checks, not cost calibration or biological validation.
+
+## Singleton clustermap repair (2026-10-13)
+
+- A 4,000-gene, 100-cell calibration fixture produced 31 valid regulons retained
+  in one group. The mandatory upstream `make_regulon_clustermap` process failed
+  because SciPy hierarchical clustering needs at least two observations on each
+  clustered axis. The inference results were not malformed.
+- `patch_singleton_clustermap.py` checks the pinned upstream source checksum and
+  enables row and column clustering independently only when that axis has more
+  than one observation. It still creates both required plots. Regulon content,
+  scoring, filtering, random seeds and method parameters are untouched; errors
+  from other pipeline steps remain failures.
+- With local image `adriansegura99/inference-tools_miniex3:1.1.1`, the exact
+  31-regulon input from the failed task produces its SVG and PNG. For a normal
+  40-regulon input spanning multiple groups, the original and patched scripts
+  produce byte-identical PNGs. These plot checks are regression tests, not
+  calibration observations.

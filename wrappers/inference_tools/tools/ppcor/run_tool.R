@@ -187,10 +187,42 @@ write_matrix_tsv <- function(matrix_value, path) {
   )
 }
 
+pcor_with_inverse_fallback <- function(x, method, pcor_function = ppcor::pcor) {
+  # Preserve upstream's successful path, including its determinant-based choice
+  # of inverse. A determinant can be nonzero while solve() correctly rejects an
+  # ill-conditioned matrix; in that case use the same Moore-Penrose inverse
+  # already used by ppcor for singular covariance matrices.
+  tryCatch(
+    pcor_function(x, method = method),
+    error = function(exc) {
+      message <- conditionMessage(exc)
+      if (!grepl("(computationally|exactly) singular", message)) {
+        stop(exc)
+      }
+      fallback_function <- pcor_function
+      inverse_environment <- new.env(parent = environment(pcor_function))
+      inverse_environment$solve <- function(a, ...) MASS::ginv(a)
+      environment(fallback_function) <- inverse_environment
+      warning(
+        paste0("Numerically singular covariance: retrying ppcor with its ",
+               "Moore-Penrose inverse; original failure: ", message),
+        call. = FALSE
+      )
+      result <- fallback_function(x, method = method)
+      result$numerical_inverse_fallback <- list(
+        method = "MASS::ginv",
+        tolerance = sqrt(.Machine$double.eps),
+        original_error = message
+      )
+      result
+    }
+  )
+}
+
 run_ppcor <- function(observations_by_genes, params, log_path) {
   upstream_warnings <- character()
   result <- withCallingHandlers(
-    ppcor::pcor(observations_by_genes, method = params$method),
+    pcor_with_inverse_fallback(observations_by_genes, method = params$method),
     warning = function(warning_condition) {
       upstream_warnings <<- c(upstream_warnings, conditionMessage(warning_condition))
       append_log(log_path, sprintf("upstream warning: %s", conditionMessage(warning_condition)))
@@ -257,7 +289,8 @@ build_network <- function(estimate_matrix) {
   out[, NETWORK_COLUMNS, drop = FALSE]
 }
 
-write_config <- function(path, params, expression_data, execution_mode, threads) {
+write_config <- function(path, params, expression_data, execution_mode, threads,
+                         numerical_inverse_fallback = NULL) {
   config <- list(
     tool = "ppcor",
     upstream_package = "ppcor",
@@ -269,7 +302,8 @@ write_config <- function(path, params, expression_data, execution_mode, threads)
     requested_threads = threads,
     upstream_threads = 1L,
     params = params,
-    score_rule = "score=abs(ppcor::pcor(...)$estimate); sign stores coefficient direction"
+    score_rule = "score=abs(ppcor::pcor(...)$estimate); sign stores coefficient direction",
+    numerical_inverse_fallback = numerical_inverse_fallback
   )
   writeLines(toJSON(config, auto_unbox = TRUE, null = "null", pretty = TRUE), path, useBytes = TRUE)
 }
@@ -333,7 +367,8 @@ main <- function() {
       params,
       expression_data,
       execution_mode,
-      threads
+      threads,
+      result$numerical_inverse_fallback
     )
 
     write_progress(progress_path, "running", 90L, "write_output", "Writing network.csv")

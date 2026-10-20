@@ -48,6 +48,9 @@ RUNTIME_ENTRYPOINTS = {
 class ToolTemplateConfig:
     runtime: str
     templates: list[str]
+    # None preserves integrations whose image/wrapper already limits threads
+    # before native libraries are loaded. Explicit policies run before Python/R.
+    native_threads: str | None = None
 
 
 ENTRYPOINT_TEMPLATE = """#!/usr/bin/env bash
@@ -130,7 +133,7 @@ command -v "${{RUNTIME_BIN}}" >/dev/null 2>&1 || die "'${{RUNTIME_BIN}}' is not 
 
 mkdir -p "${{OUTPUT_DIR}}"
 
-exec "${{RUNTIME_BIN}}" "${{APP_SCRIPT}}" \\
+{thread_environment}exec "${{RUNTIME_BIN}}" "${{APP_SCRIPT}}" \\
   --input "${{INPUT}}" \\
   --params "${{PARAMS}}" \\
   --extra "${{EXTRA}}" \\
@@ -280,6 +283,13 @@ def validate_template_map(
 
         runtime = cfg.get("runtime")
         bundles = cfg.get("bundles")
+        native_threads = cfg.get("native_threads")
+
+        if native_threads not in (None, "assigned", "single"):
+            raise RuntimeError(
+                f"template_map.json tool '{tool_id}' native_threads must be "
+                "'assigned' or 'single' when provided."
+            )
 
         if runtime not in RUNTIME_ENTRYPOINTS:
             raise RuntimeError(
@@ -307,6 +317,7 @@ def validate_template_map(
         normalized[tool_id] = ToolTemplateConfig(
             runtime=runtime,
             templates=deduped,
+            native_threads=native_threads,
         )
 
     return normalized
@@ -341,9 +352,27 @@ def select_tools(
     return filters
 
 
-def render_entrypoint(runtime: str) -> str:
+def render_entrypoint(runtime: str, native_threads: str | None = None) -> str:
+    if native_threads not in (None, "assigned", "single"):
+        raise ValueError(f"Unsupported native thread policy: {native_threads!r}")
     runtime_bin, app_script = RUNTIME_ENTRYPOINTS[runtime]
-    return ENTRYPOINT_TEMPLATE.format(runtime_bin=runtime_bin, app_script=app_script)
+    thread_environment = ""
+    if native_threads is not None:
+        value = '"${THREADS}"' if native_threads == "assigned" else '"1"'
+        thread_environment = (
+            "# Set native-library limits before the interpreter initializes BLAS/OpenMP.\n"
+            "# Worker-based methods use one native thread per worker.\n"
+            f"export OMP_NUM_THREADS={value}\n"
+            f"export OPENBLAS_NUM_THREADS={value}\n"
+            f"export MKL_NUM_THREADS={value}\n"
+            f"export NUMEXPR_NUM_THREADS={value}\n"
+            f"export BLIS_NUM_THREADS={value}\n"
+            f"export VECLIB_MAXIMUM_THREADS={value}\n\n"
+        )
+    return ENTRYPOINT_TEMPLATE.format(
+        runtime_bin=runtime_bin, app_script=app_script,
+        thread_environment=thread_environment,
+    )
 
 
 def runtime_script_name(runtime: str) -> str:
@@ -391,6 +420,7 @@ def prepare_context(
     runtime: str,
     template_relpaths: list[str],
     context_dir: Path,
+    native_threads: str | None = None,
 ) -> None:
     shutil.copytree(
         tool_source_dir,
@@ -406,7 +436,7 @@ def prepare_context(
         )
 
     entrypoint_path = context_dir / "run_tool.sh"
-    entrypoint_path.write_text(render_entrypoint(runtime), encoding="utf-8")
+    entrypoint_path.write_text(render_entrypoint(runtime, native_threads), encoding="utf-8")
     mode = entrypoint_path.stat().st_mode
     entrypoint_path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
@@ -499,6 +529,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 runtime=cfg.runtime,
                 template_relpaths=cfg.templates,
                 context_dir=context_dir,
+                native_threads=cfg.native_threads,
             )
             build_image(
                 tool_id=tool_id,

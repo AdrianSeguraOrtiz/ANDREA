@@ -18,6 +18,9 @@ RUN git clone https://github.com/califano-lab/ARACNe3.git /build/ARACNe3 \
 RUN grep -q '^#include <cstdint>$' /build/ARACNe3/include/ARACNe3/ARACNe3.hpp || \
     sed -i '/#include <vector>/a #include <cstdint>' /build/ARACNe3/include/ARACNe3/ARACNe3.hpp
 
+COPY patch_sparse_pruning.py /build/patch_sparse_pruning.py
+RUN python /build/patch_sparse_pruning.py /build/ARACNe3/src/app/subnet_operations.cpp
+
 RUN cmake -S /build/ARACNe3 -B /build/ARACNe3/build \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_CXX_STANDARD=17 \
