@@ -1,11 +1,11 @@
 # dynGENIE3 integration decisions
 
-Status: scientific audit, pinned Python preparation, temporal runtime adoption,
-wrapper candidate and core/CLI/GUI implementation are present. Source import,
-mocked contract tests, CLI preflight and a browser form check have evidence.
-Physical dynGENIE3 image execution, calibration, independent prediction
-validation and publication remain pending. No dynGENIE3 forest fit or runtime
-measurement is established by these preparatory checks.
+This record explains the scientific audit, parameter mapping and original
+preparation evidence. The [2026-10-21 recovery review](integration_review_20261021.md)
+records later image/interface tests, discovered defects and remaining gates.
+Current execution and acceptance status belong to the recovered campaign's
+state and hashed acceptance dossier; preparation checks alone certify no fit,
+calibration or publication.
 
 The [integration workflow](../../../../docs/INTEGRATION_WORKFLOW.md) and
 [bulk temporal audit](../../../../docs/bulk-time-series-contract.md) apply.
@@ -354,11 +354,16 @@ include VIM, alphas with gene IDs, quality status/results, resolved native
 forest parameters, source/patch/runtime metadata and models when requested.
 Small smoke values do not replace upstream defaults in the spec or cost plan.
 
-`verify_runtime.py` provides the future physical matrix: seven serial smoke
+`verify_runtime.py` provides the reviewed physical matrix: seven serial smoke
 variants (real defaults first; RF/ET, scalar/vector rates, K=1/all, optional TF
 and SS inputs, quality, saved models and empty export), then four fresh seed-17
-executions across one/two assigned workers and one seed-18 execution. Twelve
-executions have a combined 43,200-second timeout cap, not a measured ETA. The
+executions across one/two assigned workers and one seed-18 execution. The
+original twelve executions passed with image 1.0.0. Recovery adds five
+diagnostic cases: RF quality with TS only, ET quality with SS, zero decay with
+SS, one tree and one training observation. Eight-gene fixtures and five
+in-container saved-model probes reconstruct VIM, OOB correlation and native
+stability without refitting. Seventeen containers have a combined 61,200-second
+timeout cap, including the capped probes, not a measured ETA. The
 script accepts only a full immutable image ID and records each run's input/
 output hashes, elapsed time, resource request, observed target-worker native
 pools and effective CPU/memory cgroup limits (v2, with a v1 fallback). Resource
@@ -366,8 +371,9 @@ acceptance requires the assigned CPU quota, 4 GiB memory limit and one native
 thread per pool. Exact native VIM hashes are compared within/across worker allocations;
 the changed seed must change VIM for the chosen stochastic fixture. SIGINT,
 SIGTERM and timeouts stop only the verifier's named container and retain failed
-status. `--plan-only` and subprocess-mocked tests have run; the physical matrix
-has not. The older all-zero-image plan-only audit is a planning marker, never
+status. The expanded matrix requires fresh physical execution of corrected
+image 1.0.1; it is not certified by the old twelve-run receipt.
+The older all-zero-image plan-only audit is a planning marker, never
 an image receipt.
 
 The autonomous supervisor freezes these sources before waiting. Costs are
@@ -375,7 +381,7 @@ measured in a private staging catalog, checked for the declared temporal/resourc
 domain, then validated on reserved inputs using frozen calls to the actual
 ANDREA planner. It registers a cost only after those separate gates pass. A
 later real core/CLI execution and GUI/catalog checks feed the final hashed
-dossier at `release-logs/dyngenie3/campaign/acceptance/integration.json`.
+dossier at `release-logs/dyngenie3/campaign-recovery-20261021/acceptance/integration.json`.
 The source `integration.json` remains the preparation snapshot. Neither a
 successful helper exit without its matching receipts nor all planned timings
 alone establishes acceptance. The complete allocation and unknown ETA are
@@ -390,7 +396,7 @@ tree comparison is quadratic in ntrees. Reserve independent holdouts before
 fitting, at least three successful repeats per new point, and retain failures.
 No runtime estimate or comparative speed claim is established by this audit.
 
-| State | Evidence at this source-audit stage |
+| State | Original preparation-stage evidence (see the dated recovery review for later evidence) |
 | --- | --- |
 | Scientific identity and Python selection | Reviewed with the evidence above |
 | Parameter / entrypoint inventory | Complete pinned Python source inventory, mapped design above |

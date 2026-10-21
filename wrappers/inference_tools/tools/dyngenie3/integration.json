@@ -6,12 +6,12 @@
     {
       "role": "spec",
       "path": "toolspec.draft.json",
-      "sha256": "24433977cbe8cb7a6e77a5a1afe500586f6b340af340e7b0bbed377034c7554b"
+      "sha256": "3be80dfd77a0898541b74f4b8a931652b69f0a993fa423e8c7b30146873451e3"
     },
     {
       "role": "wrapper",
       "path": "run_tool.py",
-      "sha256": "d0f8ea69e566d75cbbd76fdc35efef5c7dbad9824a584d2f181e4741f02f1c1e"
+      "sha256": "e8d5369b7de365fa86a975750e876737e624ece55a743974acac86227ba171b9"
     },
     {
       "role": "dockerfile",
@@ -26,7 +26,7 @@
     {
       "role": "upstream_patch",
       "path": "patch_upstream.py",
-      "sha256": "c9f09e37be00a51f62a1fb0aa4fc378308fe1fc261654d412095f010c1a5bb67"
+      "sha256": "a4da6e6b56e39507ee8904a3f4a7e289ced534f0b61d78bf995ff1d7cbca1eea"
     },
     {
       "role": "runtime_template_map",
@@ -41,12 +41,12 @@
     {
       "role": "scientific_decisions",
       "path": "integration_decisions.md",
-      "sha256": "0485efe6f576242c8ed6e94adc06be23475385837952347d443f8ce09ac2e647"
+      "sha256": "1ea6ff10afb135b195d7824d97f04c5c178a37b94063e118740e9c54f6927280"
     },
     {
       "role": "runtime_verifier",
       "path": "verify_runtime.py",
-      "sha256": "8a1576aa23290da138fadba1e63fc02fbd9b01eb470564af2ea08621a1f2959e"
+      "sha256": "e47b1843d3842ee4462ada55cd27c8886dd9bfc3dc534ad43fb5e754fba284ec"
     },
     {
       "role": "smoke_config",
@@ -56,7 +56,7 @@
     {
       "role": "calibration_plan",
       "path": "cost_plan.json",
-      "sha256": "fda95bdeb1c0b7804a5940ba5291baed92da7ad9af8aedc635a5eef99685ca05"
+      "sha256": "13ab9530ff5e981094669fd97d15cbfab77898b87d8d5f951a07b03948b1b9d4"
     },
     {
       "role": "fixture_expression_tsv",
@@ -111,12 +111,12 @@
     {
       "role": "continuation_supervisor",
       "path": "continue_integration.py",
-      "sha256": "19ed9f3d78e6d798a76b20f642d0b30b2edc56c3ab8d97b41753b737fd51b6af"
+      "sha256": "07a00274a2d117e25912f2f5e9a652bdd1aeb4872a5be0afbf4af3faf7dc15fd"
     },
     {
       "role": "acceptance_finalizer",
       "path": "finalize_evidence.py",
-      "sha256": "5d4272d0f0aac54c1c3904e29267c5ca17d640a2396da96d82b33925ebd43809"
+      "sha256": "29b99bd00c8bb860e23bd5a01a7dc01899d177b264cebd02341323a7e0afe7ee"
     },
     {
       "role": "runtime_prediction_verifier",
@@ -131,12 +131,57 @@
     {
       "role": "prediction_evidence_adapter",
       "path": "../../scripts/shared/prediction_evidence.py",
-      "sha256": "9054e91d3460ba57c22eae7e56f3d08b82bfbdc6d99d3b57eeb61972f7f1ac73"
+      "sha256": "404fe5aed08fe943b3a5b5cd80922996d043a0f8e8f5b4299b56d775a3a17e65"
     },
     {
       "role": "benchmark_compatibility_review",
       "path": "../../scripts/shared/recipe_compatibility.json",
       "sha256": "598d1104120d44c031c935482f94f8a162a8a1c126f60c40fd7c75d5c243a516"
+    },
+    {
+      "role": "recovery_review",
+      "path": "integration_review_20261021.md",
+      "sha256": "96d4da78a5a6263c639de787fb6ea4328028a066b832789706c9a5ef5af0b264"
+    },
+    {
+      "role": "fixture_quality_README",
+      "path": "../../tests/fixtures/dyngenie3/quality/README.md",
+      "sha256": "a54a994de74a6442792b4a8aa85d23072c54f5eb7280e9146fb64160fe756afe"
+    },
+    {
+      "role": "fixture_quality_expression",
+      "path": "../../tests/fixtures/dyngenie3/quality/expression.tsv",
+      "sha256": "f3f118f4737e20cfed12f370c49c7a09c8688d861a3252f8589cfd5fb8cd0fa0"
+    },
+    {
+      "role": "fixture_quality_replicates",
+      "path": "../../tests/fixtures/dyngenie3/quality/replicates.tsv",
+      "sha256": "45f3ffa09c0006c83be10a73eee049f99f6a3a9e30a4aa3523597b765d2f3088"
+    },
+    {
+      "role": "fixture_quality_steady_state_expression",
+      "path": "../../tests/fixtures/dyngenie3/quality/steady_state_expression.tsv",
+      "sha256": "afa0fa8579bc766169aeb885d7f672e1928fda3b6e099d5aba0961261c15ac38"
+    },
+    {
+      "role": "fixture_quality_timepoints",
+      "path": "../../tests/fixtures/dyngenie3/quality/timepoints.tsv",
+      "sha256": "660ffdd28fe73026112d5a9faffc65c9a8d7227eec4c9d4e1da490d641fdac46"
+    },
+    {
+      "role": "fixture_quality_one_sample_expression",
+      "path": "../../tests/fixtures/dyngenie3/quality_one_sample/expression.tsv",
+      "sha256": "099dec2cd0f9929996eb2bd744795cc854cfb690b74f7476feeb85843c7c6201"
+    },
+    {
+      "role": "fixture_quality_one_sample_replicates",
+      "path": "../../tests/fixtures/dyngenie3/quality_one_sample/replicates.tsv",
+      "sha256": "9343e92566ca6096f75dd5def992fbc0a92b18b7fb3b071bffa049046ed785fe"
+    },
+    {
+      "role": "fixture_quality_one_sample_timepoints",
+      "path": "../../tests/fixtures/dyngenie3/quality_one_sample/timepoints.tsv",
+      "sha256": "b0b86bd53af136d58a0611e30d99bcb4c47338cf7a3f9d6e57ecba26cdb9b8ab"
     }
   ],
   "evidence": [
@@ -145,7 +190,7 @@
       "role": "paper",
       "path": "papers/article.txt",
       "sha256": "04567262b74bff36b28f35a64c4f381d8363fe796db7d4b98addd2a290e2262e",
-      "citation": "Vân Anh Huynh-Thu and Pierre Geurts (2018), Scientific Reports 8:3384, doi:10.1038/s41598-018-21715-0; TXT:98-277,294-324,464-490,654-684",
+      "citation": "V\u00e2n Anh Huynh-Thu and Pierre Geurts (2018), Scientific Reports 8:3384, doi:10.1038/s41598-018-21715-0; TXT:98-277,294-324,464-490,654-684",
       "limitations": "Extracted formula layout/figures are incomplete and supplementary information was not supplied; no supplement-dependent capability is asserted."
     },
     {
@@ -162,7 +207,7 @@
       "path": "repo/dynGENIE3/dynGENIE3_python/dynGENIE3.py",
       "sha256": "8108e4e8d15809e88ca1eb3c51dd2b260303b00b108e20822f0af84131855e8f",
       "citation": "https://raw.githubusercontent.com/vahuynh/dynGENIE3/27eddd960d50e82791a8e0e5f8fcf6d679fe3eac/dynGENIE3_python/dynGENIE3.py; functions at lines 9,24,164,216,495,500,667",
-      "limitations": "Read-only clone matches the independently retrieved public bytes; compatibility and deterministic seed patches apply to the installed copy. No dynGENIE3 physical fit has been accepted."
+      "limitations": "Read-only clone matches independently retrieved public bytes. Compatibility and deterministic seed patches apply only to the installed copy. Acceptance of version 1.0.1 requires its own physical receipt."
     },
     {
       "id": "U3",
@@ -295,7 +340,7 @@
       "argument": "TS_data=series_data",
       "disposition": "excluded",
       "reason": "Native mandatory input; not a JSON scientific parameter",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Genes, points per series and independent series",
       "evidence": [
         "U2"
@@ -313,7 +358,7 @@
       "argument": "time_points=time_points",
       "disposition": "excluded",
       "reason": "Native mandatory temporal input; pseudotime and invented adjacency are excluded",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Actual derivative intervals and samples per series",
       "evidence": [
         "U2"
@@ -331,7 +376,7 @@
       "argument": "SS_data=ss_data",
       "disposition": "excluded",
       "reason": "Native mixed TS/SS branch; no SS-only inference claim",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Additional training samples",
       "evidence": [
         "U2"
@@ -349,7 +394,7 @@
       "argument": "gene_names=genes",
       "disposition": "excluded",
       "reason": "Required ANDREA identity mapping overrides only the anonymous-output convenience default",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Negligible",
       "evidence": [
         "U2"
@@ -367,7 +412,7 @@
       "argument": "regulators=regulators",
       "disposition": "excluded",
       "reason": "Native regulator input via optional auto-delivered standardized TF list",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Candidate feature count",
       "evidence": [
         "U2"
@@ -385,7 +430,7 @@
       "argument": "alpha=params[alpha]",
       "disposition": "exposed",
       "reason": "Native scientific parameter, including data-dependent default and constant-gene zero behavior",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Can change models/quality; data preparation cost",
       "evidence": [
         "U2",
@@ -404,7 +449,7 @@
       "argument": "tree_method=params[tree_method]",
       "disposition": "exposed",
       "reason": "Native forest family",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "RF and ET separate physical modes",
       "evidence": [
         "U2"
@@ -422,7 +467,7 @@
       "argument": "K=params[K]",
       "disposition": "exposed",
       "reason": "Native split feature control; K=1 distinguished from float all-feature fraction",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Split search and candidate count",
       "evidence": [
         "U2"
@@ -440,7 +485,7 @@
       "argument": "ntrees=params[ntrees]",
       "disposition": "exposed",
       "reason": "Native ensemble size",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Fit growth; quality pairwise comparisons O(ntrees^2)",
       "evidence": [
         "U2"
@@ -458,7 +503,7 @@
       "argument": "compute_quality_scores=params[compute_quality_scores]",
       "disposition": "exposed",
       "reason": "Native exploratory diagnostics, not biological accuracy or automatic alpha selection",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "OOB and quadratic tree-pair stability work",
       "evidence": [
         "U2",
@@ -477,7 +522,7 @@
       "argument": "save_models=params[save_models]",
       "disposition": "exposed",
       "reason": "Native retained fitted target models",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Retained model RAM/output volume",
       "evidence": [
         "U2"
@@ -495,7 +540,7 @@
       "argument": "nthreads=min(threads,len(genes))",
       "disposition": "resource",
       "reason": "CPU workers are runtime controls, not scientific params; actual pools are separately observed",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Separate measured resource strata",
       "evidence": [
         "U2"
@@ -513,7 +558,7 @@
       "argument": "export_network(...,params[maxcount])",
       "disposition": "exposed",
       "reason": "Expose native export count while avoiding score rounding and randomized zero-edge output",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Changes export size only, does not reduce fit cost",
       "evidence": [
         "U2"
@@ -531,7 +576,7 @@
       "argument": "random_state=params[seed]",
       "disposition": "exposed",
       "reason": "Documented reproducibility extension, not a fabricated upstream default",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "No claimed runtime savings or hardware-independent determinism",
       "evidence": [
         "U2"
@@ -549,7 +594,7 @@
       "argument": "compute_feature_importances(estimator=derived/native value)",
       "disposition": "excluded",
       "reason": "Trained sklearn estimator object is internal to main fitting, not a serializable external inference input",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Native importance extraction",
       "evidence": [
         "U2"
@@ -567,7 +612,7 @@
       "argument": "get_link_list(VIM=derived/native value)",
       "disposition": "excluded",
       "reason": "No independent external utility job; VIM export and original identifiers are handled by the wrapper; output paths are runtime-owned",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Export overhead only",
       "evidence": [
         "U2"
@@ -585,7 +630,7 @@
       "argument": "get_link_list(gene_names=derived/native value)",
       "disposition": "excluded",
       "reason": "No independent external utility job; VIM export and original identifiers are handled by the wrapper; output paths are runtime-owned",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Export overhead only",
       "evidence": [
         "U2"
@@ -603,7 +648,7 @@
       "argument": "get_link_list(regulators=derived/native value)",
       "disposition": "excluded",
       "reason": "No independent external utility job; VIM export and original identifiers are handled by the wrapper; output paths are runtime-owned",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Export overhead only",
       "evidence": [
         "U2"
@@ -621,7 +666,7 @@
       "argument": "get_link_list(file_name=derived/native value)",
       "disposition": "excluded",
       "reason": "No independent external utility job; VIM export and original identifiers are handled by the wrapper; output paths are runtime-owned",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Export overhead only",
       "evidence": [
         "U2"
@@ -639,7 +684,7 @@
       "argument": "estimate_degradation_rates(TS_data=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal exact data-derived alpha branch; separate estimation-only jobs do not output an inferred network",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Native rate estimation",
       "evidence": [
         "U2"
@@ -657,7 +702,7 @@
       "argument": "estimate_degradation_rates(time_points=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal exact data-derived alpha branch; separate estimation-only jobs do not output an inferred network",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Native rate estimation",
       "evidence": [
         "U2"
@@ -675,7 +720,7 @@
       "argument": "wr_dynGENIE3_single(args=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal positional process-dispatch adapter, not an independent scientific mode",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Process dispatch overhead",
       "evidence": [
         "U2"
@@ -693,7 +738,7 @@
       "argument": "dynGENIE3_single(TS_data=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -711,7 +756,7 @@
       "argument": "dynGENIE3_single(time_points=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -729,7 +774,7 @@
       "argument": "dynGENIE3_single(SS_data=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -747,7 +792,7 @@
       "argument": "dynGENIE3_single(output_idx=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -765,7 +810,7 @@
       "argument": "dynGENIE3_single(alpha=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -783,7 +828,7 @@
       "argument": "dynGENIE3_single(input_idx=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -801,7 +846,7 @@
       "argument": "dynGENIE3_single(tree_method=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -819,7 +864,7 @@
       "argument": "dynGENIE3_single(K=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -837,7 +882,7 @@
       "argument": "dynGENIE3_single(ntrees=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -855,7 +900,7 @@
       "argument": "dynGENIE3_single(compute_quality_scores=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -873,7 +918,7 @@
       "argument": "dynGENIE3_single(save_models=derived/native value)",
       "disposition": "excluded",
       "reason": "Internal one-target primitive; duplicate public controls are derived from main API rather than exposed twice",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Same main inference parameter; no additional physical mode",
       "evidence": [
         "U2"
@@ -891,7 +936,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -909,7 +954,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -927,7 +972,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -945,7 +990,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -963,7 +1008,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -981,7 +1026,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -999,7 +1044,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -1017,7 +1062,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -1035,7 +1080,7 @@
       "argument": "Not called by network inference",
       "disposition": "excluded",
       "reason": "Excluded expression-prediction workflow: requires WT/model/intervention/grid inputs and returns expression, outside the whole-network inference contract",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Excluded from inference calibration",
       "evidence": [
         "U2"
@@ -1053,7 +1098,7 @@
       "argument": "RandomForestRegressor/ExtraTreesRegressor native constructor",
       "disposition": "excluded",
       "reason": "Backend options are not public dynGENIE3 parameters; resolved configuration is retained for audit",
-      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; future verify_runtime.py physical image matrix (not yet executed)",
+      "test": "tests/wrappers/inference_tools/test_dyngenie3_wrapper.py; verify_runtime.py 17-case physical acceptance; live results are retained separately in the recovery campaign",
       "cost": "Backend defaults and dependency pin are part of runtime identity",
       "evidence": [
         "U2"
@@ -1177,12 +1222,12 @@
     }
   ],
   "limitations": [
-    "Candidate draft is not activated in the inference catalog; no immutable built dynGENIE3 image or physical forest-fit receipt is available.",
-    "Pinned runtime imports and mocked contract tests passed; CLI preflight/frozen plan and browser form evidence exist but are not end-to-end inference evidence.",
+    "This is the frozen preparation dossier for corrected image 1.0.1. The first local image 1.0.0 passed 12 physical cases, then failed catalog rendering before calibration; its evidence is retained. Current functional/cost/interface acceptance is determined by the separate recovery campaign dossier.",
+    "Source tests and real CLI/browser reviews are retained separately. Source/import/mocked/preflight evidence cannot substitute for physical acceptance of the exact image.",
     "Only observed longitudinal bulk series with explicit canonical temporal declaration are supported; no implicit technical averaging, independent-sample pairing, pseudotime or group/column-native network claims.",
     "Native output is a directed unsigned target-normalized ranking; quality diagnostics are exploratory and undefined values remain null, not biological accuracy or causal proof.",
     "Software license is not explicitly stated for the Python source; paper CC-BY does not establish a software redistribution license. R/MATLAB C code has a distribution-permission notice.",
-    "No fitted cost.json, completed cost coverage, independent held-out accuracy result or published image exists. Calibration/prediction plans remain unmeasured.",
+    "Calibration and held-out runtime prediction measurements are separate acceptance gates. This preparation dossier does not claim they passed. No image or package publication is performed.",
     "An accidental approximately six-second dyngen simulation during the broader session was stopped by targeting only the session-owned PIDs/container, reported to the user, and excluded from all dynGENIE3 acceptance/calibration evidence.",
     "External experiment completion is required before every future Docker execution; verifier retains failures/timeouts/interruptions and never treats plan-only placeholder image IDs as executed images."
   ]

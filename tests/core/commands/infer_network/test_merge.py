@@ -12,6 +12,67 @@ from andrea.core.commands.infer_network.commons.shared import ToolExecutionResul
 
 
 class InferNetworkMergeTests(unittest.TestCase):
+    def test_raw_merge_preserves_full_float_scores_and_normalization_policy(
+        self,
+    ) -> None:
+        scores = ["0.12345678912345678", "0.1234567891234568", "0.8765432108765432"]
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            network_path = run_dir / "tools/precise/io/out/network.csv"
+            self._write_network(
+                network_path,
+                [
+                    {
+                        "source": f"G{index}",
+                        "target": "target",
+                        "score": score,
+                        "sign": "?",
+                        "evidence": "association",
+                        "context": "global",
+                    }
+                    for index, score in enumerate(scores)
+                ],
+            )
+            original_bytes = network_path.read_bytes()
+            result = ToolExecutionResult(
+                tool_id="precise",
+                status="completed",
+                exit_code=0,
+                measurement={"wall_time_seconds": 1.0},
+                network_path=str(network_path),
+                progress_path=None,
+                logs_path=None,
+                error=None,
+            )
+            updated, _, merged_raw, merged_normalized = _merge_network_outputs(
+                run_dir=run_dir,
+                execution_results={"precise": result},
+                output_capabilities={"precise": {"sign": "none"}},
+                allowed_contexts={"precise": {"global"}},
+                warnings=[],
+            )
+            raw = self._read_network(merged_raw)
+            normalized = self._read_network(merged_normalized)
+            per_tool_normalized = self._read_network(
+                network_path.with_name("network.normalized.csv")
+            )
+            self.assertEqual(updated["precise"].status, "completed")
+            self.assertEqual(network_path.read_bytes(), original_bytes)
+        expected = [float(score) for score in scores]
+        self.assertNotEqual(expected[0], expected[1])
+        self.assertEqual([float(row["score"]) for row in raw], expected)
+        minimum, maximum = min(expected), max(expected)
+        normalized_expected = [
+            (score - minimum) / (maximum - minimum) for score in expected
+        ]
+        self.assertEqual(
+            [float(row["score"]) for row in normalized], normalized_expected
+        )
+        self.assertEqual(
+            [float(row["score"]) for row in per_tool_normalized], normalized_expected
+        )
+        self.assertEqual([row["score"] for row in normalized][::2], ["0", "1"])
+
     def test_normalizes_nonnegative_scores_preserving_sign_column(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
@@ -163,9 +224,9 @@ class InferNetworkMergeTests(unittest.TestCase):
             raw_content = (run_dir / "merged_network_raw.csv").read_text(
                 encoding="utf-8"
             )
-            normalized_content = (
-                run_dir / "merged_network_normalized.csv"
-            ).read_text(encoding="utf-8")
+            normalized_content = (run_dir / "merged_network_normalized.csv").read_text(
+                encoding="utf-8"
+            )
 
         self.assertEqual(per_tool_rows, {"empty_tool": 0})
         self.assertEqual(

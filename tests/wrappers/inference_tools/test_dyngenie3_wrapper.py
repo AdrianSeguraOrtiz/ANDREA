@@ -175,6 +175,73 @@ def test_steady_state_aligns_by_gene_id_and_keeps_distinct_sample_axis(inputs):
         wrapper.load_steady_state(FIXTURES / "steady_state_expression.tsv", genes[:-1])
 
 
+def test_data_derived_decay_rejects_extrema_overflow_but_preserves_constant_and_local_extrema():
+    times = [np.asarray([-3e38, -1e38, 1e38, 3e38])]
+    # Every adjacent native interval is finite, while the varying gene's first
+    # and last extrema are separated by an overflowing float32 subtraction.
+    with np.errstate(over="ignore"):
+        assert np.isfinite(np.diff(times[0].astype(np.float32))).all()
+    with pytest.raises(ValueError, match="degradation extrema.*float32"):
+        wrapper.validate_decay_time_separations(
+            [np.asarray([[4, 0], [3, 0], [2, 0], [1, 0]], dtype=float)], times
+        )
+    wrapper.validate_decay_time_separations([np.ones((4, 2))], times)
+    # A wide total span is permitted when the actual per-gene extrema are local.
+    wrapper.validate_decay_time_separations(
+        [np.asarray([[3], [4], [3], [3]], dtype=float)], times
+    )
+
+
+@pytest.mark.parametrize("alpha", ["from_data", 0.2, [0.1, 0.2]])
+def test_extrema_overflow_guard_applies_only_to_data_derived_alpha(alpha, tmp_path):
+    extra = tmp_path / "extra"
+    extra.mkdir()
+    (tmp_path / "expression.tsv").write_text(
+        "gene\tc0\tc1\tc2\tc3\nA\t4\t3\t2\t1\nB\t0\t0\t0\t0\n"
+    )
+    (extra / "timepoints.tsv").write_text(
+        "column\ttimepoint\ttime_unit\tseries_id\tcondition\tobservation_id\n"
+        + "".join(
+            f"c{i}\t{t}\thour\ts0\tcontrol\to{i}\n"
+            for i, t in enumerate([-3e38, -1e38, 1e38, 3e38])
+        )
+    )
+    (extra / "replicates.tsv").write_text(
+        "column\treplicate\treplicate_kind\ttechnical_replicate\n"
+        + "".join(f"c{i}\ts0\tbiological\ttech1\n" for i in range(4))
+    )
+    (tmp_path / "params.json").write_text(json.dumps({"alpha": alpha}))
+    (tmp_path / "execution.json").write_text(
+        json.dumps(
+            {
+                "mode": "global",
+                "temporal": json.loads((FIXTURES / "temporal.json").read_text()),
+            }
+        )
+    )
+    calls = []
+
+    def infer(**kwargs):
+        calls.append(kwargs)
+        return np.asarray([[0.0, 1.0], [1.0, 0.0]]), np.asarray([0.1, 0.2]), [], [], []
+
+    arguments = dict(
+        input_path=tmp_path / "expression.tsv",
+        params_path=tmp_path / "params.json",
+        extra_dir=extra,
+        output_dir=tmp_path / "out",
+        threads=1,
+        upstream=SimpleNamespace(dynGENIE3=infer),
+    )
+    if alpha == "from_data":
+        with pytest.raises(ValueError, match="degradation extrema.*float32"):
+            wrapper.run(**arguments)
+        assert not calls
+    else:
+        wrapper.run(**arguments)
+        assert calls[0]["alpha"] == alpha
+
+
 def test_complete_wrapper_forwards_public_api_and_preserves_raw_scores(inputs):
     root, extra, temporal = inputs
     for name in ("steady_state_expression.tsv", "tf_list.txt"):
@@ -421,7 +488,7 @@ def test_exact_public_source_patch_ast_and_seed_forwarding_when_evidence_is_avai
     assert seed_namespace["_andrea_target_seed"](19, 0) != seed_namespace[
         "_andrea_target_seed"
     ](19, 1)
-    quality_namespace = {"pearsonr": lambda a, b: (0.5, 0.1)}
+    quality_namespace = {"np": np, "pearsonr": lambda a, b: (0.5, 0.1)}
     exec(
         compile(
             ast.Module(body=[functions["_andrea_pearsonr"]], type_ignores=[]),
@@ -432,3 +499,7 @@ def test_exact_public_source_patch_ast_and_seed_forwarding_when_evidence_is_avai
     )
     assert np.isnan(quality_namespace["_andrea_pearsonr"]([1.0], [2.0])[0])
     assert quality_namespace["_andrea_pearsonr"]([1, 2], [2, 3]) == (0.5, 0.1)
+    assert np.isnan(
+        quality_namespace["_andrea_pearsonr"]([float("inf"), 1, 2], [1, 2, 3])[0]
+    )
+    assert np.isnan(quality_namespace["_andrea_pearsonr"]([1, 2], [float("nan"), 3])[0])

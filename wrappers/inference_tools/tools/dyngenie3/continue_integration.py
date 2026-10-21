@@ -30,6 +30,20 @@ ROOT = HERE.parents[3]
 COMPLETED = {"completed", "complete", "succeeded"}
 POLL_SECONDS = 30
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
+# These files determine the installed application and its generated entrypoint.
+# Documentation/verification repairs may reuse an image only when every one of
+# these subjects and the scientific ToolSpec remain exactly equal.
+IMAGE_SUBJECTS = (
+    "wrappers/inference_tools/tools/dyngenie3/Dockerfile",
+    "wrappers/inference_tools/tools/dyngenie3/.dockerignore",
+    "wrappers/inference_tools/tools/dyngenie3/requirements.lock",
+    "wrappers/inference_tools/tools/dyngenie3/patch_upstream.py",
+    "wrappers/inference_tools/tools/dyngenie3/run_tool.py",
+    "wrappers/inference_tools/tools/dyngenie3/template_map.json",
+    "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json",
+    "wrappers/inference_tools/scripts/build_tool_images.py",
+    "wrappers/inference_tools/scripts/templates/python/_run_tool_common.py",
+)
 
 
 class IntegrationError(RuntimeError):
@@ -292,7 +306,7 @@ class Supervisor:
                 "Frozen source/configuration changed while waiting or executing; refusing the next phase."
             )
         activation = self.state.get("catalog_activation", {})
-        if activation.get("status") == "passed":
+        if activation.get("status") in {"passed", "installed_pending_maps"}:
             for relative, expected in activation["artifacts"].items():
                 path = self.root / relative
                 if not path.is_file() or sha(path) != expected:
@@ -348,9 +362,12 @@ class Supervisor:
             "predictions": self.prediction_command("sha256:" + "0" * 64),
             "execution_budget": {
                 "functional": {
-                    "runs": 12,
+                    "runs": 17,
                     "timeout_seconds_per_run": 3600,
-                    "timeout_cap_seconds": 43200,
+                    "timeout_cap_seconds": 61200,
+                    "saved_model_probes": 5,
+                    "probe_timeout_seconds": 120,
+                    "probe_budget": "Included inside the five diagnostic containers and their 3600-second timeout; no additional fit or container.",
                 },
                 "calibration": {
                     "runs": 408,
@@ -367,11 +384,11 @@ class Supervisor:
                     "timeout_seconds_per_run": 3600,
                     "timeout_cap_seconds": 3600,
                 },
-                "total_container_runs": 445,
-                "science_timeout_cap_seconds": 1602000,
+                "total_container_runs": 450,
+                "science_timeout_cap_seconds": 1620000,
                 "estimated_duration_seconds": None,
                 "build_and_validation_overhead_seconds": None,
-                "note": "Serial timeout sum only, about 18.54 days; not a measured ETA. Build/startup/validation overhead remains unknown; failures are retained and never automatically retried.",
+                "note": "Serial timeout sum only, 18.75 days; not a measured ETA. Build/startup/validation overhead remains unknown; failures are retained and never automatically retried.",
             },
             "reserved_holdouts": config["holdout_reservation"],
             "remaining_gates": design.get("acceptance_state", {}),
@@ -412,6 +429,7 @@ class Supervisor:
         self.save()
         self.log(f"Starting {label}; retained output: {log_path}")
         process = None
+        interrupted = False
         with log_path.open("w", encoding="utf-8") as output:
             try:
                 process = subprocess.Popen(
@@ -426,6 +444,7 @@ class Supervisor:
                 self.save()
                 code = process.wait()
             except BaseException as exc:
+                interrupted = isinstance(exc, KeyboardInterrupt)
                 receipt.update(
                     {
                         "status": (
@@ -435,6 +454,7 @@ class Supervisor:
                         ),
                         "error": str(exc),
                         "finished_at": utc(),
+                        **({"exit_code": 130} if interrupted else {}),
                     }
                 )
                 self.save()
@@ -447,6 +467,20 @@ class Supervisor:
                     except subprocess.TimeoutExpired:
                         os.killpg(process.pid, signal.SIGKILL)
                         process.wait(timeout=15)
+                if interrupted and label == "calibration":
+                    receipt["container_cleanup"] = self.cleanup_calibration_containers()
+                    output.flush()
+                    receipt["log_sha256"] = sha(log_path)
+                    cost = self.calibration_catalog / "dyngenie3/cost.json"
+                    self.save(
+                        calibration={
+                            **self.state.get("calibration", {}),
+                            "status": "interrupted",
+                            "exit_code": 130,
+                            "cost": str(cost),
+                            "cost_sha256": sha(cost) if cost.is_file() else None,
+                        }
+                    )
         receipt.update(
             {
                 "status": "passed" if code == 0 else "failed",
@@ -462,6 +496,94 @@ class Supervisor:
         if code and not allow_failure:
             raise IntegrationError(f"{label} failed with exit {code}; see {log_path}")
         return result
+
+    def cleanup_calibration_containers(self) -> list[dict[str, Any]]:
+        """Remove only live benchmark containers bound to this campaign's IO."""
+        calibration = (self.evidence / "calibration").resolve()
+        reports = []
+        try:
+            live = subprocess.run(
+                [
+                    "docker",
+                    "ps",
+                    "--no-trunc",
+                    "--filter",
+                    "name=andrea_tool_cost_",
+                    "--format",
+                    "{{.ID}}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            if live.returncode:
+                return [{"status": "inspect_failed", "error": live.stderr[-2000:]}]
+            live_ids = set(live.stdout.split())
+            seen = set()
+            for cidfile in sorted(calibration.rglob(".docker-container.cid")):
+                io = cidfile.parent.resolve()
+                if not io.is_relative_to(calibration) or io.name != "io":
+                    continue
+                container_id = cidfile.read_text().strip()
+                if (
+                    not re.fullmatch(r"[a-f0-9]{64}", container_id)
+                    or container_id not in live_ids
+                    or container_id in seen
+                ):
+                    continue
+                seen.add(container_id)
+                report = {
+                    "container_id": container_id,
+                    "cidfile": str(cidfile),
+                    "status": "ownership_unverified",
+                }
+                reports.append(report)
+                result = subprocess.run(
+                    ["docker", "container", "inspect", container_id],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                if result.returncode:
+                    report.update(status="inspect_failed", error=result.stderr[-2000:])
+                    continue
+                objects = json.loads(result.stdout)
+                if not isinstance(objects, list) or len(objects) != 1:
+                    continue
+                info = objects[0]
+                if not isinstance(info, dict):
+                    continue
+                owns_mount = any(
+                    mount.get("Type") == "bind"
+                    and mount.get("Destination") == "/io"
+                    and Path(mount.get("Source", "")).resolve() == io
+                    for mount in info.get("Mounts", [])
+                )
+                if not (
+                    info.get("Id") == container_id
+                    and info.get("Name", "").startswith("/andrea_tool_cost_")
+                    and info.get("Image") == self.state.get("image_id")
+                    and owns_mount
+                    and info.get("State", {}).get("Running") is True
+                ):
+                    continue
+                removed = subprocess.run(
+                    ["docker", "rm", "--force", container_id],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                report.update(
+                    status="removed" if removed.returncode == 0 else "remove_failed",
+                    exit_code=removed.returncode,
+                    error=removed.stderr[-2000:],
+                )
+        except (OSError, ValueError, TypeError, subprocess.TimeoutExpired) as exc:
+            reports.append({"status": "cleanup_failed", "error": str(exc)})
+        return reports
 
     def image(self, reference: str) -> str | None:
         result = self.command(
@@ -582,6 +704,105 @@ class Supervisor:
             build={"status": "passed", "source_sha256": self.freeze["source_sha256"]},
         )
 
+    def reuse_image(self, previous: Path) -> None:
+        """Import a retained build, never its acceptance status or measurements.
+
+        The failed campaign remains immutable. Verification runs again against
+        the new frozen sources, including any strengthened acceptance checks.
+        """
+        previous = previous.resolve()
+        if previous == self.evidence:
+            raise IntegrationError(
+                "Image reuse requires a separate evidence directory."
+            )
+        old_state_path, old_freeze_path = (
+            previous / "state.json",
+            previous / "freeze.json",
+        )
+        old = read_json(old_state_path)
+        frozen = read_json(old_freeze_path)
+        old_sources = frozen.get("identity", {}).get("sources", {})
+        if (
+            not old_sources
+            or frozen.get("source_sha256") != digest(old_sources)
+            or old.get("source_sha256") != frozen["source_sha256"]
+        ):
+            raise IntegrationError(
+                "Previous source inventory or state hash is inconsistent."
+            )
+        image = old.get("image_id", "")
+        if (
+            not IMAGE_ID.fullmatch(image)
+            or old.get("build", {}).get("status") != "passed"
+        ):
+            raise IntegrationError(
+                "Previous campaign lacks a successful immutable build."
+            )
+        changed = [
+            name
+            for name in IMAGE_SUBJECTS
+            if not old_sources.get(name)
+            or old_sources[name] != self.freeze["identity"]["sources"].get(name)
+        ]
+        if changed:
+            raise IntegrationError(
+                f"Installed image subjects changed; rebuild instead of reuse: {changed}"
+            )
+        builds = [
+            row
+            for row in old.get("commands", [])
+            if row.get("status") == "passed"
+            and row.get("exit_code") == 0
+            and any(
+                str(arg).endswith("/build_tool_images.py")
+                for arg in row.get("command", [])
+            )
+        ]
+        if len(builds) != 1:
+            raise IntegrationError(
+                "Previous campaign must retain one successful build receipt."
+            )
+        log = Path(builds[0]["log"])
+        if not log.is_file() or sha(log) != builds[0].get("log_sha256"):
+            raise IntegrationError(
+                "Previous build output evidence is missing or changed."
+            )
+        retained = self.state.get("image_id")
+        if retained is not None and retained != image:
+            raise IntegrationError(
+                "Current campaign already identifies a different image."
+            )
+        self.guard("reuse_verified_build")
+        if self.image(image) != image:
+            raise IntegrationError("Retained immutable image is unavailable.")
+        proof = {
+            "status": "passed",
+            "image_id": image,
+            "previous_campaign": str(previous),
+            "previous_state_sha256": sha(old_state_path),
+            "previous_freeze_sha256": sha(old_freeze_path),
+            "build_log": str(log),
+            "build_log_sha256": sha(log),
+            "unchanged_image_subjects": {
+                name: old_sources[name] for name in IMAGE_SUBJECTS
+            },
+            "new_source_sha256": self.freeze["source_sha256"],
+            "scope": "Immutable build reuse only. No functional, cost or prediction gate is imported.",
+        }
+        write_json(self.evidence / "image-reuse.json", proof)
+        self.save(
+            image_id=image,
+            image_tag=self.tag(),
+            build={
+                "status": "reused_immutable_image",
+                "receipt": str(self.evidence / "image-reuse.json"),
+                "sha256": sha(self.evidence / "image-reuse.json"),
+            },
+        )
+        self.log(
+            "Reused the prior immutable build after exact installed-source comparison; all acceptance checks remain required."
+        )
+
     def verify(self) -> None:
         self.guard("verify_functional")
         retained = self.state.get("functional", {})
@@ -683,6 +904,17 @@ class Supervisor:
             temporary.replace(target)
         central["tools"]["dyngenie3"] = wanted
         write_json(self.central_map, central)
+        self.save(
+            catalog_activation={
+                "status": "installed_pending_maps",
+                "artifacts": {
+                    str(target.relative_to(self.root)): sha(target)
+                    for _, target in targets
+                },
+                "image_id": identity,
+                "published": False,
+            }
+        )
         self.command(
             [
                 self.python,
@@ -903,7 +1135,9 @@ class Supervisor:
             published=False,
         )
 
-    def run(self, *, plan_only: bool = False) -> int:
+    def run(
+        self, *, plan_only: bool = False, reuse_image_from: Path | None = None
+    ) -> int:
         with self.locked():
             self.initialize()
             if plan_only:
@@ -912,11 +1146,18 @@ class Supervisor:
                 )
                 return 0
             try:
+                if reuse_image_from is not None:
+                    self.reuse_image(reuse_image_from)
                 self.build()
                 self.verify()
                 self.promote()
                 self.calibrate()
                 self.gates()
+                if self.state.get("status") != "calibrated_within_declared_domain":
+                    self.log(
+                        "Campaign stopped with acceptance gates still open; this is not a successful integration exit."
+                    )
+                    return 2
                 return 0
             except KeyboardInterrupt:
                 self.save(
@@ -942,6 +1183,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--external-state", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--plan-only", action="store_true")
+    parser.add_argument(
+        "--reuse-image-from",
+        type=Path,
+        help="Reuse only a proven immutable build from a prior campaign after exact installed-source comparison; rerun acceptance.",
+    )
     args = parser.parse_args(argv)
 
     def stop(_number, _frame):
@@ -951,7 +1197,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return Supervisor(
             root=ROOT, evidence=args.evidence, external_state=args.external_state
-        ).run(plan_only=args.plan_only)
+        ).run(plan_only=args.plan_only, reuse_image_from=args.reuse_image_from)
     except (IntegrationError, OSError, ValueError) as exc:
         parser.error(str(exc))
 

@@ -17,7 +17,10 @@ from .shared import NETWORK_REQUIRED_COLUMNS, ToolExecutionResult
 
 
 def _format_score(value: float) -> str:
-    return format(float(value), ".12g")
+    # repr preserves the parsed binary64 value through a CSV round trip.
+    # Retain the existing compact spelling for small integral scores.
+    rendered = repr(float(value))
+    return rendered[:-2] if rendered.endswith(".0") else rendered
 
 
 def _iter_network_rows(path: Path, tool_id: str) -> Iterable[dict[str, Any]]:
@@ -136,9 +139,7 @@ def _merge_network_outputs(
         and updated[tool_id].network_path
     ]
     if not isinstance(allowed_contexts, dict) or set(allowed_contexts) != set(updated):
-        raise ValueError(
-            "allowed_contexts keys must exactly match execution_results"
-        )
+        raise ValueError("allowed_contexts keys must exactly match execution_results")
     for tool_id in sorted(updated):
         inventory = allowed_contexts[tool_id]
         if (

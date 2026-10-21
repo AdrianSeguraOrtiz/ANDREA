@@ -84,6 +84,152 @@ class DynGenie3SupervisorTests(unittest.TestCase):
         self.evidence.mkdir(parents=True)
         self.supervisor.initialize()
 
+    def cleanup_subject(self):
+        self.supervisor.state["image_id"] = IMAGE
+        io = self.evidence / "calibration/dyngenie3-test/profile/run/io"
+        io.mkdir(parents=True)
+        container_id = "c" * 64
+        (io / ".docker-container.cid").write_text(container_id)
+        info = {
+            "Id": container_id,
+            "Image": IMAGE,
+            "Name": "/andrea_tool_cost_dyngenie3_test",
+            "State": {"Running": True},
+            "Mounts": [{"Type": "bind", "Source": str(io), "Destination": "/io"}],
+        }
+        return container_id, info
+
+    def test_interrupted_calibration_cleans_only_owned_container_and_records_130(self):
+        self.initialize()
+        container_id, info = self.cleanup_subject()
+        process = Mock(
+            pid=123,
+            wait=Mock(side_effect=[KeyboardInterrupt(), 0]),
+            poll=Mock(return_value=None),
+        )
+        results = [
+            subprocess.CompletedProcess([], 0, container_id, ""),
+            subprocess.CompletedProcess([], 0, json.dumps([info]), ""),
+            subprocess.CompletedProcess([], 0, container_id, ""),
+        ]
+        with (
+            patch.object(module.subprocess, "Popen", return_value=process),
+            patch.object(module.subprocess, "run", side_effect=results) as run,
+            patch.object(module.os, "killpg") as kill,
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                self.supervisor.command(["mock-benchmark"], "calibration")
+        kill.assert_called_once_with(123, module.signal.SIGTERM)
+        self.assertEqual(
+            run.call_args_list[-1].args[0], ["docker", "rm", "--force", container_id]
+        )
+        self.assertEqual(self.supervisor.state["commands"][-1]["exit_code"], 130)
+        self.assertEqual(
+            self.supervisor.state["commands"][-1]["container_cleanup"][0]["status"],
+            "removed",
+        )
+        self.assertEqual(self.supervisor.state["calibration"]["status"], "interrupted")
+
+    def test_cleanup_refuses_wrong_mount_name_image_or_id(self):
+        self.initialize()
+        container_id, original = self.cleanup_subject()
+        for key in ("Mounts", "Name", "Image", "Id"):
+            with self.subTest(key=key):
+                info = {**original, key: [] if key == "Mounts" else "unrelated"}
+                results = [
+                    subprocess.CompletedProcess([], 0, container_id, ""),
+                    subprocess.CompletedProcess([], 0, json.dumps([info]), ""),
+                ]
+                with patch.object(module.subprocess, "run", side_effect=results) as run:
+                    report = self.supervisor.cleanup_calibration_containers()
+                self.assertEqual(run.call_count, 2)
+                self.assertEqual(report[0]["status"], "ownership_unverified")
+
+    def test_other_phase_interruption_never_scans_calibration_containers(self):
+        self.initialize()
+        process = Mock(
+            pid=123,
+            wait=Mock(side_effect=[KeyboardInterrupt(), 0]),
+            poll=Mock(return_value=None),
+        )
+        with (
+            patch.object(module.subprocess, "Popen", return_value=process),
+            patch.object(module.os, "killpg"),
+            patch.object(self.supervisor, "cleanup_calibration_containers") as cleanup,
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                self.supervisor.command(["mock-verification"], "functional")
+        cleanup.assert_not_called()
+
+    def previous_build(self):
+        for name in module.IMAGE_SUBJECTS:
+            path = self.root / name
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("installed source\n")
+        self.initialize()
+        previous = self.directory / "previous"
+        previous.mkdir()
+        module.write_json(previous / "freeze.json", self.supervisor.freeze)
+        log = previous / "build.log"
+        log.write_text("Successful original build output\n")
+        old = {
+            "source_sha256": self.supervisor.freeze["source_sha256"],
+            "image_id": IMAGE,
+            "build": {"status": "passed"},
+            "commands": [
+                {
+                    "status": "passed",
+                    "exit_code": 0,
+                    "command": [str(self.scripts / "build_tool_images.py")],
+                    "log": str(log),
+                    "log_sha256": module.sha(log),
+                }
+            ],
+        }
+        module.write_json(previous / "state.json", old)
+        return previous
+
+    def test_reviewed_recovery_reuses_build_but_never_imports_acceptance(self):
+        previous = self.previous_build()
+        self.completed()
+        before = (previous / "state.json").read_bytes()
+        with patch.object(self.supervisor, "image", return_value=IMAGE):
+            self.supervisor.reuse_image(previous)
+        self.assertEqual(self.supervisor.state["image_id"], IMAGE)
+        self.assertEqual(
+            self.supervisor.state["build"]["status"], "reused_immutable_image"
+        )
+        self.assertEqual(self.supervisor.state["functional"]["status"], "pending")
+        self.assertEqual(self.supervisor.state["calibration"]["status"], "pending")
+        self.assertEqual((previous / "state.json").read_bytes(), before)
+
+    def test_recovery_refuses_changed_installed_source_or_tampered_build_receipt(self):
+        previous = self.previous_build()
+        self.completed()
+        frozen = module.read_json(previous / "freeze.json")
+        name = module.IMAGE_SUBJECTS[0]
+        frozen["identity"]["sources"][name] = "different installed Dockerfile"
+        frozen["source_sha256"] = module.digest(frozen["identity"]["sources"])
+        old = module.read_json(previous / "state.json")
+        old["source_sha256"] = frozen["source_sha256"]
+        module.write_json(previous / "freeze.json", frozen)
+        module.write_json(previous / "state.json", old)
+        with patch.object(self.supervisor, "image") as inspect:
+            with self.assertRaisesRegex(module.IntegrationError, "subjects changed"):
+                self.supervisor.reuse_image(previous)
+            inspect.assert_not_called()
+        module.write_json(previous / "freeze.json", self.supervisor.freeze)
+        old["source_sha256"] = self.supervisor.freeze["source_sha256"]
+        module.write_json(previous / "state.json", old)
+        (previous / "build.log").write_text("Changed build evidence")
+        with patch.object(self.supervisor, "image") as inspect:
+            with self.assertRaisesRegex(
+                module.IntegrationError, "build output evidence"
+            ):
+                self.supervisor.reuse_image(previous)
+            inspect.assert_not_called()
+
     def completed(self) -> None:
         module.write_json(self.external, {"status": "completed", "active": False})
 
@@ -98,6 +244,11 @@ class DynGenie3SupervisorTests(unittest.TestCase):
             self.assertEqual(self.supervisor.run(plan_only=True), 0)
         plan = module.read_json(self.evidence / "plan.json")
         self.assertEqual(plan["planned_calibration_runs"], 408)
+        self.assertEqual(plan["execution_budget"]["functional"]["runs"], 17)
+        self.assertEqual(plan["execution_budget"]["total_container_runs"], 450)
+        self.assertEqual(
+            plan["execution_budget"]["science_timeout_cap_seconds"], 1620000
+        )
         self.assertEqual(plan["pm2"]["autorestart"], False)
         self.assertEqual(plan["calibration"].count("--tool"), 1)
         self.assertIn("--catalog-images", plan["calibration"])
@@ -197,6 +348,22 @@ class DynGenie3SupervisorTests(unittest.TestCase):
             promote.assert_not_called()
             calibrate.assert_not_called()
         self.assertEqual(self.supervisor.state["functional"]["status"], "failed")
+
+    def test_unclosed_acceptance_gate_is_not_a_successful_process_exit(self):
+        self.completed()
+
+        def pending():
+            self.supervisor.save(status="pending_prediction_review")
+
+        with (
+            patch.object(self.supervisor, "build"),
+            patch.object(self.supervisor, "verify"),
+            patch.object(self.supervisor, "promote"),
+            patch.object(self.supervisor, "calibrate"),
+            patch.object(self.supervisor, "gates", side_effect=pending),
+        ):
+            self.assertEqual(self.supervisor.run(), 2)
+        self.assertEqual(self.supervisor.state["status"], "pending_prediction_review")
 
     def test_functional_receipt_must_identify_the_exact_verified_image(self) -> None:
         self.initialize()

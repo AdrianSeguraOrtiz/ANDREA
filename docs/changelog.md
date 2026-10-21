@@ -2,6 +2,14 @@
 
 ## Unreleased — Osaka integration procedure
 
+- Repair catalog rendering for tools without a fixed thread ceiling and preserve
+  partial activation state after errors. Retain failed dynGENIE3 campaign evidence
+  and rebuild the numerical fixes as image `1.0.1`.
+- Preserve binary64 raw weights in CSV, GraphML and GEXF exports. Handle undefined
+  zero-decay diagnostics and unrepresentable decay-estimation time separations;
+  strengthen physical acceptance to 17 cases with saved-model diagnostic checks.
+- Deduplicate identical resumed calibration observations without counting them
+  twice; reject conflicts and clean up only owned calibration containers on stop.
 - Implement the dynGENIE3 Python candidate from pinned official source, with
   preserved scientific defaults, explicit target seeds, resource controls and
   native provenance. Keep catalog activation conditional on physical image

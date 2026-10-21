@@ -71,7 +71,7 @@ def load_training_observations(
         for row in point["measurement_evidence"]["observations"]
         if row.get("status") == "ok"
     }
-    found: dict[str, dict] = {}
+    candidates: dict[str, list[dict]] = {}
     for path in sorted(calibration_root.rglob("measurements.json")):
         if path.parent.name != name:
             continue
@@ -89,6 +89,7 @@ def load_training_observations(
                 "Calibration image/source differs from the frozen cost snapshot."
             )
         rows = json.loads(path.read_text())
+        seen_in_file = set()
         for index, row in enumerate(rows):
             if row.get("status") != "ok":
                 raise ValueError(
@@ -99,6 +100,11 @@ def load_training_observations(
                 raise ValueError(
                     "Calibration receipt lacks an actual captured execution run_id."
                 )
+            if run_id in seen_in_file:
+                raise ValueError(
+                    f"Repeated execution ID within one raw receipt: {path}"
+                )
+            seen_in_file.add(run_id)
             if run_id not in expected_rows:
                 raise ValueError(
                     "Raw calibration execution is absent from the frozen cost snapshot."
@@ -123,23 +129,106 @@ def load_training_observations(
             io_dir = Path(row["io_dir"])
             if input_manifest(io_dir) != row.get("input_sha256"):
                 raise ValueError(f"Calibration input inventory changed: {io_dir}")
-            if run_id in found:
-                raise ValueError(
-                    f"Duplicate raw execution ID in calibration evidence: {run_id}"
+            row_provenance = row.get(
+                "measurement_provenance", actual_config["provenance"]
+            )
+            if any(
+                row_provenance.get(key) != actual_config["provenance"].get(key)
+                for key in (
+                    "image_id",
+                    "source_sha256",
+                    "cpu_model",
+                    "platform",
+                    "logical_cpus",
+                    "host_memory_bytes",
+                    "docker_server",
                 )
-            found[run_id] = {
-                "raw_row": row,
-                "raw_receipt": path,
-                "pointer": f"/{index}",
-                "config": actual_config,
-                "config_path": config_path,
-                "io_dir": io_dir,
-            }
-    if set(found) != set(expected_rows) or not found:
+            ):
+                raise ValueError(
+                    "Reused execution provenance contradicts its retained measurement context."
+                )
+            candidates.setdefault(run_id, []).append(
+                {
+                    "raw_row": row,
+                    "raw_receipt": path,
+                    "pointer": f"/{index}",
+                    "config": actual_config,
+                    "config_path": config_path,
+                    "io_dir": io_dir,
+                }
+            )
+    if set(candidates) != set(expected_rows) or not candidates:
         raise ValueError(
             "Raw calibration receipts do not completely match the frozen training observations."
         )
-    return list(found.values())
+    found = []
+    for run_id, copies in candidates.items():
+
+        def execution_signature(entry):
+            # Reuse adds bookkeeping, never a new execution. Paths may move when
+            # evidence is copied; retained input/output bytes establish equality.
+            value = {
+                key: item
+                for key, item in entry["raw_row"].items()
+                if key not in {"reused_from", "measurement_provenance", "io_dir"}
+            }
+            value["retained_outputs_sha256"] = {
+                str(path.relative_to(entry["io_dir"] / "out")): hashlib.sha256(
+                    path.read_bytes()
+                ).hexdigest()
+                for path in sorted((entry["io_dir"] / "out").rglob("*"))
+                if path.is_file()
+            }
+            if not value["retained_outputs_sha256"]:
+                raise ValueError(
+                    "Copied calibration execution has no retained outputs."
+                )
+            return digest(value)
+
+        expected_signature = execution_signature(copies[0])
+        if any(
+            execution_signature(entry) != expected_signature for entry in copies[1:]
+        ):
+            raise ValueError(
+                f"Conflicting copies of calibration execution ID: {run_id}"
+            )
+        original_paths = set()
+        for entry in copies:
+            reused = entry["raw_row"].get("reused_from")
+            if reused is None:
+                continue
+            source = Path(reused)
+            if not source.is_absolute():
+                source = entry["raw_receipt"].parent / source
+            source = source.resolve()
+            originals = [
+                candidate
+                for candidate in copies
+                if candidate["raw_receipt"].resolve() == source
+            ]
+            if len(originals) != 1:
+                raise ValueError(
+                    f"Reused execution source is missing or ambiguous: {source}"
+                )
+            original_paths.add(source)
+        selected_entry = min(
+            copies,
+            key=lambda entry: (
+                bool(original_paths)
+                and entry["raw_receipt"].resolve() not in original_paths,
+                "reused_from" in entry["raw_row"],
+                "measurement_provenance" in entry["raw_row"],
+                str(entry["raw_receipt"].resolve()),
+            ),
+        )
+        selected = dict(selected_entry)
+        selected["equivalent_raw_receipts"] = [
+            {"raw_receipt": entry["raw_receipt"], "pointer": entry["pointer"]}
+            for entry in copies
+            if entry is not selected_entry
+        ]
+        found.append(selected)
+    return found
 
 
 def adapt_training_observations(
@@ -191,6 +280,10 @@ def adapt_training_observations(
             "raw_evidence": [
                 artifact(entry["raw_receipt"], output_dir, pointer=entry["pointer"]),
                 artifact(entry["config_path"], output_dir),
+            ],
+            "equivalent_retained_copies": [
+                artifact(copy["raw_receipt"], output_dir, pointer=copy["pointer"])
+                for copy in entry.get("equivalent_raw_receipts", [])
             ],
             "mapping": "Identity recipe/hardware hashes derive from retained configuration/provenance; seconds, execution ID, coordinates and inputs come from the original raw execution row.",
         }

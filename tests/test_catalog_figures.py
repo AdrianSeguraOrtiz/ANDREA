@@ -1,6 +1,7 @@
 """Scientific classifications must not change when keywords are expanded."""
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -54,3 +55,18 @@ def test_catalog_figure_covers_each_tool_once_with_reviewed_classification():
     assert (
         families["scregulate"] == families["planet"] == families["dignet"] == "neural"
     )
+
+
+@pytest.mark.parametrize("limit", [None, 8])
+def test_catalog_map_preserves_optional_thread_limit(limit, tmp_path, monkeypatch):
+    source = ROOT / "andrea/catalog_inference_tools/tools/genie3/toolspec.json"
+    tool = json.loads(source.read_text())
+    tool["id"] = "thread_limit_fixture"
+    tool["runtime_resources"]["threading"]["max_threads"] = limit
+    target = tmp_path / tool["id"] / "toolspec.json"
+    target.parent.mkdir()
+    target.write_text(json.dumps(tool))
+    monkeypatch.setattr(figure, "SPEC_ROOT", tmp_path)
+    loaded = figure.load_tools()
+    assert len(loaded) == 1
+    assert loaded[0].max_threads == limit

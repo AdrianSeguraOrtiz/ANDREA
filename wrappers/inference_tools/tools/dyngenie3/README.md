@@ -9,8 +9,10 @@ compatibility patches are in [integration_decisions.md](integration_decisions.md
 The wrapper and shared temporal delivery are implemented. Physical image,
 repeatability, resource and cost acceptance require actual execution receipts;
 draft files alone do not activate a catalog tool. The authoritative campaign
-state is `release-logs/dyngenie3/campaign/state.json`, when the supervisor is
-started. Registry publication is separate and is never performed by it.
+state is `release-logs/dyngenie3/campaign-recovery-20261021/state.json` for the
+recovered campaign. The original `campaign/` directory retains the first
+failure and its valid image tests. See the [dated integration review](integration_review_20261021.md).
+Registry publication is separate and is never performed by the supervisor.
 
 ## Scientific input and output
 
@@ -25,6 +27,11 @@ and sorted within each series; no transition crosses series boundaries.
 Technical duplicates, independently sampled cohorts, missing/nonfinite values,
 and times whose order or interval overflows/collapses in upstream float32 are
 rejected. There is no implicit averaging, normalization or imputation.
+For `alpha="from_data"`, the time separation between each varying gene's
+expression minimum and maximum must also stay finite at native float32
+precision. Adjacent intervals can be valid while that longer subtraction
+overflows. Constant genes remain permitted with rate zero, and explicit
+scalar/vector alpha does not impose this additional estimation-only check.
 
 An optional `tf_list` restricts candidate sources. Optional
 `steady_state_expression` is a separate gene-by-sample matrix; it must contain
@@ -39,6 +46,10 @@ lag. Native VIM, resolved alphas, parameters, target seeds, input hashes,
 quality diagnostics, runtime versions and observed worker pools are retained
 under `provenance/`. Models are saved only when requested. Undefined optional
 quality diagnostics are recorded as null with an explanation.
+In particular, zero alpha can make the steady-state inverse OOB prediction
+nonfinite. The compatibility guard marks its Pearson diagnostic undefined
+before SciPy can reject those values; it preserves the inferred VIM and never
+substitutes a zero correlation or changes the fitted rate.
 
 ## Reproducible runtime
 
@@ -65,6 +76,10 @@ process and autorestart disabled. Its required arguments are `--external-state`
 and `--evidence`; `--plan-only` writes the frozen plan without Docker or fits.
 Keep evidence outside this source directory. Source changes require a newly
 reviewed evidence directory.
+`--reuse-image-from` can retain a proven prior image only when all installed
+source subjects and the scientific spec remain byte-identical; it imports no
+acceptance status. A wrapper correction requires a new image version. Recovery
+therefore uses `1.0.1`, retaining the original `1.0.0` image and receipts.
 
 The sequence builds only an isolated candidate tag, verifies the immutable
 image, and activates the local spec, smoketest and template entry only after
@@ -79,6 +94,16 @@ and writes `acceptance/integration.json` with hashed receipts. The source
 `integration.json` remains the frozen preparation dossier. Failed attempts
 remain available for review; they do not become acceptance evidence.
 
+The strengthened verifier adds five saved-model diagnostic cases using an
+[eight-gene fixture](../../tests/fixtures/dyngenie3/quality/README.md): RF quality
+from time courses alone, ET with steady-state samples, and zero-decay,
+one-tree and one-training-sample edge cases. It recomputes native VIM, OOB
+Pearson and seeded top-five stability from the saved forests inside the same
+pinned image, without fitting another model. Each probe is capped at 120
+seconds within its case's 3600-second timeout. The matrix now has **17 fits in
+17 containers**, including five internal probes; the timeout sum is 61,200
+seconds. The previous 12-run physical receipt retains its original scope.
+
 The cost recipe allocates **408 calibration runs**: 27 default points crossing
 genes 50/100/200, points per series 4/8/16 and series 1/2/4, plus seven explicitly
 limited branch centers; each uses three repeats in four thread/RAM strata.
@@ -87,8 +112,8 @@ extrapolation at the exact default t8/s2 shape. Branch centers do not establish
 growth curves. Predictions across temporal shapes remain unsupported.
 Timeout sums are execution caps, not measured ETAs. Structural validity,
 declared-domain coverage and observed predictive accuracy remain separate gates.
-Including 12 functional cases and one core/CLI execution gives 445 allocated
-containers and a summed scientific timeout cap of 1,602,000 seconds. Build and
+Including 17 functional cases and one core/CLI execution gives 450 allocated
+containers and a summed scientific timeout cap of 1,620,000 seconds. Build and
 validation overhead are additional and unknown. The campaign runs one container
 at a time with one or two assigned CPUs and 4 or 8 GiB RAM.
 

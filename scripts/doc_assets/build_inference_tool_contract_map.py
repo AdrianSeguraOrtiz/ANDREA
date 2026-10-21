@@ -162,7 +162,7 @@ class Tool:
     accepts: frozenset[str]
     threaded: bool
     default_threads: int
-    max_threads: int
+    max_threads: int | None
     directed: bool
     sign: str
     param_count: int
@@ -241,6 +241,7 @@ def load_tools() -> list[Tool]:
         used_accepts.update(accepts)
 
         threading = (spec.get("runtime_resources") or {}).get("threading") or {}
+        max_threads = threading.get("max_threads", 1)
         outputs = spec.get("outputs") or {}
         loaded[tool_id] = Tool(
             tool_id=tool_id,
@@ -255,7 +256,7 @@ def load_tools() -> list[Tool]:
             accepts=accepts,
             threaded=bool(threading.get("supported")),
             default_threads=int(threading.get("default_threads", 1)),
-            max_threads=int(threading.get("max_threads", 1)),
+            max_threads=(None if max_threads is None else int(max_threads)),
             directed=bool(outputs.get("directed")),
             sign=str(outputs.get("sign", "none")),
             param_count=parameter_count(spec),
@@ -538,7 +539,12 @@ def draw_panel(canvas: Canvas) -> None:
         anchor="middle",
     )
     canvas.text(
-        CONTEXT_X, 158, "counts: execution routes", size=8.3, fill=MUTED, anchor="middle"
+        CONTEXT_X,
+        158,
+        "counts: execution routes",
+        size=8.3,
+        fill=MUTED,
+        anchor="middle",
     )
     canvas.text(
         ACCEPT_X,

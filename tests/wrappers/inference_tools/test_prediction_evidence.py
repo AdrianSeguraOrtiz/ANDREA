@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -112,6 +113,73 @@ class PredictionEvidenceAdapterTests(unittest.TestCase):
         self.row["status"] = "error"
         self.raw.write_text(json.dumps([self.row]))
         with self.assertRaisesRegex(ValueError, "Failed calibration attempt"):
+            load_training_observations(self.root / "calibration", self.profile)
+
+    def resumed_copy(self, *, relocated=False):
+        directory = self.root / "calibration" / "dyngenie3-resumed" / self.profile_id
+        directory.mkdir(parents=True)
+        (directory / "benchmark_config.json").write_text(json.dumps(self.config))
+        row = {
+            **copy.deepcopy(self.row),
+            "reused_from": str(self.raw),
+            "measurement_provenance": self.config["provenance"],
+        }
+        if relocated:
+            io = directory / "copied-run" / "io"
+            shutil.copytree(self.io, io)
+            row["io_dir"] = str(io)
+        path = directory / "measurements.json"
+        path.write_text(json.dumps([row]))
+        return path, row
+
+    def test_identical_reused_execution_is_counted_once_with_original_reference(self):
+        path, _ = self.resumed_copy()
+        entries = load_training_observations(self.root / "calibration", self.profile)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["raw_receipt"], self.raw)
+        self.assertEqual(entries[0]["equivalent_raw_receipts"][0]["raw_receipt"], path)
+        output = self.root / "prediction"
+        observations = adapt_training_observations(entries, output, self.profile)
+        self.assertEqual(len(observations), 1)
+        adapter = json.loads((output / observations[0]["receipt"]["path"]).read_text())
+        self.assertEqual(len(adapter["equivalent_retained_copies"]), 1)
+
+    def test_relocated_reuse_requires_identical_retained_outputs(self):
+        path, row = self.resumed_copy(relocated=True)
+        self.assertEqual(
+            len(load_training_observations(self.root / "calibration", self.profile)), 1
+        )
+        (Path(row["io_dir"]) / "out/network.csv").write_text("changed output")
+        with self.assertRaisesRegex(ValueError, "Conflicting copies"):
+            load_training_observations(self.root / "calibration", self.profile)
+
+    def test_conflicting_duplicate_or_unresolvable_reused_from_is_rejected(self):
+        path, row = self.resumed_copy()
+        row["seconds"] += 1
+        path.write_text(json.dumps([row]))
+        with self.assertRaisesRegex(ValueError, "contradicts its embedded"):
+            load_training_observations(self.root / "calibration", self.profile)
+        row["seconds"] = self.row["seconds"]
+        row["reused_from"] = str(path.parent / "missing.json")
+        path.write_text(json.dumps([row]))
+        with self.assertRaisesRegex(ValueError, "source is missing or ambiguous"):
+            load_training_observations(self.root / "calibration", self.profile)
+
+    def test_reused_execution_cannot_change_hardware_or_source_provenance(self):
+        path, row = self.resumed_copy()
+        for key in ("cpu_model", "source_sha256", "image_id"):
+            with self.subTest(key=key):
+                row["measurement_provenance"] = {
+                    **self.config["provenance"],
+                    key: "changed",
+                }
+                path.write_text(json.dumps([row]))
+                with self.assertRaisesRegex(ValueError, "provenance contradicts"):
+                    load_training_observations(self.root / "calibration", self.profile)
+
+    def test_repeated_execution_within_one_raw_receipt_is_not_a_repeat(self):
+        self.raw.write_text(json.dumps([self.row, self.row]))
+        with self.assertRaisesRegex(ValueError, "Repeated execution ID within one raw"):
             load_training_observations(self.root / "calibration", self.profile)
 
 

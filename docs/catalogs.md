@@ -9,7 +9,7 @@ validated independently from wrapper runtime tests.
 | Catalog | Entries | Executable coverage entries | Source specs |
 |---|---:|---:|---|
 | Simulation data tools | 8 | 31 capabilities | `simulatorspec.json` |
-| Inference tools | 24 | 49 execution modes | `toolspec.json` |
+| Inference tools | 25 | 50 execution modes | `toolspec.json` |
 
 ## Simulators
 
@@ -51,6 +51,7 @@ within a family are identical. Integration decision logs cite sources.
 | CeSpGRN | graph | `column_native`, `group_aggregated` | directed=False, sign=signed, evidence=association | https://doi.org/10.1093/bioinformatics/btag324, https://doi.org/10.1101/2022.03.03.482887 |
 | CLR | information | `global`, `group_emulated` | directed=False, sign=none, evidence=association | https://doi.org/10.1371/journal.pbio.0050008, https://doi.org/10.1186/1471-2105-9-461 |
 | DigNet | neural | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1101/gr.279551.124 |
+| dynGENIE3 | tree | `global` | directed=True, sign=none, evidence=association | https://doi.org/10.1038/s41598-018-21715-0 |
 | GENIE3 | tree | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1371/journal.pone.0012776 |
 | GRNBoost2 | tree | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1093/bioinformatics/bty916 |
 | inferCSN CRAN core | regression | `global`, `group_emulated` | directed=True, sign=signed, evidence=association | https://doi.org/10.1038/s41540-025-00564-4 |

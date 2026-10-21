@@ -21,14 +21,16 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from typing import Any
 import uuid
 
 
 HERE = Path(__file__).resolve().parent
-FIXTURES = HERE.parents[1] / "tests" / "fixtures" / "dyngenie3"
+FIXTURES = HERE.parent.parent / "tests" / "fixtures" / "dyngenie3"
 TIMEOUT_SECONDS = 3600
+DIAGNOSTIC_PROBE_TIMEOUT_SECONDS = 120
 COMPLETED = {"completed", "complete", "succeeded"}
 COMMIT = "27eddd960d50e82791a8e0e5f8fcf6d679fe3eac"
 NETWORK_FIELDS = ["source", "target", "score", "sign", "evidence", "context"]
@@ -153,6 +155,65 @@ def make_plan(
                 "extra_files": row.get("extra_files", config.get("extra_files", [])),
             }
         )
+    for name, threads, fixture, parameters, assertions in (
+        (
+            "rf_quality_time_only",
+            2,
+            "quality",
+            {"alpha": 0.2},
+            {"prediction_score": "finite", "stability_score": "nontrivial"},
+        ),
+        (
+            "et_quality_steady",
+            2,
+            "quality",
+            {"tree_method": "ET", "alpha": 0.2},
+            {"prediction_score": "null", "stability_score": "nontrivial"},
+        ),
+        (
+            "rf_quality_zero_decay",
+            1,
+            "quality",
+            {"alpha": 0.0},
+            {"prediction_score": "null"},
+        ),
+        (
+            "rf_quality_one_tree",
+            1,
+            "quality",
+            {"alpha": 0.2, "ntrees": 1},
+            {"stability_score": "null"},
+        ),
+        (
+            "rf_quality_one_sample",
+            1,
+            "quality_one_sample",
+            {"alpha": 0.2},
+            {"prediction_score": "null"},
+        ),
+    ):
+        extras = ["timepoints.tsv", "replicates.tsv"]
+        if name in {"et_quality_steady", "rf_quality_zero_decay"}:
+            extras.append("steady_state_expression.tsv")
+        cases.append(
+            {
+                "id": name,
+                "purpose": "diagnostic_semantics",
+                "variant": name,
+                "threads": threads,
+                "fixture_subdir": fixture,
+                "extra_files": extras,
+                "params": {
+                    "ntrees": 32,
+                    "compute_quality_scores": True,
+                    "save_models": True,
+                    **parameters,
+                },
+                "diagnostic_probe": True,
+                "diagnostic_assertions": assertions,
+                "allow_empty_network": name == "rf_quality_one_sample",
+            }
+        )
     for threads in (1, 2):
         for repetition in (1, 2):
             cases.append(
@@ -175,13 +236,19 @@ def make_plan(
             "extra_files": config["extra_files"],
         }
     )
-    names = {
-        "expression.tsv",
-        *(name for case in cases for name in case["extra_files"]),
-    }
+    names = set()
+    for case in cases:
+        subdir = Path(case.get("fixture_subdir", "."))
+        _require(
+            not subdir.is_absolute() and ".." not in subdir.parts,
+            "Invalid fixture subdirectory",
+        )
+        for name in ("expression.tsv", *case["extra_files"]):
+            _require(Path(name).name == name, f"Invalid fixture name {name}")
+            names.add(str(subdir / name))
     for name in names:
         _require(
-            Path(name).name == name and (fixtures / name).is_file(),
+            (fixtures / name).is_file(),
             f"Missing or invalid fixture {name}",
         )
     spec = _json(HERE / "toolspec.draft.json")
@@ -219,6 +286,13 @@ def make_plan(
         },
         "smoke_config_sha256": _sha(config_path),
         "run_count": len(cases),
+        "scientific_fit_count": len(cases),
+        "docker_container_count": len(cases),
+        "diagnostic_probe_count": sum(
+            bool(case.get("diagnostic_probe")) for case in cases
+        ),
+        "diagnostic_probe_timeout_seconds": DIAGNOSTIC_PROBE_TIMEOUT_SECONDS,
+        "diagnostic_probe_budget_note": "Five read-only saved-model probes run inside their fit container, each capped at 120 seconds and included in that case's 3600-second timeout; no additional containers or fits.",
         "resource_strata": [
             {
                 "threads": threads,
@@ -230,7 +304,7 @@ def make_plan(
         ],
         "execution_timeout_cap_seconds": len(cases) * TIMEOUT_SECONDS,
         "estimated_duration_seconds": None,
-        "budget_note": "12 serial executions, maximum 3600 seconds each. The timeout sum is an execution cap, not a measured ETA; validation and cleanup add overhead.",
+        "budget_note": "17 serial executions, maximum 3600 seconds each. The timeout sum is an execution cap, not a measured ETA; validation and cleanup add overhead.",
         "reproducibility": {
             "comparison": "Exact VIM.npy SHA-256 equality for all four seed-17 runs, including both worker allocations; seed 18 must change the VIM.",
             "limitations": "Valid only for this pinned image, fixtures, numerical runtime and host. Resource pools require separate effective-runtime evidence.",
@@ -254,22 +328,33 @@ def stage_case(case: dict[str, Any], plan: dict[str, Any], directory: Path) -> P
     (io / "extra").mkdir(parents=True)
     (io / "out").mkdir()
     fixtures = Path(plan["fixtures"])
+    subdir = Path(case.get("fixture_subdir", "."))
     for name in ("expression.tsv", *case["extra_files"]):
+        key = str(subdir / name)
         _require(
-            _sha(fixtures / name) == plan["fixture_sha256"][name],
+            _sha(fixtures / key) == plan["fixture_sha256"][key],
             f"Fixture changed since planning: {name}",
         )
         shutil.copy2(
-            fixtures / name,
+            fixtures / key,
             io / name if name == "expression.tsv" else io / "extra" / name,
         )
     _write(io / "params.json", case["params"])
     _write(io / "execution.json", plan["execution"])
+    if case.get("diagnostic_probe"):
+        _require(
+            _sha(Path(__file__)) == plan["source_sha256"]["verify_runtime.py"],
+            "Diagnostic probe source changed since planning",
+        )
+        shutil.copy2(Path(__file__), io / "verify_runtime.py")
+        _write(
+            io / "diagnostic_expectations.json", case.get("diagnostic_assertions", {})
+        )
     return io
 
 
 def docker_command(image: str, case: dict[str, Any], io: Path, name: str) -> list[str]:
-    return [
+    command = [
         "docker",
         "run",
         "--rm",
@@ -290,7 +375,8 @@ def docker_command(image: str, case: dict[str, Any], io: Path, name: str) -> lis
         f"{io.resolve()}:/io:ro",
         "-v",
         f"{(io / 'out').resolve()}:/io/out:rw",
-        image,
+    ]
+    arguments = [
         "--input",
         "/io/expression.tsv",
         "--params",
@@ -302,6 +388,23 @@ def docker_command(image: str, case: dict[str, Any], io: Path, name: str) -> lis
         "--threads",
         str(case["threads"]),
     ]
+    if case.get("diagnostic_probe"):
+        shell = (
+            "set -eu; export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 "
+            "NUMEXPR_NUM_THREADS=1 BLIS_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1; "
+            '/app/run_tool.sh "$@"; exec python /io/verify_runtime.py --probe-diagnostics /io'
+        )
+        return [
+            *command,
+            "--entrypoint",
+            "/bin/sh",
+            image,
+            "-c",
+            shell,
+            "verify-diagnostics",
+            *arguments,
+        ]
+    return [*command, image, *arguments]
 
 
 def _matrix_axes(path: Path):
@@ -376,6 +479,233 @@ def validate_worker_resources(raw: Path, assigned_threads: int) -> dict[str, Any
     return {"worker_count": len(worker_reports), "native_pools": observed_pools}
 
 
+def _diagnostic_number(value):
+    return float(value) if math.isfinite(float(value)) else None
+
+
+def _compare_diagnostic(actual, expected, name):
+    _require(
+        (actual is None) == (expected is None),
+        f"Incorrect undefined diagnostic: {name}",
+    )
+    if expected is not None:
+        _require(
+            math.isclose(float(actual), expected, rel_tol=1e-12, abs_tol=1e-12),
+            f"Saved-model diagnostic differs: {name}",
+        )
+        lower = -1 if name == "prediction_score" else 0
+        _require(
+            lower <= float(actual) <= 1 + 1e-12,
+            f"Diagnostic outside its native range: {name}",
+        )
+
+
+def expected_degradation_rates(values, columns, series):
+    """Check the native data-derived rule against observed inputs, without fitting."""
+    import numpy as np
+
+    matrix = np.asarray(values, dtype=float)
+    baseline = matrix.min()
+    indices = {column: index for index, column in enumerate(columns)}
+    rates = np.zeros(matrix.shape[0])
+    for current in series:
+        expression = matrix[:, [indices[column] for column in current["columns"]]]
+        times = np.asarray(current["upstream_timepoints"], dtype=np.float32)
+        for gene, row in enumerate(expression):
+            low, high = row.argmin(), row.argmax()
+            if row[low] == row[high]:
+                continue
+            with np.errstate(over="ignore", invalid="ignore"):
+                separation = abs(times[low] - times[high])
+            _require(
+                np.isfinite(separation) and separation > 0,
+                "Data-derived degradation extrema overflow at native float32 precision",
+            )
+            rate = (
+                np.log(max(row[high] - baseline, 1e-6))
+                - np.log(max(row[low] - baseline, 1e-6))
+            ) / separation
+            rates[gene] = max(rates[gene], rate)
+    return rates
+
+
+def verify_saved_diagnostics(
+    io: Path, *, model_loader=None, correlation=None
+) -> dict[str, Any]:
+    """Recompute diagnostics and VIM from already fitted models; never call fit.
+
+    This executes in the pinned image so joblib/sklearn never become host
+    dependencies. Optional callables permit lightweight synthetic-model tests.
+    """
+    import numpy as np
+    from itertools import combinations
+
+    if model_loader is None:
+        import joblib
+
+        model_loader = joblib.load
+    if correlation is None:
+        from scipy.stats import pearsonr
+
+        correlation = pearsonr
+    raw = io / "out" / "provenance"
+    resolved, reported = _json(raw / "resolved.json"), _json(
+        raw / "quality_scores.json"
+    )
+    params, genes = resolved["params"], resolved["genes"]
+    _require(
+        params["compute_quality_scores"] and params["save_models"],
+        "Diagnostic probe requires requested quality and saved models",
+    )
+    expression_genes, columns, values = _matrix_axes(io / "expression.tsv")
+    _require(expression_genes == genes, "Saved-model gene ordering differs")
+    matrix, index = np.asarray(values, dtype=float), {
+        column: position for position, column in enumerate(columns)
+    }
+    present, future, intervals = [], [], []
+    for series in resolved["series"]:
+        current = matrix[:, [index[column] for column in series["columns"]]].T
+        native_time = np.asarray(series["upstream_timepoints"], dtype=np.float32)
+        present.append(current[:-1])
+        future.append(current[1:])
+        intervals.append(native_time[1:] - native_time[:-1])
+    present, future, intervals = (
+        np.vstack(present),
+        np.vstack(future),
+        np.concatenate(intervals),
+    )
+    steady_path = io / "extra" / "steady_state_expression.tsv"
+    steady = None
+    if steady_path.is_file():
+        ss_genes, _, ss_values = _matrix_axes(steady_path)
+        _require(
+            set(ss_genes) == set(genes),
+            "Saved-model steady-state gene universe differs",
+        )
+        positions = {gene: position for position, gene in enumerate(ss_genes)}
+        steady = np.asarray(ss_values, dtype=float)[
+            [positions[gene] for gene in genes], :
+        ].T
+    candidates = genes if resolved["regulators"] == "all" else resolved["regulators"]
+    candidate_indices = [genes.index(gene) for gene in candidates]
+    models = model_loader(raw / "tree_models.joblib")
+    _require(
+        isinstance(models, (list, tuple)) and len(models) == len(genes),
+        "Saved model count/order contract is invalid",
+    )
+    vim = np.load(raw / "VIM.npy", allow_pickle=False)
+    prediction, stability = [], []
+    for target, model in enumerate(models):
+        seed = int(
+            np.random.SeedSequence([params["seed"], target]).generate_state(1)[0]
+        )
+        expected_config = {
+            **resolved["forest_constructor_params"],
+            "random_state": seed,
+        }
+        _require(
+            model.get_params(deep=False) == expected_config
+            and model.n_features_in_ == len(candidates),
+            "Saved model configuration differs from the requested target model",
+        )
+        _require(
+            len(model.estimators_) == params["ntrees"],
+            "Saved forest tree count differs",
+        )
+        importances = np.asarray(
+            [
+                tree.tree_.compute_feature_importances(normalize=False)
+                for tree in model.estimators_
+            ]
+        )
+        weights = np.zeros(len(genes))
+        weights[candidate_indices] = importances.sum(axis=0) / len(model.estimators_)
+        weights[target] = 0
+        if weights.sum() > 0:
+            weights /= weights.sum()
+        _require(
+            np.array_equal(weights, vim[:, target]),
+            "Native VIM differs from saved forest unnormalized importances",
+        )
+        if params["tree_method"] == "RF":
+            oob = np.asarray(model.oob_prediction_)
+            nsteady = 0 if steady is None else len(steady)
+            _require(
+                oob.shape == (len(present) + nsteady,),
+                "Saved OOB prediction dimensions differ",
+            )
+            alpha = resolved["alpha_resolved"][target]
+            predicted_future = (
+                oob[nsteady:] - alpha * present[:, target]
+            ) * intervals + present[:, target]
+            true = future[:, target]
+            if steady is not None:
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    predicted_future = np.concatenate(
+                        [oob[:nsteady] / alpha, predicted_future]
+                    )
+                true = np.concatenate([steady[:, target], true])
+            prediction.append(
+                float("nan")
+                if len(true) < 2
+                or not np.isfinite(predicted_future).all()
+                or not np.isfinite(true).all()
+                else float(correlation(predicted_future, true)[0])
+            )
+        if target in candidate_indices:
+            importances = np.delete(
+                importances, candidate_indices.index(target), axis=1
+            )
+        importances = importances + np.random.RandomState(seed).uniform(
+            low=1e-12, high=1e-11, size=importances.shape
+        )
+        if importances.sum() > 0:
+            top = [set(row.argsort()[::-1][:5]) for row in importances]
+            overlaps = [
+                len(top[left] & top[right])
+                for left, right in combinations(range(len(top)), 2)
+            ]
+            stability.append(float(np.mean(overlaps)) / 5 if overlaps else float("nan"))
+        else:
+            stability.append(0.0)
+    expected = {
+        "prediction_score": (
+            _diagnostic_number(np.mean(prediction)) if prediction else None
+        ),
+        "stability_score": _diagnostic_number(np.mean(stability)),
+    }
+    assertions = _json(io / "diagnostic_expectations.json")
+    for name, value in expected.items():
+        _compare_diagnostic(reported[name], value, name)
+        if assertions.get(name) == "null":
+            _require(value is None, f"Expected undefined diagnostic: {name}")
+        elif assertions.get(name) == "finite":
+            _require(value is not None, f"Expected finite diagnostic: {name}")
+        elif assertions.get(name) == "nontrivial":
+            _require(
+                value is not None and 0 < value < 1,
+                "Quality fixture did not exercise nontrivial top-five stability",
+            )
+    return {
+        "status": "passed",
+        "scientific_fits": 0,
+        "model_count": len(models),
+        "candidate_count": len(candidates),
+        "vim_matches_saved_forests": True,
+        "recomputed_diagnostics": expected,
+        "model_sha256": _sha(raw / "tree_models.joblib"),
+        "vim_sha256": _sha(raw / "VIM.npy"),
+        "checks": [
+            "serialized_model_count_order",
+            "actual_forest_configuration",
+            "native_importance_projection",
+            "oob_prediction_correlation",
+            "top_five_stability_seeded_jitter",
+            "undefined_diagnostic_semantics",
+        ],
+    }
+
+
 def validate_outputs(
     case: dict[str, Any], plan: dict[str, Any], io: Path
 ) -> dict[str, Any]:
@@ -446,7 +776,7 @@ def validate_outputs(
         "network.csv differs from the deterministic full-precision positive VIM projection",
     )
     _require(
-        bool(edges) or maximum == 0,
+        bool(edges) or maximum == 0 or case.get("allow_empty_network", False),
         "Unexpected empty network for the varied smoke fixture",
     )
     resolved = _json(raw / "resolved.json")
@@ -575,13 +905,12 @@ def validate_outputs(
         expected_alpha = alpha if isinstance(alpha, list) else [alpha] * len(genes)
         _require(alphas.tolist() == expected_alpha, "Explicit alpha changed")
     else:
+        expected_alpha = expected_degradation_rates(
+            expression, columns, resolved["series"]
+        )
         _require(
-            all(
-                alphas[index] == 0
-                for index, values in enumerate(expression)
-                if len(set(values)) == 1
-            ),
-            "Constant gene received nonzero estimated degradation",
+            np.allclose(alphas, expected_alpha, rtol=1e-12, atol=0),
+            "Data-derived alpha differs from the native global-baseline, per-series extrema and maximum rule",
         )
     quality = _json(raw / "quality_scores.json")
     _require(
@@ -608,6 +937,20 @@ def validate_outputs(
             and (raw / "tree_models.joblib").stat().st_size > 0,
             "Requested model artifact is missing/empty",
         )
+    if case.get("diagnostic_probe"):
+        diagnostics = _json(raw / "diagnostics-verification.json")
+        _require(
+            diagnostics.get("status") == "passed"
+            and diagnostics.get("scientific_fits") == 0
+            and diagnostics.get("model_count") == len(genes)
+            and diagnostics.get("model_sha256") == _sha(raw / "tree_models.joblib")
+            and diagnostics.get("vim_sha256") == _sha(raw / "VIM.npy"),
+            "Saved-model diagnostic probe has not passed for these exact artifacts",
+        )
+        for name in ("prediction_score", "stability_score"):
+            _compare_diagnostic(
+                quality[name], diagnostics["recomputed_diagnostics"][name], name
+            )
     session = _json(raw / "session.json")
     _require(
         session["upstream_commit"] == COMMIT
@@ -956,4 +1299,26 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if len(sys.argv) == 3 and sys.argv[1] == "--probe-diagnostics":
+        destination = Path(sys.argv[2])
+
+        def timeout_probe(*_args):
+            raise TimeoutError("Saved-model diagnostic probe exceeded 120 seconds")
+
+        signal.signal(signal.SIGALRM, timeout_probe)
+        signal.alarm(DIAGNOSTIC_PROBE_TIMEOUT_SECONDS)
+        try:
+            _write(
+                destination / "out/provenance/diagnostics-verification.json",
+                verify_saved_diagnostics(destination),
+            )
+        except Exception as error:
+            _write(
+                destination / "out/provenance/diagnostics-verification.json",
+                {"status": "failed", "scientific_fits": 0, "error": str(error)},
+            )
+            raise
+        finally:
+            signal.alarm(0)
+    else:
+        raise SystemExit(main())

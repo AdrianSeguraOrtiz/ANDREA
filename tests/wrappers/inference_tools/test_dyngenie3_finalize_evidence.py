@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import importlib.util
+import csv
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from xml.etree import ElementTree as ET
 
 import pytest
 
@@ -19,6 +21,40 @@ finalizer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(finalizer)
 IMAGE = "sha256:" + "a" * 64
 SOURCE_SHA = "b" * 64
+
+
+def test_finalizer_rejects_rounded_xml_weights_without_running_inference(tmp_path):
+    from andrea.core.commands.infer_network.commons.network_exports import (
+        MERGED_NETWORK_REQUIRED_COLUMNS,
+        export_network_graphml,
+        export_network_gexf,
+        GEXF_NS,
+    )
+
+    source = tmp_path / "merged_network_raw.csv"
+    with source.open("w", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=MERGED_NETWORK_REQUIRED_COLUMNS)
+        writer.writeheader()
+        writer.writerow(
+            {
+                "source": "0002",
+                "target": "TF:01",
+                "score": "0.12345678912345678",
+                "sign": "?",
+                "evidence": "association",
+                "context": "global",
+                "tool_id": "dyngenie3__01",
+            }
+        )
+    export_network_graphml(source, tmp_path / "merged_network_raw.graphml")
+    target = tmp_path / "merged_network_raw.gexf"
+    export_network_gexf(source, target)
+    assert finalizer.verify_raw_graph_exports(tmp_path)["status"] == "passed"
+    document = ET.parse(target)
+    document.find(f".//{{{GEXF_NS}}}edge").set("weight", "0.123456789123")
+    document.write(target, encoding="utf-8", xml_declaration=True)
+    with pytest.raises(ValueError, match="precision changed"):
+        finalizer.verify_raw_graph_exports(tmp_path)
 
 
 def json_file(path, value):

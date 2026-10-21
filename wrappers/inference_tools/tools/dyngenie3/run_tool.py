@@ -282,6 +282,25 @@ def load_steady_state(path: Path, genes: list[str]) -> tuple[np.ndarray, list[st
     return matrix[[positions[gene] for gene in genes], :].T.copy(), columns
 
 
+def validate_decay_time_separations(series_data, time_points) -> None:
+    """The native rate estimator subtracts the times of each gene's extrema.
+
+    Finite adjacent intervals alone do not prevent that longer float32
+    subtraction from overflowing. Constant genes remain valid with rate zero.
+    """
+    for series_index, (values, coordinates) in enumerate(zip(series_data, time_points)):
+        low, high = np.argmin(values, axis=0), np.argmax(values, axis=0)
+        gene_indices = np.arange(values.shape[1])
+        varying = values[low, gene_indices] != values[high, gene_indices]
+        native_time = np.asarray(coordinates, dtype=np.float32)
+        with np.errstate(over="ignore", invalid="ignore"):
+            separations = np.abs(native_time[low] - native_time[high])
+        if not np.all(np.isfinite(separations[varying]) & (separations[varying] > 0)):
+            raise ValueError(
+                f"Series {series_index}: data-derived degradation extrema must have finite positive time separation at upstream float32 precision"
+            )
+
+
 def export_network(
     path: Path, vim: np.ndarray, genes: list[str], maxcount: str | int
 ) -> int:
@@ -351,6 +370,8 @@ def run(
         ts_data, time_points, series = prepare_series(
             expression, columns, extra_dir, execution.get("temporal")
         )
+        if isinstance(params["alpha"], str) and params["alpha"] == "from_data":
+            validate_decay_time_separations(ts_data, time_points)
         ss_path = extra_dir / "steady_state_expression.tsv"
         ss_data, ss_columns = (
             load_steady_state(ss_path, genes) if ss_path.is_file() else (None, [])

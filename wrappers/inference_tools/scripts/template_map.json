@@ -148,6 +148,13 @@
       "bundles": [
         "python_runtime_contract"
       ]
+    },
+    "dyngenie3": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract"
+      ],
+      "native_threads": "single"
     }
   }
 }

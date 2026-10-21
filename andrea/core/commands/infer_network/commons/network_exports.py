@@ -15,6 +15,8 @@ from andrea.core.shared.network_context import (
     normalize_network_sign,
 )
 
+from .merge import _format_score
+
 MERGED_NETWORK_REQUIRED_COLUMNS = [
     "source",
     "target",
@@ -145,8 +147,8 @@ def export_network_graphml(csv_path: Path, out_path: Path) -> int:
             target=str(row["target"]),
         )
         values = [
-            ("edge_weight", format(float(row["score"]), ".12g")),
-            ("edge_score", format(float(row["score"]), ".12g")),
+            ("edge_weight", _format_score(row["score"])),
+            ("edge_score", _format_score(row["score"])),
             ("edge_sign", str(row["sign"])),
             ("edge_evidence", str(row["evidence"])),
             ("edge_context", str(row["context"])),
@@ -207,11 +209,11 @@ def export_network_gexf(csv_path: Path, out_path: Path) -> int:
             id=_edge_id(row),
             source=str(row["source"]),
             target=str(row["target"]),
-            weight=format(float(row["score"]), ".12g"),
+            weight=_format_score(row["score"]),
         )
         attvalues = ET.SubElement(edge, "attvalues")
         for attr_id, value in [
-            ("score", format(float(row["score"]), ".12g")),
+            ("score", _format_score(row["score"])),
             ("sign", str(row["sign"])),
             ("evidence", str(row["evidence"])),
             ("context", str(row["context"])),

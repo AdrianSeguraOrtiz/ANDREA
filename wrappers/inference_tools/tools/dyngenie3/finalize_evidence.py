@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import argparse
 import copy
+import csv
 import importlib.util
 import json
 from pathlib import Path
 import signal
 import subprocess
 import sys
+from xml.etree import ElementTree as ET
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
@@ -42,6 +44,65 @@ def passed(path: Path, image: str | None = None):
     if image:
         require(data.get("image_id") == image, f"Evidence image differs: {path}")
     return data
+
+
+def verify_raw_graph_exports(run_dir: Path):
+    """Check retained XML against raw CSV without recomputing any network."""
+    from andrea.core.commands.infer_network.commons.network_exports import (
+        GEXF_NS,
+        GRAPHML_NS,
+    )
+
+    csv_path = run_dir / "merged_network_raw.csv"
+    with csv_path.open(encoding="utf-8", newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    require(bool(rows), "Raw graph export verification requires nonempty CLI output")
+    node_ids = {row[key] for row in rows for key in ("source", "target")}
+    paths = [csv_path]
+    for suffix, namespace in (("graphml", GRAPHML_NS), ("gexf", GEXF_NS)):
+        path = run_dir / f"merged_network_raw.{suffix}"
+        paths.append(path)
+        document = ET.parse(path)
+        edges = document.findall(f".//{{{namespace}}}edge")
+        nodes = document.findall(f".//{{{namespace}}}node")
+        require(len(edges) == len(rows), f"{suffix}: raw edge count changed")
+        require(
+            {node.attrib["id"] for node in nodes} == node_ids,
+            f"{suffix}: node IDs changed",
+        )
+        for index, (edge, row) in enumerate(zip(edges, rows), start=1):
+            identifier = f"{row['tool_id']}|{row['context']}|{row['source']}|{row['target']}|{index}"
+            require(
+                edge.attrib["id"] == identifier
+                and edge.attrib["source"] == row["source"]
+                and edge.attrib["target"] == row["target"],
+                f"{suffix}: edge identity changed",
+            )
+            if suffix == "graphml":
+                data = {
+                    item.attrib["key"]: item.text
+                    for item in edge.findall(f"{{{namespace}}}data")
+                }
+                weight, score = data["edge_weight"], data["edge_score"]
+            else:
+                data = {
+                    item.attrib["for"]: item.attrib["value"]
+                    for item in edge.findall(
+                        f"{{{namespace}}}attvalues/{{{namespace}}}attvalue"
+                    )
+                }
+                weight, score = edge.attrib["weight"], data["score"]
+            require(
+                float(weight) == float(score) == float(row["score"]),
+                f"{suffix}: raw score precision changed",
+            )
+    return {
+        "status": "passed",
+        "rows": len(rows),
+        "raw_scores_roundtrip_exact": True,
+        "scope": "Retained raw GraphML/GEXF edge IDs, node IDs, weights and score attributes match raw CSV; no inference was rerun.",
+        "outputs": [reference(path) for path in paths],
+    }
 
 
 def verify_review(path: Path, source_sha256: str):
@@ -216,7 +277,7 @@ def main(argv=None):
             "--planner",
             "heuristic",
             "--output-profile",
-            "canonical",
+            "full",
         ]
         command(cli_args, out / "cli.log")
         inspect_image(spec["docker_image"], args.image)
@@ -229,6 +290,8 @@ def main(argv=None):
             and not cli["tools"]["failed"],
             "Core/CLI execution did not complete the tool",
         )
+        graph_exports = verify_raw_graph_exports(reports[0].parent)
+        write_json(out / "raw-graph-exports.json", graph_exports)
         resolved = list(cli_root.rglob("resolved.json"))
         require(len(resolved) == 1, "Core did not retain native provenance")
         native = read_json(resolved[0])
@@ -317,6 +380,8 @@ def main(argv=None):
                 out / "prediction-gate.log",
             )
         ]
+        outputs.extend(graph_exports["outputs"])
+        outputs.append(reference(out / "raw-graph-exports.json"))
         checks = {row["name"]: row for row in dossier["checks"]}
         for name in sorted(validator.CALIBRATED):
             check = checks.setdefault(name, {"name": name})

@@ -82,8 +82,9 @@ def patched_source(raw: bytes) -> str:
 
 
 def _andrea_pearsonr(prediction, observed):
-    """An insufficient sample has no correlation; retain the inferred network."""
-    if len(prediction) < 2 or len(observed) < 2:
+    """Undefined inverse predictions have no correlation; retain the inferred network."""
+    if (len(prediction) < 2 or len(observed) < 2
+            or not np.isfinite(prediction).all() or not np.isfinite(observed).all()):
         return float('nan'), float('nan')
     return pearsonr(prediction, observed)
 

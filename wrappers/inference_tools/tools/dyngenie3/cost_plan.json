@@ -17,7 +17,7 @@
     "3600",
     "--plan-only"
   ],
-  "catalog_status": "Temporary exact review copy of toolspec.draft.json; the production catalog remains inactive.",
+  "catalog_status": "Exact review copy of toolspec.draft.json. The local catalog was installed by the first campaign; current image 1.0.1 requires new physical acceptance and no cost.json is installed before calibration gates pass.",
   "draft_catalog_preparation": {
     "source": "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json",
     "destination": "release-logs/dyngenie3/draft-catalog/dyngenie3/toolspec.json",
@@ -25,8 +25,8 @@
   },
   "source_sha256": {
     "wrappers/inference_tools/cost_profiles/dyngenie3.json": "9167bd0d290be0dd0e805c62709d160e109bfdd27f9bf086aa76a14ee102e079",
-    "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json": "24433977cbe8cb7a6e77a5a1afe500586f6b340af340e7b0bbed377034c7554b",
-    "release-logs/dyngenie3/draft-catalog/dyngenie3/toolspec.json": "24433977cbe8cb7a6e77a5a1afe500586f6b340af340e7b0bbed377034c7554b"
+    "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json": "3be80dfd77a0898541b74f4b8a931652b69f0a993fa423e8c7b30146873451e3",
+    "release-logs/dyngenie3/draft-catalog/dyngenie3/toolspec.json": "3be80dfd77a0898541b74f4b8a931652b69f0a993fa423e8c7b30146873451e3"
   },
   "resolved_stdout": "Benchmark plan: tools=1 profiles=16 planned_runs=408\n- dyngenie3/global_rf_from_data_ts_t4_s1_spec_defaults: sizes=50x4,100x4,200x4 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t4_s2_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t4_s4_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s1_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s4_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s1_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s2_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s4_spec_defaults: sizes=50x64,100x64,200x64 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_et_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_alpha_scalar_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_alpha_vector_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_steady_state_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_tf_list_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_quality_scores_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_saved_models_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n",
   "planned_calibration_runs": 408,
@@ -79,21 +79,26 @@
     }
   ],
   "eta_seconds": null,
-  "measurement_status": "Deferred while existing PM2 experimental validation remains active. No image build, model fit, calibration or holdout timing was run.",
+  "measurement_status": "The first image passed 12 physical tests, then stopped at a catalog-renderer error before any calibration. Recovery rebuilds corrected version 1.0.1 and applies the expanded 17-case physical acceptance before calibration; no cost or held-out accuracy is claimed by this plan.",
   "limitations": "Measurement, finite-domain coverage, actual-core-planner independent accuracy and the final acceptance dossier are separate gates. Calibration stays private until domain and 24-observation prediction checks pass. Predictions across temporal shapes remain unsupported; no image or package publication is performed.",
   "continuation_budget": {
-    "functional_runs": 12,
-    "functional_timeout_cap_seconds": 43200,
+    "functional_runs": 17,
+    "functional_timeout_cap_seconds": 61200,
     "calibration_runs": 408,
     "calibration_timeout_cap_seconds": 1468800,
     "holdout_runs": 24,
     "holdout_timeout_cap_seconds": 86400,
     "core_cli_runs": 1,
     "core_cli_timeout_cap_seconds": 3600,
-    "total_container_runs": 445,
-    "science_timeout_cap_seconds": 1602000,
+    "total_container_runs": 450,
+    "science_timeout_cap_seconds": 1620000,
     "estimated_duration_seconds": null,
     "build_and_validation_overhead_seconds": null,
-    "note": "Serial execution cap, about18.54days; not an ETA. No automatic retries; build/startup/validation overhead remains unknown."
+    "note": "Serial execution cap, 18.75 days; not an ETA. No automatic retries; build/startup/validation overhead remains unknown.",
+    "diagnostic_probes": {
+      "count": 5,
+      "timeout_seconds": 120,
+      "scope": "Read-only saved-model checks inside their fit container, included in the 3600-second case limit; no extra fit/container."
+    }
   }
 }

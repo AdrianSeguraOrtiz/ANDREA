@@ -1,0 +1,97 @@
+{
+  "execution": {
+    "mode": "global",
+    "temporal": {
+      "schema_version": "bulk-temporal/1",
+      "time_basis": "observed",
+      "time_unit": "hour",
+      "time_origin": "Synthetic experiment start",
+      "sampling_design": "longitudinal",
+      "missing_values": "reject",
+      "preprocessing": {
+        "normalization": "none; arbitrary bulk abundance units",
+        "transformation": "none"
+      },
+      "provenance": "Deterministic synthetic bulk contract fixture, not scientific ground truth or calibrated timing data."
+    }
+  },
+  "extra_files": [
+    "timepoints.tsv",
+    "replicates.tsv"
+  ],
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "real_defaults"
+    },
+    {
+      "name": "et_all_scalar",
+      "param_overrides": {
+        "tree_method": "ET",
+        "K": "all",
+        "alpha": 0.2,
+        "ntrees": 32
+      }
+    },
+    {
+      "name": "rf_k1",
+      "param_overrides": {
+        "K": 1,
+        "alpha": 0.2,
+        "ntrees": 32
+      }
+    },
+    {
+      "name": "vector_models",
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.3,
+          0.4,
+          0.5,
+          0.0
+        ],
+        "save_models": true,
+        "ntrees": 32
+      }
+    },
+    {
+      "name": "tf_and_steady_quality",
+      "extra_files": [
+        "timepoints.tsv",
+        "replicates.tsv",
+        "tf_list.txt",
+        "steady_state_expression.tsv"
+      ],
+      "param_overrides": {
+        "compute_quality_scores": true,
+        "alpha": 0.2,
+        "ntrees": 32,
+        "maxcount": 8
+      }
+    },
+    {
+      "name": "empty_export",
+      "param_overrides": {
+        "maxcount": 0,
+        "ntrees": 8
+      },
+      "checks": {
+        "allow_empty_network": true,
+        "forbid_self_loops": true
+      }
+    },
+    {
+      "name": "et_quality",
+      "param_overrides": {
+        "tree_method": "ET",
+        "compute_quality_scores": true,
+        "ntrees": 32
+      }
+    }
+  ],
+  "require_progress": true
+}

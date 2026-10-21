@@ -1,0 +1,3 @@
+column	timepoint	time_unit	series_id	condition	observation_id
+q0.visit1	0.5	hour	q0	control	q0.observation1
+q0.visit0	0	hour	q0	control	q0.observation0
