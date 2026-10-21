@@ -232,7 +232,9 @@
         "tree_method": "ET"
       },
       "sizes": [
-        "100x16"
+        "50x16",
+        "100x16",
+        "200x16"
       ],
       "temporal_fixture": {
         "series_count": 2,
@@ -241,7 +243,7 @@
         "sampling": "regular"
       },
       "notes": [
-        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
       ]
     },
     {
@@ -255,7 +257,9 @@
         "alpha": 0.1
       },
       "sizes": [
-        "100x16"
+        "50x16",
+        "100x16",
+        "200x16"
       ],
       "temporal_fixture": {
         "series_count": 2,
@@ -264,7 +268,7 @@
         "sampling": "regular"
       },
       "notes": [
-        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
       ]
     },
     {
@@ -402,7 +406,9 @@
       ],
       "param_overrides": {},
       "sizes": [
-        "100x16"
+        "50x16",
+        "100x16",
+        "200x16"
       ],
       "temporal_fixture": {
         "series_count": 2,
@@ -411,7 +417,7 @@
         "sampling": "regular"
       },
       "notes": [
-        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
       ]
     },
     {
@@ -425,7 +431,9 @@
       ],
       "param_overrides": {},
       "sizes": [
-        "100x16"
+        "50x16",
+        "100x16",
+        "200x16"
       ],
       "temporal_fixture": {
         "series_count": 2,
@@ -434,7 +442,7 @@
         "sampling": "regular"
       },
       "notes": [
-        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
       ]
     },
     {
@@ -448,7 +456,9 @@
         "compute_quality_scores": true
       },
       "sizes": [
-        "100x16"
+        "50x16",
+        "100x16",
+        "200x16"
       ],
       "temporal_fixture": {
         "series_count": 2,
@@ -457,8 +467,8 @@
         "sampling": "regular"
       },
       "notes": [
-        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions.",
-        "Quality stability compares pairs of 1000 trees per target, giving quadratic tree-count work; this point retains that real default and does not cover other tree counts."
+        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured.",
+        "Quality stability compares all pairs of 1000 trees per target, giving quadratic tree-count work; this slice retains that real default and does not cover other quality tree counts."
       ]
     },
     {
@@ -472,7 +482,9 @@
         "save_models": true
       },
       "sizes": [
-        "100x16"
+        "50x16",
+        "100x16",
+        "200x16"
       ],
       "temporal_fixture": {
         "series_count": 2,
@@ -481,14 +493,534 @@
         "sampling": "regular"
       },
       "notes": [
-        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
+        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_et_ts_t4_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_tf_list_ts_t4_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_alpha_vector_ts_t4_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "sizes": [
+        "100x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_et_ts_t16_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_tf_list_ts_t16_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_alpha_vector_ts_t16_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "sizes": [
+        "100x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_steady_state_ss10_t8_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "steady_state_expression"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 10,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_steady_state_ss40_t8_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "steady_state_expression"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 40,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ]
+    },
+    {
+      "id": "global_rf_k1_t8_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ],
+      "param_overrides": {
+        "K": 1
+      }
+    },
+    {
+      "id": "global_rf_kall_t8_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ],
+      "param_overrides": {
+        "K": "all"
+      }
+    },
+    {
+      "id": "global_rf_ntrees100_t8_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ],
+      "param_overrides": {
+        "ntrees": 100
+      }
+    },
+    {
+      "id": "global_rf_ntrees300_t8_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      ],
+      "param_overrides": {
+        "ntrees": 300
+      }
+    },
+    {
+      "id": "global_rf_irregular_t8_s2_spec_defaults",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "irregular"
+      },
+      "notes": [
+        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
       ]
     }
   ],
   "calibration_design": {
-    "version": 1,
+    "version": 2,
     "status": "pending_measurement",
-    "kind": "independent_temporal_default_grid_with_branch_centers",
+    "kind": "independent_temporal_grid_with_branch_growth",
     "gene_levels": [
       50,
       100,
@@ -505,36 +1037,40 @@
       4
     ],
     "default_point_count": 27,
-    "branch_center_point_count": 7,
-    "total_points_per_resource_stratum": 34,
+    "total_points_per_resource_stratum": 81,
     "resources": {
       "threads": [
         1,
-        2
+        2,
+        4,
+        8
       ],
       "ram_gb": [
         4,
         8
       ],
-      "strata_count": 4,
+      "strata_count": 8,
       "concurrency": 1
     },
     "repetitions": 3,
-    "planned_calibration_runs": 408,
+    "planned_calibration_runs": 1944,
     "timeout_seconds_per_run": 3600,
-    "calibration_timeout_sum_seconds": 1468800,
-    "scope": "Initial finite panel only. RF/from_data/default K=sqrt and ntrees=1000 span the 3-axis grid. Seven single-factor branches have only their exact center dimension; no broad branch calibration or cross-factor coverage is claimed.",
+    "calibration_timeout_sum_seconds": 6998400,
+    "scope": "Broad finite panel: original 27 default temporal coordinates; 54 branch coordinates. All 81 points are required separately in each of eight CPU/RAM strata with three successful retained observations. ET and TF branches cross three gene levels with three exact temporal shapes; remaining branches have only their declared independent axes.",
     "exclusions": [
-      "ET with alternative decay or steady-state data",
-      "quality scores combined with saved models",
-      "other K or ntrees settings",
-      "irregular sampling costs",
-      "seed-dependent runtime variability beyond retained repetitions"
+      "ET combined with alternative decay, SS, quality or saved models",
+      "Quality combined with alternate ntrees, K, SS, TF or saved models",
+      "Arbitrary scalar/vector alpha values or vector lengths beyond the exact registered inputs",
+      "Other K and ntrees values or interpolation between sampled values",
+      "Arbitrary TF counts, TF identities or input distributions beyond the registered generator policy",
+      "Arbitrary irregular schedules, mixed regularity or unequal series lengths",
+      "SS-count interpolation and cross-factor interactions",
+      "Seed-dependent runtime variability beyond retained repetitions"
     ],
-    "geometry_limitation": "Temporal coverage is checked as a fixed-shape gene axis for each profile plus an aggregate 27-point default 3-axis grid in each of four resource strata, with at least three distinct retained execution receipts per point. Branch centers certify only their exact registered point. This measurement domain is not evidence of a temporal shape-growth estimator or predictive accuracy.",
+    "geometry_limitation": "Each resolved profile has an exact temporal shape and supports only its registered gene axis, where multiple genes were measured. Families combine finite measured coordinates, not a temporal, SS-count or parameter interpolation model. Coverage is separate from held-out actual-planner predictive checks.",
     "measurement_gate": "Do not build images, fit models, run calibration or collect holdout timings while the existing PM2 experimental validation remains active. Reinspect host/process status before executing the deferred plan.",
     "eta_seconds": null,
-    "eta_status": "Unknown until the pinned image is built and an authorized measured campaign establishes runtimes.",
+    "eta_status": "Operational estimate must use retained timings and explicit uncertainty; quality/default1000 and 4/8-worker performance require real measurements. Timeout sums are caps, never ETA.",
     "overhead_and_retries": "Timeout sums are execution caps, not ETAs. Startup and validation overhead are unknown; no automatic retries. Failed attempts must be retained and reviewed before adding an explicitly budgeted retry.",
     "training_observation_rule": "Upstream h=1: sum over independent series of (timepoints_per_series - 1), plus the separate steady-state sample count. No between-series derivative is constructed.",
     "acceptance_state": {
@@ -548,7 +1084,7 @@
     "required_extensions": [
       {
         "component": "wrappers/inference_tools/scripts/validate_tool_costs.py:calibration_coverage",
-        "requirement": "The implemented temporal gate requires all registered 34 points in every thread/RAM stratum, explicit temporal dimensions, unique captured run IDs, retained input hashes/context/image and three successful raw observations per point. It reports the combined default 27-coordinate temporal grid separately and bounds the seven branch centers to point-only support.",
+        "requirement": "The temporal gate requires all 81 points in all eight registered thread/RAM strata, each declared branch family and its independent coordinate axes, explicit temporal dimensions, unique captured run IDs, retained inputs/context/image and three successful raw observations per point. Finite coverage is not predictive accuracy.",
         "status": "implemented_unmeasured"
       },
       {
@@ -558,8 +1094,597 @@
       },
       {
         "component": "cost estimator and prediction-validation evidence",
-        "requirement": "The prediction helper freezes the actual ANDREA planner code, cost snapshot and eight exact-profile calls (genes75/250 across four resource strata) before collecting 24 observations. Validation uses the actual planning ETA; nearest-p50 times the same core size scale is retained as a typical-duration diagnostic. Any operational reserve is separate and cannot help pass the planning coverage threshold. Temporal-shape growth remains unsupported.",
+        "requirement": "The prediction helper must freeze the actual ANDREA planner code, cost/spec snapshots and all 104 exact-profile case/resource predictions before collecting 312 observations for thirteen reserved gene-axis cases. Actual planning ETA decides coverage; temporal shape, SS-count and parameter interpolation remain unsupported.",
         "status": "implemented_unmeasured"
+      }
+    ],
+    "branch_point_count": 54,
+    "families": [
+      {
+        "id": "rf_default_temporal_grid",
+        "profile_ids": [
+          "global_rf_from_data_ts_t4_s1_spec_defaults",
+          "global_rf_from_data_ts_t4_s2_spec_defaults",
+          "global_rf_from_data_ts_t4_s4_spec_defaults",
+          "global_rf_from_data_ts_t8_s1_spec_defaults",
+          "global_rf_from_data_ts_t8_s2_spec_defaults",
+          "global_rf_from_data_ts_t8_s4_spec_defaults",
+          "global_rf_from_data_ts_t16_s1_spec_defaults",
+          "global_rf_from_data_ts_t16_s2_spec_defaults",
+          "global_rf_from_data_ts_t16_s4_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "27 coordinates crossing genes, observed timepoints and independent series; no temporal-growth estimator claim.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "et_gene_time_slices",
+        "profile_ids": [
+          "global_et_center_spec_defaults",
+          "global_et_ts_t4_s2_spec_defaults",
+          "global_et_ts_t16_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Gene growth at each of three exact temporal shapes; ET uses its native bootstrap=False default.",
+        "expected_params": {
+          "tree_method": "ET",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "tf_gene_time_slices",
+        "profile_ids": [
+          "global_tf_list_center_spec_defaults",
+          "global_tf_list_ts_t4_s2_spec_defaults",
+          "global_tf_list_ts_t16_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Gene growth at each of three exact temporal shapes; TF policy max(3, genes/5) only, not arbitrary TF cardinality.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": [
+          "tf_list"
+        ]
+      },
+      {
+        "id": "scalar_alpha_gene_axis",
+        "profile_ids": [
+          "global_alpha_scalar_center_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Literal alpha=0.1, gene growth only at t8/s2.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": 0.1,
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "vector_alpha_temporal_points",
+        "profile_ids": [
+          "global_alpha_vector_center_spec_defaults",
+          "global_alpha_vector_ts_t4_s2_spec_defaults",
+          "global_alpha_vector_ts_t16_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            100
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "The unchanged 100-gene ordered alpha vector at three exact temporal shapes; no gene or temporal interpolation.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": [
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2,
+            0.1,
+            0.2
+          ],
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "steady_state_gene_count_slices",
+        "profile_ids": [
+          "global_steady_state_center_spec_defaults",
+          "global_steady_state_ss10_t8_s2_spec_defaults",
+          "global_steady_state_ss40_t8_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            10,
+            20,
+            40
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Gene growth separately at SS counts 10,20,40; no SS-count interpolation or interaction coverage.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": [
+          "steady_state_expression"
+        ]
+      },
+      {
+        "id": "quality_gene_axis",
+        "profile_ids": [
+          "global_quality_scores_center_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "RF quality at real default 1000 trees, t8/s2. Stability materializes all tree pairs; no other quality tree count or ET quality cost claim.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": true,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "saved_models_gene_axis",
+        "profile_ids": [
+          "global_saved_models_center_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Serialization cost with real default 1000 trees, t8/s2 only.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": true
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "k1_gene_axis",
+        "profile_ids": [
+          "global_rf_k1_t8_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Literal sampled parameter value, gene growth at t8/s2; no parameter interpolation or cross-factor interaction claim.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": 1,
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "kall_gene_axis",
+        "profile_ids": [
+          "global_rf_kall_t8_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Literal sampled parameter value, gene growth at t8/s2; no parameter interpolation or cross-factor interaction claim.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "all",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "ntrees100_gene_axis",
+        "profile_ids": [
+          "global_rf_ntrees100_t8_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Literal sampled parameter value, gene growth at t8/s2; no parameter interpolation or cross-factor interaction claim.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 100,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "ntrees300_gene_axis",
+        "profile_ids": [
+          "global_rf_ntrees300_t8_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Literal sampled parameter value, gene growth at t8/s2; no parameter interpolation or cross-factor interaction claim.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 300,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
+      },
+      {
+        "id": "irregular_gene_axis",
+        "profile_ids": [
+          "global_rf_irregular_t8_s2_spec_defaults"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "irregular"
+          ]
+        },
+        "scope": "One registered irregular synthetic schedule at t8/s2; no claim for arbitrary unequal grids or unequal series lengths.",
+        "expected_params": {
+          "tree_method": "RF",
+          "alpha": "from_data",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false
+        },
+        "optional_inputs": []
       }
     ]
   },
@@ -568,33 +1693,170 @@
     "cases": [
       {
         "id": "default_gene_interpolation_t8_s2",
-        "kind": "interpolation",
         "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
         "genes": 75,
         "timepoints_per_series": 8,
         "independent_series": 2,
         "total_columns": 16,
-        "seed": 765431
+        "columns": 16,
+        "seed": 765431,
+        "kind": "interpolation"
       },
       {
         "id": "default_gene_extrapolation_t8_s2",
-        "kind": "extrapolation",
         "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
         "genes": 250,
         "timepoints_per_series": 8,
         "independent_series": 2,
         "total_columns": 16,
-        "seed": 765439
+        "columns": 16,
+        "seed": 765439,
+        "kind": "extrapolation"
+      },
+      {
+        "id": "et_gene_interpolation",
+        "profile_id": "global_et_center_spec_defaults",
+        "genes": 75,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765443,
+        "kind": "interpolation"
+      },
+      {
+        "id": "tf_gene_extrapolation",
+        "profile_id": "global_tf_list_center_spec_defaults",
+        "genes": 250,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765449,
+        "kind": "extrapolation"
+      },
+      {
+        "id": "scalar_alpha_gene_interpolation",
+        "profile_id": "global_alpha_scalar_center_spec_defaults",
+        "genes": 75,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765457,
+        "kind": "interpolation"
+      },
+      {
+        "id": "steady_state20_gene_interpolation",
+        "profile_id": "global_steady_state_center_spec_defaults",
+        "genes": 75,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765461,
+        "kind": "interpolation"
+      },
+      {
+        "id": "k1_gene_interpolation",
+        "profile_id": "global_rf_k1_t8_s2_spec_defaults",
+        "genes": 75,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765469,
+        "kind": "interpolation"
+      },
+      {
+        "id": "kall_gene_extrapolation",
+        "profile_id": "global_rf_kall_t8_s2_spec_defaults",
+        "genes": 250,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765473,
+        "kind": "extrapolation"
+      },
+      {
+        "id": "ntrees100_gene_interpolation",
+        "profile_id": "global_rf_ntrees100_t8_s2_spec_defaults",
+        "genes": 75,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765479,
+        "kind": "interpolation"
+      },
+      {
+        "id": "ntrees300_gene_extrapolation",
+        "profile_id": "global_rf_ntrees300_t8_s2_spec_defaults",
+        "genes": 250,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765487,
+        "kind": "extrapolation"
+      },
+      {
+        "id": "quality_gene_interpolation",
+        "profile_id": "global_quality_scores_center_spec_defaults",
+        "genes": 75,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765491,
+        "kind": "interpolation"
+      },
+      {
+        "id": "saved_models_gene_extrapolation",
+        "profile_id": "global_saved_models_center_spec_defaults",
+        "genes": 250,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765497,
+        "kind": "extrapolation"
+      },
+      {
+        "id": "irregular_gene_interpolation",
+        "profile_id": "global_rf_irregular_t8_s2_spec_defaults",
+        "genes": 75,
+        "timepoints_per_series": 8,
+        "independent_series": 2,
+        "total_columns": 16,
+        "columns": 16,
+        "seed": 765503,
+        "kind": "interpolation"
       }
     ],
-    "profile_scope": "Gene-axis interpolation/extrapolation within the exact default RF/from_data/TS t8/s2 profile, separately in every declared thread/RAM stratum. Other temporal shapes and all branch growth predictions remain unsupported.",
+    "profile_scope": "Thirteen independently reserved gene-axis cases at exact registered t8/s2 temporal/resource/recipe contexts, across all eight CPU/RAM strata. Vector alpha remains fixed at 100 genes and has no gene-growth prediction claim. SS10/40, ET/TF at other temporal shapes and temporal/SS-count interpolation remain unsupported by these holdouts.",
     "repetitions": 3,
-    "planned_runs": 24,
-    "timeout_sum_seconds": 86400,
+    "planned_runs": 312,
+    "timeout_sum_seconds": 1123200,
     "max_relative_error": 0.35,
     "min_planning_coverage": 1.0,
-    "required_before_measurement": "Pass structural/provenance and temporal domain checks on the private calibration snapshot; freeze actual core planner artifacts, the eight exact-profile predictions and execution identities before collecting 24 holdout timings. Register no cost in the active catalog until independent checks pass; finalize the acceptance dossier separately. Completing measurement allocations alone is not acceptance.",
+    "required_before_measurement": "Pass finite structural/provenance/family coverage on the private calibration snapshot; freeze actual core planner code, cost/spec snapshots and all 104 case/resource predictions before collecting 312 held-out observations. No acceptance is implied by allocated or completed timings.",
     "independence": "Never include these dimensions or their primary matrix bytes in calibration recipes, calibration fits, reuse directories or benchmark --size overrides. Distinct seeds alone do not establish dimensional independence.",
-    "temporal_shape_predictions": "Unsupported pending temporal shape matching, aggregate coverage and a reviewed temporal estimator. No temporal-shape interpolation/extrapolation timings are allocated by this reservation."
+    "temporal_shape_predictions": "Unsupported pending temporal shape matching, aggregate coverage and a reviewed temporal estimator. No temporal-shape interpolation/extrapolation timings are allocated by this reservation.",
+    "resources": {
+      "threads": [
+        1,
+        2,
+        4,
+        8
+      ],
+      "ram_gb": [
+        4,
+        8
+      ],
+      "strata_count": 8,
+      "concurrency": 1
+    }
   }
 }

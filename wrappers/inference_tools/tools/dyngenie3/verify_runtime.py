@@ -236,6 +236,32 @@ def make_plan(
             "extra_files": config["extra_files"],
         }
     )
+    # Eight genes permit observing eight actual target workers. These executions
+    # use one shared input/seed/forest configuration across every CPU allocation.
+    for threads in (1, 2, 4, 8):
+        for repetition in (1, 2):
+            cases.append(
+                {
+                    "id": f"resource_seed17_threads{threads}_repeat{repetition}",
+                    "purpose": "expanded_resource_repeat",
+                    "variant": "eight_gene_RF",
+                    "threads": threads,
+                    "fixture_subdir": "quality",
+                    "params": {"seed": 17, "ntrees": 256},
+                    "extra_files": ["timepoints.tsv", "replicates.tsv"],
+                }
+            )
+    cases.append(
+        {
+            "id": "resource_seed18_threads8",
+            "purpose": "expanded_resource_changed_seed",
+            "variant": "eight_gene_RF",
+            "threads": 8,
+            "fixture_subdir": "quality",
+            "params": {"seed": 18, "ntrees": 256},
+            "extra_files": ["timepoints.tsv", "replicates.tsv"],
+        }
+    )
     names = set()
     for case in cases:
         subdir = Path(case.get("fixture_subdir", "."))
@@ -300,13 +326,13 @@ def make_plan(
                 "memory": "4g",
                 "runs": sum(case["threads"] == threads for case in cases),
             }
-            for threads in (1, 2)
+            for threads in (1, 2, 4, 8)
         ],
         "execution_timeout_cap_seconds": len(cases) * TIMEOUT_SECONDS,
         "estimated_duration_seconds": None,
-        "budget_note": "17 serial executions, maximum 3600 seconds each. The timeout sum is an execution cap, not a measured ETA; validation and cleanup add overhead.",
+        "budget_note": "26 serial executions, maximum 3600 seconds each. The timeout sum is an execution cap, not a measured ETA; validation and cleanup add overhead.",
         "reproducibility": {
-            "comparison": "Exact VIM.npy SHA-256 equality for all four seed-17 runs, including both worker allocations; seed 18 must change the VIM.",
+            "comparison": "Exact VIM.npy SHA-256 equality within each fixture family: four original seed-17 runs at 1/2 workers, eight eight-gene runs at 1/2/4/8 workers; changed seed must change each family VIM.",
             "limitations": "Valid only for this pinned image, fixtures, numerical runtime and host. Resource pools require separate effective-runtime evidence.",
         },
     }
@@ -1101,7 +1127,9 @@ def run_case(
     return receipt
 
 
-def compare_reproducibility(receipts: list[dict[str, Any]]) -> dict[str, Any]:
+def compare_reproducibility(
+    receipts: list[dict[str, Any]], *, expanded: bool = True
+) -> dict[str, Any]:
     by_id = {receipt["id"]: receipt for receipt in receipts}
     names = [
         f"seed17_threads{threads}_repeat{repeat}"
@@ -1132,8 +1160,47 @@ def compare_reproducibility(receipts: list[dict[str, Any]]) -> dict[str, Any]:
         )
         == 1
     )
+    extended = None
+    if expanded:
+        extended_names = [
+            f"resource_seed17_threads{threads}_repeat{repeat}"
+            for threads in (1, 2, 4, 8)
+            for repeat in (1, 2)
+        ]
+        extended_missing = [
+            name
+            for name in [*extended_names, "resource_seed18_threads8"]
+            if by_id.get(name, {}).get("status") != "passed"
+        ]
+        extended_hashes = [
+            by_id[name]["validation"]["vim_sha256"]
+            for name in extended_names
+            if name not in extended_missing
+        ]
+        extended_identical = not extended_missing and len(set(extended_hashes)) == 1
+        extended_changed = (
+            not extended_missing
+            and by_id["resource_seed18_threads8"]["validation"]["vim_sha256"]
+            != extended_hashes[0]
+        )
+        extended = {
+            "status": "passed" if extended_identical and extended_changed else "failed",
+            "threads": [1, 2, 4, 8],
+            "genes": 8,
+            "seed17_vim_sha256": extended_hashes,
+            "seed18_changed_vim": extended_changed,
+            "missing": extended_missing,
+        }
     return {
-        "status": "passed" if identical and changed and same_source else "failed",
+        "status": (
+            "passed"
+            if identical
+            and changed
+            and same_source
+            and (extended is None or extended["status"] == "passed")
+            else "failed"
+        ),
+        "expanded_resources": extended,
         "seed17_same_within_and_across_workers": identical,
         "seed18_changed_vim": changed,
         "same_patched_source": same_source,

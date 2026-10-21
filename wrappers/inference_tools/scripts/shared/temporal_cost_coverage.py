@@ -10,6 +10,123 @@ from typing import Any
 from .benchmark_inputs import validate_temporal_fixture
 from .cost_resume import measurement_context
 
+SUPPORTED_DESIGNS = {
+    "independent_temporal_default_grid_with_branch_centers",
+    "independent_temporal_grid_with_branch_growth",
+}
+COORDINATE_AXES = (
+    "genes",
+    "timepoints_per_series",
+    "independent_series",
+    "steady_state_samples",
+    "sampling",
+)
+SCIENTIFIC_DEFAULTS = {
+    "tree_method": "RF",
+    "alpha": "from_data",
+    "K": "sqrt",
+    "ntrees": 1000,
+    "compute_quality_scores": False,
+    "save_models": False,
+}
+
+
+def _coordinate(genes: int, geometry: dict) -> tuple:
+    return (
+        genes,
+        geometry["timepoints_per_series"],
+        geometry["series_count"],
+        geometry.get("steady_state_samples", 0),
+        geometry.get("sampling", "regular"),
+    )
+
+
+def _family_domains(design: dict, wanted: dict[str, dict]) -> list[dict]:
+    """Check the declared independent branch axes against registered slices."""
+    if design["kind"] != "independent_temporal_grid_with_branch_growth":
+        return []
+    families = design.get("families")
+    if not isinstance(families, list) or not families:
+        raise ValueError("Growth panels require explicit branch families.")
+    seen_names, seen_profiles = set(), set()
+    domains = []
+    for family in families:
+        name, members = family.get("id"), family.get("profile_ids")
+        if (
+            not isinstance(name, str)
+            or not name
+            or name in seen_names
+            or not isinstance(members, list)
+            or not members
+            or any(
+                member not in wanted or member in seen_profiles for member in members
+            )
+            or len(set(members)) != len(members)
+        ):
+            raise ValueError(
+                "Branch families need unique names and disjoint registered profile IDs."
+            )
+        axes = family.get("coordinate_axes", {})
+        if set(axes) != set(COORDINATE_AXES):
+            raise ValueError(
+                f"{name}: branch family must declare every temporal coordinate axis."
+            )
+        for axis in COORDINATE_AXES:
+            levels = axes[axis]
+            if (
+                not isinstance(levels, list)
+                or not levels
+                or len(set(levels)) != len(levels)
+            ):
+                raise ValueError(f"{name}: branch axes need distinct nonempty levels.")
+            if axis == "sampling":
+                valid = all(value in {"regular", "irregular"} for value in levels)
+            else:
+                valid = all(
+                    type(value) is int
+                    and value >= (0 if axis == "steady_state_samples" else 1)
+                    for value in levels
+                )
+            if not valid:
+                raise ValueError(f"{name}: invalid branch coordinate axis {axis}.")
+        expected = set(product(*(axes[axis] for axis in COORDINATE_AXES)))
+        actual = set()
+        count = 0
+        for member in members:
+            raw = wanted[member]
+            if family.get("expected_params") != {
+                **SCIENTIFIC_DEFAULTS,
+                **raw.get("param_overrides", {}),
+            } or sorted(family.get("optional_inputs", [])) != sorted(
+                raw.get("optional_inputs", [])
+            ):
+                raise ValueError(
+                    f"{name}: branch members differ from their declared parameters/optional inputs."
+                )
+            for size in raw["sizes"]:
+                genes, _ = map(int, size.lower().split("x"))
+                actual.add(_coordinate(genes, raw["temporal_fixture"]))
+                count += 1
+        if actual != expected or len(actual) != count:
+            raise ValueError(
+                f"{name}: registered slices must exactly cross the declared branch axes."
+            )
+        domains.append(
+            {
+                "id": name,
+                "profile_ids": members,
+                "coordinates": expected,
+                "scope": family.get("scope", "Finite registered coordinates only."),
+            }
+        )
+        seen_names.add(name)
+        seen_profiles.update(members)
+    if seen_profiles != set(wanted):
+        raise ValueError(
+            "Every registered profile must belong to exactly one branch family."
+        )
+    return domains
+
 
 def _positive(value: Any) -> bool:
     return (
@@ -24,20 +141,46 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
     """Require the actual registered shapes/resources and three distinct receipts.
 
     This certifies the finite measurement domain, never predictive accuracy.
-    Default profiles are gene-axis slices of a combined three-axis grid. Named
-    branch profiles certify only their single registered point, with no curve.
+    Profiles retain their exact temporal shapes. Explicit families certify
+    their finite independent axes, without establishing temporal interpolation.
     """
     design = recipe["calibration_design"]
-    if design.get("kind") != "independent_temporal_default_grid_with_branch_centers":
+    if design.get("kind") not in SUPPORTED_DESIGNS:
         raise ValueError("Unsupported temporal calibration design.")
-    resources = list(
-        product(design["resources"]["threads"], design["resources"]["ram_gb"])
-    )
-    repeats = max(3, design["repetitions"])
-    wanted = {row["id"]: row for row in recipe["profiles"]}
-    if len(wanted) != len(recipe["profiles"]) or len(set(resources)) != 4:
+    growth = design["kind"] == "independent_temporal_grid_with_branch_growth"
+    allocation = design["resources"]
+    if (
+        any(type(value) is not int or value < 1 for value in allocation["threads"])
+        or any(not _positive(value) for value in allocation["ram_gb"])
+        or type(design["repetitions"]) is not int
+        or design["repetitions"] < 3
+    ):
         raise ValueError(
-            "Temporal panel needs distinct registered profiles and four resource strata."
+            "Temporal resources must be positive and at least three repetitions are required."
+        )
+    resources = list(product(allocation["threads"], allocation["ram_gb"]))
+    repeats = design["repetitions"]
+    wanted = {row["id"]: row for row in recipe["profiles"]}
+    if (
+        len(wanted) != len(recipe["profiles"])
+        or not resources
+        or len(set(resources)) != len(resources)
+        or allocation.get("strata_count", len(resources)) != len(resources)
+    ):
+        raise ValueError(
+            "Temporal panel needs distinct registered profiles and the declared resource strata."
+        )
+    families = _family_domains(design, wanted)
+    point_count = sum(
+        len(row.get("sizes", recipe.get("sizes", []))) for row in wanted.values()
+    )
+    if (
+        design.get("total_points_per_resource_stratum") != point_count
+        or design.get("planned_calibration_runs")
+        != point_count * len(resources) * repeats
+    ):
+        raise ValueError(
+            "Temporal point/run budget differs from registered sizes and resource strata."
         )
     if any(
         len(set(design[key])) != 3
@@ -63,6 +206,9 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
         tuple(r): set() for r in resources
     }
     successful_repetitions = 0
+    family_measured = {
+        name: {tuple(resource): set() for resource in resources} for name in wanted
+    }
     for name, raw in wanted.items():
         geometry = raw.get("temporal_fixture", recipe.get("temporal_fixture"))
         temporal = raw.get("temporal", recipe.get("temporal"))
@@ -83,8 +229,13 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
             raise ValueError(
                 f"{name}: default temporal slice needs the registered three gene levels."
             )
-        if not default and len(sizes) != 1:
+        if not growth and not default and len(sizes) != 1:
             raise ValueError(f"{name}: branch scope must be an explicit single point.")
+        alpha = raw.get("param_overrides", {}).get("alpha")
+        if isinstance(alpha, list) and any(genes != len(alpha) for genes, _ in sizes):
+            raise ValueError(
+                f"{name}: vector alpha fixes the gene axis to its exact length."
+            )
         expected = {(g, c, t, float(r)) for (g, c), (t, r) in product(sizes, resources)}
         profile = present.get(name, {})
         config = profile.get("benchmark_config", {})
@@ -97,21 +248,15 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
             errors.append(
                 "Measured temporal contract/geometry differs from registered recipe."
             )
-        if default and profile:
+        if profile:
             params = config.get("params_profile", {}).get("resolved_params", {})
-            defaults = {
-                "tree_method": "RF",
-                "alpha": "from_data",
-                "K": "sqrt",
-                "ntrees": 1000,
-                "compute_quality_scores": False,
-                "save_models": False,
-            }
-            if any(params.get(key) != value for key, value in defaults.items()):
+            expected_params = {**SCIENTIFIC_DEFAULTS, **raw.get("param_overrides", {})}
+            if any(params.get(key) != value for key, value in expected_params.items()):
                 errors.append(
-                    "Default grid does not retain actual registered method defaults."
+                    "Measured method parameters differ from the registered defaults/branch overrides."
                 )
         measured = set()
+        seen_points = set()
         failed_repetitions = 0
         for point in profile.get("runtime_points", []):
             key = (
@@ -123,6 +268,10 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
             if key not in expected:
                 errors.append(f"Unregistered temporal size/resource point: {key}.")
                 continue
+            if key in seen_points:
+                errors.append(f"Duplicated temporal size/resource point: {key}.")
+                continue
+            seen_points.add(key)
             evidence = point.get("measurement_evidence", {})
             observations = evidence.get("observations", [])
             failed_repetitions += sum(row.get("status") != "ok" for row in observations)
@@ -141,13 +290,18 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
                     "Raw evidence measurement context differs from the measured profile."
                 )
             inputs = evidence.get("input_sha256", {})
-            if not {
+            required_hashes = {
                 "expression.tsv",
                 "params.json",
                 "execution.json",
                 "extra/timepoints.tsv",
                 "extra/replicates.tsv",
-            }.issubset(inputs):
+            }
+            if "tf_list" in raw.get("optional_inputs", []):
+                required_hashes.add("extra/tf_list.txt")
+            if "steady_state_expression" in raw.get("optional_inputs", []):
+                required_hashes.add("extra/steady_state_expression.tsv")
+            if not required_hashes.issubset(inputs):
                 point_errors.append(
                     "Raw evidence must identify the matrices, resolved configuration and temporal metadata."
                 )
@@ -204,6 +358,9 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
             else:
                 measured.add(key)
                 successful_repetitions += len(successes)
+                family_measured[name][(key[2], key[3])].add(
+                    _coordinate(key[0], geometry)
+                )
                 if default:
                     default_coordinates[(key[2], key[3])].add(
                         (
@@ -230,7 +387,7 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
                     "gene_levels": sorted(g for g, _ in measured_slice),
                     "scope": (
                         "gene_axis_only"
-                        if default
+                        if len(sizes) > 1
                         else "registered_point_only_no_growth_claim"
                     ),
                     "planned_sizes_missing": [
@@ -257,7 +414,7 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
                 and not missing_points,
                 "interpretation": (
                     "Exact registered branch point only; no size growth claim."
-                    if not default
+                    if len(sizes) == 1
                     else "Gene-axis coverage at one fixed temporal shape."
                 ),
             }
@@ -285,22 +442,56 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
         }
         for t, r in resources
     ]
+    family_reports = []
+    for family in families:
+        resource_reports = []
+        for threads, ram in resources:
+            observed = set().union(
+                *(
+                    family_measured[name][(threads, ram)]
+                    for name in family["profile_ids"]
+                )
+            )
+            missing = family["coordinates"] - observed
+            resource_reports.append(
+                {
+                    "threads": threads,
+                    "ram_gb": ram,
+                    "expected_points": len(family["coordinates"]),
+                    "successful_points": len(observed),
+                    "missing_coordinates": [
+                        dict(zip(COORDINATE_AXES, point)) for point in sorted(missing)
+                    ],
+                    "covered": not missing,
+                }
+            )
+        family_reports.append(
+            {
+                "id": family["id"],
+                "profile_ids": family["profile_ids"],
+                "scope": family["scope"],
+                "resources": resource_reports,
+                "covered": all(row["covered"] for row in resource_reports),
+            }
+        )
     return {
         "profiles": reports,
         "missing_profiles": sorted(set(wanted) - set(present)),
         "duplicate_profiles": duplicates,
         "unplanned_profiles": sorted(set(present) - set(wanted)),
         "aggregate_default_temporal_domain": aggregate,
-        "registered_points_per_resource": sum(
-            len(row.get("sizes", recipe.get("sizes", []))) for row in wanted.values()
-        ),
+        "branch_families": family_reports,
+        "resource_strata": [{"threads": t, "ram_gb": r} for t, r in resources],
+        "registered_points_per_resource": point_count,
         "required_successful_repetitions": len(resources)
         * sum(len(row.get("sizes", recipe.get("sizes", []))) for row in wanted.values())
         * repeats,
         "retained_successful_repetitions": successful_repetitions,
         "calibration_adequate_for_planned_range": not duplicates
+        and not (set(present) - set(wanted))
         and all(row["calibration_adequate_for_planned_range"] for row in reports)
-        and all(row["covered"] for row in aggregate),
+        and all(row["covered"] for row in aggregate)
+        and all(row["covered"] for row in family_reports),
         "coverage_is_prediction_validation": False,
-        "interpretation": "Finite temporal/resource measurement coverage. The default 3-axis grid does not establish a temporal growth estimator; branch centers have only point support. Independent prediction validation remains separate.",
+        "interpretation": "Finite temporal/resource measurement coverage. Exact profile shapes and declared branch axes do not establish temporal, SS-count or parameter interpolation. Independent prediction validation remains separate.",
     }

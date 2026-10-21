@@ -2,6 +2,10 @@
 
 ## Unreleased — Osaka integration procedure
 
+- Expand dynGENIE3's finite calibration panel across 1/2/4/8 CPUs, 4/8 GiB,
+  independent temporal dimensions and representative parameter/input branches.
+  Validate representative independent runtime predictions and preserve original
+  observations through verified compatibility receipts when expanding a campaign.
 - Repair catalog rendering for tools without a fixed thread ceiling and preserve
   partial activation state after errors. Retain failed dynGENIE3 campaign evidence
   and rebuild the numerical fixes as image `1.0.1`.

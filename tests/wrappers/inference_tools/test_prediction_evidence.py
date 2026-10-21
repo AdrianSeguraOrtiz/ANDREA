@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
 from pathlib import Path
 import shutil
@@ -12,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "wrappers/inference_tools/scripts"))
 from shared.cost_resume import input_manifest
 from shared.prediction_evidence import (
+    _compatibility,
     adapt_training_observations,
     load_training_observations,
 )
@@ -181,6 +183,133 @@ class PredictionEvidenceAdapterTests(unittest.TestCase):
         self.raw.write_text(json.dumps([self.row, self.row]))
         with self.assertRaisesRegex(ValueError, "Repeated execution ID within one raw"):
             load_training_observations(self.root / "calibration", self.profile)
+
+    def source_compatibility(self):
+        """Synthetic review transition only; no scientific execution occurs."""
+        directory = self.root / "transition"
+        directory.mkdir()
+        ref = lambda path, **fields: {
+            "path": str(path),
+            "sha256": _compatibility.sha(path),
+            **fields,
+        }
+
+        def write(name, value):
+            path = directory / name
+            path.write_text(json.dumps(value))
+            return ref(path)
+
+        subjects = {}
+        for name in _compatibility.MEASUREMENT_SUBJECTS:
+            path = self.root / "reviewed-implementation" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("synthetic unchanged implementation subject")
+            subjects[name] = ref(path)
+        source_hashes = {key: value["sha256"] for key, value in subjects.items()}
+        frozen_source = _compatibility.digest(source_hashes)
+        original_cost = write("original-cost.json", self.profile)
+        original_state = write(
+            "original-state.json",
+            {
+                "status": "interrupted",
+                "source_sha256": frozen_source,
+                "image_id": self.config["provenance"]["image_id"],
+                "calibration": {"cost_sha256": original_cost["sha256"]},
+            },
+        )
+        original_freeze = write(
+            "original-freeze.json",
+            {"source_sha256": frozen_source, "identity": {"sources": source_hashes}},
+        )
+        current_profile = copy.deepcopy(self.profile)
+        current_profile["benchmark_config"]["provenance"]["source_sha256"] = "c" * 64
+        observed = write(
+            "observed.json", current_profile["benchmark_config"]["provenance"]
+        )
+        generated = directory / "generated/io"
+        shutil.copytree(self.io, generated)
+        capture = {
+            "raw_receipt": ref(self.raw, pointer="/0"),
+            "config": ref(self.config_path),
+            "raw_row_sha256": _compatibility.digest(self.row),
+            "execution_sha256": _compatibility.execution_digest(self.row),
+            "original_source_sha256": self.config["provenance"]["source_sha256"],
+            "context_sha256": _compatibility.digest(
+                _compatibility.context(self.config)
+            ),
+            "generated_io": str(generated),
+        }
+        proof = {
+            "schema_version": 1,
+            "kind": "dyngenie3_calibration_compatibility",
+            "status": "passed",
+            "image_id": self.config["provenance"]["image_id"],
+            "current_source_sha256": "c" * 64,
+            "original_campaign": str(self.root),
+            "original_freeze": original_freeze,
+            "original_state": original_state,
+            "original_cost": original_cost,
+            "measurement_subjects": subjects,
+            "observed_provenance": observed,
+            "original_measurements": [
+                {"measurements": ref(self.raw), "config": ref(self.config_path)}
+            ],
+            "executions": {self.row["run_id"]: capture},
+        }
+        path = directory / "compatibility.json"
+        path.write_text(json.dumps(proof))
+        return path, proof, current_profile
+
+    def test_explicit_closed_compatibility_preserves_original_source_and_raw_receipt(
+        self,
+    ):
+        path, proof, profile = self.source_compatibility()
+        with self.assertRaisesRegex(ValueError, "without a compatibility"):
+            load_training_observations(self.root / "calibration", profile)
+        original = self.raw.read_bytes()
+        entries = load_training_observations(
+            self.root / "new-calibration", profile, compatibility_receipt=path
+        )
+        observations = adapt_training_observations(
+            entries, self.root / "prediction", profile, compatibility_receipt=path
+        )
+        adapter_path = self.root / "prediction" / observations[0]["receipt"]["path"]
+        adapter = json.loads(adapter_path.read_text())
+        self.assertEqual(adapter["original_identity"]["source_sha256"], "b" * 64)
+        self.assertEqual(adapter["identity"]["source_sha256"], "c" * 64)
+        self.assertEqual(self.raw.read_bytes(), original)
+        spec = importlib.util.spec_from_file_location(
+            "compatibility_prediction_checker",
+            ROOT / "wrappers/validate_cost_predictions.py",
+        )
+        checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checker)
+        self.assertEqual(
+            checker.observation(observations[0], self.root / "prediction")["run_id"],
+            self.row["run_id"],
+        )
+        adapter["original_identity"]["image_id"] = "sha256:" + "d" * 64
+        adapter_path.write_text(json.dumps(adapter))
+        observations[0]["receipt"]["sha256"] = checker.digest(adapter_path)
+        with self.assertRaisesRegex(ValueError, "cannot change observed image"):
+            checker.observation(observations[0], self.root / "prediction")
+
+    def test_compatibility_rejects_changed_implementation_or_generated_inputs(self):
+        path, proof, profile = self.source_compatibility()
+        subject = Path(next(iter(proof["measurement_subjects"].values()))["path"])
+        original = subject.read_bytes()
+        subject.write_text("changed execution implementation")
+        with self.assertRaisesRegex(ValueError, "artifact changed"):
+            load_training_observations(
+                self.root / "new-calibration", profile, compatibility_receipt=path
+            )
+        subject.write_bytes(original)
+        generated = Path(proof["executions"][self.row["run_id"]]["generated_io"])
+        (generated / "expression.tsv").write_text("changed generated inputs")
+        with self.assertRaisesRegex(ValueError, "retained/generated inputs differ"):
+            load_training_observations(
+                self.root / "new-calibration", profile, compatibility_receipt=path
+            )
 
 
 if __name__ == "__main__":

@@ -105,6 +105,133 @@ def verify_raw_graph_exports(run_dir: Path):
     }
 
 
+def verify_prediction_scope(directory: Path, image: str, *, specification=None):
+    """A passed subset cannot satisfy a larger predeclared predictive panel."""
+    if specification is None:
+        module_spec = importlib.util.spec_from_file_location(
+            "dyngenie3_acceptance_prediction_protocol",
+            HERE / "validate_runtime_predictions.py",
+        )
+        helper = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(helper)
+        specification = helper.protocol(image)
+    plan_path = directory / "prediction-plan.json"
+    estimator_path = directory / "estimator.json"
+    report = passed(directory / "prediction-report.json", image)
+    plan, estimator = read_json(plan_path), read_json(estimator_path)
+    require(
+        report.get("plan_sha256") == sha(plan_path)
+        and report.get("estimator_sha256") == sha(estimator_path),
+        "Passed prediction report does not identify the frozen plan/estimator",
+    )
+    planned = specification["planned_run_count"]
+    require(
+        report.get("planned_run_count")
+        == report.get("observed_run_count")
+        == report.get("successful_run_count")
+        == plan.get("planned_run_count")
+        == planned,
+        "Predictive observations do not cover the entire reserved panel",
+    )
+    declarations = {case["id"]: case for case in specification["holdouts"]}
+    expected = {
+        (case_id, resource["threads"], float(resource["ram_gb"]))
+        for case_id in declarations
+        for resource in specification["resources"]
+    }
+    found = set()
+    for case in plan["cases"]:
+        identity = case["identity"]
+        key = (
+            case.get("reservation_id"),
+            identity["threads"],
+            float(identity["ram_gb"]),
+        )
+        require(
+            key in expected and key not in found,
+            "Frozen cases omit or duplicate a reserved stratum",
+        )
+        found.add(key)
+        declaration = declarations[key[0]]
+        require(
+            identity["profile_id"] == declaration["profile_id"]
+            and identity["image_id"] == image
+            and case["kind"] == declaration["kind"]
+            and case["generator_seed"] == declaration["seed"]
+            and all(
+                case["dimensions"][name] == declaration[name]
+                for name in (
+                    "genes",
+                    "columns",
+                    "timepoints_per_series",
+                    "independent_series",
+                )
+            ),
+            "Frozen predictive case differs from its reserved recipe/geometry",
+        )
+        require(
+            case["id"] in estimator["predictions"],
+            "A frozen core prediction is missing",
+        )
+        prediction = estimator["predictions"][case["id"]]
+        require(
+            all(
+                case[key] == prediction[key]
+                for key in (
+                    "predicted_typical_seconds",
+                    "predicted_planning_seconds",
+                    "operating_reserve_seconds",
+                )
+            )
+            and case["max_relative_error"] == specification["max_relative_error"]
+            and case["min_planning_coverage"] == specification["min_planning_coverage"]
+            and prediction["core_provenance"]["cost_profile"]["profile_id"]
+            == identity["profile_id"],
+            "Predictive plan differs from its exact core planner estimate",
+        )
+    require(
+        found == expected, "Frozen predictions omit reserved recipe/resource strata"
+    )
+    case_ids = {case["id"] for case in plan["cases"]}
+    require(
+        set(estimator["predictions"]) == case_ids,
+        "Frozen estimator prediction membership differs from the reserved plan",
+    )
+    observed = read_json(directory / "observations.json")
+    require(
+        observed["plan_sha256"] == sha(plan_path),
+        "Retained observations refer to another plan",
+    )
+    require(
+        len(observed["cases"]) == len(case_ids)
+        and {case["id"] for case in observed["cases"]} == case_ids
+        and all(
+            len(case["observations"]) == specification["repeats"]
+            for case in observed["cases"]
+        ),
+        "Retained observation counts differ from the complete reserved predictive panel",
+    )
+    require(
+        estimator.get("kind") == "frozen_andrea_planner_calls",
+        "Predictive estimator is not the actual core planner",
+    )
+    return {
+        "status": "passed",
+        "reserved_case_count": len(declarations),
+        "profile_ids": sorted({case["profile_id"] for case in declarations.values()}),
+        "resource_strata": specification["resources"],
+        "observed_run_count": planned,
+        "scope": specification["scope"],
+        "exclusions": "No vector gene-growth, other temporal geometries, SS10/40, untested branch combinations or unreserved parameter values receive independent predictive validation.",
+        "outputs": [
+            reference(plan_path),
+            reference(estimator_path),
+            reference(directory / "prediction-report.json"),
+            reference(directory / "observations.json"),
+        ],
+    }
+
+
 def verify_review(path: Path, source_sha256: str):
     review = passed(path)
     require(review.get("exit_code") == 0, "Source review failed")
@@ -249,6 +376,8 @@ def main(argv=None):
             read_json(out / "prediction-gate.json").get("passed") is True,
             "Independent prediction checker did not pass",
         )
+        prediction_scope = verify_prediction_scope(prediction_dir, args.image)
+        write_json(out / "predictive-scope.json", prediction_scope)
         cli_root = out / "cli"
         require(
             not cli_root.exists(), "Retained CLI attempt exists; review before retry"
@@ -337,8 +466,8 @@ def main(argv=None):
             )
         dossier["installation"]["image"] = args.image
         dossier["limitations"] = [
-            "Acceptance applies to the exact pinned image and finite calibration panel; independent gene-axis prediction evidence covers only default t8/s2 and the measured resource strata.",
-            "Cross-temporal-shape prediction, irregular-grid costs, broad branch growth and unmeasured parameter interactions remain unsupported.",
+            "Acceptance applies to the exact pinned image and finite calibration panel; independent gene-axis prediction evidence covers only the explicitly reserved recipe cases at t8/s2 and their eight measured resource strata.",
+            "Prediction across temporal shapes, unreserved SS counts/parameter values, fixed-vector gene growth and unmeasured branch interactions remains unsupported. Irregular sampling is limited to its exact measured recipe and reserved case.",
             "Only explicitly declared observed longitudinal bulk series are supported; technical averaging, independent-sample pairing, pseudotime and native group/column networks are excluded.",
             "Directed unsigned target-normalized weights and exploratory quality diagnostics do not establish signed, causal or biologically accurate regulation.",
             "Historical source-audit and preparation evidence describes its pre-execution state; later immutable-image, interface and cost receipts establish the acceptance checks below.",
@@ -370,6 +499,7 @@ def main(argv=None):
                 prediction_dir / "observations.json",
                 prediction_dir / "observed-provenance.json",
                 out / "prediction-gate.json",
+                out / "predictive-scope.json",
                 reports[0],
                 resolved[0],
                 out / "gui-catalog.json",
@@ -433,7 +563,8 @@ def main(argv=None):
         )
         report.update(
             status="passed",
-            scope="Declared finite calibration panel; gene-axis prediction evidence only at default t8/s2, separately by measured resource stratum.",
+            scope=prediction_scope["scope"],
+            prediction_scope=prediction_scope,
             dossier=reference(dossier_path),
             gate=reference(out / "gate.json"),
         )

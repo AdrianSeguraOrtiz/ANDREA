@@ -9,9 +9,10 @@ compatibility patches are in [integration_decisions.md](integration_decisions.md
 The wrapper and shared temporal delivery are implemented. Physical image,
 repeatability, resource and cost acceptance require actual execution receipts;
 draft files alone do not activate a catalog tool. The authoritative campaign
-state is `release-logs/dyngenie3/campaign-recovery-20261021/state.json` for the
-recovered campaign. The original `campaign/` directory retains the first
-failure and its valid image tests. See the [dated integration review](integration_review_20261021.md).
+state is `release-logs/dyngenie3/campaign-expanded-20261021/state.json` for the
+expanded campaign. `campaign/` retains the first failure;
+`campaign-recovery-20261021/` retains the successful 17-case image verification
+and every original calibration observation collected before expansion. See the [dated integration review](integration_review_20261021.md).
 Registry publication is separate and is never performed by the supervisor.
 
 ## Scientific input and output
@@ -94,28 +95,49 @@ and writes `acceptance/integration.json` with hashed receipts. The source
 `integration.json` remains the frozen preparation dossier. Failed attempts
 remain available for review; they do not become acceptance evidence.
 
-The strengthened verifier adds five saved-model diagnostic cases using an
+The verifier includes five saved-model diagnostic cases using an
 [eight-gene fixture](../../tests/fixtures/dyngenie3/quality/README.md): RF quality
 from time courses alone, ET with steady-state samples, and zero-decay,
-one-tree and one-training-sample edge cases. It recomputes native VIM, OOB
-Pearson and seeded top-five stability from the saved forests inside the same
-pinned image, without fitting another model. Each probe is capped at 120
-seconds within its case's 3600-second timeout. The matrix now has **17 fits in
-17 containers**, including five internal probes; the timeout sum is 61,200
-seconds. The previous 12-run physical receipt retains its original scope.
+one-tree and one-training-sample edge cases. It reconstructs native VIM, OOB
+Pearson and seeded top-five stability from saved forests inside the pinned
+image without another fit. Each probe is capped at 120 seconds within its
+case's 3600-second limit. Nine additional eight-gene executions verify actual
+1/2/4/8 target workers and exact repeated VIM across those allocations, with
+changed-seed sensitivity. The matrix has **26 fits in 26 containers**, including
+five internal probes; its timeout sum is 93,600 seconds. Earlier 12- and 17-case
+receipts retain their original scope.
 
-The cost recipe allocates **408 calibration runs**: 27 default points crossing
-genes 50/100/200, points per series 4/8/16 and series 1/2/4, plus seven explicitly
-limited branch centers; each uses three repeats in four thread/RAM strata.
-Another **24 runs** are reserved for independent gene-axis interpolation and
-extrapolation at the exact default t8/s2 shape. Branch centers do not establish
-growth curves. Predictions across temporal shapes remain unsupported.
-Timeout sums are execution caps, not measured ETAs. Structural validity,
-declared-domain coverage and observed predictive accuracy remain separate gates.
-Including 17 functional cases and one core/CLI execution gives 450 allocated
-containers and a summed scientific timeout cap of 1,620,000 seconds. Build and
-validation overhead are additional and unknown. The campaign runs one container
-at a time with one or two assigned CPUs and 4 or 8 GiB RAM.
+The expanded cost recipe allocates **1944 calibration runs**: 81 scientific
+coordinates, eight CPU/RAM strata (1/2/4/8 CPUs × 4/8 GiB), three repetitions.
+The default panel crosses genes 50/100/200, points per series 4/8/16 and series
+1/2/4. ET and TF variants cross three gene/time levels at two series. Other
+panels vary genes at fixed t8/s2: scalar alpha, quality, saved models, K=1/all,
+and 100/300 trees; real 1000-tree defaults remain in their own profiles.
+Steady-state counts 10/20/40 cross the three gene levels. An irregular t8/s2
+panel also spans genes. The vector-alpha panel retains its exact 100-gene
+vector and varies timepoints only. Unmeasured factor combinations and TF-list
+densities are outside this finite panel.
+
+Another **312 runs**, 13 cases across eight resource strata with three repeats,
+check independent gene-axis predictions for representative registered branches.
+The manifest declares every reserved case before measurement. Vector-alpha
+size extrapolation and interpolation across temporal shapes remain unsupported.
+These are runtime prediction checks, separate from biological accuracy.
+Including 26 functional cases and one real core/CLI execution gives **2283**
+allocated containers and a summed execution timeout cap of **8,218,800 seconds**.
+This 95.125-day cap is not an ETA. The campaign runs one container at a time;
+measured progress and a provisional duration range are retained in campaign
+planning evidence. Structural validity, domain coverage and independent
+prediction accuracy must pass separately before `cost.json` is registered.
+
+Expansion preserves the previous campaign and uses `--reuse-calibration-from`
+with `--reuse-image-from`. Reuse retains each original run ID, time and source
+provenance. The benchmark regenerates inputs and checks exact bytes plus
+image/hardware/parameter context before skipping an observation. A separate
+hashed compatibility receipt proves that installed code and the input/timing
+implementation did not change; the prediction adapter verifies it before
+accepting a historical source identity. New gates are always run against the
+expanded panel; old success statuses are never imported.
 
 Independent predictions freeze the actual ANDREA planner calls and cost/spec
 snapshots before measuring the reserved inputs. The planning prediction is the

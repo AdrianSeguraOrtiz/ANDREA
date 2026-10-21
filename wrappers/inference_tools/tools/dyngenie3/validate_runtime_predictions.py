@@ -4,13 +4,14 @@
 --plan-only writes an unmeasured protocol without fitting or starting Docker.
 Actual work requires an explicitly completed external experiment, the retained
 calibration executions, and a full immutable image ID. Nothing runs on import.
-The estimator varies genes only within one fixed temporal/resource stratum.
+The estimator varies genes within explicitly reserved fixed recipe/temporal/resource strata.
 """
 
 from __future__ import annotations
 
 import argparse
 import builtins
+import csv
 from datetime import datetime, timezone
 import hashlib
 import importlib.util
@@ -31,19 +32,20 @@ ROOT = HERE.parents[3]
 SCRIPTS = HERE.parents[1] / "scripts"
 PROFILE_ID = "global_rf_from_data_ts_t8_s2_spec_defaults"
 TRAINING_GENES = (50, 100, 200)
-HOLDOUTS = ((75, 765431, "interpolation"), (250, 765439, "extrapolation"))
-RESOURCES = ((1, 4), (1, 8), (2, 4), (2, 8))
+RESOURCES = tuple((cpu, ram) for cpu in (1, 2, 4, 8) for ram in (4, 8))
+RESERVATION_PATH = ROOT / "wrappers/inference_tools/cost_profiles/dyngenie3.json"
 REPEATS = 3
 TIMEOUT = 3600
 ERROR_LIMIT = 0.35
 MIN_COVERAGE = 1.0
 BUDGET_RESERVE = 1.25
 SCOPE = (
-    "Gene-axis checks at 75 and 250 genes only, fixed longitudinal t8/s2, "
-    "16 temporal columns, no steady-state input, regular observed hours, "
-    "the frozen RF/default recipe, immutable image and host, and four declared "
-    "CPU/RAM allocations. No temporal interpolation, 3D domain claim, "
-    "statistical prediction interval or guarantee."
+    "Independent gene-axis checks at reserved 75/250-gene cases, each within its "
+    "exact measured recipe, longitudinal t8/s2 temporal geometry, observed hours, "
+    "sampling pattern, steady-state count, immutable image and hardware, across "
+    "eight CPU/RAM strata. Only named held-out branches are validated. "
+    "No temporal interpolation, unmeasured branch interaction, statistical "
+    "prediction interval or general guarantee."
 )
 
 
@@ -130,26 +132,56 @@ def _runtime():
     return _module("dyngenie3_prediction_runtime", HERE / "verify_runtime.py")
 
 
+def reserved_cases() -> list[dict[str, Any]]:
+    """Read predeclared independent cases, never infer them from measured errors."""
+    manifest = _read(RESERVATION_PATH)
+    cases = manifest["holdout_reservation"]["cases"]
+    declared_profiles = {profile["id"] for profile in manifest["profiles"]}
+    _require(isinstance(cases, list) and bool(cases), "No reserved hold-out cases")
+    seen = set()
+    for case in cases:
+        _require(
+            isinstance(case.get("id"), str)
+            and case["id"] not in seen
+            and re.fullmatch(r"[a-zA-Z0-9_-]+", case["id"]),
+            "Reserved hold-out IDs must be distinct safe path names",
+        )
+        seen.add(case["id"])
+        _require(
+            case.get("profile_id") in declared_profiles,
+            "Reserved profile is undeclared",
+        )
+        _require(
+            case.get("genes") in (75, 250)
+            and case.get("columns") == 16
+            and case.get("timepoints_per_series") == 8
+            and case.get("independent_series") == 2
+            and type(case.get("seed")) is int
+            and case.get("kind")
+            == ("interpolation" if case["genes"] == 75 else "extrapolation"),
+            "Hold-outs require reserved 75/250 genes and fixed t8/s2 geometry",
+        )
+    return cases
+
+
 def protocol(image: str) -> dict[str, Any]:
     _require(
         bool(re.fullmatch(r"sha256:[0-9a-f]{64}", image)),
         "--image requires a full immutable sha256 Docker image ID",
     )
+    cases = reserved_cases()
     return {
         "schema_version": 1,
         "kind": "dyngenie3_timing_holdout_protocol",
         "image_id": image,
-        "profile_id": PROFILE_ID,
+        "profile_ids": sorted({case["profile_id"] for case in cases}),
         "training_genes": list(TRAINING_GENES),
-        "holdouts": [
-            {"genes": genes, "columns": 16, "generator_seed": seed, "kind": kind}
-            for genes, seed, kind in HOLDOUTS
-        ],
+        "holdouts": [{**case, "generator_seed": case["seed"]} for case in cases],
         "resources": [
             {"threads": threads, "ram_gb": ram} for threads, ram in RESOURCES
         ],
         "repeats": REPEATS,
-        "planned_run_count": len(HOLDOUTS) * len(RESOURCES) * REPEATS,
+        "planned_run_count": len(cases) * len(RESOURCES) * REPEATS,
         "timeout_seconds_per_run": TIMEOUT,
         "max_relative_error": ERROR_LIMIT,
         "min_planning_coverage": MIN_COVERAGE,
@@ -160,7 +192,9 @@ def protocol(image: str) -> dict[str, Any]:
     }
 
 
-def validate_training_panel(entries: list[dict[str, Any]]) -> None:
+def validate_training_panel(
+    entries: list[dict[str, Any]], *, config: dict | None = None
+) -> None:
     """Require the declared panel without fitting a separate estimator."""
     grouped: dict[tuple[int, float], dict[int, list[float]]] = {}
     execution_ids = set()
@@ -178,7 +212,12 @@ def validate_training_panel(entries: list[dict[str, Any]]) -> None:
             and row["genes"] in TRAINING_GENES
             and row["columns"] == 16
             and dimensions.get("timepoints_per_series") == 8
-            and dimensions.get("independent_series") == 2,
+            and dimensions.get("independent_series") == 2
+            and (
+                config is None
+                or dimensions.get("steady_state_samples", 0)
+                == config["input_profile"]["temporal_fixture"]["steady_state_samples"]
+            ),
             "Training observations must use only successful 50/100/200-gene t8/s2 cases",
         )
         seconds = row["seconds"]
@@ -192,8 +231,9 @@ def validate_training_panel(entries: list[dict[str, Any]]) -> None:
         )
         grouped.setdefault(key, {}).setdefault(row["genes"], []).append(float(seconds))
     _require(
-        len(entries) == 36 and set(grouped) == set(RESOURCES),
-        "Exactly 36 retained training observations across four resource allocations are required",
+        len(entries) == len(TRAINING_GENES) * len(RESOURCES) * REPEATS
+        and set(grouped) == set(RESOURCES),
+        "Exactly three training repeats at each 50/100/200-gene point across eight resource allocations are required",
     )
     for points in grouped.values():
         _require(
@@ -204,7 +244,7 @@ def validate_training_panel(entries: list[dict[str, Any]]) -> None:
 
 
 def planner_prediction(
-    *, cost, toolspec, config, io, genes, threads, ram_gb
+    *, cost, toolspec, config, io, genes, threads, ram_gb, profile_id=PROFILE_ID
 ) -> dict[str, Any]:
     """Call the estimator consumed by actual inference planning, unchanged."""
     from andrea.core.commands.infer_network.commons.planner import (
@@ -214,7 +254,16 @@ def planner_prediction(
     from andrea.core.commands.infer_network.commons.shared import DatasetContext
     from andrea.core.shared.bulk_temporal import validate_bulk_temporal_inputs
 
-    extras = {key: io / "extra" / f"{key}.tsv" for key in ("timepoints", "replicates")}
+    # File names follow the same public benchmark input contract as execution.
+    extras = {
+        path.name.split(".")[0]: path
+        for path in (io / "extra").iterdir()
+        if path.is_file()
+    }
+    _require(
+        set(extras) == set(config["input_profile"]["extras_provided"]),
+        "Generated extras differ from the frozen profile",
+    )
     dataset = DatasetContext(
         dataset_id="dyngenie3_holdout",
         column_kind="samples",
@@ -233,7 +282,20 @@ def planner_prediction(
         timepoints_path=extras["timepoints"],
         replicates_path=extras["replicates"],
     )
-    context = _temporal_cost_context(dataset=dataset, temporal_summary=summary)
+    steady_samples = 0
+    if "steady_state_expression" in extras:
+        with extras["steady_state_expression"].open(
+            encoding="utf-8", newline=""
+        ) as stream:
+            steady_samples = len(next(csv.reader(stream, delimiter="\t"))) - 1
+    _require(
+        steady_samples
+        == config["input_profile"]["temporal_fixture"]["steady_state_samples"],
+        "Steady-state matrix differs from the frozen recipe",
+    )
+    context = _temporal_cost_context(
+        dataset=dataset, temporal_summary=summary, steady_state_samples=steady_samples
+    )
     modes, warnings = _estimate_tool_mode_options(
         tool_id="dyngenie3",
         run_id="dyngenie3_holdout",
@@ -258,14 +320,14 @@ def planner_prediction(
     mode = modes[0]
     _require(
         mode.eta_source in {"cost_profile", "cost_profile_extrapolated"},
-        "Planner returned an unprofiled fallback; prediction validation cannot relabel it",
+        f"Planner returned unprofiled {mode.eta_source} for reserved {profile_id}; cannot relabel it: {warnings}; temporal={context}",
     )
     detail = mode.eta_provenance["cost_profile"]
     _require(
-        detail["profile_id"] == PROFILE_ID
+        detail["profile_id"] == profile_id
         and detail["size_model"]["method"]
         in {"measured_axis_interpolation", "measured_axis_extrapolation"},
-        "Planner used an unsupported profile or heuristic geometry",
+        f"Planner selected {detail['profile_id']}/{detail['size_model']['method']} instead of reserved {profile_id} measured gene axis",
     )
     typical = detail["nearest_runtime_point"]["seconds_p50"] * detail["size_scale"]
     _require(
@@ -312,68 +374,63 @@ def _input_refs(io: Path, base: Path, evidence) -> list[dict[str, Any]]:
     ]
 
 
-def freeze(
-    args, out: Path, evidence, backend, checks
-) -> tuple[dict[str, Any], dict[str, Any]]:
+def freeze(args, out: Path, evidence, backend, checks):
     cost = _read(args.cost)
-    profiles = [
-        row for row in cost.get("profiles", []) if row.get("profile_id") == PROFILE_ID
-    ]
-    _require(
-        len(profiles) == 1,
-        "Exactly one retained t8/s2 default cost profile is required",
-    )
-    profile = profiles[0]
-    config = profile["benchmark_config"]
-    geometry = config["input_profile"]["temporal_fixture"]
-    _require(
-        geometry
-        == {
-            "series_count": 2,
-            "timepoints_per_series": 8,
-            "steady_state_samples": 0,
-            "sampling": "regular",
-        },
-        "Hold-outs require the exact regular t8/s2/no-SS recipe",
-    )
-    _require(
-        config["input_profile"]["temporal"]["time_unit"] == "hour"
-        and config["execution_profile"]["mode"] == "global",
-        "Hold-out observed units/execution differ from the reserved profile",
-    )
-    _require(
-        config["input_profile"]["temporal"]["sampling_design"] == "longitudinal"
-        and set(config["input_profile"]["extras_provided"])
-        == {"timepoints", "replicates"},
-        "Hold-outs require the reviewed longitudinal all-gene/no-SS recipe",
-    )
-    defaults = {
-        key: value["default"]
-        for key, value in _read(HERE / "toolspec.draft.json")["params"].items()
+    declarations = reserved_cases()
+    selected_ids = {case["profile_id"] for case in declarations}
+    profiles = {
+        row["profile_id"]: row
+        for row in cost.get("profiles", [])
+        if row.get("profile_id") in selected_ids
     }
     _require(
-        config["params_profile"]["resolved_params"] == defaults,
-        "Hold-outs must use all reviewed ToolSpec defaults",
+        set(profiles) == selected_ids,
+        "A reserved hold-out profile is absent from retained costs",
     )
-    _require(
-        config["provenance"]["image_id"] == args.image,
-        "Training image differs from the supplied immutable image",
-    )
-    entries = evidence.load_training_observations(args.calibration_root, profile)
-    training = evidence.adapt_training_observations(entries, out, profile)
-    for observation in training:
-        checks.observation(observation, out)
-        expected = evidence.identity_for_config(
-            config,
-            threads=observation["identity"]["threads"],
-            ram_gb=observation["identity"]["ram_gb"],
-            profile_id=PROFILE_ID,
+    configs, training, execution_ids = {}, [], set()
+    compatibility = getattr(args, "compatibility_receipt", None)
+    for profile_id in sorted(profiles):
+        profile = profiles[profile_id]
+        config = profile["benchmark_config"]
+        geometry = config["input_profile"]["temporal_fixture"]
+        _require(
+            geometry["series_count"] == 2
+            and geometry["timepoints_per_series"] == 8
+            and geometry.get("sampling") in {"regular", "irregular"}
+            and config["input_profile"]["temporal"]["time_unit"] == "hour"
+            and config["input_profile"]["temporal"]["sampling_design"] == "longitudinal"
+            and config["execution_profile"]["mode"] == "global",
+            "Reserved profiles require exact observed-hour longitudinal t8/s2 geometry",
         )
         _require(
-            observation["identity"] == expected,
-            "Training source/hardware/recipe strata differ; refusing held-outs",
+            config["provenance"]["image_id"] == args.image,
+            "Training image differs from the immutable image",
         )
-    validate_training_panel(entries)
+        kwargs = {"compatibility_receipt": compatibility} if compatibility else {}
+        entries = evidence.load_training_observations(
+            args.calibration_root, profile, **kwargs
+        )
+        validate_training_panel(entries, config=config)
+        adapted = evidence.adapt_training_observations(entries, out, profile, **kwargs)
+        for observation in adapted:
+            checks.observation(observation, out)
+            expected = evidence.identity_for_config(
+                config,
+                threads=observation["identity"]["threads"],
+                ram_gb=observation["identity"]["ram_gb"],
+                profile_id=profile_id,
+            )
+            _require(
+                observation["identity"] == expected,
+                "Training source/hardware/recipe strata differ; refusing held-outs",
+            )
+            _require(
+                observation["id"] not in execution_ids,
+                "A captured execution cannot train two profile strata",
+            )
+            execution_ids.add(observation["id"])
+        training.extend(adapted)
+        configs[profile_id] = config
     shutil.copy2(args.cost, out / "cost-snapshot.json")
     toolspec = _read(HERE / "toolspec.draft.json")
     _write(out / "toolspec-snapshot.json", toolspec)
@@ -382,32 +439,42 @@ def freeze(
         HERE / "verify_runtime.py",
         HERE / "toolspec.draft.json",
         HERE / "requirements.lock",
+        RESERVATION_PATH,
         *sorted((ROOT / "andrea/core/commands/infer_network/commons").glob("*.py")),
         ROOT / "andrea/core/shared/bulk_temporal.py",
         ROOT / "andrea/catalog_inference_tools/schemas/dataset-manifest.schema.json",
         ROOT / "wrappers/validate_cost_predictions.py",
         SCRIPTS / "benchmark_costs.py",
-        SCRIPTS / "shared/benchmark_inputs.py",
-        SCRIPTS / "shared/prediction_evidence.py",
+        *sorted((SCRIPTS / "shared").glob("*.py")),
+        ROOT / "wrappers/calibration_compatibility.py",
     ]
+    if compatibility:
+        source_paths.append(compatibility)
     estimator = {
         "schema_version": 1,
         "kind": "frozen_andrea_planner_calls",
         "frozen_at": _utc(),
-        "profile_id": PROFILE_ID,
+        "profile_ids": sorted(profiles),
         "implementation_artifacts": [
             evidence.artifact(path, out) for path in source_paths
         ],
         "scope": SCOPE,
-        "training_execution_ids": [entry["raw_row"]["run_id"] for entry in entries],
+        "training_execution_ids": sorted(execution_ids),
         "predictions": {},
         "cost": evidence.artifact(out / "cost-snapshot.json", out),
         "toolspec": evidence.artifact(out / "toolspec-snapshot.json", out),
     }
     cases = []
-    for genes, seed, kind in HOLDOUTS:
+    for declaration in declarations:
+        profile_id, genes, seed = (
+            declaration["profile_id"],
+            declaration["genes"],
+            declaration["seed"],
+        )
+        config = configs[profile_id]
+        geometry = config["input_profile"]["temporal_fixture"]
         for threads, ram in RESOURCES:
-            case_id = f"g{genes}_t{threads}_m{ram}"
+            case_id = f"{declaration['id']}_t{threads}_m{ram}"
             io = out / "cases" / case_id / "io"
             backend.prepare_io_dir(
                 io,
@@ -418,7 +485,7 @@ def freeze(
                 input_profile=config["input_profile"],
             )
             identity = evidence.identity_for_config(
-                config, threads=threads, ram_gb=ram, profile_id=PROFILE_ID
+                config, threads=threads, ram_gb=ram, profile_id=profile_id
             )
             prediction = planner_prediction(
                 cost=cost,
@@ -428,19 +495,24 @@ def freeze(
                 genes=genes,
                 threads=threads,
                 ram_gb=ram,
+                profile_id=profile_id,
             )
             estimator["predictions"][case_id] = prediction
+            dimensions = {
+                "genes": genes,
+                "columns": 16,
+                "timepoints_per_series": 8,
+                "independent_series": 2,
+            }
+            if geometry["steady_state_samples"]:
+                dimensions["steady_state_samples"] = geometry["steady_state_samples"]
             cases.append(
                 {
                     "id": case_id,
-                    "kind": kind,
+                    "reservation_id": declaration["id"],
+                    "kind": declaration["kind"],
                     "identity": identity,
-                    "dimensions": {
-                        "genes": genes,
-                        "columns": 16,
-                        "timepoints_per_series": 8,
-                        "independent_series": 2,
-                    },
+                    "dimensions": dimensions,
                     "inputs": _input_refs(io, out, evidence),
                     "template_io": os.path.relpath(io, out),
                     "generator_seed": seed,
@@ -467,12 +539,13 @@ def freeze(
         "estimator": evidence.artifact(out / "estimator.json", out),
         "training_observations": training,
         "cases": cases,
+        "reserved_cases": declarations,
         "scope": SCOPE,
-        "planned_run_count": 24,
+        "planned_run_count": len(cases) * REPEATS,
         "automatic_retries": False,
     }
     _write(out / "prediction-plan.json", plan)
-    return plan, config
+    return plan, configs
 
 
 def run_observation(
@@ -579,7 +652,7 @@ def campaign(args) -> dict[str, Any]:
         "scope": SCOPE,
         "observed_run_count": 0,
         "successful_run_count": 0,
-        "planned_run_count": 24,
+        "planned_run_count": specification["planned_run_count"],
     }
     _write(out / "prediction-report.json", report)
     if args.plan_only:
@@ -588,7 +661,8 @@ def campaign(args) -> dict[str, Any]:
     try:
         report["external_state"] = runtime.external_state_receipt(args.external_state)
         evidence, backend, checks = _support()
-        plan, config = freeze(args, out, evidence, backend, checks)
+        plan, configs = freeze(args, out, evidence, backend, checks)
+        config = next(iter(configs.values()))
         plan_path = out / "prediction-plan.json"
         plan_sha, estimator_sha = _sha(plan_path), _sha(out / "estimator.json")
         report.update(
@@ -608,14 +682,15 @@ def campaign(args) -> dict[str, Any]:
             seed=config["provenance"]["seed"],
             source_dir=HERE,
         )
-        current_config = {**config, "provenance": observed_provenance}
         _write(out / "observed-provenance.json", observed_provenance)
         for case in plan["cases"]:
+            profile_id = case["identity"]["profile_id"]
+            current_config = {**configs[profile_id], "provenance": observed_provenance}
             identity = evidence.identity_for_config(
                 current_config,
                 threads=case["identity"]["threads"],
                 ram_gb=case["identity"]["ram_gb"],
-                profile_id=PROFILE_ID,
+                profile_id=profile_id,
             )
             _require(
                 identity == case["identity"],
@@ -643,7 +718,7 @@ def campaign(args) -> dict[str, Any]:
                 row, observation = run_observation(
                     case,
                     repeat=repeat,
-                    config=config,
+                    config=configs[case["identity"]["profile_id"]],
                     args=args,
                     out=out,
                     plan_sha=plan_sha,
@@ -669,7 +744,8 @@ def campaign(args) -> dict[str, Any]:
         report.update(
             status=(
                 "passed"
-                if validation["passed"] and report["successful_run_count"] == 24
+                if validation["passed"]
+                and report["successful_run_count"] == plan["planned_run_count"]
                 else "failed"
             ),
             generic_validation=validation,
@@ -704,6 +780,7 @@ def main(argv=None) -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--external-state", type=Path, required=True)
     parser.add_argument("--plan-only", action="store_true")
+    parser.add_argument("--compatibility-receipt", type=Path)
     args = parser.parse_args(argv)
     signal.signal(signal.SIGTERM, _interrupt)
     try:

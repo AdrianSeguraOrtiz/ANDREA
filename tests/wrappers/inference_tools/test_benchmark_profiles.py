@@ -87,7 +87,7 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         ]
         branches = [p for p in profiles if p not in defaults]
         self.assertEqual(len(defaults), 9)
-        self.assertEqual(len(branches), 7)
+        self.assertEqual(len(branches), 20)
         dimensions = set()
         for profile in defaults:
             geometry = profile.input_profile["temporal_fixture"]
@@ -108,7 +108,34 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
             dimensions,
             {(g, t, s) for g in (50, 100, 200) for t in (4, 8, 16) for s in (1, 2, 4)},
         )
-        self.assertTrue(all(profile.sizes == ("100x16",) for profile in branches))
+        self.assertEqual(sum(len(profile.sizes) for profile in profiles), 81)
+        for profile in branches:
+            geometry = profile.input_profile["temporal_fixture"]
+            columns = geometry["timepoints_per_series"] * geometry["series_count"]
+            vector = isinstance(profile.params["alpha"], list)
+            expected_genes = (100,) if vector else (50, 100, 200)
+            self.assertEqual(
+                profile.sizes, tuple(f"{genes}x{columns}" for genes in expected_genes)
+            )
+            if vector:
+                self.assertEqual(len(profile.params["alpha"]), 100)
+        self.assertEqual(
+            {profile.params["ntrees"] for profile in profiles}, {100, 300, 1000}
+        )
+        self.assertEqual(
+            {
+                profile.input_profile["temporal_fixture"]["sampling"]
+                for profile in profiles
+            },
+            {"regular", "irregular"},
+        )
+        self.assertEqual(
+            {
+                profile.input_profile["temporal_fixture"]["steady_state_samples"]
+                for profile in profiles
+            },
+            {0, 10, 20, 40},
+        )
         steady = next(p for p in branches if "steady_state_center" in p.profile_id)
         self.assertIn(
             "steady_state_expression", steady.input_profile["extras_provided"]

@@ -381,7 +381,7 @@ measured in a private staging catalog, checked for the declared temporal/resourc
 domain, then validated on reserved inputs using frozen calls to the actual
 ANDREA planner. It registers a cost only after those separate gates pass. A
 later real core/CLI execution and GUI/catalog checks feed the final hashed
-dossier at `release-logs/dyngenie3/campaign-recovery-20261021/acceptance/integration.json`.
+dossier at `release-logs/dyngenie3/campaign-expanded-20261021/acceptance/integration.json`.
 The source `integration.json` remains the preparation snapshot. Neither a
 successful helper exit without its matching receipts nor all planned timings
 alone establishes acceptance. The complete allocation and unknown ETA are
@@ -405,3 +405,31 @@ No runtime estimate or comparative speed claim is established by this audit.
 | Calibration domain and independent prediction accuracy | Pending; no measurements in this audit |
 | Image identity and registry publication | Pending |
 | Software redistribution license | Unresolved in pinned source; do not infer from article license |
+
+## Expanded finite cost panel — 2026-10-21
+
+The user selected a broad panel comparable to catalog coverage, with explicit
+limits rather than an exhaustive factor Cartesian product. The authoritative
+recipe is `../../cost_profiles/dyngenie3.json`; `cost_plan.json` records the
+resolved allocation and the live expanded campaign retains execution evidence.
+The previous 17-case image verification passed. Its calibration observations
+are eligible for exact-input/context reuse, with original identities preserved.
+
+The new panel contains 81 scientific coordinates, all eight CPU/RAM strata
+(1/2/4/8 CPUs and 4/8 GiB), and three repetitions: 1944 calibration executions.
+ET and TF branches have crossed gene/time growth at two series. Scalar-alpha,
+quality, saved-model, K and tree-count panels have gene growth at fixed t8/s2.
+Steady-state counts 10/20/40 cross genes. Irregular t8/s2 has a separate gene
+panel. Vector alpha fixes 100 genes to preserve the declared vector and varies
+timepoint count. Compared GENIE3 and Inferelator baseline profiles use diagonal sizes in seven
+resource strata and a full 3×3 grid in one; this panel crosses all declared
+coordinates in every resource stratum while preserving an explicit finite domain. It makes no prediction
+claim for unmeasured temporal shapes, TF densities or factor combinations.
+
+Thirteen reserved cases at untrained gene sizes 75/250 provide 312 independent
+runtime observations across the eight strata. Predictions are frozen calls to
+the actual planner before any held-out execution; their observations cannot be
+used to fit the estimator while retaining independent-validation status.
+Twenty-six functional executions now also check eight actual target workers
+on an eight-gene fixture, repeated seeds across 1/2/4/8 CPUs, and changed-seed
+sensitivity. The installed image and scientific defaults are unchanged.

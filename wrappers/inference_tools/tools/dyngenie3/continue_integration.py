@@ -14,6 +14,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -220,6 +221,7 @@ class Supervisor:
                 )
         for relative in (
             "wrappers/benchmark_support.py",
+            "wrappers/calibration_compatibility.py",
             "wrappers/validate_cost_predictions.py",
             "wrappers/integration/validate_integration.py",
             "scripts/render_doc_assets.py",
@@ -318,6 +320,13 @@ class Supervisor:
                 raise IntegrationError(
                     "Activated central template entry changed since verified promotion."
                 )
+        compatibility = self.state.get("calibration_compatibility", {})
+        if compatibility.get("status") == "passed":
+            receipt = Path(compatibility["receipt"])
+            if not receipt.is_file() or sha(receipt) != compatibility["sha256"]:
+                raise IntegrationError(
+                    "Retained calibration compatibility receipt changed."
+                )
 
     def make_plan(self) -> dict[str, Any]:
         config = read_json(
@@ -325,17 +334,31 @@ class Supervisor:
         )
         design = config["calibration_design"]
         sizes = sum(len(profile["sizes"]) for profile in config["profiles"])
+        strata = len(design["resources"]["threads"]) * len(
+            design["resources"]["ram_gb"]
+        )
+        calibration_runs = sizes * strata * design["repetitions"]
+        timeout = design["timeout_seconds_per_run"]
         if (
-            design["planned_calibration_runs"],
-            design["repetitions"],
-            design["timeout_seconds_per_run"],
-            sizes,
-            design["resources"]["threads"],
-            design["resources"]["ram_gb"],
-        ) != (408, 3, 3600, 34, [1, 2], [4, 8]):
+            design["repetitions"] < 3
+            or calibration_runs != design["planned_calibration_runs"]
+            or timeout < 1
+            or len(set(design["resources"]["threads"]))
+            != len(design["resources"]["threads"])
+            or len(set(design["resources"]["ram_gb"]))
+            != len(design["resources"]["ram_gb"])
+        ):
             raise IntegrationError(
-                "Reviewed calibration allocation changed; update/review supervisor commands first."
+                "Reviewed calibration allocation is inconsistent with its profiles/resources."
             )
+        physical = self.functional_plan()
+        functional_runs = physical["run_count"]
+        functional_cap = physical["execution_timeout_cap_seconds"]
+        holdouts = config["holdout_reservation"]
+        holdout_runs = holdouts["planned_runs"]
+        holdout_cap = holdouts["timeout_sum_seconds"]
+        total_runs = functional_runs + calibration_runs + holdout_runs + 1
+        total_cap = functional_cap + calibration_runs * timeout + holdout_cap + 3600
         return {
             "schema_version": 1,
             "source_sha256": self.freeze["source_sha256"],
@@ -358,43 +381,65 @@ class Supervisor:
             ),
             "verify_image_note": "The zero ID is a plan placeholder; execution uses the retained actual immutable image ID.",
             "calibration": self.benchmark_command(),
-            "planned_calibration_runs": 408,
+            "planned_calibration_runs": calibration_runs,
             "predictions": self.prediction_command("sha256:" + "0" * 64),
             "execution_budget": {
                 "functional": {
-                    "runs": 17,
-                    "timeout_seconds_per_run": 3600,
-                    "timeout_cap_seconds": 61200,
-                    "saved_model_probes": 5,
-                    "probe_timeout_seconds": 120,
+                    "runs": functional_runs,
+                    "timeout_seconds_per_run": physical["cases"][0]["timeout_seconds"],
+                    "timeout_cap_seconds": functional_cap,
+                    "saved_model_probes": physical.get("diagnostic_probe_count", 0),
+                    "probe_timeout_seconds": physical.get(
+                        "diagnostic_probe_timeout_seconds"
+                    ),
                     "probe_budget": "Included inside the five diagnostic containers and their 3600-second timeout; no additional fit or container.",
                 },
                 "calibration": {
-                    "runs": 408,
-                    "timeout_seconds_per_run": 3600,
-                    "timeout_cap_seconds": 1468800,
+                    "runs": calibration_runs,
+                    "timeout_seconds_per_run": timeout,
+                    "timeout_cap_seconds": calibration_runs * timeout,
                 },
                 "independent_holdouts": {
-                    "runs": 24,
+                    "runs": holdout_runs,
                     "timeout_seconds_per_run": 3600,
-                    "timeout_cap_seconds": 86400,
+                    "timeout_cap_seconds": holdout_cap,
                 },
                 "core_cli": {
                     "runs": 1,
                     "timeout_seconds_per_run": 3600,
                     "timeout_cap_seconds": 3600,
                 },
-                "total_container_runs": 450,
-                "science_timeout_cap_seconds": 1620000,
+                "total_container_runs": total_runs,
+                "science_timeout_cap_seconds": total_cap,
                 "estimated_duration_seconds": None,
                 "build_and_validation_overhead_seconds": None,
-                "note": "Serial timeout sum only, 18.75 days; not a measured ETA. Build/startup/validation overhead remains unknown; failures are retained and never automatically retried.",
+                "note": "Serial timeout sum only; not a measured ETA. Build/startup/validation overhead remains unknown; failures are retained and never automatically retried.",
             },
             "reserved_holdouts": config["holdout_reservation"],
             "remaining_gates": design.get("acceptance_state", {}),
             "publication": "Never performed by this supervisor.",
-            "pm2": {"autorestart": False, "instances": 1, "kill_timeout": 60000},
+            "pm2": {"autorestart": False, "instances": 1, "kill_timeout": 300000},
         }
+
+    def tool_module(self, name: str):
+        spec = importlib.util.spec_from_file_location(
+            f"_dyngenie3_supervisor_{name}", self.tool / f"{name}.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def functional_plan(self) -> dict[str, Any]:
+        return self.tool_module("verify_runtime").make_plan("sha256:" + "0" * 64)
+
+    def compatibility_module(self):
+        spec = importlib.util.spec_from_file_location(
+            "_dyngenie3_source_compatibility",
+            self.root / "wrappers/calibration_compatibility.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
 
     def guard(self, phase: str) -> None:
         self.check_sources()
@@ -636,7 +681,11 @@ class Supervisor:
         ]
 
     def benchmark_command(self) -> list[str]:
-        return [
+        config = read_json(
+            self.root / "wrappers/inference_tools/cost_profiles/dyngenie3.json"
+        )
+        design = config["calibration_design"]
+        command = [
             self.python,
             str(self.scripts / "benchmark_costs.py"),
             "--tool",
@@ -646,20 +695,26 @@ class Supervisor:
             "--catalog-images",
             "--skip-build",
             "--threads",
-            "1,2",
+            ",".join(map(str, design["resources"]["threads"])),
             "--ram-gb",
-            "4,8",
+            ",".join(map(str, design["resources"]["ram_gb"])),
             "--repeats",
-            "3",
+            str(design["repetitions"]),
             "--timeout",
-            "3600",
+            str(design["timeout_seconds_per_run"]),
             "--results-dir",
             str(self.evidence / "calibration"),
             "--fail-fast",
         ]
+        if self.state.get("reuse_calibration_from"):
+            command += [
+                "--reuse-results-dir",
+                str(Path(self.state["reuse_calibration_from"]) / "calibration"),
+            ]
+        return command
 
     def prediction_command(self, image: str) -> list[str]:
-        return [
+        command = [
             self.python,
             str(self.tool / "validate_runtime_predictions.py"),
             "--calibration-root",
@@ -673,6 +728,12 @@ class Supervisor:
             "--external-state",
             str(self.external_state),
         ]
+        if self.state.get("calibration_compatibility", {}).get("status") == "passed":
+            command += [
+                "--compatibility-receipt",
+                self.state["calibration_compatibility"]["receipt"],
+            ]
+        return command
 
     def build(self) -> None:
         self.guard("build_candidate")
@@ -848,6 +909,203 @@ class Supervisor:
             }
         )
 
+    def reuse_calibration(self, previous: Path) -> None:
+        """Import receipts only after proving the measured task did not change."""
+        self.guard("reuse_calibration")
+        previous = previous.resolve()
+        retained = self.state.get("calibration_compatibility", {})
+        if retained.get("status") == "passed":
+            if self.state.get("reuse_calibration_from") != str(previous):
+                raise IntegrationError(
+                    "Another calibration source is already retained."
+                )
+            receipt_path = Path(retained["receipt"])
+            if sha(receipt_path) != retained["sha256"]:
+                raise IntegrationError(
+                    "Retained calibration compatibility receipt changed."
+                )
+            return
+        old_state_path, old_freeze_path = (
+            previous / "state.json",
+            previous / "freeze.json",
+        )
+        old_state, old_freeze = read_json(old_state_path), read_json(old_freeze_path)
+        if old_state.get("status") not in {
+            "interrupted",
+            "failed",
+            "calibrated_within_declared_domain",
+        }:
+            raise IntegrationError(
+                "Stop and retain the original campaign before importing calibration."
+            )
+        if old_state.get("image_id") != self.state.get("image_id") or old_state.get(
+            "source_sha256"
+        ) != old_freeze.get("source_sha256"):
+            raise IntegrationError(
+                "Original calibration campaign image/freeze differs."
+            )
+        old_cost = previous / "calibration-catalog/dyngenie3/cost.json"
+        if not old_cost.is_file() or sha(old_cost) != old_state.get(
+            "calibration", {}
+        ).get("cost_sha256"):
+            raise IntegrationError(
+                "Original calibration checkpoint is missing, unsealed or changed."
+            )
+        compatibility = self.compatibility_module()
+        subjects = {}
+        for name in compatibility.MEASUREMENT_SUBJECTS:
+            path = self.root / name
+            if not path.is_file() or sha(path) != old_freeze["identity"]["sources"].get(
+                name
+            ):
+                raise IntegrationError(
+                    f"Cannot reuse changed measurement/execution subject: {name}"
+                )
+            subjects[name] = {"path": str(path), "sha256": sha(path)}
+        support = self.tool_module("validate_runtime_predictions")
+        _, backend, _ = support._support()
+        payload = read_json(old_cost)
+        seed = payload["profiles"][0]["benchmark_config"]["provenance"]["seed"]
+        observed = backend.collect_provenance(
+            root=self.root,
+            spec_path=self.catalog / "dyngenie3/toolspec.json",
+            image=self.state["image_id"],
+            seed=seed,
+            source_dir=self.tool,
+        )
+        profiles = {
+            profile.profile_id: profile
+            for profile in backend.resolve_benchmark_profiles(
+                tool_id="dyngenie3", catalog_tools_root=self.catalog
+            )
+        }
+        directory = self.evidence / "calibration-compatibility"
+        if directory.exists():
+            raise IntegrationError(
+                "Retained compatibility attempt exists; review before retry."
+            )
+        directory.mkdir(parents=True)
+        for source, name in (
+            (old_state_path, "original-state.json"),
+            (old_freeze_path, "original-freeze.json"),
+            (old_cost, "original-cost.json"),
+        ):
+            (directory / name).write_bytes(source.read_bytes())
+        write_json(directory / "observed-provenance.json", observed)
+        ref = lambda path, **fields: {
+            "path": str(path.resolve()),
+            "sha256": sha(path),
+            **fields,
+        }
+        originals, captures, generated = [], {}, {}
+        for raw_path in sorted((previous / "calibration").rglob("measurements.json")):
+            name = raw_path.parent.name
+            if name not in profiles:
+                raise IntegrationError(
+                    f"Original measured profile is not registered in the expanded recipe: {name}"
+                )
+            profile = profiles[name]
+            config_path = raw_path.with_name("benchmark_config.json")
+            config = read_json(config_path)
+            current = {
+                "provenance": observed,
+                "params_profile": profile.params_profile,
+                "execution_profile": profile.execution_profile,
+                "input_profile": profile.input_profile,
+            }
+            if compatibility.context(config) != compatibility.context(current):
+                raise IntegrationError(
+                    f"Original measured task context differs: {name}"
+                )
+            originals.append(
+                {"measurements": ref(raw_path), "config": ref(config_path)}
+            )
+            for index, row in enumerate(json.loads(raw_path.read_text())):
+                if row.get("status") != "ok":
+                    continue
+                run_id = row.get("run_id")
+                if not isinstance(run_id, str) or not run_id or run_id in captures:
+                    raise IntegrationError(
+                        "Original campaign has missing or duplicate actual execution IDs; review before migration."
+                    )
+                key = (name, row["genes"], row["columns"])
+                if key not in generated:
+                    io = directory / "inputs" / name / f"g{key[1]}_c{key[2]}" / "io"
+                    backend.prepare_io_dir(
+                        io,
+                        backend.SizePoint(key[1], key[2]),
+                        resolved_params=profile.params,
+                        execution=profile.execution,
+                        seed=seed,
+                        input_profile=profile.input_profile,
+                    )
+                    generated[key] = io
+                if compatibility.inputs(Path(row["io_dir"])) != row.get(
+                    "input_sha256"
+                ) or compatibility.inputs(generated[key]) != row.get("input_sha256"):
+                    raise IntegrationError(
+                        "Original and expanded generated input bytes differ."
+                    )
+                provenance = row.get("measurement_provenance", config["provenance"])
+                captures[run_id] = {
+                    "raw_receipt": ref(raw_path, pointer=f"/{index}"),
+                    "config": ref(config_path),
+                    "raw_row_sha256": compatibility.digest(row),
+                    "execution_sha256": compatibility.execution_digest(row),
+                    "original_source_sha256": provenance["source_sha256"],
+                    "context_sha256": compatibility.digest(
+                        compatibility.context(config)
+                    ),
+                    "generated_io": str(generated[key]),
+                }
+        proof = {
+            "schema_version": 1,
+            "kind": "dyngenie3_calibration_compatibility",
+            "status": "passed",
+            "created_at": utc(),
+            "image_id": self.state["image_id"],
+            "current_source_sha256": observed["source_sha256"],
+            "current_freeze_source_sha256": self.freeze["source_sha256"],
+            "original_campaign": str(previous),
+            "original_state": ref(directory / "original-state.json"),
+            "original_freeze": ref(directory / "original-freeze.json"),
+            "original_cost": ref(directory / "original-cost.json"),
+            "observed_provenance": ref(directory / "observed-provenance.json"),
+            "measurement_subjects": subjects,
+            "original_measurements": originals,
+            "executions": captures,
+            "scope": "Unchanged immutable image, closed execution/timing/fixture implementation, hardware/context and byte-identical inputs only. Original observations/provenance remain unchanged. No earlier acceptance or statistical decision is imported.",
+        }
+        proof_path = directory / "compatibility.json"
+        write_json(proof_path, proof)
+        compatibility.verify(
+            proof_path,
+            image_id=self.state["image_id"],
+            current_source_sha256=observed["source_sha256"],
+        )
+        cost = self.calibration_catalog / "dyngenie3/cost.json"
+        if cost.exists():
+            raise IntegrationError(
+                "Refusing to replace an existing staging calibration during migration."
+            )
+        cost.parent.mkdir(parents=True, exist_ok=True)
+        cost.write_bytes(old_cost.read_bytes())
+        self.save(
+            reuse_calibration_from=str(previous),
+            calibration_compatibility={
+                "status": "passed",
+                "receipt": str(proof_path),
+                "sha256": sha(proof_path),
+                "captured_original_executions": len(captures),
+            },
+            calibration={
+                "status": "imported_checkpoint",
+                "cost": str(cost),
+                "cost_sha256": sha(cost),
+            },
+        )
+        write_json(self.evidence / "plan.json", self.make_plan())
+
     def promote(self) -> None:
         self.guard("activate_local_catalog")
         if self.state["functional"].get("status") != "passed":
@@ -961,7 +1219,8 @@ class Supervisor:
             if not cost.is_file():
                 raise IntegrationError("Retained measured cost.json is missing.")
             return
-        self.save(calibration={"status": "running", "planned_runs": 408})
+        planned_runs = self.make_plan()["planned_calibration_runs"]
+        self.save(calibration={"status": "running", "planned_runs": planned_runs})
         result = self.command(
             self.benchmark_command(), "calibration", allow_failure=True
         )
@@ -970,7 +1229,7 @@ class Supervisor:
             calibration={
                 "status": "measured" if measured else "failed",
                 "exit_code": result.returncode,
-                "planned_runs": 408,
+                "planned_runs": planned_runs,
                 "cost": str(cost),
                 "cost_sha256": sha(cost) if cost.is_file() else None,
             }
@@ -1048,7 +1307,8 @@ class Supervisor:
                 result.returncode == 0
                 and report.get("status") == "passed"
                 and report.get("image_id") == self.state["image_id"]
-                and report.get("observed_run_count") == 24
+                and report.get("observed_run_count")
+                == self.make_plan()["execution_budget"]["independent_holdouts"]["runs"]
             )
             self.save(
                 independent_predictions={
@@ -1136,7 +1396,11 @@ class Supervisor:
         )
 
     def run(
-        self, *, plan_only: bool = False, reuse_image_from: Path | None = None
+        self,
+        *,
+        plan_only: bool = False,
+        reuse_image_from: Path | None = None,
+        reuse_calibration_from: Path | None = None,
     ) -> int:
         with self.locked():
             self.initialize()
@@ -1151,6 +1415,8 @@ class Supervisor:
                 self.build()
                 self.verify()
                 self.promote()
+                if reuse_calibration_from is not None:
+                    self.reuse_calibration(reuse_calibration_from)
                 self.calibrate()
                 self.gates()
                 if self.state.get("status") != "calibrated_within_declared_domain":
@@ -1188,6 +1454,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="Reuse only a proven immutable build from a prior campaign after exact installed-source comparison; rerun acceptance.",
     )
+    parser.add_argument(
+        "--reuse-calibration-from",
+        type=Path,
+        help="Import a stopped campaign checkpoint only after closed implementation, immutable-image, hardware/context and input-byte compatibility checks; retain original provenance.",
+    )
     args = parser.parse_args(argv)
 
     def stop(_number, _frame):
@@ -1197,7 +1468,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return Supervisor(
             root=ROOT, evidence=args.evidence, external_state=args.external_state
-        ).run(plan_only=args.plan_only, reuse_image_from=args.reuse_image_from)
+        ).run(
+            plan_only=args.plan_only,
+            reuse_image_from=args.reuse_image_from,
+            reuse_calibration_from=args.reuse_calibration_from,
+        )
     except (IntegrationError, OSError, ValueError) as exc:
         parser.error(str(exc))
 

@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
 from typing import Any
 
 from .cost_resume import input_manifest, same_measurement_context
+
+_compat_spec = importlib.util.spec_from_file_location(
+    "_andrea_prediction_calibration_compatibility",
+    Path(__file__).resolve().parents[3] / "calibration_compatibility.py",
+)
+_compatibility = importlib.util.module_from_spec(_compat_spec)
+_compat_spec.loader.exec_module(_compatibility)
+authorize_run = _compatibility.authorize_run
+verify_compatibility = _compatibility.verify
 
 
 def digest(value: Any) -> str:
@@ -60,11 +70,23 @@ def identity_for_config(
 
 
 def load_training_observations(
-    calibration_root: Path, cost_profile: dict
+    calibration_root: Path,
+    cost_profile: dict,
+    *,
+    compatibility_receipt: Path | None = None,
 ) -> list[dict]:
     """Retain actual raw row references; reject missing IDs or changed inputs."""
     name = cost_profile["profile_id"]
     config = cost_profile["benchmark_config"]
+    compatibility = (
+        verify_compatibility(
+            compatibility_receipt,
+            image_id=config["provenance"]["image_id"],
+            current_source_sha256=config["provenance"]["source_sha256"],
+        )
+        if compatibility_receipt is not None
+        else None
+    )
     expected_rows = {
         row["run_id"]: row
         for point in cost_profile["runtime_points"]
@@ -72,7 +94,13 @@ def load_training_observations(
         if row.get("status") == "ok"
     }
     candidates: dict[str, list[dict]] = {}
-    for path in sorted(calibration_root.rglob("measurements.json")):
+    paths = set(calibration_root.rglob("measurements.json"))
+    if compatibility is not None:
+        paths.update(
+            (compatibility_receipt.parent / row["measurements"]["path"]).resolve()
+            for row in compatibility["original_measurements"]
+        )
+    for path in sorted(paths):
         if path.parent.name != name:
             continue
         config_path = path.with_name("benchmark_config.json")
@@ -81,9 +109,8 @@ def load_training_observations(
             raise ValueError(
                 f"Incompatible retained calibration context: {config_path}"
             )
-        if any(
-            actual_config["provenance"].get(key) != config["provenance"].get(key)
-            for key in ("image_id", "source_sha256")
+        if actual_config["provenance"].get("image_id") != config["provenance"].get(
+            "image_id"
         ):
             raise ValueError(
                 "Calibration image/source differs from the frozen cost snapshot."
@@ -136,7 +163,6 @@ def load_training_observations(
                 row_provenance.get(key) != actual_config["provenance"].get(key)
                 for key in (
                     "image_id",
-                    "source_sha256",
                     "cpu_model",
                     "platform",
                     "logical_cpus",
@@ -147,6 +173,18 @@ def load_training_observations(
                 raise ValueError(
                     "Reused execution provenance contradicts its retained measurement context."
                 )
+            if row_provenance.get("source_sha256") != config["provenance"].get(
+                "source_sha256"
+            ) or actual_config["provenance"].get("source_sha256") != config[
+                "provenance"
+            ].get(
+                "source_sha256"
+            ):
+                if compatibility is None:
+                    raise ValueError(
+                        "Calibration source provenance contradicts the frozen cost snapshot without a compatibility receipt."
+                    )
+                authorize_run(compatibility, row, actual_config, config)
             candidates.setdefault(run_id, []).append(
                 {
                     "raw_row": row,
@@ -232,19 +270,58 @@ def load_training_observations(
 
 
 def adapt_training_observations(
-    entries: list[dict], output_dir: Path, profile: dict
+    entries: list[dict],
+    output_dir: Path,
+    profile: dict,
+    *,
+    compatibility_receipt: Path | None = None,
 ) -> list[dict]:
     """Write explicit evidence adapters, without fabricating any timing or run ID."""
     output_dir.mkdir(parents=True, exist_ok=True)
     observations = []
+    compatibility = (
+        verify_compatibility(
+            compatibility_receipt,
+            image_id=profile["benchmark_config"]["provenance"]["image_id"],
+            current_source_sha256=profile["benchmark_config"]["provenance"][
+                "source_sha256"
+            ],
+        )
+        if compatibility_receipt is not None
+        else None
+    )
     for entry in entries:
         row, io = entry["raw_row"], entry["io_dir"]
-        identity = identity_for_config(
-            entry["config"],
+        original_config = {
+            **entry["config"],
+            "provenance": row.get(
+                "measurement_provenance", entry["config"]["provenance"]
+            ),
+        }
+        original_identity = identity_for_config(
+            original_config,
             threads=row["threads"],
             ram_gb=row["ram_gb"],
             profile_id=profile["profile_id"],
         )
+        identity = original_identity
+        if (
+            original_identity["source_sha256"]
+            != profile["benchmark_config"]["provenance"]["source_sha256"]
+        ):
+            if compatibility is None:
+                raise ValueError(
+                    "Original source identity requires an explicit compatibility receipt."
+                )
+            authorize_run(
+                compatibility, row, entry["config"], profile["benchmark_config"]
+            )
+            identity = identity_for_config(
+                profile["benchmark_config"],
+                threads=row["threads"],
+                ram_gb=row["ram_gb"],
+                profile_id=profile["profile_id"],
+            )
         coordinates = {
             key: value for key, value in row["dimensions"].items() if value > 0
         }
@@ -287,6 +364,14 @@ def adapt_training_observations(
             ],
             "mapping": "Identity recipe/hardware hashes derive from retained configuration/provenance; seconds, execution ID, coordinates and inputs come from the original raw execution row.",
         }
+        if identity != original_identity:
+            adapter["original_identity"] = original_identity
+            adapter["source_compatibility"] = artifact(
+                compatibility_receipt, output_dir
+            )
+            adapter[
+                "mapping"
+            ] += " Source identity is an explicit verified compatibility alias; original identity and raw measurement provenance are retained unchanged."
         receipt = output_dir / f"training-{row['run_id']}.json"
         receipt.write_text(json.dumps(adapter, indent=2) + "\n")
         observations.append(

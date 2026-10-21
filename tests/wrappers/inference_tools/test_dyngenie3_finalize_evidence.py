@@ -333,3 +333,162 @@ def test_passed_summary_flags_do_not_bypass_real_cost_or_prediction_checker_fail
     )
     assert not (campaign / "acceptance/gate.json").exists()
     assert not (campaign / "acceptance/receipts").exists()
+
+
+def predictive_panel_fixture(directory):
+    declarations = [
+        {
+            "id": "default75",
+            "profile_id": "rf-default",
+            "genes": 75,
+            "columns": 16,
+            "timepoints_per_series": 8,
+            "independent_series": 2,
+            "seed": 123,
+            "kind": "interpolation",
+        },
+        {
+            "id": "quality250",
+            "profile_id": "rf-quality",
+            "genes": 250,
+            "columns": 16,
+            "timepoints_per_series": 8,
+            "independent_series": 2,
+            "seed": 456,
+            "kind": "extrapolation",
+        },
+    ]
+    resources = [{"threads": 1, "ram_gb": 4}, {"threads": 8, "ram_gb": 8}]
+    specification = {
+        "holdouts": declarations,
+        "resources": resources,
+        "planned_run_count": 12,
+        "scope": "Synthetic finite test domain",
+        "repeats": 3,
+        "max_relative_error": 0.35,
+        "min_planning_coverage": 1.0,
+    }
+    cases, predictions = [], {}
+    for declaration in declarations:
+        for resource in resources:
+            name = declaration["id"] + str(resource["threads"])
+            cases.append(
+                {
+                    "id": name,
+                    "reservation_id": declaration["id"],
+                    "identity": {
+                        **resource,
+                        "profile_id": declaration["profile_id"],
+                        "image_id": IMAGE,
+                    },
+                    "kind": declaration["kind"],
+                    "generator_seed": declaration["seed"],
+                    "dimensions": {
+                        key: declaration[key]
+                        for key in (
+                            "genes",
+                            "columns",
+                            "timepoints_per_series",
+                            "independent_series",
+                        )
+                    },
+                    "predicted_typical_seconds": 8,
+                    "predicted_planning_seconds": 10,
+                    "operating_reserve_seconds": 12.5,
+                    "max_relative_error": 0.35,
+                    "min_planning_coverage": 1.0,
+                }
+            )
+            predictions[name] = {
+                "predicted_typical_seconds": 8,
+                "predicted_planning_seconds": 10,
+                "operating_reserve_seconds": 12.5,
+                "core_provenance": {
+                    "cost_profile": {"profile_id": declaration["profile_id"]}
+                },
+            }
+    plan = {"cases": cases, "planned_run_count": 12}
+    estimator = {"kind": "frozen_andrea_planner_calls", "predictions": predictions}
+    json_file(directory / "prediction-plan.json", plan)
+    json_file(directory / "estimator.json", estimator)
+    report = {
+        "status": "passed",
+        "image_id": IMAGE,
+        "planned_run_count": 12,
+        "observed_run_count": 12,
+        "successful_run_count": 12,
+    }
+    return specification, plan, estimator, report
+
+
+def write_predictive_receipts(directory, plan, estimator, report):
+    json_file(directory / "prediction-plan.json", plan)
+    json_file(directory / "estimator.json", estimator)
+    report.update(
+        plan_sha256=finalizer.sha(directory / "prediction-plan.json"),
+        estimator_sha256=finalizer.sha(directory / "estimator.json"),
+    )
+    json_file(directory / "prediction-report.json", report)
+    json_file(
+        directory / "observations.json",
+        {
+            "plan_sha256": finalizer.sha(directory / "prediction-plan.json"),
+            "cases": [
+                {"id": case["id"], "observations": [{}, {}, {}]}
+                for case in plan["cases"]
+            ],
+        },
+    )
+
+
+def test_finalizer_scope_checks_every_reserved_recipe_resource_case(tmp_path):
+    specification, plan, estimator, report = predictive_panel_fixture(tmp_path)
+    write_predictive_receipts(tmp_path, plan, estimator, report)
+    checked = finalizer.verify_prediction_scope(
+        tmp_path, IMAGE, specification=specification
+    )
+    assert checked["reserved_case_count"] == 2
+    assert checked["observed_run_count"] == 12
+    assert checked["profile_ids"] == ["rf-default", "rf-quality"]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "missing_case",
+        "duplicate_case",
+        "seed",
+        "profile",
+        "partial_run_count",
+        "core_profile",
+        "stale_frozen_hash",
+        "extra_observation",
+    ],
+)
+def test_finalizer_rejects_a_passed_subset_or_relabelled_prediction_panel(
+    change, tmp_path
+):
+    specification, plan, estimator, report = predictive_panel_fixture(tmp_path)
+    if change == "missing_case":
+        plan["cases"].pop()
+    elif change == "duplicate_case":
+        plan["cases"][-1] = plan["cases"][0]
+    elif change == "seed":
+        plan["cases"][0]["generator_seed"] += 1
+    elif change == "profile":
+        plan["cases"][0]["identity"]["profile_id"] = "unreserved"
+    elif change == "partial_run_count":
+        report["successful_run_count"] = 3
+    elif change == "core_profile":
+        estimator["predictions"][plan["cases"][0]["id"]]["core_provenance"][
+            "cost_profile"
+        ]["profile_id"] = "wrong-profile"
+    write_predictive_receipts(tmp_path, plan, estimator, report)
+    if change == "stale_frozen_hash":
+        json_file(tmp_path / "estimator.json", {**estimator, "changed": True})
+    elif change == "extra_observation":
+        observed = json.loads((tmp_path / "observations.json").read_text())
+        observed["cases"][0]["observations"].append({})
+        json_file(tmp_path / "observations.json", observed)
+    with pytest.raises(ValueError):
+        finalizer.verify_prediction_scope(tmp_path, IMAGE, specification=specification)

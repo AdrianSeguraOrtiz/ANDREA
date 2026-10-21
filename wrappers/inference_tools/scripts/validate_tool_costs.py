@@ -1157,7 +1157,10 @@ def run(
                         recipe
                         if isinstance(recipe, dict)
                         and recipe.get("calibration_design", {}).get("kind")
-                        == "independent_temporal_default_grid_with_branch_centers"
+                        in {
+                            "independent_temporal_default_grid_with_branch_centers",
+                            "independent_temporal_grid_with_branch_growth",
+                        }
                         else None
                     )
                     coverage = calibration_coverage(

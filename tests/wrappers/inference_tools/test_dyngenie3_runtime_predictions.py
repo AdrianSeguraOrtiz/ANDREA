@@ -24,6 +24,48 @@ spec.loader.exec_module(predictions)
 IMAGE = "sha256:" + "a" * 64
 
 
+READ_RESERVED_CASES = predictions.reserved_cases
+
+
+@pytest.fixture(autouse=True)
+def default_reserved_cases(monkeypatch):
+    cases = [
+        {
+            "id": "default_gene_interpolation_t8_s2",
+            "profile_id": predictions.PROFILE_ID,
+            "genes": 75,
+            "columns": 16,
+            "timepoints_per_series": 8,
+            "independent_series": 2,
+            "seed": 765431,
+            "kind": "interpolation",
+        },
+        {
+            "id": "default_gene_extrapolation_t8_s2",
+            "profile_id": predictions.PROFILE_ID,
+            "genes": 250,
+            "columns": 16,
+            "timepoints_per_series": 8,
+            "independent_series": 2,
+            "seed": 765439,
+            "kind": "extrapolation",
+        },
+    ]
+    monkeypatch.setattr(predictions, "reserved_cases", lambda: copy.deepcopy(cases))
+    return cases
+
+
+def test_reviewed_expanded_reservation_is_finite_and_independent():
+    cases = READ_RESERVED_CASES()
+    assert len(cases) == 13
+    assert len({row["id"] for row in cases}) == 13
+    assert {row["genes"] for row in cases} == {75, 250}
+    assert len(predictions.RESOURCES) == 8
+    assert len(cases) * len(predictions.RESOURCES) * predictions.REPEATS == 312
+    assert not any("vector" in row["profile_id"] for row in cases)
+    assert any("irregular" in row["profile_id"] for row in cases)
+
+
 def test_support_isolates_inference_helpers_from_foreign_script_imports(monkeypatch):
     shared = types.ModuleType("shared")
     shared.__path__ = [str(ROOT / "wrappers/simulation_data_tools/scripts/shared")]
@@ -76,7 +118,7 @@ def test_plan_only_has_no_fit_import_or_subprocess_and_declares_scope(
     assert (
         report["status"] == "planned_unmeasured" and report["observed_run_count"] == 0
     )
-    assert protocol["planned_run_count"] == 24 and protocol["repeats"] == 3
+    assert protocol["planned_run_count"] == 48 and protocol["repeats"] == 3
     assert [case["genes"] for case in protocol["holdouts"]] == [75, 250]
     assert (
         protocol["planning_reserve"] == 1.25 and protocol["max_relative_error"] == 0.35
@@ -270,7 +312,7 @@ def mocked_execution(
     return calls
 
 
-def test_full_mock_campaign_freezes_before_24_runs_and_generic_checker_passes(
+def test_full_mock_campaign_freezes_before_48_runs_and_generic_checker_passes(
     retained_training, monkeypatch
 ):
     retained = retained_training
@@ -281,10 +323,10 @@ def test_full_mock_campaign_freezes_before_24_runs_and_generic_checker_passes(
         len(calls)
         == report["successful_run_count"]
         == report["observed_run_count"]
-        == 24
+        == 48
     )
     assert report["generic_validation"]["passed"]
-    assert len(report["generic_validation"]["cases"]) == 8
+    assert len(report["generic_validation"]["cases"]) == 16
     assert report["plan_sha256"] == predictions._sha(
         retained.args.out / "prediction-plan.json"
     )
@@ -294,7 +336,7 @@ def test_full_mock_campaign_freezes_before_24_runs_and_generic_checker_passes(
     estimator = json.loads((retained.args.out / "estimator.json").read_text())
     plan = json.loads((retained.args.out / "prediction-plan.json").read_text())
     assert estimator["kind"] == "frozen_andrea_planner_calls"
-    assert len(estimator["predictions"]) == 8
+    assert len(estimator["predictions"]) == 16
     for case in plan["cases"]:
         frozen = estimator["predictions"][case["id"]]
         assert (
@@ -364,3 +406,130 @@ def test_estimator_declines_heldout_genes_in_training(retained_training):
     entries[0]["raw_row"]["genes"] = 75
     with pytest.raises(ValueError, match="50/100/200"):
         predictions.validate_training_panel(entries)
+
+
+def _add_retained_recipe(retained, definition):
+    """Analytic raw receipts for one real declared recipe; never fit a model."""
+    config = copy.deepcopy(retained.config)
+    config["params_profile"]["resolved_params"].update(
+        definition.get("param_overrides", {})
+    )
+    relevant = [
+        "tree_method",
+        "K",
+        "ntrees",
+        "alpha",
+        "compute_quality_scores",
+        "save_models",
+    ]
+    config["params_profile"]["cost_relevant_params"] = relevant
+    config["params_profile"]["cost_relevant_values"] = {
+        key: config["params_profile"]["resolved_params"][key] for key in relevant
+    }
+    config["input_profile"]["temporal_fixture"] = definition["temporal_fixture"]
+    config["input_profile"]["extras_provided"] = [
+        "timepoints",
+        "replicates",
+        *definition.get("optional_inputs", []),
+    ]
+    config["input_profile"]["optional_inputs_provided"] = definition.get(
+        "optional_inputs", []
+    )
+    name = definition["id"]
+    directory = retained.args.calibration_root / "dyngenie3-fixture" / name
+    directory.mkdir(parents=True)
+    (directory / "benchmark_config.json").write_text(json.dumps(config))
+    rows, points = [], []
+    for point in retained.profile["runtime_points"]:
+        point = copy.deepcopy(point)
+        observations = []
+        for original in point["measurement_evidence"]["observations"]:
+            row = copy.deepcopy(original)
+            row["run_id"] += "-" + name
+            io = directory / row["run_id"] / "io"
+            retained.backend.prepare_io_dir(
+                io,
+                retained.backend.SizePoint(row["genes"], 16),
+                resolved_params=config["params_profile"]["resolved_params"],
+                execution={"mode": "global"},
+                seed=12345,
+                input_profile=config["input_profile"],
+            )
+            (io / "out/network.csv").write_text(
+                "source,target,score,sign,evidence,context\nG1,G2,1,?,association,global\n"
+            )
+            row["io_dir"] = str(io)
+            row["input_sha256"] = retained.backend.input_manifest(io)
+            ss = definition["temporal_fixture"]["steady_state_samples"]
+            if ss:
+                row["dimensions"]["steady_state_samples"] = ss
+            observations.append(row)
+            rows.append(row)
+        point["measurement_evidence"]["observations"] = observations
+        points.append(point)
+    (directory / "measurements.json").write_text(json.dumps(rows))
+    return {"profile_id": name, "benchmark_config": config, "runtime_points": points}
+
+
+def test_all13_reserved_recipes_freeze_actual_core_predictions_before312_mock_runs(
+    retained_training, monkeypatch
+):
+    retained = retained_training
+    declarations = READ_RESERVED_CASES()
+    manifest = json.loads(predictions.RESERVATION_PATH.read_text())
+    definitions = {row["id"]: row for row in manifest["profiles"]}
+    relevant = [
+        "tree_method",
+        "K",
+        "ntrees",
+        "alpha",
+        "compute_quality_scores",
+        "save_models",
+    ]
+    retained.config["params_profile"]["cost_relevant_params"] = relevant
+    retained.config["params_profile"]["cost_relevant_values"] = {
+        key: retained.config["params_profile"]["resolved_params"][key]
+        for key in relevant
+    }
+    first_config = (
+        retained.args.calibration_root
+        / "dyngenie3-fixture"
+        / predictions.PROFILE_ID
+        / "benchmark_config.json"
+    )
+    first_config.write_text(json.dumps(retained.config))
+    profiles = [retained.profile]
+    for name in sorted(
+        {case["profile_id"] for case in declarations} - {predictions.PROFILE_ID}
+    ):
+        profiles.append(_add_retained_recipe(retained, definitions[name]))
+    retained.args.cost.write_text(
+        json.dumps({"schema_version": "1.0", "profiles": profiles})
+    )
+    monkeypatch.setattr(
+        predictions, "reserved_cases", lambda: copy.deepcopy(declarations)
+    )
+    calls = mocked_execution(retained, monkeypatch)
+    report = predictions.campaign(retained.args)
+    assert report["status"] == "passed", report
+    assert len(calls) == report["successful_run_count"] == 312
+    plan = json.loads((retained.args.out / "prediction-plan.json").read_text())
+    estimator = json.loads((retained.args.out / "estimator.json").read_text())
+    assert len(plan["cases"]) == len(estimator["predictions"]) == 104
+    assert len(plan["training_observations"]) == 12 * 72
+    assert {case["reservation_id"] for case in plan["cases"]} == {
+        case["id"] for case in declarations
+    }
+    for case in plan["cases"]:
+        frozen = estimator["predictions"][case["id"]]
+        assert (
+            frozen["core_provenance"]["cost_profile"]["profile_id"]
+            == case["identity"]["profile_id"]
+        )
+        assert frozen["arguments"]["temporal_context"]["steady_state_samples"] == case[
+            "dimensions"
+        ].get("steady_state_samples", 0)
+        assert (
+            frozen["predicted_planning_seconds"] == case["predicted_planning_seconds"]
+        )
+    assert report["generic_validation"]["passed"]

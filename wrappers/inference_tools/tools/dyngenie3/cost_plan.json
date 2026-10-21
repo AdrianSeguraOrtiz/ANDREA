@@ -1,5 +1,5 @@
 {
-  "status": "planned_unmeasured_all_continuation_helpers_ready",
+  "status": "expanded_panel_planned_measurements_reusable_after_verified_migration",
   "command": [
     ".venv/bin/python",
     "wrappers/inference_tools/scripts/benchmark_costs.py",
@@ -8,7 +8,7 @@
     "--catalog-tools-root",
     "release-logs/dyngenie3/draft-catalog",
     "--threads",
-    "1,2",
+    "1,2,4,8",
     "--ram-gb",
     "4,8",
     "--repeats",
@@ -17,88 +17,225 @@
     "3600",
     "--plan-only"
   ],
-  "catalog_status": "Exact review copy of toolspec.draft.json. The local catalog was installed by the first campaign; current image 1.0.1 requires new physical acceptance and no cost.json is installed before calibration gates pass.",
+  "catalog_status": "Exact review copy of the active toolspec. Image 1.0.1 passed the previous 17 functional cases; the expanded campaign reruns 26 cases including actual 4/8-worker repeatability. Costs remain private until expanded coverage and independent prediction gates pass.",
   "draft_catalog_preparation": {
     "source": "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json",
     "destination": "release-logs/dyngenie3/draft-catalog/dyngenie3/toolspec.json",
     "operation": "copy exact bytes"
   },
   "source_sha256": {
-    "wrappers/inference_tools/cost_profiles/dyngenie3.json": "9167bd0d290be0dd0e805c62709d160e109bfdd27f9bf086aa76a14ee102e079",
+    "wrappers/inference_tools/cost_profiles/dyngenie3.json": "54dfa1c62a2042f5b117b77e189c3a0c287f897cafccb3d53d9fbc520c0a3688",
     "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json": "3be80dfd77a0898541b74f4b8a931652b69f0a993fa423e8c7b30146873451e3",
     "release-logs/dyngenie3/draft-catalog/dyngenie3/toolspec.json": "3be80dfd77a0898541b74f4b8a931652b69f0a993fa423e8c7b30146873451e3"
   },
-  "resolved_stdout": "Benchmark plan: tools=1 profiles=16 planned_runs=408\n- dyngenie3/global_rf_from_data_ts_t4_s1_spec_defaults: sizes=50x4,100x4,200x4 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t4_s2_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t4_s4_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s1_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t8_s4_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s1_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s2_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_rf_from_data_ts_t16_s4_spec_defaults: sizes=50x64,100x64,200x64 threads=1,2 ram_gb=4,8 runs=36\n- dyngenie3/global_et_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_alpha_scalar_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_alpha_vector_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_steady_state_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_tf_list_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_quality_scores_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n- dyngenie3/global_saved_models_center_spec_defaults: sizes=100x16 threads=1,2 ram_gb=4,8 runs=12\n",
-  "planned_calibration_runs": 408,
-  "reserved_holdout_runs": 24,
+  "resolved_stdout": "Benchmark plan: tools=1 profiles=29 planned_runs=1944\n- dyngenie3/global_rf_from_data_ts_t4_s1_spec_defaults: sizes=50x4,100x4,200x4 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_from_data_ts_t4_s2_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_from_data_ts_t4_s4_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_from_data_ts_t8_s1_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_from_data_ts_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_from_data_ts_t8_s4_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_from_data_ts_t16_s1_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_from_data_ts_t16_s2_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_from_data_ts_t16_s4_spec_defaults: sizes=50x64,100x64,200x64 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_et_center_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_alpha_scalar_center_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_alpha_vector_center_spec_defaults: sizes=100x16 threads=1,2,4,8 ram_gb=4,8 runs=24\n- dyngenie3/global_steady_state_center_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_tf_list_center_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_quality_scores_center_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_saved_models_center_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_et_ts_t4_s2_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_tf_list_ts_t4_s2_spec_defaults: sizes=50x8,100x8,200x8 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_alpha_vector_ts_t4_s2_spec_defaults: sizes=100x8 threads=1,2,4,8 ram_gb=4,8 runs=24\n- dyngenie3/global_et_ts_t16_s2_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_tf_list_ts_t16_s2_spec_defaults: sizes=50x32,100x32,200x32 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_alpha_vector_ts_t16_s2_spec_defaults: sizes=100x32 threads=1,2,4,8 ram_gb=4,8 runs=24\n- dyngenie3/global_steady_state_ss10_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_steady_state_ss40_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_k1_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_kall_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_ntrees100_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_ntrees300_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n- dyngenie3/global_rf_irregular_t8_s2_spec_defaults: sizes=50x16,100x16,200x16 threads=1,2,4,8 ram_gb=4,8 runs=72\n",
+  "planned_calibration_runs": 1944,
+  "reserved_holdout_runs": 312,
   "acceptance_state": {
-    "measurement": "pending",
-    "coverage": "temporal_resource_domain_gate_implemented_unmeasured",
-    "eta_profile_selection": "exact_temporal_shape_guard_implemented_unmeasured",
+    "measurement": "pending_expanded_campaign",
+    "coverage": "family_and_resource_gate_ready_unmeasured",
     "temporal_shape_estimator": "unsupported",
-    "predictive_accuracy": "actual_core_planner_holdout_helper_ready_unmeasured",
+    "predictive_accuracy": "13_reserved_cases_312_observations_pending",
     "campaign_completion_implies_integration_acceptance": false
   },
   "required_extensions": [
     {
-      "component": "wrappers/inference_tools/scripts/validate_tool_costs.py:calibration_coverage",
-      "requirement": "The implemented temporal gate requires all registered 34 points in every thread/RAM stratum, explicit temporal dimensions, unique captured run IDs, retained input hashes/context/image and three successful raw observations per point. It reports the combined default 27-coordinate temporal grid separately and bounds the seven branch centers to point-only support.",
-      "status": "implemented_unmeasured"
+      "component": "calibration domain gate",
+      "requirement": "Validate all 81 scientific coordinates in every one of eight declared resource strata, at least three distinct successful observations each; certify branch families with their actual varying and fixed axes.",
+      "status": "implemented_pending_expanded_measurement"
     },
     {
-      "component": "andrea/core/commands/infer_network/commons/planner.py:cost profile selection",
-      "requirement": "The implemented guard compares actual validated series/timepoint shape, regularity, time unit, sampling design and steady-state sample count before profile selection. Unknown or mismatched temporal shapes fall back with a warning/provenance instead of pooling equal-column profiles. It does not establish temporal size-growth estimation or prediction accuracy.",
-      "status": "implemented_unmeasured"
+      "component": "cost profile selection",
+      "requirement": "Match exact observed temporal geometry and resolved input/parameter recipe. Retain fixed-shape gene estimation and explicit fallback for unmatched shapes. No new interpolation across temporal or parameter axes is asserted.",
+      "status": "implemented_pending_expanded_measurement"
     },
     {
-      "component": "cost estimator and prediction-validation evidence",
-      "requirement": "The prediction helper freezes the actual ANDREA planner code, cost snapshot and eight exact-profile calls (genes75/250 across four resource strata) before collecting 24 observations. Validation uses the actual planning ETA; nearest-p50 times the same core size scale is retained as a typical-duration diagnostic. Any operational reserve is separate and cannot help pass the planning coverage threshold. Temporal-shape growth remains unsupported.",
-      "status": "implemented_unmeasured"
+      "component": "independent runtime prediction checks",
+      "requirement": "Freeze actual core planner calls for 13 reserved gene-axis cases across eight strata before collecting 312 observations. Preserve independent validation and retain failed thresholds.",
+      "status": "implemented_pending_expanded_measurement"
+    },
+    {
+      "component": "historical calibration reuse",
+      "requirement": "Retain original run IDs, timings, inputs and provenance; authorize earlier source identities only through hashed proof of unchanged installed/input/timing implementation and byte-identical regenerated inputs. No previous acceptance status is imported.",
+      "status": "implemented_pending_verified_migration"
     }
   ],
   "reserved_holdout_cases": [
     {
       "id": "default_gene_interpolation_t8_s2",
-      "kind": "interpolation",
       "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
       "genes": 75,
       "timepoints_per_series": 8,
       "independent_series": 2,
       "total_columns": 16,
-      "seed": 765431
+      "columns": 16,
+      "seed": 765431,
+      "kind": "interpolation"
     },
     {
       "id": "default_gene_extrapolation_t8_s2",
-      "kind": "extrapolation",
       "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
       "genes": 250,
       "timepoints_per_series": 8,
       "independent_series": 2,
       "total_columns": 16,
-      "seed": 765439
+      "columns": 16,
+      "seed": 765439,
+      "kind": "extrapolation"
+    },
+    {
+      "id": "et_gene_interpolation",
+      "profile_id": "global_et_center_spec_defaults",
+      "genes": 75,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765443,
+      "kind": "interpolation"
+    },
+    {
+      "id": "tf_gene_extrapolation",
+      "profile_id": "global_tf_list_center_spec_defaults",
+      "genes": 250,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765449,
+      "kind": "extrapolation"
+    },
+    {
+      "id": "scalar_alpha_gene_interpolation",
+      "profile_id": "global_alpha_scalar_center_spec_defaults",
+      "genes": 75,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765457,
+      "kind": "interpolation"
+    },
+    {
+      "id": "steady_state20_gene_interpolation",
+      "profile_id": "global_steady_state_center_spec_defaults",
+      "genes": 75,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765461,
+      "kind": "interpolation"
+    },
+    {
+      "id": "k1_gene_interpolation",
+      "profile_id": "global_rf_k1_t8_s2_spec_defaults",
+      "genes": 75,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765469,
+      "kind": "interpolation"
+    },
+    {
+      "id": "kall_gene_extrapolation",
+      "profile_id": "global_rf_kall_t8_s2_spec_defaults",
+      "genes": 250,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765473,
+      "kind": "extrapolation"
+    },
+    {
+      "id": "ntrees100_gene_interpolation",
+      "profile_id": "global_rf_ntrees100_t8_s2_spec_defaults",
+      "genes": 75,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765479,
+      "kind": "interpolation"
+    },
+    {
+      "id": "ntrees300_gene_extrapolation",
+      "profile_id": "global_rf_ntrees300_t8_s2_spec_defaults",
+      "genes": 250,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765487,
+      "kind": "extrapolation"
+    },
+    {
+      "id": "quality_gene_interpolation",
+      "profile_id": "global_quality_scores_center_spec_defaults",
+      "genes": 75,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765491,
+      "kind": "interpolation"
+    },
+    {
+      "id": "saved_models_gene_extrapolation",
+      "profile_id": "global_saved_models_center_spec_defaults",
+      "genes": 250,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765497,
+      "kind": "extrapolation"
+    },
+    {
+      "id": "irregular_gene_interpolation",
+      "profile_id": "global_rf_irregular_t8_s2_spec_defaults",
+      "genes": 75,
+      "timepoints_per_series": 8,
+      "independent_series": 2,
+      "total_columns": 16,
+      "columns": 16,
+      "seed": 765503,
+      "kind": "interpolation"
     }
   ],
   "eta_seconds": null,
-  "measurement_status": "The first image passed 12 physical tests, then stopped at a catalog-renderer error before any calibration. Recovery rebuilds corrected version 1.0.1 and applies the expanded 17-case physical acceptance before calibration; no cost or held-out accuracy is claimed by this plan.",
-  "limitations": "Measurement, finite-domain coverage, actual-core-planner independent accuracy and the final acceptance dossier are separate gates. Calibration stays private until domain and 24-observation prediction checks pass. Predictions across temporal shapes remain unsupported; no image or package publication is performed.",
+  "measurement_status": "Previous recovery calibration is still running while the expanded sources are prepared separately. Its successful observations may be reused after controlled stop and exact compatibility checks; the live expanded campaign will report actual counts. This plan does not claim expanded acceptance.",
+  "limitations": "Finite representative panel selected by the user. No exhaustive factor combinations, arbitrary TF densities, arbitrary irregular grids, vector-alpha gene growth or temporal-shape interpolation. Runtime prediction acceptance covers 13 declared cases separately in eight strata; no biological accuracy or publication claim.",
   "continuation_budget": {
-    "functional_runs": 17,
-    "functional_timeout_cap_seconds": 61200,
-    "calibration_runs": 408,
-    "calibration_timeout_cap_seconds": 1468800,
-    "holdout_runs": 24,
-    "holdout_timeout_cap_seconds": 86400,
+    "functional_runs": 26,
+    "functional_timeout_cap_seconds": 93600,
+    "calibration_runs": 1944,
+    "calibration_timeout_cap_seconds": 6998400,
+    "holdout_runs": 312,
+    "holdout_timeout_cap_seconds": 1123200,
     "core_cli_runs": 1,
     "core_cli_timeout_cap_seconds": 3600,
-    "total_container_runs": 450,
-    "science_timeout_cap_seconds": 1620000,
+    "total_container_runs": 2283,
+    "science_timeout_cap_seconds": 8218800,
     "estimated_duration_seconds": null,
     "build_and_validation_overhead_seconds": null,
-    "note": "Serial execution cap, 18.75 days; not an ETA. No automatic retries; build/startup/validation overhead remains unknown.",
+    "note": "Serial execution cap, 95.125 days; not an ETA. Compatible reused observations do not run again. Provisional duration scenarios are separate campaign planning evidence; no automatic retries.",
     "diagnostic_probes": {
       "count": 5,
       "timeout_seconds": 120,
-      "scope": "Read-only saved-model checks inside their fit container, included in the 3600-second case limit; no extra fit/container."
+      "scope": "Read-only saved-model checks inside their fit container; included in the 3600-second case limit, no extra fit/container."
     }
+  },
+  "provisional_duration_estimate": {
+    "status": "scenario_estimate_pending_4_8_cpu_measurements",
+    "hours_range": [
+      29,
+      61
+    ],
+    "scope": "Remaining expanded1944 calibration allocation plus312 independent checks, allowing reuse of65 successful current observations at this planning snapshot. Operational scenarios only, not accepted runtime predictions.",
+    "evidence": "release-logs/dyngenie3/expansion-review/expanded-eta-provisional.json",
+    "uncertainty": "Measured1/2CPU timings; unknown4/8CPU speedup, larger temporal shapes and1000-tree diagnostic overhead. Recompute from actual expanded observations."
   }
 }

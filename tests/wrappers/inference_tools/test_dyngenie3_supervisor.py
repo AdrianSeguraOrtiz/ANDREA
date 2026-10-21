@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
@@ -16,6 +17,12 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 IMAGE = "sha256:" + "a" * 64
 OTHER_IMAGE = "sha256:" + "b" * 64
+compat_spec = importlib.util.spec_from_file_location(
+    "supervisor_calibration_compatibility",
+    ROOT / "wrappers/calibration_compatibility.py",
+)
+compatibility = importlib.util.module_from_spec(compat_spec)
+compat_spec.loader.exec_module(compatibility)
 
 
 class DynGenie3SupervisorTests(unittest.TestCase):
@@ -79,6 +86,13 @@ class DynGenie3SupervisorTests(unittest.TestCase):
         self.supervisor = module.Supervisor(
             root=self.root, evidence=self.evidence, external_state=self.external
         )
+        self.supervisor.functional_plan = lambda: {
+            "run_count": 26,
+            "execution_timeout_cap_seconds": 93600,
+            "cases": [{"timeout_seconds": 3600}],
+            "diagnostic_probe_count": 5,
+            "diagnostic_probe_timeout_seconds": 120,
+        }
 
     def initialize(self) -> None:
         self.evidence.mkdir(parents=True)
@@ -190,6 +204,143 @@ class DynGenie3SupervisorTests(unittest.TestCase):
         module.write_json(previous / "state.json", old)
         return previous
 
+    def previous_calibration(self):
+        for name in compatibility.MEASUREMENT_SUBJECTS:
+            path = self.root / name
+            if not path.is_file():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("synthetic unchanged measured implementation")
+        previous = self.previous_build()
+        directory = previous / "calibration/dyngenie3-original/profile"
+        io = directory / "run/io"
+        (io / "extra").mkdir(parents=True)
+        (io / "out").mkdir()
+        for name in ("expression.tsv", "params.json", "execution.json"):
+            (io / name).write_text("synthetic unit-test input")
+        (io / "out/network.csv").write_text("source,target,score\nG1,G2,1\n")
+        provenance = {
+            "image_id": IMAGE,
+            "source_sha256": "b" * 64,
+            "cpu_model": "unit-test-cpu",
+            "platform": "unit-test",
+            "logical_cpus": 8,
+            "host_memory_bytes": 16 * 1024**3,
+            "docker_server": "unit-test-version",
+            "timing_scope": "unit-test-time",
+            "seed": 42,
+        }
+        config = {
+            "provenance": provenance,
+            "params_profile": {"resolved_params": {"ntrees": 1000}},
+            "execution_profile": {"mode": "global"},
+            "input_profile": {
+                "temporal": {"schema_version": "unit-test"},
+                "temporal_fixture": {"series_count": 1, "timepoints_per_series": 2},
+            },
+        }
+        row = {
+            "run_id": "c" * 32,
+            "status": "ok",
+            "seconds": 1.5,
+            "genes": 1,
+            "columns": 2,
+            "threads": 1,
+            "ram_gb": 4,
+            "repeat": 1,
+            "dimensions": {"genes": 1, "columns": 2},
+            "input_sha256": compatibility.inputs(io),
+            "io_dir": str(io),
+        }
+        module.write_json(directory / "benchmark_config.json", config)
+        module.write_json(directory / "measurements.json", [row])
+        cost = previous / "calibration-catalog/dyngenie3/cost.json"
+        module.write_json(
+            cost,
+            {
+                "profiles": [
+                    {
+                        "profile_id": "profile",
+                        "benchmark_config": config,
+                        "runtime_points": [
+                            {"measurement_evidence": {"observations": [row]}}
+                        ],
+                    }
+                ]
+            },
+        )
+        state = module.read_json(previous / "state.json")
+        state.update(
+            status="interrupted",
+            calibration={"status": "interrupted", "cost_sha256": module.sha(cost)},
+        )
+        module.write_json(previous / "state.json", state)
+        current = {**provenance, "source_sha256": "d" * 64}
+        profile = SimpleNamespace(
+            profile_id="profile",
+            params_profile=config["params_profile"],
+            execution_profile=config["execution_profile"],
+            input_profile=config["input_profile"],
+            params={"ntrees": 1000},
+            execution={"mode": "global"},
+        )
+
+        def prepare(target, *_args, **_kwargs):
+            import shutil
+
+            shutil.copytree(io, target)
+
+        backend = SimpleNamespace(
+            collect_provenance=Mock(return_value=current),
+            resolve_benchmark_profiles=Mock(return_value=[profile]),
+            prepare_io_dir=prepare,
+            SizePoint=lambda genes, columns: (genes, columns),
+        )
+        self.supervisor.state["image_id"] = IMAGE
+        self.completed()
+        return previous, backend, directory / "measurements.json"
+
+    def test_calibration_migration_seals_original_rows_and_passes_reuse_paths(self):
+        previous, backend, raw = self.previous_calibration()
+        original = raw.read_bytes()
+        support = SimpleNamespace(_support=lambda: (None, backend, None))
+        with (
+            patch.object(self.supervisor, "tool_module", return_value=support),
+            patch.object(
+                self.supervisor, "compatibility_module", return_value=compatibility
+            ),
+        ):
+            self.supervisor.reuse_calibration(previous)
+        state = self.supervisor.state
+        self.assertEqual(state["calibration"]["status"], "imported_checkpoint")
+        self.assertEqual(raw.read_bytes(), original)
+        copied = self.evidence / "calibration-catalog/dyngenie3/cost.json"
+        self.assertEqual(
+            copied.read_bytes(),
+            (previous / "calibration-catalog/dyngenie3/cost.json").read_bytes(),
+        )
+        proof = Path(state["calibration_compatibility"]["receipt"])
+        verified = compatibility.verify(
+            proof, image_id=IMAGE, current_source_sha256="d" * 64
+        )
+        self.assertEqual(len(verified["executions"]), 1)
+        self.assertEqual(
+            verified["executions"]["c" * 32]["original_source_sha256"], "b" * 64
+        )
+        self.assertIn(
+            str(previous / "calibration"), self.supervisor.benchmark_command()
+        )
+        self.assertIn(str(proof), self.supervisor.prediction_command(IMAGE))
+
+    def test_running_original_campaign_cannot_authorize_migration(self):
+        previous, backend, raw = self.previous_calibration()
+        state = module.read_json(previous / "state.json")
+        state["status"] = "running"
+        module.write_json(previous / "state.json", state)
+        with patch.object(self.supervisor, "tool_module") as support:
+            with self.assertRaisesRegex(module.IntegrationError, "Stop and retain"):
+                self.supervisor.reuse_calibration(previous)
+            support.assert_not_called()
+
     def test_reviewed_recovery_reuses_build_but_never_imports_acceptance(self):
         previous = self.previous_build()
         self.completed()
@@ -243,11 +394,11 @@ class DynGenie3SupervisorTests(unittest.TestCase):
         ):
             self.assertEqual(self.supervisor.run(plan_only=True), 0)
         plan = module.read_json(self.evidence / "plan.json")
-        self.assertEqual(plan["planned_calibration_runs"], 408)
-        self.assertEqual(plan["execution_budget"]["functional"]["runs"], 17)
-        self.assertEqual(plan["execution_budget"]["total_container_runs"], 450)
+        self.assertEqual(plan["planned_calibration_runs"], 1944)
+        self.assertEqual(plan["execution_budget"]["functional"]["runs"], 26)
+        self.assertEqual(plan["execution_budget"]["total_container_runs"], 2283)
         self.assertEqual(
-            plan["execution_budget"]["science_timeout_cap_seconds"], 1620000
+            plan["execution_budget"]["science_timeout_cap_seconds"], 8218800
         )
         self.assertEqual(plan["pm2"]["autorestart"], False)
         self.assertEqual(plan["calibration"].count("--tool"), 1)
@@ -463,7 +614,7 @@ class DynGenie3SupervisorTests(unittest.TestCase):
             if label == "independent_predictions":
                 module.write_json(
                     self.evidence / "predictions/prediction-report.json",
-                    {"status": "passed", "image_id": IMAGE, "observed_run_count": 24},
+                    {"status": "passed", "image_id": IMAGE, "observed_run_count": 312},
                 )
             return subprocess.CompletedProcess(args, 0, "")
 

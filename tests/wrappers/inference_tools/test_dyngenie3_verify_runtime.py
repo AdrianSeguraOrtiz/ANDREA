@@ -46,15 +46,15 @@ def test_plan_only_has_reviewed_matrix_defaults_first_and_never_invokes_docker(
     monkeypatch.setattr(verifier.subprocess, "run", forbidden)
     assert verifier.main(["--image", IMAGE, "--out", str(tmp_path), "--plan-only"]) == 0
     plan = json.loads((tmp_path / "plan.json").read_text())
-    assert plan["run_count"] == 17
+    assert plan["run_count"] == 26
     assert (
         plan["cases"][0]["id"] == "smoke_real_defaults"
         and plan["cases"][0]["params"] == {}
     )
     assert plan["cases"][0]["resolved_params"]["ntrees"] == 1000
-    assert [row["runs"] for row in plan["resource_strata"]] == [13, 4]
+    assert [row["runs"] for row in plan["resource_strata"]] == [15, 6, 2, 3]
     assert (
-        plan["execution_timeout_cap_seconds"] == 61200
+        plan["execution_timeout_cap_seconds"] == 93600
         and plan["estimated_duration_seconds"] is None
     )
     assert next(row for row in plan["cases"] if row["id"] == "smoke_rf_k1")[
@@ -65,7 +65,7 @@ def test_plan_only_has_reviewed_matrix_defaults_first_and_never_invokes_docker(
         for row in plan["cases"]
     )
     assert len(list(tmp_path.iterdir())) == 1
-    assert plan["scientific_fit_count"] == plan["docker_container_count"] == 17
+    assert plan["scientific_fit_count"] == plan["docker_container_count"] == 26
     assert (
         plan["diagnostic_probe_count"] == 5
         and plan["diagnostic_probe_timeout_seconds"] == 120
@@ -119,7 +119,7 @@ def test_external_state_blocks_before_any_container_and_retains_blocked_receipt(
     out = tmp_path / "evidence"
     result = verifier.run_campaign(plan, out, state)
     assert result["status"] == "blocked" and result["completed_run_count"] == 0
-    assert result["receipt_count"] == 1 and len(result["not_executed"]) == 16
+    assert result["receipt_count"] == 1 and len(result["not_executed"]) == 25
     assert list(out.glob("runs/*/receipt.json"))
 
 
@@ -237,13 +237,22 @@ def test_reproducibility_requires_all_four_fresh_runs_cross_workers_and_changed_
             },
         }
     )
-    assert verifier.compare_reproducibility(receipts)["status"] == "passed"
+    assert (
+        verifier.compare_reproducibility(receipts, expanded=False)["status"] == "passed"
+    )
     receipts[2]["validation"]["vim_sha256"] = "changed_workers"
-    assert verifier.compare_reproducibility(receipts)["status"] == "failed"
+    assert (
+        verifier.compare_reproducibility(receipts, expanded=False)["status"] == "failed"
+    )
     receipts[2]["validation"]["vim_sha256"] = "same"
     receipts[-1]["validation"]["vim_sha256"] = "same"
-    assert verifier.compare_reproducibility(receipts)["status"] == "failed"
-    assert verifier.compare_reproducibility(receipts[:-1])["status"] == "failed"
+    assert (
+        verifier.compare_reproducibility(receipts, expanded=False)["status"] == "failed"
+    )
+    assert (
+        verifier.compare_reproducibility(receipts[:-1], expanded=False)["status"]
+        == "failed"
+    )
 
 
 def test_actual_worker_reports_must_show_effective_single_thread_native_pools(tmp_path):
@@ -565,3 +574,57 @@ def test_saved_model_probe_rejects_tampered_model_or_derived_outputs_without_fit
         verifier.verify_saved_diagnostics(
             io, model_loader=lambda _: models, correlation=correlation
         )
+
+
+def test_expanded_reproducibility_checks_every_resource_and_both_fixture_families():
+    receipts = []
+    for prefix, threads_values, common_hash in (
+        ("", (1, 2), "original"),
+        ("resource_", (1, 2, 4, 8), "eight_genes"),
+    ):
+        for threads in threads_values:
+            for repeat in (1, 2):
+                receipts.append(
+                    {
+                        "id": f"{prefix}seed17_threads{threads}_repeat{repeat}",
+                        "status": "passed",
+                        "validation": {
+                            "vim_sha256": common_hash,
+                            "patched_source_sha256": "source",
+                        },
+                    }
+                )
+        receipts.append(
+            {
+                "id": f"{prefix}seed18_threads{threads_values[-1] if prefix else 1}",
+                "status": "passed",
+                "validation": {
+                    "vim_sha256": "changed",
+                    "patched_source_sha256": "source",
+                },
+            }
+        )
+    assert verifier.compare_reproducibility(receipts)["status"] == "passed"
+    target = next(
+        row for row in receipts if row["id"] == "resource_seed17_threads8_repeat2"
+    )
+    target["validation"]["vim_sha256"] = "diverged"
+    assert verifier.compare_reproducibility(receipts)["status"] == "failed"
+    target["validation"]["vim_sha256"] = "eight_genes"
+    receipts.remove(target)
+    assert verifier.compare_reproducibility(receipts)["status"] == "failed"
+
+
+def test_expanded_worker_cases_use_enough_genes_for_eight_actual_workers():
+    plan = verifier.make_plan(IMAGE)
+    cases = [row for row in plan["cases"] if row["id"].startswith("resource_")]
+    assert len(cases) == 9 and {row["threads"] for row in cases} == {1, 2, 4, 8}
+    assert all(
+        row["fixture_subdir"] == "quality" and row["resolved_params"]["ntrees"] == 256
+        for row in cases
+    )
+    assert all(
+        not row["resolved_params"]["compute_quality_scores"]
+        and not row["resolved_params"]["save_models"]
+        for row in cases
+    )

@@ -1,6 +1,9 @@
 # dynGENIE3 integration review — 2026-10-21
 
-This is the review before the recovered calibration campaign. Live execution
+This is the review before the recovered calibration campaign. The later user-selected
+expanded panel is defined by the current cost recipe and cost_plan.json; its
+authoritative live state is under campaign-expanded-20261021. The counts below
+retain the historical initial recovery scope. Live execution
 and acceptance status belong to the campaign state and hashed final dossier,
 not to this dated review. The first campaign remains intact under
 `release-logs/dyngenie3/campaign/`; recovery uses
