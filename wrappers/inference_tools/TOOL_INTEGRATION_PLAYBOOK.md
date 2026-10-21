@@ -63,6 +63,31 @@ The goal of an integration is to produce:
     per-shard raw outputs, logs and configs, then merge deterministically into
     the single public `network.csv` contract.
 
+## Wrapper layout and candidate promotion
+
+Use the existing Osaka worktree and current branch; do not create a separate
+branch or worktree per method unless explicitly requested by the user.
+
+New wrappers keep `Dockerfile`, `run_tool.*`, `integration_decisions.md` and
+the user's local `papers/` and `repo/`. Keep scientific notes in that decision
+log, dependency pins/checksums in the Dockerfile, and required compatibility
+patches in the wrapper. Do not scaffold a separate lock file, ignore file,
+duplicate README, per-method dossier or `wrappers/integration/inference/` folder.
+
+Spec and smoke candidates start in `release-logs/inference-<tool_id>/` or the
+explicit `--results-dir`, outside the wrapper and active catalogs. Promotion
+with `--activate-catalog` and `--activate-smoketest` validates the selected
+candidates before writing active files. It removes only draft copies identical
+to their active counterparts. Conflicting or uncopied drafts remain available;
+conflicting staged and legacy wrapper-local copies are rejected. Repeating the
+scaffold after promotion does not recreate placeholder drafts.
+
+Use canonical catalog specs, smoke configurations and cost recipes afterward.
+Inference uses the central scripts/template_map.json; a matching local candidate map can be removed after promotion.
+Commands, logs, hashes and validation reports belong in the existing campaign
+results. No additional versioned dossier is required. Preserve historical
+receipts and frozen campaign sources when changing layout.
+
 ## End-to-end execution
 
 Follow [INTEGRATION_WORKFLOW.md](../../docs/INTEGRATION_WORKFLOW.md) for the
@@ -82,8 +107,6 @@ make verify-tool TOOL=<tool_id>
 make benchmark-tool-costs ARGS="--tool <tool_id> --plan-only --repeats 3"
 python wrappers/inference_tools/scripts/validate_tool_costs.py \
   --tool <tool_id> --require --require-provenance --require-coverage
-python wrappers/integration/validate_integration.py \
-  wrappers/inference_tools/tools/<tool_id>/integration.json --stage functional
 ```
 
 `prepare-tool-papers` accepts existing TXT without an extractor. Scaffolds remain
@@ -96,8 +119,8 @@ physical mode/input cases and test logical core orchestration separately.
 
 See [cost_profiles/README.md](cost_profiles/README.md) for measured matrix,
 coverage/resume controls and independent prediction validation. Respect
-`runtime_resources.threading` when choosing the resource panel. Use distinct
-image tags for changed implementations; retain measured immutable image IDs.
+`runtime_resources.threading` when choosing the resource panel. Keep the same
+version tag for unpublished fixes and retain measured immutable image IDs.
 Publishing is a separate authorized gate, never a phase prerequisite.
 
 ## ToolSpec Field Evidence Guide
@@ -476,7 +499,7 @@ Use the [shared decisions template](../integration/decisions.template.md) and
 Keep the selected interface, excluded modes, all public parameters and their
 actual arguments, dynamic default rules, input delivery, output semantics,
 resource mapping, patches and evidence limitations in the decision log.
-`integration.json` links the hashed artifacts and retained check receipts.
+Retain hashed artifacts and actual check reports in the campaign results.
 Do not equate a passing smoke test or valid `cost.json` with a fully calibrated
 integration. Every declared mode and conditional branch needs evidence.
 
@@ -487,5 +510,5 @@ Set `method_family` from the actual integrated algorithm: `information`, `tree`,
 primary publication in `integration_decisions.md`. Context, priors and downstream
 workflow stages belong in the summary and capability/input fields. The catalog
 figure consumes this explicit family and rejects missing annotations.
-Use a new Docker version tag for changed wrappers or dependencies; never replace
-a historical image used in a published benchmark.
+After stable publication, use a new Docker version tag for changed wrappers or
+dependencies; never replace a published historical image.

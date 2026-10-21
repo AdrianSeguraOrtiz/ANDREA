@@ -67,6 +67,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help=f"Path to simulator wrapper directories. Default: {DEFAULT_WRAPPERS_ROOT}",
     )
     parser.add_argument(
+        "--results-dir",
+        type=Path,
+        help="Untracked candidate files; default: release-logs/simulation-<simulator>.",
+    )
+    parser.add_argument(
         "--catalog-simulators-root",
         type=Path,
         default=DEFAULT_CATALOG_SIMULATORS_ROOT,
@@ -288,55 +293,6 @@ def smoketest_payload(simulator_id: str) -> dict[str, object]:
     }
 
 
-def wrapper_readme_template(simulator_id: str) -> str:
-    return f"""# {simulator_id}
-
-TODO: document installation, wrapper behavior and smoke tests.
-
-## Runtime Contract
-
-- The container reads `/work/request/simulator-run-request.json`.
-- The container writes normalized outputs directly under `/work/out/`.
-- The wrapper must write `progress.json`.
-- All public truth networks are exported through `truth/networks.csv`; the
-  `context` column determines whether an edge belongs to global, group or
-  column-level truth.
-- `group:<id>` groups expression columns and `column:<id>` refers to the
-  expression column semantics declared by `data_axes.column_kind`; only
-  `column_kind=cells` makes it cell-level truth.
-- `simulator-output-manifest.json` must report `truth.gene_universe` and
-  `truth.networks`.
-- Every accepted request must contain `tf_list` in `effective_extras`, and the
-  wrapper must always write and declare `extras/tf_list.txt`.
-- Simulators may preserve native outputs under provenance, but public consumers
-  must not depend on those native files.
-- The wrapper must map `runtime_resources.threads` to the upstream public
-  thread/worker control declared in `simulatorspec.json`.
-- Do not expose thread counts as simulator params.
-
-## Simulator Inputs
-
-Document every simulator-side input file declared in `simulatorspec.extra_inputs`.
-File semantics, format, examples and basic validation live in
-`andrea/catalog_simulation_data_tools/input_specs/<input_id>.json`.
-
-- required inputs
-- optional inputs
-- conditional inputs and the params/extras/data-axis values that require them
-
-Generated extras are not simulator-side inputs. Do not put formats or examples
-inline in `extra_inputs`; create or reuse an input spec instead.
-
-## Cost Profiles
-
-Status: pending. Design and estimate the bounded campaign before measuring,
-following [the common integration workflow](../../../../docs/INTEGRATION_WORKFLOW.md)
-and the simulator cost-profile guide. Track structural/semantic validity of
-`cost.json`, declared-domain coverage and independent predictive accuracy
-separately in `integration.json`. Respect active resource reservations.
-"""
-
-
 def integration_decisions_template(simulator_id: str) -> str:
     template = (REPO_ROOT / "wrappers/integration/decisions.template.md").read_text(
         encoding="utf-8"
@@ -363,11 +319,14 @@ of request `runtime_resources.threads` to public upstream controls.""",
     return template
 
 
-def integration_payload(simulator_id: str) -> dict[str, object]:
-    template_path = REPO_ROOT / "wrappers/integration/integration.template.json"
-    payload = json.loads(template_path.read_text(encoding="utf-8"))
-    payload.update(kind="simulation", id=simulator_id)
-    return payload
+def draft_source(staged: Path, legacy: Path) -> Path:
+    if (
+        staged.is_file()
+        and legacy.is_file()
+        and staged.read_bytes() != legacy.read_bytes()
+    ):
+        raise RuntimeError(f"Conflicting candidate copies: {staged} and {legacy}")
+    return staged if staged.is_file() or not legacy.is_file() else legacy
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -388,6 +347,24 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     wrapper_dir = args.wrappers_root / simulator_id
     script_name = f"run_simulator.{wrapper_ext}"
+    staging = (
+        args.results_dir or REPO_ROOT / "release-logs" / f"simulation-{simulator_id}"
+    )
+    if any(
+        staging.resolve().is_relative_to(root.resolve())
+        for root in (
+            args.wrappers_root,
+            args.catalog_simulators_root,
+            args.smoketest_configs_root,
+        )
+    ):
+        print(
+            "ERROR: --results-dir must be outside wrapper and active catalog/config directories.",
+            file=sys.stderr,
+        )
+        return 2
+    draft_spec = staging / "simulatorspec.draft.json"
+    draft_smoke = staging / "smoketest.config.draft.json"
     if args.activate_catalog or args.activate_smoketest:
         promotions = []
         try:
@@ -397,8 +374,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                         args.catalog_simulators_root
                         / simulator_id
                         / "simulatorspec.json",
+                        draft_source(
+                            draft_spec, wrapper_dir / "simulatorspec.draft.json"
+                        ),
                         reviewed_draft(
-                            wrapper_dir / "simulatorspec.draft.json",
+                            draft_source(
+                                draft_spec, wrapper_dir / "simulatorspec.draft.json"
+                            ),
                             schema_path=REPO_ROOT
                             / "andrea/catalog_simulation_data_tools/schemas/simulatorspec.schema.json",
                             expected_id=simulator_id,
@@ -409,8 +391,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 promotions.append(
                     (
                         args.smoketest_configs_root / f"{simulator_id}_basic.json",
+                        draft_source(
+                            draft_smoke, wrapper_dir / "smoketest.config.draft.json"
+                        ),
                         reviewed_draft(
-                            wrapper_dir / "smoketest.config.draft.json",
+                            draft_source(
+                                draft_smoke, wrapper_dir / "smoketest.config.draft.json"
+                            ),
                             schema_path=REPO_ROOT
                             / "wrappers/simulation_data_tools/tests/schemas/smoketest.config.schema.json",
                             expected_id=simulator_id,
@@ -421,8 +408,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         except (RuntimeError, OSError, ValueError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
-        for path, content in promotions:
+        for path, source, content in promotions:
             print(f"[{write_file(path, content, force=args.force)}] {path}")
+            for candidate in (source, wrapper_dir / source.name):
+                if (
+                    candidate.is_file()
+                    and path.is_file()
+                    and candidate.read_bytes() == path.read_bytes()
+                ):
+                    candidate.unlink()
         print(
             "Reviewed drafts promoted; functional verification, calibration and publication remain separate gates."
         )
@@ -432,23 +426,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     (wrapper_dir / "repo").mkdir(parents=True, exist_ok=True)
 
     outputs: list[tuple[Path, str]] = []
-    for filename, content in (
-        (
-            "integration.json",
-            json.dumps(integration_payload(simulator_id), indent=2, ensure_ascii=True)
-            + "\n",
-        ),
-        (
-            "Dockerfile.dockerignore",
-            "**/repo\n**/papers\n**/.git\n**/.venv\n**/__pycache__\n",
-        ),
-    ):
-        outputs.append(
-            (
-                wrapper_dir / filename,
-                write_file(wrapper_dir / filename, content, force=args.force),
-            )
-        )
     dockerfile = dockerfile_template(wrapper, script_name).replace(
         "{simulator_id}", simulator_id
     )
@@ -468,16 +445,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     outputs.append(
         (
-            wrapper_dir / "README.md",
-            write_file(
-                wrapper_dir / "README.md",
-                wrapper_readme_template(simulator_id),
-                force=args.force,
-            ),
-        )
-    )
-    outputs.append(
-        (
             wrapper_dir / "integration_decisions.md",
             write_file(
                 wrapper_dir / "integration_decisions.md",
@@ -487,29 +454,37 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     )
 
-    draft_spec = wrapper_dir / "simulatorspec.draft.json"
-    outputs.append(
-        (
-            draft_spec,
-            write_json(
+    if (
+        args.force
+        or not (
+            args.catalog_simulators_root / simulator_id / "simulatorspec.json"
+        ).is_file()
+    ):
+        outputs.append(
+            (
                 draft_spec,
-                spec_payload(simulator_id),
-                force=args.force,
-            ),
+                write_json(
+                    draft_spec,
+                    spec_payload(simulator_id),
+                    force=args.force,
+                ),
+            )
         )
-    )
 
-    draft_smoke = wrapper_dir / "smoketest.config.draft.json"
-    outputs.append(
-        (
-            draft_smoke,
-            write_json(
+    if (
+        args.force
+        or not (args.smoketest_configs_root / f"{simulator_id}_basic.json").is_file()
+    ):
+        outputs.append(
+            (
                 draft_smoke,
-                smoketest_payload(simulator_id),
-                force=args.force,
-            ),
+                write_json(
+                    draft_smoke,
+                    smoketest_payload(simulator_id),
+                    force=args.force,
+                ),
+            )
         )
-    )
 
     for path, status in outputs:
         print(f"[{status}] {path}")

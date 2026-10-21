@@ -289,7 +289,7 @@ class BenchmarkCostsContractTest(unittest.TestCase):
             tool_dir.mkdir()
             draft = (
                 REPO_ROOT
-                / "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json"
+                / "andrea/catalog_inference_tools/tools/dyngenie3/toolspec.json"
             )
             (tool_dir / "toolspec.json").write_bytes(draft.read_bytes())
             target = resolve_tool_targets(

@@ -4,11 +4,12 @@ Status: pending evidence review and implementation. Scaffolding is not a
 functional integration, calibration or image publication.
 
 Follow [the integration workflow](../../../../docs/INTEGRATION_WORKFLOW.md).
-Keep executable evidence and verification receipts in `integration.json`; run
-`python wrappers/integration/validate_integration.py {{evidence_path}}/integration.json --stage functional`
-from the repository root when ready. Continue through all authorized stages;
-ask only about material scientific ambiguity, inaccessible requirements or
-decisions that evidence cannot resolve.
+Keep commands, logs, immutable image IDs, resolved configuration and input/output
+hashes in the campaign's `release-logs/` or `--results-dir`. Use the common
+catalog, smoke, cost-domain and independent prediction checks described in the
+workflow. No additional per-method dossier or duplicate README is required.
+Continue through all authorized stages; ask only about material scientific
+ambiguity, inaccessible requirements or decisions that evidence cannot resolve.
 
 ## Evidence and scientific identity
 

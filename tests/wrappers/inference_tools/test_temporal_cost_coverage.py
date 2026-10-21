@@ -33,7 +33,7 @@ def panel_fixture(legacy=False):
         )
     spec = json.loads(
         (
-            ROOT / "wrappers/inference_tools/tools/dyngenie3/toolspec.draft.json"
+            ROOT / "andrea/catalog_inference_tools/tools/dyngenie3/toolspec.json"
         ).read_text()
     )
     defaults = {name: value["default"] for name, value in spec["params"].items()}

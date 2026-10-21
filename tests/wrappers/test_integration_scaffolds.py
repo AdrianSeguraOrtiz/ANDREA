@@ -1,213 +1,258 @@
+"""Scaffolds stage candidates safely and leave ordinary runtime-only wrappers."""
+
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.mark.parametrize("kind", ["inference", "simulation"])
-def test_scaffold_keeps_unverified_contracts_out_of_active_catalog(
-    tmp_path: Path, kind: str
-) -> None:
+def command(tmp_path, kind, identity="audit_fixture"):
     if kind == "inference":
-        script = REPO_ROOT / "wrappers/inference_tools/scripts/scaffold_tool.py"
-        flags = [
-            "--tool",
-            "audit_fixture",
-            "--tool-sources-root",
-            str(tmp_path / "wrappers"),
-            "--catalog-tools-root",
-            str(tmp_path / "catalog"),
-        ]
-        draft_name = "toolspec.draft.json"
-        ignore_name = ".dockerignore"
+        script = "wrappers/inference_tools/scripts/scaffold_tool.py"
+        flags = ("--tool", "--tool-sources-root", "--catalog-tools-root")
     else:
-        script = (
-            REPO_ROOT / "wrappers/simulation_data_tools/scripts/scaffold_simulator.py"
-        )
-        flags = [
-            "--simulator",
-            "audit_fixture",
-            "--wrappers-root",
-            str(tmp_path / "wrappers"),
-            "--catalog-simulators-root",
-            str(tmp_path / "catalog"),
-        ]
-        draft_name = "simulatorspec.draft.json"
-        ignore_name = "Dockerfile.dockerignore"
-    command = [
+        script = "wrappers/simulation_data_tools/scripts/scaffold_simulator.py"
+        flags = ("--simulator", "--wrappers-root", "--catalog-simulators-root")
+    return [
         sys.executable,
-        str(script),
-        *flags,
+        str(REPO_ROOT / script),
+        flags[0],
+        identity,
+        flags[1],
+        str(tmp_path / "wrappers"),
+        flags[2],
+        str(tmp_path / "catalog"),
         "--smoketest-configs-root",
         str(tmp_path / "smoke"),
+        "--results-dir",
+        str(tmp_path / "results"),
     ]
-    subprocess.run(command, cwd=REPO_ROOT, check=True, capture_output=True, text=True)
-    wrapper = tmp_path / "wrappers/audit_fixture"
-    assert not (tmp_path / "catalog").exists()
-    assert not (tmp_path / "smoke").exists()
-    assert (wrapper / "repo").is_dir()
-    assert (wrapper / "papers").is_dir()
-    assert json.loads((wrapper / draft_name).read_text())["year"] is None
-    record = json.loads((wrapper / "integration.json").read_text())
-    assert record["kind"] == kind
-    assert record["id"] == "audit_fixture"
-    assert record["checks"] == []
-    decisions = (wrapper / "integration_decisions.md").read_text()
-    assert "{{" not in decisions
-    assert "Complete parameter traceability" in decisions
-    assert "User installation preference" in decisions
-    assert "Image publication: pending" in decisions
-    ignores = (wrapper / ignore_name).read_text().splitlines()
-    assert "**/repo" in ignores
-    assert "**/papers" in ignores
 
-    # Scaffolding again preserves reviewed evidence and work by default.
-    (wrapper / "integration.json").write_text('{"reviewed": true}\n')
+
+def run(args, *, check=True):
+    return subprocess.run(
+        args, cwd=REPO_ROOT, capture_output=True, text=True, check=check
+    )
+
+
+def names(kind, identity="audit_fixture"):
+    return (
+        ("toolspec.draft.json", "toolspec.json", f"{identity}.json", "run_tool.py")
+        if kind == "inference"
+        else (
+            "simulatorspec.draft.json",
+            "simulatorspec.json",
+            f"{identity}_basic.json",
+            "run_simulator.py",
+        )
+    )
+
+
+def reviewed_spec(kind, identity="audit_fixture"):
+    path = (
+        REPO_ROOT / "andrea/catalog_inference_tools/tools/genie3/toolspec.json"
+        if kind == "inference"
+        else REPO_ROOT
+        / "andrea/catalog_simulation_data_tools/simulators/dyngen/simulatorspec.json"
+    )
+    spec = json.loads(path.read_text())
+    spec["id"] = identity
+    return spec
+
+
+def prepare(tmp_path, kind, identity="audit_fixture"):
+    args = command(tmp_path, kind, identity)
+    run(args)
+    draft, _, _, _ = names(kind, identity)
+    spec = reviewed_spec(kind, identity)
+    (tmp_path / "results" / draft).write_text(json.dumps(spec) + "\n")
+    return args, spec
+
+
+@pytest.mark.parametrize("kind", ["inference", "simulation"])
+def test_scaffold_has_same_essentials_before_and_after_integration(tmp_path, kind):
+    args = command(tmp_path, kind)
+    wrapper = tmp_path / "wrappers/audit_fixture"
+    (wrapper / "papers").mkdir(parents=True)
     (wrapper / "papers/article.txt").write_text("User supplied article.\n")
-    subprocess.run(command, cwd=REPO_ROOT, check=True, capture_output=True, text=True)
-    assert json.loads((wrapper / "integration.json").read_text()) == {"reviewed": True}
-    assert (wrapper / "papers/article.txt").read_text() == "User supplied article.\n"
-
-
-def test_simulator_docker_entrypoint_matches_interpreter_and_overridden_script(
-    tmp_path: Path,
-) -> None:
-    script = REPO_ROOT / "wrappers/simulation_data_tools/scripts/scaffold_simulator.py"
-    subprocess.run(
-        [
-            sys.executable,
-            str(script),
-            "--simulator",
-            "audit_fixture",
-            "--wrappers-root",
-            str(tmp_path),
-            "--wrapper-ext",
-            "custom",
-        ],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    dockerfile = (tmp_path / "audit_fixture/Dockerfile").read_text()
-    assert 'ENTRYPOINT ["python3", "/app/run_simulator.custom"' in dockerfile
-    assert (tmp_path / "audit_fixture/run_simulator.custom").is_file()
-
-
-@pytest.mark.parametrize("kind", ["inference", "simulation"])
-def test_activation_promotes_reviewed_drafts_without_regenerating_wrapper(
-    tmp_path: Path, kind: str
-) -> None:
-    if kind == "inference":
-        script = REPO_ROOT / "wrappers/inference_tools/scripts/scaffold_tool.py"
-        flags = [
-            "--tool",
-            "audit_fixture",
-            "--tool-sources-root",
-            str(tmp_path / "wrappers"),
-            "--catalog-tools-root",
-            str(tmp_path / "catalog"),
-        ]
-        draft_name, active_name = "toolspec.draft.json", "toolspec.json"
-        smoke_name = "audit_fixture.json"
-        spec_source = (
-            REPO_ROOT / "andrea/catalog_inference_tools/tools/genie3/toolspec.json"
-        )
-    else:
-        script = (
-            REPO_ROOT / "wrappers/simulation_data_tools/scripts/scaffold_simulator.py"
-        )
-        flags = [
-            "--simulator",
-            "audit_fixture",
-            "--wrappers-root",
-            str(tmp_path / "wrappers"),
-            "--catalog-simulators-root",
-            str(tmp_path / "catalog"),
-        ]
-        draft_name, active_name = "simulatorspec.draft.json", "simulatorspec.json"
-        smoke_name = "audit_fixture_basic.json"
-        spec_source = (
-            REPO_ROOT
-            / "andrea/catalog_simulation_data_tools/simulators/dyngen/simulatorspec.json"
-        )
-    command = [
-        sys.executable,
-        str(script),
-        *flags,
-        "--smoketest-configs-root",
-        str(tmp_path / "smoke"),
-    ]
-    activation = [*command, "--activate-catalog", "--activate-smoketest", "--force"]
-    # Fresh activation must not create a plausible active placeholder.
-    missing = subprocess.run(activation, cwd=REPO_ROOT, capture_output=True, text=True)
-    assert missing.returncode != 0 and "draft missing" in missing.stderr
-    assert not (tmp_path / "catalog").exists()
-    subprocess.run(command, cwd=REPO_ROOT, check=True, capture_output=True, text=True)
-    wrapper = tmp_path / "wrappers/audit_fixture"
-    # The unreviewed schema-invalid initial draft is still blocked.
-    invalid = subprocess.run(activation, cwd=REPO_ROOT, capture_output=True, text=True)
-    assert invalid.returncode != 0 and "invalid draft" in invalid.stderr
-    assert not (tmp_path / "catalog").exists()
-    reviewed = json.loads(spec_source.read_text())
-    reviewed["id"] = "audit_fixture"
-    (wrapper / draft_name).write_text(json.dumps(reviewed))
-    wrapper_script = wrapper / (
-        "run_tool.py" if kind == "inference" else "run_simulator.py"
-    )
-    wrapper_script.write_text("# reviewed wrapper, preserve this implementation\n")
-    (wrapper / "integration.json").write_text('{"reviewed":true}\n')
-    smoke = json.loads((wrapper / "smoketest.config.draft.json").read_text())
-    subprocess.run(
-        activation, cwd=REPO_ROOT, check=True, capture_output=True, text=True
-    )
-    active = tmp_path / "catalog/audit_fixture" / active_name
-    assert json.loads(active.read_text()) == reviewed
-    assert json.loads((tmp_path / "smoke" / smoke_name).read_text()) == smoke
+    (wrapper / "repo/.git").mkdir(parents=True)
+    (wrapper / "repo/.git/config").write_text("User supplied clone.\n")
+    run(args)
+    draft, _, _, script = names(kind)
+    assert {p.name for p in wrapper.iterdir() if p.is_file()} == {
+        "Dockerfile",
+        script,
+        "integration_decisions.md",
+    }
+    assert {p.name for p in (tmp_path / "results").iterdir()} == {
+        draft,
+        "smoketest.config.draft.json",
+    }
+    assert json.loads((tmp_path / "results" / draft).read_text())["year"] is None
+    assert not (tmp_path / "catalog").exists() and not (tmp_path / "smoke").exists()
+    decisions = (wrapper / "integration_decisions.md").read_text()
+    assert "{{" not in decisions and "Complete parameter traceability" in decisions
+    assert "integration.json" not in decisions
+    (tmp_path / "results" / draft).write_text('{"reviewed":true}\n')
+    (wrapper / "integration_decisions.md").write_text("Reviewed scientific notes.\n")
+    run(args)
+    assert (tmp_path / "results" / draft).read_text() == '{"reviewed":true}\n'
     assert (
-        wrapper_script.read_text()
-        == "# reviewed wrapper, preserve this implementation\n"
-    )
-    assert (wrapper / "integration.json").read_text() == '{"reviewed":true}\n'
-    # A valid schema does not excuse an unresolved review placeholder.
-    reviewed["first_author"] = "TODO: verify citation"
-    (wrapper / draft_name).write_text(json.dumps(reviewed))
-    pending = subprocess.run(activation, cwd=REPO_ROOT, capture_output=True, text=True)
-    assert pending.returncode != 0 and "unresolved placeholders" in pending.stderr
-    assert json.loads(active.read_text())["first_author"] != reviewed["first_author"]
-    reviewed["first_author"] = json.loads(spec_source.read_text())["first_author"]
-    reviewed["id"] = "different_identity"
-    (wrapper / draft_name).write_text(json.dumps(reviewed))
-    mismatch = subprocess.run(activation, cwd=REPO_ROOT, capture_output=True, text=True)
-    assert mismatch.returncode != 0 and "must equal" in mismatch.stderr
-    assert json.loads(active.read_text())["id"] == "audit_fixture"
+        wrapper / "integration_decisions.md"
+    ).read_text() == "Reviewed scientific notes.\n"
+    assert (wrapper / "papers/article.txt").read_text() == "User supplied article.\n"
+    assert (wrapper / "repo/.git/config").read_text() == "User supplied clone.\n"
 
 
 @pytest.mark.parametrize("kind", ["inference", "simulation"])
-def test_scaffold_record_cannot_pass_functional_gate(tmp_path: Path, kind: str) -> None:
-    # The template itself must never be mistaken for integration evidence.
-    payload = json.loads(
-        (REPO_ROOT / "wrappers/integration/integration.template.json").read_text()
+def test_promotion_rejects_missing_invalid_placeholder_or_wrong_identity(
+    tmp_path, kind
+):
+    args = command(tmp_path, kind)
+    activation = [*args, "--activate-catalog", "--activate-smoketest", "--force"]
+    assert "draft missing" in run(activation, check=False).stderr
+    run(args)
+    assert "invalid draft" in run(activation, check=False).stderr
+    draft = tmp_path / "results" / names(kind)[0]
+    spec = reviewed_spec(kind)
+    for key, value, message in (
+        ("first_author", "TODO: citation", "unresolved placeholders"),
+        ("id", "different_identity", "must equal"),
+    ):
+        invalid = {**spec, key: value}
+        draft.write_text(json.dumps(invalid))
+        result = run(activation, check=False)
+        assert result.returncode != 0 and message in result.stderr
+        assert not (tmp_path / "catalog").exists()
+        assert not (tmp_path / "smoke").exists()
+
+
+@pytest.mark.parametrize("kind", ["inference", "simulation"])
+def test_promotion_validates_all_selected_drafts_before_writing(tmp_path, kind):
+    args, _ = prepare(tmp_path, kind)
+    (tmp_path / "results/smoketest.config.draft.json").write_text("invalid JSON")
+    result = run(
+        [*args, "--activate-catalog", "--activate-smoketest", "--force"], check=False
     )
-    payload.update(kind=kind, id="audit_fixture")
-    manifest = tmp_path / "integration.json"
-    manifest.write_text(json.dumps(payload))
-    result = subprocess.run(
-        [
-            sys.executable,
-            str(REPO_ROOT / "wrappers/integration/validate_integration.py"),
-            str(manifest),
-            "--stage",
-            "functional",
-        ],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
+    assert result.returncode != 0 and "Cannot read draft/schema" in result.stderr
+    assert not (tmp_path / "catalog").exists() and not (tmp_path / "smoke").exists()
+
+
+@pytest.mark.parametrize("kind", ["inference", "simulation"])
+@pytest.mark.parametrize("legacy", [False, True])
+def test_promotion_cleans_only_identical_copies_and_preserves_wrapper(
+    tmp_path, kind, legacy
+):
+    args, spec = prepare(tmp_path, kind)
+    draft, active_name, smoke_name, script = names(kind)
+    wrapper = tmp_path / "wrappers/audit_fixture"
+    (wrapper / script).write_text("# reviewed implementation\n")
+    smoke = json.loads((tmp_path / "results/smoketest.config.draft.json").read_text())
+    if legacy:
+        for name in (draft, "smoketest.config.draft.json"):
+            (tmp_path / "results" / name).rename(wrapper / name)
+    else:
+        # Equal legacy duplicates are also safe to retire after the exact copy.
+        for name in (draft, "smoketest.config.draft.json"):
+            (wrapper / name).write_bytes((tmp_path / "results" / name).read_bytes())
+    run([*args, "--activate-catalog", "--activate-smoketest", "--force"])
+    assert (
+        json.loads((tmp_path / "catalog/audit_fixture" / active_name).read_text())
+        == spec
     )
-    assert result.returncode != 0
+    assert json.loads((tmp_path / "smoke" / smoke_name).read_text()) == smoke
+    assert {p.name for p in wrapper.iterdir() if p.is_file()} == {
+        "Dockerfile",
+        script,
+        "integration_decisions.md",
+    }
+    assert not (tmp_path / "results" / draft).exists()
+    assert not (tmp_path / "results/smoketest.config.draft.json").exists()
+    assert (wrapper / script).read_text() == "# reviewed implementation\n"
+    run(args)
+    assert not (tmp_path / "results" / draft).exists()
+    assert not (tmp_path / "results/smoketest.config.draft.json").exists()
+
+
+@pytest.mark.parametrize("kind", ["inference", "simulation"])
+def test_uncopied_or_conflicting_draft_is_retained(tmp_path, kind):
+    args, _ = prepare(tmp_path, kind)
+    draft, active_name, _, _ = names(kind)
+    staged = tmp_path / "results" / draft
+    before = staged.read_bytes()
+    active = tmp_path / "catalog/audit_fixture" / active_name
+    active.parent.mkdir(parents=True)
+    active.write_text('{"different":"preserve"}\n')
+    run([*args, "--activate-catalog"])
+    assert active.read_text() == '{"different":"preserve"}\n'
+    assert staged.read_bytes() == before
+    legacy = tmp_path / "wrappers/audit_fixture" / draft
+    legacy.write_text('{"conflicting":"preserve"}\n')
+    result = run([*args, "--activate-catalog", "--force"], check=False)
+    assert result.returncode != 0 and "Conflicting candidate copies" in result.stderr
+    assert staged.read_bytes() == before
+    assert legacy.read_text() == '{"conflicting":"preserve"}\n'
+
+
+@pytest.mark.parametrize("kind", ["inference", "simulation"])
+def test_nonidentical_newline_copy_is_not_removed(tmp_path, kind):
+    args, _ = prepare(tmp_path, kind)
+    draft = tmp_path / "results" / names(kind)[0]
+    before = draft.read_bytes().replace(b"\n", b"\r\n")
+    draft.write_bytes(before)
+    run([*args, "--activate-catalog", "--force"])
+    assert draft.read_bytes() == before
+
+
+@pytest.mark.parametrize("kind", ["inference", "simulation"])
+@pytest.mark.parametrize(
+    "inside", ["wrappers/audit_fixture/results", "catalog/candidate", "smoke/candidate"]
+)
+def test_candidate_staging_cannot_be_inside_runtime_or_active_catalog(
+    tmp_path, kind, inside
+):
+    result = run(
+        [*command(tmp_path, kind), "--results-dir", str(tmp_path / inside)], check=False
+    )
+    assert result.returncode != 0 and "outside wrapper and active" in result.stderr
+    assert not (tmp_path / "wrappers").exists()
+    assert not (tmp_path / "catalog").exists()
+
+
+@pytest.mark.parametrize("matches", [False, True])
+def test_inference_local_map_is_removed_only_when_central_configuration_matches(
+    tmp_path, matches
+):
+    args, _ = prepare(tmp_path, "inference", "genie3")
+    central = json.loads(
+        (REPO_ROOT / "wrappers/inference_tools/scripts/template_map.json").read_text()
+    )
+    candidate = {
+        "tools": {"genie3": central["tools"]["genie3"]},
+        "bundle_templates": central["bundle_templates"],
+    }
+    if not matches:
+        candidate["tools"]["genie3"] = {
+            **candidate["tools"]["genie3"],
+            "native_threads": "assigned",
+        }
+    staged = tmp_path / "results/template_map.json"
+    staged.write_text(json.dumps(candidate))
+    run([*args, "--activate-catalog", "--activate-smoketest", "--force"])
+    assert staged.exists() is not matches
+
+
+def test_simulator_docker_entrypoint_matches_overridden_extension(tmp_path):
+    run([*command(tmp_path, "simulation"), "--wrapper-ext", "custom"])
+    wrapper = tmp_path / "wrappers/audit_fixture"
+    assert (wrapper / "run_simulator.custom").is_file()
+    assert (
+        'ENTRYPOINT ["python3", "/app/run_simulator.custom"'
+        in (wrapper / "Dockerfile").read_text()
+    )

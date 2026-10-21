@@ -48,7 +48,9 @@ The goal is not to reproduce a local vertical slice, bundled example export or c
 adriansegura99/simulator_<simulator_id>:<version>
 ```
 
-Use a new version tag when wrapper behavior or dependencies change; retain previously published tags for historical replication.
+Keep the same version tag for unpublished fixes. After stable publication, use
+a new version tag when wrapper behavior or dependencies change; never replace
+a published historical image. Retain the immutable image ID actually measured.
 
 7. `publication` must be a list. Store DOI references as full canonical URLs such as `https://doi.org/...`.
 8. `first_author` must be the full first-author name from the primary publication, not only surname.
@@ -286,6 +288,31 @@ Current GUI handoff convention:
 - `full` bundles contain the complete generated benchmark archive for storage
   and debugging.
 
+## Wrapper layout and candidate promotion
+
+Use the existing Osaka worktree and current branch; do not create a separate
+branch or worktree per method unless explicitly requested by the user.
+
+New wrappers keep `Dockerfile`, `run_simulator.*`, `integration_decisions.md` and
+the user's local `papers/` and `repo/`. Keep scientific notes in that decision
+log, dependency pins/checksums in the Dockerfile, and required compatibility
+patches in the wrapper. Do not scaffold a separate lock file, ignore file,
+duplicate README, per-method dossier or `wrappers/integration/simulation/` folder.
+
+Spec and smoke candidates start in `release-logs/simulation-<simulator_id>/` or the
+explicit `--results-dir`, outside the wrapper and active catalogs. Promotion
+with `--activate-catalog` and `--activate-smoketest` validates the selected
+candidates before writing active files. It removes only draft copies identical
+to their active counterparts. Conflicting or uncopied drafts remain available;
+conflicting staged and legacy wrapper-local copies are rejected. Repeating the
+scaffold after promotion does not recreate placeholder drafts.
+
+Use canonical catalog specs, smoke configurations and cost recipes afterward.
+Simulation entrypoints remain declared in the wrapper Dockerfile; there is no shared simulator template map.
+Commands, logs, hashes and validation reports belong in the existing campaign
+results. No additional versioned dossier is required. Preserve historical
+receipts and frozen campaign sources when changing layout.
+
 ## End-to-end execution
 
 Follow [INTEGRATION_WORKFLOW.md](../../docs/INTEGRATION_WORKFLOW.md) for the
@@ -304,8 +331,6 @@ make verify-simulator SIMULATOR=<simulator_id>
 make benchmark-simulator-costs ARGS="--simulator <simulator_id> --plan-only --repeats 3"
 python wrappers/simulation_data_tools/scripts/validate_simulator_costs.py \
   --simulator <simulator_id> --require --require-provenance --require-coverage
-python wrappers/integration/validate_integration.py \
-  wrappers/simulation_data_tools/simulators/<simulator_id>/integration.json --stage functional
 ```
 
 TXT articles are accepted directly; PDF extraction is optional. Scaffolds stay
@@ -969,5 +994,5 @@ Use the [shared decisions template](../integration/decisions.template.md) and
 Record per-capability native/derived truth and extras, simulator-side inputs,
 parameter bindings, all public parameters/defaults, actual upstream arguments,
 resource mapping, output semantics, patches and remaining uncertainty.
-`integration.json` links the artifact identities and check receipts. Separate
+Retain artifact identities and actual check reports in the campaign results. Separate
 functional, calibrated-within-domain and published states.

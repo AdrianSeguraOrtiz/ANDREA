@@ -30,6 +30,7 @@ DEFAULT_TEMPLATE_MAP = Path(__file__).resolve().parent / "template_map.json"
 TEMPLATES_ROOT = Path(__file__).resolve().parent / "templates"
 CONTEXT_IGNORE_PATTERNS = (
     ".git",
+    ".venv",
     "__pycache__",
     "*.pyc",
     ".pytest_cache",

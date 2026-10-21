@@ -18,7 +18,7 @@
     "bulk"
   ],
   "implementation_url": "https://github.com/vahuynh/dynGENIE3",
-  "docker_image": "adriansegura99/inference-tools_dyngenie3:1.0.1",
+  "docker_image": "adriansegura99/inference-tools_dyngenie3:1.0.0",
   "execution_capabilities": [
     "global"
   ],

@@ -134,31 +134,31 @@ python wrappers/inference_tools/scripts/validate_tool_costs.py
 
 ### `scaffold_tool.py`
 
-Creates an inactive draft scaffold and a shared evidence dossier for a new integration.
-The generated `toolspec.json` and decision log start from the current contract:
-`execution_capabilities`, `runtime_resources.threading`, column-kind-aware
-`accepts`, structured `extra_inputs` and raw `network.csv` output semantics.
-It creates:
-- `wrappers/inference_tools/tools/<tool_id>/toolspec.draft.json`
-- `wrappers/inference_tools/tools/<tool_id>/integration.json`
-- `wrappers/inference_tools/tools/<tool_id>/integration_decisions.md`
-- `wrappers/inference_tools/tools/<tool_id>/Dockerfile`
-- `wrappers/inference_tools/tools/<tool_id>/run_tool.py`, `run_tool.R`, or a generic `run_tool.<ext>`
-- `wrappers/inference_tools/tools/<tool_id>/smoketest.config.draft.json`
+Creates the same essentials used by existing wrappers:
+`Dockerfile`, `run_tool.py` / `run_tool.R` / `run_tool.<ext>`,
+`integration_decisions.md`, and the user's local `repo/` and `papers/` folders.
+It does not generate a separate README, dependency lock, ignore file or
+per-method integration dossier. Pin installation dependencies in the Dockerfile
+and keep necessary compatibility patches in the wrapper.
 
-Use `--activate-catalog` and `--activate-smoketest` only after implementing and
-reviewing the draft. Promotion validates its schema, identity and unresolved
-placeholders and copies the reviewed draft. Existing files are preserved unless
-`--force` is explicitly supplied; activation never regenerates wrappers or evidence.
-It also ensures that `repo/` and `papers/` folders exist under the tool root.
-Today only `python` and `r` have tailored wrapper templates. Any other wrapper language
-produces a generic placeholder scaffold that should be specialized during integration.
+ToolSpec and smoke candidates remain outside active catalogs and wrapper
+sources, in `release-logs/inference-<tool_id>/` or `--results-dir`. Implement and
+review them before `--activate-catalog --activate-smoketest`. Promotion validates
+all selected candidates before writing, preserves existing active files unless
+`--force` is supplied, then removes only draft copies byte-identical to their
+active counterparts. A local candidate template map is removed only when its
+tool entry and bundle definitions match the central map. Uncopied or conflicting
+candidates are retained. Promotion never regenerates wrappers or user evidence.
+Ordinary scaffolding after promotion does not recreate placeholder drafts.
+
+Only Python and R have tailored runtime templates; other languages start with
+a generic wrapper to specialize during implementation.
 
 ```bash
 python wrappers/inference_tools/scripts/scaffold_tool.py --tool mytool
 python wrappers/inference_tools/scripts/scaffold_tool.py --tool mytool --wrapper r
-python wrappers/inference_tools/scripts/scaffold_tool.py --tool mytool --wrapper matlab
-python wrappers/inference_tools/scripts/scaffold_tool.py --tool mytool --wrapper matlab --wrapper-ext m
+python wrappers/inference_tools/scripts/scaffold_tool.py --tool mytool --results-dir release-logs/my-campaign
+python wrappers/inference_tools/scripts/scaffold_tool.py --tool mytool --activate-catalog --activate-smoketest
 ```
 
 ### `prepare_tool_papers.py`
@@ -291,8 +291,9 @@ installation preference. The agent audits evidence, prepares the scientific and
 parameter matrices, implements, tests, plans calibration, validates independent
 predictions and checks core/CLI/GUI/catalog alignment without a prompt per phase.
 
-Drafts stay outside the active catalog. `integration_decisions.md` records
-rationale; `integration.json` links hashed artifacts and check receipts. Report
+Candidates stay in campaign results until promotion. `integration_decisions.md`
+records scientific rationale; commands, hashes and check reports stay in
+`release-logs/` or `--results-dir`, without another per-method dossier. Report
 functional, calibrated-within-domain and published states separately. Local
 paper/clone caches never become build or execution dependencies.
 

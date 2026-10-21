@@ -31,13 +31,16 @@ commit, dirty state and relevant file/line locations. Inspect the exact public
 version selected for installation if it differs from that clone. Verify the
 user's installation preference against the official distribution, availability,
 licence, runtime and method version. Pin the public version/commit, dependency
-versions and base image digest; preserve lock/checksum/build receipts and
-necessary upstream patches with their scientific effect. Never copy `repo/`
+versions and base image digest; preserve dependency checksums, build receipts
+and necessary upstream patches with their scientific effect. Never copy `repo/`
 or `papers/` into an image. These caches and editorial materials stay untracked.
 
 ## 1. Establish evidence and the scientific contract
 
 Create the scaffold without overwriting evidence or existing work:
+
+Use the existing Osaka worktree and current branch. Do not create a separate
+branch or worktree per method unless the user explicitly requests one.
 
 ```sh
 make scaffold-tool TOOL=<id> WRAPPER=python
@@ -45,14 +48,38 @@ make scaffold-tool TOOL=<id> WRAPPER=python
 make scaffold-simulator SIMULATOR=<id> WRAPPER=python
 ```
 
-Scaffolds are drafts, not executable catalog entries. Inspect existing wrappers
-before changing their contract. The generated `integration_decisions.md` uses
-the [shared evidence template](../wrappers/integration/decisions.template.md).
-The generated `integration.json` uses the
-[acceptance template](../wrappers/integration/integration.template.json).
-The integrating agent fills both from evidence and test receipts; the user
-does not supply them. Keep prose for rationale and the JSON for checkable
-file identities and receipts. Avoid repeating claims in additional checklists.
+A scaffold leaves the same essentials as the existing wrappers: `Dockerfile`,
+`run_tool.*` or `run_simulator.*`, and `integration_decisions.md`, plus the user's
+local `papers/` and `repo/`. Keep dependency pins/checksums in the Dockerfile and
+necessary compatibility patches in the wrapper. Do not generate a separate
+lock file, per-tool ignore file, duplicate README, `integration.json` or a
+per-method directory under `wrappers/integration/`.
+
+Unverified ToolSpec/SimulatorSpec and smoke candidates are staged outside the
+wrapper and active catalogs, by default in `release-logs/inference-<id>/` or
+`release-logs/simulation-<id>/`. Pass `--results-dir` to use another untracked
+campaign directory. Scaffolding does not activate a placeholder contract.
+The generated decision log uses the
+[shared scientific template](../wrappers/integration/decisions.template.md).
+Record rationale and parameter traceability there; keep execution logs and
+machine-generated reports in the campaign results, without duplicating a
+versioned dossier.
+
+After reviewing the candidates, use `--activate-catalog` and
+`--activate-smoketest`. Promotion validates all selected candidates before
+writing active files. It removes only drafts whose bytes match their promoted
+copies, and an inference candidate template map only when its selected entry
+and bundle definitions match the central map. A conflicting or uncopied draft
+is retained. Existing legacy wrapper-local drafts can be promoted without
+creating another copy; conflicting staged and legacy versions are rejected.
+Ordinary scaffolding after promotion does not recreate placeholder drafts.
+The active catalog, canonical smoke configuration, central inference template
+map and cost recipe remain the single current sources.
+
+Keep the current version tag while correcting an unpublished integration.
+Increment it after stable publication when behavior or dependencies change;
+never replace a published historical image. Always record the immutable image
+ID actually tested and measured.
 
 Audit all public functions, CLIs, pipelines, modes and preprocessing/export
 paths relevant to the method. Classify the implementation actually installed,
@@ -204,65 +231,36 @@ calibration pending. Never relabel failed predictions as independent success.
 
 ## 5. Acceptance, image publication and handoff
 
-Run the shared evidence gate:
+Use the existing schema, runtime and calibration checks, retaining their real
+commands, exit codes, reports, immutable image IDs, source/configuration hashes,
+input/output hashes and limitations in `release-logs/` or `--results-dir`.
+Scientific findings and justified exclusions belong in the existing decision
+log. Do not create a new per-method dossier or a second set of current specs,
+smoke configurations, template mappings or cost plans.
 
-```sh
-python wrappers/integration/validate_integration.py <wrapper>/integration.json \
-  --stage functional --report release-logs/<id>-functional.json
-# After calibration and independent prediction checks:
-python wrappers/integration/validate_integration.py <wrapper>/integration.json \
-  --stage calibrated --report release-logs/<id>-calibrated.json
-```
+Functional acceptance requires the physical variants and core/CLI/GUI checks
+from section 2. Calibration additionally requires all three independent gates:
+structural/provenance validity, measured-domain coverage, and the frozen
+independent prediction checks. Run the relevant cost validator with
+`--require-provenance --require-coverage`, and use
+`wrappers/validate_cost_predictions.py` on the retained prediction plan and
+observations. Passing schema validation or a helper exit alone is insufficient.
+Never replace actual failures or pending measurements with a prose success.
 
-Fill `artifacts` with `{role,path,sha256}` for the `spec`, `wrapper`,
-`dockerfile` and other build inputs. The calibrated gate additionally requires
-`cost` (a file named `cost.json`), `calibration_plan`, `prediction_plan`,
-`prediction_report` and `estimator` artifacts. Evidence rows add `id`, `role` (`paper` or
-`upstream`), `citation` (bibliography or source file/line) and `limitations`.
-`installation` records preference, public HTTPS source, verified pin/lock,
-immutable `image`, separate optional `registry_digest` and evidence IDs. Entrypoint and parameter rows use the
-matrix fields described above; each exposed top-level ANDREA param must match
-its spec default. Each parameter JSON row uses `upstream`, `andrea`, `type`, `domain`,
-`upstream_default`, `default` (the ANDREA spec value), `default_rule`,
-`dependencies`, `argument`, `disposition` (`exposed`, `excluded` or `resource`),
-`reason`, `test`, `cost` and `evidence` IDs. The rule describes literal forwarding
-or exact dynamic-default/sentinel/argument-omission behavior. Nested leaves are
-audited in the prose matrix and referenced tests. Excluded/resource rows retain their rationale and upstream evidence.
-
-Checks are named in `validate_integration.py:FUNCTIONAL`; `functional_modes.covers`
-lists included entrypoint names and `parameter_defaults.covers` lists public
-top-level ANDREA params. Retained reports must explain their actual test cases.
-Calibration adds
-`cost_structure`, `cost_domain`, `cost_predictions`. Each check has
-`{name,status,receipt:{path,sha256}}`. Receipt JSON has `kind`, `id`, `status`,
-`exit_code`, `command`, immutable `image`, `check`, `covers`, `context_sha256`,
-`subjects` (artifact role to SHA-256), and `outputs` (retained report/log refs `{path,sha256}`, relative to the dossier).
-Run the gate with `--context-only` to obtain canonical context and subject
-hashes for receipts; this computes hashes without certifying a check. Scientific
-evidence, installation and entrypoint/parameter claims are sealed by that context.
-Functional receipts bind functional build subjects; cost receipts also bind the
-calibration artifacts, so changing costs invalidates calibration evidence without
-invalidating unchanged functional tests. The check name and covered items must
-match the hashed receipt. A registry receipt also records `registry_digest`.
-Only `conditional_inputs` or `repeatability` can be `not_applicable`, with
-reason and evidence IDs. A receipt may represent a documented scientific review;
-it must retain the reviewed findings, rather than an invented execution result.
-Changing an artifact invalidates its receipts until applicability is reviewed
-and checks rerun or honestly reissued with identified prior evidence. The gate
-checks evidence integrity and required gates, not scientific truth or complete
-upstream API discovery. Keep raw paper/clone/runs out of git; commit the compact
-dossier, decisions and portable references, recording unavailable local evidence
-as pending on another machine.
+Retain historical logs and failed attempts unchanged. Before removing a staged
+copy, check that its active counterpart is identical; never delete a changed or
+uncopied candidate. Reorganizing sources changes their fingerprints, so a frozen
+campaign must finish or be deliberately stopped before its sources are changed.
+Keep raw paper/clone/runs out of Git; commit runtime code, canonical
+configuration, tests and the scientific decision log.
 
 Report three distinct deliverables: **functional integration**, **calibration
-complete within the declared domain with observed predictive limits**, and
-**image publication**. Publishing requires explicit task authorization; it is
-not implied by local integration. A published state additionally requires
-`--stage published`, `installation.registry_digest` (`repository@sha256:…`)
-and a `registry_image` receipt verifying that exact digest and its relationship
-to the measured `image`. Publication depends on functional checks; it does not
-imply that the independent `calibrated` gate has passed. Do not rebuild a measured image merely to push it. Package
-release/PyPI and merging to main follow [release.md](release.md) only when requested.
+complete within the measured domain with independently observed predictive
+limits**, and **image publication**. Publication requires explicit task
+authorization and a registry digest tied to the measured immutable image;
+local tests do not establish publication. Do not rebuild a measured image merely
+to push it. Package release/PyPI and merging to main follow
+[release.md](release.md) only when requested.
 
 The final handoff lists changed files, scientific exclusions, parameter matrix,
 commands/results, costs/domain/accuracy, image identity and publication state,

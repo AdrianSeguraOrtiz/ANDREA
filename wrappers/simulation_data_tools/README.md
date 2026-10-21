@@ -185,9 +185,14 @@ Use the [simulator playbook](SIMULATOR_INTEGRATION_PLAYBOOK.md) and
 [shared autonomous workflow](../../docs/INTEGRATION_WORKFLOW.md). Supply a TXT
 article in `simulators/<id>/papers/`, the upstream clone in
 `simulators/<id>/repo/`, and an installation preference. No PDF or prompt per
-phase is required. Scaffolds remain drafts until implemented and activated.
-The decision log uses the common evidence/parameter matrix; `integration.json`
-links immutable artifacts and check receipts. Report functional, calibrated
+phase is required. Scaffolds leave only `Dockerfile`, `run_simulator.*`,
+`integration_decisions.md`, `papers/` and `repo/` in the wrapper. Spec and smoke
+candidates remain in `release-logs/simulation-<id>/` or `--results-dir` until
+reviewed and promoted. `--activate-catalog --activate-smoketest` removes only
+draft copies identical to the active files; changed or uncopied candidates stay.
+No separate README, lock, ignore file or per-method dossier is generated.
+Use the decision log for scientific rationale and campaign results for actual
+commands, hashes and check reports. Report functional, calibrated
 within the declared domain and published states separately.
 
 Model datasets with `data_axes`, `truth_requirements` and `capabilities`.

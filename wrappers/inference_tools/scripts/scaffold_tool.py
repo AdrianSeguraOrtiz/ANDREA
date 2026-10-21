@@ -96,6 +96,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Path to local wrapper/evidence directories.",
     )
     parser.add_argument(
+        "--results-dir",
+        type=Path,
+        help="Untracked candidate files; default: release-logs/inference-<tool>.",
+    )
+    parser.add_argument(
         "--catalog-tools-root",
         type=Path,
         default=CATALOG_TOOLS_ROOT,
@@ -255,13 +260,6 @@ wrapper sharding; unsupported threading remains explicitly unsupported.""",
     return template
 
 
-def integration_payload(tool_id: str) -> dict[str, object]:
-    template_path = REPO_ROOT / "wrappers/integration/integration.template.json"
-    payload = json.loads(template_path.read_text(encoding="utf-8"))
-    payload.update(kind="inference", id=tool_id)
-    return payload
-
-
 def smoketest_config_template() -> str:
     payload = {
         "execution": {"mode": "global"},
@@ -379,6 +377,38 @@ CMD ["/bin/sh", "-lc", "echo 'TODO: replace the generic scaffold ENTRYPOINT for 
 """
 
 
+def draft_source(staged: Path, legacy: Path) -> Path:
+    """Read existing legacy drafts without choosing between conflicting copies."""
+    if (
+        staged.is_file()
+        and legacy.is_file()
+        and staged.read_bytes() != legacy.read_bytes()
+    ):
+        raise RuntimeError(f"Conflicting candidate copies: {staged} and {legacy}")
+    return staged if staged.is_file() or not legacy.is_file() else legacy
+
+
+def cleanup_template_map(path: Path, tool_id: str) -> None:
+    """Remove only a candidate mapping already represented in the central map."""
+    if not path.is_file():
+        return
+    try:
+        candidate = json.loads(path.read_text())
+        active = json.loads((Path(__file__).parent / "template_map.json").read_text())
+        identical = (
+            set(candidate.get("tools", {})) == {tool_id}
+            and candidate["tools"][tool_id] == active["tools"].get(tool_id)
+            and all(
+                active["bundle_templates"].get(key) == value
+                for key, value in candidate.get("bundle_templates", {}).items()
+            )
+        )
+    except (OSError, ValueError, KeyError, TypeError):
+        return
+    if identical:
+        path.unlink()
+
+
 def scaffold(
     tool_id: str,
     wrapper: str,
@@ -388,11 +418,22 @@ def scaffold(
     tool_sources_root: Path = TOOLS_ROOT,
     catalog_tools_root: Path = CATALOG_TOOLS_ROOT,
     smoketest_configs_root: Path = SMOKETEST_CONFIGS_ROOT,
+    results_dir: Path | None = None,
     activate_catalog: bool = False,
     activate_smoketest: bool = False,
 ) -> list[tuple[Path, str]]:
     tool_root = tool_sources_root / tool_id
     catalog_root = catalog_tools_root / tool_id
+    staging = results_dir or REPO_ROOT / "release-logs" / f"inference-{tool_id}"
+    if any(
+        staging.resolve().is_relative_to(root.resolve())
+        for root in (tool_sources_root, catalog_tools_root, smoketest_configs_root)
+    ):
+        raise RuntimeError(
+            "--results-dir must be outside wrapper and active catalog/config directories."
+        )
+    spec_path = staging / "toolspec.draft.json"
+    smoketest_path = staging / "smoketest.config.draft.json"
     if activate_catalog or activate_smoketest:
         # Validate every selected draft before writing anything. Activation
         # never regenerates wrappers or overwrites evidence, even with --force.
@@ -401,8 +442,9 @@ def scaffold(
             promotions.append(
                 (
                     catalog_root / "toolspec.json",
+                    draft_source(spec_path, tool_root / "toolspec.draft.json"),
                     reviewed_draft(
-                        tool_root / "toolspec.draft.json",
+                        draft_source(spec_path, tool_root / "toolspec.draft.json"),
                         schema_path=REPO_ROOT
                         / "andrea/catalog_inference_tools/schemas/toolspec.schema.json",
                         expected_id=tool_id,
@@ -413,19 +455,42 @@ def scaffold(
             promotions.append(
                 (
                     smoketest_configs_root / f"{tool_id}.json",
+                    draft_source(
+                        smoketest_path, tool_root / "smoketest.config.draft.json"
+                    ),
                     reviewed_draft(
-                        tool_root / "smoketest.config.draft.json",
+                        draft_source(
+                            smoketest_path, tool_root / "smoketest.config.draft.json"
+                        ),
                         schema_path=INFERENCE_TOOLS_ROOT
                         / "tests/schemas/smoketest.config.schema.json",
                     ),
                 )
             )
-        return [
-            (path, _write_text_file(path, content, force=force))
-            for path, content in promotions
-        ]
-    spec_path = tool_root / "toolspec.draft.json"
-    smoketest_path = tool_root / "smoketest.config.draft.json"
+        promoted = []
+        for path, source, content in promotions:
+            promoted.append((path, _write_text_file(path, content, force=force)))
+            for candidate in (source, tool_root / source.name):
+                if (
+                    candidate.is_file()
+                    and path.is_file()
+                    and candidate.read_bytes() == path.read_bytes()
+                ):
+                    candidate.unlink()
+        if (
+            all(
+                path.read_bytes() == content.encode("utf-8")
+                for path, _, content in promotions
+            )
+            and (catalog_root / "toolspec.json").is_file()
+            and (smoketest_configs_root / f"{tool_id}.json").is_file()
+        ):
+            for candidate in (
+                staging / "template_map.json",
+                tool_root / "template_map.json",
+            ):
+                cleanup_template_map(candidate, tool_id)
+        return promoted
     wrapper_name = f"run_tool.{wrapper_ext}"
     if wrapper == "r":
         wrapper_content = run_tool_r_template(tool_id)
@@ -444,21 +509,8 @@ def scaffold(
 
     file_specs = [
         (
-            spec_path,
-            toolspec_template(tool_id),
-        ),
-        (
             tool_root / "integration_decisions.md",
             integration_decisions_template(tool_id),
-        ),
-        (
-            tool_root / "integration.json",
-            json.dumps(integration_payload(tool_id), indent=2, ensure_ascii=True)
-            + "\n",
-        ),
-        (
-            tool_root / ".dockerignore",
-            "**/repo\n**/papers\n**/.git\n**/.venv\n**/__pycache__\n",
         ),
         (
             tool_root / "Dockerfile",
@@ -468,11 +520,12 @@ def scaffold(
             tool_root / wrapper_name,
             wrapper_content,
         ),
-        (
-            smoketest_path,
-            smoketest_config_template(),
-        ),
     ]
+    # A repeated scaffold after promotion must not recreate placeholder drafts.
+    if force or not (catalog_root / "toolspec.json").is_file():
+        file_specs.append((spec_path, toolspec_template(tool_id)))
+    if force or not (smoketest_configs_root / f"{tool_id}.json").is_file():
+        file_specs.append((smoketest_path, smoketest_config_template()))
 
     for path, content in file_specs:
         status = _write_text_file(path, content, force=force)
@@ -495,6 +548,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             tool_sources_root=args.tool_sources_root,
             catalog_tools_root=args.catalog_tools_root,
             smoketest_configs_root=args.smoketest_configs_root,
+            results_dir=args.results_dir,
             activate_catalog=args.activate_catalog,
             activate_smoketest=args.activate_smoketest,
         )

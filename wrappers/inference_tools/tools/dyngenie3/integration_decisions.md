@@ -1,16 +1,11 @@
 # dynGENIE3 integration decisions
 
-This record explains the scientific audit, parameter mapping and original
-preparation evidence. The [2026-10-21 recovery review](integration_review_20261021.md)
-records later image/interface tests, discovered defects and remaining gates.
-Current execution and acceptance status belong to the recovered campaign's
-state and hashed acceptance dossier; preparation checks alone certify no fit,
-calibration or publication.
-
-The [integration workflow](../../../../docs/INTEGRATION_WORKFLOW.md) and
-[bulk temporal audit](../../../../docs/bulk-time-series-contract.md) apply.
-`integration.json` owns machine-checkable acceptance status; this document
-explains the scientific decisions and the complete upstream surface.
+This document records the scientific contract, upstream surface and integration
+choices. Runtime installation is defined by `Dockerfile` and `run_tool.py`;
+parameters, input capabilities and image reference use the canonical catalog
+ToolSpec. The shared [observed bulk temporal contract](../../../../docs/bulk-time-series-contract.md)
+applies. Measurements and verification receipts belong to the existing ignored
+`release-logs/` output, outside the wrapper source directory.
 
 ## Evidence identities and limitations
 
@@ -301,135 +296,59 @@ estimated edge-specific lag. The one-step derivative approximation must remain
 described in native config/provenance rather than encoded as a fabricated
 edge lag or network context.
 
-## Installation, functional evidence and independent states
+## Installation and compatibility
 
-Installation preference: Python from the public GitHub commit
-`27eddd960d50e82791a8e0e5f8fcf6d679fe3eac`. Install the selected public Python
-file(s), not R/MATLAB backend code, from a pinned archive with a checksum and
-explicit NumPy/scipy/sklearn/Python/base-image pins. The evidence clone and
-article must be excluded from Docker build contexts and runtime mounts. The
-upstream project has no setup.py/pyproject/requirements lockfile in the pinned
-tree, so the integration must own and record the dependency lock and changes.
-The integration's public raw-source verification matched the supplied Python
-file hash recorded above. Remote HEAD also resolved to the selected commit at
-verification time; installation still uses the immutable commit, not HEAD.
-The locally available `python:3.11-slim` base manifest digest selected for
-preparation is
-`sha256:e41613d42d4891e4930f79523f93f81bbc7632584ec65e36ab055f41a800b41e`
-(linux/amd64); it is not a built dynGENIE3 image identity.
+The Dockerfile pins the Python 3.11 Linux/amd64 base by digest and installs
+NumPy 1.26.4, SciPy 1.12.0, scikit-learn 1.4.2, joblib 1.4.2 and
+threadpoolctl 3.5.0 with exact binary-wheel hashes. Those pins live directly in
+the Dockerfile; no separate requirements file is needed.
 
-The initial source audit was not an installation test: the worktree `.venv`
-had no scikit-learn and that early import inspection reported
-`ModuleNotFoundError`. Subsequently the integration prepared a separate local
-environment at `release-logs/dyngenie3/runtime` from the pinned binary wheels.
-`release-logs/dyngenie3/import-check.json` records actual successful imports of
-sklearn 1.4.2, NumPy 1.26.4 and scipy 1.12.0, explicitly without a scientific
-fit. This proves import compatibility for that environment, not a built image,
-successful forest fitting, runtime resource enforcement or repeatability.
+During image construction, `run_tool.py --prepare-upstream` downloads the
+public Python source at commit `27eddd960d50e82791a8e0e5f8fcf6d679fe3eac`,
+checks its SHA-256 and applies the reviewed compatibility, diagnostic and
+per-target seed patches defined in the same file. Normal inference performs
+no download or patching. The patched native source is byte-identical to the
+previous reviewed patch output. The supplied clone and papers are analysis
+evidence and are excluded by the common temporary-context image builder.
 
-`release-logs/dyngenie3/cli-preflight.json` and the retained CLI plan demonstrate
-the candidate's defaults, observed temporal declaration and mounted inputs
-passing core preflight without inference. The candidate remains a custom draft,
-with no `cost.json` or activated catalog entry. Browser evidence
-`release-logs/dyngenie3/gui-browser-check.json` and `gui-temporal.png` records the
-observed-time form rendered/enabled/populated in Chromium with no page errors;
-it is not an end-to-end container run. None of these reports is relabeled as
-an immutable-image functional acceptance receipt.
+`--threads` controls the outer target-worker pool, bounded by target count.
+Each forest and native math library uses one thread. The seed extension
+assigns a deterministic seed to each target independently of scheduling.
+Undefined optional diagnostic scores remain null with an explanation; they
+are not replaced with zero or allowed to alter network importance values.
 
-During the broader integration session a dyngen simulation was inadvertently
-started for approximately six seconds. Only the session's own process IDs and
-container were stopped. The incident was reported to the user; that execution
-is excluded from dynGENIE3 functional, reproducibility and calibration evidence.
-It does not establish success for any acceptance gate. The deferred verifier
-requires an explicitly completed external experiment state before every new
-container and retains failures and interruptions.
+The first unpublished image uses version `1.0.0`. Corrections before its stable
+release retain that version. Actual verification and cost measurements always
+identify the immutable image, regardless of its mutable local tag.
 
-Functional matrix must cover TS-only/mixed (if exposed), RF/ET, default
-alpha/scalar/vector, sqrt/all/integer K, candidate-list/all, quality disabled/
-enabled, save_models false/true, singleton and multiple independent regular/
-irregular series, shuffled metadata, invalid metadata/precision loss, empty
-positive network, output orientation/magnitudes/sign/context, fixed-seed fresh
-runs, actual resource limits, and core/CLI/GUI delivery. Native artifacts should
-include VIM, alphas with gene IDs, quality status/results, resolved native
-forest parameters, source/patch/runtime metadata and models when requested.
-Small smoke values do not replace upstream defaults in the spec or cost plan.
+## Verification and finite cost coverage
 
-`verify_runtime.py` provides the reviewed physical matrix: seven serial smoke
-variants (real defaults first; RF/ET, scalar/vector rates, K=1/all, optional TF
-and SS inputs, quality, saved models and empty export), then four fresh seed-17
-executions across one/two assigned workers and one seed-18 execution. The
-original twelve executions passed with image 1.0.0. Recovery adds five
-diagnostic cases: RF quality with TS only, ET quality with SS, zero decay with
-SS, one tree and one training observation. Eight-gene fixtures and five
-in-container saved-model probes reconstruct VIM, OOB correlation and native
-stability without refitting. Seventeen containers have a combined 61,200-second
-timeout cap, including the capped probes, not a measured ETA. The
-script accepts only a full immutable image ID and records each run's input/
-output hashes, elapsed time, resource request, observed target-worker native
-pools and effective CPU/memory cgroup limits (v2, with a v1 fallback). Resource
-acceptance requires the assigned CPU quota, 4 GiB memory limit and one native
-thread per pool. Exact native VIM hashes are compared within/across worker allocations;
-the changed seed must change VIM for the chosen stochastic fixture. SIGINT,
-SIGTERM and timeouts stop only the verifier's named container and retain failed
-status. The expanded matrix requires fresh physical execution of corrected
-image 1.0.1; it is not certified by the old twelve-run receipt.
-The older all-zero-image plan-only audit is a planning marker, never
-an image receipt.
+The canonical smoketest configuration is
+`../../tests/smoketest_configs/dyngenie3.json`. Method-contract and patch tests
+live with the other inference wrapper tests. Physical verification additionally
+covers TS-only/mixed input, RF/ET, scalar/vector/data-derived decay, K variants,
+TF restrictions, quality diagnostics, saved models, empty networks, metadata
+validation, fixed-seed repeats, changed seeds and actual 1/2/4/8-worker limits.
 
-The autonomous supervisor freezes these sources before waiting. Costs are
-measured in a private staging catalog, checked for the declared temporal/resource
-domain, then validated on reserved inputs using frozen calls to the actual
-ANDREA planner. It registers a cost only after those separate gates pass. A
-later real core/CLI execution and GUI/catalog checks feed the final hashed
-dossier at `release-logs/dyngenie3/campaign-expanded-20261021/acceptance/integration.json`.
-The source `integration.json` remains the preparation snapshot. Neither a
-successful helper exit without its matching receipts nor all planned timings
-alone establishes acceptance. The complete allocation and unknown ETA are
-recorded in `cost_plan.json` and the supervisor's frozen `plan.json`.
+The canonical cost recipe is `../../cost_profiles/dyngenie3.json`. Its finite
+panel contains 81 scientific coordinates, each measured with 1/2/4/8 CPUs,
+4/8 GiB RAM and three repeats: 1,944 calibration runs. Genes, timepoints per
+series and independent series have crossed default coverage; additional
+panels cover ET, candidate TFs, scalar/vector decay, quality, models, K, tree
+counts, steady-state counts and irregular sampling. This does not establish
+coverage of every combination of inputs and parameters.
 
-Cost planning must vary genes, distinct timepoints per series, independent
-series and regulator count with independent crossings; retain the actual
-number of derivative training samples `sum(points_per_series - 1)` plus SS
-samples. Stratify RF/ET, TS-only/mixed, quality costs, tree counts/K, saved
-models and measured resource allocations as appropriate. Quality's pairwise
-tree comparison is quadratic in ntrees. Reserve independent holdouts before
-fitting, at least three successful repeats per new point, and retain failures.
-No runtime estimate or comparative speed claim is established by this audit.
+Thirteen reserved cases at gene sizes 75/250 provide 312 independent runtime
+observations across those resource strata. Predictions are frozen calls to
+the real planner before held-out execution. Held-out observations must remain
+separate from model fitting. Temporal-shape interpolation, unmeasured TF
+densities and unreserved parameter combinations remain outside the predictive
+claim. The complete campaign also includes 26 functional image runs and one
+real core/CLI execution, totaling 2,283 planned executions.
 
-| State | Original preparation-stage evidence (see the dated recovery review for later evidence) |
-| --- | --- |
-| Scientific identity and Python selection | Reviewed with the evidence above |
-| Parameter / entrypoint inventory | Complete pinned Python source inventory, mapped design above |
-| Runtime temporal/input implementation | Implemented candidate; targeted contract tests, CLI preflight and browser form evidence exist; immutable-image end-to-end proof pending |
-| Physical functional and repeatability acceptance | Pending; no dynGENIE3 fit/image execution receipt; the unrelated accidental dyngen simulation is excluded |
-| Calibration domain and independent prediction accuracy | Pending; no measurements in this audit |
-| Image identity and registry publication | Pending |
-| Software redistribution license | Unresolved in pinned source; do not infer from article license |
-
-## Expanded finite cost panel — 2026-10-21
-
-The user selected a broad panel comparable to catalog coverage, with explicit
-limits rather than an exhaustive factor Cartesian product. The authoritative
-recipe is `../../cost_profiles/dyngenie3.json`; `cost_plan.json` records the
-resolved allocation and the live expanded campaign retains execution evidence.
-The previous 17-case image verification passed. Its calibration observations
-are eligible for exact-input/context reuse, with original identities preserved.
-
-The new panel contains 81 scientific coordinates, all eight CPU/RAM strata
-(1/2/4/8 CPUs and 4/8 GiB), and three repetitions: 1944 calibration executions.
-ET and TF branches have crossed gene/time growth at two series. Scalar-alpha,
-quality, saved-model, K and tree-count panels have gene growth at fixed t8/s2.
-Steady-state counts 10/20/40 cross genes. Irregular t8/s2 has a separate gene
-panel. Vector alpha fixes 100 genes to preserve the declared vector and varies
-timepoint count. Compared GENIE3 and Inferelator baseline profiles use diagonal sizes in seven
-resource strata and a full 3×3 grid in one; this panel crosses all declared
-coordinates in every resource stratum while preserving an explicit finite domain. It makes no prediction
-claim for unmeasured temporal shapes, TF densities or factor combinations.
-
-Thirteen reserved cases at untrained gene sizes 75/250 provide 312 independent
-runtime observations across the eight strata. Predictions are frozen calls to
-the actual planner before any held-out execution; their observations cannot be
-used to fit the estimator while retaining independent-validation status.
-Twenty-six functional executions now also check eight actual target workers
-on an eight-gene fixture, repeated seeds across 1/2/4/8 CPUs, and changed-seed
-sensitivity. The installed image and scientific defaults are unchanged.
+Previous candidate-image measurements remain historical evidence. Moving the
+patch and dependency pins into their final files changes the build context
+and image identity, so the final image is verified and calibrated afresh.
+Do not label costs complete before structural validation, declared coverage
+and independent prediction accuracy all pass. Registry publication remains a
+separate action; no image has been published by this integration workflow.

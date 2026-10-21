@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import ast
 import csv
+import hashlib
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 import shutil
 import sys
@@ -23,11 +25,6 @@ spec = importlib.util.spec_from_file_location(
 )
 wrapper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(wrapper)
-spec = importlib.util.spec_from_file_location(
-    "dyngenie3_patches", SOURCE / "patch_upstream.py"
-)
-patches = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(patches)
 
 
 @pytest.fixture
@@ -57,7 +54,11 @@ def change_table(path, mutate):
 
 
 def test_defaults_equal_upstream_contract_and_reviewed_spec():
-    spec = json.loads((SOURCE / "toolspec.draft.json").read_text())
+    spec = json.loads(
+        (
+            ROOT / "andrea/catalog_inference_tools/tools/dyngenie3/toolspec.json"
+        ).read_text()
+    )
     assert wrapper.DEFAULTS == {
         name: data["default"] for name, data in spec["params"].items()
     }
@@ -362,12 +363,12 @@ def test_model_export_and_effective_feature_count_are_recorded(inputs, monkeypat
 
 def test_patches_reject_unverified_sources():
     with pytest.raises(ValueError, match="SHA-256"):
-        patches.patched_source(b"not the official source")
+        wrapper.patched_source(b"not the official source")
 
 
 def cgroup_helper_without_importing_or_fitting_the_method():
     """Compile only the resource helper and supply synthetic filesystem roots."""
-    outer = ast.parse((SOURCE / "patch_upstream.py").read_text())
+    outer = ast.parse((SOURCE / "run_tool.py").read_text())
     appended = next(
         node.value
         for node in ast.walk(outer)
@@ -455,7 +456,7 @@ def test_exact_public_source_patch_ast_and_seed_forwarding_when_evidence_is_avai
     source = SOURCE / "repo/dynGENIE3/dynGENIE3_python/dynGENIE3.py"
     if not source.is_file():
         pytest.skip("Optional local upstream evidence clone is unavailable")
-    tree = ast.parse(patches.patched_source(source.read_bytes()))
+    tree = ast.parse(wrapper.patched_source(source.read_bytes()))
     functions = {
         node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
     }
@@ -503,3 +504,81 @@ def test_exact_public_source_patch_ast_and_seed_forwarding_when_evidence_is_avai
         quality_namespace["_andrea_pearsonr"]([float("inf"), 1, 2], [1, 2, 3])[0]
     )
     assert np.isnan(quality_namespace["_andrea_pearsonr"]([1, 2], [float("nan"), 3])[0])
+
+
+def test_preparation_cli_help_runs_with_isolated_standard_library_only():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            str(SOURCE / "run_tool.py"),
+            "--prepare-upstream",
+            "--help",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "--source" in result.stdout and "--output-dir" in result.stdout
+    assert "--input" not in result.stdout
+
+
+def test_preparation_cli_rejects_unknown_source_before_creating_outputs(tmp_path):
+    source = tmp_path / "unverified.py"
+    source.write_text("# unverified source\n")
+    output = tmp_path / "output"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            str(SOURCE / "run_tool.py"),
+            "--prepare-upstream",
+            "--source",
+            str(source),
+            "--output-dir",
+            str(output),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "verified upstream SHA-256" in result.stderr
+    assert not output.exists()
+
+
+def test_pinned_preparation_is_byte_stable_and_rejects_double_patching(tmp_path):
+    source = SOURCE / "repo/dynGENIE3/dynGENIE3_python/dynGENIE3.py"
+    if not source.is_file():
+        pytest.skip("Optional local upstream evidence clone is unavailable")
+    original = source.read_bytes()
+    expected = wrapper.patched_source(original).encode("utf-8")
+    assert hashlib.sha256(expected).hexdigest() == (
+        "203653c7307e91b099c92b268de376fa4561a0e367bc6d7100d2a02d3ba65015"
+    )
+    output = tmp_path / "prepared"
+    command = [
+        sys.executable,
+        "-I",
+        "-S",
+        str(SOURCE / "run_tool.py"),
+        "--prepare-upstream",
+        "--source",
+        str(source),
+        "--output-dir",
+        str(output),
+    ]
+    for _ in range(2):
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        metadata = json.loads(result.stdout)
+        assert (output / "dynGENIE3.original.py").read_bytes() == original
+        assert (output / "dynGENIE3.py").read_bytes() == expected
+        assert metadata["original_source_sha256"] == wrapper.UPSTREAM_SHA256
+        assert metadata["patched_source_sha256"] == hashlib.sha256(expected).hexdigest()
+    rejected = tmp_path / "double-patch"
+    command[command.index("--source") + 1] = str(output / "dynGENIE3.py")
+    command[command.index("--output-dir") + 1] = str(rejected)
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode != 0 and "verified upstream SHA-256" in result.stderr
+    assert not rejected.exists()
