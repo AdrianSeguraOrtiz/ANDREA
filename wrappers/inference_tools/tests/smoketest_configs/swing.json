@@ -1,0 +1,230 @@
+{
+  "execution": {
+    "mode": "global"
+  },
+  "extra_files": [
+    "column_descriptors.tsv"
+  ],
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "real_constructor_defaults"
+    },
+    {
+      "name": "rf_lagged",
+      "param_overrides": {
+        "n_trees": 5,
+        "min_lag": 1,
+        "max_lag": 2
+      }
+    },
+    {
+      "name": "rf_tf_lagged",
+      "extra_files": [
+        "column_descriptors.tsv",
+        "tf_list.txt"
+      ],
+      "param_overrides": {
+        "n_trees": 5,
+        "min_lag": 1,
+        "max_lag": 2
+      }
+    },
+    {
+      "name": "rf_without_zscore",
+      "param_overrides": {
+        "n_trees": 5,
+        "zscore": false
+      }
+    },
+    {
+      "name": "rf_width_one",
+      "param_overrides": {
+        "window_width": 1,
+        "n_trees": 5
+      }
+    },
+    {
+      "name": "rf_rank_median_mean",
+      "param_overrides": {
+        "n_trees": 5,
+        "min_lag": 1,
+        "max_lag": 2,
+        "sort_by": "rank",
+        "lag_method": "median_mean"
+      }
+    },
+    {
+      "name": "rf_lag_max_median",
+      "param_overrides": {
+        "n_trees": 5,
+        "min_lag": 0,
+        "max_lag": 1,
+        "sort_by": "lag",
+        "lag_method": "max_median"
+      }
+    },
+    {
+      "name": "rf_max_score",
+      "param_overrides": {
+        "n_trees": 5,
+        "sort_by": "max"
+      }
+    },
+    {
+      "name": "rf_permutation",
+      "param_overrides": {
+        "n_trees": 5,
+        "n_permutations": 2
+      }
+    },
+    {
+      "name": "rf_empty_export",
+      "param_overrides": {
+        "n_trees": 2,
+        "maxcount": 0
+      },
+      "checks": {
+        "allow_empty_network": true,
+        "forbid_self_loops": true
+      }
+    },
+    {
+      "name": "plsr_auto",
+      "param_overrides": {
+        "window_type": "Dionesus"
+      }
+    },
+    {
+      "name": "plsr_fixed_components",
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 1,
+        "min_lag": 1,
+        "max_lag": 2
+      }
+    },
+    {
+      "name": "plsr_tf_lagged",
+      "extra_files": [
+        "column_descriptors.tsv",
+        "tf_list.txt"
+      ],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 1,
+        "min_lag": 1,
+        "max_lag": 2
+      }
+    },
+    {
+      "name": "plsr_permutation",
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 1,
+        "n_permutations": 2
+      }
+    },
+    {
+      "name": "lasso_fixed_alpha",
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 2,
+        "n_alphas": 3
+      }
+    },
+    {
+      "name": "lasso_null_alpha_search",
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "n_bootstraps": 2,
+        "n_alphas": 3
+      }
+    },
+    {
+      "name": "lasso_cv_default_grid_null_search",
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha_cv_folds": 2,
+        "n_bootstraps": 2,
+        "n_alphas": 3
+      }
+    },
+    {
+      "name": "lasso_single_bootstrap",
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 1,
+        "n_alphas": 3
+      }
+    },
+    {
+      "name": "lasso_cv_modelq2",
+      "param_overrides": {
+        "window_type": "Lasso",
+        "null_alpha": 2.0,
+        "alpha_cv_folds": 2,
+        "alpha_grid": [
+          0.01,
+          0.05,
+          0.2,
+          0.8,
+          2.0
+        ],
+        "n_bootstraps": 2,
+        "n_alphas": 3
+      }
+    },
+    {
+      "name": "lasso_cv_maxposq2_rank",
+      "param_overrides": {
+        "window_type": "Lasso",
+        "null_alpha": 2.0,
+        "alpha_cv_folds": 2,
+        "alpha_cv_method": "max_posQ2",
+        "alpha_grid": [
+          0.01,
+          0.05,
+          0.2,
+          0.8,
+          2.0
+        ],
+        "n_bootstraps": 2,
+        "n_alphas": 3,
+        "sort_by": "rank"
+      }
+    },
+    {
+      "name": "lasso_adjusted_stability",
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 2,
+        "n_alphas": 3,
+        "min_lag": 1,
+        "max_lag": 2,
+        "sort_by": "adj"
+      }
+    },
+    {
+      "name": "lasso_permutation",
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 2,
+        "n_alphas": 3,
+        "n_permutations": 2
+      }
+    }
+  ],
+  "require_progress": true
+}

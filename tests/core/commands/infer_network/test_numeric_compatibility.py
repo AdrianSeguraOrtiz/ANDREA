@@ -102,3 +102,18 @@ def test_toolspec_schema_rejects_new_arithmetic_and_content_language(condition):
         {"$defs": schema["$defs"], "$ref": "#/$defs/condition"}
     )
     assert list(validator.iter_errors(condition))
+
+
+def test_swing_rules_use_only_the_established_schema():
+    schema = json.loads(
+        (
+            ROOT / "andrea/catalog_inference_tools/schemas/toolspec.schema.json"
+        ).read_text()
+    )
+    spec = json.loads(
+        (ROOT / "andrea/catalog_inference_tools/tools/swing/toolspec.json").read_text()
+    )
+    assert not list(Draft202012Validator(schema).iter_errors(spec))
+    rules = json.dumps(spec["compatibility_rules"])
+    assert "dataset.temporal" not in rules
+    assert "input.tf_list.count" not in rules

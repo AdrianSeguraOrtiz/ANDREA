@@ -1,0 +1,17 @@
+column	observation_type	series_id	condition	replicate	observation_id	technical_replicate	timepoint	time_unit	sampling_design
+course_B.t7	time_series	course_B	synthetic_control	course_B	course_B.observation7	tech1	7	hour	longitudinal
+course_B.t6	time_series	course_B	synthetic_control	course_B	course_B.observation6	tech1	6	hour	longitudinal
+course_B.t5	time_series	course_B	synthetic_control	course_B	course_B.observation5	tech1	5	hour	longitudinal
+course_B.t4	time_series	course_B	synthetic_control	course_B	course_B.observation4	tech1	4	hour	longitudinal
+course_B.t3	time_series	course_B	synthetic_control	course_B	course_B.observation3	tech1	3	hour	longitudinal
+course_B.t2	time_series	course_B	synthetic_control	course_B	course_B.observation2	tech1	2	hour	longitudinal
+course_B.t1	time_series	course_B	synthetic_control	course_B	course_B.observation1	tech1	1	hour	longitudinal
+course_B.t0	time_series	course_B	synthetic_control	course_B	course_B.observation0	tech1	0	hour	longitudinal
+course_A.t7	time_series	course_A	synthetic_control	course_A	course_A.observation7	tech1	7	hour	longitudinal
+course_A.t6	time_series	course_A	synthetic_control	course_A	course_A.observation6	tech1	6	hour	longitudinal
+course_A.t5	time_series	course_A	synthetic_control	course_A	course_A.observation5	tech1	5	hour	longitudinal
+course_A.t4	time_series	course_A	synthetic_control	course_A	course_A.observation4	tech1	4	hour	longitudinal
+course_A.t3	time_series	course_A	synthetic_control	course_A	course_A.observation3	tech1	3	hour	longitudinal
+course_A.t2	time_series	course_A	synthetic_control	course_A	course_A.observation2	tech1	2	hour	longitudinal
+course_A.t1	time_series	course_A	synthetic_control	course_A	course_A.observation1	tech1	1	hour	longitudinal
+course_A.t0	time_series	course_A	synthetic_control	course_A	course_A.observation0	tech1	0	hour	longitudinal

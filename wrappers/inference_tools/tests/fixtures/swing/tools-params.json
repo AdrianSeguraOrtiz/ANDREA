@@ -1,0 +1,20 @@
+{
+  "runs": [
+    {
+      "tool_id": "swing",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "n_trees": 5,
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

@@ -103,7 +103,7 @@ def test_tool_selection_is_explicit_in_preflight_plan_and_frozen_contract(
         raise RuntimeError("validated frozen role selection; stop before Docker")
 
     monkeypatch.setattr(runtime, "_ensure_docker_cli", stop_before_docker)
-    for tool, expected in [("dyngenie3", 8)]:
+    for tool, expected in [("dyngenie3", 8), ("swing", 6)]:
         params = request(bundle, tool)
         preflight = preflight_infer_network(
             dataset_manifest_path=bundle / "dataset-manifest.json",
@@ -205,7 +205,7 @@ def test_technical_replicates_are_represented_without_averaging(tmp_path):
     report = validate(tmp_path)
     assert report["columns"] == 24 and report["observations"] == 12
     assert len(report["longitudinal_transitions"]) == 8
-    params = request(tmp_path, "dyngenie3")
+    params = request(tmp_path, "swing")
     preflight = preflight_infer_network(
         dataset_manifest_path=tmp_path / "dataset-manifest.json",
         tools_params_path=params,
@@ -224,7 +224,7 @@ def test_tool_technical_replication_policy_only_checks_selected_roles(bundle):
     write_rows(bundle, records)
     summary = validate(bundle)
     assert summary["observations"] == 7 and summary["columns"] == 8
-    for tool, selected in [("dyngenie3", False)]:
+    for tool, selected in [("swing", True), ("dyngenie3", False)]:
         report = preflight_infer_network(
             dataset_manifest_path=bundle / "dataset-manifest.json",
             tools_params_path=request(bundle, tool),

@@ -1,0 +1,22 @@
+{
+  "runs": [
+    {
+      "tool_id": "swing",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "window_type": "Lasso",
+        "window_width": 6,
+        "null_alpha": 2.0,
+        "n_bootstraps": 2,
+        "n_alphas": 3
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

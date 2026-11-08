@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "id": "swing_alpha_cv_default_manifest",
+  "dataset": {
+    "spec": {
+      "schema_version": "1.0",
+      "id": "swing_alpha_cv_default",
+      "name": "Synthetic aligned courses for native10-fold alpha selection",
+      "expression": {
+        "genes": 4,
+        "columns": 32,
+        "column_kind": "timepoints",
+        "expression_profile": "bulk"
+      },
+      "organism": {
+        "taxonomic_group": "synthetic",
+        "ncbi_taxon_id": null
+      }
+    },
+    "expression_matrix": "expression.tsv"
+  },
+  "extras": {
+    "column_descriptors": "column_descriptors.tsv"
+  },
+  "notes": "Four biological courses of eight hourly visits; width6 gives24 pooled observations per window, supporting the original10fold default without modifying it. Synthetic contract data only."
+}

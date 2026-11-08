@@ -1,0 +1,3488 @@
+{
+  "cost_relevant_params": [
+    "window_type",
+    "window_width",
+    "min_lag",
+    "max_lag",
+    "zscore",
+    "n_trees",
+    "alpha",
+    "pcs",
+    "n_bootstraps",
+    "n_alphas",
+    "noise",
+    "null_alpha",
+    "null_alpha_max",
+    "null_alpha_min_step",
+    "alpha_cv_folds",
+    "alpha_cv_method",
+    "alpha_grid",
+    "n_permutations",
+    "lag_method",
+    "sort_by",
+    "maxcount"
+  ],
+  "column_kind": "timepoints",
+  "expression_profile": "bulk",
+  "temporal": {
+    "schema_version": "bulk-temporal/1",
+    "time_basis": "observed",
+    "time_unit": "hour",
+    "sampling_design": "longitudinal"
+  },
+  "profiles": [
+    {
+      "id": "global_rf_defaults_t8_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_defaults_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_defaults_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_defaults_t16_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_defaults_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_defaults_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_defaults_t32_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_defaults_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_defaults_t32_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x128",
+        "100x128",
+        "200x128"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_lagged_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_lagged_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_lagged_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_tf_lagged_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_tf_lagged_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_tf_lagged_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t8_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t16_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t32_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_auto_t32_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus"
+      },
+      "sizes": [
+        "50x128",
+        "100x128",
+        "200x128"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_pcs2_lagged_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 2,
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_pcs2_lagged_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 2,
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_pcs2_lagged_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 2,
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_tf_pcs2_lagged_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 2,
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_tf_pcs2_lagged_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 2,
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_tf_pcs2_lagged_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 2,
+        "min_lag": 1,
+        "max_lag": 2
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_width6_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_width": 6
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_width6_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_width": 6
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_width6_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_width": 6
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_width1_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_width": 1
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_width1_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_width": 1
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_width1_t32_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_width": 1
+      },
+      "sizes": [
+        "50x128",
+        "100x128",
+        "200x128"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_trees100_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "n_trees": 100
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_trees1000_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "n_trees": 1000
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_no_zscore_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "zscore": false
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_permutation2_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "n_trees": 100,
+        "n_permutations": 2
+      },
+      "sizes": [
+        "25x16",
+        "50x16",
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_permutation2_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 2,
+        "n_permutations": 2
+      },
+      "sizes": [
+        "25x16",
+        "50x16",
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_permutation5_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "n_trees": 100,
+        "n_permutations": 5
+      },
+      "sizes": [
+        "25x16",
+        "50x16",
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_plsr_permutation5_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Dionesus",
+        "pcs": 2,
+        "n_permutations": 5
+      },
+      "sizes": [
+        "25x16",
+        "50x16",
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_median_mean_rank_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2,
+        "lag_method": "median_mean",
+        "sort_by": "rank"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_max_median_lag_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2,
+        "lag_method": "max_median",
+        "sort_by": "lag"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_min_min_max_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "min_lag": 1,
+        "max_lag": 2,
+        "lag_method": "min_min",
+        "sort_by": "max"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_rf_export100_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "maxcount": 100
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t8_s8",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x64",
+        "25x64",
+        "50x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 8,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t8_s12",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x96",
+        "25x96",
+        "50x96"
+      ],
+      "temporal_fixture": {
+        "series_count": 12,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t8_s16",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x128",
+        "25x128",
+        "50x128"
+      ],
+      "temporal_fixture": {
+        "series_count": 16,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t12_s8",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x96",
+        "25x96",
+        "50x96"
+      ],
+      "temporal_fixture": {
+        "series_count": 8,
+        "timepoints_per_series": 12,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t12_s12",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x144",
+        "25x144",
+        "50x144"
+      ],
+      "temporal_fixture": {
+        "series_count": 12,
+        "timepoints_per_series": 12,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t12_s16",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x192",
+        "25x192",
+        "50x192"
+      ],
+      "temporal_fixture": {
+        "series_count": 16,
+        "timepoints_per_series": 12,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t16_s8",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x128",
+        "25x128",
+        "50x128"
+      ],
+      "temporal_fixture": {
+        "series_count": 8,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t16_s12",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x192",
+        "25x192",
+        "50x192"
+      ],
+      "temporal_fixture": {
+        "series_count": 12,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_defaults_t16_s16",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso"
+      },
+      "sizes": [
+        "10x256",
+        "25x256",
+        "50x256"
+      ],
+      "temporal_fixture": {
+        "series_count": 16,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t8_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x8",
+        "25x8",
+        "50x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x16",
+        "25x16",
+        "50x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x32",
+        "25x32",
+        "50x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t16_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x16",
+        "25x16",
+        "50x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x32",
+        "25x32",
+        "50x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x64",
+        "25x64",
+        "50x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t32_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x32",
+        "25x32",
+        "50x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x64",
+        "25x64",
+        "50x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_alpha_t32_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05
+      },
+      "sizes": [
+        "10x128",
+        "25x128",
+        "50x128"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_max_posQ2_t8_s8",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha_cv_method": "max_posQ2"
+      },
+      "sizes": [
+        "10x64",
+        "25x64",
+        "50x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 8,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_grid_t8_s8",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha_grid": [
+          0.01,
+          0.05,
+          0.2,
+          0.8,
+          2.0
+        ]
+      },
+      "sizes": [
+        "10x64",
+        "25x64",
+        "50x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 8,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_fast_growth_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 1,
+        "n_alphas": 5
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_fast_growth_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 1,
+        "n_alphas": 5
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_fast_growth_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 1,
+        "n_alphas": 5
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_bootstrap3_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 3,
+        "n_alphas": 10
+      },
+      "sizes": [
+        "25x16",
+        "50x16",
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_adjusted_lagged_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 3,
+        "n_alphas": 10,
+        "min_lag": 1,
+        "max_lag": 2,
+        "sort_by": "adj"
+      },
+      "sizes": [
+        "25x16",
+        "50x16",
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_permutation_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 3,
+        "n_alphas": 5,
+        "n_permutations": 2
+      },
+      "sizes": [
+        "10x16",
+        "25x16",
+        "50x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_width6_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "window_width": 6
+      },
+      "sizes": [
+        "10x32",
+        "25x32",
+        "50x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_width6_t12_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "window_width": 6
+      },
+      "sizes": [
+        "10x48",
+        "25x48",
+        "50x48"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 12,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_cv_width6_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "window_width": 6
+      },
+      "sizes": [
+        "10x64",
+        "25x64",
+        "50x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lasso_fixed_no_noise_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "window_type": "Lasso",
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 3,
+        "n_alphas": 10,
+        "noise": 0.0
+      },
+      "sizes": [
+        "25x16",
+        "50x16",
+        "100x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    }
+  ],
+  "calibration_design": {
+    "version": 1,
+    "kind": "independent_temporal_grid_with_branch_growth",
+    "gene_levels": [
+      50,
+      100,
+      200
+    ],
+    "timepoints_per_series_levels": [
+      8,
+      16,
+      32
+    ],
+    "independent_series_levels": [
+      1,
+      2,
+      4
+    ],
+    "scientific_defaults": {
+      "window_type": "RandomForest",
+      "window_width": 3,
+      "min_lag": 0,
+      "max_lag": 0,
+      "step_size": 1,
+      "zscore": true,
+      "n_trees": 500,
+      "alpha": null,
+      "pcs": null,
+      "n_bootstraps": 10,
+      "n_alphas": 20,
+      "noise": 0.2,
+      "null_alpha": null,
+      "null_alpha_max": 10000.0,
+      "null_alpha_min_step": 1e-09,
+      "alpha_cv_folds": 10,
+      "alpha_cv_method": "modelQ2",
+      "alpha_grid": null,
+      "n_permutations": 0,
+      "lag_method": "mean_mean",
+      "sort_by": "mean",
+      "seed": 0,
+      "maxcount": "all"
+    },
+    "default_input": {
+      "steady_state_samples": 0,
+      "sampling": "regular"
+    },
+    "resources": {
+      "threads": [
+        1,
+        2,
+        4
+      ],
+      "ram_gb": [
+        8,
+        32
+      ],
+      "strata_count": 6
+    },
+    "repetitions": 3,
+    "total_points_per_resource_stratum": 231,
+    "planned_calibration_runs": 4158,
+    "families": [
+      {
+        "id": "rf_defaults",
+        "profile_ids": [
+          "global_rf_defaults_t8_s1",
+          "global_rf_defaults_t8_s2",
+          "global_rf_defaults_t8_s4",
+          "global_rf_defaults_t16_s1",
+          "global_rf_defaults_t16_s2",
+          "global_rf_defaults_t16_s4",
+          "global_rf_defaults_t32_s1",
+          "global_rf_defaults_t32_s2",
+          "global_rf_defaults_t32_s4"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_lagged",
+        "profile_ids": [
+          "global_rf_lagged_t8_s2",
+          "global_rf_lagged_t16_s2",
+          "global_rf_lagged_t32_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 1,
+          "max_lag": 2,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_tf_lagged",
+        "profile_ids": [
+          "global_rf_tf_lagged_t8_s2",
+          "global_rf_tf_lagged_t16_s2",
+          "global_rf_tf_lagged_t32_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 1,
+          "max_lag": 2,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [
+          "tf_list"
+        ],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "plsr_auto",
+        "profile_ids": [
+          "global_plsr_auto_t8_s1",
+          "global_plsr_auto_t8_s2",
+          "global_plsr_auto_t8_s4",
+          "global_plsr_auto_t16_s1",
+          "global_plsr_auto_t16_s2",
+          "global_plsr_auto_t16_s4",
+          "global_plsr_auto_t32_s1",
+          "global_plsr_auto_t32_s2",
+          "global_plsr_auto_t32_s4"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Dionesus",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "plsr_pcs2_lagged",
+        "profile_ids": [
+          "global_plsr_pcs2_lagged_t8_s2",
+          "global_plsr_pcs2_lagged_t16_s2",
+          "global_plsr_pcs2_lagged_t32_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Dionesus",
+          "window_width": 3,
+          "min_lag": 1,
+          "max_lag": 2,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": 2,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "plsr_tf_pcs2_lagged",
+        "profile_ids": [
+          "global_plsr_tf_pcs2_lagged_t8_s2",
+          "global_plsr_tf_pcs2_lagged_t16_s2",
+          "global_plsr_tf_pcs2_lagged_t32_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Dionesus",
+          "window_width": 3,
+          "min_lag": 1,
+          "max_lag": 2,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": 2,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [
+          "tf_list"
+        ],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_width6",
+        "profile_ids": [
+          "global_rf_width6_t8_s2",
+          "global_rf_width6_t16_s2",
+          "global_rf_width6_t32_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 6,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_width1",
+        "profile_ids": [
+          "global_rf_width1_t8_s4",
+          "global_rf_width1_t16_s4",
+          "global_rf_width1_t32_s4"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 1,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_trees100",
+        "profile_ids": [
+          "global_rf_trees100_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 100,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_trees1000",
+        "profile_ids": [
+          "global_rf_trees1000_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 1000,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_no_zscore",
+        "profile_ids": [
+          "global_rf_no_zscore_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": false,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_permutation2",
+        "profile_ids": [
+          "global_rf_permutation2_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            25,
+            50,
+            100
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 100,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 2,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "plsr_permutation2",
+        "profile_ids": [
+          "global_plsr_permutation2_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            25,
+            50,
+            100
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Dionesus",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": 2,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 2,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_permutation5",
+        "profile_ids": [
+          "global_rf_permutation5_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            25,
+            50,
+            100
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 100,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 5,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "plsr_permutation5",
+        "profile_ids": [
+          "global_plsr_permutation5_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            25,
+            50,
+            100
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Dionesus",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": 2,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 5,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_median_mean_rank",
+        "profile_ids": [
+          "global_rf_median_mean_rank_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 1,
+          "max_lag": 2,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "median_mean",
+          "sort_by": "rank",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_max_median_lag",
+        "profile_ids": [
+          "global_rf_max_median_lag_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 1,
+          "max_lag": 2,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "max_median",
+          "sort_by": "lag",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_min_min_max",
+        "profile_ids": [
+          "global_rf_min_min_max_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 1,
+          "max_lag": 2,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "min_min",
+          "sort_by": "max",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "rf_export100",
+        "profile_ids": [
+          "global_rf_export100_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "RandomForest",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": 100
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_cv_defaults",
+        "profile_ids": [
+          "global_lasso_cv_defaults_t8_s8",
+          "global_lasso_cv_defaults_t8_s12",
+          "global_lasso_cv_defaults_t8_s16",
+          "global_lasso_cv_defaults_t12_s8",
+          "global_lasso_cv_defaults_t12_s12",
+          "global_lasso_cv_defaults_t12_s16",
+          "global_lasso_cv_defaults_t16_s8",
+          "global_lasso_cv_defaults_t16_s12",
+          "global_lasso_cv_defaults_t16_s16"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            10,
+            25,
+            50
+          ],
+          "timepoints_per_series": [
+            8,
+            12,
+            16
+          ],
+          "independent_series": [
+            8,
+            12,
+            16
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_fixed_alpha",
+        "profile_ids": [
+          "global_lasso_fixed_alpha_t8_s1",
+          "global_lasso_fixed_alpha_t8_s2",
+          "global_lasso_fixed_alpha_t8_s4",
+          "global_lasso_fixed_alpha_t16_s1",
+          "global_lasso_fixed_alpha_t16_s2",
+          "global_lasso_fixed_alpha_t16_s4",
+          "global_lasso_fixed_alpha_t32_s1",
+          "global_lasso_fixed_alpha_t32_s2",
+          "global_lasso_fixed_alpha_t32_s4"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            10,
+            25,
+            50
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": 0.05,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_cv_max_posQ2",
+        "profile_ids": [
+          "global_lasso_cv_max_posQ2_t8_s8"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            10,
+            25,
+            50
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            8
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "max_posQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_cv_grid",
+        "profile_ids": [
+          "global_lasso_cv_grid_t8_s8"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            10,
+            25,
+            50
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            8
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": [
+            0.01,
+            0.05,
+            0.2,
+            0.8,
+            2.0
+          ],
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_fixed_fast_growth",
+        "profile_ids": [
+          "global_lasso_fixed_fast_growth_t8_s2",
+          "global_lasso_fixed_fast_growth_t16_s2",
+          "global_lasso_fixed_fast_growth_t32_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": 0.05,
+          "pcs": null,
+          "n_bootstraps": 1,
+          "n_alphas": 5,
+          "noise": 0.2,
+          "null_alpha": 2.0,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_fixed_bootstrap3",
+        "profile_ids": [
+          "global_lasso_fixed_bootstrap3_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            25,
+            50,
+            100
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": 0.05,
+          "pcs": null,
+          "n_bootstraps": 3,
+          "n_alphas": 10,
+          "noise": 0.2,
+          "null_alpha": 2.0,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_fixed_adjusted_lagged",
+        "profile_ids": [
+          "global_lasso_fixed_adjusted_lagged_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            25,
+            50,
+            100
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 1,
+          "max_lag": 2,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": 0.05,
+          "pcs": null,
+          "n_bootstraps": 3,
+          "n_alphas": 10,
+          "noise": 0.2,
+          "null_alpha": 2.0,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "adj",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_fixed_permutation",
+        "profile_ids": [
+          "global_lasso_fixed_permutation_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            10,
+            25,
+            50
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": 0.05,
+          "pcs": null,
+          "n_bootstraps": 3,
+          "n_alphas": 5,
+          "noise": 0.2,
+          "null_alpha": 2.0,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 2,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_cv_width6",
+        "profile_ids": [
+          "global_lasso_cv_width6_t8_s4",
+          "global_lasso_cv_width6_t12_s4",
+          "global_lasso_cv_width6_t16_s4"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            10,
+            25,
+            50
+          ],
+          "timepoints_per_series": [
+            8,
+            12,
+            16
+          ],
+          "independent_series": [
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 6,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": null,
+          "pcs": null,
+          "n_bootstraps": 10,
+          "n_alphas": 20,
+          "noise": 0.2,
+          "null_alpha": null,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      },
+      {
+        "id": "lasso_fixed_no_noise",
+        "profile_ids": [
+          "global_lasso_fixed_no_noise_t8_s2"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            25,
+            50,
+            100
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "expected_params": {
+          "window_type": "Lasso",
+          "window_width": 3,
+          "min_lag": 0,
+          "max_lag": 0,
+          "step_size": 1,
+          "zscore": true,
+          "n_trees": 500,
+          "alpha": 0.05,
+          "pcs": null,
+          "n_bootstraps": 3,
+          "n_alphas": 10,
+          "noise": 0.0,
+          "null_alpha": 2.0,
+          "null_alpha_max": 10000.0,
+          "null_alpha_min_step": 1e-09,
+          "alpha_cv_folds": 10,
+          "alpha_cv_method": "modelQ2",
+          "alpha_grid": null,
+          "n_permutations": 0,
+          "lag_method": "mean_mean",
+          "sort_by": "mean",
+          "seed": 0,
+          "maxcount": "all"
+        },
+        "optional_inputs": [],
+        "scope": "Only the declared parameters, input policy and finite temporal coordinates; no arbitrary parameter or temporal interpolation claim."
+      }
+    ],
+    "scope": "Synthetic longitudinal, aligned regular time courses. Lasso native CV/default stability panels use 10,25,50 genes and sufficient biological series; the separately labelled reduced-stability branch covers 50,100,200 genes. Finite registered shapes, named parameters and TF policy only; other values and interactions remain unvalidated. Assigned RAM is a limit, not a measured memory-use model. Serial backends do not gain CPU scaling from extra assigned cores.",
+    "validation_policy": {
+      "kind": "independent_gene_interpolation",
+      "seed": 7649321,
+      "genes": "strict integer midpoints of each registered adjacent gene level; no temporal shape interpolation",
+      "successful_repeats": 3,
+      "max_relative_error": 0.3,
+      "min_planning_coverage": 1.0,
+      "fixed_gene_profiles": "Timing points only; no independent interpolation claim."
+    }
+  }
+}

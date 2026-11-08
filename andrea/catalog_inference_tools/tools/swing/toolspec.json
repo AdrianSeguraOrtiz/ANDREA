@@ -1,0 +1,592 @@
+{
+  "schema_version": "1.0",
+  "id": "swing",
+  "name": "SWING",
+  "publication": [
+    "https://doi.org/10.1073/pnas.1710936115"
+  ],
+  "first_author": "Justin D. Finkle",
+  "year": 2018,
+  "method_summary": "SWING pools complete aligned observed time courses into sliding-window multivariate regressions with contemporaneous or delayed predictors, using RandomForest, Lasso or Dionesus/PLSR. It aggregates directed unsigned association scores; constructor defaults use no delay, Lasso retains the official positive-coefficient filter, and native window/lag details remain provenance rather than fabricated network contexts. Sampling geometry, lag-window dimensions, TF restrictions and backend-specific numerical constraints are validated for the requested execution by the wrapper; catalog filtering does not inspect descriptor or TF contents.",
+  "method_family": "regression",
+  "method_keywords": [
+    "sliding_windows",
+    "granger_causality",
+    "random_forest",
+    "lasso",
+    "partial_least_squares",
+    "observed_time_series",
+    "bulk"
+  ],
+  "implementation_url": "https://github.com/bagherilab/SWING",
+  "docker_image": "adriansegura99/inference-tools_swing:1.0.0",
+  "execution_capabilities": [
+    "global"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": null,
+      "upstream_mapping": "For RandomForest, ANDREA --threads maps to upstream forest n_jobs while windows and targets remain sequential. Requested allocation and actual estimator constructor/fitted n_jobs and tree counts are recorded separately. Optional diagnostic environment ANDREA_SWING_TRACE_TREES=1 additionally traces threads entering tree-build tasks; normal inference does not intercept individual trees. These observations do not measure CPU saturation. Lasso and Dionesus are serial in the selected APIs. Native BLAS/OpenMP pools are held at1 for every backend; extra assigned CPUs do not imply acceleration for serial modes. Resource scaling requires physical measurement."
+    }
+  },
+  "accepts": [
+    "timepoints"
+  ],
+  "assumes": "bulk_specific",
+  "temporal_requirements": {
+    "required": true,
+    "sampling_designs": [
+      "longitudinal"
+    ],
+    "technical_replicates": "reject",
+    "min_timepoints_per_series": 2,
+    "require_regular_sampling": true,
+    "require_aligned_timepoints": true,
+    "observation_types": [
+      "time_series"
+    ]
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.genes",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "SWING requires at least two expression genes."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.n_permutations",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "action": "block",
+      "message": "SWING permutation diagnostics require0(disabled) or at least2 repeats for sample variance."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "RandomForest"
+        },
+        {
+          "field": "param.n_trees",
+          "op": "ne",
+          "value": 500
+        }
+      ],
+      "action": "block",
+      "message": "n_trees is only active for window_type=RandomForest."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Dionesus"
+        },
+        {
+          "field": "param.pcs",
+          "op": "ne",
+          "value": null
+        }
+      ],
+      "action": "block",
+      "message": "pcs is only active for window_type=Dionesus."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.alpha",
+          "op": "ne",
+          "value": null
+        }
+      ],
+      "action": "block",
+      "message": "alpha is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.n_bootstraps",
+          "op": "ne",
+          "value": 10
+        }
+      ],
+      "action": "block",
+      "message": "n_bootstraps is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.n_alphas",
+          "op": "ne",
+          "value": 20
+        }
+      ],
+      "action": "block",
+      "message": "n_alphas is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.noise",
+          "op": "ne",
+          "value": 0.2
+        }
+      ],
+      "action": "block",
+      "message": "noise is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.null_alpha",
+          "op": "ne",
+          "value": null
+        }
+      ],
+      "action": "block",
+      "message": "null_alpha is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.null_alpha_max",
+          "op": "ne",
+          "value": 10000.0
+        }
+      ],
+      "action": "block",
+      "message": "null_alpha_max is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.null_alpha_min_step",
+          "op": "ne",
+          "value": 1e-09
+        }
+      ],
+      "action": "block",
+      "message": "null_alpha_min_step is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.alpha_cv_folds",
+          "op": "ne",
+          "value": 10
+        }
+      ],
+      "action": "block",
+      "message": "alpha_cv_folds is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.alpha_cv_method",
+          "op": "ne",
+          "value": "modelQ2"
+        }
+      ],
+      "action": "block",
+      "message": "alpha_cv_method is only active for window_type=Lasso."
+    },
+    {
+      "conditions": [
+        {
+          "field": "param.window_type",
+          "op": "ne",
+          "value": "Lasso"
+        },
+        {
+          "field": "param.alpha_grid",
+          "op": "ne",
+          "value": null
+        }
+      ],
+      "action": "block",
+      "message": "alpha_grid is only active for window_type=Lasso."
+    }
+  ],
+  "extra_inputs": {
+    "required": [
+      {
+        "input": "column_descriptors",
+        "usage": "Exact one-to-one descriptors for every expression column. Time-series rows declare independent biological trajectories and observed coordinates, time units and sampling_design; steady-state rows have no series/time fields. Only time_series columns are selected before normalization and fitting; steady_state columns are recorded as unused. All selected series require identical complete regular grids.",
+        "delivery": "runtime"
+      }
+    ],
+    "optional": [
+      {
+        "input": "tf_list",
+        "usage": "Exact candidate regulator gene IDs for RandomForest and Dionesus, applied to every lag before fitting. Restricted Lasso TF subsets are explicitly unsupported by this pinned upstream; absent means all expression genes.",
+        "delivery": "runtime"
+      }
+    ],
+    "conditional_required": []
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "task_partitions",
+    "note": "The counted partitions are completed SWING windows, including their requested fitting, stability and permutation work. Initializing, inference at0/N windows, aggregation and export are reported before those stages run. Percentages combine lifecycle milestones with the completed-window count; they are not elapsed-time fractions or ETA estimates. Native per-target/tree progress is not claimed."
+  },
+  "params": {
+    "window_type": {
+      "type": "enum",
+      "required": false,
+      "default": "RandomForest",
+      "description": "Upstream window regression family. RandomForest uses forest feature importance, Lasso uses coefficients and bootstrap stability, and Dionesus uses PLSR/VIP.",
+      "enum": [
+        "RandomForest",
+        "Lasso",
+        "Dionesus"
+      ]
+    },
+    "window_width": {
+      "type": "int",
+      "required": false,
+      "default": 3,
+      "description": "Number of distinct observed timepoints in each response/explanatory window. Constructor default3 is retained; official lagged demonstration uses10. Width1 pools one observation from each independent trajectory and is accepted when the selected backend has sufficient rows and predictors. Must leave at least one complete response window after max_lag.",
+      "min": 1
+    },
+    "min_lag": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "description": "Minimum explanatory-window displacement in observed sampling intervals, inclusive. Constructor default0 allows contemporaneous associations; no strictly lagged causal interpretation is implied by default.",
+      "min": 0
+    },
+    "max_lag": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "description": "Maximum explanatory-window displacement in observed sampling intervals, inclusive. Must be >=min_lag and <timepoints_per_series-window_width+1. Null/append mode is unsupported by the pinned implementation.",
+      "min": 0
+    },
+    "step_size": {
+      "type": "int",
+      "required": false,
+      "default": 1,
+      "description": "Window stride is restricted to1 because the pinned upstream computes counts but does not consistently apply non-unit strides.",
+      "min": 1,
+      "max": 1
+    },
+    "zscore": {
+      "type": "bool",
+      "required": false,
+      "default": true,
+      "description": "Apply the official global per-gene z-score with ddof=1 before window creation. Enabled in the distributed pipeline; constant or degenerate genes are rejected rather than imputed."
+    },
+    "n_trees": {
+      "type": "int",
+      "required": false,
+      "default": 500,
+      "description": "RandomForest only: trees per target and window. initialize_params default500 is retained; script/tutorial overrides10/100 are demonstration settings.",
+      "min": 1
+    },
+    "alpha": {
+      "type": "union",
+      "required": false,
+      "default": null,
+      "description": "Lasso only: nonnegative regularization coefficient. Null preserves upstream per-window cross-validation; explicit alpha skips alpha selection, not bootstrap stability.",
+      "oneOf": [
+        {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "description": "Lasso only: nonnegative regularization coefficient. Null preserves upstream per-window cross-validation; explicit alpha skips alpha selection, not bootstrap stability.",
+          "min": 0
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null to preserve the documented upstream automatic branch."
+        }
+      ]
+    },
+    "pcs": {
+      "type": "union",
+      "required": false,
+      "default": null,
+      "description": "Dionesus only: PLS components per window. Null uses the upstream PCA/elbow selection; an explicit count must fit centered observations and available predictors.",
+      "oneOf": [
+        {
+          "type": "int",
+          "required": false,
+          "default": 1,
+          "description": "Dionesus only: PLS components per window. Null uses the upstream PCA/elbow selection; an explicit count must fit centered observations and available predictors.",
+          "min": 1
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null to preserve the documented upstream automatic branch."
+        }
+      ]
+    },
+    "n_bootstraps": {
+      "type": "int",
+      "required": false,
+      "default": 10,
+      "description": "Lasso only: bootstrap repeats per alpha. Preserves the individual LassoWindow.run_bootstrap default10, while the high-level rank_edges convenience API uses1000.",
+      "min": 1
+    },
+    "n_alphas": {
+      "type": "int",
+      "required": false,
+      "default": 20,
+      "description": "Lasso only: number of evenly spaced alpha values between0 and null_alpha for bootstrap stability. Original individual-method default20.",
+      "min": 2
+    },
+    "noise": {
+      "type": "float",
+      "required": false,
+      "default": 0.2,
+      "description": "Lasso only: multiplicative bootstrap uniform noise half-width; factor is Uniform(1-noise,1+noise). Original default0.2; supported range0..1.",
+      "min": 0,
+      "max": 1
+    },
+    "null_alpha": {
+      "type": "union",
+      "required": false,
+      "default": null,
+      "description": "Lasso only: optional positive alpha that yields no coefficients, shared by the original CV/bootstrap routines. Null retains upstream search and its density/convergence requirements; no alternative estimator is substituted.",
+      "oneOf": [
+        {
+          "type": "float",
+          "required": false,
+          "default": 0.1,
+          "description": "Lasso only: optional positive alpha that yields no coefficients, shared by the original CV/bootstrap routines. Null retains upstream search and its density/convergence requirements; no alternative estimator is substituted.",
+          "min": 0,
+          "exclusive_min": true
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null to preserve the documented upstream automatic branch."
+        }
+      ]
+    },
+    "null_alpha_max": {
+      "type": "float",
+      "required": false,
+      "default": 10000.0,
+      "description": "Lasso only: max_expected_alpha in the upstream null-alpha search. Must be positive and yield an all-zero coefficient matrix; original default1e4.",
+      "min": 0,
+      "exclusive_min": true
+    },
+    "null_alpha_min_step": {
+      "type": "float",
+      "required": false,
+      "default": 1e-09,
+      "description": "Lasso only: precision/minimum step of the original null-alpha search, default1e-9. Must be positive and <=null_alpha_max.",
+      "min": 0,
+      "exclusive_min": true
+    },
+    "alpha_cv_folds": {
+      "type": "int",
+      "required": false,
+      "default": 10,
+      "description": "Lasso only, alpha=null: KFold count for original Q2 alpha selection. Signature default10 is retained; at least two test observations per fold are required because upstream centers SS within each test fold.",
+      "min": 2
+    },
+    "alpha_cv_method": {
+      "type": "enum",
+      "required": false,
+      "default": "modelQ2",
+      "description": "Lasso only: select alpha using upstream whole-model Q2 or maximum number of positive target Q2 values.",
+      "enum": [
+        "modelQ2",
+        "max_posQ2"
+      ]
+    },
+    "alpha_grid": {
+      "type": "union",
+      "required": false,
+      "default": null,
+      "description": "Lasso only: optional strictly increasing list of at least two finite nonnegative CV alpha candidates. Null retains50 evenly spaced values between0 and upstream null_alpha.",
+      "oneOf": [
+        {
+          "type": "array",
+          "required": false,
+          "default": [],
+          "description": "Lasso only: optional strictly increasing list of at least two finite nonnegative CV alpha candidates. Null retains50 evenly spaced values between0 and upstream null_alpha.",
+          "items": {
+            "type": "float",
+            "required": false,
+            "default": 0.1,
+            "description": "Nonnegative original CV alpha candidate.",
+            "min": 0
+          }
+        },
+        {
+          "type": "object",
+          "required": false,
+          "default": null,
+          "description": "Use null to preserve the documented upstream automatic branch."
+        }
+      ]
+    },
+    "n_permutations": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "description": "Optional native permutation diagnostics for the selected backend. Wrapper default0 disables diagnostics; when enabled use >=2 repeats for sample variance. Refits retain the selected forest trees/workers, Lasso alpha or PLS component count. Individual native defaults differ by method and diagnostics never replace edge scores.",
+      "min": 0
+    },
+    "lag_method": {
+      "type": "enum",
+      "required": false,
+      "default": "mean_mean",
+      "description": "Two-stage aggregation outer_inner: inner reduces repeated window scores within each lag, then outer reduces across lags. Official pipeline uses mean_mean; API helper default is max_median. Used by sort_by=lag/rank/adj; mean/max ignore it.",
+      "enum": [
+        "mean_mean",
+        "mean_median",
+        "mean_max",
+        "mean_min",
+        "median_mean",
+        "median_median",
+        "median_max",
+        "median_min",
+        "max_mean",
+        "max_median",
+        "max_max",
+        "max_min",
+        "min_mean",
+        "min_median",
+        "min_max",
+        "min_min"
+      ]
+    },
+    "sort_by": {
+      "type": "enum",
+      "required": false,
+      "default": "mean",
+      "description": "Official final score selector. mean/max use positive native Importance; lag uses lag aggregation; adj uses native adjusted importance (Lasso stability); rank is projected to1/(1+native_rank), with larger better and absent edges0. Scores are not probabilities. Lasso retains the official positive-coefficient filter.",
+      "enum": [
+        "mean",
+        "max",
+        "lag",
+        "rank",
+        "adj"
+      ]
+    },
+    "seed": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "description": "ANDREA reproducibility extension, absent from upstream method signatures. Deterministic per-window/per-phase NumPy and Python RNG streams are recorded; cross-image/hardware numerical identity is not asserted.",
+      "min": 0,
+      "max": 4294967295
+    },
+    "maxcount": {
+      "type": "union",
+      "required": false,
+      "default": "all",
+      "description": "ANDREA output limit over deterministically ranked positive non-self interactions. all exports every retained edge; integer0 intentionally produces an empty network. This is an export policy, not a native scientific SWING parameter.",
+      "oneOf": [
+        {
+          "type": "enum",
+          "required": false,
+          "default": "all",
+          "description": "Export all retained positive interactions.",
+          "enum": [
+            "all"
+          ]
+        },
+        {
+          "type": "int",
+          "required": false,
+          "default": 0,
+          "description": "Maximum output edge count.",
+          "min": 0
+        }
+      ]
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "provenance",
+      "kind": "dir",
+      "require_non_empty": true,
+      "description": "Native alias-to-gene map; exact pooled input and observed grids; full window/lag edge tables, raw coefficients/VIP/stability, optional CV/permutation diagnostics, ranked native edges, resolved parameters and seeds, input/source hashes and pinned package versions. Resource provenance distinguishes requested CPU allocation, actual forest constructor/fitted configuration, observed tree-worker thread identities, native pools and CPU/RAM cgroup limits; it does not claim CPU saturation. The actual ordered progress events are retained privately under this directory so short phases remain verifiable even when polling misses them."
+    }
+  ]
+}
