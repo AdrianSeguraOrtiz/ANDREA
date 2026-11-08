@@ -636,7 +636,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                     max_parallel_tasks=1,
                 )
 
-    def test_dyngen_time_series_plan_adds_required_timepoints(self) -> None:
+    def test_dyngen_time_series_plan_adds_required_column_descriptors(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             scenario_path = self._write_scenario_request(
@@ -669,7 +669,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
                 )
             plan = json.loads(planned_path.read_text(encoding="utf-8"))
             self.assertEqual(
-                plan["effective_extras"], ["groups", "tf_list", "timepoints"]
+                plan["effective_extras"], ["column_descriptors", "groups", "tf_list"]
             )
             params = plan["runs"][0]["simulator_params"]
             self.assertEqual(params["experiment_params"]["kind"], "synchronised")

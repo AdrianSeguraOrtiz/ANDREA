@@ -53,20 +53,11 @@
               <input id="organism-ncbi-taxon-id" type="number" min="1" step="1" value="9606" />
             </label>
           </div>
-          <details class="input-row full">
-            <summary>Observed bulk time series</summary>
-            <p>Enable this for measured time courses. Upload enriched timepoints and replicates tables with series, condition, biological observation and technical measurement labels.</p>
-            <label class="checkbox-row inline-checkbox"><input id="temporal-enabled" type="checkbox" /> Declare observed bulk time</label>
-            <div class="grid three">
-              <label>Time unit<input id="temporal-unit" type="text" placeholder="hour" /></label>
-              <label>Time origin<input id="temporal-origin" type="text" placeholder="Treatment start" /></label>
-              <label>Sampling design<select id="temporal-design"><option value="longitudinal">Longitudinal</option><option value="independent_samples">Independent samples</option></select></label>
-              <label>Normalization<input id="temporal-normalization" type="text" placeholder="Describe normalization or none" /></label>
-              <label>Transformation<input id="temporal-transformation" type="text" placeholder="Describe transformation or none" /></label>
-              <label>Data provenance<input id="temporal-provenance" type="text" placeholder="Data source and preparation" /></label>
-            </div>
-            <p>Time coordinates must be finite and use the declared unit. Missing expression values are rejected. Independent samples have no implied longitudinal pairing.</p>
-          </details>
+          <div id="bulk-temporal-help" class="muted-box hidden" role="note">
+            Temporal methods use column_descriptors.tsv to identify observations, series, replicates,
+            sampling times, units and sampling design. Its format stays the same for every dataset.
+            Each selected tool validates the metadata it requires before inference; file contents do not filter the catalog.
+          </div>
           <div class="input-row full">
             <div class="row-head">
               <label class="row-label">Expression Matrix (TSV)</label>
@@ -88,9 +79,9 @@
             <div id="expression-file-status" class="file-status">Pending validation</div>
           </div>
           <div class="actions-inline extras-actions">
-            <button class="secondary" id="add-optional-input-btn" type="button">Add Optional Input</button>
+            <button class="secondary" id="add-optional-input-btn" type="button">Add Input</button>
           </div>
-          <div id="extras-empty" class="muted-box extras-empty">No optional inputs added yet.</div>
+          <div id="extras-empty" class="muted-box extras-empty">No additional inputs added yet.</div>
           <div id="extras-list" class="extra-list"></div>
 
           <div class="step-action-row">

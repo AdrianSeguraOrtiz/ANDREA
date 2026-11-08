@@ -37,7 +37,7 @@ Packaging decision:
 | Capability | `data_axes` | Truth | Required/fixed extras |
 | --- | --- | --- | --- |
 | Bulk perturbational | `rna_expression`, `bulk`, `perturbations`, `perturbational` | `global` native | `perturbation_design`, `interventions` |
-| Bulk time-series | `rna_expression`, `bulk`, `timepoints`, `time_series` | `global` native | `timepoints`, `perturbation_design`, `interventions` |
+| Bulk time-series | `rna_expression`, `bulk`, `column_descriptors`, `time_series` | `global` native | `column_descriptors`, `perturbation_design`, `interventions` |
 | Single-cell perturbational | `rna_expression`, `single_cell`, `cells`, `perturbational` | `global` native | `perturbation_design`, `interventions` |
 | Single-cell perturbational grouped | `rna_expression`, `single_cell`, `cells`, `perturbational` | `global` native, `group` derivable | `groups`, `perturbation_design`, `interventions` |
 
@@ -92,8 +92,8 @@ Native:
 Derivable:
 
 - `interventions`: derived from generated perturbation metadata.
-- `replicates`: repeated perturbation columns/cells.
-- `timepoints`: one row per time-series expression column, using the same `tau*0.1` timestep formula as `datastruct.simts`.
+- `column_descriptors`: repeated perturbation columns/cells.
+- `column_descriptors`: one row per time-series expression column, using the same `tau*0.1` timestep formula as `datastruct.simts`.
 - `groups`: deterministic expression clustering for grouped single-cell runs.
 - `column_phenotypes`, `cluster_identities`: derived from `groups`.
 - `enrichment_background`: expression gene universe.
@@ -184,3 +184,8 @@ configurations passed on this final image, using the repository smoke runner
 with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
 These checks cover executable contracts and fixture outputs; they do not
 calibrate costs or independently validate biological realism.
+
+
+## Common column metadata contract
+
+The only public column-metadata extra is `column_descriptors.tsv`; all measured columns remain in `expression.tsv`. The `bulk` expression profile with `column_kind=timepoints` automatically selects the common observed-time metadata rules. `column_descriptors.tsv` carries `sampling_design=longitudinal`, `model_time` coordinates, native simulated trajectory identity, a condition constant along each trajectory, explicit simulated replicate/observation labels, and one technical measurement per observation. Model coordinates are not asserted to be physical elapsed time. Perturbational samples and sampled cells instead use generic column metadata without a longitudinal claim. Independent steady-state measurements, when supplied, belong in the same expression matrix and are marked by `observation_type=steady_state`; their sampling-design, series and time fields are empty.

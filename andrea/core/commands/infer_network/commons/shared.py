@@ -27,7 +27,6 @@ class DatasetContext:
     columns: int
     expression_matrix_path: Path
     extras: dict[str, Optional[Path]]
-    temporal: Optional[dict[str, Any]] = None
 
 
 @dataclass(frozen=True)

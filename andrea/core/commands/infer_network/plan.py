@@ -477,26 +477,6 @@ def plan_infer_network(
         )
 
     mode_options_by_tool: dict[str, list[Any]] = {}
-    temporal_cost_context = None
-    if dataset.temporal is not None:
-        from andrea.core.shared.bulk_temporal import validate_bulk_temporal_inputs
-
-        temporal_summary = validate_bulk_temporal_inputs(
-            temporal=dataset.temporal,
-            expression_path=dataset.expression_matrix_path,
-            timepoints_path=dataset.extras.get("timepoints"),
-            replicates_path=dataset.extras.get("replicates"),
-        )
-        steady_state_path = dataset.extras.get("steady_state_expression")
-        temporal_cost_context = _temporal_cost_context(
-            dataset=dataset,
-            temporal_summary=temporal_summary,
-            steady_state_samples=(
-                len(_read_expression_columns(steady_state_path))
-                if steady_state_path is not None
-                else 0
-            ),
-        )
     logical_run_specs: dict[str, dict[str, Any]] = {}
     runtime_input_contract_by_run: dict[str, dict[str, Any]] = {}
     phenotype_labels: list[str] | None = None
@@ -507,6 +487,15 @@ def plan_infer_network(
         catalog_tool_id = selected_tool_catalog_ids[run_id]
         tool_origin = selected_tool_origins[run_id]
         toolspec = catalog_toolspec_by_run[run_id]
+        from .commons.tools import _validate_requested_temporal_inputs
+
+        temporal_summary, temporal_errors, _ = _validate_requested_temporal_inputs(
+            toolspec=toolspec, dataset=dataset
+        )
+        if temporal_errors:
+            raise ValueError(
+                f"[{run_id}] temporal validation: {'; '.join(temporal_errors)}"
+            )
         resolved_execution = resolved_execution_by_tool[run_id]
         execution_mode = execution_mode_by_run[run_id]
         logical_execution = dict(resolved_execution)
@@ -518,8 +507,26 @@ def plan_infer_network(
             resolved_params=resolved_params_by_tool.get(run_id, {}),
             resolved_execution=logical_execution,
             available_extra_inputs=extras_present,
+            temporal_summary=temporal_summary,
         )
         runtime_input_contract_by_run[run_id] = runtime_input_snapshot
+        observation_selection = runtime_input_snapshot.get("observation_selection")
+        tool_dataset = (
+            replace(dataset, columns=observation_selection["columns"])
+            if observation_selection
+            else dataset
+        )
+        tool_temporal_cost_context = (
+            _temporal_cost_context(
+                dataset=dataset,
+                temporal_summary=temporal_summary,
+                observation_types=toolspec["temporal_requirements"][
+                    "observation_types"
+                ],
+            )
+            if observation_selection
+            else None
+        )
         native_group_count: int | None = None
         if execution_mode == "group_native":
             active_inputs = set(runtime_input_snapshot["active_extra_inputs"])
@@ -641,8 +648,8 @@ def plan_infer_network(
                 logical_group_count=(
                     native_group_count if execution_mode == "group_native" else 0
                 ),
-                dataset=dataset,
-                temporal_cost_context=temporal_cost_context,
+                dataset=tool_dataset,
+                temporal_cost_context=tool_temporal_cost_context,
                 max_cores=max_cores,
                 max_ram_gb=effective_ram,
                 output_dir=task_output_dir,
@@ -677,7 +684,7 @@ def plan_infer_network(
                 {
                     "task_id": physical_task_id,
                     "group_label": None,
-                    "columns": dataset.columns,
+                    "columns": tool_dataset.columns,
                     "output_dir": task_output_dir,
                     **(
                         {"postprocess": "group_aggregated_mean_signed_effect"}
@@ -781,7 +788,6 @@ def plan_infer_network(
     dataset_fingerprint = fingerprint_dataset_content(
         expression_path=frozen_expression,
         extras=frozen_extras,
-        temporal=dataset.temporal,
     )
 
     plan_generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -962,7 +968,6 @@ def plan_infer_network(
         },
         "dataset": {
             "id": dataset.dataset_id,
-            **({"temporal": dataset.temporal} if dataset.temporal is not None else {}),
             "fingerprint": dataset_fingerprint,
             "column_kind": dataset.column_kind,
             "expression_profile": dataset.expression_profile,

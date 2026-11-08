@@ -13,9 +13,13 @@ different condition; the wrapper pools their within-series transitions only.
 IDs include punctuation, Unicode and a numeric-looking string to detect
 accidental identifier coercion.
 
-`steady_state_expression.tsv` supplies three independent steady-state samples
-with reversed gene row order, requiring exact ID alignment. `tf_list.txt`
-restricts sources in the optional-input branch. The manifest declares their
-origin and observed-time semantics. `tools-params.json` retains real scientific
-defaults; reduced-tree functional variants are declared separately in the draft
-smoketest configuration.
+The same `expression.tsv` also contains three independent steady-state samples
+on the identical ordered gene axis. The single `column_descriptors.tsv` marks
+all 18 columns as `time_series` or `steady_state`. Steady-state rows have empty
+series, time, time-unit and sampling-design fields; no artificial times are assigned.
+`tf_list.txt` restricts candidate sources in its optional branch. The descriptor
+InputSpec is stable across dataset selections; this requested dynGENIE3 run
+requires the observation roles, time units and longitudinal sampling declared
+in the TSV. Descriptor contents do not filter the catalog. `tools-params.json`
+retains real scientific defaults; smaller functional variants are declared
+separately in the smoketest configuration.

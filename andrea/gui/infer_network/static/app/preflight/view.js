@@ -84,14 +84,25 @@ export function updatePreflightSummary(preflightReport = null) {
     { label: "Organism", value: taxonomicGroup, detail: `NCBI taxon ${taxonId}` },
   ]);
 
-  if (dataset.temporal) {
-    const temporal = dataset.temporal;
-    const summary = preflightReport?.input_validation?.temporal || {};
-    appendSummaryBand(viewEl, "Observed bulk time", [
-      { label: "Sampling", value: temporal.sampling_design, detail: temporal.time_origin },
+  const temporalValidations = preflightReport?.runs?.temporal_validation || {};
+  for (const [runId, summary] of Object.entries(temporalValidations)) {
+    const temporal = summary;
+    appendSummaryBand(viewEl, `Temporal validation: ${runId}`, [
+      { label: "Sampling", value: temporal.sampling_design, detail: "Validated for this requested run" },
       { label: "Time unit", value: temporal.time_unit, detail: `${summary.series?.length ?? "-"} independent series` },
-      { label: "Biological observations", value: summary.observations ?? "-", detail: temporal.provenance },
+      { label: "Biological observations", value: summary.observations ?? "-" },
+      { label: "Temporal columns", value: summary.time_series_columns?.length ?? "-" },
+      { label: "Stationary columns", value: summary.steady_state_columns?.length ?? "-" },
     ]);
+  }
+
+  const selections = preflightReport?.runs?.observation_selection || {};
+  if (Object.keys(selections).length) {
+    appendSummaryBand(viewEl, "Observations used per run", Object.entries(selections).map(([runId, selection]) => ({
+      label: runId,
+      value: `${selection.columns} columns used`,
+      detail: `${selection.time_series_columns?.length || 0} temporal; ${selection.steady_state_columns?.length || 0} stationary; ${selection.ignored_columns?.length || 0} excluded`,
+    })));
   }
 
   const inputCounts = countInputValidation(preflightReport);

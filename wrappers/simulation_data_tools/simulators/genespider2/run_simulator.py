@@ -40,8 +40,6 @@ EXTRA_KEYS = [
     "prior_grn",
     "tf_list",
     "prior_grn_by_group",
-    "replicates",
-    "timepoints",
     "spatial_coordinates",
     "chromatin_accessibility",
     "chromatin_regions",
@@ -301,27 +299,27 @@ def validate_request(request: dict[str, Any], params: dict[str, Any], extras: se
 
     supported_by_mode = {
         "bulk_perturbational": {
+            "column_descriptors",
             "perturbation_design",
             "enrichment_background",
             "interventions",
             "prior_grn",
-            "replicates",
             "tf_list",
         },
         "bulk_time_series": {
+            "column_descriptors",
             "perturbation_design",
             "enrichment_background",
             "interventions",
             "prior_grn",
             "tf_list",
-            "timepoints",
         },
         "single_cell_perturbational": {
+            "column_descriptors",
             "perturbation_design",
             "enrichment_background",
             "interventions",
             "prior_grn",
-            "replicates",
             "tf_list",
         },
     }
@@ -332,8 +330,8 @@ def validate_request(request: dict[str, Any], params: dict[str, Any], extras: se
     unsupported = sorted(extras.difference(supported_by_mode[mode]))
     if unsupported:
         raise ValueError(f"Unsupported GeneSPIDER2 extras for selected capability: {unsupported}.")
-    if mode == "bulk_time_series" and "timepoints" not in extras:
-        raise ValueError("GeneSPIDER2 bulk time_series capability requires effective_extras to include timepoints.")
+    if mode == "bulk_time_series" and "column_descriptors" not in extras:
+        raise ValueError("GeneSPIDER2 bulk time_series capability requires column_descriptors metadata.")
     if mode in {"bulk_perturbational", "single_cell_perturbational"}:
         missing = sorted({"perturbation_design", "interventions"}.difference(extras))
         if missing:
@@ -537,29 +535,24 @@ def write_perturbation_design(path: Path, metadata: list[ColumnMeta]) -> None:
             )
 
 
-def write_replicates(path: Path, metadata: list[ColumnMeta]) -> None:
+def write_column_descriptors(path: Path, metadata: list[ColumnMeta], *, mode: str) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["column", "replicate", "condition"])
-        for item in metadata:
-            writer.writerow([item.column, item.replicate, item.condition])
+        if mode == "bulk_time_series":
+            writer.writerow(["column", "observation_type", "sampling_design", "series_id", "condition", "replicate", "observation_id", "technical_replicate", "timepoint", "time_unit"])
+            for item in metadata:
+                writer.writerow([item.column, "time_series", "longitudinal", "simts_r1", item.condition, "simts_r1", item.column, "1", f"{item.timepoint:.12g}", "model_time"])
+        else:
+            # Perturbation columns and sampled cells are not longitudinal visits.
+            writer.writerow(["column", "replicate", "condition"])
+            for item in metadata:
+                writer.writerow([item.column, item.replicate, item.condition])
 
 
 def simts_time_grid(network_matrix: np.ndarray, n_columns: int) -> list[float]:
     eigenvalue_scale = float(np.min(np.abs(np.linalg.eigvals(network_matrix))))
     timestep = eigenvalue_scale * 0.1
     return [idx * timestep for idx in range(n_columns)]
-
-
-def write_timepoints(path: Path, columns: list[str], timepoints: list[float] | None = None) -> None:
-    values = timepoints if timepoints is not None else [float(idx) for idx, _column in enumerate(columns)]
-    if len(values) != len(columns):
-        raise ValueError("timepoints length must match expression columns.")
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["column", "timepoint", "timepoint_label"])
-        for column, timepoint in zip(columns, values, strict=True):
-            writer.writerow([column, f"{timepoint:.12g}", column])
 
 
 def write_time_grid(path: Path, columns: list[str], timepoints: list[float]) -> None:
@@ -899,7 +892,7 @@ def main(argv: list[str] | None = None) -> int:
             column_metadata = [
                 ColumnMeta(
                     column=column,
-                    condition=f"timepoint_{idx}",
+                    condition=f"knockdown_{genes[params['time_series']['perturbed_gene_index'] - 1]}",
                     perturbation="knockdown",
                     target=genes[params["time_series"]["perturbed_gene_index"] - 1],
                     dose=abs(float(params["time_series"]["perturbation_strength"])),
@@ -949,12 +942,9 @@ def main(argv: list[str] | None = None) -> int:
         if "interventions" in extras:
             write_interventions(output_dir / "extras" / "interventions.tsv", column_metadata)
             extras_paths["interventions"] = "extras/interventions.tsv"
-        if "replicates" in extras:
-            write_replicates(output_dir / "extras" / "replicates.tsv", column_metadata)
-            extras_paths["replicates"] = "extras/replicates.tsv"
-        if "timepoints" in extras:
-            write_timepoints(output_dir / "extras" / "timepoints.tsv", columns, [item.timepoint for item in column_metadata])
-            extras_paths["timepoints"] = "extras/timepoints.tsv"
+        if "column_descriptors" in extras:
+            write_column_descriptors(output_dir / "extras" / "column_descriptors.tsv", column_metadata, mode=mode)
+            extras_paths["column_descriptors"] = "extras/column_descriptors.tsv"
         if "enrichment_background" in extras:
             write_text_list(output_dir / "extras" / "enrichment_background.txt", genes)
             extras_paths["enrichment_background"] = "extras/enrichment_background.txt"

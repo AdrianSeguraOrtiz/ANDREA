@@ -40,8 +40,6 @@ EXTRA_KEYS = [
     "prior_grn",
     "tf_list",
     "prior_grn_by_group",
-    "replicates",
-    "timepoints",
     "spatial_coordinates",
     "chromatin_accessibility",
     "chromatin_regions",
@@ -333,6 +331,8 @@ def validate_request(request: dict[str, Any], params: dict[str, Any]) -> str:
     if axes.get("column_kind") == "timepoints" and axes.get("experimental_design") == "time_series":
         if params["simulation_design"] != "time_series":
             raise ValueError("simulation_design is controlled by the selected scenario and must be 'time_series'.")
+        if "column_descriptors" not in extras:
+            raise ValueError("GeneNetWeaver time_series requires column_descriptors metadata.")
         return "bulk_time_series"
     raise ValueError("Unsupported GeneNetWeaver semantic capability.")
 
@@ -924,13 +924,15 @@ def write_interventions(path: Path, metadata: list[ColumnMeta], genes: list[str]
             writer.writerow([intervention, target, effect, sign, f"{dose:.12g}", f"{timepoint:.12g}"])
 
 
-def write_timepoints(path: Path, metadata: list[ColumnMeta]) -> None:
+def write_column_descriptors(path: Path, metadata: list[ColumnMeta]) -> None:
+    """Preserve native simulated trajectories in the common column metadata."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["column", "timepoint", "timepoint_label"])
+        writer.writerow(["column", "observation_type", "sampling_design", "series_id", "condition", "replicate", "observation_id", "technical_replicate", "timepoint", "time_unit"])
         for item in metadata:
-            writer.writerow([item.column, f"{item.timepoint:.12g}", f"t_{sanitize_value_for_id(item.timepoint)}"])
+            series_id = f"{item.condition}__{item.replicate}"
+            writer.writerow([item.column, "time_series", "longitudinal", series_id, item.condition, series_id, item.column, "1", f"{item.timepoint:.12g}", "model_time"])
 
 
 def write_public_id_maps(raw_dir: Path, genes: list[str], columns: list[str]) -> None:
@@ -1107,9 +1109,9 @@ def main(argv: list[str] | None = None) -> int:
         if "interventions" in extras:
             write_interventions(output_dir / "extras" / "interventions.tsv", table.metadata, table.genes, gnw_output, prefix)
             extras_paths["interventions"] = "extras/interventions.tsv"
-        if "timepoints" in extras:
-            write_timepoints(output_dir / "extras" / "timepoints.tsv", table.metadata)
-            extras_paths["timepoints"] = "extras/timepoints.tsv"
+        if "column_descriptors" in extras:
+            write_column_descriptors(output_dir / "extras" / "column_descriptors.tsv", table.metadata)
+            extras_paths["column_descriptors"] = "extras/column_descriptors.tsv"
         if "enrichment_background" in extras:
             write_text_list(output_dir / "extras" / "enrichment_background.txt", table.genes)
             extras_paths["enrichment_background"] = "extras/enrichment_background.txt"

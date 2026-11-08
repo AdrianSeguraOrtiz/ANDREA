@@ -27,7 +27,9 @@ CATALOG_ROOT = REPO_ROOT / "andrea" / "catalog_inference_tools"
 DEFAULT_CATALOG_TOOLS_ROOT = CATALOG_ROOT / "tools"
 DEFAULT_TOOL_SOURCES_ROOT = INFERENCE_TOOLS_ROOT / "tools"
 DEFAULT_TEMPLATE_MAP = Path(__file__).resolve().parent / "template_map.json"
-TEMPLATES_ROOT = Path(__file__).resolve().parent / "templates"
+SHARED_CORE_TEMPLATES = {
+    "python/_column_metadata.py": "andrea/core/shared/column_metadata.py",
+}
 CONTEXT_IGNORE_PATTERNS = (
     ".git",
     ".venv",
@@ -415,6 +417,13 @@ def allocate_temp_root(
     return Path(temp_root_ctx.name), temp_root_ctx
 
 
+def resolve_template_source(relpath: str, *, repo_root: Path = REPO_ROOT) -> Path:
+    """Use a shared core module directly instead of maintaining a template copy."""
+    if relpath in SHARED_CORE_TEMPLATES:
+        return repo_root / SHARED_CORE_TEMPLATES[relpath]
+    return repo_root / "wrappers/inference_tools/scripts/templates" / relpath
+
+
 def prepare_context(
     *,
     tool_id: str,
@@ -445,10 +454,10 @@ def prepare_context(
     entrypoint_path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     for relpath in template_relpaths:
-        src = TEMPLATES_ROOT / relpath
+        src = resolve_template_source(relpath)
         if not src.exists() or not src.is_file():
             raise RuntimeError(f"[{tool_id}] Template file not found: {src}")
-        dst = context_dir / src.name
+        dst = context_dir / Path(relpath).name
         shutil.copy2(src, dst)
 
 

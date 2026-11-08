@@ -200,6 +200,11 @@ if __name__ == "__main__" and sys.argv[1:2] == ["--prepare-upstream"]:
 
 import numpy as np
 
+from _column_metadata import (
+    load_column_descriptors as load_bulk_column_descriptors,
+    summarize_temporal_metadata,
+)
+
 from _run_tool_common import (
     load_execution_mode,
     load_params,
@@ -307,100 +312,31 @@ def read_matrix(path: Path) -> tuple[list[str], list[str], np.ndarray]:
     return genes, columns, matrix
 
 
-def _metadata(
-    path: Path, columns: list[str], required: set[str]
-) -> dict[str, dict[str, str]]:
-    with path.open(encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle, delimiter="\t")
-        headers = reader.fieldnames or []
-        if len(set(headers)) != len(headers) or not required <= set(headers):
-            raise ValueError(f"{path.name}: missing or duplicate metadata headings")
-        result = {}
-        for row in reader:
-            if None in row or any(
-                not isinstance(row.get(key), str) or not row[key].strip()
-                for key in required
-            ):
-                raise ValueError(f"{path.name}: malformed or empty metadata")
-            column = row["column"]
-            if column in result:
-                raise ValueError(
-                    f"{path.name}: duplicate expression-column ID {column}"
-                )
-            result[column] = row
-    if set(result) != set(columns) or len(result) != len(columns):
-        raise ValueError(f"{path.name}: metadata must match expression columns exactly")
-    return result
-
-
-def prepare_series(
-    matrix: np.ndarray, columns: list[str], extra: Path, temporal: dict[str, Any]
-):
-    """Only method-specific preparation; core validates the canonical contract."""
-    expected = {
-        "schema_version",
-        "time_basis",
-        "time_unit",
-        "time_origin",
-        "sampling_design",
-        "missing_values",
-        "preprocessing",
-        "provenance",
+def prepare_series(matrix: np.ndarray, columns: list[str], extra: Path):
+    """Read observed coordinates and sampling design from canonical metadata."""
+    descriptors = load_bulk_column_descriptors(
+        extra / "column_descriptors.tsv", columns
+    )
+    temporal = summarize_temporal_metadata(descriptors)
+    if temporal["sampling_design"] != "longitudinal":
+        raise ValueError("dynGENIE3 requires longitudinal observed bulk time series")
+    observation_ids = [row["observation_id"] for row in descriptors.values()]
+    if len(observation_ids) != len(set(observation_ids)):
+        raise ValueError(
+            "Technical replicate columns require explicit preprocessing; dynGENIE3 does not average them implicitly"
+        )
+    times = {
+        column: row
+        for column, row in descriptors.items()
+        if row["observation_type"] == "time_series"
     }
-    if not isinstance(temporal, dict) or set(temporal) != expected:
-        raise ValueError(
-            "execution.temporal must contain the canonical bulk-temporal/1 declaration"
-        )
-    if (
-        temporal["schema_version"] != "bulk-temporal/1"
-        or temporal["time_basis"] != "observed"
-        or temporal["sampling_design"] != "longitudinal"
-        or temporal["missing_values"] != "reject"
-    ):
-        raise ValueError(
-            "dynGENIE3 requires observed longitudinal bulk time with missing_values=reject"
-        )
-    for field in ("time_unit", "time_origin", "provenance"):
-        if not isinstance(temporal[field], str) or not temporal[field].strip():
-            raise ValueError(f"temporal.{field} must be explicit")
-    preprocessing = temporal["preprocessing"]
-    if (
-        not isinstance(preprocessing, dict)
-        or set(preprocessing) != {"normalization", "transformation"}
-        or any(
-            not isinstance(value, str) or not value.strip()
-            for value in preprocessing.values()
-        )
-    ):
-        raise ValueError(
-            "temporal.preprocessing must declare normalization and transformation"
-        )
-    times = _metadata(
-        extra / "timepoints.tsv",
-        columns,
-        {
-            "column",
-            "timepoint",
-            "time_unit",
-            "series_id",
-            "condition",
-            "observation_id",
-        },
-    )
-    replicates = _metadata(
-        extra / "replicates.tsv",
-        columns,
-        {"column", "replicate", "replicate_kind", "technical_replicate"},
-    )
     index = {column: position for position, column in enumerate(columns)}
     grouped: dict[str, list[tuple[float, str]]] = {}
     observations = set()
     for column in columns:
-        time_row, replica = times[column], replicates[column]
-        if time_row["time_unit"] != temporal["time_unit"]:
-            raise ValueError("Observed time units must match the temporal declaration")
-        if replica["replicate_kind"] != "biological":
-            raise ValueError("replicate must identify a biological longitudinal unit")
+        if column not in times:
+            continue
+        time_row = times[column]
         observation = time_row["observation_id"]
         if observation in observations:
             raise ValueError(
@@ -419,7 +355,7 @@ def prepare_series(
                 "Each longitudinal series needs at least two distinct observed times"
             )
         ids = [column for _, column in entries]
-        biological_units = {replicates[column]["replicate"] for column in ids}
+        biological_units = {times[column]["replicate"] for column in ids}
         conditions = {times[column]["condition"] for column in ids}
         if len(biological_units) != 1 or len(conditions) != 1:
             raise ValueError(
@@ -454,16 +390,6 @@ def prepare_series(
     if not series_data:
         raise ValueError("At least one time series is required")
     return series_data, time_points, resolved
-
-
-def load_steady_state(path: Path, genes: list[str]) -> tuple[np.ndarray, list[str]]:
-    source_genes, columns, matrix = read_matrix(path)
-    if set(source_genes) != set(genes):
-        raise ValueError(
-            "Steady-state and time-series gene universes must match exactly"
-        )
-    positions = {gene: index for index, gene in enumerate(source_genes)}
-    return matrix[[positions[gene] for gene in genes], :].T.copy(), columns
 
 
 def validate_decay_time_separations(series_data, time_points) -> None:
@@ -548,18 +474,21 @@ def run(
     )
     try:
         load_execution_mode(params_path, supported_modes={"global"})
-        execution = json.loads(params_path.with_name("execution.json").read_text())
         genes, columns, expression = read_matrix(input_path)
         params = resolve_params(load_params(params_path), len(genes))
-        ts_data, time_points, series = prepare_series(
-            expression, columns, extra_dir, execution.get("temporal")
-        )
+        ts_data, time_points, series = prepare_series(expression, columns, extra_dir)
         if isinstance(params["alpha"], str) and params["alpha"] == "from_data":
             validate_decay_time_separations(ts_data, time_points)
-        ss_path = extra_dir / "steady_state_expression.tsv"
-        ss_data, ss_columns = (
-            load_steady_state(ss_path, genes) if ss_path.is_file() else (None, [])
+        descriptors = load_bulk_column_descriptors(
+            extra_dir / "column_descriptors.tsv", columns
         )
+        ss_columns = [
+            column
+            for column in columns
+            if descriptors[column]["observation_type"] == "steady_state"
+        ]
+        ss_positions = [columns.index(column) for column in ss_columns]
+        ss_data = expression[:, ss_positions].T.copy() if ss_columns else None
         tf_path = extra_dir / "tf_list.txt"
         regulators = "all"
         if tf_path.is_file():
@@ -580,8 +509,13 @@ def run(
             "params": params,
             "genes": genes,
             "regulators": regulators,
-            "temporal": execution["temporal"],
+            "temporal": summarize_temporal_metadata(descriptors),
             "series": series,
+            "time_series_columns": [
+                column
+                for column in columns
+                if descriptors[column]["observation_type"] == "time_series"
+            ],
             "steady_state_columns": ss_columns,
             "threads": threads,
             "effective_workers": min(threads, len(genes)),
@@ -696,7 +630,7 @@ def run(
             writer = csv.writer(handle, delimiter="\t")
             writer.writerow(["gene", "alpha", "inverse_time_unit"])
             writer.writerows(
-                (gene, repr(float(alpha)), f"1/{execution['temporal']['time_unit']}")
+                (gene, repr(float(alpha)), f"1/{resolved['temporal']['time_unit']}")
                 for gene, alpha in zip(genes, alphas)
             )
         messages = []

@@ -151,6 +151,7 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         toolspec["temporal_requirements"] = {
             "required": True,
             "sampling_designs": ["longitudinal"],
+            "observation_types": ["time_series"],
         }
         profiles = [
             self._temporal_profile(series, points)
@@ -181,6 +182,7 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         toolspec["temporal_requirements"] = {
             "required": True,
             "sampling_designs": ["longitudinal"],
+            "observation_types": ["time_series"],
         }
         cases = [
             None,
@@ -226,10 +228,9 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             context = self._temporal_context(series_count=2, points=4)
-            dataset = replace(
-                self._dataset(Path(tmp), extras={}, columns=8), temporal=context
-            )
+            dataset = self._dataset(Path(tmp), extras={}, columns=8)
             summary = {
+                **context,
                 "status": "ok",
                 "columns": 8,
                 "observations": 8,
@@ -243,19 +244,20 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
                     for index in range(2)
                 ],
             }
+            summary["observations_by_column"] = {
+                f"c{index}": {
+                    "observation_type": "time_series",
+                    "observation_id": f"obs{index}",
+                }
+                for index in range(8)
+            }
             self.assertEqual(
                 _temporal_cost_context(dataset=dataset, temporal_summary=summary),
                 context,
             )
-            self.assertEqual(
-                _temporal_cost_context(
-                    dataset=dataset, temporal_summary=summary, steady_state_samples=3
-                )["steady_state_samples"],
-                3,
-            )
             self.assertIsNone(
                 _temporal_cost_context(
-                    dataset=dataset, temporal_summary={**summary, "observations": 4}
+                    dataset=dataset, temporal_summary={**summary, "columns": 4}
                 )
             )
             summary["series"][0]["timepoints"] = [0, 1, 2]
@@ -270,6 +272,7 @@ class PlannerCostProfileSelectionTest(unittest.TestCase):
         toolspec["temporal_requirements"] = {
             "required": True,
             "sampling_designs": ["longitudinal"],
+            "observation_types": ["time_series"],
         }
         profile = self._temporal_profile(4, 4)
         profile["runtime_points"][0]["columns"] = 32

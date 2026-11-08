@@ -46,15 +46,12 @@
         "pseudotime",
         "prior_grn",
         "prior_grn_by_group",
-        "replicates",
         "spatial_coordinates",
         "terms_of_interest",
         "tf_list",
-        "timepoints",
         "chromatin_accessibility",
         "chromatin_regions",
-        "cell_cell_interactions",
-        "steady_state_expression"
+        "cell_cell_interactions"
       ]
     },
     "taxonomic_group": {
@@ -828,7 +825,8 @@
       "additionalProperties": false,
       "required": [
         "required",
-        "sampling_designs"
+        "sampling_designs",
+        "observation_types"
       ],
       "properties": {
         "required": {
@@ -857,6 +855,28 @@
           "type": "integer",
           "minimum": 2,
           "description": "Minimum distinct observed coordinates required independently in every series."
+        },
+        "require_regular_sampling": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require evenly spaced observed coordinates within every independent series. Absent preserves existing compatibility behavior."
+        },
+        "require_aligned_timepoints": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require every independent series to have exactly the same ordered observed timepoints. Absent preserves existing compatibility behavior."
+        },
+        "observation_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "time_series",
+              "steady_state"
+            ]
+          },
+          "description": "Expression-column roles selected by the method. Excluded roles remain explicit in provenance and are not used in fitting or cost dimensions."
         }
       }
     }

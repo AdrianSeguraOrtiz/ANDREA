@@ -17,9 +17,7 @@ from andrea.core.shared.network_context import (
 )
 
 
-MEASUREMENT_VALUES: tuple[str, ...] = (
-    "rna_expression",
-)
+MEASUREMENT_VALUES: tuple[str, ...] = ("rna_expression",)
 
 RESOLUTION_VALUES: tuple[str, ...] = (
     "bulk",
@@ -65,9 +63,7 @@ SIMULATOR_TRUTH_CONTEXT_FAMILIES: tuple[str, ...] = tuple(
 )
 SIMULATOR_TRUTH_CONTEXT_PREFIXES: dict[str, str] = {
     family: (
-        GLOBAL_CONTEXT
-        if family == GLOBAL_CONTEXT
-        else NETWORK_CONTEXT_PREFIXES[family]
+        GLOBAL_CONTEXT if family == GLOBAL_CONTEXT else NETWORK_CONTEXT_PREFIXES[family]
     )
     for family in SIMULATOR_TRUTH_CONTEXT_FAMILIES
 }
@@ -205,7 +201,7 @@ def required_extras_for_request(
     # tf_list natively or derivably.
     extras = {"tf_list", *_required_extras_for_truth(truth)}
     if axes.experimental_design == "time_series":
-        extras.add("timepoints")
+        extras.add("column_descriptors")
     if axes.experimental_design == "perturbational":
         extras.update({"perturbation_design", "interventions"})
     if axes.resolution == "spatial" or axes.column_kind == "spots":
@@ -250,7 +246,9 @@ def context_prefix_for_family(family: str) -> str:
 def required_truth_context_prefixes(
     requirements: TruthRequirements,
 ) -> tuple[str, ...]:
-    return tuple(context_prefix_for_family(context) for context in requirements.contexts)
+    return tuple(
+        context_prefix_for_family(context) for context in requirements.contexts
+    )
 
 
 def primary_truth_context(requirements: TruthRequirements) -> str:

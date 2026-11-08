@@ -69,10 +69,8 @@ _NORMALIZED_EXTRA_FILENAMES = {
     "pseudotime": "pseudotime.tsv",
     "prior_grn": "prior_grn.tsv",
     "prior_grn_by_group": "prior_grn_by_group.tsv",
-    "replicates": "replicates.tsv",
     "spatial_coordinates": "spatial_coordinates.tsv",
     "tf_list": "tf_list.txt",
-    "timepoints": "timepoints.tsv",
 }
 
 _STEP_PERCENT = {
@@ -294,8 +292,6 @@ def _dataset_manifest_payload(
             payload["extras"][key] = value
     if request.notes:
         payload["notes"] = request.notes
-    if "temporal" in simulator_manifest:
-        payload["temporal"] = simulator_manifest["temporal"]
     return payload
 
 
@@ -808,7 +804,6 @@ def _execute_simulation_task(
             for key, value in raw_extras.items()
             if key in _NORMALIZED_EXTRA_FILENAMES and isinstance(value, str)
         },
-        temporal=simulator_manifest.get("temporal"),
     )
 
     dataset_manifest_payload = _dataset_manifest_payload(

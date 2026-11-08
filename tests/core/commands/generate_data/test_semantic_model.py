@@ -26,12 +26,23 @@ from andrea.core.shared.network_context import (
 
 
 class GenerateDataSemanticModelTests(unittest.TestCase):
-    def test_simulator_truth_contexts_are_normalized_network_context_subset(self) -> None:
-        self.assertEqual(SIMULATOR_TRUTH_CONTEXT_FAMILIES, ("global", "group", "column"))
-        self.assertTrue(set(SIMULATOR_TRUTH_CONTEXT_FAMILIES).issubset(NETWORK_CONTEXT_FAMILIES))
+    def test_simulator_truth_contexts_are_normalized_network_context_subset(
+        self,
+    ) -> None:
+        self.assertEqual(
+            SIMULATOR_TRUTH_CONTEXT_FAMILIES, ("global", "group", "column")
+        )
+        self.assertTrue(
+            set(SIMULATOR_TRUTH_CONTEXT_FAMILIES).issubset(NETWORK_CONTEXT_FAMILIES)
+        )
         self.assertEqual(SIMULATOR_TRUTH_CONTEXT_PREFIXES["global"], "global")
-        self.assertEqual(SIMULATOR_TRUTH_CONTEXT_PREFIXES["group"], NETWORK_CONTEXT_PREFIXES["group"])
-        self.assertEqual(SIMULATOR_TRUTH_CONTEXT_PREFIXES["column"], NETWORK_CONTEXT_PREFIXES["column"])
+        self.assertEqual(
+            SIMULATOR_TRUTH_CONTEXT_PREFIXES["group"], NETWORK_CONTEXT_PREFIXES["group"]
+        )
+        self.assertEqual(
+            SIMULATOR_TRUTH_CONTEXT_PREFIXES["column"],
+            NETWORK_CONTEXT_PREFIXES["column"],
+        )
         self.assertNotIn("timepoint", SIMULATOR_TRUTH_CONTEXT_FAMILIES)
 
     def test_parse_bulk_perturbational_axes(self) -> None:
@@ -110,6 +121,22 @@ class GenerateDataSemanticModelTests(unittest.TestCase):
         self.assertEqual(axes.column_kind, "cells")
         self.assertEqual(axes.experimental_design, "time_series")
 
+    def test_bulk_timepoint_axes_preserve_observational_extra_requirements(
+        self,
+    ) -> None:
+        axes = parse_data_axes(
+            {
+                "measurement": "rna_expression",
+                "resolution": "bulk",
+                "column_kind": "timepoints",
+                "experimental_design": "observational",
+            }
+        )
+        self.assertEqual(
+            required_extras_for_request(axes, {"contexts": ["global"]}),
+            frozenset({"tf_list"}),
+        )
+
     def test_required_extras_for_request_combines_truth_and_data_axes(self) -> None:
         grouped_truth = parse_truth_requirements({"contexts": ["global", "group"]})
         time_series_axes = parse_data_axes(
@@ -139,14 +166,18 @@ class GenerateDataSemanticModelTests(unittest.TestCase):
 
         self.assertEqual(
             required_extras_for_request(time_series_axes, grouped_truth),
-            frozenset({"groups", "tf_list", "timepoints"}),
+            frozenset({"column_descriptors", "groups", "tf_list"}),
         )
         self.assertEqual(
-            required_extras_for_request(perturbational_axes, parse_truth_requirements({"contexts": ["global"]})),
+            required_extras_for_request(
+                perturbational_axes, parse_truth_requirements({"contexts": ["global"]})
+            ),
             frozenset({"perturbation_design", "interventions", "tf_list"}),
         )
         self.assertEqual(
-            required_extras_for_request(spatial_axes, parse_truth_requirements({"contexts": ["global"]})),
+            required_extras_for_request(
+                spatial_axes, parse_truth_requirements({"contexts": ["global"]})
+            ),
             frozenset({"spatial_coordinates", "tf_list"}),
         )
 

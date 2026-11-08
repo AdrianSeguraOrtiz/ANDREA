@@ -180,6 +180,11 @@
               "type": "string",
               "pattern": "^[0-9a-f]{64}$"
             },
+            "measurement_kernel_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Fingerprint of the inference input and timing implementation, independent of campaign scheduling and resume bookkeeping."
+            },
             "spec_sha256": {
               "type": "string",
               "pattern": "^[0-9a-f]{64}$"
@@ -465,16 +470,12 @@
         "temporal": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Optional bulk observed-time contract. Requires enriched canonical timepoints and replicates TSVs. Supported by the Osaka runtime extension; older strict readers reject this field.",
+          "description": "Internal synthetic-generator facts written into column_descriptors.tsv, never a public manifest or execution input.",
           "required": [
             "schema_version",
             "time_basis",
             "time_unit",
-            "time_origin",
-            "sampling_design",
-            "missing_values",
-            "preprocessing",
-            "provenance"
+            "sampling_design"
           ],
           "properties": {
             "schema_version": {
@@ -488,44 +489,11 @@
               "minLength": 1,
               "pattern": ".*\\S.*"
             },
-            "time_origin": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": ".*\\S.*"
-            },
             "sampling_design": {
               "enum": [
                 "longitudinal",
                 "independent_samples"
               ]
-            },
-            "missing_values": {
-              "const": "reject"
-            },
-            "preprocessing": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "normalization",
-                "transformation"
-              ],
-              "properties": {
-                "normalization": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": ".*\\S.*"
-                },
-                "transformation": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": ".*\\S.*"
-                }
-              }
-            },
-            "provenance": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": ".*\\S.*"
             }
           }
         },
@@ -543,7 +511,7 @@
             },
             "timepoints_per_series": {
               "type": "integer",
-              "minimum": 3
+              "minimum": 2
             },
             "steady_state_samples": {
               "type": "integer",
@@ -556,15 +524,32 @@
               ]
             }
           },
-          "description": "Synthetic temporal geometry; genes and TS total columns remain point coordinates. Steady-state samples are a separate matrix."
+          "description": "Synthetic temporal geometry on a unified expression matrix: columns = series_count * timepoints_per_series + steady_state_samples. Roles are declared by column_descriptors; no artificial steady-state times."
+        },
+        "observation_types": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "time_series",
+              "steady_state"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "ToolSpec observation types consumed by this temporal calibration. Every generated column must be consumed; columns is the unified TS+SS matrix size."
         }
       },
       "dependentRequired": {
         "temporal": [
-          "temporal_fixture"
+          "temporal_fixture",
+          "observation_types"
         ],
         "temporal_fixture": [
           "temporal"
+        ],
+        "observation_types": [
+          "temporal",
+          "temporal_fixture"
         ]
       }
     },

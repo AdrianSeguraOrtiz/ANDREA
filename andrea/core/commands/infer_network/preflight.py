@@ -34,6 +34,7 @@ from .commons.tools import (
     _resolve_run_execution,
     _resolve_tool_params,
     _scan_catalog_compatibility,
+    _validate_requested_temporal_inputs,
 )
 
 
@@ -74,7 +75,6 @@ def preflight_infer_network(
         constraints=constraints,
         custom_tools=custom_tools,
         custom_blocked_entries=custom_blocked_entries,
-        temporal_summary=input_validation.get("temporal"),
     )
 
     selected_tools: list[str] = []
@@ -84,6 +84,8 @@ def preflight_infer_network(
     resolved_params_by_tool: dict[str, dict[str, Any]] = {}
     resolved_execution_by_tool: dict[str, dict[str, Any]] = {}
     resolved_resources_by_tool: dict[str, dict[str, Any]] = {}
+    observation_selection_by_tool: dict[str, dict[str, Any]] = {}
+    temporal_validation_by_tool: dict[str, dict[str, Any]] = {}
     run_issues: dict[str, list[dict[str, Any]]] = {}
     requested_total = 0
 
@@ -253,7 +255,6 @@ def preflight_infer_network(
                 dataset=dataset,
                 constraints=constraints,
                 warnings=compatibility_warnings,
-                temporal_summary=input_validation.get("temporal"),
             )
             compatibility_warnings.extend(
                 custom_tool_warnings(catalog_tool_id, toolspec)
@@ -357,6 +358,30 @@ def preflight_infer_network(
                 continue
             add_run_warnings(run_id, "compatibility_rule", rule_warnings)
 
+            temporal_summary, temporal_errors, temporal_warnings = (
+                _validate_requested_temporal_inputs(toolspec=toolspec, dataset=dataset)
+            )
+            add_run_warnings(run_id, "temporal_validation", temporal_warnings)
+            if temporal_errors:
+                skipped_tools[run_id] = "; ".join(temporal_errors)
+                for message in temporal_errors:
+                    add_run_issue(
+                        run_id,
+                        severity="block",
+                        code="temporal_validation",
+                        message=message,
+                    )
+                continue
+            if temporal_summary is not None:
+                from andrea.core.shared.bulk_temporal import (
+                    select_temporal_observations,
+                )
+
+                observation_selection_by_tool[run_id] = select_temporal_observations(
+                    temporal_summary,
+                    toolspec["temporal_requirements"]["observation_types"],
+                )
+                temporal_validation_by_tool[run_id] = temporal_summary
             selected_tools.append(run_id)
             selected_tool_catalog_ids[run_id] = catalog_tool_id
             selected_tool_origins[run_id] = tool_origin
@@ -399,6 +424,8 @@ def preflight_infer_network(
             "resolved_params": resolved_params_by_tool,
             "resolved_execution": resolved_execution_by_tool,
             "resolved_resources": resolved_resources_by_tool,
+            "observation_selection": observation_selection_by_tool,
+            "temporal_validation": temporal_validation_by_tool,
             "issues": run_issues,
             "skipped": skipped_tools,
         },

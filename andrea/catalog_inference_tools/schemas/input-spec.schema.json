@@ -122,20 +122,19 @@
           "kind"
         ],
         "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "column_subset_expression_genes",
-              "column_subset_expression_columns",
-              "column_subset_extra_column",
-              "data_columns_match_expression_columns",
-              "data_columns_subset_expression_columns",
-              "first_column_subset_expression_columns",
-              "row_count_matches_expression_columns",
-              "line_subset_expression_genes",
-              "first_column_matches_expression_genes"
-            ]
-          },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "column_subset_expression_genes",
+                  "column_subset_expression_columns",
+                  "column_subset_extra_column",
+                  "data_columns_match_expression_columns",
+                  "data_columns_subset_expression_columns",
+                  "first_column_subset_expression_columns",
+                  "row_count_matches_expression_columns",
+                  "line_subset_expression_genes"
+                ]
+              },
           "column": {
             "type": "string"
           },
@@ -148,11 +147,6 @@
         }
       },
       "default": []
-    },
-    "unique_header": {
-      "type": "boolean",
-      "default": false,
-      "description": "Reject duplicate header names when the input represents distinct sample columns."
     }
   }
 }

@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from andrea.core.shared.bulk_temporal import validate_temporal_requirements
 from andrea.core.shared.issues import make_issue
 from andrea.core.shared.json_io import load_json_object as _load_json_object
 from andrea.core.shared.output_capabilities import OUTPUT_SIGN_SEMANTICS
@@ -26,7 +25,6 @@ _CUSTOM_TOOL_SCHEMA_KEYS = {
     "extra_inputs",
     "outputs",
     "runtime_resources",
-    "temporal_requirements",
 }
 _CUSTOM_TOOL_OUTPUT_KEYS = {"directed", "sign"}
 
@@ -280,9 +278,7 @@ def normalize_custom_tools_payload(
         try:
             tool_id = normalize_custom_tool_id(raw_tool["run_id"])
         except ValueError as exc:
-            raise ValueError(
-                f"custom_tools.tools[{idx}].run_id is invalid: {exc}"
-            ) from exc
+            raise ValueError(f"custom_tools.tools[{idx}].run_id is invalid: {exc}") from exc
         run_id = raw_tool["run_id"]
         if tool_id in seen_tool_ids:
             raise ValueError(
@@ -393,15 +389,11 @@ def normalize_custom_tools_payload(
             runtime_resource_errors = ["runtime_resources is required"]
         else:
             runtime_resources, runtime_resource_errors = (
-                normalize_custom_tool_runtime_resources(raw_tool["runtime_resources"])
+                normalize_custom_tool_runtime_resources(
+                    raw_tool["runtime_resources"]
+                )
             )
         errors.extend(runtime_resource_errors)
-
-        if "temporal_requirements" in raw_tool:
-            try:
-                validate_temporal_requirements(raw_tool["temporal_requirements"])
-            except ValueError as exc:
-                errors.append(str(exc))
 
         if errors:
             blocked_entries.append(_blocked_custom_entry(tool_id, "; ".join(errors)))
@@ -444,8 +436,6 @@ def normalize_custom_tools_payload(
             "_andrea_run_id": run_id,
             "_andrea_execution_mode": execution_mode,
         }
-        if "temporal_requirements" in raw_tool:
-            spec["temporal_requirements"] = raw_tool["temporal_requirements"]
         specs[tool_id] = spec
 
     return specs, blocked_entries
@@ -552,8 +542,7 @@ def _serialize_custom_tool(tool_id: str, source: Any) -> dict[str, Any]:
     raw_extra_inputs = source.get("extra_inputs")
     if (
         not isinstance(raw_extra_inputs, dict)
-        or set(raw_extra_inputs)
-        != {
+        or set(raw_extra_inputs) != {
             "required",
             "optional",
             "conditional_required",
@@ -638,7 +627,7 @@ def _serialize_custom_tool(tool_id: str, source: Any) -> dict[str, Any]:
     if runtime_errors:
         raise _serialization_error(tool_id, "; ".join(runtime_errors))
 
-    serialized = {
+    return {
         "run_id": run_id,
         "name": name,
         "docker_image": docker_image,
@@ -650,14 +639,6 @@ def _serialize_custom_tool(tool_id: str, source: Any) -> dict[str, Any]:
         },
         "runtime_resources": runtime_resources,
     }
-    if "temporal_requirements" in source:
-        try:
-            serialized["temporal_requirements"] = validate_temporal_requirements(
-                source["temporal_requirements"]
-            )
-        except ValueError as exc:
-            raise _serialization_error(tool_id, str(exc)) from exc
-    return serialized
 
 
 def serialize_custom_tools(

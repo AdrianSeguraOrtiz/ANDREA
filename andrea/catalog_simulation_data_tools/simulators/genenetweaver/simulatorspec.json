@@ -678,7 +678,7 @@
         "perturbation_design",
         "prior_grn",
         "tf_list",
-        "timepoints"
+        "column_descriptors"
       ],
       "truth_outputs": [
         {
@@ -722,20 +722,21 @@
       ],
       "derivations": [
         {
-          "artifact": "timepoints",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "*_dream4_timeseries.tsv or selected time-series table",
             "settings.txt maxtTimeSeries",
             "settings.txt dt"
           ],
-          "method": "Parse each GNW time-series block, assign one normalized column per measured row, and write extras/timepoints.tsv with column_id, timepoint and series_id aligned to expression.tsv column order.",
+          "method": "Parse each GNW time-series block and emit one column_descriptors.tsv row per expression column, preserving observation type, native trajectory identity, constant perturbation condition, simulated replicate, observation identity, technical measurement label, and model-time coordinate. The same TSV declares sampling_design=longitudinal; its bulk/timepoints axes select the shared validator without any additional manifest object or GUI declaration.",
           "assumptions": [
             "The native time column in each GNW time-series table is the public time coordinate."
           ],
           "limitations": [
-            "Multiple GNW time courses share time values but represent different perturbation trajectories; series_id is required to disambiguate them."
+            "Multiple GNW time courses share time values but represent different perturbation trajectories; series_id is required to disambiguate them.",
+            "model_time identifies simulator coordinates and does not claim physical elapsed-time units."
           ],
-          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
+          "implemented_in": "wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
         },
         {
           "artifact": "perturbation_design",

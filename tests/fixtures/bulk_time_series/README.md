@@ -1,59 +1,36 @@
-# Bulk temporal contract fixtures
+# Bulk temporal input examples
 
-These are deterministic **synthetic bulk population mean abundances**, designed
-to exercise time-series metadata. They are not measured data, single-cell
-matrices, outputs of an upstream simulator, scientific ground truth, or
-calibration observations. Their numeric trajectories do not establish a causal
-GRN. No network is supplied.
+These deterministic synthetic values exercise input contracts. They are not
+measured biological data, ground truth or cost observations.
 
-| Fixture | Genes | Biological series | Distinct times per series | Biological observations | Expression columns |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `regular_longitudinal` | 3 | 4 | 3 (`0,2,4` hours) | 12 | 24 |
-| `irregular_independent` | 3 | 2 experimental cohorts | 3 (`0,1,4` / `0,2,5` hours) | 12 | 12 |
+| Fixture | Genes | Series or cohorts | Times per series | Temporal columns | Stationary columns |
+| --- | ---: | ---: | --- | ---: | ---: |
+| `regular_longitudinal` | 3 | 4 longitudinal units | 0, 2, 4 hours | 24 | 0 |
+| `irregular_independent` | 3 | 2 independently sampled cohorts | 0, 1, 4 / 0, 2, 5 hours | 12 | 0 |
+| `dyngenie3_complete` | 3 | 2 longitudinal units | 0, 6, 12 hours | 6 | 2 |
 
-In `regular_longitudinal`, `control_r1`, `control_r2`, `treated_r1`, and
-`treated_r2` are separate longitudinal biological units. Each unit has three
-observations with two technical measurements per observation. The technical
-measurements share `observation_id`; their `technical_replicate` differs. The
-eight within-series adjacent observation pairs must never become a single
-concatenated trajectory or sixteen technical-measurement transitions.
+Every fixture has one `expression.tsv`, one `column_descriptors.tsv` joined by
+exact column IDs, and a normal `dataset-manifest.json`. The descriptor InputSpec
+is the same for every dataset selection. A requested temporal method checks
+the sampling design, time units and other scientific fields supplied in the
+descriptor table; those contents do not filter the catalog. No separate time,
+replicate or stationary-expression files are inputs.
 
-In `irregular_independent`, each condition has an experimental cohort with two
-independently sampled biological units at each time. Every physical sample has
-its own `replicate` and `observation_id`; repeated sample numbers across time do
-not establish pairing. `series_id` groups the cohort design, not a longitudinal
-subject. The audit reports time groups and **zero biological longitudinal
-transitions**. The timepoint metadata rows deliberately run in reverse expression
-column order to verify joining by identifiers.
+`regular_longitudinal` includes two technical measurements per biological
+observation. It validates the general data contract but both new inference tools
+reject this sampling branch; they do not silently average it. There are eight
+biological transitions, without crossing any course boundary.
 
-The values can be reproduced from time `t`, biological replicate/sample index
-`r` in `{1,2}`, and technical index `k` in `{1,2}` (only `k=1` for independent
-samples). With `b = r + (k-1)/10`, the three rows are:
+`irregular_independent` uses distinct biological units at each time. Its cohort
+identity does not establish longitudinal pairing and it has no longitudinal
+transitions. This sampling branch is also rejected by both new tools.
 
-```text
-G1 = 10 + 2*t + b
-G2 = 20 + a*t + b     a=1 for control, a=3 for treated
-G3 = 30 - t + b
-```
+`dyngenie3_complete` is a runnable example with two courses and two independent
+stationary samples in the same matrix. The main manifest also includes the
+optional `tf_list.txt`; `dataset-manifest-required-only.json` omits only that
+optional regulator restriction. `tools-params.json` selects global dynGENIE3
+with its native defaults. SWING can consume the same matrix using the temporal
+columns only when its width/lag requirements fit the three-point grid.
 
-Values are arbitrary abundance units, with no normalization or transformation.
-All expression values and times are finite and present. An absent scheduled
-visit would be represented by the absence of that observation, never by silently
-imputing an expression value or inserting a transition.
-
-Each `dataset-manifest.json` conforms to the existing v1 runtime schema and
-references the existing `timepoints` and `replicates` extra IDs. Extra metadata
-columns are permitted by their current TSV specs. The separate
-`temporal-contract.json` uses the **proposed offline audit format**, which core,
-CLI, GUI, and container delivery do not discover or interpret.
-
-Run from the repository root:
-
-```bash
-.venv/bin/python scripts/validate_bulk_time_series.py tests/fixtures/bulk_time_series/regular_longitudinal/temporal-contract.json
-.venv/bin/python scripts/validate_bulk_time_series.py tests/fixtures/bulk_time_series/irregular_independent/temporal-contract.json
-.venv/bin/python -m pytest tests/test_bulk_time_series_contract.py -q
-```
-
-See [the contract audit](../../../docs/bulk-time-series-contract.md) before using
-these files to design a wrapper or cost campaign.
+See the [current shared contract](../../../docs/bulk-time-series-contract.md)
+for field meanings and native tool mappings. CLI and GUI use these same files.

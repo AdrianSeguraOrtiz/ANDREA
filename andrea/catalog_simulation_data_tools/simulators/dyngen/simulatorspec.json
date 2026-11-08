@@ -1247,7 +1247,7 @@
         "pseudotime",
         "prior_grn",
         "tf_list",
-        "timepoints"
+        "column_descriptors"
       ],
       "truth_outputs": [
         {
@@ -1388,11 +1388,11 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
-          "artifact": "timepoints",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "dataset$cell_info$timepoint_group"
           ],
-          "method": "Export dyngen synchronised experiment timepoint_group metadata as extras/timepoints.tsv with one row per expression column.",
+          "method": "Export dyngen synchronised experiment timepoint_group labels in extras/column_descriptors.tsv with one row per expression column and time_unit=model_time_group. This is generic sampled-cell metadata, without a bulk observed-time declaration or fabricated longitudinal series.",
           "assumptions": [
             "dyngen::experiment_synchronised() is the authoritative upstream sampler for time-series cell labels."
           ],
@@ -1450,7 +1450,7 @@
         "prior_grn",
         "tf_list",
         "prior_grn_by_group",
-        "timepoints"
+        "column_descriptors"
       ],
       "truth_outputs": [
         {
@@ -1710,11 +1710,11 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
-          "artifact": "timepoints",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "dataset$cell_info$timepoint_group"
           ],
-          "method": "Export dyngen synchronised experiment timepoint_group metadata as extras/timepoints.tsv with one row per expression column.",
+          "method": "Export dyngen synchronised experiment timepoint_group labels in extras/column_descriptors.tsv with one row per expression column and time_unit=model_time_group. This is generic sampled-cell metadata, without a bulk observed-time declaration or fabricated longitudinal series.",
           "assumptions": [
             "dyngen::experiment_synchronised() is the authoritative upstream sampler for time-series cell labels."
           ],
@@ -1773,7 +1773,7 @@
         "prior_grn_by_group",
         "pseudotime",
         "tf_list",
-        "timepoints"
+        "column_descriptors"
       ],
       "truth_outputs": [
         {
@@ -2054,11 +2054,11 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
-          "artifact": "timepoints",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "dataset$cell_info$timepoint_group"
           ],
-          "method": "Export dyngen synchronised experiment timepoint_group metadata as extras/timepoints.tsv with one row per expression column.",
+          "method": "Export dyngen synchronised experiment timepoint_group labels in extras/column_descriptors.tsv with one row per expression column and time_unit=model_time_group. This is generic sampled-cell metadata, without a bulk observed-time declaration or fabricated longitudinal series.",
           "assumptions": [
             "dyngen::experiment_synchronised() is the authoritative upstream sampler for time-series cell labels."
           ],

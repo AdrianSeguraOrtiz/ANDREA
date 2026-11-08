@@ -151,6 +151,7 @@ export function toolSpecInfoPayload(tool) {
   const firstAuthor = String(tool?.first_author || "").trim();
   const outputs = tool?.outputs && typeof tool.outputs === "object" ? tool.outputs : {};
   const progress = tool?.progress && typeof tool.progress === "object" ? tool.progress : {};
+  const threading = tool?.runtime_resources?.threading || tool?.spec?.runtime_resources?.threading || {};
   const params = tool?.params_schema && typeof tool.params_schema === "object" ? tool.params_schema : {};
   const artifactsAux = Array.isArray(tool?.artifacts_aux) ? tool.artifacts_aux : [];
   const keywords = Array.isArray(tool?.method_keywords) ? tool.method_keywords : [];
@@ -191,7 +192,7 @@ export function toolSpecInfoPayload(tool) {
           },
           { label: "First author", value: firstAuthor || "-" },
           { label: "Publication year", value: tool?.year ? String(tool.year) : "-" },
-          { label: "Primary method family", value: ({ information: "Information-theoretic", tree: "Tree ensembles", regression: "Sparse / regularized regression", neural: "Neural / deep generative", graph: "Graphical models / graph learning", correlation: "Correlation / interpolation" })[tool?.method_family] || "Not annotated" },
+          { label: "Primary method family", value: ({ information: "Information-theoretic", tree: "Tree ensembles", regression: "Regression", neural: "Neural / deep generative", graph: "Graphical models / graph learning", correlation: "Correlation / interpolation" })[tool?.method_family] || "Not annotated" },
           { label: "Keywords", value: keywords.length ? keywords.join(", ") : "-" },
           {
             label: "Implementation",
@@ -220,8 +221,11 @@ export function toolSpecInfoPayload(tool) {
               ? [
                   tool.temporal_requirements.required ? "Required" : "Optional",
                   (tool.temporal_requirements.sampling_designs || []).join(", "),
+                  `observations: ${(tool.temporal_requirements.observation_types || []).join(", ")}`,
                   ...(tool.temporal_requirements.technical_replicates ? [`technical replicates: ${tool.temporal_requirements.technical_replicates}`] : []),
                   ...(tool.temporal_requirements.min_timepoints_per_series ? [`minimum ${tool.temporal_requirements.min_timepoints_per_series} timepoints per series`] : []),
+                  ...(tool.temporal_requirements.require_regular_sampling ? ["regular sampling required"] : []),
+                  ...(tool.temporal_requirements.require_aligned_timepoints ? ["identical complete time grids required"] : []),
                 ].join("; ")
               : "No temporal contract required",
           },
@@ -239,6 +243,8 @@ export function toolSpecInfoPayload(tool) {
           },
           { label: "Required extra inputs", value: requiredExtras.length ? requiredExtras.join(", ") : "none" },
           { label: "Optional extra inputs", value: optionalExtras.length ? optionalExtras.join(", ") : "none" },
+          { label: "Thread control", value: typeof threading.supported === "boolean" ? (threading.supported ? "Supported for the declared upstream execution" : "Serial execution") : "Not declared" },
+          { label: "Resource mapping", value: threading.upstream_mapping || "Not declared" },
         ],
         conditionsLabel: "Conditional required inputs",
         conditions: conditionalRequirements,
@@ -257,7 +263,7 @@ export function toolSpecInfoPayload(tool) {
           { label: "Directed", value: String(outputs.directed ?? "-") },
           { label: "Sign", value: outputs.sign ?? "-" },
           { label: "Evidence", value: outputs.evidence ?? "-" },
-          { label: "Progress reporting", value: progress.kind || "-" },
+          { label: "Progress reporting", value: progress.kind === "none" ? "No incremental counter; see phase details" : (progress.kind || "-") },
           { label: "Progress details", value: progress.note ? String(progress.note) : "-" },
         ],
         artifactsLabel: "Auxiliary artifacts",
@@ -333,6 +339,10 @@ function formatConditionalOperator(op) {
     in: "in",
     not_in: "not in",
     exists: "exists",
+    gt: ">",
+    gte: ">=",
+    lt: "<",
+    lte: "<=",
   };
   return labels[normalized] || normalized;
 }

@@ -28,7 +28,8 @@ def test_every_baseline_profile_has_independent_gene_and_cell_axes():
         )
     }
     recipe_ids = {path.stem for path in recipes.glob("*.json")}
-    assert active <= recipe_ids
+    calibrated = {tool for tool in active if (tools / tool / "cost.json").is_file()}
+    assert calibrated <= recipe_ids
     assert recipe_ids <= active | drafts
     for path in recipes.glob("*.json"):
         config = json.loads(path.read_text())

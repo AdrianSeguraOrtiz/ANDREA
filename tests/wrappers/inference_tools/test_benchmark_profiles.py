@@ -80,69 +80,83 @@ def _extra_input_ids(
 
 
 class BenchmarkProfileResolverTest(unittest.TestCase):
-    def test_dyngenie3_plan_keeps_temporal_axes_and_branch_scope_explicit(self) -> None:
-        profiles = _resolve_profile_config("dyngenie3")
-        defaults = [
-            p for p in profiles if p.profile_id.startswith("global_rf_from_data_ts_")
-        ]
-        branches = [p for p in profiles if p not in defaults]
-        self.assertEqual(len(defaults), 9)
-        self.assertEqual(len(branches), 20)
-        dimensions = set()
-        for profile in defaults:
-            geometry = profile.input_profile["temporal_fixture"]
-            for size in profile.sizes:
-                genes, columns = map(int, size.split("x"))
-                dimensions.add(
-                    (genes, geometry["timepoints_per_series"], geometry["series_count"])
+    def test_temporal_profile_geometry_counts_ts_and_ss_in_the_same_matrix(self):
+        temporal = {
+            "schema_version": "bulk-temporal/1",
+            "time_basis": "observed",
+            "time_unit": "hour",
+            "sampling_design": "longitudinal",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            spec = _load_toolspec("dyngenie3")
+            tool = directory / "tools/unit_temporal"
+            tool.mkdir(parents=True)
+            spec["id"] = "unit_temporal"
+            (tool / "toolspec.json").write_text(json.dumps(spec))
+            recipes = directory / "recipes"
+            recipes.mkdir()
+            payload = {
+                "temporal": temporal,
+                "profiles": [
+                    {
+                        "id": "mixed",
+                        "execution": {"mode": "global"},
+                        "optional_inputs": [],
+                        "sizes": ["5x11"],
+                        "temporal_fixture": {
+                            "series_count": 2,
+                            "timepoints_per_series": 4,
+                            "steady_state_samples": 3,
+                        },
+                    }
+                ],
+            }
+            path = recipes / "unit_temporal.json"
+            path.write_text(json.dumps(payload))
+
+            def resolve():
+                return resolve_benchmark_profiles(
+                    tool_id="unit_temporal",
+                    catalog_tools_root=directory / "tools",
+                    cost_profiles_dir=recipes,
                 )
-                self.assertEqual(
-                    columns,
-                    geometry["timepoints_per_series"] * geometry["series_count"],
-                )
-            self.assertEqual(profile.params["ntrees"], 1000)
-            self.assertEqual(profile.params["tree_method"], "RF")
-            self.assertEqual(profile.params["alpha"], "from_data")
-            self.assertEqual(profile.params_profile["source"], "toolspec_defaults")
-        self.assertEqual(
-            dimensions,
-            {(g, t, s) for g in (50, 100, 200) for t in (4, 8, 16) for s in (1, 2, 4)},
-        )
-        self.assertEqual(sum(len(profile.sizes) for profile in profiles), 81)
-        for profile in branches:
-            geometry = profile.input_profile["temporal_fixture"]
-            columns = geometry["timepoints_per_series"] * geometry["series_count"]
-            vector = isinstance(profile.params["alpha"], list)
-            expected_genes = (100,) if vector else (50, 100, 200)
+
+            profile = resolve()[0]
+            self.assertEqual(profile.sizes, ("5x11",))
             self.assertEqual(
-                profile.sizes, tuple(f"{genes}x{columns}" for genes in expected_genes)
+                profile.input_profile["extras_provided"], ["column_descriptors"]
             )
-            if vector:
-                self.assertEqual(len(profile.params["alpha"]), 100)
-        self.assertEqual(
-            {profile.params["ntrees"] for profile in profiles}, {100, 300, 1000}
-        )
-        self.assertEqual(
-            {
-                profile.input_profile["temporal_fixture"]["sampling"]
-                for profile in profiles
-            },
-            {"regular", "irregular"},
-        )
-        self.assertEqual(
-            {
-                profile.input_profile["temporal_fixture"]["steady_state_samples"]
-                for profile in profiles
-            },
-            {0, 10, 20, 40},
-        )
-        steady = next(p for p in branches if "steady_state_center" in p.profile_id)
-        self.assertIn(
-            "steady_state_expression", steady.input_profile["extras_provided"]
-        )
-        self.assertEqual(
-            steady.input_profile["temporal_fixture"]["steady_state_samples"], 20
-        )
+            self.assertEqual(
+                profile.input_profile["observation_types"],
+                ["time_series", "steady_state"],
+            )
+            spec["temporal_requirements"]["observation_types"] = ["time_series"]
+            (tool / "toolspec.json").write_text(json.dumps(spec))
+            with self.assertRaisesRegex(ValueError, "only observation types consumed"):
+                resolve()
+            spec["temporal_requirements"]["observation_types"] = [
+                "time_series",
+                "steady_state",
+            ]
+            (tool / "toolspec.json").write_text(json.dumps(spec))
+            payload["profiles"][0]["sizes"] = ["5x8"]
+            path.write_text(json.dumps(payload))
+            with self.assertRaisesRegex(ValueError, "must have 11 columns"):
+                resolve()
+
+    def test_temporal_tools_without_a_recipe_do_not_invent_a_calibration_geometry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for tool in ("dyngenie3", "swing"):
+                with (
+                    self.subTest(tool=tool),
+                    self.assertRaisesRegex(ValueError, "explicit temporal calibration"),
+                ):
+                    resolve_benchmark_profiles(
+                        tool_id=tool,
+                        catalog_tools_root=CATALOG_TOOLS_ROOT,
+                        cost_profiles_dir=Path(tmp),
+                    )
 
     def test_tigress_default_calibration_does_not_inherit_smoke_overrides(self) -> None:
         profiles = {
@@ -300,7 +314,11 @@ class BenchmarkProfileResolverTest(unittest.TestCase):
         for tool_id in _tool_ids():
             with self.subTest(tool_id=tool_id):
                 config_path = COST_PROFILES_DIR / f"{tool_id}.json"
-                self.assertTrue(config_path.is_file(), f"missing {config_path}")
+                if not config_path.is_file():
+                    self.assertFalse(
+                        (CATALOG_TOOLS_ROOT / tool_id / "cost.json").exists()
+                    )
+                    continue
 
                 toolspec = _load_toolspec(tool_id)
                 profiles = _resolve_profile_config(tool_id)

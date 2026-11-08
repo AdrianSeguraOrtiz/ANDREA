@@ -223,8 +223,11 @@ def build_context_fingerprint(
             0o755,
         )
         for relative in config.templates:
-            path = scripts / "templates" / relative
-            virtual[path.name] = (path.read_bytes(), stat.S_IMODE(path.stat().st_mode))
+            path = builder.resolve_template_source(relative, repo_root=root)
+            virtual[Path(relative).name] = (
+                path.read_bytes(),
+                stat.S_IMODE(path.stat().st_mode),
+            )
         context = source_dir or root / "wrappers/inference_tools/tools" / identifier
         dockerfile = context / "Dockerfile"
     elif kind == "simulation":

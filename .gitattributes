@@ -1,0 +1,2 @@
+# Empty trailing TSV fields are data, not accidental whitespace.
+*.tsv text eol=lf whitespace=-blank-at-eol

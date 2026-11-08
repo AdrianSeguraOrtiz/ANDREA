@@ -477,7 +477,7 @@ def _parse_smoke_config_payload(
         raise ValueError(
             f"Invalid config in {config_path}: 'execution' must be an object."
         )
-    unknown_execution = sorted(set(execution.keys()).difference({"mode", "temporal"}))
+    unknown_execution = sorted(set(execution.keys()).difference({"mode"}))
     if unknown_execution:
         raise ValueError(
             f"Invalid config in {config_path}: unknown execution keys {unknown_execution}."
@@ -487,10 +487,6 @@ def _parse_smoke_config_payload(
             f"Invalid config in {config_path}: physical execution.mode must be "
             "global, group_native, or column_native."
         )
-    if "temporal" in execution:
-        from andrea.core.shared.bulk_temporal import validate_temporal_declaration
-
-        validate_temporal_declaration(execution["temporal"])
 
     param_overrides = raw.get("param_overrides", {})
     if param_overrides is None:

@@ -1,0 +1,19 @@
+column	observation_type	series_id	condition	replicate	observation_id	technical_replicate	timepoint	time_unit	sampling_design
+treated_1.t4	time_series	treated_1	treated	treated_1	treated_1.observation4	tech1	10	hour	longitudinal
+treated_1.t3	time_series	treated_1	treated	treated_1	treated_1.observation3	tech1	6	hour	longitudinal
+treated_1.t2	time_series	treated_1	treated	treated_1	treated_1.observation2	tech1	3	hour	longitudinal
+treated_1.t1	time_series	treated_1	treated	treated_1	treated_1.observation1	tech1	1	hour	longitudinal
+treated_1.t0	time_series	treated_1	treated	treated_1	treated_1.observation0	tech1	0	hour	longitudinal
+control_2.t4	time_series	control_2	control	control_2	control_2.observation4	tech1	10	hour	longitudinal
+control_2.t3	time_series	control_2	control	control_2	control_2.observation3	tech1	6	hour	longitudinal
+control_2.t2	time_series	control_2	control	control_2	control_2.observation2	tech1	3	hour	longitudinal
+control_2.t1	time_series	control_2	control	control_2	control_2.observation1	tech1	1	hour	longitudinal
+control_2.t0	time_series	control_2	control	control_2	control_2.observation0	tech1	0	hour	longitudinal
+control_1.t4	time_series	control_1	control	control_1	control_1.observation4	tech1	10	hour	longitudinal
+control_1.t3	time_series	control_1	control	control_1	control_1.observation3	tech1	6	hour	longitudinal
+control_1.t2	time_series	control_1	control	control_1	control_1.observation2	tech1	3	hour	longitudinal
+control_1.t1	time_series	control_1	control	control_1	control_1.observation1	tech1	1	hour	longitudinal
+control_1.t0	time_series	control_1	control	control_1	control_1.observation0	tech1	0	hour	longitudinal
+SS.control	steady_state		steady_state	SS.control	SS.control	measurement-1			
+SS.treated	steady_state		steady_state	SS.treated	SS.treated	measurement-1			
+SS.other	steady_state		steady_state	SS.other	SS.other	measurement-1			

@@ -525,18 +525,6 @@
               "null"
             ]
           },
-          "replicates": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "timepoints": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "native_outputs": {
             "type": "object",
             "additionalProperties": {

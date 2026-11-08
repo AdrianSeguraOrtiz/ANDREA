@@ -1574,6 +1574,10 @@ textarea {
   width: 110px;
 }
 
+#bulk-temporal-help.hidden {
+  display: none;
+}
+
 .muted-box {
   border: 1px dashed var(--border);
   border-radius: 10px;

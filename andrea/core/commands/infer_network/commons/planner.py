@@ -234,7 +234,7 @@ def _temporal_cost_context(
     *,
     dataset: DatasetContext,
     temporal_summary: dict[str, Any] | None,
-    steady_state_samples: int = 0,
+    observation_types: list[str] | None = None,
 ) -> dict[str, Any] | None:
     """Describe the finite temporal geometry supported by current cost profiles.
 
@@ -242,8 +242,16 @@ def _temporal_cost_context(
     deliberately declines technical replicas, unequal series lengths and mixed
     sampling classes rather than treating total columns as a temporal axis.
     """
-    temporal = dataset.temporal
-    if temporal is None or not isinstance(temporal_summary, dict):
+    temporal = temporal_summary
+    if not isinstance(temporal_summary, dict):
+        return None
+    from andrea.core.shared.bulk_temporal import select_temporal_observations
+
+    try:
+        selection = select_temporal_observations(
+            temporal_summary, observation_types or ["time_series", "steady_state"]
+        )
+    except (ValueError, KeyError, TypeError):
         return None
     series = temporal_summary.get("series")
     if (
@@ -251,9 +259,7 @@ def _temporal_cost_context(
         or not isinstance(series, list)
         or not series
         or temporal_summary.get("columns") != dataset.columns
-        or temporal_summary.get("observations") != dataset.columns
-        or type(steady_state_samples) is not int
-        or steady_state_samples < 0
+        or selection["observations"] != selection["columns"]
     ):
         return None
     lengths = {len(item["timepoints"]) for item in series}
@@ -272,7 +278,7 @@ def _temporal_cost_context(
         "sampling_design": temporal["sampling_design"],
         "series_count": len(series),
         "timepoints_per_series": next(iter(lengths)),
-        "steady_state_samples": steady_state_samples,
+        "steady_state_samples": len(selection["steady_state_columns"]),
         "sampling": "regular" if next(iter(sampling_classes)) else "irregular",
     }
 

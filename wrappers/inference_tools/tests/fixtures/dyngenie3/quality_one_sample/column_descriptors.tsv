@@ -1,0 +1,3 @@
+column	observation_type	series_id	condition	replicate	observation_id	technical_replicate	timepoint	time_unit	sampling_design
+q0.visit1	time_series	q0	control	q0	q0.observation1	tech1	0.5	hour	longitudinal
+q0.visit0	time_series	q0	control	q0	q0.observation0	tech1	0	hour	longitudinal

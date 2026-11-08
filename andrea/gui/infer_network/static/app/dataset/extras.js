@@ -2,12 +2,25 @@ import { $, formatBytes } from "../core/dom.js";
 import { pushToast } from "../ui/toasts.js";
 import { buildInfoTooltip, readHelpPayload, showInfoTooltip } from "../ui/popovers.js";
 import { state } from "../core/state.js";
-import { getExtraMeta, setStatusBadge, validateOptionalFile } from "./validation.js";
+import { getExtraMeta, isBulkTemporalDataset, setStatusBadge, validateOptionalFile } from "./validation.js";
 
 let onDatasetChangedFn = null;
 
 export function initExtras({ onDatasetChanged }) {
   onDatasetChangedFn = onDatasetChanged;
+  for (const id of ["column-kind", "expression-profile"]) {
+    $(id)?.addEventListener("change", () => syncDatasetInputHelp());
+  }
+}
+
+export function syncDatasetInputHelp() {
+  const active = isBulkTemporalDataset();
+  $("bulk-temporal-help")?.classList.toggle("hidden", !active);
+  if (active && listExtraKeys().includes("column_descriptors")
+      && !listAddedExtraKeys().has("column_descriptors")) {
+    addOptionalExtraRow("column_descriptors");
+  }
+  notifyDatasetChanged();
 }
 
 function notifyDatasetChanged() {
@@ -243,7 +256,7 @@ function syncExtraRowMeta(row) {
   const key = keyInput.value;
   const meta = getExtraMeta(key);
   const description = String(meta?.description || "").trim();
-  const example = String(meta?.example || "").trim();
+  const example = String(meta?.example || "").replace(/^[\r\n]+|[\r\n]+$/g, "");
   const payload = buildInfoTooltip({
     title: key,
     description: description || "Additional input file.",
@@ -353,7 +366,7 @@ function renderExtraInputModalBody() {
         buildInfoTooltip({
           title: `${key} example`,
           description: `${String(meta.file_kind || "tsv").toUpperCase()} · required columns: ${requiredCols}`,
-          example: String(meta.example || "").trim() || "No example available.",
+          example: String(meta.example || "").replace(/^[\r\n]+|[\r\n]+$/g, "") || "No example available.",
         })
       );
     });

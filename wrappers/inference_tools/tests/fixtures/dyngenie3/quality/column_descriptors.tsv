@@ -1,0 +1,26 @@
+column	observation_type	series_id	condition	replicate	observation_id	technical_replicate	timepoint	time_unit	sampling_design
+q2.visit6	time_series	q2	treated	q2	q2.observation6	tech1	12	hour	longitudinal
+q2.visit5	time_series	q2	treated	q2	q2.observation5	tech1	8	hour	longitudinal
+q2.visit4	time_series	q2	treated	q2	q2.observation4	tech1	5	hour	longitudinal
+q2.visit3	time_series	q2	treated	q2	q2.observation3	tech1	3	hour	longitudinal
+q2.visit2	time_series	q2	treated	q2	q2.observation2	tech1	1.5	hour	longitudinal
+q2.visit1	time_series	q2	treated	q2	q2.observation1	tech1	0.5	hour	longitudinal
+q2.visit0	time_series	q2	treated	q2	q2.observation0	tech1	0	hour	longitudinal
+q1.visit6	time_series	q1	control	q1	q1.observation6	tech1	12	hour	longitudinal
+q1.visit5	time_series	q1	control	q1	q1.observation5	tech1	8	hour	longitudinal
+q1.visit4	time_series	q1	control	q1	q1.observation4	tech1	5	hour	longitudinal
+q1.visit3	time_series	q1	control	q1	q1.observation3	tech1	3	hour	longitudinal
+q1.visit2	time_series	q1	control	q1	q1.observation2	tech1	1.5	hour	longitudinal
+q1.visit1	time_series	q1	control	q1	q1.observation1	tech1	0.5	hour	longitudinal
+q1.visit0	time_series	q1	control	q1	q1.observation0	tech1	0	hour	longitudinal
+q0.visit6	time_series	q0	control	q0	q0.observation6	tech1	12	hour	longitudinal
+q0.visit5	time_series	q0	control	q0	q0.observation5	tech1	8	hour	longitudinal
+q0.visit4	time_series	q0	control	q0	q0.observation4	tech1	5	hour	longitudinal
+q0.visit3	time_series	q0	control	q0	q0.observation3	tech1	3	hour	longitudinal
+q0.visit2	time_series	q0	control	q0	q0.observation2	tech1	1.5	hour	longitudinal
+q0.visit1	time_series	q0	control	q0	q0.observation1	tech1	0.5	hour	longitudinal
+q0.visit0	time_series	q0	control	q0	q0.observation0	tech1	0	hour	longitudinal
+SS0	steady_state		steady_state	SS0	SS0	measurement-1			
+SS1	steady_state		steady_state	SS1	SS1	measurement-1			
+SS2	steady_state		steady_state	SS2	SS2	measurement-1			
+SS3	steady_state		steady_state	SS3	SS3	measurement-1			

@@ -20,8 +20,7 @@
     "expression_matrix": "expression.tsv"
   },
   "extras": {
-    "timepoints": "timepoints.tsv",
-    "replicates": "replicates.tsv"
+    "column_descriptors": "column_descriptors.tsv"
   },
-  "notes": "Companion temporal-contract.json is an offline proposal; core does not discover or apply it."
+  "notes": "Unified expression matrix and canonical column_descriptors metadata. Synthetic contract fixture; no empirical accuracy or timing claims."
 }

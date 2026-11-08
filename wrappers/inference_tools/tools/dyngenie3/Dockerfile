@@ -16,5 +16,6 @@ COPY run_tool.py /app/run_tool.py
 RUN python /app/run_tool.py --prepare-upstream --output-dir /app
 COPY run_tool.sh /app/run_tool.sh
 COPY _run_tool_common.py /app/_run_tool_common.py
+COPY _column_metadata.py /app/_column_metadata.py
 RUN chmod +x /app/run_tool.sh
 ENTRYPOINT ["/app/run_tool.sh"]

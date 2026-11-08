@@ -192,12 +192,12 @@ validate_semantic_request <- function(req, params, effective_extras) {
   }
 
   design <- as.character(axes$experimental_design)
-  has_timepoints <- "timepoints" %in% effective_extras
+  has_column_descriptors <- "column_descriptors" %in% effective_extras
   has_perturbation_design <- "perturbation_design" %in% effective_extras
   has_interventions <- "interventions" %in% effective_extras
 
-  if (!identical(design, "time_series") && has_timepoints) {
-    stop("extras/timepoints.tsv is only supported for dyngen time_series capabilities.", call. = FALSE)
+  if (!identical(design, "time_series") && has_column_descriptors) {
+    stop("extras/column_descriptors.tsv is only supported for dyngen time_series capabilities.", call. = FALSE)
   }
   if (!identical(design, "perturbational") && (has_perturbation_design || has_interventions)) {
     stop(
@@ -223,8 +223,8 @@ validate_semantic_request <- function(req, params, effective_extras) {
     if (params$simulation_params$num_knockdown_simulations != 0L) {
       stop("dyngen time_series capabilities require simulation_params.num_knockdown_simulations=0.", call. = FALSE)
     }
-    if (!has_timepoints) {
-      stop("dyngen time_series capabilities require effective_extras to include timepoints.", call. = FALSE)
+    if (!has_column_descriptors) {
+      stop("dyngen time_series capabilities require effective_extras to include column_descriptors.", call. = FALSE)
     }
     return(invisible(TRUE))
   }
@@ -585,26 +585,26 @@ write_cluster_identities <- function(groups_df, milestone_order, path) {
   write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 }
 
-write_timepoints <- function(cell_info, cell_ids, path) {
+write_column_descriptors <- function(cell_info, cell_ids, path) {
   cell_df <- as.data.frame(cell_info, stringsAsFactors = FALSE)
   if (!("cell_id" %in% names(cell_df))) {
-    stop("timepoints derivation requires dataset$cell_info$cell_id.", call. = FALSE)
+    stop("column_descriptors derivation requires dataset$cell_info$cell_id.", call. = FALSE)
   }
   if (!("timepoint_group" %in% names(cell_df))) {
-    stop("timepoints derivation requires dyngen synchronised experiment timepoint_group metadata.", call. = FALSE)
+    stop("column_descriptors derivation requires dyngen synchronised experiment timepoint_group metadata.", call. = FALSE)
   }
 
   cell_df$cell_id <- as.character(cell_df$cell_id)
   cell_df$timepoint_group <- as.numeric(cell_df$timepoint_group)
   timepoint <- cell_df$timepoint_group[match(cell_ids, cell_df$cell_id)]
   if (any(is.na(timepoint))) {
-    stop("timepoints derivation found expression columns without timepoint_group metadata.", call. = FALSE)
+    stop("column_descriptors derivation found expression columns without timepoint_group metadata.", call. = FALSE)
   }
 
   out <- data.frame(
     column = as.character(cell_ids),
-    timepoint = as.numeric(timepoint),
-    timepoint_label = paste0("timepoint_", as.integer(timepoint)),
+    timepoint_group = as.numeric(timepoint),
+    time_unit = rep("model_time_group", length(cell_ids)),
     stringsAsFactors = FALSE
   )
   write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
@@ -1166,7 +1166,7 @@ write_manifest <- function(request, params, dataset, output_dir, native_outputs 
       cluster_identities = if (file.exists(file.path(output_dir, "extras", "cluster_identities.tsv"))) "extras/cluster_identities.tsv" else NULL,
       enrichment_background = if (file.exists(file.path(output_dir, "extras", "enrichment_background.txt"))) "extras/enrichment_background.txt" else NULL,
       lineage_tree = if (file.exists(file.path(output_dir, "extras", "lineage_tree.tsv"))) "extras/lineage_tree.tsv" else NULL,
-      timepoints = if (file.exists(file.path(output_dir, "extras", "timepoints.tsv"))) "extras/timepoints.tsv" else NULL,
+      column_descriptors = if (file.exists(file.path(output_dir, "extras", "column_descriptors.tsv"))) "extras/column_descriptors.tsv" else NULL,
       perturbation_design = if (file.exists(file.path(output_dir, "extras", "perturbation_design.tsv"))) "extras/perturbation_design.tsv" else NULL,
       interventions = if (file.exists(file.path(output_dir, "extras", "interventions.tsv"))) "extras/interventions.tsv" else NULL,
       pseudotime = if (file.exists(file.path(output_dir, "extras", "pseudotime.tsv"))) "extras/pseudotime.tsv" else NULL,
@@ -1226,7 +1226,7 @@ tryCatch(
     need_prior_grn <- "prior_grn" %in% effective_extras
     need_prior_grn_by_group <- "prior_grn_by_group" %in% effective_extras
     need_lineage <- "lineage_tree" %in% effective_extras
-    need_timepoints <- "timepoints" %in% effective_extras
+    need_column_descriptors <- "column_descriptors" %in% effective_extras
     need_perturbation_design <- "perturbation_design" %in% effective_extras
     need_interventions <- "interventions" %in% effective_extras
     requested_truth_contexts <- truth_contexts(request)
@@ -1306,11 +1306,11 @@ tryCatch(
         file.path(output_dir, "extras", "pseudotime.tsv")
       )
     }
-    if (need_timepoints) {
-      write_timepoints(
+    if (need_column_descriptors) {
+      write_column_descriptors(
         dataset$cell_info,
         dataset$cell_ids,
-        file.path(output_dir, "extras", "timepoints.tsv")
+        file.path(output_dir, "extras", "column_descriptors.tsv")
       )
     }
     if (need_interventions) {

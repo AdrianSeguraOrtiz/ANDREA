@@ -1,23 +1,9 @@
 {
   "execution": {
-    "mode": "global",
-    "temporal": {
-      "schema_version": "bulk-temporal/1",
-      "time_basis": "observed",
-      "time_unit": "hour",
-      "time_origin": "Synthetic experiment start",
-      "sampling_design": "longitudinal",
-      "missing_values": "reject",
-      "preprocessing": {
-        "normalization": "none; arbitrary bulk abundance units",
-        "transformation": "none"
-      },
-      "provenance": "Deterministic synthetic bulk contract fixture, not scientific ground truth or calibrated timing data."
-    }
+    "mode": "global"
   },
   "extra_files": [
-    "timepoints.tsv",
-    "replicates.tsv"
+    "column_descriptors.tsv"
   ],
   "checks": {
     "forbid_self_loops": true
@@ -61,10 +47,8 @@
     {
       "name": "tf_and_steady_quality",
       "extra_files": [
-        "timepoints.tsv",
-        "replicates.tsv",
-        "tf_list.txt",
-        "steady_state_expression.tsv"
+        "column_descriptors.tsv",
+        "tf_list.txt"
       ],
       "param_overrides": {
         "compute_quality_scores": true,

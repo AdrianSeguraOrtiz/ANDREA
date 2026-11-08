@@ -1,0 +1,9 @@
+column	observation_type	series_id	condition	replicate	observation_id	technical_replicate	timepoint	time_unit	sampling_design
+A0	time_series	series_A	control	replica_A	A0	tech1	0	hour	longitudinal
+A6	time_series	series_A	control	replica_A	A6	tech1	6	hour	longitudinal
+A12	time_series	series_A	control	replica_A	A12	tech1	12	hour	longitudinal
+B0	time_series	series_B	control	replica_B	B0	tech1	0	hour	longitudinal
+B6	time_series	series_B	control	replica_B	B6	tech1	6	hour	longitudinal
+B12	time_series	series_B	control	replica_B	B12	tech1	12	hour	longitudinal
+SS1	steady_state		steady_state	SS1	SS1	1			
+SS2	steady_state		steady_state	SS2	SS2	1			

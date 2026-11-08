@@ -1455,7 +1455,6 @@ def run_infer_network_plan(
     observed_dataset_fingerprint = fingerprint_dataset_content(
         expression_path=dataset.expression_matrix_path,
         extras=dataset.extras,
-        temporal=dataset.temporal,
     )
     if reported_dataset_fingerprint != observed_dataset_fingerprint:
         raise ValueError(
@@ -1558,6 +1557,15 @@ def run_infer_network_plan(
                 f"run_report output capability for {run_id!r} does not match "
                 "the frozen tool definition"
             )
+        from .commons.tools import _validate_requested_temporal_inputs
+
+        temporal_summary, temporal_errors, _ = _validate_requested_temporal_inputs(
+            toolspec=toolspec, dataset=dataset
+        )
+        if temporal_errors:
+            raise ValueError(
+                f"[{run_id}] temporal validation: {'; '.join(temporal_errors)}"
+            )
         runtime_input_snapshot = _build_runtime_input_snapshot(
             run_id=run_id,
             catalog_tool_id=catalog_tool_id,
@@ -1566,6 +1574,7 @@ def run_infer_network_plan(
             resolved_params=resolved_params_by_tool[run_id],
             resolved_execution=resolved_execution,
             available_extra_inputs=available_extra_inputs,
+            temporal_summary=temporal_summary,
         )
         expected_runtime_input_contract_by_run[run_id] = runtime_input_snapshot
         active_extra_input_keys_by_run[run_id] = set(
@@ -1806,7 +1815,6 @@ def run_infer_network_plan(
                 ]
             physical_execution = _runtime_execution_for_logical_run(
                 logical_spec["execution"],
-                temporal=dataset.temporal,
             )
             runtime_io_by_tool[task_id] = _prepare_tool_runtime_io(
                 run_dir=run_dir,

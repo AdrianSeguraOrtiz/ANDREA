@@ -67,7 +67,7 @@ Not claimed as Phase 1 inputs:
 
 - `measurement`: `rna_expression`
 - `resolution`: `bulk`
-- `column_kind`: `timepoints`
+- `column_kind`: `column_descriptors`
 - `experimental_design`: `time_series`
 - Truth requirements: `global`
 - Upstream switches:
@@ -78,13 +78,13 @@ Not claimed as Phase 1 inputs:
   - `maxtTimeSeries` must be divisible by `dt`; Phase 2 wrapper must reject incompatible values before invoking GNW.
 - Public expression:
   - Normalize measured time rows from the selected GNW time-series output into columns such as `series_<n>_t_<time>`.
-  - Preserve `series_id` and `timepoint` in `extras/timepoints.tsv`.
+  - Preserve `series_id` and `timepoint` in `extras/column_descriptors.tsv`.
 - Public truth:
   - `global`: native, from `*_goldstandard_signed.tsv`.
   - `group`: unavailable.
   - `column`: unavailable.
 - Extras:
-  - Derivable: `timepoints`, `perturbation_design`, `interventions`, `enrichment_background`, `prior_grn`, `tf_list`.
+  - Derivable: `column_descriptors`, `perturbation_design`, `interventions`, `enrichment_background`, `prior_grn`, `tf_list`.
 
 ## Truth Context Audit
 
@@ -143,7 +143,7 @@ Wrapper must write directly under `/work/out/`:
 - `truth/gene_universe.txt`: exact expression gene IDs, one per line.
 - `extras/perturbation_design.tsv`: one row per expression column for perturbational/time-series capabilities.
 - `extras/interventions.tsv`: distinct interventions derived from perturbation design.
-- `extras/timepoints.tsv`: time-series capability only; one row per expression column.
+- `extras/column_descriptors.tsv`: time-series capability only; one row per expression column.
 - Required extra: `tf_list.txt`.
 - Optional extras: `enrichment_background.txt`, `prior_grn.tsv`.
 - `native/`: requested native outputs, including GNW gold-standard files, raw expression tables, perturbation sidecars, XML/SBML model and normalization constant.
@@ -153,7 +153,7 @@ Wrapper must write directly under `/work/out/`:
 Public ID rules:
 
 - Gene IDs must be identical across `expression.tsv`, `truth/networks.csv`, `truth/gene_universe.txt`, `prior_grn.tsv`, `tf_list.txt` and `enrichment_background.txt`.
-- Perturbation/timepoint column IDs must be identical across `expression.tsv`, `perturbation_design.tsv`, `timepoints.tsv` and manifest entries.
+- Perturbation/timepoint column IDs must be identical across `expression.tsv`, `perturbation_design.tsv`, `column_descriptors.tsv` and manifest entries.
 
 ## Runtime Resources
 
@@ -177,7 +177,7 @@ Implemented smoke configs:
 1. `genenetweaver_bulk_perturbational_global.json`, default sandbox XML, `steady_state_experiment=knockouts`.
    - Proves `expression.tsv`, global truth, `perturbation_design`, `interventions`, `prior_grn`, `tf_list`, `enrichment_background`.
 2. `genenetweaver_bulk_time_series_global.json`, default sandbox XML, `time_series_experiment=dream4_timeseries`, small `num_time_series`, small `maxt/dt`.
-   - Proves `timepoints`, time-series perturbation design, global truth and ID consistency.
+   - Proves `column_descriptors`, time-series perturbation design, global truth and ID consistency.
 3. `genenetweaver_custom_xml_global.json`, mounted XML input using `gnw_dynamical_network`.
    - Proves conditional simulator input resolution and provenance preservation.
 
@@ -266,3 +266,8 @@ configurations passed on this final image, using the repository smoke runner
 with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
 These checks cover executable contracts and fixture outputs; they do not
 calibrate costs or independently validate biological realism.
+
+
+## Common column metadata contract
+
+The only public column-metadata extra is `column_descriptors.tsv`; all measured columns remain in `expression.tsv`. The `bulk` expression profile with `column_kind=timepoints` automatically selects the common observed-time metadata rules. `column_descriptors.tsv` carries `sampling_design=longitudinal`, `model_time` coordinates, native simulated trajectory identity, a condition constant along each trajectory, explicit simulated replicate/observation labels, and one technical measurement per observation. Model coordinates are not asserted to be physical elapsed time. Independent steady-state measurements, when supplied, belong in the same expression matrix and are marked by `observation_type=steady_state`; their sampling-design, series and time fields are empty.

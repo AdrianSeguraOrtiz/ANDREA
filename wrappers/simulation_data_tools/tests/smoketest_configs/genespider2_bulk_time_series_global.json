@@ -5,7 +5,7 @@
     "effective_extras": [
       "perturbation_design",
       "interventions",
-      "timepoints",
+      "column_descriptors",
       "enrichment_background",
       "prior_grn",
       "tf_list"
@@ -44,7 +44,7 @@
     "expression.tsv",
     "extras/perturbation_design.tsv",
     "extras/interventions.tsv",
-    "extras/timepoints.tsv",
+    "extras/column_descriptors.tsv",
     "extras/enrichment_background.txt",
     "extras/prior_grn.tsv",
     "extras/tf_list.txt",

@@ -90,18 +90,9 @@ class CustomToolsContractTests(unittest.TestCase):
             {"tools": [self._valid_tool()]},
         )
 
-    def test_temporal_requirements_round_trip_and_reject_invalid_design(self) -> None:
+    def test_temporal_requirements_are_not_a_custom_tool_extension(self) -> None:
         tool = self._valid_tool()
-        tool["temporal_requirements"] = {
-            "required": True,
-            "sampling_designs": ["longitudinal"],
-            "technical_replicates": "reject",
-            "min_timepoints_per_series": 2,
-        }
-        specs, blocked = self._normalize(tool)
-        self.assertEqual(blocked, [])
-        self.assertEqual(serialize_custom_tools(specs), {"tools": [tool]})
-        tool["temporal_requirements"]["sampling_designs"] = ["pseudotime"]
+        tool["temporal_requirements"] = {"required": True}
         specs, blocked = self._normalize(tool)
         self.assertEqual(specs, {})
         self.assertIn("temporal_requirements", blocked[0]["issues"][0]["message"])

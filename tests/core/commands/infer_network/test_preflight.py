@@ -969,10 +969,14 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 "bulk",
                 ["T0", "T1"],
                 {
-                    "timepoints": "timepoints.tsv",
+                    "column_descriptors": "column_descriptors.tsv",
                 },
                 {
-                    "timepoints.tsv": "column\ttimepoint\nT0\t0\nT1\t1\n",
+                    "column_descriptors.tsv": (
+                        "column\tobservation_type\tseries_id\tcondition\treplicate\tobservation_id\ttechnical_replicate\ttimepoint\ttime_unit\tsampling_design\n"
+                        "T0\ttime_series\tcourse1\tcontrol\tr1\to0\t1\t0\thour\tlongitudinal\n"
+                        "T1\ttime_series\tcourse1\tcontrol\tr1\to1\t1\t1\thour\tlongitudinal\n"
+                    ),
                 },
             ),
             (
@@ -1301,7 +1305,9 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 )
             )
 
-    def test_preflight_blocks_miniex3_supported_non_default_plant_default_run(self) -> None:
+    def test_preflight_blocks_miniex3_supported_non_default_plant_default_run(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             manifest_path, tools_params_path = self._write_miniex_bundle(
                 Path(tmp),
@@ -1314,7 +1320,9 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 tools_params_path=tools_params_path,
             )
             self.assertEqual(report["runs"]["selected"], [])
-            self.assertIn("reference_species=ath", report["runs"]["skipped"]["miniex3__01"])
+            self.assertIn(
+                "reference_species=ath", report["runs"]["skipped"]["miniex3__01"]
+            )
 
     def test_catalog_warns_miniex3_unsupported_plant_is_configurable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

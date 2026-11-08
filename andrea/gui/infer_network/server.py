@@ -140,8 +140,6 @@ def _load_tools_bootstrap() -> dict[str, Any]:
         "pseudotime": "column\tpseudotime\ncell_1\t0.0\ncell_2\t0.4\ncell_3\t1.0",
         "tf_list": "SOX2\nMYC\nTP53",
         "prior_grn_by_group": "group\tsource\ttarget\tscore\nA\tG1\tG2\t0.82\nB\tG1\tG3\t0.41",
-        "replicates": "column\treplicate\tbatch\nS1\tr1\tbatch_a\nS2\tr2\tbatch_a",
-        "timepoints": "column\ttimepoint\nS1\t0\nS2\t24",
     }
 
     tools: list[dict[str, Any]] = []
@@ -643,13 +641,6 @@ def _build_dataset_manifest_file(
     }
 
     dataset_manifest_path = request_dir / "dataset-manifest.json"
-
-    if "temporal" in dataset_cfg:
-        from andrea.core.shared.bulk_temporal import validate_temporal_declaration
-
-        dataset_manifest["temporal"] = validate_temporal_declaration(
-            dataset_cfg["temporal"]
-        )
 
     dataset_manifest_path.write_text(
         json.dumps(dataset_manifest, indent=2, ensure_ascii=True) + "\n",

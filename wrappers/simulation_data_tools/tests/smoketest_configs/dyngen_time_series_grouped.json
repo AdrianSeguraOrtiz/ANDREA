@@ -4,7 +4,7 @@
     "seed": 37,
     "effective_extras": [
       "groups",
-      "timepoints",
+      "column_descriptors",
       "tf_list"
     ],
     "inputs": {},
@@ -40,7 +40,7 @@
     "expression.tsv",
     "extras/tf_list.txt",
     "extras/groups.tsv",
-    "extras/timepoints.tsv",
+    "extras/column_descriptors.tsv",
     "truth/networks.csv",
     "truth/gene_universe.txt",
     "provenance/raw/group_networks_index.tsv",

@@ -1,228 +1,205 @@
 {
   "cost_relevant_params": [
+    "alpha",
     "tree_method",
     "K",
     "ntrees",
-    "alpha",
     "compute_quality_scores",
-    "save_models"
+    "save_models",
+    "maxcount"
   ],
-  "column_kind": "samples",
-  "expression_profile": "synthetic_bulk_time_series_benchmark",
+  "column_kind": "timepoints",
+  "expression_profile": "bulk",
+  "gene_id_source": "synthetic",
   "temporal": {
     "schema_version": "bulk-temporal/1",
     "time_basis": "observed",
     "time_unit": "hour",
-    "time_origin": "Synthetic start of each independent biological course (t=0).",
-    "sampling_design": "longitudinal",
-    "missing_values": "reject",
-    "preprocessing": {
-      "normalization": "none; synthetic bulk population means in arbitrary abundance units",
-      "transformation": "none"
-    },
-    "provenance": "Deterministic synthetic bulk temporal fixtures for runtime calibration only; no measured biology or scientific ground truth."
+    "sampling_design": "longitudinal"
   },
   "profiles": [
     {
-      "id": "global_rf_from_data_ts_t4_s1_spec_defaults",
+      "id": "global_spec_defaults_t4_s1",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
       "sizes": [
         "50x4",
         "100x4",
         "200x4"
-      ],
-      "temporal_fixture": {
-        "series_count": 1,
-        "timepoints_per_series": 4,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
       ]
     },
     {
-      "id": "global_rf_from_data_ts_t4_s2_spec_defaults",
+      "id": "global_spec_defaults_t4_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x8",
-        "100x8",
-        "200x8"
-      ],
+      "param_overrides": {},
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 4,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
       ]
     },
     {
-      "id": "global_rf_from_data_ts_t4_s4_spec_defaults",
+      "id": "global_spec_defaults_t4_s4",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
+      "param_overrides": {},
       "temporal_fixture": {
         "series_count": 4,
         "timepoints_per_series": 4,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
       ]
     },
     {
-      "id": "global_rf_from_data_ts_t8_s1_spec_defaults",
+      "id": "global_spec_defaults_t8_s1",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x8",
-        "100x8",
-        "200x8"
-      ],
+      "param_overrides": {},
       "temporal_fixture": {
         "series_count": 1,
         "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
       ]
     },
     {
-      "id": "global_rf_from_data_ts_t8_s2_spec_defaults",
+      "id": "global_spec_defaults_t8_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
+      "param_overrides": {},
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
       ]
     },
     {
-      "id": "global_rf_from_data_ts_t8_s4_spec_defaults",
+      "id": "global_spec_defaults_t8_s4",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x32",
-        "100x32",
-        "200x32"
-      ],
+      "param_overrides": {},
       "temporal_fixture": {
         "series_count": 4,
         "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
       ]
     },
     {
-      "id": "global_rf_from_data_ts_t16_s1_spec_defaults",
+      "id": "global_spec_defaults_t16_s1",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
+      "param_overrides": {},
       "temporal_fixture": {
         "series_count": 1,
         "timepoints_per_series": 16,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
       ]
     },
     {
-      "id": "global_rf_from_data_ts_t16_s2_spec_defaults",
+      "id": "global_spec_defaults_t16_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x32",
-        "100x32",
-        "200x32"
-      ],
+      "param_overrides": {},
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 16,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
       ]
     },
     {
-      "id": "global_rf_from_data_ts_t16_s4_spec_defaults",
+      "id": "global_spec_defaults_t16_s4",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
       "sizes": [
         "50x64",
         "100x64",
         "200x64"
-      ],
-      "temporal_fixture": {
-        "series_count": 4,
-        "timepoints_per_series": 16,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Part of the independent 3-axis default panel. Transitions occur only within each series."
       ]
     },
     {
-      "id": "global_et_center_spec_defaults",
+      "id": "global_extra_trees_t4_s1",
       "execution": {
         "mode": "global"
       },
@@ -231,23 +208,403 @@
       "param_overrides": {
         "tree_method": "ET"
       },
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x4",
+        "100x4",
+        "200x4"
+      ]
+    },
+    {
+      "id": "global_extra_trees_t4_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ]
+    },
+    {
+      "id": "global_extra_trees_t4_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
       "sizes": [
         "50x16",
         "100x16",
         "200x16"
-      ],
+      ]
+    },
+    {
+      "id": "global_extra_trees_t8_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ]
+    },
+    {
+      "id": "global_extra_trees_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
       ]
     },
     {
-      "id": "global_alpha_scalar_center_spec_defaults",
+      "id": "global_extra_trees_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ]
+    },
+    {
+      "id": "global_extra_trees_t16_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_extra_trees_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ]
+    },
+    {
+      "id": "global_extra_trees_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET"
+      },
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ]
+    },
+    {
+      "id": "global_tf_list_t4_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x4",
+        "100x4",
+        "200x4"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_list_t4_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_list_t4_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_list_t8_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_list_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_list_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_list_t16_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_list_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_list_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_alpha_scalar_t4_s2",
       "execution": {
         "mode": "global"
       },
@@ -256,23 +613,64 @@
       "param_overrides": {
         "alpha": 0.1
       },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
       "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
+        "50x8",
+        "100x8",
+        "200x8"
+      ]
+    },
+    {
+      "id": "global_alpha_scalar_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": 0.1
+      },
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
       ]
     },
     {
-      "id": "global_alpha_vector_center_spec_defaults",
+      "id": "global_alpha_scalar_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": 0.1
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ]
+    },
+    {
+      "id": "global_alpha_vector_t4_s1",
       "execution": {
         "mode": "global"
       },
@@ -382,97 +780,1223 @@
           0.2
         ]
       },
-      "sizes": [
-        "100x16"
-      ],
       "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 8,
+        "series_count": 1,
+        "timepoints_per_series": 4,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "One center point isolates this branch; it does not establish size growth, interpolation or cross-branch interactions."
-      ]
-    },
-    {
-      "id": "global_steady_state_center_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [
-        "steady_state_expression"
-      ],
-      "param_overrides": {},
       "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 8,
-        "steady_state_samples": 20,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
+        "100x4"
       ]
     },
     {
-      "id": "global_tf_list_center_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [
-        "tf_list"
-      ],
-      "param_overrides": {},
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 8,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
-      ]
-    },
-    {
-      "id": "global_quality_scores_center_spec_defaults",
+      "id": "global_alpha_vector_t4_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
       "param_overrides": {
-        "compute_quality_scores": true
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
       },
       "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
+        "100x8"
+      ]
+    },
+    {
+      "id": "global_alpha_vector_t4_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "100x16"
+      ]
+    },
+    {
+      "id": "global_alpha_vector_t8_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "100x8"
+      ]
+    },
+    {
+      "id": "global_alpha_vector_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured.",
-        "Quality stability compares all pairs of 1000 trees per target, giving quadratic tree-count work; this slice retains that real default and does not cover other quality tree counts."
+      "sizes": [
+        "100x16"
       ]
     },
     {
-      "id": "global_saved_models_center_spec_defaults",
+      "id": "global_alpha_vector_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "100x32"
+      ]
+    },
+    {
+      "id": "global_alpha_vector_t16_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "100x16"
+      ]
+    },
+    {
+      "id": "global_alpha_vector_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "100x32"
+      ]
+    },
+    {
+      "id": "global_alpha_vector_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": [
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2,
+          0.1,
+          0.2
+        ]
+      },
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "100x64"
+      ]
+    },
+    {
+      "id": "global_steady_state_t8_s2_ss10",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 10,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x26",
+        "100x26",
+        "200x26"
+      ]
+    },
+    {
+      "id": "global_steady_state_t8_s2_ss20",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 20,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x36",
+        "100x36",
+        "200x36"
+      ]
+    },
+    {
+      "id": "global_steady_state_t8_s2_ss40",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 40,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x56",
+        "100x56",
+        "200x56"
+      ]
+    },
+    {
+      "id": "global_irregular_t4_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "irregular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ]
+    },
+    {
+      "id": "global_irregular_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "irregular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_irregular_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "irregular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ]
+    },
+    {
+      "id": "global_rf_quality_100_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "compute_quality_scores": true,
+        "ntrees": 100
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_rf_quality_500_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "compute_quality_scores": true,
+        "ntrees": 500
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_rf_quality_1000_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "compute_quality_scores": true,
+        "ntrees": 1000
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_et_quality_100_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET",
+        "compute_quality_scores": true,
+        "ntrees": 100
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_et_quality_1000_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "tree_method": "ET",
+        "compute_quality_scores": true,
+        "ntrees": 1000
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_saved_models_t4_s2",
       "execution": {
         "mode": "global"
       },
@@ -481,545 +2005,412 @@
       "param_overrides": {
         "save_models": true
       },
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
       "temporal_fixture": {
         "series_count": 2,
-        "timepoints_per_series": 8,
+        "timepoints_per_series": 4,
         "steady_state_samples": 0,
         "sampling": "regular"
-      },
-      "notes": [
-        "Registered three-gene-level growth slice at fixed t8/s2; other temporal shapes and cross-factor interactions remain unmeasured."
-      ]
-    },
-    {
-      "id": "global_et_ts_t4_s2_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [],
-      "param_overrides": {
-        "tree_method": "ET"
       },
       "sizes": [
         "50x8",
         "100x8",
         "200x8"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 4,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
       ]
     },
     {
-      "id": "global_tf_list_ts_t4_s2_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [
-        "tf_list"
-      ],
-      "param_overrides": {},
-      "sizes": [
-        "50x8",
-        "100x8",
-        "200x8"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 4,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ]
-    },
-    {
-      "id": "global_alpha_vector_ts_t4_s2_spec_defaults",
+      "id": "global_saved_models_t8_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
       "param_overrides": {
-        "alpha": [
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2
-        ]
+        "save_models": true
       },
-      "sizes": [
-        "100x8"
-      ],
       "temporal_fixture": {
         "series_count": 2,
-        "timepoints_per_series": 4,
+        "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
       ]
     },
     {
-      "id": "global_et_ts_t16_s2_spec_defaults",
+      "id": "global_saved_models_t16_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
       "param_overrides": {
-        "tree_method": "ET"
+        "save_models": true
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
       },
       "sizes": [
         "50x32",
         "100x32",
         "200x32"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 16,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
       ]
     },
     {
-      "id": "global_tf_list_ts_t16_s2_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [
-        "tf_list"
-      ],
-      "param_overrides": {},
-      "sizes": [
-        "50x32",
-        "100x32",
-        "200x32"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 16,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ]
-    },
-    {
-      "id": "global_alpha_vector_ts_t16_s2_spec_defaults",
+      "id": "global_all_features_t4_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "param_overrides": {
-        "alpha": [
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2,
-          0.1,
-          0.2
-        ]
-      },
-      "sizes": [
-        "100x32"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 16,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ]
-    },
-    {
-      "id": "global_steady_state_ss10_t8_s2_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [
-        "steady_state_expression"
-      ],
-      "param_overrides": {},
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 8,
-        "steady_state_samples": 10,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ]
-    },
-    {
-      "id": "global_steady_state_ss40_t8_s2_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [
-        "steady_state_expression"
-      ],
-      "param_overrides": {},
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 8,
-        "steady_state_samples": 40,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ]
-    },
-    {
-      "id": "global_rf_k1_t8_s2_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [],
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 8,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ],
-      "param_overrides": {
-        "K": 1
-      }
-    },
-    {
-      "id": "global_rf_kall_t8_s2_spec_defaults",
-      "execution": {
-        "mode": "global"
-      },
-      "parameter_base": "spec_defaults",
-      "optional_inputs": [],
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
-      "temporal_fixture": {
-        "series_count": 2,
-        "timepoints_per_series": 8,
-        "steady_state_samples": 0,
-        "sampling": "regular"
-      },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ],
       "param_overrides": {
         "K": "all"
-      }
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ]
     },
     {
-      "id": "global_rf_ntrees100_t8_s2_spec_defaults",
+      "id": "global_all_features_t8_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
+      "param_overrides": {
+        "K": "all"
+      },
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ],
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_all_features_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "K": "all"
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ]
+    },
+    {
+      "id": "global_one_feature_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "K": 1
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_trees_100_t4_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
       "param_overrides": {
         "ntrees": 100
-      }
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ]
     },
     {
-      "id": "global_rf_ntrees300_t8_s2_spec_defaults",
+      "id": "global_trees_100_t8_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
-      "sizes": [
-        "50x16",
-        "100x16",
-        "200x16"
-      ],
+      "param_overrides": {
+        "ntrees": 100
+      },
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 8,
         "steady_state_samples": 0,
         "sampling": "regular"
       },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ],
-      "param_overrides": {
-        "ntrees": 300
-      }
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
     },
     {
-      "id": "global_rf_irregular_t8_s2_spec_defaults",
+      "id": "global_trees_100_t16_s2",
       "execution": {
         "mode": "global"
       },
       "parameter_base": "spec_defaults",
       "optional_inputs": [],
+      "param_overrides": {
+        "ntrees": 100
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ]
+    },
+    {
+      "id": "global_trees_500_t4_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "ntrees": 500
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ]
+    },
+    {
+      "id": "global_trees_500_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "ntrees": 500
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_trees_500_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "ntrees": 500
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ]
+    },
+    {
+      "id": "global_export_100_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "maxcount": 100
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ]
+    },
+    {
+      "id": "global_et_all_features_tf_t4_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "tree_method": "ET",
+        "K": "all"
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_et_all_features_tf_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "tree_method": "ET",
+        "K": "all"
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
       "sizes": [
         "50x16",
         "100x16",
         "200x16"
       ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_et_all_features_tf_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "tree_method": "ET",
+        "K": "all"
+      },
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_rf_quality_models_tf_steady_t8_s2_ss20",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "compute_quality_scores": true,
+        "save_models": true,
+        "ntrees": 500
+      },
       "temporal_fixture": {
         "series_count": 2,
         "timepoints_per_series": 8,
-        "steady_state_samples": 0,
-        "sampling": "irregular"
+        "steady_state_samples": 20,
+        "sampling": "regular"
       },
-      "notes": [
-        "Finite registered growth slice. Other temporal shapes and cross-factor combinations remain unmeasured."
-      ]
+      "sizes": [
+        "50x36",
+        "100x36",
+        "200x36"
+      ],
+      "tf_count_policy": "max(3, genes/5)"
     }
   ],
   "calibration_design": {
-    "version": 2,
-    "status": "pending_measurement",
+    "version": 1,
     "kind": "independent_temporal_grid_with_branch_growth",
     "gene_levels": [
       50,
@@ -1036,82 +2427,159 @@
       2,
       4
     ],
-    "default_point_count": 27,
-    "total_points_per_resource_stratum": 81,
+    "scientific_defaults": {
+      "alpha": "from_data",
+      "tree_method": "RF",
+      "K": "sqrt",
+      "ntrees": 1000,
+      "compute_quality_scores": false,
+      "save_models": false,
+      "maxcount": "all",
+      "seed": 0
+    },
+    "default_input": {
+      "steady_state_samples": 0,
+      "sampling": "regular"
+    },
     "resources": {
       "threads": [
         1,
         2,
-        4,
-        8
+        4
       ],
       "ram_gb": [
-        4,
-        8
+        8,
+        32
       ],
-      "strata_count": 8,
-      "concurrency": 1
+      "strata_count": 6
     },
     "repetitions": 3,
-    "planned_calibration_runs": 1944,
-    "timeout_seconds_per_run": 3600,
-    "calibration_timeout_sum_seconds": 6998400,
-    "scope": "Broad finite panel: original 27 default temporal coordinates; 54 branch coordinates. All 81 points are required separately in each of eight CPU/RAM strata with three successful retained observations. ET and TF branches cross three gene levels with three exact temporal shapes; remaining branches have only their declared independent axes.",
-    "exclusions": [
-      "ET combined with alternative decay, SS, quality or saved models",
-      "Quality combined with alternate ntrees, K, SS, TF or saved models",
-      "Arbitrary scalar/vector alpha values or vector lengths beyond the exact registered inputs",
-      "Other K and ntrees values or interpolation between sampled values",
-      "Arbitrary TF counts, TF identities or input distributions beyond the registered generator policy",
-      "Arbitrary irregular schedules, mixed regularity or unequal series lengths",
-      "SS-count interpolation and cross-factor interactions",
-      "Seed-dependent runtime variability beyond retained repetitions"
-    ],
-    "geometry_limitation": "Each resolved profile has an exact temporal shape and supports only its registered gene axis, where multiple genes were measured. Families combine finite measured coordinates, not a temporal, SS-count or parameter interpolation model. Coverage is separate from held-out actual-planner predictive checks.",
-    "measurement_gate": "Do not build images, fit models, run calibration or collect holdout timings while the existing PM2 experimental validation remains active. Reinspect host/process status before executing the deferred plan.",
-    "eta_seconds": null,
-    "eta_status": "Operational estimate must use retained timings and explicit uncertainty; quality/default1000 and 4/8-worker performance require real measurements. Timeout sums are caps, never ETA.",
-    "overhead_and_retries": "Timeout sums are execution caps, not ETAs. Startup and validation overhead are unknown; no automatic retries. Failed attempts must be retained and reviewed before adding an explicitly budgeted retry.",
-    "training_observation_rule": "Upstream h=1: sum over independent series of (timepoints_per_series - 1), plus the separate steady-state sample count. No between-series derivative is constructed.",
-    "acceptance_state": {
-      "measurement": "pending",
-      "coverage": "temporal_resource_domain_gate_implemented_unmeasured",
-      "eta_profile_selection": "exact_temporal_shape_guard_implemented_unmeasured",
-      "temporal_shape_estimator": "unsupported",
-      "predictive_accuracy": "actual_core_planner_holdout_helper_ready_unmeasured",
-      "campaign_completion_implies_integration_acceptance": false
-    },
-    "required_extensions": [
-      {
-        "component": "wrappers/inference_tools/scripts/validate_tool_costs.py:calibration_coverage",
-        "requirement": "The temporal gate requires all 81 points in all eight registered thread/RAM strata, each declared branch family and its independent coordinate axes, explicit temporal dimensions, unique captured run IDs, retained inputs/context/image and three successful raw observations per point. Finite coverage is not predictive accuracy.",
-        "status": "implemented_unmeasured"
-      },
-      {
-        "component": "andrea/core/commands/infer_network/commons/planner.py:cost profile selection",
-        "requirement": "The implemented guard compares actual validated series/timepoint shape, regularity, time unit, sampling design and steady-state sample count before profile selection. Unknown or mismatched temporal shapes fall back with a warning/provenance instead of pooling equal-column profiles. It does not establish temporal size-growth estimation or prediction accuracy.",
-        "status": "implemented_unmeasured"
-      },
-      {
-        "component": "cost estimator and prediction-validation evidence",
-        "requirement": "The prediction helper must freeze the actual ANDREA planner code, cost/spec snapshots and all 104 exact-profile case/resource predictions before collecting 312 observations for thirteen reserved gene-axis cases. Actual planning ETA decides coverage; temporal shape, SS-count and parameter interpolation remain unsupported.",
-        "status": "implemented_unmeasured"
-      }
-    ],
-    "branch_point_count": 54,
+    "total_points_per_resource_stratum": 186,
+    "planned_calibration_runs": 3348,
     "families": [
       {
-        "id": "rf_default_temporal_grid",
+        "id": "spec_defaults",
         "profile_ids": [
-          "global_rf_from_data_ts_t4_s1_spec_defaults",
-          "global_rf_from_data_ts_t4_s2_spec_defaults",
-          "global_rf_from_data_ts_t4_s4_spec_defaults",
-          "global_rf_from_data_ts_t8_s1_spec_defaults",
-          "global_rf_from_data_ts_t8_s2_spec_defaults",
-          "global_rf_from_data_ts_t8_s4_spec_defaults",
-          "global_rf_from_data_ts_t16_s1_spec_defaults",
-          "global_rf_from_data_ts_t16_s2_spec_defaults",
-          "global_rf_from_data_ts_t16_s4_spec_defaults"
+          "global_spec_defaults_t4_s1",
+          "global_spec_defaults_t4_s2",
+          "global_spec_defaults_t4_s4",
+          "global_spec_defaults_t8_s1",
+          "global_spec_defaults_t8_s2",
+          "global_spec_defaults_t8_s4",
+          "global_spec_defaults_t16_s1",
+          "global_spec_defaults_t16_s2",
+          "global_spec_defaults_t16_s4"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Independent full gene/timepoint/series grid with native scientific defaults, regular observed courses, no stationary samples and no TF restriction. Coverage does not establish prediction accuracy between or outside measured coordinates."
+      },
+      {
+        "id": "extra_trees",
+        "profile_ids": [
+          "global_extra_trees_t4_s1",
+          "global_extra_trees_t4_s2",
+          "global_extra_trees_t4_s4",
+          "global_extra_trees_t8_s1",
+          "global_extra_trees_t8_s2",
+          "global_extra_trees_t8_s4",
+          "global_extra_trees_t16_s1",
+          "global_extra_trees_t16_s2",
+          "global_extra_trees_t16_s4"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "ET",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Finite registered coordinates for this parameter/input branch, measured separately at every declared resource stratum; no unmeasured interactions or predictive-accuracy claim."
+      },
+      {
+        "id": "tf_list",
+        "profile_ids": [
+          "global_tf_list_t4_s1",
+          "global_tf_list_t4_s2",
+          "global_tf_list_t4_s4",
+          "global_tf_list_t8_s1",
+          "global_tf_list_t8_s2",
+          "global_tf_list_t8_s4",
+          "global_tf_list_t16_s1",
+          "global_tf_list_t16_s2",
+          "global_tf_list_t16_s4"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [
+          "tf_list"
         ],
         "coordinate_axes": {
           "genes": [
@@ -1136,142 +2604,31 @@
             "regular"
           ]
         },
-        "scope": "27 coordinates crossing genes, observed timepoints and independent series; no temporal-growth estimator claim.",
-        "expected_params": {
-          "tree_method": "RF",
-          "alpha": "from_data",
-          "K": "sqrt",
-          "ntrees": 1000,
-          "compute_quality_scores": false,
-          "save_models": false
-        },
-        "optional_inputs": []
+        "scope": "Full temporal grid with candidate regulators selected by max(3, genes/5), giving 10, 20 and 40 TFs for the registered gene levels. Other regulator fractions remain unvalidated."
       },
       {
-        "id": "et_gene_time_slices",
+        "id": "alpha_scalar",
         "profile_ids": [
-          "global_et_center_spec_defaults",
-          "global_et_ts_t4_s2_spec_defaults",
-          "global_et_ts_t16_s2_spec_defaults"
+          "global_alpha_scalar_t4_s2",
+          "global_alpha_scalar_t8_s2",
+          "global_alpha_scalar_t16_s2"
         ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            4,
-            8,
-            16
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "Gene growth at each of three exact temporal shapes; ET uses its native bootstrap=False default.",
         "expected_params": {
-          "tree_method": "ET",
-          "alpha": "from_data",
-          "K": "sqrt",
-          "ntrees": 1000,
-          "compute_quality_scores": false,
-          "save_models": false
-        },
-        "optional_inputs": []
-      },
-      {
-        "id": "tf_gene_time_slices",
-        "profile_ids": [
-          "global_tf_list_center_spec_defaults",
-          "global_tf_list_ts_t4_s2_spec_defaults",
-          "global_tf_list_ts_t16_s2_spec_defaults"
-        ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            4,
-            8,
-            16
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "Gene growth at each of three exact temporal shapes; TF policy max(3, genes/5) only, not arbitrary TF cardinality.",
-        "expected_params": {
-          "tree_method": "RF",
-          "alpha": "from_data",
-          "K": "sqrt",
-          "ntrees": 1000,
-          "compute_quality_scores": false,
-          "save_models": false
-        },
-        "optional_inputs": [
-          "tf_list"
-        ]
-      },
-      {
-        "id": "scalar_alpha_gene_axis",
-        "profile_ids": [
-          "global_alpha_scalar_center_spec_defaults"
-        ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            8
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "Literal alpha=0.1, gene growth only at t8/s2.",
-        "expected_params": {
-          "tree_method": "RF",
           "alpha": 0.1,
+          "tree_method": "RF",
           "K": "sqrt",
           "ntrees": 1000,
           "compute_quality_scores": false,
-          "save_models": false
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
         },
-        "optional_inputs": []
-      },
-      {
-        "id": "vector_alpha_temporal_points",
-        "profile_ids": [
-          "global_alpha_vector_center_spec_defaults",
-          "global_alpha_vector_ts_t4_s2_spec_defaults",
-          "global_alpha_vector_ts_t16_s2_spec_defaults"
-        ],
+        "optional_inputs": [],
         "coordinate_axes": {
           "genes": [
-            100
+            50,
+            100,
+            200
           ],
           "timepoints_per_series": [
             4,
@@ -1288,9 +2645,22 @@
             "regular"
           ]
         },
-        "scope": "The unchanged 100-gene ordered alpha vector at three exact temporal shapes; no gene or temporal interpolation.",
+        "scope": "Finite registered coordinates for this parameter/input branch, measured separately at every declared resource stratum; no unmeasured interactions or predictive-accuracy claim."
+      },
+      {
+        "id": "alpha_vector",
+        "profile_ids": [
+          "global_alpha_vector_t4_s1",
+          "global_alpha_vector_t4_s2",
+          "global_alpha_vector_t4_s4",
+          "global_alpha_vector_t8_s1",
+          "global_alpha_vector_t8_s2",
+          "global_alpha_vector_t8_s4",
+          "global_alpha_vector_t16_s1",
+          "global_alpha_vector_t16_s2",
+          "global_alpha_vector_t16_s4"
+        ],
         "expected_params": {
-          "tree_method": "RF",
           "alpha": [
             0.1,
             0.2,
@@ -1393,20 +2763,56 @@
             0.1,
             0.2
           ],
+          "tree_method": "RF",
           "K": "sqrt",
           "ntrees": 1000,
           "compute_quality_scores": false,
-          "save_models": false
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
         },
-        "optional_inputs": []
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            100
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Fixed 100-gene axis required by the exact row-ordered alpha vector; independent timepoint and series growth only. Other gene counts or decay vectors remain unvalidated."
       },
       {
-        "id": "steady_state_gene_count_slices",
+        "id": "steady_state",
         "profile_ids": [
-          "global_steady_state_center_spec_defaults",
-          "global_steady_state_ss10_t8_s2_spec_defaults",
-          "global_steady_state_ss40_t8_s2_spec_defaults"
+          "global_steady_state_t8_s2_ss10",
+          "global_steady_state_t8_s2_ss20",
+          "global_steady_state_t8_s2_ss40"
         ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
         "coordinate_axes": {
           "genes": [
             50,
@@ -1428,24 +2834,26 @@
             "regular"
           ]
         },
-        "scope": "Gene growth separately at SS counts 10,20,40; no SS-count interpolation or interaction coverage.",
+        "scope": "Stationary-sample growth at eight timepoints in each of two courses; all TS and SS columns remain in one expression matrix. Other temporal/stationary combinations remain unvalidated."
+      },
+      {
+        "id": "irregular",
+        "profile_ids": [
+          "global_irregular_t4_s2",
+          "global_irregular_t8_s2",
+          "global_irregular_t16_s2"
+        ],
         "expected_params": {
-          "tree_method": "RF",
           "alpha": "from_data",
+          "tree_method": "RF",
           "K": "sqrt",
           "ntrees": 1000,
           "compute_quality_scores": false,
-          "save_models": false
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
         },
-        "optional_inputs": [
-          "steady_state_expression"
-        ]
-      },
-      {
-        "id": "quality_gene_axis",
-        "profile_ids": [
-          "global_quality_scores_center_spec_defaults"
-        ],
+        "optional_inputs": [],
         "coordinate_axes": {
           "genes": [
             50,
@@ -1453,217 +2861,9 @@
             200
           ],
           "timepoints_per_series": [
-            8
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "RF quality at real default 1000 trees, t8/s2. Stability materializes all tree pairs; no other quality tree count or ET quality cost claim.",
-        "expected_params": {
-          "tree_method": "RF",
-          "alpha": "from_data",
-          "K": "sqrt",
-          "ntrees": 1000,
-          "compute_quality_scores": true,
-          "save_models": false
-        },
-        "optional_inputs": []
-      },
-      {
-        "id": "saved_models_gene_axis",
-        "profile_ids": [
-          "global_saved_models_center_spec_defaults"
-        ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            8
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "Serialization cost with real default 1000 trees, t8/s2 only.",
-        "expected_params": {
-          "tree_method": "RF",
-          "alpha": "from_data",
-          "K": "sqrt",
-          "ntrees": 1000,
-          "compute_quality_scores": false,
-          "save_models": true
-        },
-        "optional_inputs": []
-      },
-      {
-        "id": "k1_gene_axis",
-        "profile_ids": [
-          "global_rf_k1_t8_s2_spec_defaults"
-        ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            8
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "Literal sampled parameter value, gene growth at t8/s2; no parameter interpolation or cross-factor interaction claim.",
-        "expected_params": {
-          "tree_method": "RF",
-          "alpha": "from_data",
-          "K": 1,
-          "ntrees": 1000,
-          "compute_quality_scores": false,
-          "save_models": false
-        },
-        "optional_inputs": []
-      },
-      {
-        "id": "kall_gene_axis",
-        "profile_ids": [
-          "global_rf_kall_t8_s2_spec_defaults"
-        ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            8
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "Literal sampled parameter value, gene growth at t8/s2; no parameter interpolation or cross-factor interaction claim.",
-        "expected_params": {
-          "tree_method": "RF",
-          "alpha": "from_data",
-          "K": "all",
-          "ntrees": 1000,
-          "compute_quality_scores": false,
-          "save_models": false
-        },
-        "optional_inputs": []
-      },
-      {
-        "id": "ntrees100_gene_axis",
-        "profile_ids": [
-          "global_rf_ntrees100_t8_s2_spec_defaults"
-        ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            8
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "Literal sampled parameter value, gene growth at t8/s2; no parameter interpolation or cross-factor interaction claim.",
-        "expected_params": {
-          "tree_method": "RF",
-          "alpha": "from_data",
-          "K": "sqrt",
-          "ntrees": 100,
-          "compute_quality_scores": false,
-          "save_models": false
-        },
-        "optional_inputs": []
-      },
-      {
-        "id": "ntrees300_gene_axis",
-        "profile_ids": [
-          "global_rf_ntrees300_t8_s2_spec_defaults"
-        ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            8
-          ],
-          "independent_series": [
-            2
-          ],
-          "steady_state_samples": [
-            0
-          ],
-          "sampling": [
-            "regular"
-          ]
-        },
-        "scope": "Literal sampled parameter value, gene growth at t8/s2; no parameter interpolation or cross-factor interaction claim.",
-        "expected_params": {
-          "tree_method": "RF",
-          "alpha": "from_data",
-          "K": "sqrt",
-          "ntrees": 300,
-          "compute_quality_scores": false,
-          "save_models": false
-        },
-        "optional_inputs": []
-      },
-      {
-        "id": "irregular_gene_axis",
-        "profile_ids": [
-          "global_rf_irregular_t8_s2_spec_defaults"
-        ],
-        "coordinate_axes": {
-          "genes": [
-            50,
-            100,
-            200
-          ],
-          "timepoints_per_series": [
-            8
+            4,
+            8,
+            16
           ],
           "independent_series": [
             2
@@ -1675,188 +2875,515 @@
             "irregular"
           ]
         },
-        "scope": "One registered irregular synthetic schedule at t8/s2; no claim for arbitrary unequal grids or unequal series lengths.",
+        "scope": "Irregular observed-coordinate fixture family at two courses, with independent gene/timepoint growth. Arbitrary interval distributions and independent-sample designs remain outside this measured branch."
+      },
+      {
+        "id": "rf_quality_100",
+        "profile_ids": [
+          "global_rf_quality_100_t8_s2"
+        ],
         "expected_params": {
-          "tree_method": "RF",
           "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 100,
+          "compute_quality_scores": true,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "RF quality diagnostics with 100 trees, eight timepoints and two courses, across the registered gene levels. Each tree-count branch is measured directly; no assumption of linear diagnostic growth."
+      },
+      {
+        "id": "rf_quality_500",
+        "profile_ids": [
+          "global_rf_quality_500_t8_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 500,
+          "compute_quality_scores": true,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "RF quality diagnostics with 500 trees, eight timepoints and two courses, across the registered gene levels. Each tree-count branch is measured directly; no assumption of linear diagnostic growth."
+      },
+      {
+        "id": "rf_quality_1000",
+        "profile_ids": [
+          "global_rf_quality_1000_t8_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": true,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "RF quality diagnostics with 1000 trees, eight timepoints and two courses, across the registered gene levels. Each tree-count branch is measured directly; no assumption of linear diagnostic growth."
+      },
+      {
+        "id": "et_quality_100",
+        "profile_ids": [
+          "global_et_quality_100_t8_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "ET",
+          "K": "sqrt",
+          "ntrees": 100,
+          "compute_quality_scores": true,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "ExtraTrees stability diagnostics with 100 trees, eight timepoints and two courses, across the registered gene levels. RF prediction diagnostics are not supplied by this native branch."
+      },
+      {
+        "id": "et_quality_1000",
+        "profile_ids": [
+          "global_et_quality_1000_t8_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "ET",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": true,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "ExtraTrees stability diagnostics with 1000 trees, eight timepoints and two courses, across the registered gene levels. RF prediction diagnostics are not supplied by this native branch."
+      },
+      {
+        "id": "saved_models",
+        "profile_ids": [
+          "global_saved_models_t4_s2",
+          "global_saved_models_t8_s2",
+          "global_saved_models_t16_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
           "K": "sqrt",
           "ntrees": 1000,
           "compute_quality_scores": false,
-          "save_models": false
+          "save_models": true,
+          "maxcount": "all",
+          "seed": 0
         },
-        "optional_inputs": []
-      }
-    ]
-  },
-  "holdout_reservation": {
-    "status": "reserved_unmeasured_not_a_frozen_prediction_plan",
-    "cases": [
-      {
-        "id": "default_gene_interpolation_t8_s2",
-        "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
-        "genes": 75,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765431,
-        "kind": "interpolation"
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Finite registered coordinates for this parameter/input branch, measured separately at every declared resource stratum; no unmeasured interactions or predictive-accuracy claim."
       },
       {
-        "id": "default_gene_extrapolation_t8_s2",
-        "profile_id": "global_rf_from_data_ts_t8_s2_spec_defaults",
-        "genes": 250,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765439,
-        "kind": "extrapolation"
+        "id": "all_features",
+        "profile_ids": [
+          "global_all_features_t4_s2",
+          "global_all_features_t8_s2",
+          "global_all_features_t16_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "all",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Finite registered coordinates for this parameter/input branch, measured separately at every declared resource stratum; no unmeasured interactions or predictive-accuracy claim."
       },
       {
-        "id": "et_gene_interpolation",
-        "profile_id": "global_et_center_spec_defaults",
-        "genes": 75,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765443,
-        "kind": "interpolation"
+        "id": "one_feature",
+        "profile_ids": [
+          "global_one_feature_t8_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": 1,
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Finite registered coordinates for this parameter/input branch, measured separately at every declared resource stratum; no unmeasured interactions or predictive-accuracy claim."
       },
       {
-        "id": "tf_gene_extrapolation",
-        "profile_id": "global_tf_list_center_spec_defaults",
-        "genes": 250,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765449,
-        "kind": "extrapolation"
+        "id": "trees_100",
+        "profile_ids": [
+          "global_trees_100_t4_s2",
+          "global_trees_100_t8_s2",
+          "global_trees_100_t16_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 100,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Finite registered coordinates for this parameter/input branch, measured separately at every declared resource stratum; no unmeasured interactions or predictive-accuracy claim."
       },
       {
-        "id": "scalar_alpha_gene_interpolation",
-        "profile_id": "global_alpha_scalar_center_spec_defaults",
-        "genes": 75,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765457,
-        "kind": "interpolation"
+        "id": "trees_500",
+        "profile_ids": [
+          "global_trees_500_t4_s2",
+          "global_trees_500_t8_s2",
+          "global_trees_500_t16_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 500,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Finite registered coordinates for this parameter/input branch, measured separately at every declared resource stratum; no unmeasured interactions or predictive-accuracy claim."
       },
       {
-        "id": "steady_state20_gene_interpolation",
-        "profile_id": "global_steady_state_center_spec_defaults",
-        "genes": 75,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765461,
-        "kind": "interpolation"
+        "id": "export_100",
+        "profile_ids": [
+          "global_export_100_t8_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": 100,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Export truncation to 100 edges at eight timepoints and two courses; native fitting still uses all target genes. This measures a bounded output branch, not a fitting speedup."
       },
       {
-        "id": "k1_gene_interpolation",
-        "profile_id": "global_rf_k1_t8_s2_spec_defaults",
-        "genes": 75,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765469,
-        "kind": "interpolation"
+        "id": "et_all_features_tf",
+        "profile_ids": [
+          "global_et_all_features_tf_t4_s2",
+          "global_et_all_features_tf_t8_s2",
+          "global_et_all_features_tf_t16_s2"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "ET",
+          "K": "all",
+          "ntrees": 1000,
+          "compute_quality_scores": false,
+          "save_models": false,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [
+          "tf_list"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Finite registered coordinates for this parameter/input branch, measured separately at every declared resource stratum; no unmeasured interactions or predictive-accuracy claim."
       },
       {
-        "id": "kall_gene_extrapolation",
-        "profile_id": "global_rf_kall_t8_s2_spec_defaults",
-        "genes": 250,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765473,
-        "kind": "extrapolation"
-      },
-      {
-        "id": "ntrees100_gene_interpolation",
-        "profile_id": "global_rf_ntrees100_t8_s2_spec_defaults",
-        "genes": 75,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765479,
-        "kind": "interpolation"
-      },
-      {
-        "id": "ntrees300_gene_extrapolation",
-        "profile_id": "global_rf_ntrees300_t8_s2_spec_defaults",
-        "genes": 250,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765487,
-        "kind": "extrapolation"
-      },
-      {
-        "id": "quality_gene_interpolation",
-        "profile_id": "global_quality_scores_center_spec_defaults",
-        "genes": 75,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765491,
-        "kind": "interpolation"
-      },
-      {
-        "id": "saved_models_gene_extrapolation",
-        "profile_id": "global_saved_models_center_spec_defaults",
-        "genes": 250,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765497,
-        "kind": "extrapolation"
-      },
-      {
-        "id": "irregular_gene_interpolation",
-        "profile_id": "global_rf_irregular_t8_s2_spec_defaults",
-        "genes": 75,
-        "timepoints_per_series": 8,
-        "independent_series": 2,
-        "total_columns": 16,
-        "columns": 16,
-        "seed": 765503,
-        "kind": "interpolation"
+        "id": "rf_quality_models_tf_steady",
+        "profile_ids": [
+          "global_rf_quality_models_tf_steady_t8_s2_ss20"
+        ],
+        "expected_params": {
+          "alpha": "from_data",
+          "tree_method": "RF",
+          "K": "sqrt",
+          "ntrees": 500,
+          "compute_quality_scores": true,
+          "save_models": true,
+          "maxcount": "all",
+          "seed": 0
+        },
+        "optional_inputs": [
+          "tf_list"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            20
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Explicit interaction of RF quality, 500 trees, model serialization, TF restriction and 20 stationary samples, at eight timepoints in two courses. Other combined branches remain unvalidated."
       }
     ],
-    "profile_scope": "Thirteen independently reserved gene-axis cases at exact registered t8/s2 temporal/resource/recipe contexts, across all eight CPU/RAM strata. Vector alpha remains fixed at 100 genes and has no gene-growth prediction claim. SS10/40, ET/TF at other temporal shapes and temporal/SS-count interpolation remain unsupported by these holdouts.",
-    "repetitions": 3,
-    "planned_runs": 312,
-    "timeout_sum_seconds": 1123200,
-    "max_relative_error": 0.35,
-    "min_planning_coverage": 1.0,
-    "required_before_measurement": "Pass finite structural/provenance/family coverage on the private calibration snapshot; freeze actual core planner code, cost/spec snapshots and all 104 case/resource predictions before collecting 312 held-out observations. No acceptance is implied by allocated or completed timings.",
-    "independence": "Never include these dimensions or their primary matrix bytes in calibration recipes, calibration fits, reuse directories or benchmark --size overrides. Distinct seeds alone do not establish dimensional independence.",
-    "temporal_shape_predictions": "Unsupported pending temporal shape matching, aggregate coverage and a reviewed temporal estimator. No temporal-shape interpolation/extrapolation timings are allocated by this reservation.",
-    "resources": {
-      "threads": [
-        1,
-        2,
-        4,
-        8
-      ],
-      "ram_gb": [
-        4,
-        8
-      ],
-      "strata_count": 8,
-      "concurrency": 1
-    }
+    "scope": "Synthetic longitudinal bulk fixture families at explicitly registered dimensions, scientific parameters, inputs and thread/RAM strata only. Independent gene/timepoint/series growth is measured for defaults and the selected major branches. Registered branch slices do not imply coverage of arbitrary parameter combinations, expression distributions, temporal grids, TF counts, hardware or extrapolated sizes; there is no universal precision guarantee.",
+    "validation_policy": "Keep independently seeded intermediate and off-grid dimensions, expression distributions and registered resource/profile strata outside all calibration inputs and reuse sources. Freeze cost/model/predictions and acceptance thresholds before collecting held-out timings; report interpolation and extrapolation separately. Coverage is not prediction validation."
   }
 }

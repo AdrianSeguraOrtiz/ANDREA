@@ -238,88 +238,89 @@ class BenchmarkInputGeneratorTest(unittest.TestCase):
                     profile,
                 )
 
-    def test_bulk_temporal_fixture_preserves_series_and_separate_steady_state(
-        self,
-    ) -> None:
-        profile = BenchmarkInputProfile.from_cost_input_profile(
-            {
-                "column_kind": "samples",
-                "extras_provided": [
-                    "timepoints",
-                    "replicates",
-                    "steady_state_expression",
-                ],
-                "temporal": {
-                    "schema_version": "bulk-temporal/1",
-                    "time_basis": "observed",
-                    "time_unit": "hour",
-                    "time_origin": "Each synthetic series starts at zero.",
-                    "sampling_design": "longitudinal",
-                    "missing_values": "reject",
-                    "preprocessing": {
-                        "normalization": "none; synthetic bulk means",
-                        "transformation": "none",
-                    },
-                    "provenance": "Synthetic contract fixture, not biological evidence.",
-                },
-                "temporal_fixture": {
-                    "series_count": 2,
-                    "timepoints_per_series": 4,
-                    "steady_state_samples": 3,
-                    "sampling": "irregular",
-                },
+    def test_bulk_temporal_fixture_has_one_mixed_matrix_and_role_descriptors(self):
+        payload = {
+            "column_kind": "timepoints",
+            "extras_provided": ["column_descriptors"],
+            "temporal": {
+                "schema_version": "bulk-temporal/1",
+                "time_basis": "observed",
+                "time_unit": "hour",
+                "sampling_design": "longitudinal",
             },
-            seed=42,
-        )
+            "temporal_fixture": {
+                "series_count": 2,
+                "timepoints_per_series": 4,
+                "steady_state_samples": 3,
+                "sampling": "irregular",
+            },
+        }
+        profile = BenchmarkInputProfile.from_cost_input_profile(payload, seed=42)
         with tempfile.TemporaryDirectory() as tmp:
             bundle = write_benchmark_io_dir(
-                Path(tmp), BenchmarkInputSize(genes=5, columns=8), profile
+                Path(tmp), BenchmarkInputSize(genes=5, columns=11), profile
             )
-            _header, times = _read_tsv(bundle.extras["timepoints"])
-            _header, replicates = _read_tsv(bundle.extras["replicates"])
-            self.assertEqual([row["column"] for row in times], list(bundle.columns))
+            _, metadata = _read_tsv(bundle.extras["column_descriptors"])
+            times = [
+                row for row in metadata if row["observation_type"] == "time_series"
+            ]
+            steady = [
+                row for row in metadata if row["observation_type"] == "steady_state"
+            ]
+            self.assertEqual([row["column"] for row in metadata], list(bundle.columns))
             self.assertEqual(
                 [row["series_id"] for row in times], ["series_1"] * 4 + ["series_2"] * 4
             )
             self.assertEqual(
                 [float(row["timepoint"]) for row in times], [0, 1.25, 3, 5.25] * 2
             )
-            self.assertEqual(len({row["observation_id"] for row in times}), 8)
-            self.assertEqual({row["time_unit"] for row in times}, {"hour"})
             self.assertEqual(
-                [row["replicate"] for row in replicates], ["bio_1"] * 4 + ["bio_2"] * 4
+                [row["replicate"] for row in times], ["bio_1"] * 4 + ["bio_2"] * 4
             )
             self.assertEqual(
-                {row["technical_replicate"] for row in replicates}, {"tech1"}
+                {row["technical_replicate"] for row in metadata}, {"tech1"}
             )
-            steady_genes, steady_columns = _read_expression(
-                bundle.extras["steady_state_expression"]
+            self.assertEqual({row["column"] for row in steady}, {"SS1", "SS2", "SS3"})
+            self.assertTrue(
+                all(
+                    row[field] == ""
+                    for row in steady
+                    for field in (
+                        "series_id",
+                        "timepoint",
+                        "time_unit",
+                        "sampling_design",
+                    )
+                )
             )
-            self.assertEqual(steady_genes, set(bundle.genes))
-            self.assertEqual(steady_columns, {"SS1", "SS2", "SS3"})
-            self.assertTrue(steady_columns.isdisjoint(bundle.columns))
+            self.assertEqual(set(bundle.extras), {"column_descriptors"})
+            genes, columns = _read_expression(bundle.expression_path)
+            self.assertEqual(genes, set(bundle.genes))
+            self.assertEqual(len(columns), 11)
             from andrea.core.shared.bulk_temporal import validate_bulk_temporal_inputs
 
             report = validate_bulk_temporal_inputs(
-                temporal=profile.temporal,
                 expression_path=bundle.expression_path,
-                timepoints_path=bundle.extras["timepoints"],
-                replicates_path=bundle.extras["replicates"],
+                column_descriptors_path=bundle.extras["column_descriptors"],
             )
             self.assertEqual(report["status"], "ok")
             self.assertEqual(len(report["longitudinal_transitions"]), 6)
+            self.assertEqual(len(report["steady_state_columns"]), 3)
 
-    def test_temporal_geometry_rejects_flattened_or_ambiguous_inputs(self) -> None:
-        config = json.loads(
-            (
-                REPO_ROOT / "wrappers/inference_tools/cost_profiles/dyngenie3.json"
-            ).read_text()
-        )
-        base = config["profiles"][0]
+    def test_temporal_geometry_rejects_flattened_or_missing_descriptor_inputs(self):
         payload = {
-            "temporal": config["temporal"],
-            "temporal_fixture": base["temporal_fixture"],
-            "extras_provided": ["timepoints", "replicates"],
+            "temporal": {
+                "schema_version": "bulk-temporal/1",
+                "time_basis": "observed",
+                "time_unit": "hour",
+                "sampling_design": "longitudinal",
+            },
+            "temporal_fixture": {
+                "series_count": 2,
+                "timepoints_per_series": 4,
+                "steady_state_samples": 3,
+            },
+            "extras_provided": ["column_descriptors"],
         }
         profile = BenchmarkInputProfile.from_cost_input_profile(payload, seed=2)
         with tempfile.TemporaryDirectory() as tmp:
@@ -328,31 +329,29 @@ class BenchmarkInputGeneratorTest(unittest.TestCase):
                     Path(tmp), BenchmarkInputSize(genes=5, columns=8), profile
                 )
             self.assertFalse((Path(tmp) / "expression.tsv").exists())
-
-        payload["extras_provided"] = ["timepoints"]
+        payload["extras_provided"] = []
         profile = BenchmarkInputProfile.from_cost_input_profile(payload, seed=2)
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(
-                ValueError, "require timepoints and replicates"
-            ):
+            with self.assertRaisesRegex(ValueError, "require column_descriptors"):
                 write_benchmark_io_dir(
-                    Path(tmp), BenchmarkInputSize(genes=5, columns=4), profile
+                    Path(tmp), BenchmarkInputSize(genes=5, columns=11), profile
                 )
 
-    def test_non_temporal_metadata_retains_historical_layout(self) -> None:
+    def test_generic_descriptors_declare_scientific_covariates_explicitly(self):
         with tempfile.TemporaryDirectory() as tmp:
             bundle = write_benchmark_io_dir(
                 Path(tmp),
                 BenchmarkInputSize(genes=3, columns=4),
-                BenchmarkInputProfile(extras_provided=("timepoints", "replicates")),
+                BenchmarkInputProfile(extras_provided=("column_descriptors",)),
             )
             self.assertEqual(
-                bundle.extras["timepoints"].read_text(),
-                "column\ttimepoint\nS1\t0.0\nS2\t1.0\nS3\t2.0\nS4\t3.0\n",
-            )
-            self.assertEqual(
-                _read_tsv(bundle.extras["replicates"])[0],
-                ["column", "replicate", "batch"],
+                _read_tsv(bundle.extras["column_descriptors"])[0],
+                [
+                    "column",
+                    "batch",
+                    "condition",
+                    "cell_type",
+                ],
             )
 
 

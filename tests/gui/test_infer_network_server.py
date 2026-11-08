@@ -34,33 +34,20 @@ from andrea.core.commands.infer_network.commons.shared import PlanWave, ToolPlan
     "GUI test dependencies are not installed",
 )
 class InferNetworkGuiServerTests(unittest.TestCase):
-    def test_uploaded_bulk_temporal_declaration_reaches_manifest_and_core(self) -> None:
+    def test_uploaded_metadata_keeps_generic_validation_without_reading_temporal_roles(
+        self,
+    ) -> None:
         fixture = (
             Path(__file__).resolve().parents[1]
             / "fixtures/bulk_time_series/regular_longitudinal"
         )
-        audit = json.loads((fixture / "temporal-contract.json").read_text())
-        temporal = {
-            key: value
-            for key, value in audit.items()
-            if key
-            not in {
-                "status",
-                "expression_matrix",
-                "timepoints",
-                "replicates",
-                "network_semantics",
-            }
-        }
-        temporal["schema_version"] = "bulk-temporal/1"
         form = {
             key: SimpleNamespace(
                 filename=filename, file=io.BytesIO((fixture / filename).read_bytes())
             )
             for key, filename in {
                 "expression_file": "expression.tsv",
-                "extra__timepoints": "timepoints.tsv",
-                "extra__replicates": "replicates.tsv",
+                "extra__column_descriptors": "column_descriptors.tsv",
             }.items()
         }
         with tempfile.TemporaryDirectory() as tmp:
@@ -74,17 +61,18 @@ class InferNetworkGuiServerTests(unittest.TestCase):
                             "taxonomic_group": "synthetic",
                             "ncbi_taxon_id": None,
                         },
-                        "temporal": temporal,
                     }
                 },
                 form=form,
                 request_dir=Path(tmp),
                 bootstrap=gui_server._load_tools_bootstrap(),
             )
-            self.assertEqual(json.loads(manifest.read_text())["temporal"], temporal)
+            self.assertNotIn("temporal", json.loads(manifest.read_text()))
             report = gui_server.preflight_infer_network(dataset_manifest_path=manifest)
-            self.assertEqual(report["dataset"]["temporal"], temporal)
-            self.assertEqual(len(report["input_validation"]["temporal"]["series"]), 4)
+            self.assertNotIn("temporal", report["dataset"])
+            self.assertNotIn("temporal", report["input_validation"])
+            self.assertFalse(report["runs"].get("temporal_validation"))
+            self.assertEqual(report["input_validation"]["extras"]["column_descriptors"]["status"], "ok")
 
     def test_bootstrap_exposes_scmtni_execution_default(self) -> None:
         payload = gui_server._load_tools_bootstrap()

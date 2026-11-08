@@ -24,6 +24,12 @@ export function getExpressionHelp() {
   };
 }
 
+export function isBulkTemporalDataset() {
+  return Boolean(typeof document !== "undefined"
+    && document.getElementById("column-kind")?.value === "timepoints"
+    && document.getElementById("expression-profile")?.value === "bulk");
+}
+
 export function getExtraMeta(key) {
   const list = Array.isArray(state.bootstrap?.extra_inputs) ? state.bootstrap.extra_inputs : [];
   return list.find((item) => item.key === key) || null;

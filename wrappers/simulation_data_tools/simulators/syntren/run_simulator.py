@@ -44,8 +44,6 @@ EXTRA_KEYS = [
     "prior_grn",
     "tf_list",
     "prior_grn_by_group",
-    "replicates",
-    "timepoints",
     "spatial_coordinates",
     "chromatin_accessibility",
     "chromatin_regions",

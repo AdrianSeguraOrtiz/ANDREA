@@ -38,7 +38,7 @@ All claimed capabilities use:
 Unclaimed capabilities:
 
 - `column` truth is not claimed. SERGIO uses a fixed GRN and does not emit per-expression-column GRNs; duplicating the fixed network into `column:<id>` contexts would misrepresent the contract.
-- Bulk, pseudo-bulk, spatial, perturbational and time-series axes were re-reviewed during the expanded semantic-contract migration and are not claimed. The reviewed public API has no JSON-safe perturbation/time-series benchmark contract with labeled truth contexts, and differentiation mode does not expose a sampled per-cell temporal index that would satisfy the normalized `timepoints.tsv` contract.
+- Bulk, pseudo-bulk, spatial, perturbational and time-series axes were re-reviewed during the expanded semantic-contract migration and are not claimed. The reviewed public API has no JSON-safe perturbation/time-series benchmark contract with labeled truth contexts, and differentiation mode does not expose a sampled per-cell temporal index that would satisfy the observed-time `column_descriptors.tsv` profile.
 - Pseudotime is not claimed. Differentiation simulations sample random transient cells without returning the sampled time indices needed for a public pseudotime extra.
 
 ## Truth Context Decisions

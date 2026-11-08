@@ -5,6 +5,9 @@
     ],
     "python_arboreto": [
       "python/_arboreto_common.py"
+    ],
+    "python_column_metadata": [
+      "python/_column_metadata.py"
     ]
   },
   "tools": {
@@ -152,7 +155,8 @@
     "dyngenie3": {
       "runtime": "python",
       "bundles": [
-        "python_runtime_contract"
+        "python_runtime_contract",
+        "python_column_metadata"
       ],
       "native_threads": "single"
     }

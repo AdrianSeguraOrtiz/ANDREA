@@ -150,7 +150,9 @@ def _scenario_payload_from_config(
     data_axes = scenario.get("data_axes")
     truth_requirements = scenario.get("truth_requirements")
     if not isinstance(data_axes, dict) or not isinstance(truth_requirements, dict):
-        raise ValueError("config.scenario must include data_axes and truth_requirements")
+        raise ValueError(
+            "config.scenario must include data_axes and truth_requirements"
+        )
 
     payload = {
         "schema_version": "1.0",
@@ -761,7 +763,8 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             "badges": ["standardized extra", "column metadata"],
             "tips": [
                 "Each expression column should appear once.",
-                "Used by tools that consume auxiliary sample, cell or condition descriptors.",
+                "Carries observed time, series and replicate identities together with the time_series or steady_state observation role.",
+                "Each tool consumes the descriptors supported by its model; no covariate naming prefix is required.",
             ],
         },
         "cluster_identities.tsv": {
@@ -858,30 +861,6 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             "tips": [
                 "Each expression column should appear once.",
                 "Used by trajectory-aware tools or filters that depend on column ordering.",
-            ],
-        },
-        "replicates.tsv": {
-            "title": "Replicates",
-            "summary": (
-                "Expression-column replicate metadata table for biological or technical "
-                "replicate labels."
-            ),
-            "badges": ["standardized extra", "replicates"],
-            "tips": [
-                "Each expression column should appear once.",
-                "Use this separately from groups.tsv when replicate structure is not the grouping axis.",
-            ],
-        },
-        "timepoints.tsv": {
-            "title": "Timepoints",
-            "summary": (
-                "Expression-column timepoint table with observed sampling times or ordered "
-                "time coordinates."
-            ),
-            "badges": ["standardized extra", "time series"],
-            "tips": [
-                "Each expression column should appear once.",
-                "This represents observed time, while pseudotime.tsv represents an inferred or simulated trajectory coordinate.",
             ],
         },
         "tf_list.txt": {

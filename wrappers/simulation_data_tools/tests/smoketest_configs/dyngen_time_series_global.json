@@ -3,7 +3,7 @@
   "request": {
     "seed": 31,
     "effective_extras": [
-      "timepoints",
+      "column_descriptors",
       "tf_list"
     ],
     "inputs": {},
@@ -37,7 +37,7 @@
   "required_files": [
     "expression.tsv",
     "extras/tf_list.txt",
-    "extras/timepoints.tsv",
+    "extras/column_descriptors.tsv",
     "truth/networks.csv",
     "truth/gene_universe.txt",
     "simulator-output-manifest.json",

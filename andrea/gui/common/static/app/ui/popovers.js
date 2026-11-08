@@ -559,7 +559,7 @@ export function showInfoTooltip(payload) {
   }
   const titleText = normalizeHelpText(String(payload.title || "Info")).trim();
   const description = normalizeHelpText(String(payload.description || "")).trim();
-  const example = normalizeHelpText(String(payload.example || "")).trim();
+  const example = normalizeHelpText(String(payload.example || "")).replace(/^[\r\n]+|[\r\n]+$/g, "");
   const fields = Array.isArray(payload.fields) ? payload.fields : [];
   const chips = Array.isArray(payload.chips) ? payload.chips : [];
   const sections = Array.isArray(payload.sections) ? payload.sections : [];

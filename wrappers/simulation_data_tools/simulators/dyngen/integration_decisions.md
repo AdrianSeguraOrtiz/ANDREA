@@ -32,9 +32,9 @@ All claimed capabilities use:
 | `trajectory` | `["global"]` | `global` | none |
 | `trajectory` | `["global", "group"]` | `global`, `group:<id>` | `groups` |
 | `trajectory` | `["global", "group", "column"]` | `global`, `group:<id>`, `column:<id>` | `groups` |
-| `time_series` | `["global"]` | `global` | `timepoints` |
-| `time_series` | `["global", "group"]` | `global`, `group:<id>` | `groups`, `timepoints` |
-| `time_series` | `["global", "group", "column"]` | `global`, `group:<id>`, `column:<id>` | `groups`, `timepoints` |
+| `time_series` | `["global"]` | `global` | `column_descriptors` |
+| `time_series` | `["global", "group"]` | `global`, `group:<id>` | `groups`, `column_descriptors` |
+| `time_series` | `["global", "group", "column"]` | `global`, `group:<id>`, `column:<id>` | `groups`, `column_descriptors` |
 | `perturbational` | `["global"]` | `global` | `perturbation_design`, `interventions` |
 | `perturbational` | `["global", "group"]` | `global`, `group:<id>` | `groups`, `perturbation_design`, `interventions` |
 | `perturbational` | `["global", "group", "column"]` | `global`, `group:<id>`, `column:<id>` | `groups`, `perturbation_design`, `interventions` |
@@ -54,7 +54,7 @@ Unclaimed capabilities:
 Required upstream switches:
 
 - `trajectory` capabilities bind `experiment_params.kind=snapshot` and `simulation_params.num_knockdown_simulations=0`.
-- `time_series` capabilities bind `experiment_params.kind=synchronised` and `simulation_params.num_knockdown_simulations=0`; the wrapper exports `extras/timepoints.tsv` from `dataset$cell_info$timepoint_group`.
+- `time_series` capabilities bind `experiment_params.kind=synchronised` and `simulation_params.num_knockdown_simulations=0`; the wrapper exports `extras/column_descriptors.tsv` from `dataset$cell_info$timepoint_group`.
 - `perturbational` capabilities bind `experiment_params.kind=snapshot`, `simulation_params.num_knockdown_simulations=4`, `knockdown_params.num_genes=1`, `knockdown_params.multiplier=0.0` and `knockdown_params.timepoint=0.5`; the wrapper exports `extras/perturbation_design.tsv` and `extras/interventions.tsv` from `dataset$cell_info$simulation_i` and `model$simulations$kd_multiplier`.
 - `simulation_params.compute_cellwise_grn=true` whenever `group` or `column` truth, `lineage_tree`, `prior_grn_by_group` or `regulatory_network_sc` is requested.
 - `generate_dataset(..., store_cellwise_grn=TRUE)` under the same conditions.
@@ -80,7 +80,7 @@ Derivable extras:
 - `prior_grn_by_group`: oracle group prior from aggregated cellwise regulatory activity.
 - `tf_list`: `feature_info$is_tf`.
 - `enrichment_background`: all exported expression genes.
-- `timepoints`: synchronised experiment `timepoint_group` per expression column.
+- `column_descriptors`: synchronised experiment `timepoint_group` per expression column.
 - `perturbation_design`: one row per expression column mapping wild-type controls and one-target knockdown simulations to condition metadata.
 - `interventions`: one row per dyngen knockdown intervention target.
 
@@ -149,3 +149,8 @@ configurations passed on this final image, using the repository smoke runner
 with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
 These checks cover executable contracts and fixture outputs; they do not
 calibrate costs or independently validate biological realism.
+
+
+## Common column metadata contract
+
+The only public column-metadata extra is `column_descriptors.tsv`; all measured columns remain in `expression.tsv`. Synchronised sampled cells retain their upstream `timepoint_group` and the explicit model-bin label `time_unit=model_time_group`. No bulk observed-time declaration or longitudinal series is inferred from sampled cells.

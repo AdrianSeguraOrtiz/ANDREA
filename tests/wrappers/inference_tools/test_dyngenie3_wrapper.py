@@ -20,6 +20,12 @@ ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / "wrappers/inference_tools/tools/dyngenie3"
 FIXTURES = ROOT / "wrappers/inference_tools/tests/fixtures/dyngenie3"
 sys.path.insert(0, str(ROOT / "wrappers/inference_tools/scripts/templates/python"))
+metadata_spec = importlib.util.spec_from_file_location(
+    "_column_metadata", ROOT / "andrea/core/shared/column_metadata.py"
+)
+metadata = importlib.util.module_from_spec(metadata_spec)
+sys.modules["_column_metadata"] = metadata
+metadata_spec.loader.exec_module(metadata)
 spec = importlib.util.spec_from_file_location(
     "dyngenie3_wrapper", SOURCE / "run_tool.py"
 )
@@ -31,14 +37,15 @@ spec.loader.exec_module(wrapper)
 def inputs(tmp_path):
     extra = tmp_path / "extra"
     extra.mkdir()
-    for name in ("timepoints.tsv", "replicates.tsv"):
+    for name in ("column_descriptors.tsv",):
         shutil.copy2(FIXTURES / name, extra / name)
     shutil.copy2(FIXTURES / "expression.tsv", tmp_path / "expression.tsv")
-    temporal = json.loads((FIXTURES / "temporal.json").read_text())
-    (tmp_path / "params.json").write_text("{}")
-    (tmp_path / "execution.json").write_text(
-        json.dumps({"mode": "global", "temporal": temporal})
+    columns = wrapper.read_matrix(tmp_path / "expression.tsv")[1]
+    temporal = wrapper.summarize_temporal_metadata(
+        wrapper.load_bulk_column_descriptors(extra / "column_descriptors.tsv", columns)
     )
+    (tmp_path / "params.json").write_text("{}")
+    (tmp_path / "execution.json").write_text(json.dumps({"mode": "global"}))
     return tmp_path, extra, temporal
 
 
@@ -94,9 +101,7 @@ def test_invalid_or_unexposed_options_are_rejected(override):
 def test_series_are_joined_by_id_sorted_independently_and_never_concatenated(inputs):
     root, extra, temporal = inputs
     genes, columns, values = wrapper.read_matrix(root / "expression.tsv")
-    series, coordinates, resolved = wrapper.prepare_series(
-        values, columns, extra, temporal
-    )
+    series, coordinates, resolved = wrapper.prepare_series(values, columns, extra)
     assert genes[:2] == ["TF:01", "0002"]
     assert len(series) == 3 and all(value.shape == (5, 6) for value in series)
     assert all(value.tolist() == [0, 1, 3, 6, 10] for value in coordinates)
@@ -105,9 +110,9 @@ def test_series_are_joined_by_id_sorted_independently_and_never_concatenated(inp
         len({column.split(".")[0] for column in row["columns"]}) == 1
         for row in resolved
     )
-    with (extra / "timepoints.tsv").open() as handle:
+    with (extra / "column_descriptors.tsv").open() as handle:
         rows = list(csv.DictReader(handle, delimiter="\t"))
-    assert rows[0]["column"] == columns[-1]  # Deliberately reversed metadata rows.
+    assert rows[0]["column"] == columns[14]  # Deliberately reversed metadata rows.
 
 
 @pytest.mark.parametrize(
@@ -115,8 +120,8 @@ def test_series_are_joined_by_id_sorted_independently_and_never_concatenated(inp
     [
         ("missing", "exactly"),
         ("duplicate_time", "strictly increasing"),
-        ("unit", "units"),
-        ("technical", "Technical replicate"),
+        ("unit", "time_unit"),
+        ("technical", "observation_id"),
         ("float32_collapse", "float32"),
         ("overflow_interval", "float32"),
         ("independent", "longitudinal"),
@@ -125,7 +130,7 @@ def test_series_are_joined_by_id_sorted_independently_and_never_concatenated(inp
 def test_invalid_time_structures_are_rejected_without_fit(inputs, change, match):
     root, extra, temporal = inputs
     _, columns, values = wrapper.read_matrix(root / "expression.tsv")
-    path = extra / "timepoints.tsv"
+    path = extra / "column_descriptors.tsv"
     if change == "missing":
         change_table(path, lambda rows: rows.pop())
     elif change == "unit":
@@ -140,7 +145,9 @@ def test_invalid_time_structures_are_rejected_without_fit(inputs, change, match)
         change_table(
             path,
             lambda rows: [
-                row.update(timepoint=str(1e12 + i)) for i, row in enumerate(rows)
+                row.update(timepoint=str(1e12 + i))
+                for i, row in enumerate(rows)
+                if row["observation_type"] == "time_series"
             ],
         )
     elif change == "overflow_interval":
@@ -158,22 +165,33 @@ def test_invalid_time_structures_are_rejected_without_fit(inputs, change, match)
 
         change_table(path, overflow)
     else:
-        temporal["sampling_design"] = "independent_samples"
+        change_table(
+            path,
+            lambda rows: [
+                row.update(sampling_design="independent_samples")
+                for row in rows
+                if row["observation_type"] == "time_series"
+            ],
+        )
     with pytest.raises(ValueError, match=match):
-        wrapper.prepare_series(values, columns, extra, temporal)
+        wrapper.prepare_series(values, columns, extra)
 
 
-def test_steady_state_aligns_by_gene_id_and_keeps_distinct_sample_axis(inputs):
-    root, _, _ = inputs
-    genes, _, _ = wrapper.read_matrix(root / "expression.tsv")
-    steady, samples = wrapper.load_steady_state(
-        FIXTURES / "steady_state_expression.tsv", genes
+def test_steady_state_uses_the_same_expression_gene_axis(inputs):
+    root, extra, _ = inputs
+    genes, columns, values = wrapper.read_matrix(root / "expression.tsv")
+    metadata = wrapper.load_bulk_column_descriptors(
+        extra / "column_descriptors.tsv", columns
     )
+    samples = [
+        column
+        for column in columns
+        if metadata[column]["observation_type"] == "steady_state"
+    ]
+    steady = values[:, [columns.index(column) for column in samples]].T
     assert steady.shape == (3, 6)
     assert samples == ["SS.control", "SS.treated", "SS.other"]
     assert steady[0].tolist() == [10, 11, 12, 13, 14, 15]
-    with pytest.raises(ValueError, match="universes"):
-        wrapper.load_steady_state(FIXTURES / "steady_state_expression.tsv", genes[:-1])
 
 
 def test_data_derived_decay_rejects_extrema_overflow_but_preserves_constant_and_local_extrema():
@@ -200,23 +218,18 @@ def test_extrema_overflow_guard_applies_only_to_data_derived_alpha(alpha, tmp_pa
     (tmp_path / "expression.tsv").write_text(
         "gene\tc0\tc1\tc2\tc3\nA\t4\t3\t2\t1\nB\t0\t0\t0\t0\n"
     )
-    (extra / "timepoints.tsv").write_text(
-        "column\ttimepoint\ttime_unit\tseries_id\tcondition\tobservation_id\n"
+    (extra / "column_descriptors.tsv").write_text(
+        "column\tobservation_type\tseries_id\tcondition\treplicate\tobservation_id\ttechnical_replicate\ttimepoint\ttime_unit\tsampling_design\n"
         + "".join(
-            f"c{i}\t{t}\thour\ts0\tcontrol\to{i}\n"
+            f"c{i}\ttime_series\ts0\tcontrol\ts0\to{i}\ttech1\t{t}\thour\tlongitudinal\n"
             for i, t in enumerate([-3e38, -1e38, 1e38, 3e38])
         )
-    )
-    (extra / "replicates.tsv").write_text(
-        "column\treplicate\treplicate_kind\ttechnical_replicate\n"
-        + "".join(f"c{i}\ts0\tbiological\ttech1\n" for i in range(4))
     )
     (tmp_path / "params.json").write_text(json.dumps({"alpha": alpha}))
     (tmp_path / "execution.json").write_text(
         json.dumps(
             {
                 "mode": "global",
-                "temporal": json.loads((FIXTURES / "temporal.json").read_text()),
             }
         )
     )
@@ -243,9 +256,22 @@ def test_extrema_overflow_guard_applies_only_to_data_derived_alpha(alpha, tmp_pa
         assert calls[0]["alpha"] == alpha
 
 
-def test_complete_wrapper_forwards_public_api_and_preserves_raw_scores(inputs):
+@pytest.mark.parametrize("time_unit", ["hour", "minute"])
+def test_complete_wrapper_forwards_public_api_and_preserves_raw_scores(
+    inputs, time_unit
+):
     root, extra, temporal = inputs
-    for name in ("steady_state_expression.tsv", "tf_list.txt"):
+    change_table(
+        extra / "column_descriptors.tsv",
+        lambda rows: [
+            row.update(time_unit=time_unit)
+            for row in rows
+            if row["observation_type"] == "time_series"
+        ],
+    )
+    temporal = {**temporal, "time_unit": time_unit}
+    assert json.loads((root / "execution.json").read_text()) == {"mode": "global"}
+    for name in ("tf_list.txt",):
         shutil.copy2(FIXTURES / name, extra / name)
     params = {
         "alpha": [0.1] * 6,
@@ -298,7 +324,61 @@ def test_complete_wrapper_forwards_public_api_and_preserves_raw_scores(inputs):
         json.loads((root / "out/provenance/resolved.json").read_text())["temporal"]
         == temporal
     )
+    with (root / "out/provenance/degradation_rates.tsv").open() as handle:
+        decay_rows = list(csv.DictReader(handle, delimiter="\t"))
+    assert {row["inverse_time_unit"] for row in decay_rows} == {f"1/{time_unit}"}
     assert json.loads((root / "out/progress.json").read_text())["status"] == "completed"
+
+
+def test_ts_only_matrix_passes_no_steady_state_data(inputs):
+    root, extra, _ = inputs
+    with (root / "expression.tsv").open(newline="") as handle:
+        rows = list(csv.reader(handle, delimiter="\t"))
+    with (root / "expression.tsv").open("w", newline="") as handle:
+        csv.writer(handle, delimiter="\t").writerows([row[:16] for row in rows])
+    change_table(
+        extra / "column_descriptors.tsv",
+        lambda rows: rows.__setitem__(
+            slice(None),
+            [row for row in rows if row["observation_type"] == "time_series"],
+        ),
+    )
+    calls = []
+
+    def infer(**kwargs):
+        calls.append(kwargs)
+        return np.ones((6, 6)), np.ones(6), [], [], []
+
+    resolved = wrapper.run(
+        input_path=root / "expression.tsv",
+        params_path=root / "params.json",
+        extra_dir=extra,
+        output_dir=root / "out",
+        threads=1,
+        upstream=SimpleNamespace(dynGENIE3=infer),
+    )
+    assert calls[0]["SS_data"] is None
+    assert resolved["steady_state_columns"] == []
+    assert len(resolved["time_series_columns"]) == 15
+
+
+def test_ss_technical_replicates_require_explicit_preprocessing(inputs):
+    root, extra, temporal = inputs
+
+    def duplicate(rows):
+        source, target = rows[-2:]
+        target.update(
+            {
+                name: source[name]
+                for name in ("condition", "replicate", "observation_id")
+            }
+        )
+        target["technical_replicate"] = "tech2"
+
+    change_table(extra / "column_descriptors.tsv", duplicate)
+    _, columns, values = wrapper.read_matrix(root / "expression.tsv")
+    with pytest.raises(ValueError, match="Technical replicate"):
+        wrapper.prepare_series(values, columns, extra)
 
 
 def test_empty_export_and_undefined_diagnostics_are_truthful(inputs):
@@ -430,26 +510,14 @@ def test_effective_cgroup_v1_fallback_and_unavailable_or_malformed_limits(tmp_pa
     assert inspect(tmp_path)["version"] is None
 
 
-def test_steady_state_preflight_rejects_duplicate_sample_headers(tmp_path):
-    from andrea.core.shared.input_validation import validate_tsv_file_with_spec
-
-    spec = json.loads(
-        (
-            ROOT
-            / "andrea/catalog_inference_tools/input_specs/steady_state_expression.json"
-        ).read_text()
+def test_steady_state_descriptor_rejects_invented_time_coordinates(inputs):
+    root, extra, temporal = inputs
+    change_table(
+        extra / "column_descriptors.tsv", lambda rows: rows[-1].update(timepoint="0")
     )
-    matrix = tmp_path / "steady.tsv"
-    matrix.write_text("gene\tSS1\tSS1\nG1\t1\t2\nG2\t3\t4\n")
-    result = validate_tsv_file_with_spec(
-        key="steady_state_expression",
-        path=matrix,
-        spec=spec,
-        expression_genes={"G1", "G2"},
-        expression_columns={"t1", "t2"},
-        expression_columns_count=2,
-    )
-    assert any("duplicate" in error for error in result.errors)
+    _, columns, values = wrapper.read_matrix(root / "expression.tsv")
+    with pytest.raises(ValueError, match="steady_state"):
+        wrapper.prepare_series(values, columns, extra)
 
 
 def test_exact_public_source_patch_ast_and_seed_forwarding_when_evidence_is_available():

@@ -407,7 +407,7 @@
         "enrichment_background",
         "interventions",
         "prior_grn",
-        "replicates",
+        "column_descriptors",
         "tf_list"
       ],
       "truth_contexts": [
@@ -540,12 +540,12 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
         },
         {
-          "artifact": "replicates",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "perturbation_design matrix P",
             "perturbation.replicates_per_gene"
           ],
-          "method": "Assign replicate labels by grouping expression columns that share the same perturbed gene and perturbation strength.",
+          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories.",
           "assumptions": [
             "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
           ],
@@ -615,7 +615,7 @@
         "interventions",
         "prior_grn",
         "tf_list",
-        "timepoints"
+        "column_descriptors"
       ],
       "truth_outputs": [
         {
@@ -716,18 +716,19 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
         },
         {
-          "artifact": "timepoints",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "datastruct.simts time grid",
             "time_series.time_points",
             "network matrix eigenvalues"
           ],
-          "method": "Recompute the simts timestep tau*0.1 from min(abs(eig(A))) and export t0 plus each simulated timepoint in column order.",
+          "method": "Recompute the native simts timestep tau*0.1 from min(abs(eig(A))) and emit the common column_descriptors.tsv with t0 and every simulated trajectory state, one constant intervention condition, and explicit model_time units. The same TSV declares sampling_design=longitudinal; its bulk/timepoints axes select the shared validator without any additional manifest object or GUI declaration.",
           "assumptions": [
             "The wrapper uses the same timestep formula as datastruct.simts."
           ],
           "limitations": [
-            "The upstream function returns expression states but not an explicit metadata table; the timepoint table is wrapper-derived."
+            "The upstream function returns expression states but not an explicit metadata table; the timepoint table is wrapper-derived.",
+            "This is one native simulated trajectory; model_time does not claim physical elapsed-time units."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
         }
@@ -800,7 +801,7 @@
         "enrichment_background",
         "interventions",
         "prior_grn",
-        "replicates",
+        "column_descriptors",
         "tf_list"
       ],
       "truth_contexts": [
@@ -957,12 +958,12 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
         },
         {
-          "artifact": "replicates",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "perturbation_design matrix P",
             "perturbation.replicates_per_gene"
           ],
-          "method": "Assign replicate labels by grouping expression columns that share the same perturbed gene and perturbation strength.",
+          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories.",
           "assumptions": [
             "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
           ],
@@ -1024,7 +1025,7 @@
         "interventions",
         "prior_grn",
         "prior_grn_by_group",
-        "replicates",
+        "column_descriptors",
         "tf_list"
       ],
       "truth_contexts": [
@@ -1268,12 +1269,12 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/genespider2/run_simulator.py"
         },
         {
-          "artifact": "replicates",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "perturbation_design matrix P",
             "perturbation.replicates_per_gene"
           ],
-          "method": "Assign replicate labels by grouping expression columns that share the same perturbed gene and perturbation strength.",
+          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories.",
           "assumptions": [
             "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
           ],

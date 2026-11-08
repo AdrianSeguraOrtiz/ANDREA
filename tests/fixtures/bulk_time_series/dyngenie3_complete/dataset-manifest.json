@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "id": "dyngenie3_complete_example_manifest",
+  "dataset": {
+    "spec": {
+      "schema_version": "1.0",
+      "id": "dyngenie3_complete_example",
+      "name": "Synthetic normalized-input example: two independent longitudinal courses",
+      "expression": {
+        "genes": 3,
+        "columns": 8,
+        "column_kind": "timepoints",
+        "expression_profile": "bulk"
+      },
+      "organism": {
+        "taxonomic_group": "synthetic",
+        "ncbi_taxon_id": null
+      }
+    },
+    "expression_matrix": "expression.tsv"
+  },
+  "extras": {
+    "tf_list": "tf_list.txt",
+    "column_descriptors": "column_descriptors.tsv"
+  },
+  "notes": "Unified expression matrix and canonical column_descriptors metadata. Synthetic contract fixture; no empirical accuracy or timing claims."
+}

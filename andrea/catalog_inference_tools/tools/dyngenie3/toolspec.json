@@ -31,8 +31,7 @@
     }
   },
   "accepts": [
-    "timepoints",
-    "samples"
+    "timepoints"
   ],
   "assumes": "bulk_specific",
   "temporal_requirements": {
@@ -41,7 +40,11 @@
       "longitudinal"
     ],
     "technical_replicates": "reject",
-    "min_timepoints_per_series": 2
+    "min_timepoints_per_series": 2,
+    "observation_types": [
+      "time_series",
+      "steady_state"
+    ]
   },
   "taxonomic_scope": {
     "allowed_groups": [
@@ -61,13 +64,8 @@
   "extra_inputs": {
     "required": [
       {
-        "input": "timepoints",
-        "usage": "Observed time coordinates, units and independent series identifiers; exact column-to-metadata join, with strict upstream float32 time separation.",
-        "delivery": "runtime"
-      },
-      {
-        "input": "replicates",
-        "usage": "Biological longitudinal-unit identity and technical measurement labels. Duplicate technical observations require explicit preprocessing; the wrapper does not silently aggregate.",
+        "input": "column_descriptors",
+        "usage": "Exact one-to-one descriptors for every expression column. Time-series rows declare independent biological trajectories and observed coordinates, time units and sampling_design; steady-state rows have no series/time fields. Both observation types are selected from the same expression matrix; steady-state samples feed native SS_data on the identical gene axis.",
         "delivery": "runtime"
       }
     ],
@@ -75,11 +73,6 @@
       {
         "input": "tf_list",
         "usage": "Candidate regulator IDs passed to upstream regulators. When absent every expression gene is a candidate regulator.",
-        "delivery": "runtime"
-      },
-      {
-        "input": "steady_state_expression",
-        "usage": "Independent steady-state samples passed as upstream SS_data after exact gene-ID alignment. Samples must share a scientifically compatible scale with temporal expression.",
         "delivery": "runtime"
       }
     ],

@@ -616,6 +616,87 @@ def _resolve_run_execution(
     return True, {"mode": mode}, []
 
 
+def _validate_requested_temporal_inputs(
+    *,
+    toolspec: dict[str, Any],
+    dataset: DatasetContext,
+) -> tuple[dict[str, Any] | None, list[str], list[str]]:
+    """Validate scientific metadata only for an explicitly requested tool run.
+
+    Catalog compatibility uses declared axes and available input keys. Temporal
+    file contents must never participate in that filtering decision.
+    """
+    if "temporal_requirements" not in toolspec:
+        return None, [], []
+    from andrea.core.shared.bulk_temporal import (
+        select_temporal_observations,
+        validate_bulk_temporal_inputs,
+        validate_temporal_requirements,
+    )
+
+    try:
+        requirements = validate_temporal_requirements(toolspec["temporal_requirements"])
+        summary = validate_bulk_temporal_inputs(
+            expression_path=dataset.expression_matrix_path,
+            column_descriptors_path=dataset.extras.get("column_descriptors"),
+        )
+        selection = select_temporal_observations(
+            summary, requirements["observation_types"]
+        )
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        return None, [str(exc)], []
+    errors, warnings = [], []
+    if summary["sampling_design"] not in requirements["sampling_designs"]:
+        errors.append("column_descriptors sampling_design is not accepted by tool")
+    if not selection["selected_columns"]:
+        errors.append("dataset has no observations selected by this tool")
+    if (
+        "time_series" in requirements["observation_types"]
+        and not selection["time_series_columns"]
+    ):
+        errors.append("tool requires time_series observations")
+    if (
+        requirements.get("technical_replicates") == "reject"
+        and selection["columns"] != selection["observations"]
+    ):
+        errors.append(
+            "tool rejects technical replicates: each biological observation must have exactly one expression column"
+        )
+    minimum = requirements.get("min_timepoints_per_series")
+    if minimum is not None:
+        short = [
+            s["series_id"] for s in summary["series"] if len(s["timepoints"]) < minimum
+        ]
+        if short:
+            errors.append(
+                f"tool requires at least {minimum} distinct timepoints per series: {', '.join(short)}"
+            )
+    if requirements.get("require_regular_sampling"):
+        irregular = [s["series_id"] for s in summary["series"] if not s["regular"]]
+        if irregular:
+            errors.append(
+                "tool requires regular sampling within every series: "
+                + ", ".join(irregular)
+            )
+    if requirements.get("require_aligned_timepoints") and summary["series"]:
+        reference = summary["series"][0]["timepoints"]
+        misaligned = [
+            s["series_id"]
+            for s in summary["series"][1:]
+            if s["timepoints"] != reference
+        ]
+        if misaligned:
+            errors.append(
+                "tool requires identical observed timepoints across all series; misaligned series: "
+                + ", ".join(misaligned)
+            )
+    if selection["ignored_columns"]:
+        warnings.append(
+            f"tool selects {selection['columns']} expression columns and ignores {len(selection['ignored_columns'])} columns with unused observation roles"
+        )
+    return summary, errors, warnings
+
+
 def _check_tool_compatibility(
     *,
     tool_id: str,
@@ -624,60 +705,8 @@ def _check_tool_compatibility(
     constraints: SchemaConstraints,
     warnings: list[str],
     warning_prefix: str | None = None,
-    temporal_summary: dict[str, Any] | None = None,
 ) -> tuple[bool, list[str]]:
     errors: list[str] = []
-
-    temporal_requirements = toolspec.get("temporal_requirements")
-    if "temporal_requirements" in toolspec:
-        from andrea.core.shared.bulk_temporal import validate_temporal_requirements
-
-        try:
-            validate_temporal_requirements(temporal_requirements)
-        except ValueError as exc:
-            errors.append(f"invalid toolspec.{exc}")
-        else:
-            if dataset.temporal is None and temporal_requirements["required"]:
-                errors.append("required dataset temporal metadata missing in manifest")
-            elif (
-                dataset.temporal is not None
-                and dataset.temporal.get("sampling_design")
-                not in temporal_requirements["sampling_designs"]
-            ):
-                errors.append(
-                    "dataset temporal sampling_design is not accepted by tool"
-                )
-            if dataset.temporal is not None and (
-                temporal_requirements.get("technical_replicates") == "reject"
-                or "min_timepoints_per_series" in temporal_requirements
-            ):
-                if (
-                    not isinstance(temporal_summary, dict)
-                    or temporal_summary.get("status") != "ok"
-                ):
-                    errors.append(
-                        "validated temporal input summary is required to check tool requirements"
-                    )
-                else:
-                    if (
-                        temporal_requirements.get("technical_replicates") == "reject"
-                        and temporal_summary["columns"]
-                        != temporal_summary["observations"]
-                    ):
-                        errors.append(
-                            "tool rejects technical replicates: each biological observation must have exactly one expression column"
-                        )
-                    minimum = temporal_requirements.get("min_timepoints_per_series")
-                    if minimum is not None:
-                        short_series = [
-                            series["series_id"]
-                            for series in temporal_summary["series"]
-                            if len(series["timepoints"]) < minimum
-                        ]
-                        if short_series:
-                            errors.append(
-                                f"tool requires at least {minimum} distinct timepoints per series: {', '.join(short_series)}"
-                            )
 
     try:
         _parse_execution_capabilities(tool_id=tool_id, toolspec=toolspec)
@@ -881,8 +910,6 @@ def _resolve_runtime_extra_input_keys(
 
 def _runtime_execution_for_logical_run(
     logical_execution: dict[str, Any],
-    *,
-    temporal: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return the execution contract seen by the physical child container."""
     runtime_execution = dict(logical_execution)
@@ -891,8 +918,6 @@ def _runtime_execution_for_logical_run(
         runtime_execution["mode"] = "global"
     elif logical_mode == "group_aggregated":
         runtime_execution["mode"] = "column_native"
-    if temporal is not None:
-        runtime_execution["temporal"] = temporal
     return runtime_execution
 
 
@@ -951,6 +976,7 @@ def _build_runtime_input_snapshot(
     resolved_params: dict[str, Any],
     resolved_execution: dict[str, Any],
     available_extra_inputs: set[str],
+    temporal_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Freeze logical active inputs and the physical child-container firewall."""
     if tool_origin not in {"catalog", "custom"}:
@@ -982,6 +1008,12 @@ def _build_runtime_input_snapshot(
         snapshot["temporal_requirements"] = copy.deepcopy(
             validate_temporal_requirements(toolspec["temporal_requirements"])
         )
+        if temporal_summary is not None:
+            from andrea.core.shared.bulk_temporal import select_temporal_observations
+
+            snapshot["observation_selection"] = select_temporal_observations(
+                temporal_summary, toolspec["temporal_requirements"]["observation_types"]
+            )
     return snapshot
 
 
@@ -1035,7 +1067,6 @@ def _build_tool_compatibility_entry(
     warning_code: str,
     post_compatibility_warnings: list[str] | None = None,
     requested_execution: dict[str, Any] | None = None,
-    temporal_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     local_warnings: list[str] = []
     compatible, block_messages = _check_tool_compatibility(
@@ -1044,7 +1075,6 @@ def _build_tool_compatibility_entry(
         dataset=dataset,
         constraints=constraints,
         warnings=local_warnings,
-        temporal_summary=temporal_summary,
     )
     local_warnings.extend(post_compatibility_warnings or [])
 
@@ -1149,7 +1179,6 @@ def _scan_catalog_compatibility(
     constraints: SchemaConstraints,
     custom_tools: dict[str, dict[str, Any]] | None = None,
     custom_blocked_entries: list[dict[str, Any]] | None = None,
-    temporal_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     for toolspec_path in sorted(tools_root.glob("*/toolspec.json")):
@@ -1181,7 +1210,6 @@ def _scan_catalog_compatibility(
                 dataset=dataset,
                 constraints=constraints,
                 warning_code="catalog_warning",
-                temporal_summary=temporal_summary,
             )
         )
 
@@ -1201,7 +1229,6 @@ def _scan_catalog_compatibility(
                 warning_code="custom_tool_warning",
                 post_compatibility_warnings=post_compatibility_warnings,
                 requested_execution={"mode": toolspec.get("_andrea_execution_mode")},
-                temporal_summary=temporal_summary,
             )
         )
 

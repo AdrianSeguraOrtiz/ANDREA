@@ -265,10 +265,34 @@ def _resolve_one_profile(
         runtime_inputs=runtime_inputs,
         default_prior_density=default_prior_density,
     )
+    requirements = toolspec.get("temporal_requirements", {})
+    if requirements.get("required") and "temporal" not in input_profile:
+        raise ValueError(
+            f"profile {profile_id}: temporal tools require an explicit temporal calibration input profile."
+        )
+    if "temporal" in input_profile:
+        kinds = requirements.get("observation_types")
+        if (
+            not isinstance(kinds, list)
+            or not kinds
+            or len(set(kinds)) != len(kinds)
+            or not set(kinds) <= {"time_series", "steady_state"}
+        ):
+            raise ValueError("Temporal benchmark tools must declare observation_types.")
+        input_profile["observation_types"] = list(kinds)
+        if "time_series" not in kinds or (
+            input_profile["temporal_fixture"].get("steady_state_samples", 0)
+            and "steady_state" not in kinds
+        ):
+            raise ValueError(
+                "Temporal calibration profiles must contain only observation types consumed by the tool."
+            )
     sizes = _profile_sizes(raw_profile=raw_profile, profile_id=profile_id)
     if "temporal" in input_profile and sizes:
         geometry = input_profile["temporal_fixture"]
-        expected_columns = geometry["series_count"] * geometry["timepoints_per_series"]
+        expected_columns = geometry["series_count"] * geometry[
+            "timepoints_per_series"
+        ] + geometry.get("steady_state_samples", 0)
         for size in sizes:
             try:
                 genes, columns = (int(value) for value in size.lower().split("x"))
@@ -279,7 +303,7 @@ def _resolve_one_profile(
             if genes < 1 or columns != expected_columns:
                 raise ValueError(
                     f"profile {profile_id}: temporal size {size!r} must have "
-                    f"{expected_columns} columns (series_count * timepoints_per_series)."
+                    f"{expected_columns} columns (series_count * timepoints_per_series + steady_state_samples)."
                 )
     return BenchmarkProfile(
         tool_id=tool_id,
@@ -830,14 +854,9 @@ def _build_input_profile(
     temporal_fixture = raw_profile.get("temporal_fixture")
     validate_temporal_fixture(temporal, temporal_fixture)
     if temporal is not None:
-        if not {"timepoints", "replicates"}.issubset(extras):
+        if "column_descriptors" not in extras:
             raise ValueError(
-                "Temporal benchmark profiles require timepoints and replicates inputs."
-            )
-        has_steady = "steady_state_expression" in extras
-        if has_steady != (temporal_fixture.get("steady_state_samples", 0) > 0):
-            raise ValueError(
-                "Temporal steady_state_samples must match steady_state_expression input presence."
+                "Temporal benchmark profiles require column_descriptors input."
             )
         result["temporal"] = copy.deepcopy(temporal)
         result["temporal_fixture"] = copy.deepcopy(temporal_fixture)

@@ -17,8 +17,9 @@ to test identifier joins. Biological unit qN identifies the corresponding
 series; every observation has one technical measurement labelled tech1.
 
 Four independently labelled synthetic steady-state columns use
-`11+i+0.4*j+cos(0.6*(i+1)*(j+1))`, zero-based sample `j`. Their gene rows are
-reversed to test alignment. These arbitrary contract values are not a simulated
+`11+i+0.4*j+cos(0.6*(i+1)*(j+1))`, zero-based sample `j`. They share the temporal matrix gene axis; the single
+`column_descriptors.tsv` identifies their steady-state role, without series or
+time coordinates. These arbitrary contract values are not a simulated
 equilibrium or a claim of physiological validity. They exercise the native
 steady-state branch under the explicitly declared common arbitrary scale.
 
@@ -27,7 +28,5 @@ with the same eight genes. It yields one derivative training row. An empty VIM
 and undefined Pearson score are expected; jitter-based upstream stability may
 still be positive. This behavior is retained and is not a confidence estimate.
 
-The verifier's five additional cases retain models and recompute VIM, OOB
-Pearson and top-five stability inside the pinned image without refitting. It
-uses the same per-target jitter seeds and preserves undefined values as null.
-This fixture does not change the upstream metric or fix its scientific limits.
+These fixtures exercise optional diagnostics without changing upstream metrics
+or resolving their scientific limits.

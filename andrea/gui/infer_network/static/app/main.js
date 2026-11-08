@@ -20,7 +20,7 @@ import {
   resetCustomToolParamRows,
 } from "./catalog/external_tools.js";
 import { applyDatasetDefaults, handleExpressionSelected, initExpressionDropzone, syncExpressionHelpTooltip } from "./dataset/expression.js";
-import { closeExtraInputModal, getExtraRows, initExtras, listProvidedExtraKeys, openExtraInputModal, updateExtrasEmptyState } from "./dataset/extras.js";
+import { closeExtraInputModal, getExtraRows, initExtras, listProvidedExtraKeys, openExtraInputModal, syncDatasetInputHelp, updateExtrasEmptyState } from "./dataset/extras.js";
 import { renderAndreaExecutionProgress, renderRuntimeProgress } from "./runtime/view.js";
 import { fetchFiles, resetFilesView } from "./files/explorer.js?v=20260611a";
 import { freezeActions, startPolling, syncActionButtons, updateResultsExplorerVisibility } from "./jobs/controller.js?v=20261013b";
@@ -55,24 +55,6 @@ function buildDatasetConfig() {
     throw new Error("organism.ncbi_taxon_id is required for biological taxonomic groups.");
   }
 
-  const temporal = $("temporal-enabled").checked ? {
-    schema_version: "bulk-temporal/1",
-    time_basis: "observed",
-    time_unit: $("temporal-unit").value.trim(),
-    time_origin: $("temporal-origin").value.trim(),
-    sampling_design: $("temporal-design").value,
-    missing_values: "reject",
-    preprocessing: {
-      normalization: $("temporal-normalization").value.trim(),
-      transformation: $("temporal-transformation").value.trim(),
-    },
-    provenance: $("temporal-provenance").value.trim(),
-  } : null;
-  if (temporal && [temporal.time_unit, temporal.time_origin, temporal.provenance,
-      temporal.preprocessing.normalization, temporal.preprocessing.transformation].some((value) => !value)) {
-    throw new Error("Complete all observed bulk time series declarations.");
-  }
-
   return {
     dataset: {
       id: datasetId,
@@ -82,7 +64,6 @@ function buildDatasetConfig() {
         taxonomic_group: taxonomicGroup,
         ncbi_taxon_id: organismTaxId,
       },
-      ...(temporal ? { temporal } : {}),
     },
     options: buildOptions(),
   };
@@ -503,6 +484,7 @@ async function bootstrap() {
   $("taxonomic-group").value = state.bootstrap.taxonomic_groups.includes("animal") ? "animal" : state.bootstrap.taxonomic_groups[0];
   $("organism-ncbi-taxon-id").value = "9606";
   applyDatasetDefaults();
+  syncDatasetInputHelp();
   populateToolIssueSelect();
   syncExpressionHelpTooltip();
   initExpressionDropzone();
