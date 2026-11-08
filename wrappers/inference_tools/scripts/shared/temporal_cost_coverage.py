@@ -1,4 +1,4 @@
-"""Resource-specific coverage of the reviewed finite bulk temporal panel."""
+"""Resource-specific coverage of a declared finite bulk temporal design."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from .benchmark_inputs import validate_temporal_fixture
 from .cost_resume import measurement_context
 
 SUPPORTED_DESIGNS = {
-    "independent_temporal_default_grid_with_branch_centers",
     "independent_temporal_grid_with_branch_growth",
 }
 COORDINATE_AXES = (
@@ -21,14 +20,40 @@ COORDINATE_AXES = (
     "steady_state_samples",
     "sampling",
 )
-SCIENTIFIC_DEFAULTS = {
-    "tree_method": "RF",
-    "alpha": "from_data",
-    "K": "sqrt",
-    "ntrees": 1000,
-    "compute_quality_scores": False,
-    "save_models": False,
-}
+
+
+def _scientific_defaults(design: dict) -> dict:
+    """Require explicit method defaults rather than guessing a tool or ID."""
+
+    def json_value(value: Any) -> bool:
+        if value is None or type(value) in {str, bool, int}:
+            return True
+        if type(value) is float:
+            return math.isfinite(value)
+        if isinstance(value, list):
+            return all(json_value(item) for item in value)
+        if isinstance(value, dict):
+            return all(
+                isinstance(key, str) and json_value(item) for key, item in value.items()
+            )
+        return False
+
+    defaults = design.get("scientific_defaults")
+    if (
+        not isinstance(defaults, dict)
+        or not defaults
+        or any(
+            not isinstance(key, str)
+            or not key.isascii()
+            or not key.isidentifier()
+            or not json_value(value)
+            for key, value in defaults.items()
+        )
+    ):
+        raise ValueError(
+            "scientific_defaults must be a nonempty parameter object with valid names and finite JSON values."
+        )
+    return defaults
 
 
 def _coordinate(genes: int, geometry: dict) -> tuple:
@@ -41,7 +66,9 @@ def _coordinate(genes: int, geometry: dict) -> tuple:
     )
 
 
-def _family_domains(design: dict, wanted: dict[str, dict]) -> list[dict]:
+def _family_domains(
+    design: dict, wanted: dict[str, dict], scientific_defaults: dict
+) -> list[dict]:
     """Check the declared independent branch axes against registered slices."""
     if design["kind"] != "independent_temporal_grid_with_branch_growth":
         return []
@@ -95,7 +122,7 @@ def _family_domains(design: dict, wanted: dict[str, dict]) -> list[dict]:
         for member in members:
             raw = wanted[member]
             if family.get("expected_params") != {
-                **SCIENTIFIC_DEFAULTS,
+                **scientific_defaults,
                 **raw.get("param_overrides", {}),
             } or sorted(family.get("optional_inputs", [])) != sorted(
                 raw.get("optional_inputs", [])
@@ -145,9 +172,20 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
     their finite independent axes, without establishing temporal interpolation.
     """
     design = recipe["calibration_design"]
+    scientific_defaults = _scientific_defaults(design)
+    default_input = design.get("default_input")
+    if (
+        not isinstance(default_input, dict)
+        or set(default_input) != {"steady_state_samples", "sampling"}
+        or type(default_input["steady_state_samples"]) is not int
+        or default_input["steady_state_samples"] < 0
+        or default_input["sampling"] not in {"regular", "irregular"}
+    ):
+        raise ValueError(
+            "default_input must explicitly declare steady_state_samples and sampling."
+        )
     if design.get("kind") not in SUPPORTED_DESIGNS:
         raise ValueError("Unsupported temporal calibration design.")
-    growth = design["kind"] == "independent_temporal_grid_with_branch_growth"
     allocation = design["resources"]
     if (
         any(type(value) is not int or value < 1 for value in allocation["threads"])
@@ -170,7 +208,7 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
         raise ValueError(
             "Temporal panel needs distinct registered profiles and the declared resource strata."
         )
-    families = _family_domains(design, wanted)
+    families = _family_domains(design, wanted, scientific_defaults)
     point_count = sum(
         len(row.get("sizes", recipe.get("sizes", []))) for row in wanted.values()
     )
@@ -213,7 +251,9 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
         geometry = raw.get("temporal_fixture", recipe.get("temporal_fixture"))
         temporal = raw.get("temporal", recipe.get("temporal"))
         validate_temporal_fixture(temporal, geometry)
-        expected_columns = geometry["series_count"] * geometry["timepoints_per_series"]
+        expected_columns = geometry["series_count"] * geometry[
+            "timepoints_per_series"
+        ] + geometry.get("steady_state_samples", 0)
         sizes = [
             tuple(map(int, value.lower().split("x")))
             for value in raw.get("sizes", recipe.get("sizes", []))
@@ -222,15 +262,24 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
             raise ValueError(
                 f"{name}: registered temporal geometry does not match sizes."
             )
-        default = name.startswith("global_rf_from_data_ts_")
+        overrides = raw.get("param_overrides", {})
+        default = (
+            not raw.get("optional_inputs")
+            and geometry.get("steady_state_samples", 0)
+            == default_input["steady_state_samples"]
+            and geometry.get("sampling", "regular") == default_input["sampling"]
+            and set(overrides).issubset(scientific_defaults)
+            and all(
+                overrides.get(key, value) == value
+                for key, value in scientific_defaults.items()
+            )
+        )
         if default and sorted({genes for genes, _ in sizes}) != sorted(
             design["gene_levels"]
         ):
             raise ValueError(
                 f"{name}: default temporal slice needs the registered three gene levels."
             )
-        if not growth and not default and len(sizes) != 1:
-            raise ValueError(f"{name}: branch scope must be an explicit single point.")
         alpha = raw.get("param_overrides", {}).get("alpha")
         if isinstance(alpha, list) and any(genes != len(alpha) for genes, _ in sizes):
             raise ValueError(
@@ -250,8 +299,14 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
             )
         if profile:
             params = config.get("params_profile", {}).get("resolved_params", {})
-            expected_params = {**SCIENTIFIC_DEFAULTS, **raw.get("param_overrides", {})}
-            if any(params.get(key) != value for key, value in expected_params.items()):
+            expected_params = {
+                **scientific_defaults,
+                **raw.get("param_overrides", {}),
+            }
+            if any(
+                key not in params or params[key] != value
+                for key, value in expected_params.items()
+            ):
                 errors.append(
                     "Measured method parameters differ from the registered defaults/branch overrides."
                 )
@@ -294,13 +349,10 @@ def temporal_calibration_coverage(instance: dict, recipe: dict) -> dict:
                 "expression.tsv",
                 "params.json",
                 "execution.json",
-                "extra/timepoints.tsv",
-                "extra/replicates.tsv",
+                "extra/column_descriptors.tsv",
             }
             if "tf_list" in raw.get("optional_inputs", []):
                 required_hashes.add("extra/tf_list.txt")
-            if "steady_state_expression" in raw.get("optional_inputs", []):
-                required_hashes.add("extra/steady_state_expression.tsv")
             if not required_hashes.issubset(inputs):
                 point_errors.append(
                     "Raw evidence must identify the matrices, resolved configuration and temporal metadata."

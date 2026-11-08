@@ -3,22 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path
+from collections.abc import Sequence
 from typing import Any
 
-from .cost_resume import input_manifest, same_measurement_context
-
-_compat_spec = importlib.util.spec_from_file_location(
-    "_andrea_prediction_calibration_compatibility",
-    Path(__file__).resolve().parents[3] / "calibration_compatibility.py",
+from .cost_resume import (
+    input_manifest,
+    same_measurement_context,
+    successful_observation,
 )
-_compatibility = importlib.util.module_from_spec(_compat_spec)
-_compat_spec.loader.exec_module(_compatibility)
-authorize_run = _compatibility.authorize_run
-verify_compatibility = _compatibility.verify
 
 
 def digest(value: Any) -> str:
@@ -69,40 +64,207 @@ def identity_for_config(
     }
 
 
-def load_training_observations(
-    calibration_root: Path,
-    cost_profile: dict,
-    *,
-    compatibility_receipt: Path | None = None,
-) -> list[dict]:
-    """Retain actual raw row references; reject missing IDs or changed inputs."""
+def _collect_calibration_entries(roots: list[Path], cost_profile: dict) -> list[dict]:
+    """Inventory every attempt, following selected executions to their originals."""
     name = cost_profile["profile_id"]
-    config = cost_profile["benchmark_config"]
-    compatibility = (
-        verify_compatibility(
-            compatibility_receipt,
-            image_id=config["provenance"]["image_id"],
-            current_source_sha256=config["provenance"]["source_sha256"],
-        )
-        if compatibility_receipt is not None
-        else None
-    )
-    expected_rows = {
-        row["run_id"]: row
+    selected_ids = {
+        row.get("run_id")
         for point in cost_profile["runtime_points"]
         for row in point["measurement_evidence"]["observations"]
-        if row.get("status") == "ok"
     }
-    candidates: dict[str, list[dict]] = {}
-    paths = set(calibration_root.rglob("measurements.json"))
-    if compatibility is not None:
-        paths.update(
-            (compatibility_receipt.parent / row["measurements"]["path"]).resolve()
-            for row in compatibility["original_measurements"]
-        )
-    for path in sorted(paths):
-        if path.parent.name != name:
+    paths = {
+        path.resolve()
+        for root in roots
+        for path in root.rglob("measurements.json")
+        if path.parent.name == name
+    }
+    entries = []
+    visited = set()
+    pending = sorted(paths)
+    while pending:
+        path = pending.pop(0)
+        if path in visited:
             continue
+        visited.add(path)
+        config_path = path.with_name("benchmark_config.json")
+        try:
+            rows = json.loads(path.read_text())
+            if not isinstance(rows, list):
+                raise ValueError("Raw measurement document is not an array.")
+        except (OSError, ValueError) as exc:
+            entries.append(
+                {
+                    "raw_receipt": path,
+                    "pointer": "",
+                    "config_path": config_path,
+                    "raw_row": None,
+                    "classification": "malformed_receipt",
+                    "diagnostic": str(exc),
+                }
+            )
+            continue
+        for index, row in enumerate(rows):
+            run_id = row.get("run_id") if isinstance(row, dict) else None
+            status = row.get("status") if isinstance(row, dict) else None
+            if isinstance(run_id, str) and run_id in selected_ids:
+                classification = "selected_training"
+                reused = row.get("reused_from")
+                if isinstance(reused, str) and reused:
+                    source = Path(reused)
+                    if not source.is_absolute():
+                        source = path.parent / source
+                    if source.is_file() and source.resolve() not in visited:
+                        pending.append(source.resolve())
+            elif status == "ok":
+                classification = "unselected_success"
+            elif isinstance(row, dict):
+                classification = "retained_failure"
+            else:
+                classification = "malformed_row"
+            entries.append(
+                {
+                    "raw_receipt": path,
+                    "pointer": f"/{index}",
+                    "config_path": config_path,
+                    "raw_row": row,
+                    "classification": classification,
+                }
+            )
+    return entries
+
+
+def _write_calibration_review(
+    path: Path,
+    cost_profile: dict,
+    inventory: list[dict],
+    *,
+    verification_status: str,
+    error: str | None = None,
+) -> None:
+    """Write review references separately; excluded attempts never become timings."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    counts: dict[str, int] = {}
+    for entry in inventory:
+        classification = entry["classification"]
+        counts[classification] = counts.get(classification, 0) + 1
+        row = entry["raw_row"]
+        record = {
+            "classification": classification,
+            "run_id": row.get("run_id") if isinstance(row, dict) else None,
+            "status": row.get("status") if isinstance(row, dict) else None,
+            "raw_evidence": artifact(
+                entry["raw_receipt"], path.parent, pointer=entry["pointer"]
+            ),
+        }
+        if entry["config_path"].is_file():
+            record["config"] = artifact(entry["config_path"], path.parent)
+        if entry.get("diagnostic"):
+            record["diagnostic"] = entry["diagnostic"]
+        rows.append(record)
+    report = {
+        "profile_id": cost_profile["profile_id"],
+        "expected_run_ids": sorted(
+            {
+                row.get("run_id")
+                for point in cost_profile["runtime_points"]
+                for row in point["measurement_evidence"]["observations"]
+                if isinstance(row.get("run_id"), str)
+            }
+        ),
+        "verification_status": verification_status,
+        "row_counts": counts,
+        "rows": rows,
+        "selection_policy": "Only successful execution IDs explicitly embedded in the frozen cost profile are training. Other retained attempts are inventoried without supplying training timings.",
+    }
+    if error is not None:
+        report["error"] = error
+    path.write_text(json.dumps(report, indent=2) + "\n")
+
+
+def load_training_observations(
+    calibration_root: Path | Sequence[Path],
+    cost_profile: dict,
+    *,
+    review_path: Path | None = None,
+) -> list[dict]:
+    """Verify selected training and every retained copy, inventorying other attempts."""
+    roots = (
+        [calibration_root]
+        if isinstance(calibration_root, Path)
+        else list(calibration_root)
+    )
+    inventory = _collect_calibration_entries(roots, cost_profile)
+    try:
+        found = _verify_training_observations(inventory, cost_profile)
+    except (ValueError, KeyError, OSError, TypeError) as exc:
+        if review_path is not None:
+            _write_calibration_review(
+                review_path,
+                cost_profile,
+                inventory,
+                verification_status="rejected",
+                error=str(exc),
+            )
+        raise
+    if review_path is not None:
+        _write_calibration_review(
+            review_path, cost_profile, inventory, verification_status="verified"
+        )
+    for entry in found:
+        entry["review_inventory"] = inventory
+        entry["review_path"] = review_path
+    return found
+
+
+def _verify_training_observations(
+    inventory: list[dict], cost_profile: dict
+) -> list[dict]:
+    config = cost_profile["benchmark_config"]
+    expected_rows = {}
+    for point in cost_profile["runtime_points"]:
+        for row in point["measurement_evidence"]["observations"]:
+            run_id = row.get("run_id")
+            if (
+                not isinstance(run_id, str)
+                or not run_id
+                or not successful_observation(row)
+            ):
+                raise ValueError(
+                    "Frozen training observation lacks a successful execution ID/timing."
+                )
+            if run_id in expected_rows:
+                raise ValueError(
+                    "Frozen training observations contain a repeated execution ID."
+                )
+            embedded_provenance = row.get(
+                "measurement_provenance", config["provenance"]
+            )
+            if any(
+                embedded_provenance.get(key) != config["provenance"].get(key)
+                for key in (
+                    "image_id",
+                    "source_sha256",
+                    "cpu_model",
+                    "platform",
+                    "logical_cpus",
+                    "host_memory_bytes",
+                    "docker_server",
+                )
+            ):
+                raise ValueError(
+                    "Embedded training provenance contradicts the frozen cost snapshot."
+                )
+            expected_rows[run_id] = row
+    candidates: dict[str, list[dict]] = {}
+    selected_paths = sorted(
+        {
+            entry["raw_receipt"]
+            for entry in inventory
+            if entry["classification"] == "selected_training"
+        }
+    )
+    for path in selected_paths:
         config_path = path.with_name("benchmark_config.json")
         actual_config = json.loads(config_path.read_text())
         if not same_measurement_context(actual_config, config):
@@ -115,12 +277,17 @@ def load_training_observations(
             raise ValueError(
                 "Calibration image/source differs from the frozen cost snapshot."
             )
-        rows = json.loads(path.read_text())
         seen_in_file = set()
-        for index, row in enumerate(rows):
-            if row.get("status") != "ok":
+        for entry in inventory:
+            if (
+                entry["raw_receipt"] != path
+                or entry["classification"] != "selected_training"
+            ):
+                continue
+            row = entry["raw_row"]
+            if not successful_observation(row):
                 raise ValueError(
-                    f"Failed calibration attempt retained in {path}; review before claiming independent accuracy."
+                    f"Failed calibration attempt selected by the frozen cost snapshot: {path}{entry['pointer']}"
                 )
             run_id = row.get("run_id")
             if not isinstance(run_id, str) or not run_id:
@@ -132,10 +299,6 @@ def load_training_observations(
                     f"Repeated execution ID within one raw receipt: {path}"
                 )
             seen_in_file.add(run_id)
-            if run_id not in expected_rows:
-                raise ValueError(
-                    "Raw calibration execution is absent from the frozen cost snapshot."
-                )
             if any(
                 row.get(key) != expected_rows[run_id].get(key)
                 for key in (
@@ -180,16 +343,14 @@ def load_training_observations(
             ].get(
                 "source_sha256"
             ):
-                if compatibility is None:
-                    raise ValueError(
-                        "Calibration source provenance contradicts the frozen cost snapshot without a compatibility receipt."
-                    )
-                authorize_run(compatibility, row, actual_config, config)
+                raise ValueError(
+                    "Calibration source provenance contradicts the frozen cost snapshot."
+                )
             candidates.setdefault(run_id, []).append(
                 {
                     "raw_row": row,
                     "raw_receipt": path,
-                    "pointer": f"/{index}",
+                    "pointer": entry["pointer"],
                     "config": actual_config,
                     "config_path": config_path,
                     "io_dir": io_dir,
@@ -273,23 +434,21 @@ def adapt_training_observations(
     entries: list[dict],
     output_dir: Path,
     profile: dict,
-    *,
-    compatibility_receipt: Path | None = None,
 ) -> list[dict]:
     """Write explicit evidence adapters, without fabricating any timing or run ID."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    observations = []
-    compatibility = (
-        verify_compatibility(
-            compatibility_receipt,
-            image_id=profile["benchmark_config"]["provenance"]["image_id"],
-            current_source_sha256=profile["benchmark_config"]["provenance"][
-                "source_sha256"
-            ],
+    review_path = entries[0].get("review_path") if entries else None
+    if entries and review_path is None:
+        review_path = (
+            output_dir / f"training-review-{digest(profile['profile_id'])[:16]}.json"
         )
-        if compatibility_receipt is not None
-        else None
-    )
+        _write_calibration_review(
+            review_path,
+            profile,
+            entries[0]["review_inventory"],
+            verification_status="verified",
+        )
+    observations = []
     for entry in entries:
         row, io = entry["raw_row"], entry["io_dir"]
         original_config = {
@@ -309,18 +468,8 @@ def adapt_training_observations(
             original_identity["source_sha256"]
             != profile["benchmark_config"]["provenance"]["source_sha256"]
         ):
-            if compatibility is None:
-                raise ValueError(
-                    "Original source identity requires an explicit compatibility receipt."
-                )
-            authorize_run(
-                compatibility, row, entry["config"], profile["benchmark_config"]
-            )
-            identity = identity_for_config(
-                profile["benchmark_config"],
-                threads=row["threads"],
-                ram_gb=row["ram_gb"],
-                profile_id=profile["profile_id"],
+            raise ValueError(
+                "Calibration source identity differs from the requested profile."
             )
         coordinates = {
             key: value for key, value in row["dimensions"].items() if value > 0
@@ -362,16 +511,9 @@ def adapt_training_observations(
                 artifact(copy["raw_receipt"], output_dir, pointer=copy["pointer"])
                 for copy in entry.get("equivalent_raw_receipts", [])
             ],
+            "calibration_review": artifact(review_path, output_dir),
             "mapping": "Identity recipe/hardware hashes derive from retained configuration/provenance; seconds, execution ID, coordinates and inputs come from the original raw execution row.",
         }
-        if identity != original_identity:
-            adapter["original_identity"] = original_identity
-            adapter["source_compatibility"] = artifact(
-                compatibility_receipt, output_dir
-            )
-            adapter[
-                "mapping"
-            ] += " Source identity is an explicit verified compatibility alias; original identity and raw measurement provenance are retained unchanged."
         receipt = output_dir / f"training-{row['run_id']}.json"
         receipt.write_text(json.dumps(adapter, indent=2) + "\n")
         observations.append(

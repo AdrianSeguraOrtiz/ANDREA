@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 import hashlib
+import ast
+import math
 import importlib.util
 import json
 import os
 import platform
 import shlex
 import stat
+import symtable
 import subprocess
 import sys
 import tempfile
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 
@@ -28,6 +31,29 @@ def atomic_json(path: Path, payload: Any) -> None:
         os.replace(temporary, path)
     finally:
         Path(temporary).unlink(missing_ok=True)
+
+
+def is_generated_cost_artifact(name: str) -> bool:
+    """Recognize cost outputs and atomic writer files, not arbitrary dotfiles.
+
+    atomic_json creates .cost.json.<random> beside a catalog cost.json. Those
+    short-lived files must not enter a source seal while costs are published.
+    """
+    path = PurePosixPath(name)
+    if path.name == "cost.json":
+        return True
+    parts = path.parts
+    return (
+        len(parts) == 5
+        and parts[0] == "andrea"
+        and (parts[1], parts[2])
+        in {
+            ("catalog_inference_tools", "tools"),
+            ("catalog_simulation_data_tools", "simulators"),
+        }
+        and parts[4].startswith(".cost.json.")
+        and bool(parts[4][len(".cost.json.") :])
+    )
 
 
 def collect_provenance(
@@ -77,14 +103,14 @@ def collect_provenance(
         if not raw:
             continue
         name = os.fsdecode(raw)
-        if not name.startswith(("andrea/", "wrappers/", "scripts/")) or name.endswith(
-            "/cost.json"
-        ):
+        if not name.startswith(
+            ("andrea/", "wrappers/", "scripts/")
+        ) or is_generated_cost_artifact(name):
             continue
         path = root / name
         if path.is_file():
             source.update(raw + b"\0" + path.read_bytes() + b"\0")
-    return {
+    result = {
         "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
         "git_commit": output(["git", "rev-parse", "HEAD"]),
         "git_dirty": bool(output(["git", "status", "--porcelain"])),
@@ -109,6 +135,9 @@ def collect_provenance(
         "seed": seed,
         "timing_scope": "docker run wall time including container startup and output writing",
     }
+    if spec_path.name == "toolspec.json":
+        result["measurement_kernel_sha256"] = measurement_kernel_fingerprint(root)
+    return result
 
 
 def persistent_workdir(results_dir: Path, identifier: str) -> Path:
@@ -305,8 +334,177 @@ def build_context_fingerprint(
     return digest.hexdigest()
 
 
+def _inference_kernel(root: Path) -> dict[str, str]:
+    """Hash executed input/timing code without hashing campaign orchestration.
+
+    Resolve local dependencies from the actual measurement functions, rather
+    than copying their implementation or treating every driver edit as a new
+    experiment. Imports are recorded per name so adding an unrelated recovery
+    import cannot change the kernel identity. Fixture generation remains sealed
+    independently by its complete source; retained input bytes are also checked
+    before an observation can be reused.
+    """
+    driver = root / "wrappers/inference_tools/scripts/benchmark_costs.py"
+    tree = ast.parse(driver.read_text())
+
+    class WithoutDocstrings(ast.NodeTransformer):
+        def visit_FunctionDef(self, node):
+            self.generic_visit(node)
+            if (
+                node.body
+                and isinstance(node.body[0], ast.Expr)
+                and isinstance(node.body[0].value, ast.Constant)
+                and isinstance(node.body[0].value.value, str)
+            ):
+                node.body = node.body[1:]
+            return node
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+        visit_ClassDef = visit_FunctionDef
+
+    tree = WithoutDocstrings().visit(tree)
+    definitions = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            definitions[node.name] = node
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    definitions[target.id] = node
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for item in node.names:
+                name = item.asname or (
+                    item.name.split(".")[0]
+                    if isinstance(node, ast.Import)
+                    else item.name
+                )
+                definitions[name] = (
+                    ast.Import(names=[item])
+                    if isinstance(node, ast.Import)
+                    else ast.ImportFrom(
+                        module=node.module, names=[item], level=node.level
+                    )
+                )
+    pending = {
+        "run_container_once",
+        "run_cmd",
+        "prepare_io_dir",
+        "percentile",
+        "aggregate_runtime_points",
+        "build_feature_vector",
+    }
+    missing = pending - definitions.keys()
+    if missing:
+        raise RuntimeError(f"Missing inference measurement kernel: {sorted(missing)}")
+    selected = {}
+    while pending:
+        name = pending.pop()
+        if name in selected:
+            continue
+        node = definitions[name]
+        selected[name] = ast.dump(node, include_attributes=False)
+        # Python's symbol table resolves lexical scope (including nested
+        # functions/comprehensions). A local variable named ``run`` must not
+        # pull the unrelated top-level campaign runner into the kernel.
+        symbols = symtable.symtable(ast.unparse(node), str(driver), "exec")
+        tables = [symbols]
+        while tables:
+            table = tables.pop()
+            pending.update(
+                symbol.get_name()
+                for symbol in table.get_symbols()
+                if symbol.is_referenced()
+                and (table.get_type() == "module" or symbol.is_global())
+                and symbol.get_name() in definitions
+                and symbol.get_name() not in selected
+            )
+            tables.extend(table.get_children())
+    # params.json/execution.json use the shared atomic serializer. Hash that
+    # function, not the unrelated provenance/release/recovery helpers beside it.
+    support = ast.parse((root / "wrappers/benchmark_support.py").read_text())
+    serializer = next(
+        node
+        for node in support.body
+        if isinstance(node, ast.FunctionDef) and node.name == "atomic_json"
+    )
+    selected["benchmark_support.atomic_json"] = ast.dump(
+        serializer, include_attributes=False
+    )
+    inputs = root / "wrappers/inference_tools/scripts/shared/benchmark_inputs.py"
+    return {
+        "input_generator": hashlib.sha256(inputs.read_bytes()).hexdigest(),
+        "measurement_kernel": hashlib.sha256(
+            json.dumps(selected, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+    }
+
+
+def measurement_kernel_fingerprint(root: Path) -> str:
+    """Identify the scientific inference input/timing implementation only."""
+    return hashlib.sha256(
+        json.dumps(
+            _inference_kernel(root), sort_keys=True, separators=(",", ":")
+        ).encode()
+    ).hexdigest()
+
+
+def verify_measurement_source(
+    root: Path, expected_source_sha256: str, source_files_sha256: dict[str, str]
+) -> str:
+    """Prove a retained source snapshot before deriving a legacy kernel identity.
+
+    The global source digest is compared with the original observation's
+    provenance, not with a manually allowed recipe hash. Nothing is imported or
+    executed from the old source. This proof does not replace input/context and
+    output integrity checks on each individual retained observation.
+    """
+    if not source_files_sha256 or not isinstance(expected_source_sha256, str):
+        raise ValueError(
+            "An original source digest and nonempty source manifest are required"
+        )
+    required = {
+        "wrappers/benchmark_support.py",
+        "wrappers/inference_tools/scripts/benchmark_costs.py",
+        "wrappers/inference_tools/scripts/shared/benchmark_inputs.py",
+    }
+    if not required.issubset(source_files_sha256):
+        raise ValueError(
+            "Source proof does not include the complete inference measurement kernel"
+        )
+    root = root.resolve()
+    source = hashlib.sha256()
+    for name, expected in sorted(source_files_sha256.items()):
+        relative = PurePosixPath(name)
+        path = (root / name).resolve()
+        if (
+            relative.is_absolute()
+            or ".." in relative.parts
+            or not path.is_relative_to(root)
+            or not name.startswith(("andrea/", "wrappers/", "scripts/"))
+            or is_generated_cost_artifact(name)
+        ):
+            raise ValueError(f"Invalid scientific source manifest path: {name}")
+        if not path.is_file():
+            raise ValueError(f"Missing retained measurement source: {name}")
+        content = path.read_bytes()
+        if hashlib.sha256(content).hexdigest() != expected:
+            raise ValueError(f"Retained measurement source changed: {name}")
+        source.update(name.encode() + b"\0" + content + b"\0")
+    if source.hexdigest() != expected_source_sha256:
+        raise ValueError(
+            "Retained source manifest does not match original measurement provenance"
+        )
+    return measurement_kernel_fingerprint(root)
+
+
 def profile_fingerprint(profile: Any, *, root: Path, kind: str) -> str:
-    """Fingerprint a resolved profile and its fixture/timing implementation."""
+    """Fingerprint resolved scientific inputs and the executed measurement kernel.
+
+    Runner/control-flow source remains provenance. It is not a cache key for
+    inference observations. Simulator fingerprints retain their existing
+    contract until that separate workflow is reviewed.
+    """
 
     def canonical(value):
         if is_dataclass(value):
@@ -333,41 +531,200 @@ def profile_fingerprint(profile: Any, *, root: Path, kind: str) -> str:
         / ("inference_tools" if kind == "inference" else "simulation_data_tools")
         / "scripts"
     )
-    recipe_paths = [scripts / "benchmark_costs.py"]
-    if kind == "inference":
-        recipe_paths.append(scripts / "shared/benchmark_inputs.py")
     resolved = canonical(profile)
-    recipes = {
-        str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in recipe_paths
-    }
-    compatibility_path = scripts / "shared/recipe_compatibility.json"
-    if (
-        kind == "inference"
-        and compatibility_path.is_file()
-        and isinstance(resolved, dict)
-    ):
-        compatibility = json.loads(compatibility_path.read_text())
-        inputs = resolved.get("input_profile", {})
-        if (
-            compatibility.get("schema_version") == 1
-            and recipes == compatibility.get("compatible_recipes")
-            and not inputs.get("temporal")
-            and not inputs.get("temporal_fixture")
-            and "steady_state_expression" not in inputs.get("extras_provided", [])
-        ):
-            # This finite, reviewed bridge preserves unchanged legacy fixtures
-            # after the opt-in temporal extension. Exact current source hashes
-            # are required: another implementation edit invalidates the bridge.
-            recipes = compatibility["baseline_recipes"]
+    recipes = (
+        _inference_kernel(root)
+        if kind == "inference"
+        else {
+            str((scripts / "benchmark_costs.py").relative_to(root)): hashlib.sha256(
+                (scripts / "benchmark_costs.py").read_bytes()
+            ).hexdigest()
+        }
+    )
     value = {"resolved_profile": resolved, "recipes": recipes}
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def release_profile_errors(payload: dict, expected: dict[str, str]) -> list[str]:
-    """Require every current profile and complete, successful timing matrices."""
+def runtime_point_errors(
+    point: dict, *, repeats: int | None = None, require_attempts: bool = False
+) -> list[str]:
+    """Validate actual terminal outcomes without turning failures into timings."""
+    integer = (
+        lambda value: isinstance(value, int)
+        and not isinstance(value, bool)
+        and value >= 0
+    )
+    positive = lambda value: (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value > 0
+    )
+    total, ok, failed = (
+        point.get(key) for key in ("repeats_total", "repeats_ok", "repeats_failed")
+    )
+    breakdown = point.get("failure_breakdown", {})
+    if (
+        not all(integer(value) for value in (total, ok, failed))
+        or total < 1
+        or total != ok + failed
+        or not isinstance(breakdown, dict)
+        or set(breakdown) != {"oom", "timeout", "error"}
+        or not all(integer(value) for value in breakdown.values())
+        or sum(breakdown.values()) != failed
+    ):
+        return ["Terminal attempt counts and failure breakdown must agree."]
+    status = (
+        "ok"
+        if failed == 0
+        else (
+            "partial"
+            if ok
+            else (
+                "oom"
+                if breakdown["oom"]
+                else "timeout" if breakdown["timeout"] else "error"
+            )
+        )
+    )
+    errors = []
+    if point.get("status") != status:
+        errors.append(
+            "Aggregated status contradicts the actual successful/failed attempts."
+        )
+    rate = point.get("ok_rate")
+    if (
+        not isinstance(rate, (int, float))
+        or isinstance(rate, bool)
+        or not math.isfinite(rate)
+        or not math.isclose(rate, ok / total, rel_tol=0, abs_tol=1e-6)
+    ):
+        errors.append(
+            "ok_rate must equal successful attempts divided by actual attempts."
+        )
+    if ok:
+        if not all(positive(point.get(key)) for key in ("seconds_p50", "seconds_p90")):
+            errors.append(
+                "Successful observations require positive finite timing percentiles."
+            )
+        elif point["seconds_p90"] < point["seconds_p50"]:
+            errors.append("Timing p90 cannot be smaller than the median.")
+    elif any(point.get(key) is not None for key in ("seconds_p50", "seconds_p90")):
+        errors.append("Timing percentiles must be null when no execution succeeded.")
+    evidence = point.get("measurement_evidence", {})
+    rows = evidence.get("observations") if isinstance(evidence, dict) else None
+    if require_attempts and not isinstance(rows, list):
+        errors.append(
+            "Retained raw terminal observations are required for the attempt-completion gate."
+        )
+    if rows is not None:
+        if not isinstance(rows, list) or len(rows) != total:
+            errors.append(
+                "Raw observation count must equal the actual terminal attempt count."
+            )
+        else:
+            actual_ok = 0
+            actual_failures = {"oom": 0, "timeout": 0, "error": 0}
+            seen = set()
+            seconds = []
+            for row in rows:
+                if (
+                    not isinstance(row, dict)
+                    or row.get("status") not in {"ok", "oom", "timeout", "error"}
+                    or not positive(row.get("seconds"))
+                ):
+                    errors.append(
+                        "Retained observations require a true terminal status and actual finite elapsed time."
+                    )
+                    continue
+                for dimension in ("genes", "columns", "cells", "threads", "ram_gb"):
+                    if (
+                        dimension in point
+                        and (dimension in row or require_attempts)
+                        and row.get(dimension) != point[dimension]
+                    ):
+                        errors.append(f"Raw observation contradicts point {dimension}.")
+                key = row.get("run_id") or row.get("task_id") or row.get("io_dir")
+                if require_attempts and (not isinstance(key, str) or not key.strip()):
+                    errors.append(
+                        "Each terminal attempt needs its retained execution identity."
+                    )
+                if require_attempts and (
+                    not integer(row.get("repeat")) or row["repeat"] < 1
+                ):
+                    errors.append(
+                        "Each declared repetition slot must be a positive integer."
+                    )
+                if isinstance(key, str) and key in seen:
+                    errors.append("A retained actual execution is duplicated.")
+                if isinstance(key, str):
+                    seen.add(key)
+                if row["status"] == "ok":
+                    actual_ok += 1
+                    seconds.append(row["seconds"])
+                else:
+                    actual_failures[row["status"]] += 1
+            if actual_ok != ok or actual_failures != breakdown:
+                errors.append(
+                    "Aggregated outcome counts contradict retained raw observations."
+                )
+            if seconds and all(
+                positive(point.get(key)) for key in ("seconds_p50", "seconds_p90")
+            ):
+                values = sorted(seconds)
+                for field, fraction in (("seconds_p50", 0.5), ("seconds_p90", 0.9)):
+                    index = (len(values) - 1) * fraction
+                    low, high = math.floor(index), math.ceil(index)
+                    observed = values[low] + (values[high] - values[low]) * (
+                        index - low
+                    )
+                    if not math.isclose(
+                        point[field], observed, rel_tol=1e-9, abs_tol=1e-6
+                    ):
+                        errors.append(
+                            f"{field} differs from the retained successful timings."
+                        )
+            if require_attempts and isinstance(repeats, int):
+                slots = {
+                    row.get("repeat")
+                    for row in rows
+                    if isinstance(row, dict)
+                    and row.get("status") in {"ok", "oom", "timeout", "error"}
+                    and integer(row.get("repeat"))
+                    and row["repeat"] >= 1
+                }
+                if not set(range(1, repeats + 1)).issubset(slots):
+                    errors.append(
+                        "The declared repetition slots do not all have terminal observations."
+                    )
+    if require_attempts and (
+        not isinstance(repeats, int)
+        or isinstance(repeats, bool)
+        or repeats < 3
+        or total < repeats
+    ):
+        errors.append(
+            "Every planned point requires its declared terminal attempts (minimum three); success is assessed separately."
+        )
+    return errors
+
+
+def release_profile_errors(
+    payload: dict,
+    expected: dict[str, str],
+    *,
+    require_attempts: bool = True,
+    require_successful: bool = True,
+) -> list[str]:
+    """Validate current profile identity and actual outcomes, including failures.
+
+    The default retains the full-success release policy used by simulators and
+    historical callers. Inference explicitly opts into outcome-aware validation:
+    checkpoints may omit unattempted points, while a separate attempt gate
+    requires all terminal slots. Numerical support remains a distinct check.
+    """
     profiles = payload.get("profiles", [])
     observed = {
         profile.get("profile_id") for profile in profiles if isinstance(profile, dict)
@@ -379,7 +736,7 @@ def release_profile_errors(payload: dict, expected: dict[str, str]) -> list[str]
         )
     missing = sorted(set(expected) - observed)
     obsolete = sorted(str(item) for item in observed - set(expected))
-    if missing:
+    if missing and require_attempts:
         errors.append(
             f"Missing current benchmark profiles: {', '.join(missing)}; regenerate these profiles."
         )
@@ -434,15 +791,24 @@ def release_profile_errors(payload: dict, expected: dict[str, str]) -> list[str]
             continue
         if (
             not expected_points
-            or set(actual_points) != expected_points
-            or len(actual_points) != len(expected_points)
+            or len(actual_points) != len(set(actual_points))
+            or not set(actual_points).issubset(expected_points)
+            or (require_attempts and set(actual_points) != expected_points)
         ):
             errors.append(
                 f"{label}: runtime_points do not cover the declared matrix exactly; regenerate this profile."
             )
         repeats = config.get("repeats", 0)
         for point in points:
-            if (
+            errors.extend(
+                f"{label}: {message}"
+                for message in runtime_point_errors(
+                    point,
+                    repeats=repeats,
+                    require_attempts=require_attempts and not require_successful,
+                )
+            )
+            if require_successful and (
                 point.get("status") != "ok"
                 or point.get("repeats_total") != repeats
                 or point.get("repeats_ok") != repeats
@@ -450,10 +816,10 @@ def release_profile_errors(payload: dict, expected: dict[str, str]) -> list[str]
                 or point.get("ok_rate") != 1
                 or any(point.get("failure_breakdown", {}).values())
                 or not isinstance(repeats, int)
+                or isinstance(repeats, bool)
                 or repeats < 3
             ):
                 errors.append(
                     f"{label}: every point requires all declared repetitions successful (minimum three); regenerate this profile."
                 )
-                break
     return errors

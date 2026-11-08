@@ -57,6 +57,7 @@ from benchmark_support import (
     profile_fingerprint,
     provenance_errors,
     release_profile_errors,
+    runtime_point_errors,
 )
 
 DEFAULT_SCHEMA_PATH = CATALOG_ROOT / "schemas" / "toolcost.schema.json"
@@ -147,7 +148,78 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Require complete planned coverage across independently variable axes; honor the fixed feature count of supported pretrained models.",
     )
+    parser.add_argument(
+        "--require-attempts",
+        action="store_true",
+        help="Require every declared repetition slot to have a verified terminal outcome, including timeout/OOM/error. Numerical calibration coverage remains separate.",
+    )
     return parser.parse_args(argv)
+
+
+def attempt_coverage(instance: dict, planned_profile_ids=None) -> dict:
+    """Report terminal execution coverage without inventing successful timings."""
+    profiles = instance.get("profiles", [])
+    present = {profile.get("profile_id"): profile for profile in profiles}
+    wanted = set(planned_profile_ids or present)
+    expected = {
+        name: present.get(name, {}).get("benchmark_config", {}).get("profile_sha256")
+        for name in wanted
+    }
+    errors = release_profile_errors(
+        instance, expected, require_attempts=True, require_successful=False
+    )
+    reports = []
+    for profile in profiles:
+        config = profile.get("benchmark_config", {})
+        points = profile.get("runtime_points", [])
+        declared = config.get("planned_points")
+        expected_points = (
+            {
+                (p["genes"], p["columns"], p["threads"], float(p["ram_gb"]))
+                for p in declared
+            }
+            if declared is not None
+            else {
+                (size["genes"], size["columns"], threads, float(ram))
+                for size in config.get("sizes", [])
+                for threads in config.get("threads_tested", [])
+                for ram in config.get("ram_gb_tested", [])
+            }
+        )
+        terminal = {
+            (point["genes"], point["columns"], point["threads"], float(point["ram_gb"]))
+            for point in points
+            if not runtime_point_errors(
+                point, repeats=config.get("repeats"), require_attempts=True
+            )
+        }
+        reports.append(
+            {
+                "profile_id": profile.get("profile_id"),
+                "planned_points": len(expected_points),
+                "terminal_points": len(terminal),
+                "actual_attempts": sum(
+                    point.get("repeats_total", 0) for point in points
+                ),
+                "successful_attempts": sum(
+                    point.get("repeats_ok", 0) for point in points
+                ),
+                "failed_attempts": sum(
+                    point.get("repeats_failed", 0) for point in points
+                ),
+                "pending_points": [
+                    dict(zip(("genes", "columns", "threads", "ram_gb"), point))
+                    for point in sorted(expected_points - terminal)
+                ],
+                "complete": bool(expected_points and expected_points == terminal),
+            }
+        )
+    return {
+        "complete": not errors,
+        "profiles": reports,
+        "errors": errors,
+        "interpretation": "Terminal attempts include genuine timeouts and errors. They are not successful timing support or independent predictive validation.",
+    }
 
 
 def coverage_for_profile(
@@ -305,8 +377,11 @@ def calibration_coverage(
     tool_id: str | None = None,
     temporal_recipe: dict | None = None,
 ) -> dict:
+    attempts = attempt_coverage(instance, set(planned or {}))
     if temporal_recipe is not None:
-        return temporal_calibration_coverage(instance, temporal_recipe)
+        report = temporal_calibration_coverage(instance, temporal_recipe)
+        report["attempt_coverage"] = attempts
+        return report
     planned = planned or {}
     profiles = []
     for profile in instance.get("profiles", []):
@@ -335,6 +410,7 @@ def calibration_coverage(
     missing = sorted(set(planned) - present)
     return {
         "profiles": profiles,
+        "attempt_coverage": attempts,
         "missing_profiles": missing,
         "calibration_adequate_for_planned_range": bool(
             profiles
@@ -834,19 +910,32 @@ def semantic_errors_for_cost(
         else:
             if temporal is not None:
                 valid_temporal_geometry = True
-                if not {"timepoints", "replicates"}.issubset(extras_provided):
+                kinds = input_profile.get("observation_types")
+                expected_kinds = toolspec.get("temporal_requirements", {}).get(
+                    "observation_types"
+                )
+                if kinds != expected_kinds:
                     errors.append(
-                        f"{profile_prefix}: temporal profiles require timepoints and replicates inputs."
+                        f"{profile_prefix}: temporal observation_types must equal the ToolSpec selection."
                     )
-                if ("steady_state_expression" in extras_provided) != (
-                    geometry.get("steady_state_samples", 0) > 0
+                if (
+                    not isinstance(kinds, list)
+                    or "time_series" not in kinds
+                    or (
+                        geometry.get("steady_state_samples", 0)
+                        and "steady_state" not in kinds
+                    )
                 ):
                     errors.append(
-                        f"{profile_prefix}: temporal steady_state_samples must match steady_state_expression presence."
+                        f"{profile_prefix}: temporal calibration must contain only consumed observation types."
                     )
-                expected_columns = (
-                    geometry["series_count"] * geometry["timepoints_per_series"]
-                )
+                if "column_descriptors" not in extras_provided:
+                    errors.append(
+                        f"{profile_prefix}: temporal profiles require column_descriptors input."
+                    )
+                expected_columns = geometry["series_count"] * geometry[
+                    "timepoints_per_series"
+                ] + geometry.get("steady_state_samples", 0)
                 temporal_sizes = list(benchmark_config.get("sizes", []))
                 if isinstance(runtime_points, list):
                     temporal_sizes.extend(runtime_points)
@@ -856,7 +945,7 @@ def semantic_errors_for_cost(
                         and point.get("columns") != expected_columns
                     ):
                         errors.append(
-                            f"{profile_prefix}: temporal columns must equal series_count * timepoints_per_series ({expected_columns})."
+                            f"{profile_prefix}: temporal columns must equal series_count * timepoints_per_series + steady_state_samples ({expected_columns})."
                         )
         required_satisfied = _string_set(input_profile.get("required_inputs_satisfied"))
         optional_provided = _string_set(input_profile.get("optional_inputs_provided"))
@@ -1088,6 +1177,7 @@ def run(
     param_overrides_dir: Path = DEFAULT_PARAM_OVERRIDES_DIR,
     coverage_report: Path | None = None,
     require_coverage: bool = False,
+    require_attempts: bool = False,
 ) -> int:
     selected_tools = select_tools(
         discover_catalog_tool_dirs(catalog_tools_root), tool_filters
@@ -1097,7 +1187,9 @@ def run(
         for tool_id, directory in selected_tools
         if not (directory / "cost.json").exists()
     ]
-    if missing and (require or require_provenance):
+    if missing and (
+        require or require_provenance or require_coverage or require_attempts
+    ):
         raise RuntimeError(f"Missing tool cost.json for: {', '.join(missing)}")
     if missing:
         print(f"WARNING: unprofiled catalog tools: {', '.join(missing)}")
@@ -1127,7 +1219,11 @@ def run(
             if isinstance(instance, dict):
                 if not schema_errors:
                     planned = {}
-                    if coverage_report is not None or require_coverage:
+                    if (
+                        coverage_report is not None
+                        or require_coverage
+                        or require_attempts
+                    ):
                         for profile in resolve_benchmark_profiles(
                             tool_id=tool_id,
                             catalog_tools_root=catalog_tools_root,
@@ -1158,7 +1254,6 @@ def run(
                         if isinstance(recipe, dict)
                         and recipe.get("calibration_design", {}).get("kind")
                         in {
-                            "independent_temporal_default_grid_with_branch_centers",
                             "independent_temporal_grid_with_branch_growth",
                         }
                         else None
@@ -1170,6 +1265,15 @@ def run(
                         temporal_recipe=temporal_recipe,
                     )
                     coverage_results[tool_id] = coverage
+                    attempts = coverage["attempt_coverage"]
+                    print(
+                        f"  TERMINAL ATTEMPTS: {'complete' if attempts['complete'] else 'incomplete'} (successful timing support is reported separately)."
+                    )
+                    if require_attempts:
+                        semantic_errors.extend(
+                            f"Attempt coverage: {message}"
+                            for message in attempts["errors"]
+                        )
                     adequate = sum(
                         p["calibration_adequate_for_planned_range"]
                         for p in coverage["profiles"]
@@ -1214,7 +1318,14 @@ def run(
                     semantic_errors.extend(
                         representative_profile_errors(instance, representative)
                     )
-                    semantic_errors.extend(release_profile_errors(instance, expected))
+                    semantic_errors.extend(
+                        release_profile_errors(
+                            instance,
+                            expected,
+                            require_attempts=False,
+                            require_successful=False,
+                        )
+                    )
                 semantic_errors.extend(
                     provenance_errors(
                         instance,
@@ -1296,6 +1407,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             param_overrides_dir=args.param_overrides_dir,
             coverage_report=args.coverage_report,
             require_coverage=args.require_coverage,
+            require_attempts=args.require_attempts,
         )
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

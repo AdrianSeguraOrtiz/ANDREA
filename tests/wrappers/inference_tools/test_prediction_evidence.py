@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -13,7 +14,6 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "wrappers/inference_tools/scripts"))
 from shared.cost_resume import input_manifest
 from shared.prediction_evidence import (
-    _compatibility,
     adapt_training_observations,
     load_training_observations,
 )
@@ -41,6 +41,7 @@ class PredictionEvidenceAdapterTests(unittest.TestCase):
             "provenance": {
                 "image_id": "sha256:" + "a" * 64,
                 "source_sha256": "b" * 64,
+                "measurement_kernel_sha256": "c" * 64,
                 "cpu_model": "synthetic-test-cpu",
                 "platform": "test",
                 "logical_cpus": 2,
@@ -114,7 +115,120 @@ class PredictionEvidenceAdapterTests(unittest.TestCase):
     def test_failure_is_retained_and_blocks_accuracy_claim(self):
         self.row["status"] = "error"
         self.raw.write_text(json.dumps([self.row]))
+        before = self.raw.read_bytes()
+        review_path = self.root / "review/rejected.json"
         with self.assertRaisesRegex(ValueError, "Failed calibration attempt"):
+            load_training_observations(
+                self.root / "calibration", self.profile, review_path=review_path
+            )
+        self.assertEqual(self.raw.read_bytes(), before)
+        self.assertEqual(
+            json.loads(review_path.read_text())["verification_status"], "rejected"
+        )
+
+    def test_timeout_followed_by_selected_retry_is_retained_in_separate_review(self):
+        timeout = {
+            **self.row,
+            "run_id": "failed-original-attempt",
+            "status": "timeout",
+            "seconds": 1800.0,
+        }
+        self.raw.write_text(json.dumps([timeout, self.row]))
+        before = self.raw.read_bytes()
+        output = self.root / "prediction"
+        review_path = output / "review.json"
+        entries = load_training_observations(
+            [self.root / "calibration"], self.profile, review_path=review_path
+        )
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["raw_row"]["run_id"], self.row["run_id"])
+        observations = adapt_training_observations(entries, output, self.profile)
+        self.assertEqual(len(observations), 1)
+        review = json.loads(review_path.read_text())
+        self.assertEqual(review["verification_status"], "verified")
+        self.assertEqual(
+            review["row_counts"], {"retained_failure": 1, "selected_training": 1}
+        )
+        excluded = review["rows"][0]
+        self.assertEqual(excluded["run_id"], timeout["run_id"])
+        self.assertEqual(excluded["raw_evidence"]["pointer"], "/0")
+        self.assertEqual(
+            excluded["raw_evidence"]["sha256"], hashlib.sha256(before).hexdigest()
+        )
+        self.assertEqual(
+            (review_path.parent / excluded["raw_evidence"]["path"]).resolve(), self.raw
+        )
+        adapter = json.loads((output / observations[0]["receipt"]["path"]).read_text())
+        self.assertEqual(adapter["raw_evidence"][0]["pointer"], "/1")
+        self.assertEqual(adapter["seconds"], self.row["seconds"])
+        self.assertEqual(
+            adapter["calibration_review"]["sha256"],
+            hashlib.sha256(review_path.read_bytes()).hexdigest(),
+        )
+        self.assertEqual(self.raw.read_bytes(), before)
+
+    def test_extra_success_is_inventoried_without_becoming_training(self):
+        extra = {**self.row, "run_id": "not-selected-for-cost", "seconds": 100.0}
+        self.raw.write_text(json.dumps([self.row, extra]))
+        before = self.raw.read_bytes()
+        entries = load_training_observations(self.root / "calibration", self.profile)
+        output = self.root / "prediction"
+        observations = adapt_training_observations(entries, output, self.profile)
+        self.assertEqual([row["id"] for row in observations], [self.row["run_id"]])
+        adapter = json.loads((output / observations[0]["receipt"]["path"]).read_text())
+        review = json.loads(
+            (output / adapter["calibration_review"]["path"]).read_text()
+        )
+        self.assertEqual(
+            review["row_counts"], {"selected_training": 1, "unselected_success": 1}
+        )
+        self.assertEqual(review["rows"][1]["raw_evidence"]["pointer"], "/1")
+        self.assertEqual(review["rows"][1]["run_id"], extra["run_id"])
+        self.assertEqual(self.raw.read_bytes(), before)
+
+    def test_unselected_different_context_is_reviewed_without_affecting_training(self):
+        path, row = self.resumed_copy()
+        row["run_id"] = "unselected-different-context"
+        row.pop("reused_from")
+        path.write_text(json.dumps([row]))
+        config_path = path.with_name("benchmark_config.json")
+        changed = copy.deepcopy(self.config)
+        changed["provenance"]["source_sha256"] = "c" * 64
+        config_path.write_text(json.dumps(changed))
+        review_path = self.root / "review.json"
+        entries = load_training_observations(
+            self.root / "calibration", self.profile, review_path=review_path
+        )
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(
+            json.loads(review_path.read_text())["row_counts"]["unselected_success"], 1
+        )
+
+    def test_missing_selected_id_cannot_be_replaced_by_unselected_success(self):
+        self.raw.write_text(json.dumps([{**self.row, "run_id": "unselected-success"}]))
+        with self.assertRaisesRegex(ValueError, "do not completely match"):
+            load_training_observations(self.root / "calibration", self.profile)
+
+    def test_embedded_duplicate_or_changed_provenance_is_rejected(self):
+        embedded = self.profile["runtime_points"][0]["measurement_evidence"][
+            "observations"
+        ]
+        embedded.append(copy.deepcopy(embedded[0]))
+        with self.assertRaisesRegex(ValueError, "repeated execution ID"):
+            load_training_observations(self.root / "calibration", self.profile)
+        embedded.pop()
+        embedded[0]["measurement_provenance"] = {
+            **self.config["provenance"],
+            "source_sha256": "changed",
+        }
+        with self.assertRaisesRegex(ValueError, "provenance contradicts"):
+            load_training_observations(self.root / "calibration", self.profile)
+
+    def test_selected_config_source_change_remains_rejected(self):
+        changed = copy.deepcopy(self.config)
+        changed["provenance"]["source_sha256"] = "c" * 64
+        self.config_path.write_text(json.dumps(changed))
+        with self.assertRaisesRegex(ValueError, "source provenance contradicts"):
             load_training_observations(self.root / "calibration", self.profile)
 
     def resumed_copy(self, *, relocated=False):
@@ -145,6 +259,13 @@ class PredictionEvidenceAdapterTests(unittest.TestCase):
         self.assertEqual(len(observations), 1)
         adapter = json.loads((output / observations[0]["receipt"]["path"]).read_text())
         self.assertEqual(len(adapter["equivalent_retained_copies"]), 1)
+
+    def test_reused_source_outside_requested_root_is_followed_and_verified(self):
+        path, _ = self.resumed_copy()
+        entries = load_training_observations(path.parent.parent, self.profile)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["raw_receipt"], self.raw)
+        self.assertEqual(len(entries[0]["equivalent_raw_receipts"]), 1)
 
     def test_relocated_reuse_requires_identical_retained_outputs(self):
         path, row = self.resumed_copy(relocated=True)
@@ -183,133 +304,6 @@ class PredictionEvidenceAdapterTests(unittest.TestCase):
         self.raw.write_text(json.dumps([self.row, self.row]))
         with self.assertRaisesRegex(ValueError, "Repeated execution ID within one raw"):
             load_training_observations(self.root / "calibration", self.profile)
-
-    def source_compatibility(self):
-        """Synthetic review transition only; no scientific execution occurs."""
-        directory = self.root / "transition"
-        directory.mkdir()
-        ref = lambda path, **fields: {
-            "path": str(path),
-            "sha256": _compatibility.sha(path),
-            **fields,
-        }
-
-        def write(name, value):
-            path = directory / name
-            path.write_text(json.dumps(value))
-            return ref(path)
-
-        subjects = {}
-        for name in _compatibility.MEASUREMENT_SUBJECTS:
-            path = self.root / "reviewed-implementation" / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("synthetic unchanged implementation subject")
-            subjects[name] = ref(path)
-        source_hashes = {key: value["sha256"] for key, value in subjects.items()}
-        frozen_source = _compatibility.digest(source_hashes)
-        original_cost = write("original-cost.json", self.profile)
-        original_state = write(
-            "original-state.json",
-            {
-                "status": "interrupted",
-                "source_sha256": frozen_source,
-                "image_id": self.config["provenance"]["image_id"],
-                "calibration": {"cost_sha256": original_cost["sha256"]},
-            },
-        )
-        original_freeze = write(
-            "original-freeze.json",
-            {"source_sha256": frozen_source, "identity": {"sources": source_hashes}},
-        )
-        current_profile = copy.deepcopy(self.profile)
-        current_profile["benchmark_config"]["provenance"]["source_sha256"] = "c" * 64
-        observed = write(
-            "observed.json", current_profile["benchmark_config"]["provenance"]
-        )
-        generated = directory / "generated/io"
-        shutil.copytree(self.io, generated)
-        capture = {
-            "raw_receipt": ref(self.raw, pointer="/0"),
-            "config": ref(self.config_path),
-            "raw_row_sha256": _compatibility.digest(self.row),
-            "execution_sha256": _compatibility.execution_digest(self.row),
-            "original_source_sha256": self.config["provenance"]["source_sha256"],
-            "context_sha256": _compatibility.digest(
-                _compatibility.context(self.config)
-            ),
-            "generated_io": str(generated),
-        }
-        proof = {
-            "schema_version": 1,
-            "kind": "dyngenie3_calibration_compatibility",
-            "status": "passed",
-            "image_id": self.config["provenance"]["image_id"],
-            "current_source_sha256": "c" * 64,
-            "original_campaign": str(self.root),
-            "original_freeze": original_freeze,
-            "original_state": original_state,
-            "original_cost": original_cost,
-            "measurement_subjects": subjects,
-            "observed_provenance": observed,
-            "original_measurements": [
-                {"measurements": ref(self.raw), "config": ref(self.config_path)}
-            ],
-            "executions": {self.row["run_id"]: capture},
-        }
-        path = directory / "compatibility.json"
-        path.write_text(json.dumps(proof))
-        return path, proof, current_profile
-
-    def test_explicit_closed_compatibility_preserves_original_source_and_raw_receipt(
-        self,
-    ):
-        path, proof, profile = self.source_compatibility()
-        with self.assertRaisesRegex(ValueError, "without a compatibility"):
-            load_training_observations(self.root / "calibration", profile)
-        original = self.raw.read_bytes()
-        entries = load_training_observations(
-            self.root / "new-calibration", profile, compatibility_receipt=path
-        )
-        observations = adapt_training_observations(
-            entries, self.root / "prediction", profile, compatibility_receipt=path
-        )
-        adapter_path = self.root / "prediction" / observations[0]["receipt"]["path"]
-        adapter = json.loads(adapter_path.read_text())
-        self.assertEqual(adapter["original_identity"]["source_sha256"], "b" * 64)
-        self.assertEqual(adapter["identity"]["source_sha256"], "c" * 64)
-        self.assertEqual(self.raw.read_bytes(), original)
-        spec = importlib.util.spec_from_file_location(
-            "compatibility_prediction_checker",
-            ROOT / "wrappers/validate_cost_predictions.py",
-        )
-        checker = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(checker)
-        self.assertEqual(
-            checker.observation(observations[0], self.root / "prediction")["run_id"],
-            self.row["run_id"],
-        )
-        adapter["original_identity"]["image_id"] = "sha256:" + "d" * 64
-        adapter_path.write_text(json.dumps(adapter))
-        observations[0]["receipt"]["sha256"] = checker.digest(adapter_path)
-        with self.assertRaisesRegex(ValueError, "cannot change observed image"):
-            checker.observation(observations[0], self.root / "prediction")
-
-    def test_compatibility_rejects_changed_implementation_or_generated_inputs(self):
-        path, proof, profile = self.source_compatibility()
-        subject = Path(next(iter(proof["measurement_subjects"].values()))["path"])
-        original = subject.read_bytes()
-        subject.write_text("changed execution implementation")
-        with self.assertRaisesRegex(ValueError, "artifact changed"):
-            load_training_observations(
-                self.root / "new-calibration", profile, compatibility_receipt=path
-            )
-        subject.write_bytes(original)
-        generated = Path(proof["executions"][self.row["run_id"]]["generated_io"])
-        (generated / "expression.tsv").write_text("changed generated inputs")
-        with self.assertRaisesRegex(ValueError, "retained/generated inputs differ"):
-            load_training_observations(
-                self.root / "new-calibration", profile, compatibility_receipt=path
-            )
 
 
 if __name__ == "__main__":

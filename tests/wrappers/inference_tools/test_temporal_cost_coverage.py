@@ -1,48 +1,110 @@
+"""Synthetic unit records exercise generic coverage; they are never measurements."""
+
 from __future__ import annotations
 
 import copy
+from itertools import product
 import json
 from pathlib import Path
 import sys
-import unittest
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "wrappers/inference_tools/scripts"))
 from shared.cost_resume import measurement_context
 from shared.temporal_cost_coverage import temporal_calibration_coverage
-from shared.benchmark_profiles import resolve_benchmark_profiles
-from shared.benchmark_inputs import BenchmarkInputProfile, temporal_timepoint
 
 
-def panel_fixture(legacy=False):
-    """Synthetic unit-test records only; these are never calibration evidence."""
-    recipe = json.loads(
-        (ROOT / "wrappers/inference_tools/cost_profiles/dyngenie3.json").read_text()
-    )
-    if legacy:
-        recipe["profiles"] = recipe["profiles"][:16]
-        for raw in recipe["profiles"][9:]:
-            raw["sizes"] = ["100x16"]
-        recipe["calibration_design"].update(
+def panel_fixture():
+    """Small local design, independent of any tool recipe or campaign cache."""
+    temporal = {
+        "schema_version": "bulk-temporal/1",
+        "time_basis": "observed",
+        "time_unit": "hour",
+        "sampling_design": "longitudinal",
+    }
+    defaults = {"method": "example", "iterations": 4}
+    profiles = []
+    for points, series in product((2, 3, 4), (1, 2, 3)):
+        profiles.append(
             {
-                "kind": "independent_temporal_default_grid_with_branch_centers",
-                "resources": {"threads": [1, 2], "ram_gb": [4, 8], "strata_count": 4},
-                "total_points_per_resource_stratum": 34,
-                "planned_calibration_runs": 408,
+                "id": f"unit_t{points}_s{series}",
+                "temporal_fixture": {
+                    "series_count": series,
+                    "timepoints_per_series": points,
+                    "steady_state_samples": 0,
+                    "sampling": "regular",
+                },
+                "sizes": [f"{genes}x{points * series}" for genes in (2, 3, 4)],
             }
         )
-    spec = json.loads(
-        (
-            ROOT / "andrea/catalog_inference_tools/tools/dyngenie3/toolspec.json"
-        ).read_text()
+    profiles.append(
+        {
+            "id": "unit_mixed",
+            "temporal_fixture": {
+                "series_count": 2,
+                "timepoints_per_series": 3,
+                "steady_state_samples": 2,
+                "sampling": "regular",
+            },
+            "sizes": [f"{genes}x8" for genes in (2, 3, 4)],
+            "param_overrides": {"method": "alternative"},
+        }
     )
-    defaults = {name: value["default"] for name, value in spec["params"].items()}
-    profiles = []
-    for raw in recipe["profiles"]:
+    families = [
+        {
+            "id": "default",
+            "profile_ids": [row["id"] for row in profiles[:-1]],
+            "expected_params": defaults,
+            "optional_inputs": [],
+            "coordinate_axes": {
+                "genes": [2, 3, 4],
+                "timepoints_per_series": [2, 3, 4],
+                "independent_series": [1, 2, 3],
+                "steady_state_samples": [0],
+                "sampling": ["regular"],
+            },
+        },
+        {
+            "id": "mixed",
+            "profile_ids": ["unit_mixed"],
+            "expected_params": {**defaults, "method": "alternative"},
+            "optional_inputs": [],
+            "coordinate_axes": {
+                "genes": [2, 3, 4],
+                "timepoints_per_series": [3],
+                "independent_series": [2],
+                "steady_state_samples": [2],
+                "sampling": ["regular"],
+            },
+        },
+    ]
+    recipe = {
+        "temporal": temporal,
+        "profiles": profiles,
+        "calibration_design": {
+            "kind": "independent_temporal_grid_with_branch_growth",
+            "scientific_defaults": defaults,
+            "default_input": {"steady_state_samples": 0, "sampling": "regular"},
+            "resources": {"threads": [1, 2], "ram_gb": [1], "strata_count": 2},
+            "repetitions": 3,
+            "gene_levels": [2, 3, 4],
+            "timepoints_per_series_levels": [2, 3, 4],
+            "independent_series_levels": [1, 2, 3],
+            "total_points_per_resource_stratum": 30,
+            "planned_calibration_runs": 180,
+            "families": families,
+        },
+    }
+    instance = {"profiles": []}
+    for raw in profiles:
+        geometry = raw["temporal_fixture"]
         config = {
             "input_profile": {
-                "temporal": recipe["temporal"],
-                "temporal_fixture": raw["temporal_fixture"],
+                "temporal": temporal,
+                "temporal_fixture": geometry,
+                "observation_types": ["time_series", "steady_state"],
             },
             "params_profile": {
                 "resolved_params": {**defaults, **raw.get("param_overrides", {})}
@@ -50,282 +112,167 @@ def panel_fixture(legacy=False):
             "execution_profile": {"mode": "global"},
             "provenance": {"image_id": "sha256:" + "a" * 64},
         }
-        points = []
-        for size in raw["sizes"]:
+        measured = {
+            "profile_id": raw["id"],
+            "benchmark_config": config,
+            "runtime_points": [],
+        }
+        for size, threads in product(raw["sizes"], (1, 2)):
             genes, columns = map(int, size.split("x"))
-            for threads in recipe["calibration_design"]["resources"]["threads"]:
-                for ram in recipe["calibration_design"]["resources"]["ram_gb"]:
-                    hashes = {
-                        name: "b" * 64
-                        for name in (
-                            "expression.tsv",
-                            "params.json",
-                            "execution.json",
-                            "extra/timepoints.tsv",
-                            "extra/replicates.tsv",
-                        )
-                    }
-                    if "tf_list" in raw.get("optional_inputs", []):
-                        hashes["extra/tf_list.txt"] = "b" * 64
-                    if "steady_state_expression" in raw.get("optional_inputs", []):
-                        hashes["extra/steady_state_expression.tsv"] = "b" * 64
-                    geometry = raw["temporal_fixture"]
-                    observations = [
-                        {
-                            "status": "ok",
-                            "seconds": seconds,
-                            "genes": genes,
-                            "columns": columns,
-                            "threads": threads,
-                            "ram_gb": ram,
-                            "run_id": f"unit-test-{raw['id']}-{genes}-{threads}-{ram}-{index}",
-                            "input_sha256": hashes,
-                            "measurement_provenance": config["provenance"],
-                            "dimensions": {
-                                "genes": genes,
-                                "columns": columns,
-                                "timepoints_per_series": geometry[
-                                    "timepoints_per_series"
-                                ],
-                                "independent_series": geometry["series_count"],
-                                "steady_state_samples": geometry.get(
-                                    "steady_state_samples", 0
-                                ),
-                            },
-                        }
-                        for index, seconds in enumerate((10.0, 11.0, 12.0), 1)
-                    ]
-                    points.append(
-                        {
-                            "genes": genes,
-                            "columns": columns,
-                            "threads": threads,
-                            "ram_gb": ram,
-                            "status": "ok",
-                            "repeats_ok": 3,
-                            "seconds_p50": 11.0,
-                            "measurement_evidence": {
-                                "input_sha256": hashes,
-                                "measurement_context": measurement_context(config),
-                                "observations": observations,
-                            },
-                        }
-                    )
-        profiles.append(
-            {
-                "profile_id": raw["id"],
-                "benchmark_config": config,
-                "runtime_points": points,
+            hashes = {
+                name: "b" * 64
+                for name in (
+                    "expression.tsv",
+                    "params.json",
+                    "execution.json",
+                    "extra/column_descriptors.tsv",
+                )
             }
-        )
-    return recipe, {"profiles": profiles}
-
-
-class TemporalCostCoverageTests(unittest.TestCase):
-    def test_complete_finite_panel_covers_declared_family_axes_in_all_resources(
-        self,
-    ):
-        recipe, instance = panel_fixture()
-        report = temporal_calibration_coverage(instance, recipe)
-        self.assertTrue(report["calibration_adequate_for_planned_range"])
-        self.assertEqual(report["required_successful_repetitions"], 1944)
-        self.assertEqual(report["retained_successful_repetitions"], 1944)
-        self.assertEqual(report["registered_points_per_resource"], 81)
-        self.assertEqual(
-            [
-                row["successful_points"]
-                for row in report["aggregate_default_temporal_domain"]
-            ],
-            [27] * 8,
-        )
-        branch = report["profiles"][-1]
-        self.assertTrue(
-            all(row["scope"] == "gene_axis_only" for row in branch["resources"])
-        )
-        self.assertEqual(len(report["branch_families"]), 13)
-        self.assertTrue(all(row["covered"] for row in report["branch_families"]))
-        self.assertFalse(report["coverage_is_prediction_validation"])
-
-    def test_original_four_strata_center_panel_remains_supported(self):
-        recipe, instance = panel_fixture(legacy=True)
-        report = temporal_calibration_coverage(instance, recipe)
-        self.assertTrue(report["calibration_adequate_for_planned_range"])
-        self.assertEqual(report["required_successful_repetitions"], 408)
-        self.assertEqual(report["branch_families"], [])
-
-    def test_branch_gene_growth_does_not_certify_missing_four_or_eight_cpu_points(self):
-        recipe, instance = panel_fixture()
-        branch = next(
-            p
-            for p in instance["profiles"]
-            if p["profile_id"] == "global_et_center_spec_defaults"
-        )
-        branch["runtime_points"] = [
-            p for p in branch["runtime_points"] if p["threads"] < 4
-        ]
-        report = temporal_calibration_coverage(instance, recipe)
-        self.assertFalse(report["calibration_adequate_for_planned_range"])
-        family = next(
-            f for f in report["branch_families"] if f["id"] == "et_gene_time_slices"
-        )
-        self.assertFalse(family["covered"])
-        self.assertTrue(
-            all(r["covered"] for r in family["resources"] if r["threads"] < 4)
-        )
-
-    def test_family_recipe_cannot_omit_a_cross_or_relabel_vector_gene_axis(self):
-        for mutation in (
-            "missing_cross",
-            "vector_axis",
-            "overlapping_family",
-            "run_budget",
-            "duplicate_resource",
-            "family_parameter",
-        ):
-            with self.subTest(mutation=mutation):
-                recipe, instance = panel_fixture()
-                if mutation == "missing_cross":
-                    recipe["profiles"][9]["sizes"] = ["100x16", "200x16"]
-                elif mutation == "vector_axis":
-                    family = next(
-                        f
-                        for f in recipe["calibration_design"]["families"]
-                        if f["id"] == "vector_alpha_temporal_points"
-                    )
-                    family["coordinate_axes"]["genes"] = [50, 100, 200]
-                elif mutation == "overlapping_family":
-                    recipe["calibration_design"]["families"][1]["profile_ids"].append(
-                        recipe["profiles"][0]["id"]
-                    )
-                elif mutation == "run_budget":
-                    recipe["calibration_design"]["planned_calibration_runs"] = 408
-                elif mutation == "duplicate_resource":
-                    recipe["calibration_design"]["resources"]["threads"].append(8)
-                else:
-                    recipe["profiles"][9]["param_overrides"]["tree_method"] = "RF"
-                with self.assertRaises(ValueError):
-                    temporal_calibration_coverage(instance, recipe)
-
-    def test_measured_branch_parameters_and_optional_inputs_cannot_be_relabelled(self):
-        for mutation in (
-            "parameters",
-            "steady_hash",
-            "duplicate_point",
-            "unplanned_profile",
-        ):
-            with self.subTest(mutation=mutation):
-                recipe, instance = panel_fixture()
-                if mutation == "parameters":
-                    branch = next(
-                        p
-                        for p in instance["profiles"]
-                        if p["profile_id"]
-                        == "global_quality_scores_center_spec_defaults"
-                    )
-                    branch["benchmark_config"]["params_profile"]["resolved_params"][
-                        "compute_quality_scores"
-                    ] = False
-                elif mutation == "steady_hash":
-                    branch = next(
-                        p
-                        for p in instance["profiles"]
-                        if p["profile_id"] == "global_steady_state_center_spec_defaults"
-                    )
-                    branch["runtime_points"][0]["measurement_evidence"][
-                        "input_sha256"
-                    ].pop("extra/steady_state_expression.tsv")
-                elif mutation == "duplicate_point":
-                    instance["profiles"][0]["runtime_points"].append(
-                        copy.deepcopy(instance["profiles"][0]["runtime_points"][0])
-                    )
-                else:
-                    extra = copy.deepcopy(instance["profiles"][0])
-                    extra["profile_id"] = "unplanned"
-                    instance["profiles"].append(extra)
-                report = temporal_calibration_coverage(instance, recipe)
-                self.assertFalse(report["calibration_adequate_for_planned_range"])
-
-    def test_actual_recipe_resolves_sampled_parameters_and_native_temporal_axes(self):
-        profiles = resolve_benchmark_profiles(
-            tool_id="dyngenie3",
-            catalog_tools_root=ROOT / "andrea/catalog_inference_tools/tools",
-        )
-        by_id = {row.profile_id: row for row in profiles}
-        self.assertEqual(len(profiles), 29)
-        self.assertEqual(sum(len(row.sizes) for row in profiles), 81)
-        self.assertEqual(by_id["global_rf_k1_t8_s2_spec_defaults"].params["K"], 1)
-        self.assertEqual(by_id["global_rf_kall_t8_s2_spec_defaults"].params["K"], "all")
-        self.assertEqual(
-            by_id["global_rf_ntrees100_t8_s2_spec_defaults"].params["ntrees"], 100
-        )
-        quality = by_id["global_quality_scores_center_spec_defaults"]
-        self.assertTrue(quality.params["compute_quality_scores"])
-        self.assertEqual(quality.params["ntrees"], 1000)
-        for profile in profiles:
-            for size in profile.sizes:
-                genes = int(size.split("x")[0])
-                self.assertNotIn(genes, {75, 250})
-                if isinstance(profile.params["alpha"], list):
-                    self.assertEqual(genes, 100)
-                    self.assertEqual(len(profile.params["alpha"]), genes)
-        irregular = by_id["global_rf_irregular_t8_s2_spec_defaults"]
-        self.assertEqual(
-            irregular.input_profile["temporal_fixture"]["sampling"], "irregular"
-        )
-        # The existing input generator already implements the declared schedule.
-        profile = BenchmarkInputProfile.from_cost_input_profile(
-            irregular.input_profile, seed=12345
-        )
-        times = [temporal_timepoint(index, profile) for index in range(8)]
-        intervals = [right - left for left, right in zip(times, times[1:])]
-        self.assertTrue(all(value > 0 for value in intervals))
-        self.assertGreater(len(set(intervals)), 1)
-
-    def test_missing_resource_or_temporal_cross_is_incomplete(self):
-        recipe, instance = panel_fixture()
-        instance["profiles"][0]["runtime_points"] = [
-            point
-            for point in instance["profiles"][0]["runtime_points"]
-            if point["threads"] != 2
-        ]
-        report = temporal_calibration_coverage(instance, recipe)
-        self.assertFalse(report["calibration_adequate_for_planned_range"])
-        self.assertTrue(
-            any(
-                row["missing_coordinates"]
-                for row in report["aggregate_default_temporal_domain"]
-            )
-        )
-
-    def test_equal_columns_cannot_relabel_temporal_shape(self):
-        recipe, instance = panel_fixture()
-        instance["profiles"][2]["benchmark_config"]["input_profile"][
-            "temporal_fixture"
-        ] = copy.deepcopy(
-            instance["profiles"][4]["benchmark_config"]["input_profile"][
-                "temporal_fixture"
+            observations = [
+                {
+                    "status": "ok",
+                    "seconds": seconds,
+                    "genes": genes,
+                    "columns": columns,
+                    "threads": threads,
+                    "ram_gb": 1,
+                    "run_id": f"unit-{raw['id']}-{genes}-{threads}-{repeat}",
+                    "input_sha256": hashes,
+                    "measurement_provenance": config["provenance"],
+                    "dimensions": {
+                        "genes": genes,
+                        "columns": columns,
+                        "timepoints_per_series": geometry["timepoints_per_series"],
+                        "independent_series": geometry["series_count"],
+                        "steady_state_samples": geometry["steady_state_samples"],
+                    },
+                }
+                for repeat, seconds in enumerate((1.0, 2.0, 3.0))
             ]
+            measured["runtime_points"].append(
+                {
+                    "genes": genes,
+                    "columns": columns,
+                    "threads": threads,
+                    "ram_gb": 1,
+                    "status": "ok",
+                    "repeats_ok": 3,
+                    "seconds_p50": 2.0,
+                    "measurement_evidence": {
+                        "input_sha256": hashes,
+                        "measurement_context": measurement_context(config),
+                        "observations": observations,
+                    },
+                }
+            )
+        instance["profiles"].append(measured)
+    return recipe, instance
+
+
+def test_complete_generic_design_has_exact_finite_resource_coverage():
+    recipe, instance = panel_fixture()
+    report = temporal_calibration_coverage(instance, recipe)
+    assert report["calibration_adequate_for_planned_range"]
+    assert report["retained_successful_repetitions"] == 180
+    assert report["required_successful_repetitions"] == 180
+    assert report["registered_points_per_resource"] == 30
+    assert all(row["covered"] for row in report["branch_families"])
+    assert not report["coverage_is_prediction_validation"]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "resource",
+        "dimensions",
+        "hash",
+        "run_id",
+        "parameters",
+        "duplicate_point",
+        "unknown_profile",
+        "shape",
+    ],
+)
+def test_missing_or_contradictory_measurements_cannot_certify_coverage(mutation):
+    recipe, instance = panel_fixture()
+    profile = instance["profiles"][0]
+    point = profile["runtime_points"][0]
+    observations = point["measurement_evidence"]["observations"]
+    if mutation == "resource":
+        profile["runtime_points"] = [
+            row for row in profile["runtime_points"] if row["threads"] == 1
+        ]
+    elif mutation == "dimensions":
+        observations[0]["dimensions"]["independent_series"] = 99
+    elif mutation == "hash":
+        point["measurement_evidence"]["input_sha256"].pop(
+            "extra/column_descriptors.tsv"
         )
-        report = temporal_calibration_coverage(instance, recipe)
-        self.assertFalse(report["calibration_adequate_for_planned_range"])
-        self.assertTrue(report["profiles"][2]["errors"])
+    elif mutation == "run_id":
+        observations[1]["run_id"] = observations[0]["run_id"]
+    elif mutation == "parameters":
+        profile["benchmark_config"]["params_profile"]["resolved_params"][
+            "iterations"
+        ] = 1
+    elif mutation == "duplicate_point":
+        profile["runtime_points"].append(copy.deepcopy(point))
+    elif mutation == "unknown_profile":
+        extra = copy.deepcopy(profile)
+        extra["profile_id"] = "unknown"
+        instance["profiles"].append(extra)
+    else:
+        profile["benchmark_config"]["input_profile"]["temporal_fixture"] = (
+            copy.deepcopy(recipe["profiles"][1]["temporal_fixture"])
+        )
+    assert not temporal_calibration_coverage(instance, recipe)[
+        "calibration_adequate_for_planned_range"
+    ]
 
-    def test_reused_execution_ids_or_changed_raw_inputs_are_rejected(self):
-        for mutation in ("run_id", "input_sha256", "dimensions"):
-            with self.subTest(mutation=mutation):
-                recipe, instance = panel_fixture()
-                observations = instance["profiles"][0]["runtime_points"][0][
-                    "measurement_evidence"
-                ]["observations"]
-                if mutation == "run_id":
-                    observations[1]["run_id"] = observations[0]["run_id"]
-                elif mutation == "input_sha256":
-                    observations[1]["input_sha256"] = {"expression.tsv": "c" * 64}
-                else:
-                    observations[1]["dimensions"]["independent_series"] = 999
-                report = temporal_calibration_coverage(instance, recipe)
-                self.assertFalse(report["calibration_adequate_for_planned_range"])
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "budget",
+        "family_cross",
+        "resource",
+        "column_sum",
+        "missing_defaults",
+        "missing_default_input",
+    ],
+)
+def test_ambiguous_or_inconsistent_designs_fail_closed(mutation):
+    recipe, instance = panel_fixture()
+    design = recipe["calibration_design"]
+    if mutation == "budget":
+        design["planned_calibration_runs"] += 1
+    elif mutation == "family_cross":
+        design["families"][0]["coordinate_axes"]["genes"].append(5)
+    elif mutation == "resource":
+        design["resources"]["threads"].append(2)
+    elif mutation == "column_sum":
+        recipe["profiles"][-1]["sizes"] = ["2x6", "3x6", "4x6"]
+    elif mutation == "missing_defaults":
+        design.pop("scientific_defaults")
+    else:
+        design.pop("default_input")
+    with pytest.raises(ValueError):
+        temporal_calibration_coverage(instance, recipe)
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        None,
+        {},
+        [],
+        True,
+        {"bad name": 1},
+        {"iterations": float("inf")},
+        {"weights": [float("nan")]},
+    ],
+)
+def test_scientific_defaults_are_explicit_finite_json(invalid):
+    recipe, instance = panel_fixture()
+    recipe["calibration_design"]["scientific_defaults"] = invalid
+    with pytest.raises(ValueError, match="scientific_defaults"):
+        temporal_calibration_coverage(instance, recipe)

@@ -28,14 +28,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import math
 from pathlib import Path
 import statistics
 import sys
-
-_COMPATIBILITY_CACHE = {}
 
 
 def digest(path):
@@ -200,79 +197,7 @@ def observation(value, base):
         sources.extend(contexts(original))
     check_observed_fields(sources, {"status": row["status"], "seconds": row["seconds"]})
     check_observed_fields(sources, {"run_id": run_id})
-    compatible_sources = None
-    if "source_compatibility" in row:
-        compatibility_path = artifact(row["source_compatibility"], receipt_base)
-        compatibility_spec = importlib.util.spec_from_file_location(
-            "_andrea_checker_calibration_compatibility",
-            Path(__file__).resolve().parent / "calibration_compatibility.py",
-        )
-        compatibility_module = importlib.util.module_from_spec(compatibility_spec)
-        compatibility_spec.loader.exec_module(compatibility_module)
-        cache_key = (
-            str(compatibility_path),
-            row["source_compatibility"]["sha256"],
-            value["identity"]["image_id"],
-            value["identity"]["source_sha256"],
-        )
-        if cache_key not in _COMPATIBILITY_CACHE:
-            _COMPATIBILITY_CACHE[cache_key] = compatibility_module.verify(
-                compatibility_path,
-                image_id=value["identity"]["image_id"],
-                current_source_sha256=value["identity"]["source_sha256"],
-            )
-        proof = _COMPATIBILITY_CACHE[cache_key]
-        original = row.get("original_identity", {})
-        capture = proof["executions"].get(run_id)
-        if (
-            capture is None
-            or original.get("source_sha256") != capture["original_source_sha256"]
-            or {key: item for key, item in original.items() if key != "source_sha256"}
-            != {
-                key: item
-                for key, item in value["identity"].items()
-                if key != "source_sha256"
-            }
-        ):
-            raise ValueError(
-                "Source compatibility cannot change observed image/hardware/recipe/resources."
-            )
-        captured_path = (
-            compatibility_path.parent / capture["raw_receipt"]["path"]
-        ).resolve()
-        if not any(
-            (receipt_base / ref["path"]).resolve() == captured_path
-            and ref.get("sha256") == capture["raw_receipt"]["sha256"]
-            and ref.get("pointer", "") == capture["raw_receipt"].get("pointer", "")
-            for ref in row.get("raw_evidence", [])
-        ):
-            raise ValueError(
-                "Source compatibility requires the captured original raw execution reference."
-            )
-        compatible_sources = {
-            original["source_sha256"],
-            value["identity"]["source_sha256"],
-        }
-    check_observed_fields(
-        sources,
-        {
-            key: item
-            for key, item in value["identity"].items()
-            if compatible_sources is None or key != "source_sha256"
-        },
-    )
-    if compatible_sources is not None:
-        observed_sources = {
-            source["source_sha256"] for source in sources if "source_sha256" in source
-        }
-        if (
-            not observed_sources
-            or not observed_sources <= compatible_sources
-            or row["original_identity"]["source_sha256"] not in observed_sources
-        ):
-            raise ValueError(
-                "Receipt source differs from its explicit compatibility capture."
-            )
+    check_observed_fields(sources, value["identity"])
     check_observed_fields(sources, dict(coords), dimension=True)
     inputs, primary = input_inventory(value["inputs"], base)
     raw_inputs = row.get("input_sha256")
@@ -315,7 +240,6 @@ def observation(value, base):
 
 
 def validate(plan_path, observations_path):
-    _COMPATIBILITY_CACHE.clear()
     plan, measurements = read(plan_path), read(observations_path)
     if not isinstance(plan, dict) or not isinstance(measurements, dict):
         raise ValueError("Plan and observations must be JSON objects")

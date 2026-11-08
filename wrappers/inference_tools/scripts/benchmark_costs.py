@@ -28,12 +28,12 @@ The default fallback matrix independently varies three gene counts and three
 column counts. Tool-local recipes can constrain these to compatible ranges.
 Existing successful points are reused only after scientific input/image identity
 verification. --results-dir preserves partial repetitions across restarts;
---reuse-results-dir imports legacy retained evidence, and --force-rerun explicitly
+--reuse-results-dir imports retained evidence, and --force-rerun explicitly
 disables reuse for the requested points.
 
 Exit codes:
-- 0: all selected benchmark points completed successfully
-- 1: a build or measurement failed; successful points are checkpointed for resume
+- 0: all requested slots have terminal outcomes, or a reuse-only checkpoint completed
+- 1: a control/verification failure or requested slots remain unattempted
 - 2: usage/runtime error (invalid args, missing paths, etc.)
 
 Cost model written to cost.json:
@@ -58,12 +58,16 @@ import hashlib
 import json
 import math
 import os
+import shutil
+import signal
+import threading
 import subprocess
 import sys
 import tempfile
 import time
 import uuid
 from collections import defaultdict
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator, Sequence
@@ -72,6 +76,7 @@ from shared.benchmark_inputs import (
     BenchmarkInputProfile,
     BenchmarkInputSize,
     write_benchmark_io_dir,
+    validate_temporal_fixture,
 )
 from shared.benchmark_profiles import (
     DEFAULT_COST_PROFILES_DIR,
@@ -82,15 +87,23 @@ from shared.benchmark_profiles import (
 )
 from shared.param_profiles import DEFAULT_PARAM_OVERRIDES_DIR
 from shared.cost_resume import (
+    VerifiedSourceKernels,
     complete_point,
     embedded_observations,
     find_evidence_profiles,
     input_manifest,
-    legacy_observations,
+    retained_observations,
     measurement_context,
     point_key,
     read_json,
     successful_observation,
+    terminal_observation,
+)
+
+from shared.cost_resources import (
+    ResourcePool,
+    UnsatisfiableResources,
+    default_state_dir,
 )
 
 _BENCHMARK_ROOT = Path(__file__).resolve().parents[3]
@@ -100,6 +113,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from benchmark_support import (
     atomic_json,
     collect_provenance,
+    build_context_fingerprint,
+    measurement_kernel_fingerprint,
+    verify_measurement_source,
     merge_profiles,
     persistent_workdir,
     write_process_logs,
@@ -249,14 +265,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--max-cpu",
         type=int,
-        default=8,
-        help="Upper CPU cap for this machine. Default: 8",
+        default=None,
+        help="Optional shared CPU allocation cap; requests remain in the declared panel.",
     )
     parser.add_argument(
         "--max-ram-gb",
         type=int,
-        default=64,
-        help="Upper RAM cap (GB) for this machine. Default: 64",
+        default=None,
+        help="Optional shared RAM allocation cap in GiB; requests remain in the declared panel.",
     )
     parser.add_argument(
         "--repeats",
@@ -339,6 +355,42 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Remeasure historical size/resource points whose evidence is incompatible with the current image or inputs; retain compatible observations.",
     )
+    parser.add_argument(
+        "--reuse-only",
+        action="store_true",
+        help="Verify/import retained observations and checkpoint cost without building or running Docker; pending slots are reported.",
+    )
+    parser.add_argument(
+        "--reuse-source-root",
+        type=Path,
+        help="Archived measurement source used to prove legacy receipts lacking a kernel digest.",
+    )
+    parser.add_argument(
+        "--reuse-source-manifest",
+        type=Path,
+        help="Original seal containing source_files_sha256 for --reuse-source-root.",
+    )
+    parser.add_argument(
+        "--min-free-gb",
+        type=float,
+        default=0,
+        help="Require this much free disk space before each new fit (default: 0).",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="Maximum independent fits in flight (default: 1; 0: automatic); actual admission uses detected CPU/RAM.",
+    )
+    parser.add_argument(
+        "--resource-state-dir",
+        type=Path,
+        default=default_state_dir(),
+        help="Shared resource reservation registry across benchmark campaigns.",
+    )
+    parser.add_argument("--ram-headroom-gb", type=float, default=1.0)
+    parser.add_argument("--ram-headroom-fraction", type=float, default=0.1)
+    parser.add_argument("--cpu-headroom", type=int, default=0)
     return parser.parse_args(argv)
 
 
@@ -546,7 +598,7 @@ def cleanup_timed_out_container(*, container_name: str, cidfile: Path) -> str:
         result = run_cmd(
             ["docker", "rm", "-f", target],
             cwd=REPO_ROOT,
-            timeout_s=30,
+            timeout_s=5,
             capture_output=True,
         )
         if result.returncode == 0:
@@ -558,21 +610,89 @@ def cleanup_timed_out_container(*, container_name: str, cidfile: Path) -> str:
     return "\n".join(messages)
 
 
+class BenchmarkInterrupted(RuntimeError):
+    """Operator cancellation is control state, never a scientific observation."""
+
+    def __init__(self, message: str, stdout: str = "", stderr: str = ""):
+        super().__init__(message)
+        self.stdout, self.stderr = stdout, stderr
+
+
+class UnsafeContainerCleanup(RuntimeError):
+    """Container stop could not be verified; its reservation must remain held."""
+
+    observation: dict[str, Any] | None = None
+
+
+class WaitingForResources(RuntimeError):
+    """Unattempted slots remain because their declared resource request cannot fit."""
+
+
 def run_cmd(
     cmd: Sequence[str],
     *,
     cwd: Path,
     timeout_s: int,
     capture_output: bool = True,
+    cancel_event: threading.Event | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    if cancel_event is None:
+        return subprocess.run(
+            list(cmd),
+            cwd=str(cwd),
+            text=True,
+            check=False,
+            capture_output=capture_output,
+            timeout=None if timeout_s <= 0 else timeout_s,
+        )
+    if cancel_event.is_set():
+        raise BenchmarkInterrupted("Benchmark cancelled before native execution.")
+    process = subprocess.Popen(
         list(cmd),
         cwd=str(cwd),
         text=True,
-        check=False,
-        capture_output=capture_output,
-        timeout=None if timeout_s <= 0 else timeout_s,
+        start_new_session=True,
+        stdout=subprocess.PIPE if capture_output else None,
+        stderr=subprocess.PIPE if capture_output else None,
     )
+    deadline = time.monotonic() + timeout_s if timeout_s > 0 else None
+    while True:
+        cancelled = cancel_event.is_set()
+        expired = deadline is not None and time.monotonic() >= deadline
+        if cancelled or expired:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                stdout, stderr = process.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                stdout, stderr = process.communicate()
+            if cancelled:
+                raise BenchmarkInterrupted(
+                    "Benchmark cancelled during native execution.",
+                    stdout or "",
+                    stderr or "",
+                )
+            raise subprocess.TimeoutExpired(
+                list(cmd), timeout_s, output=stdout, stderr=stderr
+            )
+        interval = (
+            0.2
+            if deadline is None
+            else max(0.001, min(0.2, deadline - time.monotonic()))
+        )
+        try:
+            stdout, stderr = process.communicate(timeout=interval)
+            return subprocess.CompletedProcess(
+                list(cmd), process.returncode, stdout, stderr
+            )
+        except subprocess.TimeoutExpired:
+            continue
 
 
 def build_image(
@@ -624,8 +744,6 @@ def prepare_io_dir(
     )
     save_json(io_dir / "params.json", resolved_params)
     runtime_execution = dict(execution)
-    if input_profile.get("temporal") is not None:
-        runtime_execution["temporal"] = input_profile["temporal"]
     save_json(io_dir / "execution.json", runtime_execution)
 
 
@@ -675,11 +793,14 @@ def run_container_once(
     threads: int,
     ram_gb: int,
     timeout_s: int,
+    cpuset_cpus: Sequence[int] | None = None,
+    cancel_event: threading.Event | None = None,
+    container_name: str | None = None,
 ) -> tuple[str, float, str]:
     uid_gid = f"{os.getuid()}:{os.getgid()}"
     resolved_io_dir = io_dir.resolve()
     resolved_out_dir = (io_dir / "out").resolve()
-    container_name = docker_container_name(
+    container_name = container_name or docker_container_name(
         image_tag=image_tag,
         io_dir=io_dir,
         threads=threads,
@@ -718,14 +839,37 @@ def run_container_once(
         str(threads),
     ]
 
+    if cpuset_cpus is not None:
+        if (
+            len(cpuset_cpus) != threads
+            or len(set(cpuset_cpus)) != threads
+            or any(
+                isinstance(cpu, bool) or not isinstance(cpu, int) or cpu < 0
+                for cpu in cpuset_cpus
+            )
+        ):
+            raise ValueError(
+                "CPU affinity must identify exactly the requested number of distinct logical CPUs."
+            )
+        cmd[2:2] = ["--cpuset-cpus", ",".join(str(cpu) for cpu in cpuset_cpus)]
     started = time.perf_counter()
     try:
-        result = run_cmd(cmd, cwd=REPO_ROOT, timeout_s=timeout_s, capture_output=True)
+        result = run_cmd(
+            cmd,
+            cwd=REPO_ROOT,
+            timeout_s=timeout_s,
+            capture_output=True,
+            cancel_event=cancel_event,
+        )
         elapsed = time.perf_counter() - started
         write_process_logs(io_dir.parent, result)
         logs = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
         if result.returncode != 0:
             return (classify_failure(logs), elapsed, logs.strip())
+    except BenchmarkInterrupted as exc:
+        write_process_logs(io_dir.parent, exc)
+        cleanup_timed_out_container(container_name=container_name, cidfile=cidfile)
+        raise
     except subprocess.TimeoutExpired as exc:
         write_process_logs(io_dir.parent, exc)
         elapsed = time.perf_counter() - started
@@ -752,6 +896,70 @@ def run_container_once(
             "Container finished but /io/out/network.csv is missing or empty.",
         )
     return ("ok", elapsed, "")
+
+
+def verify_owned_container_cleanup(*, container_name: str, cidfile: Path) -> None:
+    """Confirm owned containers stopped/missing before releasing their lease.
+
+    The generated name belongs to this worker. A preexisting receipt is only
+    inspected; it never authorizes killing some other live container.
+    """
+    targets = [container_name]
+    if cidfile.exists():
+        recorded = cidfile.read_text(encoding="utf-8").strip()
+        if recorded and recorded not in targets:
+            targets.append(recorded)
+    for target in targets:
+
+        def inspect():
+            return run_cmd(
+                [
+                    "docker",
+                    "inspect",
+                    "--type",
+                    "container",
+                    "--format",
+                    "{{.State.Running}}",
+                    target,
+                ],
+                cwd=REPO_ROOT,
+                timeout_s=5,
+                capture_output=True,
+            )
+
+        try:
+            result = inspect()
+            if (
+                result.returncode == 0
+                and (result.stdout or "").strip().lower() == "true"
+                and target == container_name
+            ):
+                run_cmd(
+                    ["docker", "rm", "-f", container_name],
+                    cwd=REPO_ROOT,
+                    timeout_s=5,
+                    capture_output=True,
+                )
+                result = inspect()
+            stopped = (
+                result.returncode == 0
+                and (result.stdout or "").strip().lower() == "false"
+            )
+            missing = result.returncode != 0 and any(
+                token in (result.stderr or "").lower()
+                for token in ("no such container", "no such object")
+            )
+            if not (stopped or missing):
+                raise UnsafeContainerCleanup(
+                    f"Cannot verify container {target} stopped; reservation retained. "
+                    f"{(result.stderr or result.stdout or '').strip()}"
+                )
+        except UnsafeContainerCleanup:
+            raise
+        except Exception as exc:
+            raise UnsafeContainerCleanup(
+                f"Cannot verify container {target} stopped; reservation retained: {exc}"
+            ) from exc
 
 
 def classify_failure(logs: str) -> str:
@@ -920,6 +1128,21 @@ def build_feature_vector(
     if isinstance(geometry, dict):
         series = int(geometry["series_count"])
         points = int(geometry["timepoints_per_series"])
+        validate_temporal_fixture(input_profile.get("temporal"), geometry)
+        steady = int(geometry.get("steady_state_samples", 0))
+        kinds = input_profile.get("observation_types")
+        if (
+            not isinstance(kinds, list)
+            or "time_series" not in kinds
+            or (steady and "steady_state" not in kinds)
+        ):
+            raise ValueError(
+                "Temporal cost features require only consumed observation types."
+            )
+        if int(columns) != series * points + steady:
+            raise ValueError(
+                "Temporal cost columns must match the unified TS+SS matrix."
+            )
         result.update(
             {
                 "n_timepoints_per_series": points,
@@ -941,6 +1164,7 @@ def write_tool_cost_profile(
 
 
 def validate_runtime_args(args: argparse.Namespace) -> None:
+    """Validate global CLI limits before running any benchmark."""
     if (
         args.profile
         and not args.merge_existing
@@ -952,45 +1176,53 @@ def validate_runtime_args(args: argparse.Namespace) -> None:
         )
     if args.merge_existing and not args.profile:
         raise RuntimeError("--merge-existing requires at least one --profile.")
-    """Validate global CLI limits before running any benchmark."""
+    if bool(args.reuse_source_root) != bool(args.reuse_source_manifest):
+        raise RuntimeError(
+            "--reuse-source-root and --reuse-source-manifest must be supplied together."
+        )
+    if args.reuse_only and args.force_rerun:
+        raise RuntimeError("--reuse-only cannot be combined with --force-rerun.")
+    if not math.isfinite(args.min_free_gb) or args.min_free_gb < 0:
+        raise RuntimeError("--min-free-gb must be finite and >= 0.")
+    if args.timeout < 0:
+        raise RuntimeError("--timeout must be >= 0.")
     if args.repeats < 1:
         raise RuntimeError("--repeats must be >= 1.")
     if args.group_count < 1:
         raise RuntimeError("--group-count must be >= 1.")
     if args.prior_density < 0 or args.prior_density > 1:
         raise RuntimeError("--prior-density must be between 0 and 1.")
-    if args.max_cpu < 1:
+    if args.concurrency < 0:
+        raise RuntimeError("--concurrency must be >= 0 (0 selects automatic capacity).")
+    if (
+        args.cpu_headroom < 0
+        or args.ram_headroom_gb < 0
+        or not math.isfinite(args.ram_headroom_gb)
+    ):
+        raise RuntimeError("Resource headroom must be finite and nonnegative.")
+    if (
+        not math.isfinite(args.ram_headroom_fraction)
+        or not 0 <= args.ram_headroom_fraction < 1
+    ):
+        raise RuntimeError("--ram-headroom-fraction must be >= 0 and < 1.")
+    if args.max_cpu is not None and args.max_cpu < 1:
         raise RuntimeError("--max-cpu must be >= 1.")
-    if args.max_ram_gb < 1:
+    if args.max_ram_gb is not None and args.max_ram_gb < 1:
         raise RuntimeError("--max-ram-gb must be >= 1.")
 
 
 def resolve_benchmark_dimensions(
     args: argparse.Namespace,
 ) -> tuple[list[SizePoint], list[int], list[int], int, float]:
-    """Resolve and cap benchmark sizes/resources against host limits."""
-    sizes_raw = args.size or list(DEFAULT_SIZES)
-    sizes = [parse_size(token) for token in sizes_raw]
-    threads_requested = parse_int_csv(args.threads, "threads")
-    ram_requested = parse_int_csv(args.ram_gb, "ram-gb")
+    """Resolve the full declared panel independently of machine capacity.
 
-    host_cores = os.cpu_count() or 1
-    host_ram_gb = detect_host_ram_gb()
-    effective_cores = min(host_cores, args.max_cpu)
-    effective_ram_gb = min(host_ram_gb, float(args.max_ram_gb))
-
-    threads = [value for value in threads_requested if value <= effective_cores]
-    ram_gb = [value for value in ram_requested if value <= int(effective_ram_gb)]
-    if not threads:
-        raise RuntimeError(
-            f"No thread values <= effective core cap ({effective_cores}). Requested: {threads_requested}"
-        )
-    if not ram_gb:
-        raise RuntimeError(
-            f"No RAM values <= effective RAM cap ({int(effective_ram_gb)} GB). Requested: {ram_requested}"
-        )
-
-    return sizes, threads, ram_gb, int(effective_cores), float(effective_ram_gb)
+    Capacity admission belongs to the resource pool. Neither host detection nor
+    operational caps may silently remove a size/resource point from calibration.
+    """
+    sizes = [parse_size(token) for token in (args.size or list(DEFAULT_SIZES))]
+    threads = parse_int_csv(args.threads, "threads")
+    ram_gb = parse_int_csv(args.ram_gb, "ram-gb")
+    return sizes, threads, ram_gb, os.cpu_count() or 1, detect_host_ram_gb()
 
 
 def sizes_for_profile(
@@ -1242,50 +1474,75 @@ def execute_tool_benchmarks(
     initial_runs: list[dict[str, Any]] | None = None,
     on_progress: Callable[[list[dict[str, Any]]], None] | None = None,
     point_plan: set[tuple[int, int, int, float]] | None = None,
+    min_free_gb: float = 0,
+    concurrency: int = 1,
+    resource_pool: ResourcePool | None = None,
+    cancel_event: threading.Event | None = None,
 ) -> tuple[list[dict[str, Any]], int, bool]:
-    """Execute all planned runs for one tool; returns runs, updated index, and fail-fast flag."""
-    tool_runs: list[dict[str, Any]] = list(initial_runs or [])
+    """Admit bounded independent fits; only this coordinator writes receipts.
+
+    Reservation and queue wait precede the existing native measurement timer.
+    Workers own distinct IO directories. A lease is released only after its
+    worker has completed or cancellation has cleaned its native process/container.
+    """
+    pool = (
+        resource_pool
+        if resource_pool is not None
+        else ResourcePool(default_state_dir())
+    )
+    cancelled = cancel_event if cancel_event is not None else threading.Event()
+    if concurrency == 0:
+        concurrency = max(1, int(pool.snapshot()["cpu_budget"]))
+    tool_runs = list(initial_runs or [])
     recovered = {
-        (*point_key(row), row["repeat"]): row
+        (*point_key(row), row["repeat"])
         for row in tool_runs
-        if successful_observation(row)
+        if terminal_observation(row)
     }
+    workdir.mkdir(parents=True, exist_ok=True)
     if tool_runs:
         save_json(workdir / "measurements.json", tool_runs)
-
     plans = (
-        iter_run_plan(sizes=sizes, threads=threads, ram_gb=ram_gb, repeats=repeats)
+        list(
+            iter_run_plan(sizes=sizes, threads=threads, ram_gb=ram_gb, repeats=repeats)
+        )
         if point_plan is None
-        else (
+        else [
             RunPlanItem(SizePoint(g, c), t, m, repeat)
             for g, c, t, m in sorted(point_plan)
             for repeat in range(1, repeats + 1)
-        )
+        ]
     )
-    profile_total = (
-        len(point_plan)
-        if point_plan is not None
-        else len(sizes) * len(threads) * len(ram_gb)
-    ) * repeats
-    for profile_index, plan in enumerate(plans, start=1):
-        run_index += 1
-        print(
-            f"[{profile_index}/{profile_total}] {tool_id}/{profile_id} "
-            f"{plan.size.genes}x{plan.size.columns} "
-            f"threads={plan.threads} ram={plan.ram_gb}GB repeat={plan.repeat}"
-        )
-
-        observation_key = (
-            plan.size.genes,
-            plan.size.columns,
-            plan.threads,
-            float(plan.ram_gb),
+    plans = list(dict.fromkeys(plans))
+    pending = []
+    for index, plan in enumerate(plans, start=1):
+        if (
+            *point_key(
+                {
+                    "genes": plan.size.genes,
+                    "columns": plan.size.columns,
+                    "threads": plan.threads,
+                    "ram_gb": plan.ram_gb,
+                }
+            ),
             plan.repeat,
+        ) not in recovered:
+            pending.append((index, plan))
+    run_index += len(plans) - len(pending)
+    if recovered:
+        print(
+            f"[{tool_id}/{profile_id}] retained {len(plans) - len(pending)} verified terminal slots",
+            flush=True,
         )
-        if observation_key in recovered:
-            print("  -> reused verified successful observation")
-            continue
 
+    def measure(plan: RunPlanItem, lease: Any) -> dict[str, Any]:
+        worker_started = time.time()
+        if cancelled.is_set():
+            raise BenchmarkInterrupted("Benchmark cancelled before input preparation.")
+        if shutil.disk_usage(workdir).free < min_free_gb * 1024**3:
+            raise RuntimeError(
+                f"Free disk space is below --min-free-gb={min_free_gb:g}; no new observation was created."
+            )
         run_key = (
             f"{safe_path_token(profile_id)}_g{plan.size.genes}_c{plan.size.columns}_t{plan.threads}"
             f"_m{plan.ram_gb:g}_r{plan.repeat}"
@@ -1299,53 +1556,215 @@ def execute_tool_benchmarks(
             seed=seed,
             input_profile=input_profile,
         )
-
-        observed_run_id = uuid.uuid4().hex
         observed_inputs = input_manifest(io_dir)
-        status, elapsed, error_or_empty = run_container_once(
-            image_tag=image_tag,
-            io_dir=io_dir,
-            threads=plan.threads,
-            ram_gb=plan.ram_gb,
-            timeout_s=timeout,
+        observed_run_id = uuid.uuid4().hex
+        container_name = docker_container_name(
+            image_tag=image_tag, io_dir=io_dir, threads=plan.threads, ram_gb=plan.ram_gb
         )
-
-        run_payload: dict[str, Any] = {
-            "run_id": observed_run_id,
-            "genes": plan.size.genes,
-            "columns": plan.size.columns,
-            "threads": plan.threads,
-            "ram_gb": plan.ram_gb,
-            "repeat": plan.repeat,
-            "seconds": round(elapsed, 6),
-            "status": status,
-            "io_dir": str(io_dir.resolve()),
-            "input_sha256": observed_inputs,
-        }
-        geometry = input_profile.get("temporal_fixture")
-        if isinstance(geometry, dict):
-            run_payload["dimensions"] = {
+        row = None
+        try:
+            native_started = time.time()
+            status, elapsed, error = run_container_once(
+                image_tag=image_tag,
+                io_dir=io_dir,
+                threads=plan.threads,
+                ram_gb=plan.ram_gb,
+                timeout_s=timeout,
+                cpuset_cpus=lease.cpus,
+                cancel_event=cancelled,
+                container_name=container_name,
+            )
+            native_finished = time.time()
+            row = {
+                "run_id": observed_run_id,
                 "genes": plan.size.genes,
                 "columns": plan.size.columns,
-                "timepoints_per_series": geometry["timepoints_per_series"],
-                "independent_series": geometry["series_count"],
-                "steady_state_samples": geometry.get("steady_state_samples", 0),
+                "threads": plan.threads,
+                "ram_gb": plan.ram_gb,
+                "repeat": plan.repeat,
+                "seconds": round(elapsed, 6),
+                "status": status,
+                "io_dir": str(io_dir.resolve()),
+                "input_sha256": observed_inputs,
+                "measurement_timeout_seconds": timeout,
+                "resource_allocation": {
+                    **lease.context,
+                    "lease_id": lease.lease_id,
+                    "cpus": list(lease.cpus),
+                    "requested_threads": plan.threads,
+                    "requested_ram_gb": plan.ram_gb,
+                    "concurrency_limit": concurrency,
+                    "worker_started_at_unix": worker_started,
+                    "native_call_started_at_unix": native_started,
+                    "native_call_finished_at_unix": native_finished,
+                    "native_call_interval_scope": "Native function entry to return, including CID checks and post-command output/cleanup checks; seconds retains measured Docker wall time.",
+                },
             }
-        if error_or_empty:
-            run_payload["error"] = error_or_empty
-        tool_runs.append(run_payload)
-        save_json(workdir / "measurements.json", tool_runs)
-        if on_progress is not None:
-            on_progress(tool_runs)
+            geometry = input_profile.get("temporal_fixture")
+            if isinstance(geometry, dict):
+                row["dimensions"] = {
+                    "genes": plan.size.genes,
+                    "columns": plan.size.columns,
+                    "timepoints_per_series": geometry["timepoints_per_series"],
+                    "independent_series": geometry["series_count"],
+                    "steady_state_samples": geometry.get("steady_state_samples", 0),
+                }
+            if error:
+                row["error"] = error
+            return row
+        finally:
+            try:
+                verify_owned_container_cleanup(
+                    container_name=container_name,
+                    cidfile=io_dir / ".docker-container.cid",
+                )
+            except UnsafeContainerCleanup as exc:
+                exc.observation = row
+                raise
+            finally:
+                if row is not None:
+                    row["resource_allocation"]["worker_finished_at_unix"] = time.time()
 
-        if status != "ok":
-            print(f"  -> {status} ({elapsed:.3f}s)")
-            if fail_fast:
-                return tool_runs, run_index, True
-        else:
-            print(f"  -> ok ({elapsed:.3f}s)")
-
-    return tool_runs, run_index, False
+    active: dict[Any, tuple[RunPlanItem, Any]] = {}
+    blocked = []
+    unsafe_reports = []
+    errors: list[BaseException] = []
+    stopped = False
+    last_wait_report = 0.0
+    with ThreadPoolExecutor(
+        max_workers=concurrency, thread_name_prefix="cost-fit"
+    ) as executor:
+        while pending or active:
+            if not cancelled.is_set() and not stopped and not errors:
+                for index, plan in list(pending):
+                    if len(active) >= concurrency:
+                        break
+                    try:
+                        lease = pool.reserve(threads=plan.threads, ram_gb=plan.ram_gb)
+                    except UnsatisfiableResources as exc:
+                        blocked.append(
+                            {
+                                "genes": plan.size.genes,
+                                "columns": plan.size.columns,
+                                "threads": plan.threads,
+                                "ram_gb": plan.ram_gb,
+                                "repeat": plan.repeat,
+                                "reason": str(exc),
+                            }
+                        )
+                        pending.remove((index, plan))
+                        continue
+                    except Exception as exc:
+                        errors.append(exc)
+                        cancelled.set()
+                        break
+                    if lease is None:
+                        continue
+                    try:
+                        future = executor.submit(measure, plan, lease)
+                    except BaseException:
+                        lease.release()
+                        raise
+                    active[future] = (plan, lease)
+                    pending.remove((index, plan))
+                    run_index += 1
+                    print(
+                        f"[{index}/{len(plans)}] {tool_id}/{profile_id} {plan.size.genes}x{plan.size.columns} "
+                        f"threads={plan.threads} ram={plan.ram_gb}GB repeat={plan.repeat} "
+                        f"cpus={','.join(map(str, lease.cpus))}",
+                        flush=True,
+                    )
+            if not active:
+                if cancelled.is_set() or stopped or errors or not pending:
+                    break
+                if time.monotonic() - last_wait_report >= 60:
+                    print(
+                        f"[{tool_id}/{profile_id}] waiting_resources: {len(pending)} unattempted slots; "
+                        "fixed CPU/RAM requests remain unchanged",
+                        flush=True,
+                    )
+                    save_json(workdir / "resource-wait.json", pool.snapshot())
+                    last_wait_report = time.monotonic()
+                cancelled.wait(0.25)
+                continue
+            done, _ = wait(active, timeout=0.25, return_when=FIRST_COMPLETED)
+            for future in done:
+                plan, lease = active.pop(future)
+                unsafe = False
+                try:
+                    row = future.result()
+                    tool_runs.append(row)
+                    tool_runs.sort(
+                        key=lambda value: (*point_key(value), value["repeat"])
+                    )
+                    save_json(workdir / "measurements.json", tool_runs)
+                    if on_progress is not None:
+                        on_progress(tool_runs)
+                    print(
+                        f"  -> {row['status']} ({row['seconds']:.3f}s) repeat={plan.repeat} "
+                        f"active={len(active)} pending={len(pending)}",
+                        flush=True,
+                    )
+                    if row["status"] != "ok" and fail_fast:
+                        stopped = True
+                except UnsafeContainerCleanup as exc:
+                    unsafe = True
+                    errors.append(exc)
+                    cancelled.set()
+                    unsafe_reports.append(
+                        {
+                            "lease_id": lease.lease_id,
+                            "resource_allocation": lease.context,
+                            "error": str(exc),
+                            "reservation_retained": True,
+                        }
+                    )
+                    try:
+                        if exc.observation is not None:
+                            tool_runs.append(exc.observation)
+                            tool_runs.sort(
+                                key=lambda value: (*point_key(value), value["repeat"])
+                            )
+                            save_json(workdir / "measurements.json", tool_runs)
+                            if on_progress is not None:
+                                on_progress(tool_runs)
+                        save_json(
+                            workdir / "unsafe-cleanup.json",
+                            {
+                                "entries": unsafe_reports,
+                                "reservation_retained": True,
+                            },
+                        )
+                    except BaseException as write_error:
+                        errors.append(write_error)
+                except BenchmarkInterrupted:
+                    cancelled.set()
+                except BaseException as exc:
+                    errors.append(exc)
+                    cancelled.set()
+                finally:
+                    if not unsafe:
+                        try:
+                            lease.release()
+                        except Exception as exc:
+                            errors.append(exc)
+                            cancelled.set()
+    if blocked:
+        save_json(
+            workdir / "resource-blocked.json",
+            {"slots": blocked, "resource_snapshot": pool.snapshot()},
+        )
+    if errors:
+        raise errors[0]
+    if cancelled.is_set():
+        raise BenchmarkInterrupted(
+            "Benchmark interrupted; completed receipts preserved, unattempted slots remain pending."
+        )
+    if blocked:
+        raise WaitingForResources(
+            f"{len(blocked)} fixed resource slots remain pending; no native observations were fabricated."
+        )
+    return tool_runs, run_index, stopped
 
 
 def prepare_incremental_measurements(
@@ -1362,15 +1781,18 @@ def prepare_incremental_measurements(
     seed: int,
     force_rerun: bool,
     remeasure_historical: bool = False,
+    source_kernels: dict[str, str] | None = None,
 ) -> tuple[
     list[dict[str, Any]],
     dict[tuple[int, int, int, float], dict[str, str]],
     set[tuple[int, int, int, float]],
 ]:
-    """Resolve the requested plus historical point matrix without executing Docker.
+    """Resolve evidence and the execution matrix without executing Docker.
 
     Historical aggregates are never expanded into invented raw timings. They are
     reusable only when their original observations and input identity survive.
+    An unfinished planned point is retained in the profile plan, but does not
+    prevent a later invocation from measuring a different requested resource.
     """
     requested = {
         (p.size.genes, p.size.columns, p.threads, float(p.ram_gb))
@@ -1394,6 +1816,7 @@ def prepare_incremental_measurements(
     hashes_by_key: dict[tuple[int, int, int, float], dict[str, str]] = {}
     manifests: dict[tuple[int, int], dict[str, str]] = {}
     blocked: list[tuple[int, int, int, float]] = []
+    deferred: set[tuple[int, int, int, float]] = set()
     for key in sorted(intended):
         shape = key[:2]
         if shape not in manifests:
@@ -1413,21 +1836,26 @@ def prepare_incremental_measurements(
             continue
         old_point = old_points.get(key, {})
         rows = embedded_observations(
-            point=old_point, config=config, hashes=hashes, repeats=repeats
+            point=old_point,
+            config=config,
+            hashes=hashes,
+            repeats=repeats,
+            source_kernels=source_kernels,
         )
         if len(rows) < repeats:
-            recovered = legacy_observations(
+            recovered = retained_observations(
                 directories=directories,
                 config=config,
                 key=key,
                 hashes=hashes,
                 repeats=repeats,
+                source_kernels=source_kernels,
             )
             by_repeat = {row["repeat"]: row for row in rows}
             for row in recovered:
                 by_repeat.setdefault(row["repeat"], row)
             rows = [by_repeat[k] for k in sorted(by_repeat)]
-        if old_point and complete_point(old_point, repeats) and len(rows) == repeats:
+        if old_point and len(rows) == old_point.get("repeats_total"):
             recomputed = aggregate_runtime_points(
                 rows,
                 execution_profile=profile.execution_profile,
@@ -1435,12 +1863,25 @@ def prepare_incremental_measurements(
             )[0]
             if any(
                 recomputed[field] != old_point[field]
-                for field in ("seconds_p50", "seconds_p90")
+                for field in (
+                    "seconds_p50",
+                    "seconds_p90",
+                    "status",
+                    "repeats_total",
+                    "repeats_ok",
+                    "repeats_failed",
+                    "failure_breakdown",
+                )
             ):
                 # A changed/corrupted aggregate cannot authorize skipping work.
                 rows = []
         if key not in requested and len(rows) < repeats:
-            blocked.append(key)
+            if old_point and len(rows) < old_point.get("repeats_total", repeats):
+                # Published observations cannot disappear when another resource
+                # is requested. A verified partial checkpoint may remain pending.
+                blocked.append(key)
+            elif not remeasure_historical:
+                deferred.add(key)
         initial.extend(rows)
     if blocked and not remeasure_historical:
         raise RuntimeError(
@@ -1464,10 +1905,20 @@ def prepare_incremental_measurements(
         "requested_points": len(requested),
         "historical_points_retained": len(intended - requested),
         "requested_repetitions": len(requested) * repeats,
+        "planned_repetitions": len(intended) * repeats,
+        "verified_terminal_repetitions": len(initial),
+        "successful_repetitions": sum(row["status"] == "ok" for row in initial),
+        "timeout_repetitions": sum(row["status"] == "timeout" for row in initial),
+        "oom_repetitions": sum(row["status"] == "oom" for row in initial),
+        "error_repetitions": sum(row["status"] == "error" for row in initial),
         "reused_requested_repetitions": requested_reused,
         "pending_repetitions": len(requested) * repeats - requested_reused,
         "historical_points_requiring_remeasurement": [
             dict(zip(("genes", "columns", "threads", "ram_gb"), key)) for key in blocked
+        ],
+        "deferred_planned_points": [
+            dict(zip(("genes", "columns", "threads", "ram_gb"), key))
+            for key in sorted(deferred)
         ],
         "total_pending_repetitions": len(intended) * repeats - len(initial),
         "evidence_profiles_checked": [str(p) for p in directories],
@@ -1478,7 +1929,7 @@ def prepare_incremental_measurements(
         f"{requested_reused}/{len(requested) * repeats} requested repetitions; "
         f"{len(intended - requested)} historical resource points retained"
     )
-    return initial, hashes_by_key, intended
+    return initial, hashes_by_key, intended - deferred
 
 
 def completed_incremental_points(
@@ -1496,23 +1947,46 @@ def completed_incremental_points(
     )
     completed = []
     for point in points:
-        if not complete_point(point, repeats):
-            continue
         key = point_key(point)
+        observations = [
+            {
+                **row,
+                "measurement_provenance": row.get(
+                    "measurement_provenance", config.get("provenance", {})
+                ),
+            }
+            for row in runs
+            if point_key(row) == key
+        ]
+        contexts = {}
+        for row in observations:
+            provenance = row["measurement_provenance"]
+            context = measurement_context(
+                {
+                    **config,
+                    "provenance": {
+                        **provenance,
+                        "measurement_kernel_sha256": row.get(
+                            "measurement_kernel_sha256",
+                            provenance.get("measurement_kernel_sha256"),
+                        ),
+                    },
+                }
+            )
+            contexts[json.dumps(context, sort_keys=True)] = context
+        common_context = dict(next(iter(contexts.values())))
+        for context in contexts.values():
+            common_context = {
+                name: value
+                for name, value in common_context.items()
+                if name in context and context[name] == value
+            }
         point["measurement_evidence"] = {
             "version": 1,
             "input_sha256": hashes[key],
-            "measurement_context": measurement_context(config),
-            "observations": [
-                {
-                    **row,
-                    "measurement_provenance": row.get(
-                        "measurement_provenance", config.get("provenance", {})
-                    ),
-                }
-                for row in runs
-                if point_key(row) == key
-            ],
+            "measurement_context": common_context,
+            "measurement_contexts": list(contexts.values()),
+            "observations": observations,
         }
         completed.append(point)
     return completed
@@ -1534,7 +2008,154 @@ def acquire_cost_lock(cost_path: Path):
     return stream
 
 
-def run(argv: Sequence[str] | None = None) -> int:
+def evidence_configs(
+    target: ToolBenchmarkTarget, roots: list[Path], cost_path: Path
+) -> list[dict[str, Any]]:
+    configs = []
+    for profile in target.profiles:
+        for directory in find_evidence_profiles(
+            roots, target.tool_id, profile.profile_id
+        ):
+            value = read_json(directory / "benchmark_config.json", {})
+            if isinstance(value, dict):
+                configs.append(value)
+    payload = read_json(cost_path, {})
+    configs.extend(
+        p.get("benchmark_config", {})
+        for p in payload.get("profiles", [])
+        if isinstance(p, dict)
+    )
+    return configs
+
+
+def verified_source_kernels(
+    args: argparse.Namespace,
+    target: ToolBenchmarkTarget,
+    roots: list[Path],
+    cost_path: Path,
+) -> dict[str, str]:
+    if not args.reuse_source_root:
+        return {}
+    manifest = load_json_object(
+        args.reuse_source_manifest, "measurement source manifest"
+    )
+    files = manifest.get("source_files_sha256")
+    if not isinstance(files, dict) or not files:
+        raise RuntimeError("Measurement source manifest requires source_files_sha256.")
+    provenances = [
+        config.get("provenance", {})
+        for config in evidence_configs(target, roots, cost_path)
+    ]
+    # Reconciled configs carry the proven kernel, but every imported row still
+    # carries its unchanged original provenance. Discover those original source
+    # identities too: the derived row's kernel annotation is not source proof.
+    for profile in target.profiles:
+        for directory in find_evidence_profiles(
+            roots, target.tool_id, profile.profile_id
+        ):
+            rows = read_json(directory / "measurements.json", [])
+            if isinstance(rows, list):
+                provenances.extend(
+                    row.get("measurement_provenance", {})
+                    for row in rows
+                    if isinstance(row, dict)
+                )
+    payload = read_json(cost_path, {})
+    for entry in payload.get("profiles", []):
+        if not isinstance(entry, dict):
+            continue
+        for point in entry.get("runtime_points", []):
+            if not isinstance(point, dict):
+                continue
+            rows = point.get("measurement_evidence", {}).get("observations", [])
+            if isinstance(rows, list):
+                provenances.extend(
+                    row.get("measurement_provenance", {})
+                    for row in rows
+                    if isinstance(row, dict)
+                )
+    sources = {
+        provenance.get("source_sha256")
+        for provenance in provenances
+        if isinstance(provenance, dict)
+        and not provenance.get("measurement_kernel_sha256")
+    } - {None}
+    current_kernel = measurement_kernel_fingerprint(REPO_ROOT)
+    verified = VerifiedSourceKernels()
+    for source in sources:
+        kernel = verify_measurement_source(args.reuse_source_root, source, files)
+        verified[source] = kernel
+    verified.load_reviews(manifest, current_kernel)
+    if any(
+        kernel != current_kernel and (kernel, current_kernel) not in verified.reviews
+        for kernel in verified.values()
+    ):
+        raise RuntimeError(
+            "Retained measurement kernel differs from the current scientific timing/input kernel without an explicit verified executor review."
+        )
+    return verified
+
+
+def retained_provenance(
+    target: ToolBenchmarkTarget,
+    source_dir: Path,
+    roots: list[Path],
+    cost_path: Path,
+    seed: int,
+    source_kernels: dict[str, str],
+) -> dict[str, Any]:
+    """Reconcile retained facts without claiming a fresh image/hardware inspection.
+
+    Native execution always collects live provenance. Offline reconciliation
+    verifies the current spec/build inputs and anchors each observation to its
+    original hardware/image receipt, rather than invoking Docker to create one.
+    """
+    spec_hash = hashlib.sha256(
+        (target.catalog_tool_dir / "toolspec.json").read_bytes()
+    ).hexdigest()
+    context_hash = build_context_fingerprint(
+        root=REPO_ROOT,
+        kind="inference",
+        identifier=target.tool_id,
+        source_dir=source_dir,
+    )
+    kernel = measurement_kernel_fingerprint(REPO_ROOT)
+    candidates = evidence_configs(target, roots, cost_path)
+    # Prefer exact current-kernel evidence. A reviewed old anchor remains old:
+    # offline reconciliation must not claim a new native timing inspection.
+    candidates.sort(
+        key=lambda c: c.get("provenance", {}).get("measurement_kernel_sha256") != kernel
+    )
+    for config in candidates:
+        provenance = config.get("provenance", {})
+        original_kernel = provenance.get(
+            "measurement_kernel_sha256"
+        ) or source_kernels.get(provenance.get("source_sha256"))
+        reviewed = (original_kernel, kernel) in getattr(source_kernels, "reviews", {})
+        if (
+            (original_kernel == kernel or reviewed)
+            and provenance.get("seed") == seed
+            and provenance.get("spec_sha256") == spec_hash
+            and provenance.get("build_context_sha256") == context_hash
+            and provenance.get("image_id")
+            and provenance.get("cpu_model")
+        ):
+            return {**provenance, "measurement_kernel_sha256": original_kernel}
+    if candidates:
+        raise RuntimeError(
+            "No retained provenance matches the current spec/build context, source proof and seed."
+        )
+    # No receipt can be accepted without an immutable image/hardware anchor.
+    # This still permits a no-data reuse-only invocation to report pending slots.
+    return {
+        "measurement_kernel_sha256": kernel,
+        "spec_sha256": spec_hash,
+        "build_context_sha256": context_hash,
+        "seed": seed,
+    }
+
+
+def _run(argv: Sequence[str] | None = None, *, cancel_event: threading.Event) -> int:
     args = parse_args(argv)
     validate_runtime_args(args)
     default_sizes, threads, ram_gb, _effective_cores, _effective_ram_gb = (
@@ -1578,7 +2199,20 @@ def run(argv: Sequence[str] | None = None) -> int:
         print_benchmark_plan_summary(plan_rows)
         return 0
 
+    resource_pool = (
+        None
+        if args.reuse_only
+        else ResourcePool(
+            args.resource_state_dir,
+            ram_headroom_gb=args.ram_headroom_gb,
+            ram_headroom_fraction=args.ram_headroom_fraction,
+            cpu_headroom=args.cpu_headroom,
+            max_threads=args.max_cpu,
+            max_ram_gb=args.max_ram_gb,
+        )
+    )
     run_index = 0
+    waiting_resources = False
     fail_fast_triggered = False
     global_success = 0
     global_timeout = 0
@@ -1612,7 +2246,7 @@ def run(argv: Sequence[str] | None = None) -> int:
 
         try:
             cost_lock = acquire_cost_lock(cost_path)
-            if not args.skip_build and not args.catalog_images:
+            if not args.reuse_only and not args.skip_build and not args.catalog_images:
                 build_image(
                     tool_id,
                     catalog_tools_root=args.catalog_tools_root,
@@ -1620,14 +2254,33 @@ def run(argv: Sequence[str] | None = None) -> int:
                     image_tag=image_tag,
                 )
 
-            provenance = collect_provenance(
-                root=REPO_ROOT,
-                spec_path=target.catalog_tool_dir / "toolspec.json",
-                image=image_tag,
-                seed=args.seed,
-                source_dir=tool_source_dir,
+            evidence_roots = list(args.reuse_results_dir)
+            if args.results_dir:
+                evidence_roots.append(args.results_dir)
+            source_kernels = verified_source_kernels(
+                args, target, evidence_roots, cost_path
             )
-            image_tag = provenance["image_id"]
+            if args.reuse_only:
+                provenance = retained_provenance(
+                    target,
+                    tool_source_dir,
+                    evidence_roots,
+                    cost_path,
+                    args.seed,
+                    source_kernels,
+                )
+            else:
+                provenance = collect_provenance(
+                    root=REPO_ROOT,
+                    spec_path=target.catalog_tool_dir / "toolspec.json",
+                    image=image_tag,
+                    seed=args.seed,
+                    source_dir=tool_source_dir,
+                )
+                provenance["measurement_kernel_sha256"] = (
+                    measurement_kernel_fingerprint(REPO_ROOT)
+                )
+            image_tag = provenance.get("image_id", image_tag)
             if args.results_dir:
                 workdir = persistent_workdir(args.results_dir, tool_id)
                 print(f"[{tool_id}] evidence: {workdir}")
@@ -1673,7 +2326,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 evidence_roots = list(args.reuse_results_dir)
                 if args.results_dir:
                     evidence_roots.append(args.results_dir)
-                initial_runs, input_hashes, intended_points = (
+                initial_runs, input_hashes, execution_points = (
                     prepare_incremental_measurements(
                         profile=profile,
                         config=benchmark_config,
@@ -1687,6 +2340,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                         seed=args.seed,
                         force_rerun=args.force_rerun,
                         remeasure_historical=args.remeasure_incompatible_history,
+                        source_kernels=source_kernels,
                     )
                 )
                 save_json(profile_workdir / "benchmark_config.json", benchmark_config)
@@ -1718,28 +2372,37 @@ def run(argv: Sequence[str] | None = None) -> int:
 
                 if initial_runs:
                     checkpoint(initial_runs)
-                profile_runs, run_index, fail_fast_triggered = execute_tool_benchmarks(
-                    tool_id=tool_id,
-                    profile_id=profile.profile_id,
-                    image_tag=image_tag,
-                    workdir=profile_workdir,
-                    sizes=profile_sizes,
-                    threads=tool_threads,
-                    ram_gb=ram_gb,
-                    repeats=args.repeats,
-                    resolved_params=profile.params,
-                    execution=profile.execution,
-                    input_profile=profile.input_profile,
-                    seed=args.seed,
-                    timeout=args.timeout,
-                    fail_fast=args.fail_fast,
-                    run_index=run_index,
-                    total_runs=total_runs,
-                    initial_runs=initial_runs,
-                    on_progress=checkpoint,
-                    point_plan=intended_points,
-                )
-
+                if args.reuse_only:
+                    profile_runs = initial_runs
+                    save_json(profile_workdir / "measurements.json", profile_runs)
+                else:
+                    profile_runs, run_index, fail_fast_triggered = (
+                        execute_tool_benchmarks(
+                            tool_id=tool_id,
+                            profile_id=profile.profile_id,
+                            image_tag=image_tag,
+                            workdir=profile_workdir,
+                            sizes=profile_sizes,
+                            threads=tool_threads,
+                            ram_gb=ram_gb,
+                            repeats=args.repeats,
+                            resolved_params=profile.params,
+                            execution=profile.execution,
+                            input_profile=profile.input_profile,
+                            seed=args.seed,
+                            timeout=args.timeout,
+                            fail_fast=args.fail_fast,
+                            run_index=run_index,
+                            total_runs=total_runs,
+                            initial_runs=initial_runs,
+                            on_progress=checkpoint,
+                            point_plan=execution_points,
+                            min_free_gb=args.min_free_gb,
+                            concurrency=args.concurrency,
+                            resource_pool=resource_pool,
+                            cancel_event=cancel_event,
+                        )
+                    )
                 profile_summary = summarize_tool_runs(profile_runs)
                 tool_total_runs += profile_summary["total_runs"]
                 tool_success_runs += profile_summary["successful_runs"]
@@ -1757,15 +2420,17 @@ def run(argv: Sequence[str] | None = None) -> int:
                     repeats=args.repeats,
                 )
                 profile_complete = {
-                    point_key(point) for point in runtime_points
-                } == intended_points
+                    point_key(point)
+                    for point in runtime_points
+                    if complete_point(point, args.repeats)
+                } >= execution_points
                 if not profile_complete:
-                    had_error = True
+                    had_error = had_error or not args.reuse_only
                     unpersistable_profile = True
                     print(
                         f"[{tool_id}/{profile.profile_id}] incomplete matrix; completed points checkpointed, failures retained in evidence."
                     )
-                if runtime_points and profile_complete:
+                if runtime_points and (profile_complete or args.reuse_only):
                     cost_profile_entries.append(
                         make_cost_profile_entry(
                             profile_id=profile.profile_id,
@@ -1794,8 +2459,10 @@ def run(argv: Sequence[str] | None = None) -> int:
                 write_tool_cost_profile(cost_path=cost_path, cost_payload=payload)
                 wrote_cost = True
             elif not cost_profile_entries:
-                had_error = True
-                print(f"[{tool_id}] no complete successful profiles to save.")
+                had_error = had_error or not args.reuse_only
+                print(
+                    f"[{tool_id}] no fully attempted profiles; available terminal observations were checkpointed."
+                )
 
             print(
                 f"[{tool_id}] summary: profiles={len(cost_profile_entries)}/{len(target.profiles)} "
@@ -1804,6 +2471,12 @@ def run(argv: Sequence[str] | None = None) -> int:
                 f"wrote_cost={wrote_cost}"
             )
 
+        except WaitingForResources as exc:
+            waiting_resources = True
+            print(f"[{tool_id}] waiting_resources: {exc}", file=sys.stderr, flush=True)
+        except BenchmarkInterrupted as exc:
+            cancel_event.set()
+            print(f"[{tool_id}] interrupted: {exc}", file=sys.stderr, flush=True)
         except Exception as exc:  # noqa: BLE001
             had_error = True
             print(f"[{tool_id}] ERROR: {exc}", file=sys.stderr)
@@ -1815,7 +2488,7 @@ def run(argv: Sequence[str] | None = None) -> int:
             if cost_lock is not None:
                 cost_lock.close()
 
-        if fail_fast_triggered:
+        if fail_fast_triggered or cancel_event.is_set():
             break
 
     print()
@@ -1824,7 +2497,28 @@ def run(argv: Sequence[str] | None = None) -> int:
         f"timeout_runs={global_timeout} "
         f"failed_runs={global_fail}"
     )
-    return 1 if had_error or global_fail or global_timeout else 0
+    if had_error:
+        return 1
+    if cancel_event.is_set():
+        return 130
+    return 75 if waiting_resources else 0
+
+
+def run(argv: Sequence[str] | None = None) -> int:
+    cancelled = threading.Event()
+    previous = {}
+    if threading.current_thread() is threading.main_thread():
+
+        def stop(signum, _frame):
+            cancelled.set()
+
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            previous[signum] = signal.signal(signum, stop)
+    try:
+        return _run(argv, cancel_event=cancelled)
+    finally:
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -2,6 +2,7 @@ import hashlib
 import importlib.util
 import json
 import copy
+import ast
 import shutil
 from pathlib import Path
 
@@ -13,6 +14,33 @@ spec = importlib.util.spec_from_file_location(
 )
 support = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(support)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "andrea/catalog_inference_tools/tools/swing/cost.json",
+        "andrea/catalog_inference_tools/tools/swing/.cost.json.en65kipy",
+        "andrea/catalog_simulation_data_tools/simulators/dyngen/.cost.json.a1b2c3d4",
+    ],
+)
+def test_source_identity_excludes_atomic_catalog_cost_outputs(name):
+    assert support.is_generated_cost_artifact(name)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "andrea/catalog_inference_tools/tools/swing/toolspec.json",
+        "andrea/catalog_inference_tools/tools/swing/.cost.json",
+        "andrea/catalog_inference_tools/tools/swing/.cost.json.",
+        "andrea/catalog_inference_tools/tools/swing/.settings.py",
+        "wrappers/inference_tools/tools/swing/.cost.json.en65kipy",
+        "andrea/catalog_inference_tools/tools/swing/extra/.cost.json.en65kipy",
+    ],
+)
+def test_source_identity_keeps_real_and_unrecognized_hidden_files(name):
+    assert not support.is_generated_cost_artifact(name)
 
 
 def test_atomic_save_does_not_damage_existing_measurements(tmp_path):
@@ -137,6 +165,47 @@ def test_simulator_fingerprint_tracks_docker_copy_and_rejects_unknown_sources(tm
         fingerprint()
 
 
+@pytest.mark.parametrize("tool_id", ["dyngenie3", "swing"])
+def test_temporal_fingerprint_uses_only_the_isolated_root_parser(tmp_path, tool_id):
+    scripts = tmp_path / "wrappers/inference_tools/scripts"
+    shutil.copytree(
+        ROOT / "wrappers/inference_tools/scripts",
+        scripts,
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    sources = tmp_path / "wrappers/inference_tools/tools" / tool_id
+    sources.mkdir(parents=True)
+    for name in ("Dockerfile", "run_tool.py"):
+        shutil.copy2(
+            ROOT / "wrappers/inference_tools/tools" / tool_id / name,
+            sources / name,
+        )
+    parser = tmp_path / "andrea/core/shared/column_metadata.py"
+    parser.parent.mkdir(parents=True)
+    shutil.copy2(ROOT / "andrea/core/shared/column_metadata.py", parser)
+    builder = support.load_script(scripts / "build_tool_images.py", "isolated_builder")
+    assert (
+        builder.resolve_template_source(
+            "python/_column_metadata.py", repo_root=tmp_path
+        )
+        == parser
+    )
+
+    def fingerprint():
+        return support.build_context_fingerprint(
+            root=tmp_path, kind="inference", identifier=tool_id
+        )
+
+    initial = fingerprint()
+    parser.write_text(parser.read_text() + "\n# isolated parser revision\n")
+    assert fingerprint() != initial
+    parser.unlink()
+    # A missing snapshot parser must not silently fall back to the live tree.
+    with pytest.raises(FileNotFoundError) as missing:
+        fingerprint()
+    assert Path(missing.value.filename) == parser
+
+
 def test_all_catalog_build_contexts_can_be_fingerprinted_without_docker():
     for kind, catalog, filename in (
         ("inference", "catalog_inference_tools/tools", "toolspec.json"),
@@ -169,60 +238,6 @@ def test_profile_fingerprint_tracks_preset_and_fixture_content(tmp_path):
     assert support.profile_fingerprint(profile, root=ROOT, kind="simulation") != initial
 
 
-def test_legacy_recipe_bridge_requires_exact_reviewed_sources_and_non_temporal_scope(
-    tmp_path,
-):
-    compatibility = json.loads(
-        (
-            ROOT / "wrappers/inference_tools/scripts/shared/recipe_compatibility.json"
-        ).read_text()
-    )
-    for relative in compatibility["compatible_recipes"]:
-        target = tmp_path / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / relative, target)
-    target = (
-        tmp_path / "wrappers/inference_tools/scripts/shared/recipe_compatibility.json"
-    )
-    target.write_text(json.dumps(compatibility))
-    profile = {
-        "profile_id": "unit-test-legacy",
-        "input_profile": {"extras_provided": []},
-        "params": {"ntrees": 1000},
-    }
-    expected = hashlib.sha256(
-        json.dumps(
-            {"resolved_profile": profile, "recipes": compatibility["baseline_recipes"]},
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode()
-    ).hexdigest()
-    assert (
-        support.profile_fingerprint(profile, root=tmp_path, kind="inference")
-        == expected
-    )
-    temporal = copy.deepcopy(profile)
-    temporal["input_profile"]["temporal"] = {"schema_version": "bulk-temporal/1"}
-    assert (
-        support.profile_fingerprint(temporal, root=tmp_path, kind="inference")
-        != expected
-    )
-    changed_params = copy.deepcopy(profile)
-    changed_params["params"]["ntrees"] = 500
-    assert (
-        support.profile_fingerprint(changed_params, root=tmp_path, kind="inference")
-        != expected
-    )
-    source = tmp_path / next(iter(compatibility["compatible_recipes"]))
-    source.write_text(
-        source.read_text() + "\n# Future source edits must invalidate compatibility.\n"
-    )
-    assert (
-        support.profile_fingerprint(profile, root=tmp_path, kind="inference")
-        != expected
-    )
-
-
 def _release_profile():
     return {
         "profile_id": "global",
@@ -245,6 +260,8 @@ def _release_profile():
                 "repeats_failed": 0,
                 "ok_rate": 1,
                 "failure_breakdown": {"oom": 0, "timeout": 0, "error": 0},
+                "seconds_p50": 2.0,
+                "seconds_p90": 2.8,
             }
         ],
     }
@@ -289,6 +306,218 @@ def test_strict_release_rejects_duplicate_profile_ids():
     assert any(
         "Duplicate" in e
         for e in support.release_profile_errors(payload, {"global": "a" * 64})
+    )
+
+
+@pytest.fixture
+def inference_sources(tmp_path):
+    paths = [
+        "wrappers/benchmark_support.py",
+        "wrappers/inference_tools/scripts/benchmark_costs.py",
+        "wrappers/inference_tools/scripts/shared/benchmark_inputs.py",
+    ]
+    for name in paths:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / name, target)
+    return tmp_path
+
+
+def test_inference_fingerprint_ignores_only_operational_driver_changes(
+    inference_sources,
+):
+    root = inference_sources
+    profile = {"params": {"trees": 100}, "input_profile": {"column_kind": "cells"}}
+    initial = support.profile_fingerprint(profile, root=root, kind="inference")
+    driver = root / "wrappers/inference_tools/scripts/benchmark_costs.py"
+    tree = ast.parse(driver.read_text())
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name in {
+            "run",
+            "prepare_incremental_measurements",
+        }:
+            node.body = [
+                ast.Raise(
+                    exc=ast.Call(
+                        func=ast.Name(id="RuntimeError", ctx=ast.Load()),
+                        args=[ast.Constant(value="changed operational recovery")],
+                        keywords=[],
+                    )
+                )
+            ]
+    driver.write_text(ast.unparse(ast.fix_missing_locations(tree)) + "\n")
+    assert support.profile_fingerprint(profile, root=root, kind="inference") == initial
+    driver.write_text(
+        driver.read_text().replace(
+            "started = time.perf_counter()", "started = time.perf_counter() - 1.0"
+        )
+    )
+    assert support.profile_fingerprint(profile, root=root, kind="inference") != initial
+
+
+def test_inference_fingerprint_detects_input_and_scientific_parameter_changes(
+    inference_sources,
+):
+    root = inference_sources
+    profile = {"params": {"trees": 100}}
+    initial = support.profile_fingerprint(profile, root=root, kind="inference")
+    inputs = root / "wrappers/inference_tools/scripts/shared/benchmark_inputs.py"
+    inputs.write_text(
+        inputs.read_text()
+        + '\nGENERATOR_POLICY = "changed scientific input implementation"\n'
+    )
+    assert support.profile_fingerprint(profile, root=root, kind="inference") != initial
+    profile["params"]["trees"] = 200
+    assert support.profile_fingerprint(
+        profile, root=ROOT, kind="inference"
+    ) != support.profile_fingerprint(
+        {"params": {"trees": 100}}, root=ROOT, kind="inference"
+    )
+
+
+def test_source_proof_checks_actual_original_global_digest_and_kernel(
+    inference_sources,
+):
+    root = inference_sources
+    names = [
+        "wrappers/benchmark_support.py",
+        "wrappers/inference_tools/scripts/benchmark_costs.py",
+        "wrappers/inference_tools/scripts/shared/benchmark_inputs.py",
+    ]
+    manifest = {
+        name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in names
+    }
+    source = hashlib.sha256()
+    for name in sorted(manifest):
+        source.update(name.encode() + b"\0" + (root / name).read_bytes() + b"\0")
+    expected = source.hexdigest()
+    assert support.verify_measurement_source(
+        root, expected, manifest
+    ) == support.measurement_kernel_fingerprint(root)
+    with pytest.raises(ValueError, match="original measurement provenance"):
+        support.verify_measurement_source(root, "0" * 64, manifest)
+    (root / names[1]).write_text(
+        (root / names[1]).read_text() + "\n# modified after sealing\n"
+    )
+    with pytest.raises(ValueError, match="source changed"):
+        support.verify_measurement_source(root, expected, manifest)
+
+
+def test_source_proof_rejects_incomplete_kernel_manifest(inference_sources):
+    with pytest.raises(ValueError, match="complete inference measurement kernel"):
+        support.verify_measurement_source(
+            inference_sources, "a" * 64, {"andrea/a.py": "b" * 64}
+        )
+
+
+def _terminal_profile(statuses):
+    profile = _release_profile()
+    failures = {name: statuses.count(name) for name in ("oom", "timeout", "error")}
+    successes = statuses.count("ok")
+    point = profile["runtime_points"][0]
+    point.update(
+        repeats_total=len(statuses),
+        repeats_ok=successes,
+        repeats_failed=len(statuses) - successes,
+        ok_rate=round(successes / len(statuses), 6),
+        failure_breakdown=failures,
+        status=(
+            "ok"
+            if successes == len(statuses)
+            else (
+                "partial"
+                if successes
+                else (
+                    "oom"
+                    if failures["oom"]
+                    else "timeout" if failures["timeout"] else "error"
+                )
+            )
+        ),
+        seconds_p50=2.0 if successes else None,
+        seconds_p90=2.0 if successes else None,
+    )
+    point["measurement_evidence"] = {
+        "observations": [
+            {
+                "genes": 10,
+                "columns": 5,
+                "threads": 1,
+                "ram_gb": 1,
+                "repeat": index + 1,
+                "run_id": f"run{index}",
+                "status": status,
+                "seconds": 2.0 if status == "ok" else 1800.1,
+            }
+            for index, status in enumerate(statuses)
+        ]
+    }
+    return profile
+
+
+@pytest.mark.parametrize(
+    "statuses", [("timeout",) * 3, ("ok", "timeout", "error"), ("oom",) * 3]
+)
+def test_outcome_release_accepts_real_terminal_failures_without_success_claim(statuses):
+    payload = {"profiles": [_terminal_profile(statuses)]}
+    assert (
+        support.release_profile_errors(
+            payload,
+            {"global": "a" * 64},
+            require_successful=False,
+            require_attempts=True,
+        )
+        == []
+    )
+    assert support.release_profile_errors(
+        payload, {"global": "a" * 64}
+    )  # simulator/legacy default stays strict
+
+
+def test_outcome_release_keeps_partial_checkpoint_but_reports_pending_attempts():
+    payload = {"profiles": [_terminal_profile(("timeout",))]}
+    assert (
+        support.release_profile_errors(
+            payload,
+            {"global": "a" * 64},
+            require_successful=False,
+            require_attempts=False,
+        )
+        == []
+    )
+    assert any(
+        "minimum three" in error
+        for error in support.release_profile_errors(
+            payload,
+            {"global": "a" * 64},
+            require_successful=False,
+            require_attempts=True,
+        )
+    )
+
+
+def test_outcome_validation_rejects_fabricated_timeout_timing_and_duplicate_slots():
+    point = _terminal_profile(("timeout",) * 3)["runtime_points"][0]
+    point["seconds_p50"] = 1800
+    assert any("must be null" in error for error in support.runtime_point_errors(point))
+    point["seconds_p50"] = None
+    point["measurement_evidence"]["observations"][2]["repeat"] = 2
+    assert any(
+        "repetition slots" in error
+        for error in support.runtime_point_errors(
+            point, repeats=3, require_attempts=True
+        )
+    )
+
+
+def test_terminal_attempts_cannot_reuse_one_execution_with_different_repetition_numbers():
+    point = _terminal_profile(("timeout",) * 3)["runtime_points"][0]
+    point["measurement_evidence"]["observations"][2]["run_id"] = "run0"
+    assert any(
+        "duplicated" in error
+        for error in support.runtime_point_errors(
+            point, repeats=3, require_attempts=True
+        )
     )
 
 
