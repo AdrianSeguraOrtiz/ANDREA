@@ -1,41 +1,56 @@
 # Changelog
 
-## Unreleased — Osaka integration procedure
+## Unreleased — Osaka integrations
 
-- Expand dynGENIE3's finite calibration panel across 1/2/4/8 CPUs, 4/8 GiB,
-  independent temporal dimensions and representative parameter/input branches.
-  Validate representative independent runtime predictions and preserve original
-  observations through verified compatibility receipts when expanding a campaign.
-- Repair catalog rendering for tools without a fixed thread ceiling and preserve
-  partial activation state after errors. Retain failed dynGENIE3 campaign evidence
-  and rebuild the numerical fixes as image `1.0.1`.
-- Preserve binary64 raw weights in CSV, GraphML and GEXF exports. Handle undefined
-  zero-decay diagnostics and unrepresentable decay-estimation time separations;
-  strengthen physical acceptance to 17 cases with saved-model diagnostic checks.
-- Deduplicate identical resumed calibration observations without counting them
-  twice; reject conflicts and clean up only owned calibration containers on stop.
-- Implement the dynGENIE3 Python candidate from pinned official source, with
-  preserved scientific defaults, explicit target seeds, resource controls and
-  native provenance. Keep catalog activation conditional on physical image
-  verification; measured calibration and publication have separate gates.
-- Adopt optional `bulk-temporal/1` metadata through core, CLI, GUI, frozen
-  bundles and simulator handoff. Validate observed units, series boundaries,
-  biological/technical measurements and exact column joins; add a separate
-  gene-aligned steady-state expression input and genuine temporal cost fixtures.
-- Guard temporal cost selection by series geometry, rather than total matrix
-  columns. Unmatched temporal designs receive an explicit fallback ETA.
-- Replace phase prompts and mandatory PDFs with one autonomous evidence-to-catalog
-  workflow accepting TXT, an upstream evidence clone and an installation preference.
-- Keep new inference and simulator scaffolds inactive, with a shared scientific
-  decision template, parameter traceability matrix and hashed acceptance dossier.
-- Separate structural cost validity, declared calibration-domain coverage,
-  independent prediction checks and registry publication. Add simulator domain
-  checks and an offline held-out prediction validator; preserve historical costs.
-- Preserve the historical bulk-contract audit and offline checker alongside
-  the compatible runtime extension and its stricter, opt-in validation.
-- Correct scaffold/extraction behavior and keep local scientific evidence out
-  of image build contexts. No scientific calibrations or image publication are
-  claimed by these procedural changes.
+### Inference tools and normalized data
+
+- Integrate pinned dynGENIE3, SWING and BiXGBoost implementations through the
+  standard wrapper, Docker, specification, smoke and fixture locations. Preserve
+  native scientific defaults and document supported parameters, progress,
+  resource controls, score meanings and justified exclusions. Unpublished image
+  tags remain `1.0.0`.
+- Unify observed bulk inputs into `expression.tsv` and `column_descriptors.tsv`,
+  including compatible temporal/stationary roles, independent series,
+  biological/technical identities and observed sampling coordinates. Remove
+  separate timepoint, replicate and stationary-expression inputs and public
+  temporal declarations without adding development compatibility readers.
+- Keep one stable descriptor InputSpec and the established catalog-filtering
+  model. Apply scientific temporal checks to requested methods. Update affected
+  simulator writers, specifications, manifests and generated-data handoff to the
+  same format; preserve other methods' descriptor behavior.
+- Preserve binary64 network weights in canonical exports. Keep informative native
+  diagnostics and saved models as auxiliary artifacts. Optimize SWING edge
+  aggregation with equivalent scores and output bytes; make per-tree RF tracing
+  diagnostic-only.
+
+### Cost calibration and orchestration
+
+- Keep declarative panels independent of host capacity. Add atomic shared CPU/RAM
+  reservations, bounded concurrency within profiles, exact Docker resource
+  limits and a single checkpoint writer to the common cost executor. Ordinary
+  `infer-network` execution is unchanged by this mechanism.
+- Retain the 1,800-second native timeout. Record terminal failures separately
+  from successful timings and pending work; do not infer timeouts or prune
+  unattempted sizes. Verify owned-container cleanup before releasing resources.
+- Verify retained observation identities, source/image/input provenance and
+  reviewed executor transitions before reuse. Reconcile dynGENIE3 through the
+  existing shared driver: its full 68-profile panel retains 3,348 successful
+  measurements and passes strict provenance, attempt and coverage validation.
+- Leave SWING and BiXGBoost without `cost.json`, with complete declarative panels
+  of 77/4,158 and 27/1,458 profiles/executions respectively. Their calibration and
+  all independent prediction-accuracy checks are deferred. Withdraw timings
+  invalidated by native implementation changes; diagnostic pilots do not
+  replace a complete agreed panel.
+
+### Integration procedure
+
+- Accept TXT papers and pinned upstream clones, keep evidence out of image
+  contexts, and scaffold inactive candidates. Reuse the common scientific
+  decision template and shared calibration tooling.
+- Require consultation before changing common behavior or normalized contracts
+  outside an integration's authorized scope. Keep functional acceptance,
+  calibration-domain coverage, independent prediction accuracy and image
+  publication as separate outcomes.
 
 ## 0.2.1
 

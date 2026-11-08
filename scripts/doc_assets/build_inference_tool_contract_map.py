@@ -56,7 +56,7 @@ ACCEPT_W = 124
 METHOD_FAMILIES = (
     ("information", "Information-theoretic", "#2f6690"),
     ("tree", "Tree ensembles", "#c9791f"),
-    ("regression", "Sparse / regularized regression", "#4c8a4f"),
+    ("regression", "Regression", "#4c8a4f"),
     ("neural", "Neural / deep generative", "#8a5fbf"),
     ("graph", "Graphical models / graph learning", "#7b5a2a"),
     ("correlation", "Correlation / interpolation", "#008c86"),

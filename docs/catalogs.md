@@ -9,7 +9,7 @@ validated independently from wrapper runtime tests.
 | Catalog | Entries | Executable coverage entries | Source specs |
 |---|---:|---:|---|
 | Simulation data tools | 8 | 31 capabilities | `simulatorspec.json` |
-| Inference tools | 25 | 50 execution modes | `toolspec.json` |
+| Inference tools | 26 | 51 execution modes | `toolspec.json` |
 
 ## Simulators
 
@@ -71,6 +71,7 @@ within a family are identical. Integration decision logs cite sources.
 | scRegulate | neural | `global`, `group_native`, `group_emulated` | directed=True, sign=signed, evidence=association | https://doi.org/10.1093/bioinformatics/btaf638 |
 | scSGL | graph | `global`, `group_emulated` | directed=False, sign=signed, evidence=association | https://doi.org/10.1093/bioinformatics/btac288 |
 | SimiC | regression | `group_native` | directed=True, sign=signed, evidence=association | https://doi.org/10.1038/s42003-022-03319-7 |
+| SWING | regression | `global` | directed=True, sign=none, evidence=association | https://doi.org/10.1073/pnas.1710936115 |
 | TIGRESS | regression | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1186/1752-0509-6-145 |
 
 ## Maintenance

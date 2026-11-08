@@ -1,5 +1,10 @@
 # Tool Integration Playbook
 
+Shared behavior changes require prior user consultation: catalog filtering,
+normalized input schemas, validation scope and other methods' input semantics
+are not implicit parts of a new integration. Follow the scope rule in
+[the common procedure](../../docs/INTEGRATION_WORKFLOW.md#scope-of-an-integration).
+
 This playbook defines the inference-specific contract for the [shared autonomous integration workflow](../../docs/INTEGRATION_WORKFLOW.md). Execute that workflow end to end after one request; the checks below are internal gates, not prompts for user approval.
 
 Use it when you have local evidence under:
@@ -79,8 +84,10 @@ explicit `--results-dir`, outside the wrapper and active catalogs. Promotion
 with `--activate-catalog` and `--activate-smoketest` validates the selected
 candidates before writing active files. It removes only draft copies identical
 to their active counterparts. Conflicting or uncopied drafts remain available;
-conflicting staged and legacy wrapper-local copies are rejected. Repeating the
-scaffold after promotion does not recreate placeholder drafts.
+new integrations use only the staged locations above, without wrapper-local
+legacy drafts or new compatibility readers. Existing generic helper support does
+not authorize those paths. Repeating the scaffold after promotion does not
+recreate placeholder drafts.
 
 Use canonical catalog specs, smoke configurations and cost recipes afterward.
 Inference uses the central scripts/template_map.json; a matching local candidate map can be removed after promotion.
@@ -286,7 +293,7 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - what each expression-matrix column semantically represents:
       - `samples`
       - `cells`
-      - `timepoints`
+      - `timepoints` (observed sampling coordinates; metadata is supplied separately through the normalized `column_descriptors` extra)
       - `perturbations`
   - rule:
     - decide from method semantics, not only file shape
@@ -401,6 +408,21 @@ If an upstream default depends on the dataset or runtime state, do not silently 
     - a stable observable unit that the wrapper can convert into `progress.json`
   - rule:
     - this field is defined by wrapper instrumentation, but it must still be justified from real upstream execution behavior
+    - `kind: "none"` means no stable incremental counter; explain available
+      phase updates in `note`, rather than implying that no status is emitted
+    - use `task_partitions` for completed native work units such as windows;
+      distinguish counts of completed work from a prediction of remaining time
+    - publish the inference phase before a long fit or CV begins, and report
+      aggregation/export separately when those phases are observable
+    - verify intermediate phase/counter events as well as terminal status; an
+      auxiliary event journal can preserve short phases without inventing a new
+      public output format or depending on polling frequency
+
+Method-specific coefficients, diagnostic tables, logs, models and other
+informative native outputs remain declared `artifacts_aux`, as elsewhere in
+the catalog. `network.csv` is the common scientific network contract. Add a new
+normalized output contract only when exposing a distinct reusable semantic
+capability, not merely because a method writes an additional informative file.
 
 ### Runtime Resources
 

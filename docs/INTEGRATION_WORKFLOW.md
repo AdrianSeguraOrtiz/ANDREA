@@ -5,9 +5,65 @@ This is the shared procedure for inference tools and simulators. The
 and [simulator playbook](../wrappers/simulation_data_tools/SIMULATOR_INTEGRATION_PLAYBOOK.md)
 define their respective runtime contracts and field evidence rules. Follow the
 whole procedure after one request; phase boundaries are internal quality gates.
-Ask only about material scientific ambiguity, inaccessible requirements or a
-decision that primary evidence cannot resolve. Record a precise pending state
+This document is the authority for integration procedure and scope. User
+instructions take precedence; current executable schemas define actual file
+formats. Keep playbooks and scaffold templates aligned with these rules. Do not change
+a schema or runtime to make an obsolete example valid.
+Within the authorized scope, ask about material scientific ambiguity,
+inaccessible requirements or a decision that primary evidence cannot resolve.
+Shared behavior changes require the consultation described below.
+Record a precise pending state
 when a gate cannot pass. Never invent capabilities, defaults or measurements.
+
+## Scope of an integration
+
+Integrating a method does not authorize changing how ANDREA generally filters
+its catalog, validates unrelated datasets, interprets existing inputs or runs
+other methods. Keep the established procedure and one stable schema for every
+normalized input. Before implementing a change to shared architecture or public
+behavior, describe the concrete need and proposed effect and consult the user.
+Evidence alone is not approval for that wider change. Continue ordinary wrapper,
+fixture and catalog work within the authorized integration without phase prompts.
+
+Inference catalog eligibility uses declared dataset metadata, dimensions,
+available input files and the existing parameter/execution rules. Validate scientific file
+contents for a requested method before fitting; do not use them to infer hidden
+catalog categories. Method-specific requirements belong to that method's
+ToolSpec, wrapper and requested-run checks. Do not change another wrapper's
+scientific input semantics to accommodate a new integration.
+
+### Stable normalized inputs and GUI responsibility
+
+Before adding an input type, inventory the existing catalog and record its
+semantic match or precise information gap in `integration_decisions.md`.
+Different upstream filenames, languages or table layouts are not new semantics.
+Propose a reusable normalized type only for a real gap and obtain approval for
+the shared contract change; do not create a tool-specific duplicate.
+
+Each normalized input has one stable meaning and InputSpec. Dataset selectors
+must not switch its required columns or create hidden schema profiles. Scientific
+metadata belongs in the files. GUI fields are justified by existing interface
+or compatibility decisions, not by duplicating metadata already supplied in an
+input or derivable from other selectors. Selectors may contextualize help; they
+must not reinterpret file contents to classify tools or reread files merely to
+activate another input contract. Existing format, dimension and identifier checks
+remain valid; method-specific scientific checks belong to the requested run.
+
+For observed bulk data, use the current `expression.tsv` and
+`column_descriptors.tsv` contract. Compatible temporal and stationary observations
+share the matrix; the descriptor records their roles, series, identities,
+sampling design, observed times and units. Do not restore separate timepoint,
+replicate or stationary-expression inputs or an extra temporal form/declaration.
+`accepts` describes expression column kinds, such as `timepoints`;
+`column_descriptors` is an input key declared through `extra_inputs`.
+
+An approved normalized-format change is incomplete until all affected writers
+and consumers agree: inference wrappers, simulators, manifests/specs, fixtures,
+examples, CLI/GUI handling and cost generators. Verify a generated dataset
+through `infer-network` before declaring the handoff complete. Emit canonical
+`network.csv` at the established output path and retain native auxiliary outputs
+as declared artifacts; do not invent shared output types for informative
+tool-specific artifacts without a semantic need.
 
 ## Minimal user input
 
@@ -70,8 +126,10 @@ After reviewing the candidates, use `--activate-catalog` and
 writing active files. It removes only drafts whose bytes match their promoted
 copies, and an inference candidate template map only when its selected entry
 and bundle definitions match the central map. A conflicting or uncopied draft
-is retained. Existing legacy wrapper-local drafts can be promoted without
-creating another copy; conflicting staged and legacy versions are rejected.
+is retained. New integrations use staged drafts only, outside the wrapper.
+Do not introduce legacy draft paths, aliases, readers or fallback formats for
+unpublished work. Existing generic legacy helpers do not authorize using or
+expanding those paths in a new integration.
 Ordinary scaffolding after promotion does not recreate placeholder drafts.
 The active catalog, canonical smoke configuration, central inference template
 map and cost recipe remain the single current sources.
@@ -80,6 +138,11 @@ Keep the current version tag while correcting an unpublished integration.
 Increment it after stable publication when behavior or dependencies change;
 never replace a published historical image. Always record the immutable image
 ID actually tested and measured.
+
+Unpublished contracts are changed directly, without version bumps, parallel
+legacy APIs or migrations invented for development iterations. A stable tag
+does not make old timings valid: a changed immutable image or measured input
+contract still needs an applicability decision and affected recalibration.
 
 Audit all public functions, CLIs, pipelines, modes and preprocessing/export
 paths relevant to the method. Classify the implementation actually installed,
@@ -102,14 +165,19 @@ RAM, workers and native thread controls from scientific parameters. Inventory
 unsupported function hooks explicitly and use documented presets when feasible.
 Audit inventory completeness against source signatures/config/help; matching the
 catalog's current params alone cannot establish upstream completeness.
+Do not arbitrarily narrow a native parameter domain because one example uses
+a convenient value. Check boundary cases, conditional backends, native automatic
+searches and data-dependent defaults. Optional diagnostics must use the same
+resolved model settings as fitting, rather than silently reverting to helper
+defaults. Unsupported paths need individual scientific or implementation reasons.
 
 Record evidence for each nontrivial spec claim: inputs and conditional delivery,
 capabilities, parameters, assumptions, compatibility restrictions, outputs,
 progress, resources, artifacts and methodological grouping. Reuse normalized
 inputs only when information and semantics match. For bulk observed time read
-[the temporal contract audit and extension proposal](bulk-time-series-contract.md)
+[the temporal input contract](bulk-time-series-contract.md)
 before choosing an input shape. An unresolved contract loss blocks the affected
-claim; preserve the information and implement a compatible extension through
+claim; preserve the information and propose an extension through
 core, CLI and GUI before activating that capability.
 
 ## 2. Implement and prove functional behavior
@@ -131,6 +199,17 @@ identifier round trips, finite positive score magnitudes, sign/direction,
 context membership, dimensions and semantic input/output consistency. Validate
 simulator dataset/truth manifests and the inference handoff, including native
 versus derived truth. Test core-managed emulation/aggregation through core.
+
+Check observable progress during execution and failure, not just the existence
+of a final `progress.json`. Match the spec to actual granularity: phase updates
+with `progress.kind=none` are valid when no native work counter is observable.
+Do not fabricate target counters or smooth percentages, or report completion
+on failure. Verify resource mappings separately for each backend; an extra CPU
+allocation does not imply acceleration in a serial backend.
+
+Express catalog restrictions only through existing metadata and rule syntax.
+Data-dependent numerical failures stay in requested-run/wrapper validation;
+they do not justify a new shared rule language or content-driven tool filtering.
 
 Run schema/config checks before image builds. Build only the affected image,
 retain its immutable ID, then run the physical smoke matrix and core/CLI/GUI
@@ -158,6 +237,14 @@ Use the filename `cost.json`. Follow the kind-specific
 generator documentation. Existing validators have different coverage checks;
 invoke the explicit strict options for the kind under review.
 
+A user's stability review or explicit deferral controls whether calibration may
+start. Preparing a plan does not revoke a request to defer measurement; do not
+restart removed or queued campaigns automatically. Once launching is authorized,
+complete the necessary preparation and launch without another phase approval.
+If the user requests removing invalidated development evidence, stop only the
+affected owned jobs and remove their identified invalid artifacts; preserve
+unrelated experiments and costs. Retained history is not a compatibility layer.
+
 Declare a bounded domain and justified panel of profiles per physical mode,
 input source/branch and materially expensive scientific option. Include real
 defaults separately from reduced smoke presets. Avoid the Cartesian product of
@@ -173,6 +260,13 @@ one stratum does not establish coverage in another. Reserve independent points
 for interpolation and, where meaningful, extrapolation before fitting. State
 what typical duration and conservative budget mean for the estimator in use.
 Set accuracy thresholds and budget-coverage targets before seeing holdout results.
+Use the estimator's actual outputs. `infer-network` currently exposes one
+scheduling ETA, not an independent typical-time predictor. If that ETA is tested
+against both a median-error and planning-coverage criterion, state that explicitly;
+do not invent a second predictor, tail guarantee or universal precision claim.
+Document estimator limits as well as measured shapes, parameter values, TF policy
+and resource strata. Comparable measurement coverage does not imply accuracy
+for every execution or permission to extend the common estimator.
 
 Generate and save the resolved `--plan-only` output, run count (including at
 least three successful repetitions per new point), resource limits, concurrency,
@@ -180,6 +274,68 @@ timeouts, expected duration and conservative upper budget. Include holdout runs,
 startup/validation overhead and retry allowance; an unknown ETA is explicitly
 unknown, while the timeout sum is only an execution cap. A plan is not a receipt
 of measurements. Inspect active experiments before launching it.
+
+Keep the panel in the declarative cost recipe, independent of the machine.
+The common cost coordinator reads `calibration_design.resources` and
+`repetitions`; its executor discovers effective CPU/RAM and admits unchanged
+requests through shared atomic reservations. Automatic concurrency and optional
+operational caps belong to that executor. They must not remove panel points or
+change ordinary `infer-network` scheduling. Within each profile, independent
+fits may run concurrently with exact Docker CPU sets/quotas/RAM limits and a
+single result writer. Busy or impossible capacity remains pending, never an
+invented measurement. Reserve headroom and verify container exit before
+releasing a lease; uncertain/orphaned ownership blocks admission. Do not infer
+timeouts for unattempted larger inputs. See
+[`cost_profiles/README.md`](../wrappers/inference_tools/cost_profiles/README.md)
+for the common executor contract and its limits of isolation.
+
+The configured per-run timeout is part of the user's measurement budget. Do
+not increase it, replace it with a different launcher default or retry until
+success without the user's agreement. Retain budget-limited `timeout` outcomes
+separately from successful timings and from work never attempted. Reaching the
+budget does not itself invalidate the observation. Any requirement for three
+successful timings must be distinguished from recording that a planned point
+was attempted within budget; consult the user when those criteria conflict.
+Complete attempts and sufficient successful timing coverage are separate
+validation gates. Failed/partial observations retain their actual outcomes;
+timeout caps never become successful elapsed times.
+
+Probe expensive or data-dependent branches with small valid generated inputs
+before a long queue. Budget the full calibration and validation workloads and
+storage for matrices, models, native auxiliaries and logs. Set a free-space
+reserve and explicit capacity/failure states. Sharing byte-identical retained
+files may save storage, but paths, hashes and distinct execution receipts must
+remain intact; copies or hard links never count as additional repetitions.
+
+Include representative scaling checks before committing that budget: measure
+fitting, aggregation and export separately at growing gene/window counts, not
+only the smallest smoke fixture. Compare equivalent native/wrapper outputs and
+check whether additional threads help. Detailed hooks on individual trees or
+other inner-loop tasks belong to explicit diagnostic runs; keep ordinary
+inference and cost measurements free of that tracing overhead. A bounded pilot
+does not replace the declared panel or independent estimator validation.
+
+When native code or its performance changes, keep any retained old observations
+bound to their original immutable image, and remove obsolete model copies when
+the user requests cleanup. Withdraw the old active cost until the corrected
+image's full agreed panel has been attempted, even when its unpublished version
+tag stays unchanged. Do not import old wall times or synthesize new timings by
+combining old fitting time with new aggregation time. An executor-only kernel
+review cannot bypass native image/build-context identity. Do not substitute a
+reduced calibration or publish a partial cost model without the user's explicit
+agreement. When full calibration is deferred, leave the tool without `cost.json`;
+diagnostic pilots do not change that state. A full campaign may keep resumable
+working checkpoints outside the catalog without presenting them as its final
+cost model. Genuine timeouts count as attempted outcomes under the agreed cap.
+
+A common cost-executor migration also requires strict validation of every
+active cost model in the selected scope. When a verified executor review
+preserves the measurement protocol, use the existing shared driver's
+`--reuse-only` path to reconcile derived profile fingerprints. Verify unchanged
+observation IDs, timings, inputs, original provenance, aggregate values and raw
+receipts, then rerun provenance, attempt and coverage validation. Do not leave
+other selected tools with stale fingerprints after migrating one campaign, or
+relax the validator to accept an unverified identity change.
 
 For a long campaign use a dedicated PM2 process, state and log directory and
 `--no-autorestart`, for example:
@@ -196,6 +352,29 @@ interruptions and resume only compatible verified receipts. Use existing
 inference coverage/campaign resume mechanisms and simulator
 `extend_cost_profiles.py`; do not silently start a fresh overwrite. PM2 alone
 does not implement scientific resume. Do not disturb other experiments or images.
+
+Record worker identity and recover only verified owned process groups and
+containers after interruption; a reused PID is not authorization to signal a
+process. Do not clear another experiment's PM2 entries or use automatic restart
+as a substitute for verified scientific resume.
+
+While costs run, inspect the actual source/image seal before editing or starting
+another integration. A seal can include Markdown playbooks and templates as well
+as code. Preserve those bytes in an ordinary immutable source snapshot under
+ignored release evidence before changing the live tree. Keep a private Git
+index and explicit execution environment when needed to reproduce the original
+source identity; this does not require another branch or registered worktree.
+Verify source, image, build context, input bytes and hardware before reuse.
+Run the measured driver and estimator from that snapshot, so later catalog
+activation and documentation work do not change their identities. Record any
+new post-measurement analyzer separately. Never relabel historical observations
+with the new tree's source hash or rewrite the original seal.
+
+Source inventories exclude generated `cost.json` and its atomic writer's
+`.cost.json.<random>` files in catalog directories. Genuine new or modified
+sources remain detectable. Queue measurement jobs with their resource budgets;
+use dependencies within each tool, so another tool's failed calibration does
+not suppress already available independent validation or catalog activation.
 
 ## 4. Measure, validate domain and test independent predictions
 
@@ -237,6 +416,10 @@ input/output hashes and limitations in `release-logs/` or `--results-dir`.
 Scientific findings and justified exclusions belong in the existing decision
 log. Do not create a new per-method dossier or a second set of current specs,
 smoke configurations, template mappings or cost plans.
+`wrappers/integration/integration.template.json` is an optional helper example,
+not a required wrapper deliverable. If used, keep receipts in ignored campaign
+storage. The Dockerfile's dependency pins/checksums satisfy the installation
+record; a validator mentioning a dependency lock does not require a new lock file.
 
 Functional acceptance requires the physical variants and core/CLI/GUI checks
 from section 2. Calibration additionally requires all three independent gates:

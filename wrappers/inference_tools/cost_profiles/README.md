@@ -48,14 +48,14 @@ valid or would be wasteful:
   generator. `synthetic` emits `G1`, `G2`, ...; specialized tools such as DigNet
   and Planet can request `human_breast_cancer_pathway` so the benchmark genes
   overlap their bundled KEGG/RegNetwork resources.
-- top-level or per-profile `temporal`: the exact `bulk-temporal/1` runtime
-  contract copied into `execution.json`. `temporal_fixture` separately declares
-  positive `series_count`, at least three `timepoints_per_series`, optional
-  `steady_state_samples`, and `sampling: regular` or `irregular`. Temporal
-  profiles require `timepoints` and `replicates` inputs. Each `GENESxCOLUMNS`
-  point must satisfy `COLUMNS = series_count * timepoints_per_series`; the
-  separate steady-state matrix contributes no temporal transitions. These
-  fields are opt-in and preserve historical non-temporal fixture bytes.
+- top-level or per-profile `temporal`: internal generator facts (`schema_version`,
+  `time_basis`, `time_unit`, `sampling_design`) written into `column_descriptors.tsv`.
+  `temporal_fixture` declares positive `series_count`, at least two
+  `timepoints_per_series`, optional `steady_state_samples`, and regular or
+  irregular sampling. All temporal profiles provide the single descriptor.
+  Each size satisfies `COLUMNS = series_count * timepoints_per_series + steady_state_samples`.
+  The wrapper reads its scientific facts from that file; execution selects only
+  the mode. Stationary columns have no fabricated coordinates or transitions.
 
 Profiles describe only executable container contracts: `global`,
 `group_native`, or `column_native`. Logical `group_emulated` runs select the
@@ -72,6 +72,53 @@ Useful script options:
 - `--group-count N`: fallback group count for native-grouped profiles that omit it.
 - `--prior-density FLOAT`: fallback density for generated prior-like inputs.
 - `--optional-input INPUT_ID`: optional input to include in implicit profiles.
+
+## Resource-aware common cost executor
+
+`run_cost_coverage.py` reads each recipe's `calibration_design.resources` and
+`repetitions`. Sizes, variants and all declared resource assignments form the
+panel independently of the host. Operational CPU/RAM caps never remove planned
+points. The existing fallback applies to recipes without a declared design.
+The normal `infer-network` executor and planner are outside this mechanism.
+
+The common coordinator runs one measurement driver at a time. Within each
+profile, the driver admits independent fits concurrently through
+`shared/cost_resources.py`. The coordinator defaults to `--concurrency 0`
+(automatic); a positive value limits concurrent fits. Standalone
+`benchmark_costs.py` defaults to one fit; pass `--concurrency 0` for automatic
+admission. Profiles remain sequential, so unused capacity need not always be
+filled from a different profile.
+
+The broker discovers effective affinity, inherited cgroup CPU/RAM limits,
+visible SMT siblings and live available memory. It atomically reserves the
+unchanged requests across cooperating campaigns sharing `--resource-state-dir`.
+Docker enforces the selected CPU set, CPU quota and RAM limit. Default RAM
+headroom is the greater of 1 GiB and 10% of effective total memory. Full active
+reservations are also subtracted from live availability; this is deliberately
+conservative. `--cpu-headroom`, `--ram-headroom-gb`,
+`--ram-headroom-fraction`, `--max-cpu` and `--max-ram-gb` are operational controls,
+not panel definitions. Reservations coordinate participating cost workers;
+they do not isolate external processes or the hypervisor, nor reserve physical
+RAM in the kernel.
+
+A single writer checkpoints raw terminal observations and the cost file.
+Resource/queue waits are outside the measured Docker wall time and the fixed
+1,800-second execution timeout. Temporarily busy requests wait; requests that
+cannot fit effective capacity remain pending, with operational state
+`waiting_resources` and exit code 75. This creates no scientific observation.
+There is no timeout-based pruning of larger sizes. A controlled stop cancels
+owned work and drains workers; an interrupted fit remains pending. CPU/RAM is
+released only after container exit is positively verified. Uncertain cleanup or
+orphaned reservations block admission until verified cleanup.
+
+Each new observation records its CPU set, budget, resource policy and worker
+intervals. Historical observation IDs, times, source/kernel identities and
+provenance stay intact. Different measurement kernels are rejected by default.
+An explicit review in the existing source-proof manifest can attest a change
+to cost-executor resource orchestration, bound to exact old/new kernel hashes
+and hashed review evidence. It does not bypass input, image, hardware,
+parameters, resources or timing-scope checks, and does not establish universal
+performance equivalence between allocation policies.
 
 ## Release calibration
 
@@ -91,10 +138,28 @@ stdout/stderr and hardware/source/image provenance in per-tool evidence
 directories. Compatible raw observations are reused from the current results
 directory and any `--reuse-results-dir` directories.
 Input hashes, immutable images, parameters, execution modes and resource
-assignments must match before a timing can be reused. Missing repetitions are
-executed; completed successful points are checkpointed atomically into costs.
-Failures return nonzero and retain evidence without discarding completed points
-or unrelated historical profiles.
+assignments must match before an observation can be reused. The input/timing
+kernel has its own fingerprint. Pure queue/resume edits do not change it;
+changes to native process supervision or CPU placement require an explicit
+review before historical kernels can be reused across that transition.
+Importing a historical source without that fingerprint requires its retained
+source root and manifest, verified against the original global source digest.
+Original measurement IDs, durations and provenance are never relabelled.
+
+Every actual terminal outcome (`ok`, `timeout`, `oom`, `error`) is checkpointed
+atomically, including partially attempted points. Missing repetitions remain
+pending; a timeout is not permission to retry or increase the budget. Successful
+observations can be reused under a smaller cap only when their actual duration
+fits it; failed outcomes require the same cap. Percentiles use successful
+observations only and remain null when there are none. A worker succeeds after
+all requested slots have terminal results, even if some timed out. This does
+not certify sufficient successful timings or predictive accuracy.
+
+Use `--reuse-only` to verify retained evidence and rebuild derived cost metadata
+without building images or running inference. Where needed, pass
+`--reuse-source-root PATH --reuse-source-manifest PATH`; the manifest must contain
+the existing `source_files_sha256` map. This operation reports pending slots and
+does not fabricate observations for them.
 
 Filtered writes require `--profile ... --merge-existing`; unselected profiles
 and compatible historical points are preserved. Use `--no-write-cost` for
@@ -113,13 +178,40 @@ before multiplying by repetitions and resource assignments. Each parameter/input
 profile has its own grid; timings from different parameter settings or resource
 assignments are not pooled.
 
-The Osaka generator extension preserves those measurements. Its finite
-`shared/recipe_compatibility.json` review records 57 matching resolved profile
-fingerprints and 171 byte-identical fixture comparisons against the preparation
-baseline. It applies only to the exact reviewed source hashes and profiles
-without temporal or steady-state inputs. Any further generator edit invalidates
-that bridge and requires another explicit compatibility review or new evidence;
-it never rewrites a measured `cost.json` or timing receipt.
+dynGENIE3 and SWING have observed-time recipes for the unified input contract.
+dynGENIE3 registers 68 profiles in 20 families and 186 size points per resource
+assignment; SWING registers 77 profiles in 29 families and 231 points. Each uses
+CPU allocations 1, 2 and 4 with RAM limits 8 and 32 GiB, and three repetitions:
+3,348 and 4,158 calibration executions respectively. The six assignments are
+measured separately. This exceeds the resource coverage of a typical catalog
+profile; it does not establish universal prediction accuracy.
+
+The default panels vary genes, visits and independent courses separately.
+Other families cover expensive parameter branches, TF inputs, dynGENIE3
+stationary samples and RF/ET quality, and all three SWING backends. Lasso native
+CV/stability defaults use a smaller 10/25/50-gene domain with enough courses for
+ten folds; a separately labelled reduced-stability branch covers 50/100/200
+genes. Vector alpha fixes its gene axis. Functional checks and timing coverage
+remain separate.
+
+The independent validation design reserves 2,124 dynGENIE3 and 2,772 SWING
+held-out timings: two intermediate gene counts and three repeats per
+interpolatable profile/resource stratum. Execution of that validation is
+deferred; it is separate from calibration. Costs and estimator sources are
+frozen before those measurements.
+Predefined criteria are relative median error at most 30% and all three held-out
+times within the planning ETA. These are tests to pass, not precision claims or
+statistical guarantees. The existing planner exposes one scheduling ETA, so that
+actual value is tested against both criteria. Fixed-vector profiles have no
+independent interpolation claim. Unregistered temporal geometry, parameters,
+TF cardinalities and extrapolation remain unvalidated.
+
+Invalidated measurements from older input contracts or native implementations
+are not reused. Byte-identical retained files may share storage through hard
+links without changing paths, hashes or distinct execution IDs. Keep sufficient
+disk reserve and retain plans, state, logs and raw measurements in ignored
+campaign storage, outside wrapper directories. Do not publish an unfinished
+working model as complete calibration.
 
 | Fixture family | Gene levels | Column levels |
 | --- | --- | --- |
@@ -195,11 +287,15 @@ measured point; intermediate sizes remain separate validation data.
 
 ## Incremental campaign and monitoring
 
-`run_cost_coverage.py` coordinates the baseline and representative recipes for
-all 24 inference tools. It measures one container at a time, using two threads
-(one for single-thread tools), 8 GiB, and three repetitions. Other historical
-thread/RAM measurements remain in the cost files; expanding the size grid at
-one resource assignment does not imply equivalent coverage at every resource.
+`run_cost_coverage.py` is the common coordinator for selected catalog tools,
+including tools without a previous `cost.json`. Recipes with a
+`calibration_design` supply their declared resource assignments and repetitions;
+other recipes retain the fallback of two threads (one for serial tools), 8 GiB
+and three repetitions. `--threads` and `--ram-gb` select an explicit resource
+panel when requested. Admission follows the resource-aware executor described
+above, with automatic concurrency by default. The per-run cap defaults to
+1,800 seconds and is frozen in the plan and worker command. Retaining historical
+thread/RAM measurements does not imply coverage at other assignments.
 
 ```bash
 python wrappers/inference_tools/scripts/run_cost_coverage.py \
@@ -210,6 +306,15 @@ python wrappers/inference_tools/scripts/run_cost_coverage.py \
   --reuse-representative-results-dir /path/to/old-representative-evidence \
   --plan-only
 ```
+
+For a tool with a declared synthetic panel, inspect
+`--tool TOOL_ID --skip-representative --plan-only` without a representative
+fixture root. The recipe already declares its complete resource panel. Supply
+compatible retained evidence with `--reuse-results-dir` and source proof with
+`--reuse-source-root`/`--reuse-source-manifest` when needed. An unchanged version
+tag does not permit reusing timings from a different immutable native image.
+The coordinator streams the existing worker's logs directly; no separate
+campaign runner or progress-observer process is required.
 
 Remove `--plan-only` to execute. The campaign freezes source hashes, tool specs,
 immutable Docker image IDs and commands before measurement. `status.json`
@@ -229,18 +334,29 @@ containers mounting its own evidence directory before continuing. Worker output
 is also streamed to PM2 logs. It preserves failed receipts and reports failures
 explicitly; a job failure does not prevent the other tools from being measured.
 
-The campaign finishes with both provenance and coverage validation. The manual
-equivalent is:
+The campaign finishes with provenance and complete-attempt validation. The
+manual equivalent for the selected tool is:
 
 ```bash
 python wrappers/inference_tools/scripts/validate_tool_costs.py \
-  --require --require-provenance --require-coverage \
+  --tool TOOL_ID --require --require-provenance --require-attempts \
   --coverage-report /path/to/coverage.json
 ```
 
+`--require-attempts` requires a real terminal result for every planned repetition,
+including timeouts. `--require-coverage` separately requires sufficient successful
+timings over the numerical domain. The report retains that numerical coverage
+assessment even when only the attempt gate is required. A completed campaign
+with timeouts must not be described as complete successful timing coverage.
+
 Costs updated incrementally during an unfinished campaign are working artifacts,
-not a completed release calibration. The final validation must pass before
-publishing them as such. Keep campaign evidence in ignored storage.
+not completed release calibration. When the agreed deliverable is the complete
+panel, retain resumable working output outside the active catalog until all
+planned attempts and applicable validation gates are satisfied. Diagnostic
+pilots do not authorize replacing the agreed panel with a smaller one. If
+calibration is deferred, leave the tool without `cost.json`. Native image or
+input changes invalidate affected timings even if an unpublished image tag
+stays unchanged; withdraw obsolete models rather than adjusting old times.
 
 ## Acceptance of new integrations
 
@@ -250,12 +366,10 @@ outcomes: schema/semantic validity, coverage of the declared calibration domain,
 and observed accuracy on independent predictions. Neither coverage nor the
 release provenance gate establishes the third outcome.
 
-For a new tool without `cost.json`, bootstrap with its existing per-tool
-`benchmark_costs.py --tool TOOL_ID --plan-only` and then the planned benchmark
-after resource availability is confirmed. `run_cost_coverage.py` is the existing
-catalog campaign coordinator: its execution ordering reads prior costs and
-expects registered representative recipes/fixtures. It is not the bootstrap
-path for an unmeasured integration.
+For a new tool without `cost.json`, inspect its common-coordinator plan with
+`--tool TOOL_ID --skip-representative --plan-only`, then execute the authorized
+panel. No alternate bootstrap runner is needed. Representative fixtures are
+required only when that phase is selected.
 
 The campaign's `--plan-only` is a CPU-only static inspection: it does not need
 Docker, resolve image IDs, verify fixtures, create evidence directories or run
@@ -331,54 +445,39 @@ those links, input roles and any receipt adaptation alongside the report.
 
 Coverage counts at least the declared number of successful repeats (minimum
 three) even when a point also retains failures; `failed_repetitions` is reported
-separately for reliability review. Campaign publication and raw-receipt reuse
-retain their own stricter success checks.
+separately for reliability review. This numerical-support check is distinct
+from retaining failed outcomes and from completing all planned attempts.
 
 For bulk time series, `dimensions` must explicitly include timepoints per series,
 independent series/replicates and relevant dynamic settings. Inputs must contain
 the actual temporal metadata and matrices. Generic non-temporal coverage readers
 analyze genes versus total columns (simulators call columns `cells`); passing
-them alone does not certify temporal axes or fixture validity. The opt-in
-temporal inference gate below verifies the separately declared geometry.
+them alone does not certify temporal axes or fixture validity. The inference
+validator's temporal coverage check verifies the separately declared geometry.
 
-The initial [dynGENIE3 panel](dyngenie3.json) is **planned and unmeasured**. It
-contains 27 default points crossing 50/100/200 genes, 4/8/16 observed timepoints
-per series and 1/2/4 independent biological courses. Seven additional center
-points isolate ET, scalar/vector decay, steady-state data, TF restriction,
-quality scores and model serialization. Each branch is limited to its exact
-100-gene, 8-timepoint, 2-series center; it provides no branch size-growth claim.
-All profiles preserve upstream defaults except the named branch change.
+Observed-time recipes use the single expression matrix and column-descriptor
+table, declare consumed observation roles, and vary temporal dimensions and
+resource assignments independently. A full declared panel is a finite domain,
+not coverage of every parameter/input combination.
 
-The declared four resource strata (1/2 threads crossed with 4/8 GiB), three
-repetitions and serial execution imply 408 calibration runs. Two separately
-reserved default holdouts vary only genes (75 and 250) at the exact 8-timepoint,
-2-series profile and add 24 runs. Their 3600-second per-run timeout sums
-are execution caps of 1,468,800 and 86,400 seconds respectively; measured ETA,
-startup overhead and validation overhead remain unknown. No automatic retries
-are planned. Holdout artifact hashes, estimator snapshot and predictions must
-be frozen before collecting validation timings. The config records these
-reservations and thresholds; it is not a valid frozen prediction manifest.
+The ETA selector requires matching temporal geometry, units, sampling design,
+regularity and stationary sample count. Unsupported or unmeasured shapes use
+an explicit fallback estimate; this is not measured timing evidence. A complete
+calibration and independent prediction review remain necessary before claiming
+realistic measured costs for these tools.
 
-These allocations do not close the integration even if all runs succeed.
-The temporal coverage gate assesses genes within each fixed timepoint/series
-shape, requires all four declared resource strata and three distinct captured
-execution receipts per point, and reports the combined 27-point default domain
-separately. It verifies temporal dimensions, input hashes, measurement context
-and image identity. The seven branch centers remain evidence only at their
-exact point. This finite coverage is separate from predictive accuracy.
-The ETA selector now requires an exact validated temporal shape, time unit,
-sampling design, regularity and steady-state sample count; unsupported shapes
-fall back with a warning instead of pooling profiles with equal total columns.
-That guard has no measured accuracy evidence. The autonomous continuation
-supervisor keeps calibration in a private staging catalog, then checks domain
-coverage and freezes the actual ANDREA planner, snapshot and eight predictions
-before collecting the 24 independent holdout timings. The planning budget is
-the core ETA itself; an operational reserve cannot help pass its coverage test.
-It registers costs only after those gates pass and requires a
-separate acceptance dossier. Predicting across timepoint/series shapes remains
-unsupported; 432 allocations are not an acceptance receipt.
+## Current temporal integrations
 
-While the existing PM2 experimental validation is active, this integration
-stays at static planning: no Docker build, model fit, calibration or holdout
-measurement. After the experimental work finishes, inspect capacity and the
-saved resolved plan before executing. Absence of `cost.json` is intentional.
+| Tool | Profiles | Planned executions | Current cost state |
+| --- | ---: | ---: | --- |
+| dynGENIE3 | 68 | 3,348 | Complete measured panel: 1,116 points and 3,348 successful observations; strict provenance, attempt and coverage checks pass. |
+| SWING | 77 | 4,158 | Full panel designed; calibration deferred, no `cost.json`. |
+| BiXGBoost | 27 | 1,458 | Full panel designed; calibration deferred, no `cost.json`. |
+
+Each panel crosses CPU allocations 1/2/4 with RAM limits 8/32 GiB and uses three
+repetitions. No calibration is active or queued. Independent prediction accuracy
+remains deferred for all three tools. dynGENIE3's verified executor-only
+fingerprint reconciliation preserves original observations and provenance;
+it does not authorize reuse across a native image or input change. SWING's
+aggregation optimization changed native wall times, so previous-image timings
+are historical diagnostic evidence and are not a current cost model.

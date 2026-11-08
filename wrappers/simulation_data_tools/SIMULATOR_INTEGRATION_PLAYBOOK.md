@@ -1,5 +1,10 @@
 # Simulator Integration Playbook
 
+Shared behavior changes require prior user consultation: catalog filtering,
+normalized input schemas, validation scope and other methods' input semantics
+are not implicit parts of a new integration. Follow the scope rule in
+[the common procedure](../../docs/INTEGRATION_WORKFLOW.md#scope-of-an-integration).
+
 This playbook defines the recommended workflow for integrating a benchmark data simulator into `andrea generate-data`.
 
 Use it when you have local evidence under:
@@ -154,10 +159,8 @@ Supported extras currently include:
 - `pseudotime`
 - `prior_grn`
 - `prior_grn_by_group`
-- `replicates`
 - `spatial_coordinates`
 - `tf_list`
-- `timepoints`
 
 Extras describe optional generated artifacts that can accompany a scenario.
 For example, a grouped single-cell workflow consumes `resolution=single_cell`,
@@ -304,8 +307,10 @@ explicit `--results-dir`, outside the wrapper and active catalogs. Promotion
 with `--activate-catalog` and `--activate-smoketest` validates the selected
 candidates before writing active files. It removes only draft copies identical
 to their active counterparts. Conflicting or uncopied drafts remain available;
-conflicting staged and legacy wrapper-local copies are rejected. Repeating the
-scaffold after promotion does not recreate placeholder drafts.
+new integrations use only the staged locations above, without wrapper-local
+legacy drafts or new compatibility readers. Existing generic helper support does
+not authorize those paths. Repeating the scaffold after promotion does not
+recreate placeholder drafts.
 
 Use canonical catalog specs, smoke configurations and cost recipes afterward.
 Simulation entrypoints remain declared in the wrapper Dockerfile; there is no shared simulator template map.
@@ -420,10 +425,8 @@ extras/perturbation_design.tsv
 extras/pseudotime.tsv
 extras/prior_grn.tsv
 extras/prior_grn_by_group.tsv
-extras/replicates.tsv
 extras/spatial_coordinates.tsv
 extras/tf_list.txt
-extras/timepoints.tsv
 ```
 
 The core validates only the normalized contract. It must not parse simulator-native files directly.
@@ -525,7 +528,7 @@ Rules:
 - keep `extra_inputs` entries focused on simulator-specific `usage`, `conditions` and `message`
 - do not define inline `formats`, `example` or column contracts inside `simulatorspec.json`
 - do not confuse generated extras with simulator-side inputs
-- when a parameter combination is accepted by ANDREA's schema but upstream ignores it, changes its meaning, or fails for data-dependent reasons, record that as `compatibility_rules` with `action: "block"` or `action: "warn"` instead of relying on wrapper failures
+- express restrictions through the command's existing `compatibility_rules` only where its supported fields can represent them; keep data-dependent scientific numerical validation in the requested execution or wrapper, without adding a shared rule language
 - if compatibility depends on an input file's gene universe, use `value_from: "input.<input_id>.unique_gene_count"` and ensure the relevant input spec defines target/regulator semantics clearly
 
 Examples:
@@ -732,24 +735,20 @@ Rules:
 - first-column values must match expression column names
 - document whether pseudotime is native or derived, including branch handling and scaling
 
-### `timepoints.tsv`
+### Observed bulk metadata in `column_descriptors.tsv`
 
-For observed bulk time, first read the [temporal contract audit and compatible
-extension proposal](../../docs/bulk-time-series-contract.md). The legacy file
-alone does not establish units, series boundaries or longitudinal identity.
-
-
-Use:
-
-```text
-column	timepoint
-sample_1	0
-sample_2	24
-```
-
-Rules:
-- exactly one row per expression column
-- `timepoint` is a numeric observed sampling coordinate, not a derived pseudotime
+Use the [shared observed bulk contract](../../docs/bulk-time-series-contract.md).
+A single expression matrix holds temporal and stationary observations. One
+column-descriptor table joins every observation exactly and records its role,
+sampling design, series, condition, biological unit, observation, technical
+measurement and observed coordinate/unit. The generic descriptor InputSpec is
+stable across dataset selections. These temporal fields are required when a
+requested inference method needs them; catalog filtering uses declared dataset
+metadata, available input keys and the existing compatibility rules.
+Time-series rows specify `sampling_design=longitudinal` or
+`independent_samples`; stationary rows have empty sampling-design/series/time/unit
+fields. Keep these scientific declarations in the descriptor table. Cell
+trajectory metadata must not invent longitudinal identities.
 
 ### `perturbation_design.tsv`
 
@@ -780,20 +779,6 @@ Rules:
 - one row per intervention definition
 - `target` must use public expression gene IDs
 - `effect` should preserve the simulator-native intervention type when available
-
-### `replicates.tsv`
-
-Use:
-
-```text
-column	replicate	batch
-sample_1	r1	batch_a
-sample_2	r2	batch_a
-```
-
-Rules:
-- exactly one row per expression column
-- use for biological or technical replicate labels that are not already captured by `groups.tsv`
 
 ### `lineage_tree.tsv`
 
@@ -911,7 +896,7 @@ The matrix must cover:
 - every declared extra at least once
 - representative parameter groups
 - conditional-input behavior when supported
-- the presence of `progress.json`
+- observable intermediate and failure states in `progress.json`, matching the actual method granularity; a final file alone does not demonstrate progress
 - required public output files
 - public id consistency across expression, truth, gene universe and extras
 - important provenance files

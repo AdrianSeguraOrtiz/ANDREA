@@ -8,8 +8,10 @@ Keep commands, logs, immutable image IDs, resolved configuration and input/outpu
 hashes in the campaign's `release-logs/` or `--results-dir`. Use the common
 catalog, smoke, cost-domain and independent prediction checks described in the
 workflow. No additional per-method dossier or duplicate README is required.
-Continue through all authorized stages; ask only about material scientific
-ambiguity, inaccessible requirements or decisions that evidence cannot resolve.
+Continue through all authorized stages. Consult before changing shared behavior
+or normalized contracts, even when evidence is sufficient; existing user
+approval still applies. Follow the central workflow's current rules when an
+older illustrative note conflicts with them.
 
 ## Evidence and scientific identity
 
@@ -65,14 +67,19 @@ values are illustrative and must not be activated as scientific claims.
 
 ## Observed bulk time series, when applicable
 
-Review the existing `timepoints` and `replicates` input specs before proposing
-new contracts. Record observed time, units and ordering; regular/irregular
+Review the current `expression.tsv` and `column_descriptors.tsv` contracts.
+Temporal and scientifically compatible stationary observations share one matrix;
+the descriptor identifies roles, series, observations, replicates, times and units.
+Reuse catalog semantics before proposing another normalized type. Record observed time, units and ordering; regular/irregular
 intervals; independent series, conditions and replicate meaning; exact
 metadata-to-expression-column correspondence; missing values, transformations,
 normalization, lags and interpretation of resulting network contexts/scores.
 Do not substitute pseudotime for observed time or invent transitions between
 independent series. If a property cannot be represented without information
-loss, record the gap and a compatible contract extension before implementation.
+loss, record the gap and obtain approval for the shared contract change before
+implementation. Keep one stable InputSpec per normalized type; selectors do not
+switch required columns or duplicate scientific facts in GUI fields. Do not add
+legacy aliases or readers for unpublished development formats.
 Fixtures and cost panels must preserve the actual series structure, including
 genes, timepoints per series, series/replicates and dynamic parameters.
 
@@ -118,7 +125,9 @@ where applicable. Exit code alone does not verify scientific output.
 - Coverage of the declared calibration domain: pending.
 - Predictive accuracy on independent executions: pending.
 
-Use the existing cost campaign tooling. A valid JSON, one size or a diagonal
+Use the existing cost campaign tooling. Respect a user's deferral until stability
+review; preparing a plan does not reactivate an unapproved campaign. Once launch
+is authorized, proceed without another phase approval. A valid JSON, one size or a diagonal
 grid does not complete calibration. A complete panel does not establish reliable
 extrapolation. Preserve unaffected profiles and failed observations. Long
 authorized campaigns use PM2 with explicit state/logs, safe resume and no

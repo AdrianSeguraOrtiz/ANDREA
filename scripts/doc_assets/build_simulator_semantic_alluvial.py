@@ -130,7 +130,7 @@ BASE_OUTPUT_ROWS = (
 
 PREFERRED_EXTRA_ORDER = (
     "groups",
-    "timepoints",
+    "column_descriptors",
     "perturbation_design",
     "interventions",
     "spatial_coordinates",
@@ -145,7 +145,6 @@ PREFERRED_EXTRA_ORDER = (
     "chromatin_accessibility",
     "chromatin_regions",
     "cell_cell_interactions",
-    "replicates",
 )
 
 OUTPUT_ROWS: tuple[tuple[str, str, str], ...] = (
