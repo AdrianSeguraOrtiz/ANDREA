@@ -55,7 +55,18 @@
         "contexts": [
           "global"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_trajectory_global_group_bifurcating_groups",
@@ -87,7 +98,18 @@
           "global",
           "group"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_trajectory_global_group_bifurcating_full_extras",
@@ -127,7 +149,18 @@
           "global",
           "group"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_trajectory_global_linear_full_extras",
@@ -161,7 +194,18 @@
         "contexts": [
           "global"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_trajectory_global_group_column_bifurcating_truth",
@@ -193,7 +237,18 @@
           "group",
           "column"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_trajectory_global_group_column_bifurcating_full_extras",
@@ -235,7 +290,18 @@
           "group",
           "column"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_time_series_global_linear_default",
@@ -267,7 +333,18 @@
         "contexts": [
           "global"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_time_series_global_group_bifurcating_timepoints",
@@ -300,7 +377,18 @@
           "global",
           "group"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_time_series_global_group_column_bifurcating_truth",
@@ -334,7 +422,18 @@
           "group",
           "column"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_perturbational_global_linear_default",
@@ -371,7 +470,18 @@
         "contexts": [
           "global"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_perturbational_global_group_bifurcating_design",
@@ -409,7 +519,18 @@
           "global",
           "group"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_perturbational_global_group_column_bifurcating_truth",
@@ -448,12 +569,23 @@
           "group",
           "column"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_time_series_global_full_extras",
       "requested_extras": [
-        "timepoints",
+        "column_descriptors",
         "enrichment_background",
         "prior_grn",
         "pseudotime",
@@ -486,7 +618,18 @@
         "contexts": [
           "global"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_time_series_global_group_full_extras",
@@ -495,7 +638,7 @@
         "column_phenotypes",
         "cluster_identities",
         "lineage_tree",
-        "timepoints",
+        "column_descriptors",
         "enrichment_background",
         "prior_grn",
         "prior_grn_by_group",
@@ -530,7 +673,18 @@
           "global",
           "group"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_time_series_global_group_column_full_extras",
@@ -539,7 +693,7 @@
         "column_phenotypes",
         "cluster_identities",
         "lineage_tree",
-        "timepoints",
+        "column_descriptors",
         "enrichment_background",
         "prior_grn",
         "prior_grn_by_group",
@@ -575,7 +729,18 @@
           "group",
           "column"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_perturbational_global_full_extras",
@@ -619,7 +784,18 @@
         "contexts": [
           "global"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_perturbational_global_group_full_extras",
@@ -669,7 +845,18 @@
           "global",
           "group"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "single_cell_cells_perturbational_global_group_column_full_extras",
@@ -720,14 +907,31 @@
           "group",
           "column"
         ]
-      }
+      },
+      "sizes": [
+        "50x20",
+        "50x40",
+        "50x80",
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
+      ]
     },
     {
       "id": "representative_size_grid",
       "sizes": [
+        "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -796,7 +1000,12 @@
         "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -899,7 +1108,12 @@
         "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -996,7 +1210,12 @@
         "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -1010,7 +1229,7 @@
         ]
       },
       "requested_extras": [
-        "timepoints",
+        "column_descriptors",
         "tf_list"
       ],
       "inputs": {},
@@ -1091,7 +1310,12 @@
         "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -1107,7 +1331,7 @@
       },
       "requested_extras": [
         "groups",
-        "timepoints",
+        "column_descriptors",
         "tf_list"
       ],
       "inputs": {},
@@ -1188,7 +1412,12 @@
         "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -1205,7 +1434,7 @@
       },
       "requested_extras": [
         "groups",
-        "timepoints",
+        "column_descriptors",
         "tf_list"
       ],
       "inputs": {},
@@ -1286,7 +1515,12 @@
         "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -1382,7 +1616,12 @@
         "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -1480,7 +1719,12 @@
         "50x20",
         "50x40",
         "50x80",
-        "100x40"
+        "100x20",
+        "100x40",
+        "100x80",
+        "200x20",
+        "200x40",
+        "200x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",

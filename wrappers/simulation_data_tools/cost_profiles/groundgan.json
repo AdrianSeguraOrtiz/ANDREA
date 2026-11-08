@@ -14,7 +14,9 @@
     {
       "id": "single_cell_cells_observational_global_toy4_default",
       "sizes": [
-        "4x8"
+        "4x8",
+        "4x32",
+        "4x128"
       ],
       "dimension_params": {
         "genes": {
@@ -50,7 +52,9 @@
     {
       "id": "single_cell_cells_observational_global_toy4_full_extras",
       "sizes": [
-        "4x8"
+        "4x8",
+        "4x32",
+        "4x128"
       ],
       "dimension_params": {
         "genes": {
@@ -90,7 +94,9 @@
     {
       "id": "single_cell_cells_observational_global_toy20_full_extras",
       "sizes": [
-        "20x8"
+        "20x8",
+        "20x32",
+        "20x128"
       ],
       "dimension_params": {
         "genes": {
@@ -130,7 +136,9 @@
     {
       "id": "single_cell_cells_observational_global_toy50_full_extras",
       "sizes": [
-        "50x8"
+        "50x8",
+        "50x32",
+        "50x128"
       ],
       "dimension_params": {
         "genes": {
@@ -170,7 +178,9 @@
     {
       "id": "single_cell_cells_observational_global_custom_files_full_extras",
       "sizes": [
-        "4x5"
+        "4x5",
+        "4x20",
+        "4x80"
       ],
       "dimension_params": {
         "genes": {
@@ -216,13 +226,18 @@
     {
       "id": "single_cell_cells_perturbational_global_toy4_full_extras",
       "sizes": [
-        "4x6"
+        "4x12",
+        "4x48",
+        "4x192"
       ],
       "dimension_params": {
         "genes": {
           "fixed": 4
         },
-        "cells": "generation.num_cells"
+        "cells": {
+          "param": "generation.num_cells",
+          "multiplier": 2
+        }
       },
       "requested_extras": [
         "perturbation_design",
@@ -265,13 +280,18 @@
     {
       "id": "single_cell_cells_perturbational_global_toy20_full_extras",
       "sizes": [
-        "20x6"
+        "20x12",
+        "20x48",
+        "20x192"
       ],
       "dimension_params": {
         "genes": {
           "fixed": 20
         },
-        "cells": "generation.num_cells"
+        "cells": {
+          "param": "generation.num_cells",
+          "multiplier": 2
+        }
       },
       "requested_extras": [
         "perturbation_design",
@@ -314,13 +334,18 @@
     {
       "id": "single_cell_cells_perturbational_global_toy50_full_extras",
       "sizes": [
-        "50x6"
+        "50x12",
+        "50x48",
+        "50x192"
       ],
       "dimension_params": {
         "genes": {
           "fixed": 50
         },
-        "cells": "generation.num_cells"
+        "cells": {
+          "param": "generation.num_cells",
+          "multiplier": 2
+        }
       },
       "requested_extras": [
         "perturbation_design",

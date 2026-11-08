@@ -170,7 +170,9 @@
     {
       "id": "bulk_timepoints_time_series_global_builtin_dream4_full_extras",
       "sizes": [
-        "10x6"
+        "10x6",
+        "10x12",
+        "10x24"
       ],
       "dimension_params": {
         "genes": {
@@ -182,7 +184,7 @@
         }
       },
       "requested_extras": [
-        "timepoints",
+        "column_descriptors",
         "perturbation_design",
         "interventions",
         "enrichment_background",
@@ -242,7 +244,7 @@
       "requested_extras": [
         "perturbation_design",
         "interventions",
-        "timepoints",
+        "column_descriptors",
         "enrichment_background",
         "prior_grn",
         "tf_list"

@@ -35,7 +35,15 @@
     {
       "id": "bulk_samples_observational_global_builtin_subnetwork_default",
       "sizes": [
-        "35x4"
+        "35x4",
+        "35x20",
+        "35x80",
+        "65x4",
+        "65x20",
+        "65x80",
+        "125x4",
+        "125x20",
+        "125x80"
       ],
       "requested_extras": [],
       "group_count": 0,
@@ -86,7 +94,14 @@
       },
       "dimension_params": {
         "genes": {
-          "fixed": 35
+          "subnetwork.num_nodes": {
+            "fraction": 1,
+            "min": 2
+          },
+          "subnetwork.num_background_nodes": {
+            "fraction": 0,
+            "min": 5
+          }
         },
         "cells": {
           "param": "sampling.num_experiments",
@@ -97,7 +112,15 @@
     {
       "id": "bulk_samples_observational_global_builtin_subnetwork_full_extras",
       "sizes": [
-        "35x4"
+        "35x4",
+        "35x20",
+        "35x80",
+        "65x4",
+        "65x20",
+        "65x80",
+        "125x4",
+        "125x20",
+        "125x80"
       ],
       "requested_extras": [
         "enrichment_background",
@@ -152,7 +175,14 @@
       },
       "dimension_params": {
         "genes": {
-          "fixed": 35
+          "subnetwork.num_nodes": {
+            "fraction": 1,
+            "min": 2
+          },
+          "subnetwork.num_background_nodes": {
+            "fraction": 0,
+            "min": 5
+          }
         },
         "cells": {
           "param": "sampling.num_experiments",
@@ -293,7 +323,13 @@
       "sizes": [
         "35x20",
         "35x40",
-        "35x80"
+        "35x80",
+        "65x20",
+        "65x40",
+        "65x80",
+        "125x20",
+        "125x40",
+        "125x80"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -347,7 +383,14 @@
       },
       "dimension_params": {
         "genes": {
-          "fixed": 35
+          "subnetwork.num_nodes": {
+            "fraction": 1,
+            "min": 2
+          },
+          "subnetwork.num_background_nodes": {
+            "fraction": 0,
+            "min": 5
+          }
         },
         "cells": {
           "param": "sampling.num_experiments",

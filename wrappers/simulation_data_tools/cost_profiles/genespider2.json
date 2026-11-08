@@ -31,14 +31,23 @@
     {
       "id": "bulk_perturbations_perturbational_global_full_extras",
       "sizes": [
-        "6x6"
+        "6x6",
+        "6x24",
+        "6x48",
+        "6x96",
+        "12x24",
+        "12x48",
+        "12x96",
+        "24x24",
+        "24x48",
+        "24x96"
       ],
       "requested_extras": [
         "perturbation_design",
         "interventions",
         "enrichment_background",
         "prior_grn",
-        "replicates",
+        "column_descriptors",
         "tf_list"
       ],
       "group_count": 0,
@@ -64,10 +73,18 @@
     {
       "id": "bulk_timepoints_time_series_global_full_extras",
       "sizes": [
-        "6x5"
+        "6x5",
+        "6x9",
+        "6x17",
+        "12x5",
+        "12x9",
+        "12x17",
+        "24x5",
+        "24x9",
+        "24x17"
       ],
       "requested_extras": [
-        "timepoints",
+        "column_descriptors",
         "perturbation_design",
         "interventions",
         "enrichment_background",
@@ -101,14 +118,23 @@
     {
       "id": "single_cell_cells_perturbational_global_full_extras",
       "sizes": [
-        "6x6"
+        "6x6",
+        "6x24",
+        "6x48",
+        "6x96",
+        "12x24",
+        "12x48",
+        "12x96",
+        "24x24",
+        "24x48",
+        "24x96"
       ],
       "requested_extras": [
         "perturbation_design",
         "interventions",
         "enrichment_background",
         "prior_grn",
-        "replicates",
+        "column_descriptors",
         "tf_list"
       ],
       "group_count": 0,
@@ -137,7 +163,16 @@
     {
       "id": "single_cell_cells_perturbational_global_group_full_extras",
       "sizes": [
-        "6x12"
+        "6x12",
+        "6x24",
+        "6x48",
+        "6x96",
+        "12x24",
+        "12x48",
+        "12x96",
+        "24x24",
+        "24x48",
+        "24x96"
       ],
       "requested_extras": [
         "groups",
@@ -148,7 +183,7 @@
         "enrichment_background",
         "prior_grn",
         "prior_grn_by_group",
-        "replicates",
+        "column_descriptors",
         "tf_list"
       ],
       "group_count": 2,
@@ -180,7 +215,13 @@
       "sizes": [
         "12x48",
         "12x96",
-        "12x192"
+        "12x192",
+        "6x48",
+        "6x96",
+        "6x192",
+        "24x48",
+        "24x96",
+        "24x192"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -200,7 +241,7 @@
         "cluster_identities",
         "perturbation_design",
         "interventions",
-        "replicates",
+        "column_descriptors",
         "enrichment_background",
         "prior_grn",
         "prior_grn_by_group",
@@ -237,7 +278,13 @@
         "12x12",
         "24x24",
         "12x24",
-        "12x48"
+        "12x48",
+        "6x24",
+        "6x48",
+        "6x96",
+        "12x96",
+        "24x48",
+        "24x96"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -253,7 +300,7 @@
       "requested_extras": [
         "perturbation_design",
         "interventions",
-        "replicates",
+        "column_descriptors",
         "enrichment_background",
         "prior_grn",
         "tf_list"
@@ -312,9 +359,14 @@
       "id": "bulk_time_series_global_size_grid",
       "sizes": [
         "6x5",
+        "6x9",
+        "6x17",
         "12x5",
+        "12x9",
+        "12x17",
         "24x5",
-        "12x9"
+        "24x9",
+        "24x17"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -330,7 +382,7 @@
       "requested_extras": [
         "perturbation_design",
         "interventions",
-        "timepoints",
+        "column_descriptors",
         "enrichment_background",
         "prior_grn",
         "tf_list"
@@ -392,7 +444,13 @@
         "12x12",
         "24x24",
         "12x24",
-        "12x48"
+        "12x48",
+        "6x24",
+        "6x48",
+        "6x96",
+        "12x96",
+        "24x48",
+        "24x96"
       ],
       "data_axes": {
         "measurement": "rna_expression",
@@ -408,7 +466,7 @@
       "requested_extras": [
         "perturbation_design",
         "interventions",
-        "replicates",
+        "column_descriptors",
         "enrichment_background",
         "prior_grn",
         "tf_list"
