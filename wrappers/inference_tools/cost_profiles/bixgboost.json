@@ -1,0 +1,1048 @@
+{
+  "cost_relevant_params": [
+    "p_lambda",
+    "p_alpha",
+    "timelag"
+  ],
+  "column_kind": "timepoints",
+  "expression_profile": "bulk",
+  "temporal": {
+    "schema_version": "bulk-temporal/1",
+    "time_basis": "observed",
+    "time_unit": "hour",
+    "sampling_design": "longitudinal"
+  },
+  "profiles": [
+    {
+      "id": "global_defaults_t4_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x4",
+        "100x4",
+        "200x4"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t4_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t4_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 4,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t8_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x8",
+        "100x8",
+        "200x8"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t8_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t16_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t16_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_1_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 1
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_1_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 1
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_1_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 1
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_3_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 3
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_3_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 3
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_3_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 3
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_5_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 5
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_5_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 5
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lag_5_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "timelag": 5
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lambda_0p1_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_lambda": 0.1
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lambda_1_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_lambda": 1
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_lambda_10_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_lambda": 10
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_alpha_0_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_alpha": 0
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_alpha_0p1_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_alpha": 0.1
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_alpha_2_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_alpha": 2
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_combined_lambda1_alpha0p1_lag3_t8_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_lambda": 1,
+        "p_alpha": 0.1,
+        "timelag": 3
+      },
+      "sizes": [
+        "50x16",
+        "100x16",
+        "200x16"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 8,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_combined_lambda1_alpha0p1_lag3_t16_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_lambda": 1,
+        "p_alpha": 0.1,
+        "timelag": 3
+      },
+      "sizes": [
+        "50x32",
+        "100x32",
+        "200x32"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 16,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_combined_lambda1_alpha0p1_lag3_t32_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "p_lambda": 1,
+        "p_alpha": 0.1,
+        "timelag": 3
+      },
+      "sizes": [
+        "50x64",
+        "100x64",
+        "200x64"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 32,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    }
+  ],
+  "calibration_design": {
+    "version": 1,
+    "kind": "independent_temporal_grid_with_branch_growth",
+    "gene_levels": [
+      50,
+      100,
+      200
+    ],
+    "timepoints_per_series_levels": [
+      4,
+      8,
+      16
+    ],
+    "independent_series_levels": [
+      1,
+      2,
+      4
+    ],
+    "scientific_defaults": {
+      "p_lambda": 0,
+      "p_alpha": 1,
+      "timelag": 2,
+      "seed": 0
+    },
+    "fixed_model_parameters": {
+      "max_depth": 3,
+      "n_estimators": 1000,
+      "learning_rate": 0.0001,
+      "subsample": 0.8,
+      "colsample_bylevel": 0.6,
+      "colsample_bytree": 0.6,
+      "objective": "reg:linear",
+      "importance_type": "weight"
+    },
+    "default_input": {
+      "steady_state_samples": 0,
+      "sampling": "regular"
+    },
+    "resources": {
+      "threads": [
+        1,
+        2,
+        4
+      ],
+      "ram_gb": [
+        8,
+        32
+      ],
+      "strata_count": 6
+    },
+    "repetitions": 3,
+    "total_points_per_resource_stratum": 81,
+    "planned_calibration_runs": 1458,
+    "families": [
+      {
+        "id": "defaults",
+        "profile_ids": [
+          "global_defaults_t4_s1",
+          "global_defaults_t4_s2",
+          "global_defaults_t4_s4",
+          "global_defaults_t8_s1",
+          "global_defaults_t8_s2",
+          "global_defaults_t8_s4",
+          "global_defaults_t16_s1",
+          "global_defaults_t16_s2",
+          "global_defaults_t16_s4"
+        ],
+        "expected_params": {
+          "p_lambda": 0,
+          "p_alpha": 1,
+          "timelag": 2,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            4,
+            8,
+            16
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Full3 by3 by3 independent gene/timepoint/series panel for native scientific defaults; exact registered shapes and resource strata only."
+      },
+      {
+        "id": "lag_1",
+        "profile_ids": [
+          "global_lag_1_t8_s2",
+          "global_lag_1_t16_s2",
+          "global_lag_1_t32_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 0,
+          "p_alpha": 1,
+          "timelag": 1,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "lag_3",
+        "profile_ids": [
+          "global_lag_3_t8_s2",
+          "global_lag_3_t16_s2",
+          "global_lag_3_t32_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 0,
+          "p_alpha": 1,
+          "timelag": 3,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "lag_5",
+        "profile_ids": [
+          "global_lag_5_t8_s2",
+          "global_lag_5_t16_s2",
+          "global_lag_5_t32_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 0,
+          "p_alpha": 1,
+          "timelag": 5,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "lambda_0p1",
+        "profile_ids": [
+          "global_lambda_0p1_t8_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 0.1,
+          "p_alpha": 1,
+          "timelag": 2,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "lambda_1",
+        "profile_ids": [
+          "global_lambda_1_t8_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 1,
+          "p_alpha": 1,
+          "timelag": 2,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "lambda_10",
+        "profile_ids": [
+          "global_lambda_10_t8_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 10,
+          "p_alpha": 1,
+          "timelag": 2,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "alpha_0",
+        "profile_ids": [
+          "global_alpha_0_t8_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 0,
+          "p_alpha": 0,
+          "timelag": 2,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "alpha_0p1",
+        "profile_ids": [
+          "global_alpha_0p1_t8_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 0,
+          "p_alpha": 0.1,
+          "timelag": 2,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "alpha_2",
+        "profile_ids": [
+          "global_alpha_2_t8_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 0,
+          "p_alpha": 2,
+          "timelag": 2,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      },
+      {
+        "id": "combined_lambda1_alpha0p1_lag3",
+        "profile_ids": [
+          "global_combined_lambda1_alpha0p1_lag3_t8_s2",
+          "global_combined_lambda1_alpha0p1_lag3_t16_s2",
+          "global_combined_lambda1_alpha0p1_lag3_t32_s2"
+        ],
+        "expected_params": {
+          "p_lambda": 1,
+          "p_alpha": 0.1,
+          "timelag": 3,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            8,
+            16,
+            32
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Only finite registered shapes and this exact native-parameter branch, measured separately at every thread/RAM stratum. No unmeasured interaction or prediction-accuracy claim."
+      }
+    ],
+    "scope": "Prospective bounded plan only. Synthetic longitudinal bulk time-series data at explicitly registered native parameters, input shapes and resource strata. All public scientific knobs are represented by selected values, not an exhaustive continuous parameter Cartesian product. Steady-state fitting, TF restriction, irregular sampling, unmeasured parameter combinations, input distributions, other hardware and extrapolated sizes are outside this domain. No timings or accuracy have been measured.",
+    "validation_policy": "Keep independently seeded held-out expression matrices, intermediate gene sizes and every registered profile/resource stratum outside calibration and reuse sources. Freeze source/image/input identities, the generated model, estimator predictions and acceptance criteria before collecting held-out timings. Assess coverage separately from prediction accuracy; interpolation and extrapolation require distinct reports."
+  }
+}

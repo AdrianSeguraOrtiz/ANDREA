@@ -1,0 +1,49 @@
+{
+  "execution": {
+    "mode": "global"
+  },
+  "extra_files": [
+    "column_descriptors.tsv"
+  ],
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "real_native_defaults"
+    },
+    {
+      "name": "lag_one",
+      "param_overrides": {
+        "timelag": 1
+      }
+    },
+    {
+      "name": "lag_three",
+      "param_overrides": {
+        "timelag": 3
+      }
+    },
+    {
+      "name": "l2_regularization",
+      "param_overrides": {
+        "p_lambda": 0.5
+      }
+    },
+    {
+      "name": "without_l1_regularization",
+      "param_overrides": {
+        "p_alpha": 0.0
+      }
+    },
+    {
+      "name": "combined_regularization_seed",
+      "param_overrides": {
+        "p_lambda": 1.0,
+        "p_alpha": 0.5,
+        "seed": 17
+      }
+    }
+  ],
+  "require_progress": true
+}

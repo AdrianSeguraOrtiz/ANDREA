@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "id": "bixgboost_fixture_manifest",
+  "dataset": {
+    "spec": {
+      "schema_version": "1.0",
+      "id": "bixgboost_fixture",
+      "name": "Synthetic equal-length longitudinal series with shifted origins and unused steady state",
+      "expression": {
+        "genes": 4,
+        "columns": 17,
+        "column_kind": "timepoints",
+        "expression_profile": "bulk"
+      },
+      "organism": {
+        "taxonomic_group": "synthetic",
+        "ncbi_taxon_id": null
+      }
+    },
+    "expression_matrix": "expression.tsv"
+  },
+  "extras": {
+    "column_descriptors": "column_descriptors.tsv"
+  },
+  "notes": "Four opaque gene IDs include underscore, leading zeros, Unicode and an interior space. Two independent biological longitudinal series contain eight half-hourly observations with absolute origins0 and10 hours. The seventeenth column is steady-state and must not affect fitting. Descriptor rows are reversed to exercise exact column joins. Synthetic contract data, not biological truth or calibration evidence."
+}

@@ -1,0 +1,136 @@
+{
+  "schema_version": "1.0",
+  "id": "bixgboost",
+  "name": "BiXGBoost",
+  "publication": [
+    "https://doi.org/10.1093/bioinformatics/bty908"
+  ],
+  "first_author": "Ruiqing Zheng",
+  "year": 2019,
+  "method_summary": "BiXGBoost pools equal-length longitudinal expression series and fits two XGBoost regressions per gene: past expression predicts a future target in the local-in model, and future expression predicts a past regulator in the local-out model. The implementation combines maximum normalized split-count importance over lags with normalized in-sample regression-error weights, taking the geometric mean of the two directed edge scores. All expression genes remain predictors, including autoregressive features; exported self-links are excluded. Both directions retain the native fixed1000 trees, depth3, learning rate0.0001, row subsampling0.8 and per-tree/per-level column subsampling0.6. Scores are unsigned association evidence, not calibrated probabilities or signed regulation. The pinned implementation always uses both directions and does not implement the paper's correlation-based local-in fallback. Requested-run validation handles temporal contents; catalog eligibility uses declared metadata and existing rules.",
+  "method_family": "tree",
+  "method_keywords": [
+    "gradient_boosting",
+    "xgboost",
+    "bidirectional_regression",
+    "time_lag",
+    "observed_time_series",
+    "bulk"
+  ],
+  "implementation_url": "https://github.com/zrq0123/BiXGBoost",
+  "docker_image": "adriansegura99/inference-tools_bixgboost:1.0.0",
+  "execution_capabilities": [
+    "global"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": null,
+      "upstream_mapping": "ANDREA --threads maps to native XGBoost nthread inside each local-in/local-out estimator; the2 * genes regressions remain sequential. BLAS pools are restricted to one thread. Effective estimator parameters, native pool information, CPU affinity and cgroup limits are recorded separately from assigned resources; these observations do not establish CPU saturation or guarantee acceleration."
+    }
+  },
+  "accepts": [
+    "timepoints"
+  ],
+  "assumes": "bulk_specific",
+  "temporal_requirements": {
+    "required": true,
+    "sampling_designs": [
+      "longitudinal"
+    ],
+    "technical_replicates": "reject",
+    "min_timepoints_per_series": 2,
+    "require_regular_sampling": true,
+    "require_aligned_timepoints": false,
+    "observation_types": [
+      "time_series"
+    ]
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.genes",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "BiXGBoost requires at least two expression genes."
+    }
+  ],
+  "extra_inputs": {
+    "required": [
+      {
+        "input": "column_descriptors",
+        "usage": "Exact one-to-one descriptors for all expression columns, using the stable shared column_descriptors contract. For a requested run, time_series rows identify longitudinal biological trajectories, observations, time coordinates and units. The wrapper selects only time_series expression columns before fitting; steady_state columns remain unused and are reported. All fitted series require equal observation counts, a common regular sampling interval and one measurement per observation. Absolute time origins may differ; series are ordered by their own observed time without interpolation or cross-series transitions. The native samples argument is derived from the series count, never entered separately.",
+        "delivery": "runtime"
+      }
+    ],
+    "optional": [],
+    "conditional_required": []
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "task_partitions",
+    "note": "Progress uses completed and total counters for native XGBoost model fits, two fits per expression gene, with validation, inference before the first model, export and completion phases. A fit is counted after its native training-error calculation. Native score aggregation is part of the inference call, without a separate aggregation progress event. Model counts are not estimates of elapsed time or remaining time; tree-level progress is not claimed."
+  },
+  "params": {
+    "p_lambda": {
+      "type": "float",
+      "required": false,
+      "default": 0.0,
+      "min": 0,
+      "description": "Native mainRun p_lambda: finite nonnegative L2 leaf-weight regularization, passed to XGBoost reg_lambda. Upstream default0 is retained; README text reverses the L1/L2 explanation."
+    },
+    "p_alpha": {
+      "type": "float",
+      "required": false,
+      "default": 1.0,
+      "min": 0,
+      "description": "Native mainRun p_alpha: finite nonnegative L1 leaf-weight regularization, passed to XGBoost reg_alpha. Upstream default1 is retained. Strong penalties can eliminate all split counts and make native normalized importance undefined; such executions fail explicitly instead of fabricating zero scores."
+    },
+    "timelag": {
+      "type": "int",
+      "required": false,
+      "default": 2,
+      "min": 1,
+      "description": "Native maximum lag in positive observed sampling intervals. Every local-in model uses lags1..timelag and every local-out model uses future steps1..timelag; lag importances reduce by maximum per gene. Every series needs more observations than timelag. Therefore the native default lag2 requires at least3 timepoints per series; two timepoints can be used with lag1 when the pooled training rows have sufficient variance. The native API has no separate maxlag argument. With interval delta, physical maximum delay is timelag*delta in the declared unit."
+    },
+    "seed": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 2147483647,
+      "description": "ANDREA reproducibility extension, absent from mainRun: explicit integer seed passed to every native XGBoost local-in/local-out estimator in place of the uncontrolled random.randint(1,100) draw. Default0 is deterministic; no per-model or per-series seed is invented."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "provenance",
+      "kind": "dir",
+      "require_non_empty": true,
+      "description": "Native input and escaped native-network.tsv, full-precision bidirectional-scores.tsv with weighted local-in/local-out/final scores, per-model in-sample mean-squared errors and constructor/resource snapshots, resolved.json, session.json and progress-events.jsonl. Evidence includes input/source identities, explicit native seed, observation selection and grids, gene aliases and software versions."
+    }
+  ]
+}

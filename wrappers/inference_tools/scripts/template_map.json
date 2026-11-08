@@ -167,6 +167,14 @@
         "python_column_metadata"
       ],
       "native_threads": "single"
+    },
+    "bixgboost": {
+      "runtime": "python",
+      "bundles": [
+        "python_runtime_contract",
+        "python_column_metadata"
+      ],
+      "native_threads": "single"
     }
   }
 }
