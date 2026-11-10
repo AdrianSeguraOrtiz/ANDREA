@@ -1,0 +1,62 @@
+{
+  "execution": {
+    "mode": "global"
+  },
+  "extra_files": [
+    "column_descriptors.tsv"
+  ],
+  "require_progress": true,
+  "checks": {
+    "forbid_self_loops": true
+  },
+  "variants": [
+    {
+      "name": "published_defaults"
+    },
+    {
+      "name": "k_one",
+      "param_overrides": {
+        "k": 1,
+        "iter_num": 200
+      }
+    },
+    {
+      "name": "k_four",
+      "param_overrides": {
+        "k": 4,
+        "iter_num": 200
+      }
+    },
+    {
+      "name": "decay_zero",
+      "param_overrides": {
+        "alpha": 0,
+        "iter_num": 200
+      }
+    },
+    {
+      "name": "decay_one",
+      "param_overrides": {
+        "alpha": 1,
+        "iter_num": 200
+      }
+    },
+    {
+      "name": "changed_seed",
+      "param_overrides": {
+        "seed": 17,
+        "iter_num": 200
+      }
+    },
+    {
+      "name": "tf_candidates",
+      "param_overrides": {
+        "iter_num": 200
+      },
+      "extra_files": [
+        "column_descriptors.tsv",
+        "tf_list.txt"
+      ]
+    }
+  ]
+}

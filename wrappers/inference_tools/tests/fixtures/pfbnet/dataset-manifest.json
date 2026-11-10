@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "id": "pfbnet_fixture_manifest",
+  "dataset": {
+    "spec": {
+      "schema_version": "1.0",
+      "id": "pfbnet_fixture",
+      "name": "Synthetic independent observed bulk time courses with unused stationary observations",
+      "expression": {
+        "genes": 6,
+        "columns": 69,
+        "column_kind": "timepoints",
+        "expression_profile": "bulk"
+      },
+      "organism": {
+        "taxonomic_group": "synthetic",
+        "ncbi_taxon_id": null
+      }
+    },
+    "expression_matrix": "expression.tsv"
+  },
+  "extras": {
+    "column_descriptors": "column_descriptors.tsv"
+  },
+  "notes": "Synthetic functional fixture: three independent 21-point courses with shifted origins and six unused stationary observations. Opaque gene identifiers and reversed descriptor row order exercise exact joins. Not biological evidence or cost calibration."
+}

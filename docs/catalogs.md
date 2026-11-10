@@ -9,7 +9,7 @@ validated independently from wrapper runtime tests.
 | Catalog | Entries | Executable coverage entries | Source specs |
 |---|---:|---:|---|
 | Simulation data tools | 8 | 31 capabilities | `simulatorspec.json` |
-| Inference tools | 26 | 51 execution modes | `toolspec.json` |
+| Inference tools | 28 | 53 execution modes | `toolspec.json` |
 
 ## Simulators
 
@@ -48,6 +48,7 @@ within a family are identical. Integration decision logs cite sources.
 | Tool | Primary method family | Execution modes | Output semantics | Publication |
 |---|---|---|---|---|
 | ARACNe3 | information | `global`, `group_emulated` | directed=False, sign=none, evidence=association | https://doi.org/10.1186/1471-2105-7-S1-S7, https://doi.org/10.1093/bioinformatics/btw216 |
+| BiXGBoost | tree | `global` | directed=True, sign=none, evidence=association | https://doi.org/10.1093/bioinformatics/bty908 |
 | CeSpGRN | graph | `column_native`, `group_aggregated` | directed=False, sign=signed, evidence=association | https://doi.org/10.1093/bioinformatics/btag324, https://doi.org/10.1101/2022.03.03.482887 |
 | CLR | information | `global`, `group_emulated` | directed=False, sign=none, evidence=association | https://doi.org/10.1371/journal.pbio.0050008, https://doi.org/10.1186/1471-2105-9-461 |
 | DigNet | neural | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.1101/gr.279551.124 |
@@ -60,6 +61,7 @@ within a family are identical. Integration decision logs cite sources.
 | LIONESS | correlation | `column_native`, `group_aggregated` | directed=False, sign=signed, evidence=association | https://doi.org/10.1016/j.isci.2019.03.021 |
 | MetaSEM | neural | `global`, `group_emulated` | directed=True, sign=signed, evidence=association | https://doi.org/10.3390/ijms24032595 |
 | MINI-EX v3 | tree | `group_native` | directed=True, sign=none, evidence=association | https://doi.org/10.1016/j.molp.2022.10.016, https://doi.org/10.1007/978-1-0716-4972-5_12 |
+| PFBNet | tree | `global` | directed=True, sign=none, evidence=association | https://doi.org/10.1186/s12859-020-03639-7 |
 | PIDC | information | `global`, `group_emulated` | directed=False, sign=none, evidence=association | https://doi.org/10.1016/j.cels.2017.08.014 |
 | Planet | neural | `global`, `group_emulated` | directed=True, sign=none, evidence=association | https://doi.org/10.3390/genes16111255 |
 | ppcor | correlation | `global`, `group_emulated` | directed=False, sign=signed, evidence=association | https://doi.org/10.5351/CSAM.2015.22.6.665, https://doi.org/10.32614/CRAN.package.ppcor |

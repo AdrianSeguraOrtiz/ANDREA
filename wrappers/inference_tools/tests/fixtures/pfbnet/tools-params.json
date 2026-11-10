@@ -1,0 +1,16 @@
+{
+  "runs": [
+    {
+      "tool_id": "pfbnet",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {},
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

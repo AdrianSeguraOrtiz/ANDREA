@@ -1,0 +1,70 @@
+column	observation_type	series_id	condition	replicate	observation_id	technical_replicate	timepoint	time_unit	sampling_design
+SS_69	steady_state		baseline	unit:SS_69	obs:SS_69	measurement-1			
+SS_68	steady_state		baseline	unit:SS_68	obs:SS_68	measurement-1			
+SS_67	steady_state		baseline	unit:SS_67	obs:SS_67	measurement-1			
+SS_66	steady_state		baseline	unit:SS_66	obs:SS_66	measurement-1			
+SS_65	steady_state		baseline	unit:SS_65	obs:SS_65	measurement-1			
+SS_64	steady_state		baseline	unit:SS_64	obs:SS_64	measurement-1			
+course3.visit20	time_series	course-3	control	biological-3	observation-3-20	measurement-1	30.0	hour	longitudinal
+course3.visit19	time_series	course-3	control	biological-3	observation-3-19	measurement-1	29.5	hour	longitudinal
+course3.visit18	time_series	course-3	control	biological-3	observation-3-18	measurement-1	29.0	hour	longitudinal
+course3.visit17	time_series	course-3	control	biological-3	observation-3-17	measurement-1	28.5	hour	longitudinal
+course3.visit16	time_series	course-3	control	biological-3	observation-3-16	measurement-1	28.0	hour	longitudinal
+course3.visit15	time_series	course-3	control	biological-3	observation-3-15	measurement-1	27.5	hour	longitudinal
+course3.visit14	time_series	course-3	control	biological-3	observation-3-14	measurement-1	27.0	hour	longitudinal
+course3.visit13	time_series	course-3	control	biological-3	observation-3-13	measurement-1	26.5	hour	longitudinal
+course3.visit12	time_series	course-3	control	biological-3	observation-3-12	measurement-1	26.0	hour	longitudinal
+course3.visit11	time_series	course-3	control	biological-3	observation-3-11	measurement-1	25.5	hour	longitudinal
+course3.visit10	time_series	course-3	control	biological-3	observation-3-10	measurement-1	25.0	hour	longitudinal
+course3.visit09	time_series	course-3	control	biological-3	observation-3-9	measurement-1	24.5	hour	longitudinal
+course3.visit08	time_series	course-3	control	biological-3	observation-3-8	measurement-1	24.0	hour	longitudinal
+course3.visit07	time_series	course-3	control	biological-3	observation-3-7	measurement-1	23.5	hour	longitudinal
+course3.visit06	time_series	course-3	control	biological-3	observation-3-6	measurement-1	23.0	hour	longitudinal
+course3.visit05	time_series	course-3	control	biological-3	observation-3-5	measurement-1	22.5	hour	longitudinal
+course3.visit04	time_series	course-3	control	biological-3	observation-3-4	measurement-1	22.0	hour	longitudinal
+course3.visit03	time_series	course-3	control	biological-3	observation-3-3	measurement-1	21.5	hour	longitudinal
+course3.visit02	time_series	course-3	control	biological-3	observation-3-2	measurement-1	21.0	hour	longitudinal
+course3.visit01	time_series	course-3	control	biological-3	observation-3-1	measurement-1	20.5	hour	longitudinal
+course3.visit00	time_series	course-3	control	biological-3	observation-3-0	measurement-1	20.0	hour	longitudinal
+course2.visit20	time_series	course-2	control	biological-2	observation-2-20	measurement-1	20.0	hour	longitudinal
+course2.visit19	time_series	course-2	control	biological-2	observation-2-19	measurement-1	19.5	hour	longitudinal
+course2.visit18	time_series	course-2	control	biological-2	observation-2-18	measurement-1	19.0	hour	longitudinal
+course2.visit17	time_series	course-2	control	biological-2	observation-2-17	measurement-1	18.5	hour	longitudinal
+course2.visit16	time_series	course-2	control	biological-2	observation-2-16	measurement-1	18.0	hour	longitudinal
+course2.visit15	time_series	course-2	control	biological-2	observation-2-15	measurement-1	17.5	hour	longitudinal
+course2.visit14	time_series	course-2	control	biological-2	observation-2-14	measurement-1	17.0	hour	longitudinal
+course2.visit13	time_series	course-2	control	biological-2	observation-2-13	measurement-1	16.5	hour	longitudinal
+course2.visit12	time_series	course-2	control	biological-2	observation-2-12	measurement-1	16.0	hour	longitudinal
+course2.visit11	time_series	course-2	control	biological-2	observation-2-11	measurement-1	15.5	hour	longitudinal
+course2.visit10	time_series	course-2	control	biological-2	observation-2-10	measurement-1	15.0	hour	longitudinal
+course2.visit09	time_series	course-2	control	biological-2	observation-2-9	measurement-1	14.5	hour	longitudinal
+course2.visit08	time_series	course-2	control	biological-2	observation-2-8	measurement-1	14.0	hour	longitudinal
+course2.visit07	time_series	course-2	control	biological-2	observation-2-7	measurement-1	13.5	hour	longitudinal
+course2.visit06	time_series	course-2	control	biological-2	observation-2-6	measurement-1	13.0	hour	longitudinal
+course2.visit05	time_series	course-2	control	biological-2	observation-2-5	measurement-1	12.5	hour	longitudinal
+course2.visit04	time_series	course-2	control	biological-2	observation-2-4	measurement-1	12.0	hour	longitudinal
+course2.visit03	time_series	course-2	control	biological-2	observation-2-3	measurement-1	11.5	hour	longitudinal
+course2.visit02	time_series	course-2	control	biological-2	observation-2-2	measurement-1	11.0	hour	longitudinal
+course2.visit01	time_series	course-2	control	biological-2	observation-2-1	measurement-1	10.5	hour	longitudinal
+course2.visit00	time_series	course-2	control	biological-2	observation-2-0	measurement-1	10.0	hour	longitudinal
+course1.visit20	time_series	course-1	control	biological-1	observation-1-20	measurement-1	10.0	hour	longitudinal
+course1.visit19	time_series	course-1	control	biological-1	observation-1-19	measurement-1	9.5	hour	longitudinal
+course1.visit18	time_series	course-1	control	biological-1	observation-1-18	measurement-1	9.0	hour	longitudinal
+course1.visit17	time_series	course-1	control	biological-1	observation-1-17	measurement-1	8.5	hour	longitudinal
+course1.visit16	time_series	course-1	control	biological-1	observation-1-16	measurement-1	8.0	hour	longitudinal
+course1.visit15	time_series	course-1	control	biological-1	observation-1-15	measurement-1	7.5	hour	longitudinal
+course1.visit14	time_series	course-1	control	biological-1	observation-1-14	measurement-1	7.0	hour	longitudinal
+course1.visit13	time_series	course-1	control	biological-1	observation-1-13	measurement-1	6.5	hour	longitudinal
+course1.visit12	time_series	course-1	control	biological-1	observation-1-12	measurement-1	6.0	hour	longitudinal
+course1.visit11	time_series	course-1	control	biological-1	observation-1-11	measurement-1	5.5	hour	longitudinal
+course1.visit10	time_series	course-1	control	biological-1	observation-1-10	measurement-1	5.0	hour	longitudinal
+course1.visit09	time_series	course-1	control	biological-1	observation-1-9	measurement-1	4.5	hour	longitudinal
+course1.visit08	time_series	course-1	control	biological-1	observation-1-8	measurement-1	4.0	hour	longitudinal
+course1.visit07	time_series	course-1	control	biological-1	observation-1-7	measurement-1	3.5	hour	longitudinal
+course1.visit06	time_series	course-1	control	biological-1	observation-1-6	measurement-1	3.0	hour	longitudinal
+course1.visit05	time_series	course-1	control	biological-1	observation-1-5	measurement-1	2.5	hour	longitudinal
+course1.visit04	time_series	course-1	control	biological-1	observation-1-4	measurement-1	2.0	hour	longitudinal
+course1.visit03	time_series	course-1	control	biological-1	observation-1-3	measurement-1	1.5	hour	longitudinal
+course1.visit02	time_series	course-1	control	biological-1	observation-1-2	measurement-1	1.0	hour	longitudinal
+course1.visit01	time_series	course-1	control	biological-1	observation-1-1	measurement-1	0.5	hour	longitudinal
+course1.visit00	time_series	course-1	control	biological-1	observation-1-0	measurement-1	0.0	hour	longitudinal

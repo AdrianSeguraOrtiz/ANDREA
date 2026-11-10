@@ -1,0 +1,139 @@
+{
+  "schema_version": "1.0",
+  "id": "pfbnet",
+  "name": "PFBNet",
+  "publication": [
+    "https://doi.org/10.1186/s12859-020-03639-7"
+  ],
+  "first_author": "Dandan Che",
+  "year": 2020,
+  "method_summary": "PFBNet integrates the official E.coli expression-only workflow from the pinned upstream implementation. It regresses simultaneously accumulated expression from independent longitudinal bulk courses, includes the current observation in each accumulation window, and applies the original regulator-row sample-variance weighting. An optional candidate regulator list restricts predictors while every gene remains a target. The native XGBoost 0.60 learner settings and split-count importance are preserved. Directed unsigned association scores are not calibrated probabilities, signs or demonstrated causality. The separate DREAM4 knockout-fusion workflow is deliberately outside the catalog scope.",
+  "method_family": "tree",
+  "method_keywords": [
+    "gradient_boosting",
+    "xgboost",
+    "observed_time_series",
+    "bulk"
+  ],
+  "implementation_url": "https://github.com/ddche/PFBNet",
+  "docker_image": "adriansegura99/inference-tools_pfbnet:1.0.0",
+  "execution_capabilities": [
+    "global"
+  ],
+  "runtime_resources": {
+    "threading": {
+      "supported": true,
+      "default_threads": 1,
+      "max_threads": null,
+      "upstream_mapping": "ANDREA --threads maps to the pinned XGBoost Booster nthread parameter for every sequential target model. Loaded OpenMP pools follow the assigned thread count during fitting; BLAS pools stay serial. Completed-booster receipts record passed controls, actual tree counts, observed native pools, affinity and cgroup facts separately from assigned container limits; these do not guarantee CPU saturation or speedup."
+    }
+  },
+  "accepts": [
+    "timepoints"
+  ],
+  "assumes": "bulk_specific",
+  "temporal_requirements": {
+    "required": true,
+    "sampling_designs": [
+      "longitudinal"
+    ],
+    "min_timepoints_per_series": 2,
+    "require_regular_sampling": true,
+    "require_aligned_timepoints": false,
+    "observation_types": [
+      "time_series"
+    ]
+  },
+  "taxonomic_scope": {
+    "allowed_groups": [
+      "animal",
+      "plant",
+      "fungi",
+      "bacteria",
+      "archaea",
+      "protist",
+      "viral",
+      "synthetic",
+      "unknown"
+    ],
+    "supported_species": []
+  },
+  "compatibility_rules": [
+    {
+      "conditions": [
+        {
+          "field": "dataset.expression.genes",
+          "op": "lt",
+          "value": 2
+        }
+      ],
+      "action": "block",
+      "message": "PFBNet requires at least two expression genes."
+    }
+  ],
+  "extra_inputs": {
+    "required": [
+      {
+        "input": "column_descriptors",
+        "usage": "Stable exact-join column metadata for every expression column. Longitudinal temporal rows declare separate equal-length regular courses with a common sampling interval; origins may differ. Stationary observations are excluded and recorded as unused. Technical duplicates of selected temporal observations are rejected in the wrapper; unused stationary measurements do not block a run.",
+        "delivery": "runtime"
+      }
+    ],
+    "optional": [
+      {
+        "input": "tf_list",
+        "usage": "Exact candidate regulator gene identifiers. The wrapper places these genes first in the native array and restores original output identifiers. At least two candidates are needed. Absent means every gene; all expression genes remain targets.",
+        "delivery": "runtime"
+      }
+    ]
+  },
+  "outputs": {
+    "directed": true,
+    "sign": "none",
+    "evidence": "association"
+  },
+  "progress": {
+    "kind": "task_partitions",
+    "note": "Count actual completed target Booster fits, total equal to the expression gene count, after xgb.train returns. Report validation and input preparation, inference before the first fit, aggregation, export and completion phases. Counts and phase percentages are observed work milestones, not elapsed-time fractions or remaining-time predictions. Failure retains the completed count and never reports successful completion."
+  },
+  "params": {
+    "k": {
+      "type": "int",
+      "required": false,
+      "default": 2,
+      "min": 1,
+      "description": "Native accumulation order; every course needs more than k observed timepoints. Sums k+1 points including the current endpoint, with weights alpha**k through alpha**0. Default 2 comes from the paper/examples; the native function has no argument defaults."
+    },
+    "alpha": {
+      "type": "float",
+      "required": false,
+      "default": 0.45,
+      "min": 0,
+      "max": 1,
+      "description": "Temporal decay factor in [0,1], including both endpoints, as in the paper. Default 0.45 is the published example recommendation, not a Python signature default. It is unrelated to the native fixed XGBoost L1 alpha parameter."
+    },
+    "iter_num": {
+      "type": "int",
+      "required": false,
+      "default": 1000,
+      "min": 1,
+      "description": "Native number of boosting rounds for each target. Default 1000 is the paper/example recommendation. Learner depth 4, min_child_weight 4, row/column subsampling 0.7/0.9 and eta 0.0008 remain fixed as upstream."
+    },
+    "seed": {
+      "type": "int",
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 2147483647,
+      "description": "Explicit ANDREA reproducibility extension passed unchanged to each native Booster. Default 0 preserves the original dependency default. Reproducibility is verified for the tested image and environment, not guaranteed across hardware."
+    }
+  },
+  "artifacts_aux": [
+    {
+      "path_pattern": "provenance",
+      "kind": "dir",
+      "require_non_empty": true,
+      "description": "Native score matrix with original regulator/target IDs; transformed temporal inputs; resolved series/roles, candidate order, parameters and input/source identities; completed-model resource/tree-count receipts, software session and progress event journal. Auxiliary matrices are method-specific evidence, not additional normalized network formats."
+    }
+  ]
+}
