@@ -240,7 +240,7 @@
         }
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -294,7 +294,7 @@
         }
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -348,7 +348,7 @@
         }
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",

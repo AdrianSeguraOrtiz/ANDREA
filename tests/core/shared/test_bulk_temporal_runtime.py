@@ -323,3 +323,19 @@ def test_missing_descriptor_blocks_only_tools_that_require_it(bundle):
     assert not report["runs"]["selected"]
     assert "required extra input missing" in report["runs"]["skipped"]["chosen"]
     assert "temporal" not in report["input_validation"]
+
+
+def test_temporal_loader_preserves_optional_intervention_fields_without_changing_geometry(bundle):
+    before = validate(bundle)
+    values = rows(bundle)
+    for row in values:
+        row.update(perturbation="none", target="", dose="", control="true")
+    write_rows(bundle, values)
+    with (bundle / "expression.tsv").open() as handle:
+        columns = next(csv.reader(handle, delimiter="\t"))[1:]
+    metadata = load_column_descriptors(bundle / "column_descriptors.tsv", columns)
+    assert all(row["perturbation"] == "none" for row in metadata.values())
+    assert all(row["target"] == "" for row in metadata.values())
+    after = validate(bundle)
+    assert after["time_series_columns"] == before["time_series_columns"]
+    assert after["steady_state_columns"] == before["steady_state_columns"]

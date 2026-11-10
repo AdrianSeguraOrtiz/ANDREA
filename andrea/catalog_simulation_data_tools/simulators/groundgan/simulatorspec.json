@@ -423,7 +423,7 @@
       "derivable_extras": [
         "enrichment_background",
         "interventions",
-        "perturbation_design",
+        "column_descriptors",
         "prior_grn",
         "tf_list"
       ],
@@ -471,7 +471,7 @@
       ],
       "derivations": [
         {
-          "artifact": "perturbation_design",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "GRouNdGAN before/after generated matrices",
             "resolved perturbation config"
@@ -489,7 +489,7 @@
         {
           "artifact": "interventions",
           "source_artifacts": [
-            "extras/perturbation_design.tsv"
+            "extras/column_descriptors.tsv"
           ],
           "method": "Export one TF replacement per matched control/perturbed run. A zero replacement is knockout (sign=-1); a positive replacement is set_expression (sign=0, direction unspecified because each control cell has a different baseline).",
           "assumptions": [

@@ -51,3 +51,56 @@ def test_existing_descriptor_alignment_and_nonempty_checks_remain(
     (tmp_path / "column_descriptors.tsv").write_text(text)
     with pytest.raises(ValueError, match=match):
         wrapper.load_column_descriptors(tmp_path, ["c1", "c2"])
+
+
+def test_inapplicable_normalized_fields_are_omitted_without_fabricating_categories(tmp_path):
+    (tmp_path / "column_descriptors.tsv").write_text(
+        "column\tcondition\tperturbation\ttarget\tdose\ttimepoint\tcontrol\tbatch\n"
+        "c2\ttreated\tknockdown\tG1\t0.5\t\tfalse\tb\n"
+        "c1\tcontrol\tnone\t\t\t\ttrue\ta\n"
+    )
+    result = wrapper.load_column_descriptors(tmp_path, ["c1", "c2"])
+    assert result.to_dict("list") == {
+        "condition": ["control", "treated"],
+        "perturbation": ["none", "knockdown"],
+        "control": ["true", "false"],
+        "batch": ["a", "b"],
+    }
+    assert result.attrs["descriptor_selection"] == {
+        "supplied": ["condition", "perturbation", "target", "dose", "timepoint", "control", "batch"],
+        "used": ["condition", "perturbation", "control", "batch"],
+        "omitted_not_applicable": ["target", "dose", "timepoint"],
+    }
+
+
+def test_complete_normalized_fields_remain_model_descriptors(tmp_path):
+    (tmp_path / "column_descriptors.tsv").write_text(
+        "column\ttarget\tdose\n"
+        "c1\tG1\t0.5\nc2\tG2\t0.75\n"
+    )
+    result = wrapper.load_column_descriptors(tmp_path, ["c1", "c2"])
+    assert result.to_dict("list") == {"target": ["G1", "G2"], "dose": ["0.5", "0.75"]}
+    assert result.attrs["descriptor_selection"]["omitted_not_applicable"] == []
+
+
+def test_only_inapplicable_fields_do_not_silently_remove_all_conditioning(tmp_path):
+    (tmp_path / "column_descriptors.tsv").write_text(
+        "column\ttarget\nc1\t\nc2\tG1\n"
+    )
+    with pytest.raises(ValueError, match="no complete descriptors"):
+        wrapper.load_column_descriptors(tmp_path, ["c1", "c2"])
+
+
+def test_optional_intervention_onset_is_distinct_from_sampling_time(tmp_path):
+    (tmp_path / "column_descriptors.tsv").write_text(
+        "column\tcondition\ttimepoint\tintervention_timepoint\tintervention_time_unit\n"
+        "c1\tcontrol\t24\t\t\n"
+        "c2\ttreated\t24\t0.5\tsimulation_fraction\n"
+    )
+    result = wrapper.load_column_descriptors(tmp_path, ["c1", "c2"])
+    assert result.to_dict("list") == {
+        "condition": ["control", "treated"], "timepoint": ["24", "24"],
+    }
+    assert result.attrs["descriptor_selection"]["omitted_not_applicable"] == [
+        "intervention_timepoint", "intervention_time_unit",
+    ]

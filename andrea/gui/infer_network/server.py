@@ -136,7 +136,6 @@ def _load_tools_bootstrap() -> dict[str, Any]:
         "column_phenotypes": "column\tphenotype\torder\ncell_1\tIP\t0\ncell_2\tIP\t0\ncell_3\tD12\t1",
         "interventions": "intervention\ttarget\teffect\tsign\tdose\nknockdown_G1\tG1\tknockdown\t-1\t1.0",
         "lineage_tree": "child\tparent\tgain_rate\tloss_rate\nC2\tC1\t0.2\t0.1",
-        "perturbation_design": "column\tcondition\tperturbation\ttarget\tdose\ttimepoint\treplicate\tcontrol\ncell_1\tcontrol\tnone\t\t0\t0\tr1\ttrue\ncell_2\tknockdown_G1\tknockdown\tG1\t1\t24\tr1\tfalse",
         "pseudotime": "column\tpseudotime\ncell_1\t0.0\ncell_2\t0.4\ncell_3\t1.0",
         "tf_list": "SOX2\nMYC\nTP53",
         "prior_grn_by_group": "group\tsource\ttarget\tscore\nA\tG1\tG2\t0.82\nB\tG1\tG3\t0.41",

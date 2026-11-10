@@ -337,15 +337,6 @@
           "pattern": ".*\\.tsv$",
           "description": "Optional lineage tree TSV path. Detailed content validation is defined in input_specs/lineage_tree.json."
         },
-        "perturbation_design": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "minLength": 1,
-          "pattern": ".*\\.tsv$",
-          "description": "Optional expression-column perturbation design TSV path. Detailed content validation is defined in input_specs/perturbation_design.json."
-        },
         "pseudotime": {
           "type": [
             "string",

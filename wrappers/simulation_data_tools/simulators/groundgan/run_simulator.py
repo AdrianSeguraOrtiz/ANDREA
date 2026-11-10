@@ -38,7 +38,6 @@ EXTRA_KEYS = [
     "enrichment_background",
     "interventions",
     "lineage_tree",
-    "perturbation_design",
     "pseudotime",
     "prior_grn",
     "tf_list",
@@ -828,7 +827,7 @@ def write_perturbation_extras(
     intervention = f"{effect}_{target}"
     extras: dict[str, str] = {}
 
-    design_path = output_dir / "extras" / "perturbation_design.tsv"
+    design_path = output_dir / "extras" / "column_descriptors.tsv"
     design_path.parent.mkdir(parents=True, exist_ok=True)
     with design_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
@@ -839,7 +838,6 @@ def write_perturbation_extras(
                 "perturbation",
                 "target",
                 "dose",
-                "timepoint",
                 "replicate",
                 "control",
                 "matched_pair_id",
@@ -857,13 +855,12 @@ def write_perturbation_extras(
                     "perturbation": "none" if is_control else effect,
                     "target": "" if is_control else target,
                     "dose": "0" if is_control else f"{value:.10g}",
-                    "timepoint": "0",
                     "replicate": pair_id,
                     "control": "true" if is_control else "false",
                     "matched_pair_id": pair_id,
                 }
             )
-    extras["perturbation_design"] = "extras/perturbation_design.tsv"
+    extras["column_descriptors"] = "extras/column_descriptors.tsv"
 
     interventions_path = output_dir / "extras" / "interventions.tsv"
     with interventions_path.open("w", encoding="utf-8", newline="") as handle:
@@ -906,12 +903,12 @@ def write_requested_extras(
     regulators = sorted({edge.source for edge in edges})
     write_gene_list(output_dir / "extras" / "tf_list.txt", regulators)
     extras["tf_list"] = "extras/tf_list.txt"
-    if {"perturbation_design", "interventions"}.intersection(requested):
+    if {"column_descriptors", "interventions"}.intersection(requested):
         if perturbations is None:
             raise ValueError("Perturbation extras were requested for a non-perturbational run.")
         extras.update(write_perturbation_extras(output_dir=output_dir, columns=columns, perturbations=perturbations))
     unsupported = sorted(requested.difference({key for key, value in extras.items() if value is not None}).difference(
-        {"enrichment_background", "prior_grn", "tf_list", "perturbation_design", "interventions"}
+        {"enrichment_background", "prior_grn", "tf_list", "column_descriptors", "interventions"}
     ))
     if unsupported:
         raise ValueError("Unsupported standardized extras requested for GRouNdGAN: " + ", ".join(unsupported))

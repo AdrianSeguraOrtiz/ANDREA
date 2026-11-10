@@ -984,11 +984,11 @@ class InferNetworkPreflightTests(InferNetworkCoreTestCase):
                 "bulk",
                 ["P0", "P1"],
                 {
-                    "perturbation_design": "perturbation_design.tsv",
+                    "column_descriptors": "column_descriptors.tsv",
                     "interventions": "interventions.tsv",
                 },
                 {
-                    "perturbation_design.tsv": (
+                    "column_descriptors.tsv": (
                         "column\tcondition\tperturbation\ttarget\n"
                         "P0\tcontrol\tnone\t\n"
                         "P1\tknockdown_G1\tknockdown\tG1\n"

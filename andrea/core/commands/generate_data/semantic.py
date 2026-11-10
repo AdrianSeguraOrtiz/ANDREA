@@ -203,7 +203,7 @@ def required_extras_for_request(
     if axes.experimental_design == "time_series":
         extras.add("column_descriptors")
     if axes.experimental_design == "perturbational":
-        extras.update({"perturbation_design", "interventions"})
+        extras.update({"column_descriptors", "interventions"})
     if axes.resolution == "spatial" or axes.column_kind == "spots":
         extras.add("spatial_coordinates")
     return frozenset(extras)

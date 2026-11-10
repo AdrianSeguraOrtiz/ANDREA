@@ -172,7 +172,7 @@ class GenerateDataSemanticModelTests(unittest.TestCase):
             required_extras_for_request(
                 perturbational_axes, parse_truth_requirements({"contexts": ["global"]})
             ),
-            frozenset({"perturbation_design", "interventions", "tf_list"}),
+            frozenset({"column_descriptors", "interventions", "tf_list"}),
         )
         self.assertEqual(
             required_extras_for_request(

@@ -400,9 +400,7 @@
   },
   "capabilities": [
     {
-      "native_extras": [
-        "perturbation_design"
-      ],
+      "native_extras": [],
       "derivable_extras": [
         "enrichment_background",
         "interventions",
@@ -527,7 +525,7 @@
         {
           "artifact": "interventions",
           "source_artifacts": [
-            "perturbation_design matrix P",
+            "native perturbation matrix P",
             "public column identifiers"
           ],
           "method": "For each expression column, inspect the corresponding perturbation-design vector and export the perturbed public gene IDs and signed perturbation strengths.",
@@ -542,10 +540,10 @@
         {
           "artifact": "column_descriptors",
           "source_artifacts": [
-            "perturbation_design matrix P",
+            "native perturbation matrix P",
             "perturbation.replicates_per_gene"
           ],
-          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories.",
+          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories. Include aligned perturbation type, public target gene, dose and control status in the same descriptor rows.",
           "assumptions": [
             "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
           ],
@@ -607,9 +605,7 @@
           "global"
         ]
       },
-      "native_extras": [
-        "perturbation_design"
-      ],
+      "native_extras": [],
       "derivable_extras": [
         "enrichment_background",
         "interventions",
@@ -675,7 +671,7 @@
         {
           "artifact": "interventions",
           "source_artifacts": [
-            "perturbation_design matrix P",
+            "native perturbation matrix P",
             "public column identifiers"
           ],
           "method": "For each expression column, inspect the corresponding perturbation-design vector and export the perturbed public gene IDs and signed perturbation strengths.",
@@ -722,7 +718,7 @@
             "time_series.time_points",
             "network matrix eigenvalues"
           ],
-          "method": "Recompute the native simts timestep tau*0.1 from min(abs(eig(A))) and emit the common column_descriptors.tsv with t0 and every simulated trajectory state, one constant intervention condition, and explicit model_time units. The same TSV declares sampling_design=longitudinal; its bulk/timepoints axes select the shared validator without any additional manifest object or GUI declaration.",
+          "method": "Recompute the native simts timestep tau*0.1 from min(abs(eig(A))) and emit the common column_descriptors.tsv with t0 and every simulated trajectory state, one constant intervention condition, and explicit model_time units. The same TSV declares sampling_design=longitudinal; its bulk/timepoints axes select the shared validator without any additional manifest object or GUI declaration. Include aligned perturbation type, public target gene, dose and control status in the same descriptor rows.",
           "assumptions": [
             "The wrapper uses the same timestep formula as datastruct.simts."
           ],
@@ -794,9 +790,7 @@
       ]
     },
     {
-      "native_extras": [
-        "perturbation_design"
-      ],
+      "native_extras": [],
       "derivable_extras": [
         "enrichment_background",
         "interventions",
@@ -945,7 +939,7 @@
         {
           "artifact": "interventions",
           "source_artifacts": [
-            "perturbation_design matrix P",
+            "native perturbation matrix P",
             "public column identifiers"
           ],
           "method": "For each expression column, inspect the corresponding perturbation-design vector and export the perturbed public gene IDs and signed perturbation strengths.",
@@ -960,10 +954,10 @@
         {
           "artifact": "column_descriptors",
           "source_artifacts": [
-            "perturbation_design matrix P",
+            "native perturbation matrix P",
             "perturbation.replicates_per_gene"
           ],
-          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories.",
+          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories. Include aligned perturbation type, public target gene, dose and control status in the same descriptor rows.",
           "assumptions": [
             "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
           ],
@@ -1014,9 +1008,7 @@
       ]
     },
     {
-      "native_extras": [
-        "perturbation_design"
-      ],
+      "native_extras": [],
       "derivable_extras": [
         "cluster_identities",
         "column_phenotypes",
@@ -1256,7 +1248,7 @@
         {
           "artifact": "interventions",
           "source_artifacts": [
-            "perturbation_design matrix P",
+            "native perturbation matrix P",
             "public column identifiers"
           ],
           "method": "For each expression column, inspect the corresponding perturbation-design vector and export the perturbed public gene IDs and signed perturbation strengths.",
@@ -1271,10 +1263,10 @@
         {
           "artifact": "column_descriptors",
           "source_artifacts": [
-            "perturbation_design matrix P",
+            "native perturbation matrix P",
             "perturbation.replicates_per_gene"
           ],
-          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories.",
+          "method": "Emit replicate and condition labels in column_descriptors.tsv by grouping expression columns that share the same perturbed gene and strength. Sampled cell metadata does not declare longitudinal trajectories. Include aligned perturbation type, public target gene, dose and control status in the same descriptor rows.",
           "assumptions": [
             "Columns generated from repeated identity perturbation blocks are replicate-like observations for the same intervention."
           ],

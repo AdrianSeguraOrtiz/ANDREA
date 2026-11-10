@@ -534,7 +534,7 @@
       "derivable_extras": [
         "enrichment_background",
         "interventions",
-        "perturbation_design",
+        "column_descriptors",
         "prior_grn",
         "tf_list"
       ],
@@ -596,7 +596,7 @@
       ],
       "derivations": [
         {
-          "artifact": "perturbation_design",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "externalsFile",
             "expression.tsv"
@@ -615,9 +615,9 @@
         {
           "artifact": "interventions",
           "source_artifacts": [
-            "extras/perturbation_design.tsv"
+            "extras/column_descriptors.tsv"
           ],
-          "method": "Collapse distinct external-input vectors from perturbation_design into extras/interventions.tsv, preserving regulator IDs, signed direction relative to baseline and numeric values when available.",
+          "method": "Collapse distinct external-input vectors from column_descriptors into extras/interventions.tsv, preserving regulator IDs, signed direction relative to baseline and numeric values when available.",
           "assumptions": [
             "Columns with identical external-input vectors represent the same intervention class."
           ],

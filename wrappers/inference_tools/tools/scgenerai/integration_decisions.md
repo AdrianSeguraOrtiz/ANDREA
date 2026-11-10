@@ -91,11 +91,22 @@ interleaving, so the PDF remains the primary paper evidence.
 - Optional extra input: `column_descriptors`. This semantically matches upstream
   optional categorical descriptors such as batch or cell type. The wrapper
   requires exact alignment to expression columns when provided.
+  Complete supplied columns retain their existing native categorical behavior.
+  Normalized temporal/intervention fields containing non-applicable empty values
+  are omitted from the conditioning table; their names are recorded alongside
+  used columns in `raw/descriptor_selection.json` and the log. Missing values in
+  arbitrary categorical columns remain errors. A supplied table with no usable
+  descriptor also fails; no artificial missing category is generated.
 - Conditional extra input: `groups`, required only for
   `execution.mode=group_aggregated`, with `delivery=orchestration_only`.
   ANDREA validates coverage and consumes it during aggregation; the wrapper and
   scGeneRAI do not receive this file.
 - No new normalized input spec was needed.
+
+The descriptor-unification change modifies the wrapper and its immutable image.
+The previous cost model was archived outside the active catalog with its original
+bytes and provenance, and withdrawn from planning. A new complete calibration
+is deferred; no historical timing was relabelled as a measurement of this image.
 
 ## Parameters
 

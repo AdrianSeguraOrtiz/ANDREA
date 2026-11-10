@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "key": "column_descriptors",
   "file_kind": "tsv",
-  "description": "One row per expression column and one or more metadata fields. Optional normalized temporal fields retain the same meaning and types in every dataset; each tool validates the metadata it needs when its execution is requested.",
+  "description": "One row per expression column and one or more metadata fields. Optional normalized temporal and intervention fields retain the same meaning and types in every dataset; each tool validates the metadata it needs when its execution is requested. Perturbation describes the intervention type, target its affected expression gene, dose its numeric level, and control whether the column is a control; non-applicable values may be empty. Intervention onset uses intervention_timepoint and intervention_time_unit, separately from the observation sampling time.",
   "example": "column\tcondition\tbatch\ncell_1\tcontrol\tbatch_a\ncell_2\tstimulated\tbatch_b",
   "delimiter": "\t",
   "header": true,
@@ -23,7 +23,13 @@
     "technical_replicate": "string",
     "timepoint": "float",
     "time_unit": "string",
-    "sampling_design": "string"
+    "sampling_design": "string",
+    "perturbation": "string",
+    "target": "string",
+    "dose": "float",
+    "control": "bool",
+    "intervention_timepoint": "float",
+    "intervention_time_unit": "string"
   },
   "cross_checks": [
     {
@@ -31,6 +37,10 @@
     },
     {
       "kind": "row_count_matches_expression_columns"
+    },
+    {
+      "kind": "column_subset_expression_genes",
+      "column": "target"
     }
   ]
 }

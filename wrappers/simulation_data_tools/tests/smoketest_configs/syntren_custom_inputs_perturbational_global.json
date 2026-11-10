@@ -3,7 +3,7 @@
   "request": {
     "seed": 703,
     "effective_extras": [
-      "perturbation_design",
+      "column_descriptors",
       "interventions",
       "prior_grn",
       "tf_list"
@@ -61,7 +61,7 @@
   "expect_progress": true,
   "required_files": [
     "expression.tsv",
-    "extras/perturbation_design.tsv",
+    "extras/column_descriptors.tsv",
     "extras/interventions.tsv",
     "extras/prior_grn.tsv",
     "extras/tf_list.txt",

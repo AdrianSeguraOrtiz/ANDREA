@@ -66,7 +66,7 @@
     "optional": [
       {
         "input": "column_descriptors",
-        "usage": "Optional categorical expression-column descriptors such as batch, donor, condition or cell type. When provided, the wrapper aligns them to expression columns and passes them as scGeneRAI descriptors during both fit() and predict_networks(); when absent, descriptors are omitted to preserve upstream default behavior.",
+        "usage": "Optional categorical expression-column descriptors such as batch, donor, condition or cell type. When provided, the wrapper aligns them to expression columns and passes complete descriptors during both fit() and predict_networks(). Normalized observation/intervention fields with non-applicable empty values are omitted and recorded in raw/descriptor_selection.json; arbitrary descriptor fields still require complete values, and a supplied table must leave at least one usable descriptor. When absent, descriptors are omitted to preserve upstream default behavior.",
         "delivery": "runtime"
       }
     ],
@@ -146,6 +146,12 @@
     }
   },
   "artifacts_aux": [
+    {
+      "path_pattern": "raw/descriptor_selection.json",
+      "kind": "file",
+      "require_non_empty": true,
+      "description": "Supplied and fitted descriptor names, including normalized fields omitted because their values are not applicable for some observations."
+    },
     {
       "path_pattern": "scgenerai.log",
       "kind": "file",

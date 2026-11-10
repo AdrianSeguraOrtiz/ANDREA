@@ -32,7 +32,6 @@ andrea/catalog_inference_tools/
     grnboost_network.json
     interventions.json
     lineage_tree.json
-    perturbation_design.json
     pseudotime.json
     prior_grn.json
     prior_grn_by_group.json

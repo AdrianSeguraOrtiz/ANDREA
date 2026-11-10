@@ -495,12 +495,6 @@
               "null"
             ]
           },
-          "perturbation_design": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "pseudotime": {
             "type": [
               "string",

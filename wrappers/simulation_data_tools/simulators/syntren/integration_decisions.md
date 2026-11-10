@@ -63,7 +63,7 @@ Not exposed:
   - `global`: native topology exported from generated GeneNetwork XML through `GeneNetwork.toSIF()`.
   - `group`: unavailable.
   - `column`: unavailable.
-- Extras: `perturbation_design`, `interventions`, `enrichment_background`, `prior_grn`, `tf_list`.
+- Extras: `column_descriptors`, `interventions`, `enrichment_background`, `prior_grn`, `tf_list`.
 
 ## Truth Context Audit
 
@@ -109,7 +109,7 @@ Wrapper writes directly under `/work/out/`:
 - Optional extras:
   - `extras/enrichment_background.txt`
   - `extras/prior_grn.tsv`
-  - `extras/perturbation_design.tsv` for perturbational runs
+  - `extras/column_descriptors.tsv` for perturbational runs
   - `extras/interventions.tsv` for perturbational runs
 - `native/`: requested native-facing files: raw datasets, generated SIF/XML, resolved externals table and resolved ini.
 - `provenance/raw/`: request snapshot, resolved params, resolved ini, input copies, raw SynTReN output, exported SIF, command logs, Java/session info and checksums.
@@ -144,7 +144,7 @@ Implemented smoke configs:
    - Proves observational capability, global truth, `enrichment_background`, `prior_grn`, `tf_list`, and all native output IDs.
 2. `syntren_bulk_perturbational_global.json`
    - Bundled E. coli source network and bundled externals table.
-   - Proves perturbational capability, `perturbation_design`, `interventions`, global truth and native outputs.
+   - Proves perturbational capability, `column_descriptors`, `interventions`, global truth and native outputs.
 3. `syntren_custom_inputs_perturbational_global.json`
    - Mounted `syntren_source_network_sif` and `syntren_externals_table`.
    - Proves both conditional input specs and public ID consistency.
@@ -235,3 +235,7 @@ values. All three cases passed (15 container runs). Image 1.1.0 measurements and
 scientific references must be regenerated for 1.1.1; they are not relabelled.
 The legacy 30-node observational cost recipes also now declare the actual 35
 output genes, including five background nodes, without changing their inputs.
+
+### Cost applicability after unified column metadata
+
+The historical cost measurements describe the wrapper and output contract before intervention annotations were consolidated into `column_descriptors.tsv`. Their original bytes and provenance are archived outside the active catalog. They are not a calibration of the current wrapper; a future recalibration is required before publishing a current cost model. No calibration is launched by this contract update.

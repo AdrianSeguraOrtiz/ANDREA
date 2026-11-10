@@ -758,12 +758,13 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             "title": "Column descriptors",
             "summary": (
                 "Expression-column metadata table with categorical or scalar descriptors "
-                "such as batch, condition, donor, cell type or assay state."
+                "such as batch, condition, donor, cell type, assay state or intervention."
             ),
             "badges": ["standardized extra", "column metadata"],
             "tips": [
                 "Each expression column should appear once.",
                 "Carries observed time, series and replicate identities together with the time_series or steady_state observation role.",
+                "Optional intervention fields are perturbation, target, dose and control; non-applicable values may be empty.",
                 "Each tool consumes the descriptors supported by its model; no covariate naming prefix is required.",
             ],
         },
@@ -812,19 +813,7 @@ def _artifact_guide(path: str) -> Optional[dict[str, Any]]:
             "badges": ["standardized extra", "perturbation"],
             "tips": [
                 "Target gene IDs should match expression.tsv and truth/gene_universe.txt.",
-                "Use with perturbation_design.tsv when per-column condition assignments are available.",
-            ],
-        },
-        "perturbation_design.tsv": {
-            "title": "Perturbation design",
-            "summary": (
-                "Expression-column perturbation metadata table with condition labels and "
-                "optional target, dose, timepoint, replicate and control columns."
-            ),
-            "badges": ["standardized extra", "perturbation"],
-            "tips": [
-                "Each expression column should appear once.",
-                "Condition labels should be stable enough for downstream filtering and grouping.",
+                "Use with column_descriptors.tsv for per-column intervention assignments.",
             ],
         },
         "prior_grn.tsv": {

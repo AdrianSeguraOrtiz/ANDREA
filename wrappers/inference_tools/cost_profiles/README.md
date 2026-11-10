@@ -481,3 +481,10 @@ fingerprint reconciliation preserves original observations and provenance;
 it does not authorize reuse across a native image or input change. SWING's
 aggregation optimization changed native wall times, so previous-image timings
 are historical diagnostic evidence and are not a current cost model.
+
+After descriptor unification, scGeneRAI's previous model is archived outside the
+active catalog pending complete recalibration of the changed wrapper. dynGENIE3
+retains its complete measured panel after exhaustive byte-identity verification
+of all measured inputs and the unchanged timing component. Only derived profile
+fingerprints were refreshed; original observation/provenance bytes and times
+were retained. This adds no kernel exception to automatic resumption.

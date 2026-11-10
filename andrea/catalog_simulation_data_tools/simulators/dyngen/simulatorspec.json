@@ -384,7 +384,7 @@
           "default": 1,
           "min": 1,
           "max": 1,
-          "description": "Number of genes knocked down in each dyngen knockdown simulation. Locked to one for normalized perturbation_design rows."
+          "description": "Number of genes knocked down in each dyngen knockdown simulation. Locked to one for normalized column_descriptors rows."
         },
         "multiplier": {
           "type": "float",
@@ -2115,7 +2115,7 @@
         "pseudotime",
         "prior_grn",
         "tf_list",
-        "perturbation_design",
+        "column_descriptors",
         "interventions"
       ],
       "truth_outputs": [
@@ -2257,17 +2257,17 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
-          "artifact": "perturbation_design",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "dataset$cell_info$simulation_i",
             "model$simulations$kd_multiplier"
           ],
-          "method": "Map each sampled cell to its dyngen simulation_i, mark wild-type simulations as controls, and map knockdown simulations to their single knocked-down target gene.",
+          "method": "Map each sampled cell to its dyngen simulation_i, mark wild-type simulations as controls, and map knockdown simulations to their single knocked-down target gene. Preserve the intervention onset separately as intervention_timepoint with intervention_time_unit=simulation_fraction, a fraction of native post-burn-in simulation duration; wild-type controls have empty onset/unit. This is not a sampled-cell observation time.",
           "assumptions": [
             "The public perturbational capability locks dyngen knockdowns to one target gene per simulation."
           ],
           "limitations": [
-            "Multi-target dyngen knockdowns are not exposed as public perturbation_design rows in this preset."
+            "Multi-target dyngen knockdowns are not exposed as public column_descriptors rows in this preset."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
@@ -2281,7 +2281,7 @@
             "dyngen kd_multiplier records the intervention target and multiplier used by each knockdown simulation."
           ],
           "limitations": [
-            "Wild-type controls appear in perturbation_design.tsv but are not emitted as intervention rows."
+            "Wild-type controls appear in column_descriptors.tsv but are not emitted as intervention rows."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         }
@@ -2313,7 +2313,7 @@
           "policy": "locked",
           "value": 1,
           "source": "data_axes.experimental_design",
-          "description": "Normalized perturbation_design rows require one target gene per sampled cell."
+          "description": "Normalized column_descriptors rows require one target gene per sampled cell."
         },
         {
           "param": "knockdown_params.multiplier",
@@ -2355,7 +2355,7 @@
         "prior_grn",
         "tf_list",
         "prior_grn_by_group",
-        "perturbation_design",
+        "column_descriptors",
         "interventions"
       ],
       "truth_outputs": [
@@ -2616,17 +2616,17 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
-          "artifact": "perturbation_design",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "dataset$cell_info$simulation_i",
             "model$simulations$kd_multiplier"
           ],
-          "method": "Map each sampled cell to its dyngen simulation_i, mark wild-type simulations as controls, and map knockdown simulations to their single knocked-down target gene.",
+          "method": "Map each sampled cell to its dyngen simulation_i, mark wild-type simulations as controls, and map knockdown simulations to their single knocked-down target gene. Preserve the intervention onset separately as intervention_timepoint with intervention_time_unit=simulation_fraction, a fraction of native post-burn-in simulation duration; wild-type controls have empty onset/unit. This is not a sampled-cell observation time.",
           "assumptions": [
             "The public perturbational capability locks dyngen knockdowns to one target gene per simulation."
           ],
           "limitations": [
-            "Multi-target dyngen knockdowns are not exposed as public perturbation_design rows in this preset."
+            "Multi-target dyngen knockdowns are not exposed as public column_descriptors rows in this preset."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
@@ -2640,7 +2640,7 @@
             "dyngen kd_multiplier records the intervention target and multiplier used by each knockdown simulation."
           ],
           "limitations": [
-            "Wild-type controls appear in perturbation_design.tsv but are not emitted as intervention rows."
+            "Wild-type controls appear in column_descriptors.tsv but are not emitted as intervention rows."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         }
@@ -2672,7 +2672,7 @@
           "policy": "locked",
           "value": 1,
           "source": "data_axes.experimental_design",
-          "description": "Normalized perturbation_design rows require one target gene per sampled cell."
+          "description": "Normalized column_descriptors rows require one target gene per sampled cell."
         },
         {
           "param": "knockdown_params.multiplier",
@@ -2715,7 +2715,7 @@
         "prior_grn_by_group",
         "pseudotime",
         "tf_list",
-        "perturbation_design",
+        "column_descriptors",
         "interventions"
       ],
       "truth_outputs": [
@@ -2997,17 +2997,17 @@
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
         {
-          "artifact": "perturbation_design",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "dataset$cell_info$simulation_i",
             "model$simulations$kd_multiplier"
           ],
-          "method": "Map each sampled cell to its dyngen simulation_i, mark wild-type simulations as controls, and map knockdown simulations to their single knocked-down target gene.",
+          "method": "Map each sampled cell to its dyngen simulation_i, mark wild-type simulations as controls, and map knockdown simulations to their single knocked-down target gene. Preserve the intervention onset separately as intervention_timepoint with intervention_time_unit=simulation_fraction, a fraction of native post-burn-in simulation duration; wild-type controls have empty onset/unit. This is not a sampled-cell observation time.",
           "assumptions": [
             "The public perturbational capability locks dyngen knockdowns to one target gene per simulation."
           ],
           "limitations": [
-            "Multi-target dyngen knockdowns are not exposed as public perturbation_design rows in this preset."
+            "Multi-target dyngen knockdowns are not exposed as public column_descriptors rows in this preset."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         },
@@ -3021,7 +3021,7 @@
             "dyngen kd_multiplier records the intervention target and multiplier used by each knockdown simulation."
           ],
           "limitations": [
-            "Wild-type controls appear in perturbation_design.tsv but are not emitted as intervention rows."
+            "Wild-type controls appear in column_descriptors.tsv but are not emitted as intervention rows."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
         }
@@ -3058,7 +3058,7 @@
           "policy": "locked",
           "value": 1,
           "source": "data_axes.experimental_design",
-          "description": "Normalized perturbation_design rows require one target gene per sampled cell."
+          "description": "Normalized column_descriptors rows require one target gene per sampled cell."
         },
         {
           "param": "knockdown_params.multiplier",

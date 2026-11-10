@@ -28,7 +28,6 @@ SIMULATION_EXTRA_IDS = frozenset(
         "enrichment_background",
         "interventions",
         "lineage_tree",
-        "perturbation_design",
         "pseudotime",
         "prior_grn",
         "prior_grn_by_group",

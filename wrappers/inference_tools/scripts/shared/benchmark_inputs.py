@@ -22,7 +22,6 @@ GENERATED_EXTRA_INPUTS = {
     "groups",
     "interventions",
     "lineage_tree",
-    "perturbation_design",
     "prior_grn",
     "prior_grn_by_group",
     "pseudotime",
@@ -41,7 +40,6 @@ EXTRA_FILENAMES = {
     "groups": "groups.tsv",
     "interventions": "interventions.tsv",
     "lineage_tree": "lineage_tree.tsv",
-    "perturbation_design": "perturbation_design.tsv",
     "prior_grn": "prior_grn.tsv",
     "prior_grn_by_group": "prior_grn_by_group.tsv",
     "pseudotime": "pseudotime.tsv",
@@ -337,8 +335,6 @@ def write_benchmark_io_dir(
             write_interventions(path, genes=genes)
         elif input_key == "lineage_tree":
             write_lineage_tree(path, groups=groups)
-        elif input_key == "perturbation_design":
-            write_perturbation_design(path, columns=columns, genes=genes)
         elif input_key == "prior_grn":
             write_network_edges(
                 path,
@@ -606,57 +602,6 @@ def temporal_timepoint(index: int, profile: BenchmarkInputProfile) -> float:
     """Return an increasing observed time within one independent series."""
     sampling = (profile.temporal_fixture or {}).get("sampling", "regular")
     return float(index) if sampling == "regular" else index + 0.25 * index * index
-
-
-def write_perturbation_design(
-    path: Path,
-    *,
-    columns: Sequence[str],
-    genes: Sequence[str],
-) -> None:
-    targets = list(genes[: max(1, min(3, len(genes)))])
-    with path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        writer.writerow(
-            [
-                "column",
-                "condition",
-                "perturbation",
-                "target",
-                "dose",
-                "timepoint",
-                "replicate",
-                "control",
-            ]
-        )
-        for idx, column in enumerate(columns):
-            if idx % 4 == 0:
-                writer.writerow(
-                    [
-                        column,
-                        "control",
-                        "none",
-                        "",
-                        "0",
-                        "0",
-                        f"r{(idx % 3) + 1}",
-                        "true",
-                    ]
-                )
-            else:
-                target = targets[idx % len(targets)]
-                writer.writerow(
-                    [
-                        column,
-                        f"knockdown_{target}",
-                        "knockdown",
-                        target,
-                        "1",
-                        "24",
-                        f"r{(idx % 3) + 1}",
-                        "false",
-                    ]
-                )
 
 
 def write_interventions(path: Path, *, genes: Sequence[str]) -> None:

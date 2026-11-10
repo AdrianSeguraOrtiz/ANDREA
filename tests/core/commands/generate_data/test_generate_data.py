@@ -711,7 +711,7 @@ class GenerateDataDyngenTests(unittest.TestCase):
             plan = json.loads(planned_path.read_text(encoding="utf-8"))
             self.assertEqual(
                 plan["effective_extras"],
-                ["interventions", "perturbation_design", "tf_list"],
+                ["column_descriptors", "interventions", "tf_list"],
             )
             params = plan["runs"][0]["simulator_params"]
             self.assertEqual(params["experiment_params"]["kind"], "snapshot")

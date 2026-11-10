@@ -178,7 +178,7 @@ class CombinedObservationHandoffTests(unittest.TestCase):
                 schema = schema[key]
             validator = Draft202012Validator(schema)
             self.assertEqual(list(validator.iter_errors("column_descriptors")), [])
-            for old in ("timepoints", "replicates", "steady_state_expression"):
+            for old in ("timepoints", "replicates", "steady_state_expression", "perturbation_design"):
                 self.assertTrue(list(validator.iter_errors(old)), (filename, old))
         for filename, keys in (
             (
@@ -196,7 +196,7 @@ class CombinedObservationHandoffTests(unittest.TestCase):
             self.assertIn("column_descriptors", schema)
             self.assertTrue(
                 set(schema).isdisjoint(
-                    {"timepoints", "replicates", "steady_state_expression"}
+                    {"timepoints", "replicates", "steady_state_expression", "perturbation_design"}
                 )
             )
 

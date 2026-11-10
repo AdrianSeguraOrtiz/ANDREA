@@ -745,7 +745,7 @@
     {
       "id": "single_cell_cells_perturbational_global_full_extras",
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -804,7 +804,7 @@
         "column_phenotypes",
         "cluster_identities",
         "lineage_tree",
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -865,7 +865,7 @@
         "column_phenotypes",
         "cluster_identities",
         "lineage_tree",
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -1534,7 +1534,7 @@
         ]
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "tf_list"
       ],
@@ -1637,7 +1637,7 @@
       },
       "requested_extras": [
         "groups",
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "tf_list"
       ],
@@ -1741,7 +1741,7 @@
       },
       "requested_extras": [
         "groups",
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "tf_list"
       ],

@@ -78,7 +78,7 @@
         }
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -128,7 +128,7 @@
         }
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -185,7 +185,6 @@
       },
       "requested_extras": [
         "column_descriptors",
-        "perturbation_design",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -242,9 +241,8 @@
         ]
       },
       "requested_extras": [
-        "perturbation_design",
-        "interventions",
         "column_descriptors",
+        "interventions",
         "enrichment_background",
         "prior_grn",
         "tf_list"
@@ -297,7 +295,7 @@
         ]
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",

@@ -4,9 +4,8 @@
     "seed": 505,
     "effective_extras": [
       "groups",
-      "perturbation_design",
-      "interventions",
       "column_descriptors",
+      "interventions",
       "prior_grn_by_group",
       "tf_list"
     ],
@@ -48,9 +47,8 @@
     "expression.tsv",
     "extras/tf_list.txt",
     "extras/groups.tsv",
-    "extras/perturbation_design.tsv",
-    "extras/interventions.tsv",
     "extras/column_descriptors.tsv",
+    "extras/interventions.tsv",
     "extras/prior_grn_by_group.tsv",
     "truth/networks.csv",
     "truth/gene_universe.txt",

@@ -193,15 +193,14 @@ validate_semantic_request <- function(req, params, effective_extras) {
 
   design <- as.character(axes$experimental_design)
   has_column_descriptors <- "column_descriptors" %in% effective_extras
-  has_perturbation_design <- "perturbation_design" %in% effective_extras
   has_interventions <- "interventions" %in% effective_extras
 
-  if (!identical(design, "time_series") && has_column_descriptors) {
-    stop("extras/column_descriptors.tsv is only supported for dyngen time_series capabilities.", call. = FALSE)
+  if (!(design %in% c("time_series", "perturbational")) && has_column_descriptors) {
+    stop("extras/column_descriptors.tsv is only supported for dyngen time_series or perturbational capabilities.", call. = FALSE)
   }
-  if (!identical(design, "perturbational") && (has_perturbation_design || has_interventions)) {
+  if (!identical(design, "perturbational") && has_interventions) {
     stop(
-      "extras/perturbation_design.tsv and extras/interventions.tsv are only supported for dyngen perturbational capabilities.",
+      "extras/interventions.tsv is only supported for dyngen perturbational capabilities.",
       call. = FALSE
     )
   }
@@ -242,9 +241,9 @@ validate_semantic_request <- function(req, params, effective_extras) {
     if (params$knockdown_params$num_genes != 1L) {
       stop("dyngen perturbational capabilities require knockdown_params.num_genes=1.", call. = FALSE)
     }
-    if (!has_perturbation_design || !has_interventions) {
+    if (!has_column_descriptors || !has_interventions) {
       stop(
-        "dyngen perturbational capabilities require effective_extras to include perturbation_design and interventions.",
+        "dyngen perturbational capabilities require effective_extras to include column_descriptors and interventions.",
         call. = FALSE
       )
     }
@@ -634,7 +633,7 @@ derive_knockdown_map <- function(model) {
   if (length(multi_target_simulations) > 0) {
     stop(
       sprintf(
-        "perturbation_design requires one knocked-down target per simulation; found multiple targets for simulation_i: %s",
+        "column_descriptors requires one knocked-down target per simulation; found multiple targets for simulation_i: %s",
         paste(multi_target_simulations, collapse = ", ")
       ),
       call. = FALSE
@@ -663,10 +662,10 @@ write_interventions <- function(model, params, path) {
   write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 }
 
-write_perturbation_design <- function(dataset, model, params, path) {
+write_perturbational_column_descriptors <- function(dataset, model, params, path) {
   cell_df <- as.data.frame(dataset$cell_info, stringsAsFactors = FALSE)
   if (!all(c("cell_id", "simulation_i") %in% names(cell_df))) {
-    stop("perturbation_design derivation requires dataset$cell_info cell_id and simulation_i columns.", call. = FALSE)
+    stop("column_descriptors derivation requires dataset$cell_info cell_id and simulation_i columns.", call. = FALSE)
   }
   kd_df <- derive_knockdown_map(model)
   names(kd_df)[names(kd_df) == "gene"] <- "target"
@@ -687,7 +686,7 @@ write_perturbation_design <- function(dataset, model, params, path) {
     sort = FALSE
   )
   if (any(is.na(design$simulation_i))) {
-    stop("perturbation_design derivation found expression columns without simulation_i metadata.", call. = FALSE)
+    stop("column_descriptors derivation found expression columns without simulation_i metadata.", call. = FALSE)
   }
 
   design <- merge(design, kd_df, by = "simulation_i", all.x = TRUE, all.y = FALSE, sort = FALSE)
@@ -696,14 +695,17 @@ write_perturbation_design <- function(dataset, model, params, path) {
   design$perturbation <- ifelse(is_control, "none", "knockdown")
   design$target[is_control] <- ""
   design$dose[is_control] <- 0
-  design$timepoint <- ifelse(is_control, 0, params$knockdown_params$timepoint)
+  # Native knockdown time is a fraction of post-burn-in simulation duration,
+  # not the sampling coordinate of a cell. Controls have no intervention onset.
+  design$intervention_timepoint <- ifelse(is_control, "", as.character(params$knockdown_params$timepoint))
+  design$intervention_time_unit <- ifelse(is_control, "", "simulation_fraction")
   design$replicate <- paste0("simulation_", design$simulation_i)
   design$control <- is_control
   design$intervention[is_control] <- ""
 
   out <- design[
     match(as.character(dataset$cell_ids), design$column),
-    c("column", "condition", "perturbation", "target", "dose", "timepoint", "replicate", "control", "intervention"),
+    c("column", "condition", "perturbation", "target", "dose", "intervention_timepoint", "intervention_time_unit", "replicate", "control", "intervention"),
     drop = FALSE
   ]
   write.table(out, file = path, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
@@ -1167,7 +1169,6 @@ write_manifest <- function(request, params, dataset, output_dir, native_outputs 
       enrichment_background = if (file.exists(file.path(output_dir, "extras", "enrichment_background.txt"))) "extras/enrichment_background.txt" else NULL,
       lineage_tree = if (file.exists(file.path(output_dir, "extras", "lineage_tree.tsv"))) "extras/lineage_tree.tsv" else NULL,
       column_descriptors = if (file.exists(file.path(output_dir, "extras", "column_descriptors.tsv"))) "extras/column_descriptors.tsv" else NULL,
-      perturbation_design = if (file.exists(file.path(output_dir, "extras", "perturbation_design.tsv"))) "extras/perturbation_design.tsv" else NULL,
       interventions = if (file.exists(file.path(output_dir, "extras", "interventions.tsv"))) "extras/interventions.tsv" else NULL,
       pseudotime = if (file.exists(file.path(output_dir, "extras", "pseudotime.tsv"))) "extras/pseudotime.tsv" else NULL,
       prior_grn = if (file.exists(file.path(output_dir, "extras", "prior_grn.tsv"))) "extras/prior_grn.tsv" else NULL,
@@ -1227,7 +1228,6 @@ tryCatch(
     need_prior_grn_by_group <- "prior_grn_by_group" %in% effective_extras
     need_lineage <- "lineage_tree" %in% effective_extras
     need_column_descriptors <- "column_descriptors" %in% effective_extras
-    need_perturbation_design <- "perturbation_design" %in% effective_extras
     need_interventions <- "interventions" %in% effective_extras
     requested_truth_contexts <- truth_contexts(request)
     need_public_column_truth <- "column" %in% requested_truth_contexts
@@ -1306,7 +1306,7 @@ tryCatch(
         file.path(output_dir, "extras", "pseudotime.tsv")
       )
     }
-    if (need_column_descriptors) {
+    if (need_column_descriptors && identical(as.character(request$data_axes$experimental_design), "time_series")) {
       write_column_descriptors(
         dataset$cell_info,
         dataset$cell_ids,
@@ -1320,12 +1320,12 @@ tryCatch(
         file.path(output_dir, "extras", "interventions.tsv")
       )
     }
-    if (need_perturbation_design) {
-      write_perturbation_design(
+    if (need_column_descriptors && identical(as.character(request$data_axes$experimental_design), "perturbational")) {
+      write_perturbational_column_descriptors(
         dataset,
         model,
         params,
-        file.path(output_dir, "extras", "perturbation_design.tsv")
+        file.path(output_dir, "extras", "column_descriptors.tsv")
       )
     }
 

@@ -166,7 +166,7 @@ Observational extras/native outputs:
 
 Perturbational extras/native outputs:
 
-- Required/derivable extras: `perturbation_design`, `interventions`.
+- Required/derivable extras: `column_descriptors`, `interventions`.
 - Required derivable extra for every run: `tf_list`.
 - Optional derivable extras: `enrichment_background`, `prior_grn`.
 - Native outputs: `before_perturbation_h5ad`, `after_perturbation_h5ad`,
@@ -179,7 +179,7 @@ Public ID policy:
 - Observational columns are `cell_001`, `cell_002`, ...
 - Perturbational columns are matched pairs:
   `pair_001_control`, `pair_001_perturbed`, ...
-- `perturbation_design.tsv` carries `matched_pair_id` so pairing is not encoded
+- `column_descriptors.tsv` carries `matched_pair_id` so pairing is not encoded
   only in column names.
 
 ## Smoke Tests
@@ -202,7 +202,7 @@ Implemented configs:
 - `groundgan_single_cell_perturbational_global.json`
   - covers perturbational/global capability;
   - uses embedded `input_bundle=toy_4gene`;
-  - requests `perturbation_design`, `interventions`,
+  - requests `column_descriptors`, `interventions`,
     `enrichment_background`, `prior_grn`, `tf_list`;
   - requests `before_perturbation_h5ad`, `after_perturbation_h5ad` and
     `causal_graph_pickle`.
@@ -282,3 +282,7 @@ with at most 2 CPU threads, 8 GiB RAM and a 300-second timeout per fixture.
 These checks cover executable contracts and fixture outputs; they do not
 calibrate costs or independently validate biological realism.
 The three GRouNdGAN perturbation-metadata unit regressions also passed.
+
+### Cost applicability after unified column metadata
+
+The historical cost measurements describe the wrapper and output contract before intervention annotations were consolidated into `column_descriptors.tsv`. Their original bytes and provenance are archived outside the active catalog. They are not a calibration of the current wrapper; a future recalibration is required before publishing a current cost model. No calibration is launched by this contract update.

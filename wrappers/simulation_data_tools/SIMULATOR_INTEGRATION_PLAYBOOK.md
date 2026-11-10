@@ -155,7 +155,6 @@ Supported extras currently include:
 - `enrichment_background`
 - `interventions`
 - `lineage_tree`
-- `perturbation_design`
 - `pseudotime`
 - `prior_grn`
 - `prior_grn_by_group`
@@ -421,7 +420,6 @@ extras/cluster_identities.tsv
 extras/enrichment_background.txt
 extras/interventions.tsv
 extras/lineage_tree.tsv
-extras/perturbation_design.tsv
 extras/pseudotime.tsv
 extras/prior_grn.tsv
 extras/prior_grn_by_group.tsv
@@ -750,19 +748,23 @@ Time-series rows specify `sampling_design=longitudinal` or
 fields. Keep these scientific declarations in the descriptor table. Cell
 trajectory metadata must not invent longitudinal identities.
 
-### `perturbation_design.tsv`
+### Intervention annotations in `column_descriptors.tsv`
 
 Use:
 
 ```text
-column	condition	perturbation	target	dose	timepoint	replicate	control
-cell_1	control	none		0	0	r1	true
-cell_2	knockdown_G1	knockdown	G1	1	24	r1	false
+column	condition	perturbation	target	dose	intervention_timepoint	intervention_time_unit	replicate	control
+cell_1	control	none		0			r1	true
+cell_2	knockdown_G1	knockdown	G1	1	24	hour	r1	false
 ```
 
 Rules:
 - exactly one row per expression column
-- `condition` is required; additional columns are optional when the simulator exposes them
+- intervention fields are optional metadata in the stable descriptor contract; perturbational scenarios must supply `condition` and `perturbation`
+- `target`, `dose`, `control` and other fields preserve known native semantics; controls may have an empty target
+- `timepoint` describes sampling/observation coordinates; a known intervention onset belongs in `intervention_timepoint` with its declared `intervention_time_unit`, never in the observation-time field
+- merge intervention annotations with temporal metadata in the same file when the observations are time courses
+- non-temporal perturbational observations must not invent `time_series` roles or longitudinal series
 - target genes should use the same public IDs as `expression.tsv` and `truth/gene_universe.txt`
 
 ### `interventions.tsv`

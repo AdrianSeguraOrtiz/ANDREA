@@ -35,7 +35,6 @@ EXTRA_KEYS = [
     "enrichment_background",
     "interventions",
     "lineage_tree",
-    "perturbation_design",
     "pseudotime",
     "prior_grn",
     "tf_list",
@@ -845,26 +844,6 @@ def write_prior_grn(path: Path, edges: list[Edge]) -> None:
             writer.writerow([edge.source, edge.target, f"{signed_score:.12g}"])
 
 
-def write_perturbation_design(path: Path, metadata: list[ColumnMeta]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["column", "condition", "perturbation", "target", "dose", "timepoint", "replicate", "control"])
-        for item in metadata:
-            writer.writerow(
-                [
-                    item.column,
-                    item.condition,
-                    item.perturbation,
-                    item.target,
-                    f"{item.dose:.12g}",
-                    f"{item.timepoint:.12g}",
-                    item.replicate,
-                    "true" if item.control else "false",
-                ]
-            )
-
-
 def intervention_rows(metadata: list[ColumnMeta], genes: list[str], gnw_output: Path, prefix: str) -> list[tuple[str, str, str, int, float, float]]:
     rows: dict[tuple[str, str], tuple[str, str, str, int, float, float]] = {}
     for item in metadata:
@@ -924,15 +903,31 @@ def write_interventions(path: Path, metadata: list[ColumnMeta], genes: list[str]
             writer.writerow([intervention, target, effect, sign, f"{dose:.12g}", f"{timepoint:.12g}"])
 
 
-def write_column_descriptors(path: Path, metadata: list[ColumnMeta]) -> None:
-    """Preserve native simulated trajectories in the common column metadata."""
+def write_column_descriptors(path: Path, metadata: list[ColumnMeta], *, mode: str = "bulk_time_series") -> None:
+    """Write aligned experimental annotations without inventing longitudinal samples."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    temporal = mode == "bulk_time_series"
+    fields = ["column", "condition", "replicate", "perturbation", "target", "dose", "control"]
+    if temporal:
+        fields.extend(["observation_type", "sampling_design", "series_id", "observation_id", "technical_replicate", "timepoint", "time_unit"])
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["column", "observation_type", "sampling_design", "series_id", "condition", "replicate", "observation_id", "technical_replicate", "timepoint", "time_unit"])
+        writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t")
+        writer.writeheader()
         for item in metadata:
             series_id = f"{item.condition}__{item.replicate}"
-            writer.writerow([item.column, "time_series", "longitudinal", series_id, item.condition, series_id, item.column, "1", f"{item.timepoint:.12g}", "model_time"])
+            row = {
+                "column": item.column,
+                "condition": item.condition,
+                "replicate": series_id if temporal else item.replicate,
+                "perturbation": item.perturbation,
+                "target": item.target,
+                "dose": f"{item.dose:.12g}",
+                "control": "true" if item.control else "false",
+            }
+            if temporal:
+                row.update(observation_type="time_series", sampling_design="longitudinal", series_id=series_id,
+                           observation_id=item.column, technical_replicate="1", timepoint=f"{item.timepoint:.12g}", time_unit="model_time")
+            writer.writerow(row)
 
 
 def write_public_id_maps(raw_dir: Path, genes: list[str], columns: list[str]) -> None:
@@ -1103,14 +1098,11 @@ def main(argv: list[str] | None = None) -> int:
 
         extras = {str(item) for item in request.get("effective_extras", [])}
         extras_paths: dict[str, str | None] = {key: None for key in EXTRA_KEYS}
-        if "perturbation_design" in extras:
-            write_perturbation_design(output_dir / "extras" / "perturbation_design.tsv", table.metadata)
-            extras_paths["perturbation_design"] = "extras/perturbation_design.tsv"
         if "interventions" in extras:
             write_interventions(output_dir / "extras" / "interventions.tsv", table.metadata, table.genes, gnw_output, prefix)
             extras_paths["interventions"] = "extras/interventions.tsv"
         if "column_descriptors" in extras:
-            write_column_descriptors(output_dir / "extras" / "column_descriptors.tsv", table.metadata)
+            write_column_descriptors(output_dir / "extras" / "column_descriptors.tsv", table.metadata, mode=mode)
             extras_paths["column_descriptors"] = "extras/column_descriptors.tsv"
         if "enrichment_background" in extras:
             write_text_list(output_dir / "extras" / "enrichment_background.txt", table.genes)

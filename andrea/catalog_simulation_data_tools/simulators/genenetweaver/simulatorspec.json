@@ -456,7 +456,7 @@
       "derivable_extras": [
         "enrichment_background",
         "interventions",
-        "perturbation_design",
+        "column_descriptors",
         "prior_grn",
         "tf_list"
       ],
@@ -502,14 +502,14 @@
       ],
       "derivations": [
         {
-          "artifact": "perturbation_design",
+          "artifact": "column_descriptors",
           "source_artifacts": [
             "selected GNW expression table name",
             "*_multifactorial_perturbations.tsv when present",
             "*_dualknockouts_indexes.tsv when present",
             "*_dualknockouts_perturbations.tsv when present"
           ],
-          "method": "For systematic knockout and knockdown tables, infer one direct intervention per expression column from column order and gene identifiers. For multifactorial, DREAM4 and dual-knockout outputs, parse the upstream perturbation sidecar files and align rows to normalized expression columns. Write extras/perturbation_design.tsv with one row per expression column.",
+          "method": "For systematic knockout and knockdown tables, infer one direct intervention per expression column from column order and gene identifiers. For multifactorial, DREAM4 and dual-knockout outputs, parse the upstream perturbation sidecar files and align rows to normalized expression columns. Write extras/column_descriptors.tsv with one row per expression column.",
           "assumptions": [
             "GNW file naming and row order follow the public DREAM benchmark conventions produced by BenchmarkGeneratorDream4.",
             "The selected expression table and perturbation sidecars are generated in the same run from the same settings."
@@ -523,9 +523,9 @@
         {
           "artifact": "interventions",
           "source_artifacts": [
-            "extras/perturbation_design.tsv"
+            "extras/column_descriptors.tsv"
           ],
-          "method": "Collapse distinct intervention definitions from perturbation_design into extras/interventions.tsv, preserving perturbed gene IDs, intervention type and signed effect when available.",
+          "method": "Collapse distinct intervention definitions from column_descriptors into extras/interventions.tsv, preserving perturbed gene IDs, intervention type and signed effect when available.",
           "assumptions": [
             "Perturbation columns with the same intervention metadata represent the same intervention class."
           ],
@@ -675,10 +675,9 @@
       "derivable_extras": [
         "enrichment_background",
         "interventions",
-        "perturbation_design",
+        "column_descriptors",
         "prior_grn",
-        "tf_list",
-        "column_descriptors"
+        "tf_list"
       ],
       "truth_outputs": [
         {
@@ -726,39 +725,28 @@
           "source_artifacts": [
             "*_dream4_timeseries.tsv or selected time-series table",
             "settings.txt maxtTimeSeries",
-            "settings.txt dt"
+            "settings.txt dt",
+            "*_dream4_timeseries_perturbations.tsv or selected time-series perturbation sidecar",
+            "selected GNW time-series table"
           ],
-          "method": "Parse each GNW time-series block and emit one column_descriptors.tsv row per expression column, preserving observation type, native trajectory identity, constant perturbation condition, simulated replicate, observation identity, technical measurement label, and model-time coordinate. The same TSV declares sampling_design=longitudinal; its bulk/timepoints axes select the shared validator without any additional manifest object or GUI declaration.",
+          "method": "Parse each GNW time-series block and emit one column_descriptors.tsv row per expression column, preserving observation type, native trajectory identity, constant perturbation condition, simulated replicate, observation identity, technical measurement label, and model-time coordinate. The same TSV declares sampling_design=longitudinal; its bulk/timepoints axes select the shared validator without any additional manifest object or GUI declaration. Align each time-series block and timepoint row to its upstream perturbation vector, then write one column_descriptors row per normalized expression column.",
           "assumptions": [
-            "The native time column in each GNW time-series table is the public time coordinate."
+            "The native time column in each GNW time-series table is the public time coordinate.",
+            "GNW writes perturbation sidecars in the same series order as the time-series expression blocks."
           ],
           "limitations": [
             "Multiple GNW time courses share time values but represent different perturbation trajectories; series_id is required to disambiguate them.",
-            "model_time identifies simulator coordinates and does not claim physical elapsed-time units."
+            "model_time identifies simulator coordinates and does not claim physical elapsed-time units.",
+            "A perturbation applies to a whole time course; repeated rows across timepoints are wrapper-derived column annotations."
           ],
           "implemented_in": "wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
         },
         {
-          "artifact": "perturbation_design",
-          "source_artifacts": [
-            "*_dream4_timeseries_perturbations.tsv or selected time-series perturbation sidecar",
-            "selected GNW time-series table"
-          ],
-          "method": "Align each time-series block and timepoint row to its upstream perturbation vector, then write one perturbation_design row per normalized expression column.",
-          "assumptions": [
-            "GNW writes perturbation sidecars in the same series order as the time-series expression blocks."
-          ],
-          "limitations": [
-            "A perturbation applies to a whole time course; repeated rows across timepoints are wrapper-derived column annotations."
-          ],
-          "implemented_in": "planned wrapper: wrappers/simulation_data_tools/simulators/genenetweaver/run_simulator.py"
-        },
-        {
           "artifact": "interventions",
           "source_artifacts": [
-            "extras/perturbation_design.tsv"
+            "extras/column_descriptors.tsv"
           ],
-          "method": "Collapse distinct intervention definitions from perturbation_design into extras/interventions.tsv, preserving perturbed gene IDs, intervention type and signed effect when available.",
+          "method": "Collapse distinct intervention definitions from column_descriptors into extras/interventions.tsv, preserving perturbed gene IDs, intervention type and signed effect when available.",
           "assumptions": [
             "Timepoint columns from the same series share the same direct intervention definition."
           ],

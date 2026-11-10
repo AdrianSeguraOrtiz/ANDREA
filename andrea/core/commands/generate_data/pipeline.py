@@ -65,7 +65,6 @@ _NORMALIZED_EXTRA_FILENAMES = {
     "enrichment_background": "enrichment_background.txt",
     "interventions": "interventions.tsv",
     "lineage_tree": "lineage_tree.tsv",
-    "perturbation_design": "perturbation_design.tsv",
     "pseudotime": "pseudotime.tsv",
     "prior_grn": "prior_grn.tsv",
     "prior_grn_by_group": "prior_grn_by_group.tsv",

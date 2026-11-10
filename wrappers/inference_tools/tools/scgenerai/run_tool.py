@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import math
 import os
 import traceback
@@ -25,6 +26,14 @@ from _run_tool_common import (
 
 
 NETWORK_COLUMNS = ["source", "target", "score", "sign", "evidence", "context"]
+# Normalized observation/intervention fields can be inapplicable for some rows.
+# scGeneRAI conditions on complete categorical vectors; it cannot encode N/A.
+OPTIONAL_NORMALIZED_DESCRIPTORS = frozenset({
+    "observation_type", "series_id", "condition", "replicate", "observation_id",
+    "technical_replicate", "timepoint", "time_unit", "sampling_design",
+    "perturbation", "target", "dose", "control",
+    "intervention_timepoint", "intervention_time_unit",
+})
 
 
 @dataclass(frozen=True)
@@ -228,10 +237,24 @@ def load_column_descriptors(extra_dir: Path, cell_ids: list[str]) -> pd.DataFram
         raise ValueError("column_descriptors.tsv must match expression columns exactly (" + "; ".join(details) + ").")
 
     aligned = raw.set_index(id_col).loc[cell_ids, descriptor_cols].reset_index(drop=True)
+    omitted = []
     for col in descriptor_cols:
         aligned[col] = aligned[col].astype(str)
         if (aligned[col] == "").any():
-            raise ValueError(f"column_descriptors.tsv column {col!r} contains empty values.")
+            if col in OPTIONAL_NORMALIZED_DESCRIPTORS:
+                omitted.append(col)
+            else:
+                raise ValueError(f"column_descriptors.tsv column {col!r} contains empty values.")
+    aligned = aligned.drop(columns=omitted)
+    if not len(aligned.columns):
+        raise ValueError(
+            "column_descriptors.tsv has no complete descriptors usable by scGeneRAI."
+        )
+    aligned.attrs["descriptor_selection"] = {
+        "supplied": descriptor_cols,
+        "used": list(aligned.columns),
+        "omitted_not_applicable": omitted,
+    }
     return aligned
 
 
@@ -422,6 +445,14 @@ def main() -> None:
         )
         expression = read_expression_tsv(args.input)
         descriptors = load_column_descriptors(args.extra, expression.cell_ids)
+        descriptor_selection = (
+            descriptors.attrs["descriptor_selection"] if descriptors is not None
+            else {"supplied": [], "used": [], "omitted_not_applicable": []}
+        )
+        (raw_dir / "descriptor_selection.json").write_text(
+            json.dumps(descriptor_selection, indent=2) + "\n", encoding="utf-8"
+        )
+        append_log(log_path, "Descriptor selection: " + json.dumps(descriptor_selection))
         write_alias_map(raw_dir, expression.cell_ids)
 
         append_log(

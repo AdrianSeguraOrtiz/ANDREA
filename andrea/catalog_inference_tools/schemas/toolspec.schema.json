@@ -42,7 +42,6 @@
         "grnboost_network",
         "interventions",
         "lineage_tree",
-        "perturbation_design",
         "pseudotime",
         "prior_grn",
         "prior_grn_by_group",

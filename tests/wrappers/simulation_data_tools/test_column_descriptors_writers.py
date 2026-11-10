@@ -121,6 +121,9 @@ class ColumnDescriptorWriterTests(unittest.TestCase):
                 self.assertEqual({row["time_unit"] for row in rows}, {"model_time"})
                 self.assertEqual({row["sampling_design"] for row in rows}, {"longitudinal"})
                 self.assertEqual({row["condition"] for row in rows}, {"knockdown_G1"})
+                self.assertEqual({row["perturbation"] for row in rows}, {"knockdown"})
+                self.assertEqual({row["target"] for row in rows}, {"G1"})
+                self.assertEqual({row["dose"] for row in rows}, {"1"})
                 self.assertEqual(len({row["series_id"] for row in rows}), 1)
                 self.assertEqual(
                     sorted(path.name for path in (output / "extras").iterdir()),
@@ -150,10 +153,78 @@ class ColumnDescriptorWriterTests(unittest.TestCase):
                 rows = list(csv.DictReader(handle, delimiter="\t"))
             self.assertEqual(
                 rows,
-                [{"column": "cell_1", "replicate": "r1", "condition": "knockdown_G1"}],
+                [{"column": "cell_1", "replicate": "r1", "condition": "knockdown_G1", "perturbation": "knockdown", "target": "G1", "dose": "1", "control": "false"}],
             )
             self.assertNotIn("series_id", rows[0])
             self.assertNotIn("observation_type", rows[0])
+
+    def test_bulk_perturbations_keep_interventions_without_temporal_claims(self):
+        for name in ("genenetweaver", "genespider2"):
+            with self.subTest(simulator=name), tempfile.TemporaryDirectory() as tmp:
+                wrapper = load_wrapper(name)
+                metadata = [wrapper.ColumnMeta(column="ko_G1", condition="ko_G1", perturbation="knockout",
+                                               target="G1", dose=1.0, timepoint=0.0, replicate="r1", control=False)]
+                descriptor = Path(tmp) / "column_descriptors.tsv"
+                wrapper.write_column_descriptors(descriptor, metadata, mode="bulk_perturbational")
+                with descriptor.open() as handle:
+                    rows = list(csv.DictReader(handle, delimiter="\t"))
+                self.assertEqual(len(rows), 1)
+                self.assertEqual(rows[0]["target"], "G1")
+                self.assertEqual(rows[0]["perturbation"], "knockout")
+                self.assertEqual(rows[0]["control"], "false")
+                self.assertTrue(set(rows[0]).isdisjoint({"series_id", "observation_type", "sampling_design", "timepoint"}))
+
+    def test_syntren_vectors_are_not_reduced_to_a_fictitious_single_target(self):
+        wrapper = load_wrapper("syntren")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            external = root / "externals.tsv"
+            external.write_text("Regulators\tbaseline\tstimulus\nG1\t1\t2\nG2\t1\t0\n")
+            descriptor = root / "column_descriptors.tsv"
+            definitions = root / "interventions.tsv"
+            wrapper.write_perturbation_extras(design_path=descriptor, interventions_path=definitions,
+                                              expression_columns=["c1", "c2"], expression_genes={"G1", "G2"},
+                                              externals_file=external)
+            with descriptor.open() as handle:
+                rows = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual([row["column"] for row in rows], ["c1", "c2"])
+            self.assertEqual({row["perturbation"] for row in rows}, {"external_input_vector"})
+            self.assertEqual({row["target"] for row in rows}, {""})
+            self.assertEqual([row["control"] for row in rows], ["true", "false"])
+            with definitions.open() as handle:
+                definitions_rows = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual({row["target"] for row in definitions_rows}, {"G1", "G2"})
+            self.assertTrue(set(rows[0]).isdisjoint({"series_id", "observation_type", "timepoint"}))
+
+    @unittest.skipIf(shutil.which("Rscript") is None, "Rscript unavailable")
+    def test_dyngen_perturbational_writer_aligns_controls_and_targets(self):
+        wrapper = ROOT / "wrappers/simulation_data_tools/simulators/dyngen/run_simulator.R"
+        code = r"""
+args <- commandArgs(trailingOnly=TRUE)
+expressions <- parse(file=args[[1]])
+functions <- c("derive_knockdown_map", "write_perturbational_column_descriptors")
+selected <- Filter(function(x) is.call(x) && identical(x[[1]], as.name("<-")) && as.character(x[[2]]) %in% functions, expressions)
+environment <- new.env(parent=globalenv())
+for (definition in selected) eval(definition, envir=environment)
+dataset <- list(cell_ids=c("kd", "wt"),cell_info=data.frame(cell_id=c("wt","kd"),simulation_i=c(1,2)))
+model <- list(simulations=list(kd_multiplier=data.frame(simulation_i=2,gene="G1",multiplier=0)))
+environment$write_perturbational_column_descriptors(dataset,model,list(knockdown_params=list(timepoint=0.5)),args[[2]])
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            descriptor = Path(tmp) / "column_descriptors.tsv"
+            result = subprocess.run(["Rscript", "--vanilla", "-e", code, str(wrapper), str(descriptor)],
+                                    text=True, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            with descriptor.open() as handle:
+                rows = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual([row["column"] for row in rows], ["kd", "wt"])
+            self.assertEqual([row["target"] for row in rows], ["G1", ""])
+            self.assertEqual([row["perturbation"] for row in rows], ["knockdown", "none"])
+            self.assertEqual([row["control"].lower() for row in rows], ["false", "true"])
+            self.assertEqual([row["intervention_timepoint"] for row in rows], ["0.5", ""])
+            self.assertEqual([row["intervention_time_unit"] for row in rows], ["simulation_fraction", ""])
+            self.assertNotIn("timepoint", rows[0])
+            self.assertTrue(set(rows[0]).isdisjoint({"series_id", "observation_type", "timepoint"}))
 
     @unittest.skipIf(shutil.which("Rscript") is None, "Rscript unavailable")
     def test_dyngen_time_group_writer_preserves_cell_labels_without_fabricated_series(

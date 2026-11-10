@@ -35,7 +35,6 @@ EXTRA_KEYS = [
     "enrichment_background",
     "interventions",
     "lineage_tree",
-    "perturbation_design",
     "pseudotime",
     "prior_grn",
     "tf_list",
@@ -300,7 +299,6 @@ def validate_request(request: dict[str, Any], params: dict[str, Any], extras: se
     supported_by_mode = {
         "bulk_perturbational": {
             "column_descriptors",
-            "perturbation_design",
             "enrichment_background",
             "interventions",
             "prior_grn",
@@ -308,7 +306,6 @@ def validate_request(request: dict[str, Any], params: dict[str, Any], extras: se
         },
         "bulk_time_series": {
             "column_descriptors",
-            "perturbation_design",
             "enrichment_background",
             "interventions",
             "prior_grn",
@@ -316,7 +313,6 @@ def validate_request(request: dict[str, Any], params: dict[str, Any], extras: se
         },
         "single_cell_perturbational": {
             "column_descriptors",
-            "perturbation_design",
             "enrichment_background",
             "interventions",
             "prior_grn",
@@ -333,7 +329,7 @@ def validate_request(request: dict[str, Any], params: dict[str, Any], extras: se
     if mode == "bulk_time_series" and "column_descriptors" not in extras:
         raise ValueError("GeneSPIDER2 bulk time_series capability requires column_descriptors metadata.")
     if mode in {"bulk_perturbational", "single_cell_perturbational"}:
-        missing = sorted({"perturbation_design", "interventions"}.difference(extras))
+        missing = sorted({"column_descriptors", "interventions"}.difference(extras))
         if missing:
             raise ValueError(f"GeneSPIDER2 perturbational capabilities require extras: {missing}.")
     if "group" in request_contexts(request) and "groups" not in extras:
@@ -516,37 +512,29 @@ def write_interventions(path: Path, metadata: list[ColumnMeta]) -> None:
             writer.writerow([item.condition, item.target, item.perturbation, -1, f"{item.dose:.12g}", f"{item.timepoint:.12g}"])
 
 
-def write_perturbation_design(path: Path, metadata: list[ColumnMeta]) -> None:
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["column", "condition", "perturbation", "target", "dose", "timepoint", "replicate", "control"])
-        for item in metadata:
-            writer.writerow(
-                [
-                    item.column,
-                    item.condition,
-                    item.perturbation,
-                    item.target,
-                    f"{item.dose:.12g}",
-                    f"{item.timepoint:.12g}",
-                    item.replicate,
-                    "false" if not item.control else "true",
-                ]
-            )
-
-
 def write_column_descriptors(path: Path, metadata: list[ColumnMeta], *, mode: str) -> None:
+    """Keep intervention and observation annotations in one normalized table."""
+    temporal = mode == "bulk_time_series"
+    fields = ["column", "condition", "replicate", "perturbation", "target", "dose", "control"]
+    if temporal:
+        fields.extend(["observation_type", "sampling_design", "series_id", "observation_id", "technical_replicate", "timepoint", "time_unit"])
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, delimiter="\t")
-        if mode == "bulk_time_series":
-            writer.writerow(["column", "observation_type", "sampling_design", "series_id", "condition", "replicate", "observation_id", "technical_replicate", "timepoint", "time_unit"])
-            for item in metadata:
-                writer.writerow([item.column, "time_series", "longitudinal", "simts_r1", item.condition, "simts_r1", item.column, "1", f"{item.timepoint:.12g}", "model_time"])
-        else:
-            # Perturbation columns and sampled cells are not longitudinal visits.
-            writer.writerow(["column", "replicate", "condition"])
-            for item in metadata:
-                writer.writerow([item.column, item.replicate, item.condition])
+        writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t")
+        writer.writeheader()
+        for item in metadata:
+            row = {
+                "column": item.column,
+                "condition": item.condition,
+                "replicate": "simts_r1" if temporal else item.replicate,
+                "perturbation": item.perturbation,
+                "target": item.target,
+                "dose": f"{item.dose:.12g}",
+                "control": "true" if item.control else "false",
+            }
+            if temporal:
+                row.update(observation_type="time_series", sampling_design="longitudinal", series_id="simts_r1",
+                           observation_id=item.column, technical_replicate="1", timepoint=f"{item.timepoint:.12g}", time_unit="model_time")
+            writer.writerow(row)
 
 
 def simts_time_grid(network_matrix: np.ndarray, n_columns: int) -> list[float]:
@@ -936,9 +924,6 @@ def main(argv: list[str] | None = None) -> int:
             extras_paths["groups"] = "extras/groups.tsv"
         write_truth_networks(output_dir / "truth" / "networks.csv", edges, group_ids)
 
-        if "perturbation_design" in extras:
-            write_perturbation_design(output_dir / "extras" / "perturbation_design.tsv", column_metadata)
-            extras_paths["perturbation_design"] = "extras/perturbation_design.tsv"
         if "interventions" in extras:
             write_interventions(output_dir / "extras" / "interventions.tsv", column_metadata)
             extras_paths["interventions"] = "extras/interventions.tsv"

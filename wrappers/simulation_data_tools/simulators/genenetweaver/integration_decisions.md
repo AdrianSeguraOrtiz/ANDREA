@@ -60,14 +60,14 @@ Not claimed as Phase 1 inputs:
   - `group`: unavailable.
   - `column`: unavailable.
 - Extras:
-  - Derivable: `perturbation_design`, `interventions`, `enrichment_background`, `prior_grn`, `tf_list`.
+  - Derivable: `column_descriptors`, `interventions`, `enrichment_background`, `prior_grn`, `tf_list`.
   - Native-but-not-standard public outputs: gold-standard files, expression table directory, perturbation sidecars, XML/SBML model, normalization constant.
 
 ### Bulk time-series
 
 - `measurement`: `rna_expression`
 - `resolution`: `bulk`
-- `column_kind`: `column_descriptors`
+- `column_kind`: `timepoints`
 - `experimental_design`: `time_series`
 - Truth requirements: `global`
 - Upstream switches:
@@ -84,7 +84,7 @@ Not claimed as Phase 1 inputs:
   - `group`: unavailable.
   - `column`: unavailable.
 - Extras:
-  - Derivable: `column_descriptors`, `perturbation_design`, `interventions`, `enrichment_background`, `prior_grn`, `tf_list`.
+  - Derivable: `column_descriptors`, `interventions`, `enrichment_background`, `prior_grn`, `tf_list`.
 
 ## Truth Context Audit
 
@@ -141,9 +141,8 @@ Wrapper must write directly under `/work/out/`:
 - `expression.tsv`: genes as rows, public perturbation/timepoint columns.
 - `truth/networks.csv`: columns compatible with ANDREA truth schema; use `evidence=simulated_truth`.
 - `truth/gene_universe.txt`: exact expression gene IDs, one per line.
-- `extras/perturbation_design.tsv`: one row per expression column for perturbational/time-series capabilities.
+- `extras/column_descriptors.tsv`: one row per expression column for perturbational/time-series capabilities.
 - `extras/interventions.tsv`: distinct interventions derived from perturbation design.
-- `extras/column_descriptors.tsv`: time-series capability only; one row per expression column.
 - Required extra: `tf_list.txt`.
 - Optional extras: `enrichment_background.txt`, `prior_grn.tsv`.
 - `native/`: requested native outputs, including GNW gold-standard files, raw expression tables, perturbation sidecars, XML/SBML model and normalization constant.
@@ -153,7 +152,7 @@ Wrapper must write directly under `/work/out/`:
 Public ID rules:
 
 - Gene IDs must be identical across `expression.tsv`, `truth/networks.csv`, `truth/gene_universe.txt`, `prior_grn.tsv`, `tf_list.txt` and `enrichment_background.txt`.
-- Perturbation/timepoint column IDs must be identical across `expression.tsv`, `perturbation_design.tsv`, `column_descriptors.tsv` and manifest entries.
+- Perturbation/timepoint column IDs must be identical across `expression.tsv`, `column_descriptors.tsv` and manifest entries.
 
 ## Runtime Resources
 
@@ -175,7 +174,7 @@ Public ID rules:
 Implemented smoke configs:
 
 1. `genenetweaver_bulk_perturbational_global.json`, default sandbox XML, `steady_state_experiment=knockouts`.
-   - Proves `expression.tsv`, global truth, `perturbation_design`, `interventions`, `prior_grn`, `tf_list`, `enrichment_background`.
+   - Proves `expression.tsv`, global truth, `column_descriptors`, `interventions`, `prior_grn`, `tf_list`, `enrichment_background`.
 2. `genenetweaver_bulk_time_series_global.json`, default sandbox XML, `time_series_experiment=dream4_timeseries`, small `num_time_series`, small `maxt/dt`.
    - Proves `column_descriptors`, time-series perturbation design, global truth and ID consistency.
 3. `genenetweaver_custom_xml_global.json`, mounted XML input using `gnw_dynamical_network`.
@@ -271,3 +270,7 @@ calibrate costs or independently validate biological realism.
 ## Common column metadata contract
 
 The only public column-metadata extra is `column_descriptors.tsv`; all measured columns remain in `expression.tsv`. The `bulk` expression profile with `column_kind=timepoints` automatically selects the common observed-time metadata rules. `column_descriptors.tsv` carries `sampling_design=longitudinal`, `model_time` coordinates, native simulated trajectory identity, a condition constant along each trajectory, explicit simulated replicate/observation labels, and one technical measurement per observation. Model coordinates are not asserted to be physical elapsed time. Independent steady-state measurements, when supplied, belong in the same expression matrix and are marked by `observation_type=steady_state`; their sampling-design, series and time fields are empty.
+
+### Cost applicability after unified column metadata
+
+The historical cost measurements describe the wrapper and output contract before intervention annotations were consolidated into `column_descriptors.tsv`. Their original bytes and provenance are archived outside the active catalog. They are not a calibration of the current wrapper; a future recalibration is required before publishing a current cost model. No calibration is launched by this contract update.

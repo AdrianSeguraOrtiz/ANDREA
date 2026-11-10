@@ -37,9 +37,10 @@ class GroundganWrapperTests(unittest.TestCase):
                     rows = list(csv.DictReader(handle, delimiter="\t"))
                 self.assertEqual(len(rows), 1)
                 self.assertEqual((rows[0]["effect"], rows[0]["sign"]), (effect, sign))
-                with (root / "extras/perturbation_design.tsv").open() as handle:
+                with (root / "extras/column_descriptors.tsv").open() as handle:
                     design = list(csv.DictReader(handle, delimiter="\t"))
                 self.assertEqual([row["target"] for row in design], ["", "A"])
+                self.assertNotIn("timepoint", design[0])
                 self.assertEqual(design[0]["matched_pair_id"], design[1]["matched_pair_id"])
 
 

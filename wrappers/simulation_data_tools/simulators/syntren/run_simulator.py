@@ -39,7 +39,6 @@ EXTRA_KEYS = [
     "enrichment_background",
     "interventions",
     "lineage_tree",
-    "perturbation_design",
     "pseudotime",
     "prior_grn",
     "tf_list",
@@ -610,11 +609,11 @@ def write_perturbation_extras(
     design_path.parent.mkdir(parents=True, exist_ok=True)
     with design_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["column", "condition", "perturbation", "target", "dose", "timepoint", "replicate", "control"])
+        writer.writerow(["column", "condition", "perturbation", "target", "dose", "replicate", "control"])
         for idx, column in enumerate(expression_columns):
             delta = sum(abs(values[idx] - baseline[regulator]) for regulator, values in external_values.items())
             control = idx == 0 or delta == 0.0
-            writer.writerow([column, external_columns[idx], "external_input_vector", "", f"{delta:.12g}", "0", f"r{idx + 1}", str(control).lower()])
+            writer.writerow([column, external_columns[idx], "external_input_vector", "", f"{delta:.12g}", f"r{idx + 1}", str(control).lower()])
 
     rows: list[tuple[str, str, str, int, float, float]] = []
     for idx, column in enumerate(expression_columns):
@@ -797,17 +796,17 @@ def run(request_path: Path, output_dir: Path) -> None:
         write_tf_list(output_dir / "extras" / "tf_list.txt", edges)
         extras_paths["tf_list"] = "extras/tf_list.txt"
         if request["data_axes"]["experimental_design"] == "perturbational":
-            missing = sorted({"perturbation_design", "interventions"}.difference(extras_requested))
+            missing = sorted({"column_descriptors", "interventions"}.difference(extras_requested))
             if missing:
                 raise ValueError(f"Perturbational SynTReN runs require generated extras: {missing}")
             write_perturbation_extras(
-                design_path=output_dir / "extras" / "perturbation_design.tsv",
+                design_path=output_dir / "extras" / "column_descriptors.tsv",
                 interventions_path=output_dir / "extras" / "interventions.tsv",
                 expression_columns=table.columns,
                 expression_genes=set(table.genes),
                 externals_file=externals_file,
             )
-            extras_paths["perturbation_design"] = "extras/perturbation_design.tsv"
+            extras_paths["column_descriptors"] = "extras/column_descriptors.tsv"
             extras_paths["interventions"] = "extras/interventions.tsv"
 
         copytree_replace(raw_output, raw_dir / "syntren_output_snapshot")

@@ -35,9 +35,9 @@ All claimed capabilities use:
 | `time_series` | `["global"]` | `global` | `column_descriptors` |
 | `time_series` | `["global", "group"]` | `global`, `group:<id>` | `groups`, `column_descriptors` |
 | `time_series` | `["global", "group", "column"]` | `global`, `group:<id>`, `column:<id>` | `groups`, `column_descriptors` |
-| `perturbational` | `["global"]` | `global` | `perturbation_design`, `interventions` |
-| `perturbational` | `["global", "group"]` | `global`, `group:<id>` | `groups`, `perturbation_design`, `interventions` |
-| `perturbational` | `["global", "group", "column"]` | `global`, `group:<id>`, `column:<id>` | `groups`, `perturbation_design`, `interventions` |
+| `perturbational` | `["global"]` | `global` | `column_descriptors`, `interventions` |
+| `perturbational` | `["global", "group"]` | `global`, `group:<id>` | `groups`, `column_descriptors`, `interventions` |
+| `perturbational` | `["global", "group", "column"]` | `global`, `group:<id>`, `column:<id>` | `groups`, `column_descriptors`, `interventions` |
 
 Unclaimed capabilities:
 
@@ -55,7 +55,7 @@ Required upstream switches:
 
 - `trajectory` capabilities bind `experiment_params.kind=snapshot` and `simulation_params.num_knockdown_simulations=0`.
 - `time_series` capabilities bind `experiment_params.kind=synchronised` and `simulation_params.num_knockdown_simulations=0`; the wrapper exports `extras/column_descriptors.tsv` from `dataset$cell_info$timepoint_group`.
-- `perturbational` capabilities bind `experiment_params.kind=snapshot`, `simulation_params.num_knockdown_simulations=4`, `knockdown_params.num_genes=1`, `knockdown_params.multiplier=0.0` and `knockdown_params.timepoint=0.5`; the wrapper exports `extras/perturbation_design.tsv` and `extras/interventions.tsv` from `dataset$cell_info$simulation_i` and `model$simulations$kd_multiplier`.
+- `perturbational` capabilities bind `experiment_params.kind=snapshot`, `simulation_params.num_knockdown_simulations=4`, `knockdown_params.num_genes=1`, `knockdown_params.multiplier=0.0` and `knockdown_params.timepoint=0.5`; the wrapper exports `extras/column_descriptors.tsv` and `extras/interventions.tsv` from `dataset$cell_info$simulation_i` and `model$simulations$kd_multiplier`.
 - `simulation_params.compute_cellwise_grn=true` whenever `group` or `column` truth, `lineage_tree`, `prior_grn_by_group` or `regulatory_network_sc` is requested.
 - `generate_dataset(..., store_cellwise_grn=TRUE)` under the same conditions.
 - `store_rna_velocity=TRUE` only when the native output `rna_velocity` is requested.
@@ -80,8 +80,7 @@ Derivable extras:
 - `prior_grn_by_group`: oracle group prior from aggregated cellwise regulatory activity.
 - `tf_list`: `feature_info$is_tf`.
 - `enrichment_background`: all exported expression genes.
-- `column_descriptors`: synchronised experiment `timepoint_group` per expression column.
-- `perturbation_design`: one row per expression column mapping wild-type controls and one-target knockdown simulations to condition metadata.
+- `column_descriptors`: synchronised experiment `timepoint_group` per expression column for time-series scenarios, or aligned wild-type/control and one-target knockdown metadata for perturbational scenarios.
 - `interventions`: one row per dyngen knockdown intervention target.
 
 Native outputs are preserved only when requested; currently this includes `rna_velocity` and `regulatory_network_sc`.
@@ -154,3 +153,9 @@ calibrate costs or independently validate biological realism.
 ## Common column metadata contract
 
 The only public column-metadata extra is `column_descriptors.tsv`; all measured columns remain in `expression.tsv`. Synchronised sampled cells retain their upstream `timepoint_group` and the explicit model-bin label `time_unit=model_time_group`. No bulk observed-time declaration or longitudinal series is inferred from sampled cells.
+
+### Cost applicability after unified column metadata
+
+The historical cost measurements describe the wrapper and output contract before intervention annotations were consolidated into `column_descriptors.tsv`. Their original bytes and provenance are archived outside the active catalog. They are not a calibration of the current wrapper; a future recalibration is required before publishing a current cost model. No calibration is launched by this contract update.
+
+Intervention onset uses `intervention_timepoint` and `intervention_time_unit=simulation_fraction` in the column descriptors. The pinned dyngen simulation code multiplies its post-burn-in `total_time` by this fraction before applying the knockdown, then simulates the remainder under knockdown. Wild-type controls have empty intervention onset/unit. This coordinate is distinct from sampled-cell observation time; no `timepoint` is fabricated for perturbational snapshots.

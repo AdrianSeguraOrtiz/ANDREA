@@ -54,6 +54,13 @@ For observed bulk data, use the current `expression.tsv` and
 share the matrix; the descriptor records their roles, series, identities,
 sampling design, observed times and units. Do not restore separate timepoint,
 replicate or stationary-expression inputs or an extra temporal form/declaration.
+Per-observation intervention metadata also belongs in `column_descriptors`:
+`perturbation`, `target`, `dose` and `control` are optional normalized fields.
+Sampling coordinates and intervention onset coordinates have different meanings;
+never substitute one for the other. Require only the fields needed by a requested
+method, without changing their meanings or the generic schema with GUI selectors.
+Keep intervention definitions in the existing `interventions` input. Do not
+reintroduce a second per-expression-column perturbation-design table.
 `accepts` describes expression column kinds, such as `timepoints`;
 `column_descriptors` is an input key declared through `extra_inputs`.
 

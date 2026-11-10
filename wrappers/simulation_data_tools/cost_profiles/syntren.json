@@ -196,7 +196,7 @@
         "423x4"
       ],
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -269,7 +269,7 @@
         }
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "enrichment_background",
         "prior_grn",
@@ -417,7 +417,7 @@
         ]
       },
       "requested_extras": [
-        "perturbation_design",
+        "column_descriptors",
         "interventions",
         "prior_grn",
         "tf_list"
