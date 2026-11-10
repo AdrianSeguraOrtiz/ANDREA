@@ -17,13 +17,13 @@ descriptor table; those contents do not filter the catalog. No separate time,
 replicate or stationary-expression files are inputs.
 
 `regular_longitudinal` includes two technical measurements per biological
-observation. It validates the general data contract but both new inference tools
+observation. It validates the general data contract but the four temporal inference tools
 reject this sampling branch; they do not silently average it. There are eight
 biological transitions, without crossing any course boundary.
 
 `irregular_independent` uses distinct biological units at each time. Its cohort
 identity does not establish longitudinal pairing and it has no longitudinal
-transitions. This sampling branch is also rejected by both new tools.
+transitions. This sampling branch is also rejected by the four temporal tools.
 
 `dyngenie3_complete` is a runnable example with two courses and two independent
 stationary samples in the same matrix. The main manifest also includes the
@@ -34,3 +34,11 @@ columns only when its width/lag requirements fit the three-point grid.
 
 See the [current shared contract](../../../docs/bulk-time-series-contract.md)
 for field meanings and native tool mappings. CLI and GUI use these same files.
+
+For a short runnable example covering dynGENIE3, SWING, BiXGBoost and PFBNet's
+expression-only workflow, use the [shared complete inference fixture](../../../wrappers/inference_tools/tests/fixtures/bulk_time_series_complete/README.md).
+It lives next to the historical expression/TF/group examples and includes eight
+genes and 132 expression columns: six 21-point biological courses and six
+independent stationary controls. There are no knockout samples, intervention
+fields or separate perturbation files. It also provides explicit reduced run
+settings, extra backend examples and CLI/GUI instructions.

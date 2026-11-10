@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "id": "bulk_time_series_complete_no_tf_manifest",
+  "dataset": {
+    "spec": {
+      "schema_version": "1.0",
+      "id": "bulk_time_series_complete",
+      "name": "Synthetic bulk response: two conditions and three biological courses each",
+      "expression": {
+        "genes": 8,
+        "columns": 132,
+        "column_kind": "timepoints",
+        "expression_profile": "bulk"
+      },
+      "organism": {
+        "taxonomic_group": "synthetic",
+        "ncbi_taxon_id": null
+      }
+    },
+    "expression_matrix": "expression.tsv"
+  },
+  "extras": {
+    "column_descriptors": "column_descriptors.tsv"
+  },
+  "notes": "Entirely synthetic normalized linear abundances, not measured biological data, a reference network or cost observations. Two idealized stimulus conditions share the same illustrative temporal coupling and each has three independent biological courses with 21 half-hourly observations. The same matrix also contains six independent stationary controls. See README.md for tool-specific use and quick parameters."
+}

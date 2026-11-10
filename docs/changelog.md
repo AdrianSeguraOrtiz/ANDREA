@@ -9,6 +9,16 @@
   native scientific defaults and document supported parameters, progress,
   resource controls, score meanings and justified exclusions. Unpublished image
   tags remain `1.0.0`.
+- Integrate the official PFBNet expression-only workflow, pinned to commit
+  `86ec8eb37aa8834645600eaaee51012342ac6324`. Deliberately exclude KO fusion;
+  remove variant selection and all KO wrapper paths. Preserve native learner
+  settings, optional regulator lists, temporal validation and canonical scores.
+- Fold per-observation intervention metadata into `column_descriptors.tsv` and
+  remove the separate normalized perturbation-design contract. Update all five
+  affected simulator writers/specs, shared schemas, manifests, GUI help and
+  examples. Preserve intervention definitions and genuine native artifacts.
+  scGeneRAI records omission of normalized fields with non-applicable empties
+  while retaining complete categorical descriptors and rejecting arbitrary gaps.
 - Unify observed bulk inputs into `expression.tsv` and `column_descriptors.tsv`,
   including compatible temporal/stationary roles, independent series,
   biological/technical identities and observed sampling coordinates. Remove
@@ -41,6 +51,25 @@
   all independent prediction-accuracy checks are deferred. Withdraw timings
   invalidated by native implementation changes; diagnostic pilots do not
   replace a complete agreed panel.
+- Define PFBNet's executable complete finite expression-only panel: 40 profiles,
+  120 size points per resource stratum and 2,160 future executions. Reuse the
+  shared generator/validator; no calibration is launched or partial cost fitted.
+- Withdraw the six old costs affected by the simulator/scGeneRAI wrapper changes,
+  preserving original files outside the active catalog pending recalibration.
+  Retain dynGENIE3 after exhaustive offline input-byte/timing-kernel verification;
+  update only derived profile fingerprints, keeping all observations, times and
+  provenance intact.
+
+### Temporal input examples
+
+- Add a shared small functional example alongside the existing inference input
+  fixtures: eight genes, two stimulus conditions, three biological courses per
+  condition, 21 regular timepoints and six stationary controls in one expression
+  matrix (132 columns). Use only the temporal descriptor fields and optional TF
+  lists. Provide normal manifests, explicit quick run
+  settings and CLI/GUI instructions for all four temporal integrations and
+  their supported inference backends. The data is synthetic, not biological
+  evidence or cost calibration.
 
 ### Integration procedure
 

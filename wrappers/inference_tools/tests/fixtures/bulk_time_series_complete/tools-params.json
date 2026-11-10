@@ -1,0 +1,75 @@
+{
+  "runs": [
+    {
+      "run_id": "dyngenie3_rf_quick",
+      "tool_id": "dyngenie3",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "ntrees": 100,
+        "seed": 0
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 1800
+      }
+    },
+    {
+      "run_id": "swing_rf_lagged_quick",
+      "tool_id": "swing",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "window_type": "RandomForest",
+        "window_width": 7,
+        "min_lag": 1,
+        "max_lag": 2,
+        "n_trees": 25,
+        "n_permutations": 0,
+        "seed": 0
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 1800
+      }
+    },
+    {
+      "run_id": "bixgboost_bidirectional",
+      "tool_id": "bixgboost",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "timelag": 2,
+        "seed": 0
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 1800
+      }
+    },
+    {
+      "run_id": "pfbnet_expression_only_quick",
+      "tool_id": "pfbnet",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "k": 2,
+        "alpha": 0.45,
+        "iter_num": 200,
+        "seed": 0
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

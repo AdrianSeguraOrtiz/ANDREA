@@ -1,0 +1,66 @@
+{
+  "runs": [
+    {
+      "run_id": "dyngenie3_et_quick",
+      "tool_id": "dyngenie3",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "tree_method": "ET",
+        "ntrees": 100,
+        "seed": 0
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 1800
+      }
+    },
+    {
+      "run_id": "swing_plsr_lagged_quick",
+      "tool_id": "swing",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "window_type": "Dionesus",
+        "window_width": 7,
+        "min_lag": 1,
+        "max_lag": 2,
+        "pcs": 1,
+        "n_permutations": 0,
+        "seed": 0
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 1800
+      }
+    },
+    {
+      "run_id": "swing_lasso_lagged_quick",
+      "tool_id": "swing",
+      "execution": {
+        "mode": "global"
+      },
+      "params": {
+        "window_type": "Lasso",
+        "window_width": 7,
+        "min_lag": 1,
+        "max_lag": 2,
+        "alpha": 0.05,
+        "null_alpha": 2.0,
+        "n_bootstraps": 2,
+        "n_alphas": 3,
+        "n_permutations": 0,
+        "seed": 0
+      },
+      "resources": {
+        "threads": 1,
+        "ram_gb": 2,
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

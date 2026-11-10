@@ -11,12 +11,15 @@ method's `integration_decisions.md` records its scientific choices and exclusion
 | [dynGENIE3](../wrappers/inference_tools/tools/dyngenie3/integration_decisions.md) | Complete for the declared inference scope. | Full measured panel: 68 profiles, 1,116 resource/size points and 3,348 successful observations. Strict provenance, terminal-attempt and numerical coverage checks pass. |
 | [SWING](../wrappers/inference_tools/tools/swing/integration_decisions.md) | Complete for the declared inference scope, including equivalent aggregation optimization. | No `cost.json`. The complete 77-profile/4,158-execution panel is designed; calibration is deferred. |
 | [BiXGBoost](../wrappers/inference_tools/tools/bixgboost/integration_decisions.md) | Complete for the declared inference scope. | No `cost.json`. The complete 27-profile/1,458-execution panel is designed; calibration is deferred. |
+| [PFBNet](../wrappers/inference_tools/tools/pfbnet/integration_decisions.md) | Official expression-only workflow; KO fusion deliberately excluded. Native, CLI and browser checks cover this scope. | Executable complete finite panel: 40 profiles, 120 size points per resource stratum and 2,160 future executions. No `cost.json`; calibration deferred. |
 
-Each tool uses the standard Dockerfile, runtime wrapper and scientific decision
-log, canonical catalog specification and shared smoke/fixture/cost locations.
+The four tools use the standard Dockerfile, runtime wrapper and scientific
+decision log, canonical catalog specification and shared smoke/fixture
+locations. PFBNet's executable recipe reuses the existing synthetic generator
+and coverage validator; no KO-specific generator is needed.
 Pinned upstream sources and dependency hashes define installation. Local image
 tags remain `1.0.0`; no image publication is implied. No calibration is running
-or queued. Independent prediction-accuracy checks remain deferred for all three.
+or queued. Independent prediction-accuracy checks remain deferred for all four.
 Complete calibration coverage does not establish accuracy for arbitrary inputs,
 parameters or hardware.
 
@@ -37,12 +40,27 @@ established parameter/execution rules. Scientific interpretation and a method's
 temporal requirements are checked for the requested run, not while scanning the
 catalog. GUI help supplies context without duplicating file metadata or changing
 the input schema. Other tools retain their established descriptor semantics,
-including scGeneRAI's categorical covariates.
+including scGeneRAI's complete categorical covariates. Normalized fields with
+non-applicable empty values are explicitly omitted from its conditioning table
+and recorded, while arbitrary incomplete categorical fields still fail.
 
 Temporal writers in dyngen, GeneNetWeaver and GeneSPIDER2 emit the same normalized
 files; simulator specifications, manifests, fixtures and generated-data handoff
 checks use that contract. dynGENIE3 consumes temporal and stationary observations;
-SWING and BiXGBoost consume their declared temporal roles. Wrappers do not invent
+SWING, BiXGBoost and PFBNet consume their declared temporal roles and record
+stationary rows as unused. Optional intervention annotations now share
+`column_descriptors` with the observation metadata. The separate normalized
+perturbation-design input is removed; intervention definitions remain in
+`interventions.tsv`. All five affected simulator writers/specs agree with this
+contract. Intervention onset is distinct from observed sampling time.
+Those intervention fields are optional simulator annotations, not requirements
+of any of the four temporal inference tools. The shared runnable example contains
+only the ten temporal descriptor fields, 126 temporal observations and six
+independent stationary controls (8 genes by 132 columns); its seven tool/backend
+requests complete through the ordinary CLI. No KO measurements or intervention
+annotations are needed in this example. All four development image tags remain
+`1.0.0`, and this cleanup changes no runtime wrapper or calibrated timing.
+Wrappers do not invent
 transitions across series, average technical duplicates or infer identities from
 column names. Each tool exports the canonical six-field `network.csv`; native
 diagnostics and models remain declared auxiliary artifacts.
@@ -61,12 +79,24 @@ diagnostics and models remain declared auxiliary artifacts.
   bidirectional split-count scores and completed-model progress. Native fixed
   model settings remain fixed. Equal-length regular longitudinal series are
   required; regulator restriction and stationary fitting are unsupported.
+- **PFBNet:** pin the official source to
+  `86ec8eb37aa8834645600eaaee51012342ac6324` and expose its E.coli
+  accumulated-expression workflow. It accepts regulator candidates and omits KO
+  fusion and DREAM4 normalization. KO fusion is deliberately outside catalog
+  scope. Fixed learner settings and native score formulas are preserved.
+  Expression, column descriptors and optional TF lists cover all admitted inputs;
+  there is no `variant` parameter or hidden KO fallback.
 
 Physical smoke matrices and bounded CLI runs cover the implemented branches,
 normalized handoff, canonical outputs, progress and actual resource settings.
 They do not establish biological validity or user acceptance of every GUI
 workflow. BiXGBoost's recorded GUI check covers candidate display; its active
 catalog inference was verified through the ordinary CLI.
+PFBNet passes seven native smoke settings and exact canonical-output comparisons
+against the original E.coli implementation with all genes and restricted TFs,
+changed seeds and one/two-CPU controls. Its current browser workflow is checked
+through Results Explorer. Its complete finite cost recipe is executable, with
+no calibration started and no fitted cost model.
 
 SWING's aggregation indexes filtered edge rows once instead of rescanning the
 whole table per edge. Equivalence checks cover all 16 lag reductions, five sort
@@ -125,3 +155,30 @@ certify prediction accuracy. A separate profile's wider grid does not cover a
 single-size configuration automatically. Fixed axes need native justification;
 SERGIO's custom-gene recipe metadata still needs review. Simulator recalibration
 and independent validation remain outside the current integration scope.
+
+## Descriptor unification and cost applicability
+
+The five changed simulators (GeneNetWeaver, GeneSPIDER2, dyngen, GRouNdGAN and
+SynTReN) and scGeneRAI require fresh cost applicability for their changed wrappers
+and images. Their previous cost files were preserved byte-for-byte outside the
+active catalog and withdrawn from planning. No timings were rewritten or new
+calibrations launched. Their ordinary existing fallback estimates apply until
+complete recalibration; native GeneSPIDER2 perturbation matrices remain native
+artifacts, not public normalized extras.
+
+dynGENIE3's wrapper, image, parameters, measured inputs and timing component
+remain unchanged. The cleanup of the unused synthetic perturbation writer changes
+the generator's whole-file hash. An exhaustive offline applicability review
+verified all 68 profiles, 1,116 resource/size points, 3,348 observations and 14,094
+retained file bytes/hashes. Only the 68 derived profile fingerprints changed;
+measurement identities, times, aggregates, evidence and original provenance remain
+identical. Strict provenance, attempt and coverage validation passes. This review
+adds no exception to the shared resumption policy across different kernels.
+
+Final unification verification: 1,463 repository tests pass (13 optional checks
+skipped), eight native simulator scenarios and seven PFBNet smoke settings pass,
+and scGeneRAI's declared descriptor-selection artifact is exported. Nine ordinary
+CLI inference runs pass, including a fresh GeneNetWeaver dataset handed unchanged
+to PFBNet and dynGENIE3. The PFBNet browser run reaches READY/100 percent and
+Results Explorer. The common driver's plan-only check resolves all 40 PFBNet
+profiles without starting a calibration.
