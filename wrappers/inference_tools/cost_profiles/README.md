@@ -473,14 +473,26 @@ realistic measured costs for these tools.
 | dynGENIE3 | 68 | 3,348 | Complete measured panel: 1,116 points and 3,348 successful observations; strict provenance, attempt and coverage checks pass. |
 | SWING | 77 | 4,158 | Full panel designed; calibration deferred, no `cost.json`. |
 | BiXGBoost | 27 | 1,458 | Full panel designed; calibration deferred, no `cost.json`. |
+| PFBNet | 40 | 2,160 | Complete executable expression-only panel; calibration deferred, no `cost.json`. |
 
 Each panel crosses CPU allocations 1/2/4 with RAM limits 8/32 GiB and uses three
 repetitions. No calibration is active or queued. Independent prediction accuracy
-remains deferred for all three tools. dynGENIE3's verified executor-only
+remains deferred for all four tools. dynGENIE3's verified executor-only
 fingerprint reconciliation preserves original observations and provenance;
 it does not authorize reuse across a native image or input change. SWING's
 aggregation optimization changed native wall times, so previous-image timings
 are historical diagnostic evidence and are not a current cost model.
+
+PFBNet's [executable design](pfbnet.json) covers expression-only inference with
+50/100/200 genes, 21/42/84 regular visits and 1/2/4 independent courses, plus
+accumulation, decay, boosting-round and regulator-subset families. The finite
+TF domain is all genes without a list or `max(3, genes/5)` with a list; other
+fractions remain unvalidated. The 40 profiles contain 120 size points per
+resource stratum and require 2,160 future executions at the same resource matrix,
+three repetitions and 1,800-second cap. KO inference is deliberately outside
+PFBNet's catalog scope. No cost model, partial campaign or new KO generator is
+introduced. Materialization and validation of synthetic inputs are preparation,
+not timing measurements.
 
 After descriptor unification, scGeneRAI's previous model is archived outside the
 active catalog pending complete recalibration of the changed wrapper. dynGENIE3

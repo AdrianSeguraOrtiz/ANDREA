@@ -150,6 +150,54 @@ fits, then export and successful completion. Percentages are milestones, not
 elapsed fractions. A fitting or export failure retains its completed count,
 marks failure and never reports successful completion.
 
+## Full finite executable cost panel; no calibration launched
+
+The executable declarative recipe is
+[`cost_profiles/pfbnet.json`](../../cost_profiles/pfbnet.json). It uses the
+existing profile resolver, generator, coverage validator and common executor;
+no core, generator, provider, KO experiment or custom script is required.
+
+The entire admitted panel has genes `G=50,100,200`; defaults independently cross
+`T=21,42,84` timepoints and `S=1,2,4` courses. Every fixture is regular, has zero
+stationary columns and total columns `S*T`. Scientific defaults are `k=2`,
+`alpha=0.45`, `iter_num=1000`, `seed=0`. Every row below additionally crosses all
+three gene sizes; unmentioned parameters stay at defaults.
+
+| Family | Overrides | T | S | Profiles | Size points |
+| --- | --- | --- | --- | ---: | ---: |
+| defaults | None | 21,42,84 | 1,2,4 | 9 | 27 |
+| accumulation order | `k=1,4,8` separately | 21,42,84 | 2 | 9 | 27 |
+| boosting rounds | `iter_num=200,500,2000` separately | 21,42,84 | 2 | 9 | 27 |
+| decay | `alpha=0,0.2,0.8,1` separately | 42 | 2 | 4 | 12 |
+| combined | `k=4,alpha=1,iter_num=2000` | 21,42,84 | 2 | 3 | 9 |
+| optional TF restriction | First `max(3,floor(G/5))` genes | 21,42,84 | 2 | 3 | 9 |
+| TF restriction plus combined | Same TF policy and combined overrides | 21,42,84 | 2 | 3 | 9 |
+| **Total** | | | | **40** | **120** |
+
+The machine-independent allocation panel is threads `1,2,4` crossed with RAM
+`8,32 GiB`, six strata, three repetitions: **2160 future container attempts**.
+The per-attempt maximum remains **1800 seconds**. Standard `ok/timeout/oom/error`
+outcomes apply. This is a recipe, not `cost.json`, a schedule or a measurement;
+no campaign has been started. Machine capacity affects common-executor
+concurrency, never which scientific profiles constitute the panel.
+
+This is a complete finite panel for its declared domain, not a claim to estimate
+any possible run precisely. All public scientific knobs and optional TF
+presence are represented by selected values. Other TF fractions, explicit
+all-gene TF files, arbitrary parameter interactions, irregular courses,
+stationary fitting, KO fusion, different expression distributions, unmeasured
+hardware and extrapolated sizes are outside the calibrated domain. The common
+generator currently supports only its established 20-percent TF policy; the
+recipe does not pretend to materialize other fractions. Seed is controlled for
+reproducibility rather than fitted as an independent cost axis.
+
+Future timing validation must use independently seeded held-out matrices and
+intermediate gene sizes (for example 75 and 150), separate from calibration or
+reuse sources, with source/image/input identities and estimator/criteria frozen
+before measurement. Complete outcome coverage is separate from prediction
+accuracy. Timeouts are attempted terminal outcomes, not successful numerical
+support, and should never be relabeled as measured finite runtimes.
+
 ## Current verification and limits
 
 The dedicated tests exercise parameter domains, exact ID joins and TF ordering,
@@ -157,7 +205,9 @@ series boundaries, geometry rejection, unused stationary/technical observations,
 float32 arithmetic domains, native source guards, original 3-course/1484-gene
 accumulation equivalence, generalized geometry, exact predictor/label values,
 resource mappings, fit counts, progress failure paths and canonical export.
-The 111 dedicated wrapper/core tests pass; the selected shared catalog,
+The cost-panel tests resolve all 40 profiles through existing machinery and
+materialize the largest gene size in each branch without fitting any model.
+The 113 dedicated wrapper/core/panel tests pass; the selected shared catalog,
 profile, smoke-configuration, thread and seed regression suite passes 67 tests
 with one optional-dependency skip.
 The normal catalog/preflight/plan/GUI-bootstrap tests exercise standard
@@ -179,4 +229,4 @@ input. This verifies interaction and output handoff, not runtime prediction.
 Historical acceptance evidence for the earlier broader scope is not evidence
 that the removed KO workflow remains supported. Functional smoke durations are
 not calibration measurements or runtime prediction validation. No full cost or
-universal predictive-accuracy claim is made without a complete calibration.
+universal predictive-accuracy claim is made while the panel remains unexecuted.

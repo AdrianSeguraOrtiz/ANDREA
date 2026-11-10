@@ -1,0 +1,1477 @@
+{
+  "cost_relevant_params": [
+    "k",
+    "alpha",
+    "iter_num"
+  ],
+  "column_kind": "timepoints",
+  "expression_profile": "bulk",
+  "temporal": {
+    "schema_version": "bulk-temporal/1",
+    "time_basis": "observed",
+    "time_unit": "hour",
+    "sampling_design": "longitudinal"
+  },
+  "profiles": [
+    {
+      "id": "global_defaults_t21_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x21",
+        "100x21",
+        "200x21"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t21_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t42_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t42_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t84_s1",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 1,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_defaults_t84_s4",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {},
+      "sizes": [
+        "50x336",
+        "100x336",
+        "200x336"
+      ],
+      "temporal_fixture": {
+        "series_count": 4,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_1_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 1
+      },
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_1_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 1
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_1_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 1
+      },
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_4_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 4
+      },
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_4_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 4
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_4_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 4
+      },
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_8_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 8
+      },
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_8_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 8
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_k_8_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 8
+      },
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_200_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 200
+      },
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_200_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 200
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_200_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 200
+      },
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_500_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 500
+      },
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_500_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 500
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_500_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 500
+      },
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_2000_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_2000_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_iter_2000_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_alpha_0_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": 0
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_alpha_0p2_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": 0.2
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_alpha_0p8_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": 0.8
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_alpha_1_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "alpha": 1
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_combined_k4_alpha1_iter2000_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 4,
+        "alpha": 1,
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_combined_k4_alpha1_iter2000_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 4,
+        "alpha": 1,
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_combined_k4_alpha1_iter2000_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [],
+      "param_overrides": {
+        "k": 4,
+        "alpha": 1,
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      }
+    },
+    {
+      "id": "global_tf_20pct_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_20pct_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_20pct_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {},
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_20pct_combined_k4_alpha1_iter2000_t21_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "k": 4,
+        "alpha": 1,
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x42",
+        "100x42",
+        "200x42"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 21,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_20pct_combined_k4_alpha1_iter2000_t42_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "k": 4,
+        "alpha": 1,
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x84",
+        "100x84",
+        "200x84"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 42,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "tf_count_policy": "max(3, genes/5)"
+    },
+    {
+      "id": "global_tf_20pct_combined_k4_alpha1_iter2000_t84_s2",
+      "execution": {
+        "mode": "global"
+      },
+      "parameter_base": "spec_defaults",
+      "optional_inputs": [
+        "tf_list"
+      ],
+      "param_overrides": {
+        "k": 4,
+        "alpha": 1,
+        "iter_num": 2000
+      },
+      "sizes": [
+        "50x168",
+        "100x168",
+        "200x168"
+      ],
+      "temporal_fixture": {
+        "series_count": 2,
+        "timepoints_per_series": 84,
+        "steady_state_samples": 0,
+        "sampling": "regular"
+      },
+      "tf_count_policy": "max(3, genes/5)"
+    }
+  ],
+  "calibration_design": {
+    "kind": "independent_temporal_grid_with_branch_growth",
+    "scientific_defaults": {
+      "k": 2,
+      "alpha": 0.45,
+      "iter_num": 1000,
+      "seed": 0
+    },
+    "fixed_model_parameters": {
+      "max_depth": 4,
+      "min_child_weight": 4,
+      "reg_lambda": 0,
+      "subsample": 0.7,
+      "colsample_bytree": 0.9,
+      "eta": 0.0008,
+      "gamma": 0,
+      "reg_alpha": 0,
+      "objective": "reg:linear",
+      "importance_type": "weight"
+    },
+    "default_input": {
+      "steady_state_samples": 0,
+      "sampling": "regular"
+    },
+    "resources": {
+      "threads": [
+        1,
+        2,
+        4
+      ],
+      "ram_gb": [
+        8,
+        32
+      ],
+      "strata_count": 6
+    },
+    "repetitions": 3,
+    "total_points_per_resource_stratum": 120,
+    "planned_calibration_runs": 2160,
+    "families": [
+      {
+        "id": "defaults",
+        "profile_ids": [
+          "global_defaults_t21_s1",
+          "global_defaults_t21_s2",
+          "global_defaults_t21_s4",
+          "global_defaults_t42_s1",
+          "global_defaults_t42_s2",
+          "global_defaults_t42_s4",
+          "global_defaults_t84_s1",
+          "global_defaults_t84_s2",
+          "global_defaults_t84_s4"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 0.45,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            1,
+            2,
+            4
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "k_1",
+        "profile_ids": [
+          "global_k_1_t21_s2",
+          "global_k_1_t42_s2",
+          "global_k_1_t84_s2"
+        ],
+        "expected_params": {
+          "k": 1,
+          "alpha": 0.45,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "k_4",
+        "profile_ids": [
+          "global_k_4_t21_s2",
+          "global_k_4_t42_s2",
+          "global_k_4_t84_s2"
+        ],
+        "expected_params": {
+          "k": 4,
+          "alpha": 0.45,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "k_8",
+        "profile_ids": [
+          "global_k_8_t21_s2",
+          "global_k_8_t42_s2",
+          "global_k_8_t84_s2"
+        ],
+        "expected_params": {
+          "k": 8,
+          "alpha": 0.45,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "iter_200",
+        "profile_ids": [
+          "global_iter_200_t21_s2",
+          "global_iter_200_t42_s2",
+          "global_iter_200_t84_s2"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 0.45,
+          "iter_num": 200,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "iter_500",
+        "profile_ids": [
+          "global_iter_500_t21_s2",
+          "global_iter_500_t42_s2",
+          "global_iter_500_t84_s2"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 0.45,
+          "iter_num": 500,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "iter_2000",
+        "profile_ids": [
+          "global_iter_2000_t21_s2",
+          "global_iter_2000_t42_s2",
+          "global_iter_2000_t84_s2"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 0.45,
+          "iter_num": 2000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "alpha_0",
+        "profile_ids": [
+          "global_alpha_0_t42_s2"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 0,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            42
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "alpha_0p2",
+        "profile_ids": [
+          "global_alpha_0p2_t42_s2"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 0.2,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            42
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "alpha_0p8",
+        "profile_ids": [
+          "global_alpha_0p8_t42_s2"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 0.8,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            42
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "alpha_1",
+        "profile_ids": [
+          "global_alpha_1_t42_s2"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 1,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            42
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "combined_k4_alpha1_iter2000",
+        "profile_ids": [
+          "global_combined_k4_alpha1_iter2000_t21_s2",
+          "global_combined_k4_alpha1_iter2000_t42_s2",
+          "global_combined_k4_alpha1_iter2000_t84_s2"
+        ],
+        "expected_params": {
+          "k": 4,
+          "alpha": 1,
+          "iter_num": 2000,
+          "seed": 0
+        },
+        "optional_inputs": [],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "tf_20pct",
+        "profile_ids": [
+          "global_tf_20pct_t21_s2",
+          "global_tf_20pct_t42_s2",
+          "global_tf_20pct_t84_s2"
+        ],
+        "expected_params": {
+          "k": 2,
+          "alpha": 0.45,
+          "iter_num": 1000,
+          "seed": 0
+        },
+        "optional_inputs": [
+          "tf_list"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      },
+      {
+        "id": "tf_20pct_combined_k4_alpha1_iter2000",
+        "profile_ids": [
+          "global_tf_20pct_combined_k4_alpha1_iter2000_t21_s2",
+          "global_tf_20pct_combined_k4_alpha1_iter2000_t42_s2",
+          "global_tf_20pct_combined_k4_alpha1_iter2000_t84_s2"
+        ],
+        "expected_params": {
+          "k": 4,
+          "alpha": 1,
+          "iter_num": 2000,
+          "seed": 0
+        },
+        "optional_inputs": [
+          "tf_list"
+        ],
+        "coordinate_axes": {
+          "genes": [
+            50,
+            100,
+            200
+          ],
+          "timepoints_per_series": [
+            21,
+            42,
+            84
+          ],
+          "independent_series": [
+            2
+          ],
+          "steady_state_samples": [
+            0
+          ],
+          "sampling": [
+            "regular"
+          ]
+        },
+        "scope": "Exact registered longitudinal shapes, parameters and input policy only. All genes remain targets. TF candidates are max(3, floor(genes/5)) when the optional list is present; otherwise every gene is a candidate. No unmeasured interaction or predictive-accuracy claim."
+      }
+    ],
+    "scope": "Prospective bounded full panel for the admitted PFBNet expression-only workflow. Every scientific knob is represented by selected values, with independent default gene/timepoint/series growth and selected combined/TF branches. This is not the continuous Cartesian product of all parameters. Other TF fractions, irregular sampling, stationary fitting, knockout fusion, unmeasured interactions/distributions, other hardware and extrapolated sizes are outside this domain. No timing measurement or predictive accuracy is claimed.",
+    "validation_policy": "Use independently seeded held-out matrices and intermediate gene sizes separately from calibration and reuse sources. Freeze source/image/input identities, estimator and acceptance criteria before collecting validation timings. Assess coverage separately from prediction accuracy; do not equate a complete finite panel with universal predictive precision.",
+    "timeout_seconds": 1800,
+    "gene_levels": [
+      50,
+      100,
+      200
+    ],
+    "timepoints_per_series_levels": [
+      21,
+      42,
+      84
+    ],
+    "independent_series_levels": [
+      1,
+      2,
+      4
+    ]
+  }
+}
