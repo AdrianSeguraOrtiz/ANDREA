@@ -1,13 +1,23 @@
 # ANDREA release procedure
 
-## 0.2.1 source release
+## 0.2.0 consolidated candidate
 
 The release contains expanded calibration, corrected simulation planning and
 resource enforcement, numerical integration fixes, seed-controlled SynTReN and
-responsive inference run cards. Read
+responsive inference run cards, and evaluation matching by input-content
+fingerprint without requiring equal dataset identifiers. Read
 [changelog.md](changelog.md) for changes and migration notes. Registry image
-identities are frozen in [releases/0.2.1-images.json](releases/0.2.1-images.json).
+identities are frozen in [releases/0.2.0-images.json](releases/0.2.0-images.json).
 The Python package version and Docker integration versions are independent.
+
+The current unpublished candidate consolidates all work since 0.1.0, including
+changes previously prepared with source version 0.2.1. Existing Git tags `v0.2.0`
+and `v0.2.1` are historical preparation snapshots, not the source identity of
+this candidate. They are retained unchanged. Pin current artifacts by the exact
+clean source commit from which they are built; a final release tag has not been
+assigned to this consolidated candidate. The historical
+[0.2.1 image lock](releases/0.2.1-images.json) remains unchanged, and the current
+0.2.0 lock uses the same verified image identities.
 
 All 32 `cost.json` files pass strict provenance checks and contain 186 profiles:
 86 inference profiles and 100 simulator profiles. Coverage follows the declared
@@ -105,7 +115,8 @@ Python 3.11, 3.12 and 3.13, outside the checkout. Check dependency consistency,
 CLI entry points, all four GUI resources, catalogs and package data. Run the
 installed core/CLI/GUI tests and compare packaged files with the frozen source.
 
-The final tag must identify the commit used for the checked artifacts. Preserve
+Any final publication tag must identify the commit used for the checked artifacts;
+do not use either historical preparation tag as that identity. Preserve
 the artifact SHA-256 values, image digests and verification receipts locally.
 A version-only promotion must document equivalence to its tested candidate;
 it must not relabel historical executions as new-version measurements.
@@ -124,9 +135,9 @@ python -m twine upload --non-interactive --repository-url https://test.pypi.org/
 Check installation from TestPyPI in a clean environment before the final upload:
 
 ```sh
-make smoke-testpypi PACKAGE_VERSION=0.2.1
+make smoke-testpypi PACKAGE_VERSION=0.2.0
 python -m twine upload --non-interactive --repository-url https://upload.pypi.org/legacy/ dist/*
-make smoke-pypi PACKAGE_VERSION=0.2.1
+make smoke-pypi PACKAGE_VERSION=0.2.0
 ```
 
 Do not regenerate profiles or overwrite checked artifacts during publication.
