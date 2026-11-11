@@ -198,6 +198,11 @@ The GUI expects strict handoff bundles:
   files, plus any source/target universe referenced by its candidate-space
   contract.
 
+Dataset identity is checked through the mandatory matching content fingerprints,
+not the dataset names entered in the two interfaces. Both original names are
+retained in the evaluation report. Existing analysis ZIPs can be evaluated
+without renaming their datasets or uploading another metadata file.
+
 The upload request returns a job quickly; extraction, strict validation and
 evaluation run in the background. Invalid ZIPs or invalid bundle structure mark
 the job as failed and show the error in the progress/error panel.

@@ -20,6 +20,7 @@ from andrea.core.commands.evaluate_inference.evaluation import (
     _sparse_auroc,
     _sparse_average_precision,
     _top_truth_count_stats,
+    _validate_dataset_identity,
 )
 
 
@@ -1575,7 +1576,7 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                     generate_view=False,
                 )
 
-    def test_rejects_mismatched_inference_and_ground_truth_dataset_ids(self) -> None:
+    def test_accepts_different_dataset_labels_with_identical_content(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             run_report_path, manifest_path = self._write_evaluation_fixture(
@@ -1612,19 +1613,57 @@ class EvaluateInferenceCoreTests(unittest.TestCase):
                 inference_dataset_id="different_dataset",
             )
 
-            with self.assertRaisesRegex(
-                ValueError,
-                "run_report.dataset.id='different_dataset'.*"
-                "ground_truth_manifest.dataset_id='toy'",
-            ):
-                evaluate_inference(
-                    run_report_path=run_report_path,
-                    ground_truth_manifest_path=manifest_path,
-                    output_dir=base / "evaluation",
-                    generate_view=False,
-                )
+            original_report = run_report_path.read_bytes()
+            original_manifest = manifest_path.read_bytes()
+            report = evaluate_inference(
+                run_report_path=run_report_path,
+                ground_truth_manifest_path=manifest_path,
+                output_dir=base / "evaluation",
+                generate_view=False,
+            )
+            self.assertEqual(
+                report["inputs"]["inference_dataset_id"], "different_dataset"
+            )
+            self.assertEqual(report["inputs"]["ground_truth_dataset_id"], "toy")
+            self.assertEqual(
+                report["inference_run"]["dataset"]["id"], "different_dataset"
+            )
+            self.assertEqual(report["ground_truth"]["dataset_id"], "toy")
+            self.assertEqual(
+                report["inputs"]["inference_dataset_fingerprint"],
+                report["inputs"]["ground_truth_dataset_fingerprint"],
+            )
+            self.assertTrue((base / "evaluation").is_dir())
+            self.assertEqual(run_report_path.read_bytes(), original_report)
+            self.assertEqual(manifest_path.read_bytes(), original_manifest)
 
-            self.assertFalse((base / "evaluation").exists())
+    def test_dataset_labels_never_override_missing_or_different_fingerprints(
+        self,
+    ) -> None:
+        for label in ("toy", "another_label"):
+            for side in ("inference", "truth"):
+                for invalid in (
+                    None,
+                    {},
+                    {"algorithm": "sha256", "value": "invalid"},
+                    {"algorithm": "sha256", "value": "b" * 64},
+                ):
+                    with self.subTest(label=label, side=side, fingerprint=invalid):
+                        run_report = {
+                            "dataset": {
+                                "id": label,
+                                "fingerprint": dict(self.DATASET_FINGERPRINT),
+                            }
+                        }
+                        manifest = self._manifest()
+                        if side == "inference":
+                            run_report["dataset"]["fingerprint"] = invalid
+                        else:
+                            manifest["dataset_fingerprint"] = invalid
+                        with self.assertRaisesRegex(ValueError, "fingerprint"):
+                            _validate_dataset_identity(
+                                run_report=run_report, truth_manifest=manifest
+                            )
 
     def test_rejects_same_dataset_id_with_different_content_fingerprint(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

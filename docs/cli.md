@@ -177,8 +177,9 @@ lists define the negative universe and metric denominators. Generated
 manifests use the mandatory `extras/tf_list.txt` as candidate sources. Truth
 and predictions outside that evaluable domain are excluded with explicit
 diagnostics. The inference report and truth manifest must also carry the same
-SHA-256 dataset fingerprint, computed from expression and standardized extras;
-matching IDs alone are insufficient. Every ground-truth output and
+SHA-256 dataset fingerprint, computed from expression and standardized extras.
+Dataset IDs may differ and remain unchanged as provenance labels; matching IDs
+alone are insufficient. Every ground-truth output and
 candidate-list reference must be a
 canonical relative POSIX path contained by the manifest directory; absolute
 paths, traversal and symlink escapes are rejected.

@@ -406,6 +406,147 @@ class EvaluateInferenceGuiServerTests(unittest.TestCase):
                 self.assertEqual(zf.namelist(), ["evaluation_report.json"])
             self.assertEqual(invalid_bundle_response.status_code, 400)
 
+    def test_analysis_uploads_match_fingerprints_and_preserve_dataset_labels(self) -> None:
+        inference_dataset_id = "gui_dataset"
+        truth_dataset_id = "gui_generate_benchmark__genenetweaver__01__r01"
+        run_report = _strict_run_report()
+        run_report["dataset"]["id"] = inference_dataset_id
+        inference_zip = _zip_bytes(
+            {
+                "run_report.json": json.dumps(run_report),
+                "merged_network_raw.csv": (
+                    "source,target,score,sign,evidence,context,tool_id\n"
+                    "G1,G2,1,?,inferred,global,genie3_01\n"
+                ),
+            }
+        )
+        cases = [
+            ("matching", DATASET_FINGERPRINT, None),
+            (
+                "different",
+                {"algorithm": "sha256", "value": "b" * 64},
+                "dataset fingerprints must match exactly",
+            ),
+            ("missing", None, "dataset_fingerprint"),
+            (
+                "malformed",
+                {"algorithm": "sha256", "value": "not-a-sha256"},
+                "dataset_fingerprint",
+            ),
+        ]
+        for case, fingerprint, expected_error in cases:
+            with self.subTest(fingerprint=case), tempfile.TemporaryDirectory() as tmp:
+                tmp_root = Path(tmp)
+                truth_manifest = {
+                    "schema_version": "1.0",
+                    "dataset_id": truth_dataset_id,
+                    "simulator_id": "dyngen",
+                    "data_axes": {
+                        "measurement": "rna_expression",
+                        "resolution": "single_cell",
+                        "column_kind": "cells",
+                        "experimental_design": "trajectory",
+                    },
+                    "truth_requirements": {"contexts": ["global"]},
+                    "outputs": {
+                        "gene_universe": "truth/gene_universe.txt",
+                        "networks": "truth/networks.csv",
+                    },
+                    "candidate_space": {
+                        "sources": "extras/tf_list.txt",
+                        "targets": "truth/gene_universe.txt",
+                        "allow_self_edges": False,
+                    },
+                }
+                if fingerprint is not None:
+                    truth_manifest["dataset_fingerprint"] = fingerprint
+                truth_zip = _zip_bytes(
+                    {
+                        "ground-truth-manifest.json": json.dumps(truth_manifest),
+                        "truth/gene_universe.txt": "G1\nG2\n",
+                        "truth/networks.csv": (
+                            "source,target,score,sign,evidence,context\n"
+                            "G1,G2,1,+,ground_truth,global\n"
+                        ),
+                        "extras/tf_list.txt": "G1\nG2\n",
+                    }
+                )
+                with (
+                    patch.object(gui_server, "GUI_TMP_ROOT", tmp_root / "gui_tmp"),
+                    patch.object(gui_server, "STATE", gui_server.GuiState()),
+                    patch.object(
+                        gui_server,
+                        "start_background_thread",
+                        start_immediate_background_thread,
+                    ),
+                ):
+                    client = TestClient(gui_server.create_app())
+                    response = client.post(
+                        "/api/evaluate-inference/run",
+                        data={"output_dir": str(tmp_root / "evaluations")},
+                        files={
+                            "inference_zip": (
+                                "inference.zip",
+                                inference_zip,
+                                "application/zip",
+                            ),
+                            "truth_zip": ("truth.zip", truth_zip, "application/zip"),
+                        },
+                    )
+                    self.assertEqual(response.status_code, 200, msg=response.text)
+                    payload = response.json()
+                    if expected_error is not None:
+                        self.assertEqual(payload["job"]["status"], "failed")
+                        self.assertIn(expected_error, payload["job"]["error"])
+                        self.assertFalse((tmp_root / "evaluations").exists())
+                        continue
+
+                    self.assertEqual(
+                        payload["job"]["status"], "completed", msg=payload
+                    )
+                    report = payload["evaluation_report"]
+                    self.assertEqual(
+                        report["inputs"]["inference_dataset_id"], inference_dataset_id
+                    )
+                    self.assertEqual(
+                        report["inputs"]["ground_truth_dataset_id"], truth_dataset_id
+                    )
+                    self.assertEqual(
+                        report["inference_run"]["dataset"]["id"], inference_dataset_id
+                    )
+                    self.assertEqual(
+                        report["ground_truth"]["dataset_id"], truth_dataset_id
+                    )
+                    self.assertEqual(report["pairings"][0]["status"], "evaluated")
+                    directed_metrics = next(
+                        row for row in report["metrics"] if row["level"] == "directed"
+                    )
+                    self.assertEqual(directed_metrics["auroc"], 1.0)
+                    frozen_report = json.loads(
+                        Path(payload["job"]["frozen_run_report_path"]).read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                    frozen_truth = json.loads(
+                        Path(payload["job"]["frozen_ground_truth_manifest_path"]).read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                    self.assertEqual(
+                        frozen_report["dataset"]["id"], inference_dataset_id
+                    )
+                    self.assertEqual(frozen_truth["dataset_id"], truth_dataset_id)
+                    bundle_response = client.get(
+                        f"/api/evaluate-inference/jobs/{payload['job']['job_id']}/bundle",
+                        params={"bundle_id": "analysis"},
+                    )
+                    self.assertEqual(
+                        bundle_response.status_code, 200, msg=bundle_response.text
+                    )
+                    with zipfile.ZipFile(io.BytesIO(bundle_response.content)) as zf:
+                        downloaded_report = json.loads(zf.read("evaluation_report.json"))
+                    self.assertEqual(downloaded_report["inputs"], report["inputs"])
+
     def test_strict_bundle_preparation_rejects_noncanonical_output_references(
         self,
     ) -> None:

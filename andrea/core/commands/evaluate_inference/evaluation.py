@@ -1037,14 +1037,7 @@ def _validate_dataset_identity(
     run_report: dict[str, Any],
     truth_manifest: dict[str, Any],
 ) -> None:
-    inference_dataset_id = run_report["dataset"]["id"]
-    truth_dataset_id = truth_manifest["dataset_id"]
-    if inference_dataset_id != truth_dataset_id:
-        raise ValueError(
-            "Inference and ground truth dataset IDs must match exactly: "
-            f"run_report.dataset.id={inference_dataset_id!r}, "
-            f"ground_truth_manifest.dataset_id={truth_dataset_id!r}"
-        )
+    """Require identical input content; dataset IDs remain provenance labels."""
     inference_fingerprint = validate_dataset_fingerprint(
         run_report["dataset"].get("fingerprint"),
         label="Run report dataset.fingerprint",

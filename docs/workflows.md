@@ -64,9 +64,10 @@ excluded and reported per evaluation level. Truth can be broader than the
 inference candidate space; unreachable truth edges are likewise excluded and
 reported per level rather than counted as false negatives. The declaration is
 mandatory; evaluation does not invent an all-gene fallback universe.
-Inference and truth must match both the dataset ID and the SHA-256 fingerprint
-of the normalized expression and extras, preventing accidental comparisons of
-different packages that happen to reuse an ID.
+Inference and truth must carry the same SHA-256 fingerprint of the expression
+and all supplied normalized extras. Dataset IDs are descriptive labels and may
+differ; both original labels remain in the evaluation report. Matching names
+cannot make different contents evaluable.
 
 Typical outputs:
 
